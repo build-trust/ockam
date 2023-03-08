@@ -1,9 +1,10 @@
-use ockam::{Context, Result, TcpListenerOptions, TcpOutletOptions, TcpTransport};
+use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:4002

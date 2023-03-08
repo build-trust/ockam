@@ -1,8 +1,8 @@
 // examples/sender.rs
 
 use file_transfer::{FileData, FileDescription};
-use ockam::{identity::Identity, route, vault::Vault, Context};
-use ockam::{TcpConnectionOptions, TcpTransport};
+use ockam::TcpConnectionOptions;
+use ockam::{node, route, Context};
 
 use std::path::PathBuf;
 
@@ -32,14 +32,11 @@ struct Opt {
 async fn main(ctx: Context) -> Result<()> {
     let opt = Opt::from_args();
 
-    // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a Vault to safely store secret keys for Sender.
-    let vault = Vault::create();
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Sender.
-    let sender = Identity::create(&ctx, vault).await?;
+    let sender = node.create_identity().await?;
 
     // This program expects that the receiver has setup a forwarding address,
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.
@@ -58,8 +55,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.
-    let channel = sender
-        .create_secure_channel(route_to_receiver_listener, SecureChannelOptions::new())
+    let channel = node
+        .create_secure_channel(&sender, route_to_receiver_listener, SecureChannelOptions::new())
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
@@ -80,7 +77,7 @@ async fn main(ctx: Context) -> Result<()> {
         size: metadata.len() as usize,
     });
 
-    ctx.send(route![channel.clone(), "receiver"], descr).await?;
+    node.send(route![channel.clone(), "receiver"], descr).await?;
 
     let mut buffer = vec![0u8; opt.chunk_size];
     loop {
@@ -89,7 +86,7 @@ async fn main(ctx: Context) -> Result<()> {
                 break;
             }
             let data = FileData::Data(buffer[..count].to_vec());
-            ctx.send(route![channel.clone(), "receiver"], data).await?;
+            node.send(route![channel.clone(), "receiver"], data).await?;
         }
     }
 

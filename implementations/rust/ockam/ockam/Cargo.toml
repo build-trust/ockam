@@ -3,21 +3,21 @@ name = "ockam"
 version = "0.84.0"
 authors = ["Ockam Developers"]
 categories = [
-  "cryptography",
-  "asynchronous",
-  "authentication",
-  "network-programming",
-  "embedded",
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
 ]
 edition = "2021"
 exclude = ["tests/**"]
 homepage = "https://github.com/build-trust/ockam"
 keywords = [
-  "ockam",
-  "crypto",
-  "cryptography",
-  "network-programming",
-  "encryption",
+    "ockam",
+    "crypto",
+    "cryptography",
+    "network-programming",
+    "encryption",
 ]
 license = "Apache-2.0"
 publish = true
@@ -33,46 +33,46 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["std", "ockam_transport_tcp", "software_vault", "software_vault_storage"]
 software_vault = [
-  "ockam_vault/rustcrypto",
-  "ockam_identity/software_vault",
+    "ockam_vault/rustcrypto",
+    "ockam_identity/software_vault",
 ]
 software_vault_storage = ["software_vault", "ockam_vault/storage"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
-  "alloc",
-  "ockam_core/std",
-  "ockam_node/std",
-  "ockam_macros/std",
-  "ockam_vault/std",
-  "ockam_key_exchange_xx/std",
-  "ockam_identity/std",
-  "ockam_abac/std",
-  "rand/default",
-  "serde/std",
+    "alloc",
+    "ockam_core/std",
+    "ockam_node/std",
+    "ockam_macros/std",
+    "ockam_vault/std",
+    "ockam_key_exchange_xx/std",
+    "ockam_identity/std",
+    "ockam_abac/std",
+    "rand/default",
+    "serde/std",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
 no_std = [
-  "ockam_core/no_std",
-  "ockam_node/no_std",
-  "ockam_macros/no_std",
-  "ockam_vault/no_std",
-  "ockam_key_exchange_xx/no_std",
-  "ockam_identity/no_std",
-  "ockam_abac/no_std",
+    "ockam_core/no_std",
+    "ockam_node/no_std",
+    "ockam_macros/no_std",
+    "ockam_vault/no_std",
+    "ockam_key_exchange_xx/no_std",
+    "ockam_identity/no_std",
+    "ockam_abac/no_std",
 ]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = [
-  "ockam_core/alloc",
-  "ockam_node/alloc",
-  "ockam_vault/alloc",
-  "ockam_key_exchange_xx/alloc",
-  "ockam_identity/alloc",
-  "serde/alloc",
+    "ockam_core/alloc",
+    "ockam_node/alloc",
+    "ockam_vault/alloc",
+    "ockam_key_exchange_xx/alloc",
+    "ockam_identity/alloc",
+    "serde/alloc",
 ]
 
 # Feature: "debugger" enables functionality to trace addresses and

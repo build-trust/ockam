@@ -96,7 +96,7 @@ impl Worker for EchoerServiceWorker {
 async fn mock_ockam_cloud(ctx: &Context) -> Result<Address> {
     // Create an identity for customer
     let customer_vault = Vault::create();
-    let customer = Identity::create(ctx, &customer_vault).await?;
+    let customer = Identities::create(ctx, &customer_vault).await?;
     let customer_identity = customer.identifier()?;
 
     // Start some ABAC policy source
@@ -133,7 +133,7 @@ async fn mock_ockam_cloud(ctx: &Context) -> Result<Address> {
 
     // Set up some identity secure channel for API service worker side
     let ockam_vault = Vault::create();
-    let ockam = Identity::create(ctx, &ockam_vault).await?;
+    let ockam = Identities::create(ctx, &ockam_vault).await?;
     let ockam_storage = InMemoryStorage::new();
     ockam
         .create_secure_channel_listener("ockam_listener", TrustEveryonePolicy, &ockam_storage)

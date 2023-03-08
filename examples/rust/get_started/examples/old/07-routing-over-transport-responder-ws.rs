@@ -17,6 +17,6 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
 
-    // Don't call ctx.stop() here so this node runs forever.
+    // Don't call node.stop() here so this node runs forever.
     Ok(())
 }

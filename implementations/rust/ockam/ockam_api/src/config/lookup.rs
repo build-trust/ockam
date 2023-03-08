@@ -2,11 +2,10 @@ use crate::cloud::project::{OktaAuth0, Project};
 use crate::error::ApiError;
 use anyhow::Context as _;
 use bytes::Bytes;
+use ockam::identity::{identities, IdentityIdentifier};
 use ockam_core::compat::collections::VecDeque;
 use ockam_core::{CowStr, Result};
-use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -273,8 +272,11 @@ impl ProjectAuthority {
                 .ok_or_else(|| ApiError::generic("Identity is not set"))?;
             let a =
                 hex::decode(&**a).map_err(|_| ApiError::generic("Invalid project authority"))?;
-            let p = PublicIdentity::import(&a, Vault::create()).await?;
-            Ok(Some(ProjectAuthority::new(p.identifier().clone(), rte, a)))
+            let p = identities()
+                .identities_creation()
+                .import_identity(&a)
+                .await?;
+            Ok(Some(ProjectAuthority::new(p.identifier(), rte, a)))
         } else {
             Ok(None)
         }

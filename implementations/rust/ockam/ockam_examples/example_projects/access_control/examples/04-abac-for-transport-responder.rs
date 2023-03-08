@@ -20,27 +20,27 @@ async fn main(ctx: Context) -> Result<()> {
             ("role".into(), abac::string("reader")),
             ("project".into(), abac::string("green")),
         ]
-        .into(),
+            .into(),
     )
-    .await?;
+        .await?;
     mem.set_subject_attributes(
         Subject::from(0x0000_0000_0000_0002),
         [
             ("role".into(), abac::string("writer")),
             ("project".into(), abac::string("green")),
         ]
-        .into(),
+            .into(),
     )
-    .await?;
+        .await?;
     mem.set_subject_attributes(
         Subject::from(0x0000_0000_0000_0003),
         [
             ("role".into(), abac::string("writer")),
             ("project".into(), abac::string("blue")),
         ]
-        .into(),
+            .into(),
     )
-    .await?;
+        .await?;
 
     // Set up some conditionals on attributes
     let project_green = abac::eq("project", abac::string("green"));
@@ -54,19 +54,19 @@ async fn main(ctx: Context) -> Result<()> {
         Action::from("read"),
         &project_green.and(&role_reader.or(&role_writer)),
     )
-    .await?;
+        .await?;
     mem.set_policy(
         Resource::from("/project/green/1234"),
         Action::from("write"),
         &project_green.and(&role_writer),
     )
-    .await?;
+        .await?;
     mem.set_policy(
         Resource::from("/project/blue/5678"),
         Action::from("write"),
         &project_blue.and(&role_writer),
     )
-    .await?;
+        .await?;
 
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
@@ -80,14 +80,14 @@ async fn main(ctx: Context) -> Result<()> {
         "abac_unwrapper",
         AbacUnwrapperWorker,
     )
-    .start(&ctx)
-    .await?;
+        .start(&ctx)
+        .await?;
 
     // Create an echoer worker
     WorkerBuilder::with_access_control(AttributeBasedAccessControl::new(mem), "echoer", Echoer)
         .start(&ctx)
         .await?;
 
-    // Don't call ctx.stop() here so this node runs forever.
+    // Don't call node.stop() here so this node runs forever.
     Ok(())
 }

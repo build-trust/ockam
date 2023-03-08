@@ -5,10 +5,11 @@
 use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
-    let _tcp = TcpTransport::create(&ctx).await?;
+async fn main(ctx: Context) -> Result<()> {
+    let mut node = node(ctx);
+    let _tcp = node.create_tcp_transport().await?;
 
-    let (sender, _receiver) = Stream::new(&ctx).await?
+    let (sender, _receiver) = node.create_stream().await?
         .connect(
             route![(TCP, "localhost:4000")],
             // Stream name from THIS node to the OTHER node
@@ -18,14 +19,14 @@ async fn main(mut ctx: Context) -> Result<()> {
         )
         .await?;
 
-    ctx.send(
+    node.send(
         sender.to_route().append("echoer"),
         "Hello World!".to_string(),
     )
-    .await?;
+        .await?;
 
-    let reply = ctx.receive_block::<String>().await?;
+    let reply = node.receive::<String>().await?;
     println!("Reply via stream: {}", reply);
 
-    ctx.stop().await
+    node.stop().await
 }

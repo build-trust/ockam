@@ -1,6 +1,5 @@
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
-use ockam_vault::Vault;
 
 use crate::{
     identity::default_identity_name,
@@ -10,8 +9,9 @@ use crate::{
 };
 use anyhow::{anyhow, Context as _};
 use clap::Args;
+use ockam::identity::CredentialData;
 use ockam::Context;
-use ockam_identity::{credential::CredentialBuilder, PublicIdentity};
+use ockam_identity::{identities, Identity};
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
@@ -49,19 +49,22 @@ impl IssueCommand {
         Ok(attributes)
     }
 
-    pub async fn public_identity(&self) -> Result<PublicIdentity> {
+    pub async fn identity(&self) -> Result<Identity> {
         let identity_as_bytes = match hex::decode(&self.for_identity) {
             Ok(b) => b,
             Err(e) => return Err(anyhow!(e).into()),
         };
 
-        let public_identity = PublicIdentity::import(&identity_as_bytes, Vault::create()).await?;
-        Ok(public_identity)
+        let identity = identities()
+            .identities_creation()
+            .import_identity(&identity_as_bytes)
+            .await?;
+        Ok(identity)
     }
 }
 
 async fn run_impl(
-    ctx: Context,
+    _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
     let ident_state = opts.state.identities.get(&cmd.as_identity)?;
@@ -77,16 +80,19 @@ async fn run_impl(
         auth_identity_identifier.to_string(),
     );
 
-    let cred_builder = CredentialBuilder::from_attributes(
-        cmd.public_identity().await?.identifier().clone(),
+    let vault = Arc::new(opts.state.vaults.get(&cmd.vault)?.get().await?);
+    let issuer = ident_state.get(vault.clone()).await?;
+    let identities = ident_state.make_identities(vault).await?;
+
+    let credential_data = CredentialData::from_attributes(
+        cmd.identity().await?.identifier(),
+        issuer.identifier(),
         attrs,
-    );
-
-    let vault = opts.state.vaults.get(&cmd.vault)?.get().await?;
-
-    let ident = ident_state.get(&ctx, Arc::new(vault)).await?;
-
-    let credential = ident.issue_credential(cred_builder).await?;
+    )?;
+    let credential = identities
+        .credentials()
+        .issue_credential(&issuer, credential_data)
+        .await?;
 
     print_encodable(credential, &cmd.encode_format)?;
 

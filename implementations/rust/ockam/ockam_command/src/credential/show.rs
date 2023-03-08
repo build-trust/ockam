@@ -22,17 +22,16 @@ impl ShowCommand {
 }
 
 async fn run_impl(
-    ctx: Context,
+    _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    display_credential(&opts, &ctx, &cmd.credential_name, &cmd.vault).await?;
+    display_credential(&opts, &cmd.credential_name, &cmd.vault).await?;
 
     Ok(())
 }
 
 pub(crate) async fn display_credential(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     cred_name: &str,
     vault_name: &str,
 ) -> crate::Result<()> {
@@ -41,10 +40,9 @@ pub(crate) async fn display_credential(
     let issuer = &cred_config.issuer;
     let is_verified = match validate_encoded_cred(
         &cred_config.encoded_credential,
-        issuer.identifier(),
+        &issuer.identifier(),
         vault_name,
         opts,
-        ctx,
     )
     .await
     {

@@ -1,23 +1,22 @@
-use crate::authenticator::direct::{CredentialIssuer, EnrollmentTokenAuthenticator};
+use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::echoer::Echoer;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
 use crate::nodes::authority_node::Configuration;
 use crate::{actions, DefaultAddress};
+use ockam::identity::{
+    secure_channels, Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault,
+    Identity, IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels,
+    TrustEveryonePolicy,
+};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
-use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Message, Result, Worker};
-use ockam_identity::authenticated_storage::{
-    AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
-};
-use ockam_identity::{
-    Identity, IdentityVault, PublicIdentity, SecureChannelListenerOptions, SecureChannelRegistry,
-    TrustEveryonePolicy,
-};
+use ockam_core::{Address, AllowAll, Error, Message, Result, Worker};
+use ockam_identity::CredentialsIssuer;
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 use ockam_vault::storage::FileStorage;
@@ -34,20 +33,7 @@ use tracing::info;
 //   - an enrollment token acceptor
 pub struct Authority {
     identity: Identity,
-    attributes_storage: Arc<dyn IdentityAttributeStorage>,
-}
-
-impl Authority {
-    /// Create a new Authority with a given identity
-    /// The list of trusted identities is used to pre-populate an attributes storage
-    /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
-    pub(crate) fn new(identity: Identity, configuration: &Configuration) -> Self {
-        let attributes_storage = Self::make_attributes_storage(&identity, configuration);
-        Self {
-            identity,
-            attributes_storage,
-        }
-    }
+    secure_channels: Arc<SecureChannels>,
 }
 
 /// Public functions to:
@@ -55,27 +41,33 @@ impl Authority {
 ///   - start services
 impl Authority {
     /// Return the public identity for this authority
-    pub async fn public_identity(&self) -> Result<PublicIdentity> {
-        self.identity.to_public().await
+    pub fn identity(&self) -> Identity {
+        self.identity.clone()
     }
 
     /// Create an identity for an authority from the configured public identity and configured vault
-    pub async fn create(ctx: &Context, configuration: &Configuration) -> Result<Authority> {
+    /// The list of trusted identities in the configuration is used to pre-populate an attributes storage
+    /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
+    pub async fn create(configuration: &Configuration) -> Result<Authority> {
         info!("configuration {:?}", configuration);
-        let vault = Self::create_identity_vault(configuration).await?;
-        let storage = Self::create_authenticated_storage(configuration).await?;
+        let vault = Self::create_secure_channels_vault(configuration).await?;
+        let repository = Self::create_identities_repository(configuration).await?;
+        let secure_channels = secure_channels::builder()
+            .with_identities_vault(vault)
+            .with_identities_repository(repository)
+            .build();
 
-        let identity = Identity::import_ext(
-            ctx,
-            configuration.identity.export()?.as_slice(),
-            storage.clone(),
-            &SecureChannelRegistry::new(),
-            vault,
-        )
-        .await?;
+        let identity = secure_channels
+            .identities()
+            .identities_creation()
+            .import_identity(configuration.identity.export()?.as_slice())
+            .await?;
         info!("retrieved the authority identity {}", identity.identifier());
 
-        Ok(Authority::new(identity, configuration))
+        Ok(Authority {
+            identity,
+            secure_channels,
+        })
     }
 
     /// Start the secure channel listener service, using TCP as a transport
@@ -104,8 +96,8 @@ impl Authority {
         );
 
         let listener_name = configuration.secure_channel_listener_name();
-        self.identity
-            .create_secure_channel_listener(listener_name.clone(), options)
+        self.secure_channels
+            .create_secure_channel_listener(ctx, &self.identity, listener_name.clone(), options)
             .await?;
         info!("started a secure channel listener with name '{listener_name}'");
 
@@ -136,7 +128,7 @@ impl Authority {
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             configuration.clone().trust_context_identifier(),
-            self.attributes_storage().clone(),
+            self.attributes_writer(),
         )
         .await?;
 
@@ -168,7 +160,7 @@ impl Authority {
 
         let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
             configuration.trust_context_identifier(),
-            self.attributes_storage(),
+            self.attributes_writer(),
         );
 
         // start an enrollment token issuer with an abac policy checking that
@@ -224,12 +216,10 @@ impl Authority {
         configuration: &Configuration,
     ) -> Result<()> {
         // create and start a credential issuer worker
-        let issuer = CredentialIssuer::new(
+        let issuer = CredentialsIssuer::new(
+            self.identities(),
+            self.identity.clone(),
             configuration.trust_context_identifier(),
-            self.attributes_storage()
-                .clone()
-                .as_identity_attribute_storage_reader(),
-            Arc::new(self.identity.async_try_clone().await?),
         )
         .await?;
 
@@ -257,9 +247,8 @@ impl Authority {
     ) -> Result<()> {
         if let Some(okta) = configuration.clone().okta {
             let okta_worker = crate::okta::Server::new(
+                self.attributes_writer(),
                 configuration.project_identifier(),
-                self.attributes_storage()
-                    .as_identity_attribute_storage_writer(),
                 okta.tenant_base_url(),
                 okta.certificate(),
                 okta.attributes().as_slice(),
@@ -303,15 +292,25 @@ impl Authority {
 
 /// Private Authority functions
 impl Authority {
-    /// Return the attribute storage used by the authority
-    fn attributes_storage(&self) -> Arc<dyn IdentityAttributeStorage> {
-        self.attributes_storage.clone()
+    /// Return the identities storage used by the authority
+    fn identities(&self) -> Arc<Identities> {
+        self.secure_channels.identities()
+    }
+
+    /// Return the identities repository used by the authority
+    fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
+        self.identities().repository().clone()
+    }
+
+    /// Return the identities repository used by the authority
+    fn attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
+        self.identities_repository().as_attributes_writer().clone()
     }
 
     /// Create an identity vault backed by a FileStorage
-    async fn create_identity_vault(
+    async fn create_secure_channels_vault(
         configuration: &Configuration,
-    ) -> Result<Arc<dyn IdentityVault>> {
+    ) -> Result<Arc<dyn IdentitiesVault>> {
         let vault_path = &configuration.vault_path;
         Self::create_ockam_directory_if_necessary(vault_path)?;
         let mut file_storage = FileStorage::new(vault_path.clone());
@@ -321,13 +320,14 @@ impl Authority {
     }
 
     /// Create an authenticated storage backed by a Lmdb database
-    async fn create_authenticated_storage(
+    async fn create_identities_repository(
         configuration: &Configuration,
-    ) -> Result<Arc<dyn AuthenticatedStorage>> {
+    ) -> Result<Arc<dyn IdentitiesRepository>> {
         let storage_path = &configuration.storage_path;
         Self::create_ockam_directory_if_necessary(storage_path)?;
         let storage = Arc::new(LmdbStorage::new(&storage_path).await?);
-        Ok(storage)
+        let repository = Arc::new(IdentitiesStorage::new(storage));
+        Ok(Self::bootstrap_repository(repository, configuration))
     }
 
     /// Create a directory to save storage files if they haven't been  created before
@@ -339,19 +339,17 @@ impl Authority {
         Ok(())
     }
 
-    /// Make an identity attributes storage pre-populated with the attributes of some trusted
+    /// Make an identities repository pre-populated with the attributes of some trusted
     /// identities. The values either come from the command line or are read directly from a file
-    /// every time the IdentityAttributeStorage tries to retrieve some attributes
-    fn make_attributes_storage(
-        authority: &Identity,
+    /// every time we try to retrieve some attributes
+    fn bootstrap_repository(
+        repository: Arc<dyn IdentitiesRepository>,
         configuration: &Configuration,
-    ) -> Arc<dyn IdentityAttributeStorage> {
+    ) -> Arc<dyn IdentitiesRepository> {
         let trusted_identities = &configuration.trusted_identities;
         Arc::new(BootstrapedIdentityStore::new(
             Arc::new(trusted_identities.clone()),
-            Arc::new(AuthenticatedAttributeStorage::new(
-                authority.authenticated_storage(),
-            )),
+            repository.clone(),
         ))
     }
 
@@ -419,7 +417,11 @@ impl Authority {
             "resource.trust_context_id",
             str(configuration.clone().trust_context_identifier),
         );
-        let abac = Arc::new(AbacAccessControl::new(self.attributes_storage(), rule, env));
+        let abac = Arc::new(AbacAccessControl::new(
+            self.identities_repository(),
+            rule,
+            env,
+        ));
         abac
     }
 }

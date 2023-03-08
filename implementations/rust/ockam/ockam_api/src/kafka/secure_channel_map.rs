@@ -2,6 +2,13 @@ use crate::kafka::{
     KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
     ORCHESTRATOR_KAFKA_CONSUMERS,
 };
+use ockam::identity::Identity;
+use ockam::identity::{
+    DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
+};
+use ockam::identity::{
+    SecureChannelOptions, SecureChannelRegistryEntry, SecureChannels, TrustEveryonePolicy,
+};
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
@@ -9,12 +16,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{async_trait, route, Address, AllowAll, Error, Result, Route, Routed, Worker};
 use ockam_core::{Any, Message};
-use ockam_identity::api::{
-    DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-};
-use ockam_identity::{
-    Identity, SecureChannelOptions, SecureChannelRegistryEntry, TrustEveryonePolicy,
-};
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::{Context, MessageSendReceiveOptions};
 use serde::{Deserialize, Serialize};
@@ -121,12 +122,14 @@ impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
 /// An identifier of the secure channel **instance**
 pub(crate) type UniqueSecureChannelId = u64;
 type TopicPartition = (String, i32);
+
 struct InnerSecureChannelControllerImpl<F: ForwarderCreator> {
     //we are using encryptor api address as unique _local_ identifier
     //of the secure channel
     id_encryptor_map: HashMap<UniqueSecureChannelId, Address>,
     topic_encryptor_map: HashMap<TopicPartition, (UniqueSecureChannelId, Address)>,
-    identity: Arc<Identity>,
+    secure_channels: Arc<SecureChannels>,
+    identity: Identity,
     project_route: Route,
     topic_forwarder_set: HashSet<TopicPartition>,
     forwarder_creator: F,
@@ -134,11 +137,13 @@ struct InnerSecureChannelControllerImpl<F: ForwarderCreator> {
 
 impl KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
     pub(crate) fn new(
-        identity: Arc<Identity>,
+        secure_channels: Arc<SecureChannels>,
+        identity: Identity,
         project_route: Route,
         flow_controls: &FlowControls,
     ) -> KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
         Self::new_extended(
+            secure_channels,
             identity,
             project_route.clone(),
             RemoteForwarderCreator {
@@ -153,7 +158,8 @@ impl KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
 impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     /// to manually specify `ForwarderCreator`, for testing purposes
     pub(crate) fn new_extended(
-        identity: Arc<Identity>,
+        secure_channels: Arc<SecureChannels>,
+        identity: Identity,
         project_route: Route,
         forwarder_creator: F,
         flow_controls: &FlowControls,
@@ -163,6 +169,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 id_encryptor_map: Default::default(),
                 topic_encryptor_map: Default::default(),
                 topic_forwarder_set: Default::default(),
+                secure_channels,
                 identity,
                 forwarder_creator,
                 project_route,
@@ -254,8 +261,10 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                         .as_consumer(&self.flow_controls)
                         .with_trust_policy(TrustEveryonePolicy);
                 let encryptor_address = inner
-                    .identity
+                    .secure_channels
                     .create_secure_channel(
+                        context,
+                        &inner.identity,
                         route![
                             inner.project_route.clone(),
                             topic_partition_address.clone(),
@@ -297,7 +306,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         };
 
         inner
-            .identity
+            .secure_channels
             .secure_channel_registry()
             .get_channel_by_encryptor_address(&encryptor_address)
             .map(|entry| (random_unique_id, entry))
@@ -312,7 +321,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         let inner = self.inner.lock().await;
         if let Some(encryptor_address) = inner.id_encryptor_map.get(&secure_channel_id) {
             inner
-                .identity
+                .secure_channels
                 .secure_channel_registry()
                 .get_channel_list()
                 .iter()

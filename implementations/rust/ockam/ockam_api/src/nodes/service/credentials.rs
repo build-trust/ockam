@@ -4,14 +4,14 @@ use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialR
 use crate::nodes::service::map_multiaddr_err;
 use either::Either;
 use minicbor::Decoder;
+use ockam::identity::Credential;
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
-use ockam_core::compat::sync::Arc;
-use ockam_identity::credential::Credential;
-use ockam_identity::IdentityVault;
+use ockam_identity::IdentitiesVault;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
 use std::str::FromStr;
+use std::sync::Arc;
 
 use super::NodeManagerWorker;
 
@@ -27,22 +27,22 @@ impl NodeManagerWorker {
 
         let identity = if let Some(identity) = &request.identity_name {
             let idt_state = node_manager.cli_state.identities.get(identity)?;
-            match idt_state.get(ctx, node_manager.vault()?).await {
+            match idt_state.get(node_manager.identities_vault()).await {
                 Ok(idt) => Arc::new(idt),
                 Err(_) => {
                     let default_vault = &node_manager.cli_state.vaults.default()?.get().await?;
-                    let vault: Arc<dyn IdentityVault> = Arc::new(default_vault.clone());
-                    Arc::new(idt_state.get(ctx, vault).await?)
+                    let vault: Arc<dyn IdentitiesVault> = Arc::new(default_vault.clone());
+                    Arc::new(idt_state.get(vault).await?)
                 }
             }
         } else {
-            node_manager.identity.clone()
+            Arc::new(node_manager.identity())
         };
 
         if let Ok(c) = node_manager
             .trust_context()?
             .authority()?
-            .credential(&identity)
+            .credential(ctx, &identity)
             .await
         {
             Ok(Either::Right(Response::ok(req.id()).body(c)))
@@ -56,8 +56,9 @@ impl NodeManagerWorker {
         &self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
+        ctx: &Context,
     ) -> Result<ResponseBuilder> {
-        let node_manager = self.node_manager.read().await;
+        let node_manager = self.node_manager.write().await;
         let request: PresentCredentialRequest = dec.decode()?;
 
         // TODO: Replace with self.connect?
@@ -70,26 +71,27 @@ impl NodeManagerWorker {
         let credential = node_manager
             .trust_context()?
             .authority()?
-            .credential(&node_manager.identity)
+            .credential(ctx, &node_manager.identity)
             .await?;
 
         if request.oneway {
             node_manager
-                .identity
+                .credentials_service()
                 .present_credential(
+                    ctx,
                     route,
-                    &credential,
+                    credential,
                     MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
                 )
                 .await?;
         } else {
             node_manager
-                .identity
+                .credentials_service()
                 .present_credential_mutual(
+                    ctx,
                     route,
-                    vec![node_manager.trust_context()?.authority()?.identity()],
-                    node_manager.attributes_storage.clone(),
-                    &credential,
+                    &[node_manager.trust_context()?.authority()?.identity()],
+                    credential,
                     MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
                 )
                 .await?;

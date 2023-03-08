@@ -63,8 +63,10 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     message_should_pass(ctx, &channel_to_alice).await?;
 
     let res = channel_to_bob
-        .identity
+        .secure_channels
         .create_secure_channel_extended(
+            ctx,
+            &channel_to_bob.identity,
             route![connection_to_bob.address.clone(), "listener"],
             SecureChannelOptions::new(),
             Duration::from_secs(1),
@@ -103,8 +105,10 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     message_should_pass(ctx, &channel_to_alice).await?;
 
     let res = channel_to_bob
-        .identity
+        .secure_channels
         .create_secure_channel_extended(
+            ctx,
+            &channel_to_bob.identity,
             route![connection_to_bob.address.clone(), "listener"],
             SecureChannelOptions::new(),
             Duration::from_secs(1),
@@ -143,8 +147,10 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     message_should_pass(ctx, &channel_to_alice).await?;
 
     let res = channel_to_bob
-        .identity
+        .secure_channels
         .create_secure_channel_extended(
+            ctx,
+            &channel_to_bob.identity,
             route![connection_to_bob.address.clone(), "listener"],
             SecureChannelOptions::new(),
             Duration::from_secs(1),
@@ -183,8 +189,10 @@ async fn test5(ctx: &mut Context) -> Result<()> {
     message_should_pass(ctx, &channel_to_bob).await?;
 
     let res = channel_to_alice
-        .identity
+        .secure_channels
         .create_secure_channel_extended(
+            ctx,
+            &channel_to_alice.identity,
             route![connection_to_alice.address.clone(), "listener"],
             SecureChannelOptions::new(),
             Duration::from_secs(1),

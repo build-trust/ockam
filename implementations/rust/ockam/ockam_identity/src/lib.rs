@@ -1,16 +1,30 @@
-//! Identity is an abstraction over Identitys and Vaults, easing the use of these primitives in
-//! authentication and authorization APIs.
+//! This crate supports the domain of "identities", which is required to create secure channels:
+//!
+//!  - the `identity` module describes an entity as a set of verified key changes and an identifier
+//!    uniquely representing those changes
+//!
+//!  - the `identities` module provides services to create, update, and import identities
+//!
+//!  - the `credential` module describes sets of attributes describing a given identity and signed by
+//!    another identity
+//!
+//!  - the `credentials` module provides services to create, import and verify credentials
+//!
+//!  - the `secure_channel` module describes the steps required to establish a secure channel
+//!    between 2 identities
+//!
+//!  - the `secure_channels` module provides services to create a secure channel between 2 identities
+
 #![deny(unsafe_code)]
 #![warn(
-    // prevented by big_array
-    missing_docs,
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_import_braces,
-    unused_qualifications
+// prevented by big_array
+missing_docs,
+trivial_casts,
+trivial_numeric_casts,
+unused_import_braces,
+unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
-
 #[cfg(feature = "std")]
 extern crate core;
 
@@ -18,58 +32,30 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-use ockam_vault::{Hasher, SecretVault, Signer, Verifier};
-
-use crate::IdentityError;
-
-/// Storage used for previously authenticated info about others: attributes, public identities, etc.
-pub mod authenticated_storage;
-
-/// Possible change of an `Identity`
-pub mod change;
-
-/// Change history of an `Identity`
-pub mod change_history;
-
-/// Credential support
+/// Data types supporting the creation of a credential
 pub mod credential;
 
-/// Authority test support
-pub mod credential_issuer;
+/// Services for creating and validating credentials
+pub mod credentials;
 
-/// Errors
-pub mod error;
+/// Service for the management of identities
+pub mod identities;
 
-pub use error::*;
+/// Data types representing an identity
+pub mod identity;
 
-mod channel;
-mod identifiers;
-mod identity;
-mod identity_builder;
-mod key_attributes;
-mod public_identity;
-mod trust_context;
+/// Data types supporting the creation of a secure channels
+pub mod secure_channel;
 
-pub use channel::*;
-pub use identifiers::*;
+/// Service supporting the creation of secure channel listener and connection to a listener
+pub mod secure_channels;
+
+///
+/// Exports
+///
+pub use credential::*;
+pub use credentials::*;
+pub use identities::*;
 pub use identity::*;
-pub use identity_builder::*;
-pub use key_attributes::*;
-pub use public_identity::*;
-pub use trust_context::*;
-
-mod signature;
-
-#[cfg(test)]
-mod invalid_signatures_tests;
-
-/// Traits required for a Vault implementation suitable for use in an Identity
-pub trait IdentityVault:
-    SecretVault + SecureChannelVault + Hasher + Signer + Verifier + Send + Sync + 'static
-{
-}
-
-impl<D> IdentityVault for D where
-    D: SecretVault + SecureChannelVault + Hasher + Signer + Verifier + Send + Sync + 'static
-{
-}
+pub use secure_channel::*;
+pub use secure_channels::*;

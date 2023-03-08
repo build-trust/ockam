@@ -1,9 +1,10 @@
-use ockam::{route, Context, Result, TcpConnectionOptions, TcpInletOptions, TcpTransport};
+use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpInletOptions};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // We know that the Outlet node is listening for Ockam Routing Messages
     // over TCP and is running at Ockam Worker address "outlet".

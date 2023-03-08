@@ -1,26 +1,19 @@
 use anyhow::{anyhow, Context as _};
 
-use ockam_api::config::lookup::ProjectLookup;
-
-use rand::random;
-use std::env::current_exe;
-use std::fs::OpenOptions;
-use std::path::PathBuf;
-use std::process::Command;
-
-use ockam::identity::Identity;
 use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state;
-
+use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
     NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-
-use ockam_core::compat::sync::Arc;
 use ockam_core::AllowAll;
+use std::env::current_exe;
+use std::fs::OpenOptions;
+use std::path::PathBuf;
+use std::process::Command;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
@@ -38,8 +31,8 @@ pub async fn start_embedded_node(
 pub async fn start_embedded_node_with_vault_and_identity(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    vault: Option<&String>,
-    identity: Option<&String>,
+    vault: Option<String>,
+    identity: Option<String>,
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
     let cfg = &opts.config;
@@ -47,7 +40,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
+        init_node_state(opts, &cmd.node_name, vault, identity).await?;
     }
 
     if let Some(p) = trust_opts {
@@ -142,47 +135,19 @@ pub async fn add_project_info_to_node_state(
         None => Ok(None),
     }
 }
+
 pub(crate) async fn init_node_state(
-    ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
-    vault: Option<&String>,
-    identity: Option<&String>,
+    vault_name: Option<String>,
+    identity_name: Option<String>,
 ) -> Result<()> {
     // Get vault specified in the argument, or get the default
-    let vault_state = if let Some(v) = vault {
-        opts.state.vaults.get(v)?
-    }
-    // Or get the default
-    else if let Ok(v) = opts.state.vaults.default() {
-        v
-    } else {
-        let n = hex::encode(random::<[u8; 4]>());
-        let c = cli_state::VaultConfig::default();
-        opts.state.vaults.create(&n, c).await?
-    };
-
-    // Get identity specified in the argument
-    let identity_state = if let Some(idt) = identity {
-        opts.state.identities.get(idt)?
-    }
-    // Or get the default
-    else if let Ok(idt) = opts.state.identities.default() {
-        idt
-    } else {
-        let vault = vault_state.get().await?;
-        let identity_name = hex::encode(random::<[u8; 4]>());
-        let identity = Identity::create_ext(
-            ctx,
-            opts.state.identities.authenticated_storage().await?,
-            Arc::new(vault),
-        )
+    let vault_state = opts.state.create_vault_state(vault_name).await?;
+    let identity_state = opts
+        .state
+        .create_identity_state(identity_name, vault_state.get().await?)
         .await?;
-        let identity_config = cli_state::IdentityConfig::new(&identity).await;
-        opts.state
-            .identities
-            .create(&identity_name, identity_config)?
-    };
 
     // Create the node with the given vault and identity
     let node_config = cli_state::NodeConfigBuilder::default()

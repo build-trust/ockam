@@ -1,5 +1,5 @@
+use ockam::identity::IdentityIdentifier;
 use ockam_core::CowStr;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use std::time::Duration;

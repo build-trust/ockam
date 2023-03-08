@@ -2,20 +2,22 @@ use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
 use ockam::identity::credential::Timestamp;
+use ockam::identity::{
+    AttributesEntry, IdentityAttributesWriter, IdentityIdentifier, IdentitySecureChannelLocalInfo,
+};
 use ockam_core::api;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
-use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageWriter};
-use ockam_identity::{IdentityIdentifier, IdentitySecureChannelLocalInfo};
+use ockam_identity::{LEGACY_ID, TRUST_CONTEXT_ID};
 use ockam_node::Context;
 use reqwest::StatusCode;
 use std::collections::HashMap;
 use tracing::trace;
 
 pub struct Server {
-    project: Vec<u8>,
-    store: Arc<dyn IdentityAttributeStorageWriter>,
+    attributes_writer: Arc<dyn IdentityAttributesWriter>,
+    project: String,
     tenant_base_url: String,
     certificate: reqwest::Certificate,
     attributes: Vec<String>,
@@ -28,7 +30,7 @@ impl Worker for Server {
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
         if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
-            let r = self.on_request(i.their_identity_id(), m.as_body()).await?;
+            let r = self.on_request(&i.their_identity_id(), m.as_body()).await?;
             c.send(m.return_route(), r).await
         } else {
             let mut dec = Decoder::new(m.as_body());
@@ -41,8 +43,8 @@ impl Worker for Server {
 
 impl Server {
     pub fn new(
-        project: Vec<u8>,
-        store: Arc<dyn IdentityAttributeStorageWriter>,
+        attributes_writer: Arc<dyn IdentityAttributesWriter>,
+        project: String,
         tenant_base_url: &str,
         certificate: &str,
         attributes: &[&str],
@@ -50,8 +52,8 @@ impl Server {
         let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
             .map_err(|err| ApiError::generic(&err.to_string()))?;
         Ok(Server {
+            attributes_writer,
             project,
-            store,
             tenant_base_url: tenant_base_url.to_string(),
             certificate,
             attributes: attributes.iter().map(|s| s.to_string()).collect(),
@@ -92,14 +94,10 @@ impl Server {
                                 .map(|(k, v)| (k, v.as_bytes().to_vec()))
                                 .chain(
                                     [
+                                        (LEGACY_ID.to_owned(), self.project.as_bytes().to_vec()),
                                         (
-                                            crate::authenticator::direct::LEGACY_ID.to_owned(),
-                                            self.project.clone(),
-                                        ),
-                                        (
-                                            crate::authenticator::direct::TRUST_CONTEXT_ID
-                                                .to_owned(),
-                                            self.project.clone(),
+                                            TRUST_CONTEXT_ID.to_owned(),
+                                            self.project.as_bytes().to_vec(),
                                         ),
                                     ]
                                     .into_iter(),
@@ -109,7 +107,7 @@ impl Server {
                             None,
                             None,
                         );
-                        self.store.put_attributes(from, entry).await?;
+                        self.attributes_writer.put_attributes(from, entry).await?;
                         Response::ok(req.id()).to_vec()?
                     } else {
                         api::forbidden(&req, "Forbidden").to_vec()?

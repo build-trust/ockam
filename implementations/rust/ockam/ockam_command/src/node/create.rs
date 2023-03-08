@@ -1,6 +1,5 @@
 use clap::Args;
 use colorful::Colorful;
-
 use rand::prelude::random;
 use tokio::time::{sleep, Duration};
 
@@ -52,12 +51,12 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create a new node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     /// Name of the node (Optional).
-    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value_t = hex::encode(& random::< [u8; 4] > ()))]
     pub node_name: String,
 
     /// Run the node in foreground.
@@ -87,7 +86,7 @@ pub struct CreateCommand {
     /// This argument is currently ignored on background nodes.  Node
     /// configuration is run asynchronously and may take several
     /// seconds to complete.
-    #[arg(long, hide = true, value_parser=parse_launch_config)]
+    #[arg(long, hide = true, value_parser = parse_launch_config)]
     pub launch_config: Option<Config>,
 
     #[arg(long, group = "trusted")]
@@ -191,7 +190,7 @@ async fn run_impl(
     let cmd = cmd.overwrite_addr()?;
     let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
 
-    spawn_background_node(&ctx, &opts, &cmd, addr).await?;
+    spawn_background_node(&opts, &cmd, addr).await?;
 
     // Print node status
     let tcp = TcpTransport::create(&ctx).await?;
@@ -232,14 +231,7 @@ async fn run_foreground_node(
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
     if !cmd.child_process && opts.state.nodes.get(&node_name).is_err() {
-        init_node_state(
-            &ctx,
-            &opts,
-            &node_name,
-            cmd.vault.as_ref(),
-            cmd.identity.as_ref(),
-        )
-        .await?;
+        init_node_state(&opts, &node_name, cmd.vault.clone(), cmd.identity.clone()).await?;
     }
 
     add_project_info_to_node_state(&node_name, &opts, cfg, &cmd.trust_context_opts).await?;
@@ -444,7 +436,6 @@ where
 }
 
 async fn spawn_background_node(
-    ctx: &Context,
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
     addr: SocketAddr,
@@ -460,14 +451,7 @@ async fn spawn_background_node(
     let node_name = parse_node_name(&cmd.node_name)?;
 
     // Create node state, including the vault and identity if don't exist
-    init_node_state(
-        ctx,
-        opts,
-        &node_name,
-        cmd.vault.as_ref(),
-        cmd.identity.as_ref(),
-    )
-    .await?;
+    init_node_state(opts, &node_name, cmd.vault.clone(), cmd.identity.clone()).await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
@@ -514,12 +498,11 @@ async fn start_authority_node(
 
         // retrieve the authority identity if it has been created before
         // otherwise create a new one
-        let public_identity = match options.state.identities.default().ok() {
-            Some(state) => state.config.public_identity(),
+        let identity = match options.state.identities.default().ok() {
+            Some(state) => state.config.identity(),
             None => {
                 let cmd = identity::CreateCommand::new("authority".into(), None);
-                cmd.create_identity(ctx.async_try_clone().await?, options.clone())
-                    .await?
+                cmd.create_identity(options.clone()).await?
             }
         };
 
@@ -528,8 +511,8 @@ async fn start_authority_node(
             .map_err(|e| crate::Error::new(exitcode::CONFIG, anyhow!("{e}")))?;
 
         let configuration = authority_node::Configuration {
-            identity: public_identity,
-            storage_path: options.state.identities.authenticated_storage_path()?,
+            identity,
+            storage_path: options.state.identities.identities_repository_path()?,
             vault_path: options.state.vaults.default()?.vault_file_path()?,
             project_identifier: authenticator_config.project.clone(),
             trust_context_identifier: authenticator_config.project,

@@ -126,7 +126,7 @@ teardown() {
             \"own_credential\" :{
                 \"FromCredentialIssuer\" : {
                     \"identity\": \"$authority_identity\",
-                    \"maddr\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\" }}}}" >"$OCKAM_HOME/trust_context.json"
+                    \"multiaddr\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\" }}}}" >"$OCKAM_HOME/trust_context.json"
 
   $OCKAM node create --identity alice --tcp-listener-address 127.0.0.1:$port --trust-context "$OCKAM_HOME/trust_context.json"
 

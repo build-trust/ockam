@@ -1,5 +1,5 @@
 use credential_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
-use ockam::identity::{Identity, IdentityTrait, TrustEveryonePolicy};
+use ockam::identity::{secure_channels, Identity, IdentityTrait, TrustEveryonePolicy};
 use ockam::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault, Vault};
 use ockam::{route, Context, Result, TcpTransport, TCP};
 use std::{env, fs};
@@ -8,8 +8,8 @@ use std::{env, fs};
 async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let vault = Vault::create();
-    let alice = Identity::create(&ctx, vault).await?;
+    let secure_channels = secure_channels();
+    let alice = secure_channels.identities().create().await?;
 
     let secret_key_path = env::var("SECRET_KEY_PATH").unwrap();
     let secret_key = fs::read_to_string(secret_key_path).unwrap();
@@ -31,8 +31,10 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     alice.add_key("SSH".into(), &secret_key).await?;
 
-    let channel = alice
+    let channel = secure_channels
         .create_secure_channel(
+            &ctx,
+            &alice,
             route![(TCP, BOB_TCP_ADDRESS), BOB_LISTENER_ADDRESS],
             TrustEveryonePolicy,
         )

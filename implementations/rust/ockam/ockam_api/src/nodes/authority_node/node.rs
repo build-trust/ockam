@@ -10,7 +10,7 @@ pub async fn start_node(ctx: &Context, configuration: &Configuration) -> Result<
     // or retrieve it from disk if the node has already been started before
     // The trusted identities in the configuration are used to pre-populate an attribute storage
     // containing those identities and their attributes
-    let authority = Authority::create(ctx, configuration).await?;
+    let authority = Authority::create(configuration).await?;
 
     // start a secure channel listener (this also starts a TCP transport)
     let flow_controls = FlowControls::default();
@@ -63,7 +63,7 @@ pub async fn start_node(ctx: &Context, configuration: &Configuration) -> Result<
 
     info!(
         "Authority node started with identity\n{}",
-        authority.public_identity().await?
+        authority.identity()
     );
     Ok(())
 }

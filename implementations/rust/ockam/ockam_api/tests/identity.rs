@@ -1,12 +1,13 @@
 use minicbor::Decoder;
+use ockam::identity::identity::IdentityHistoryComparison;
 use ockam_api::cli_state::CliState;
 use ockam_api::identity::models::*;
 use ockam_api::identity::IdentityService;
+use ockam_api::nodes::service::NodeIdentities;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::rand::random;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error, LocalOnwardOnly, LocalSourceOnly, Result};
-use ockam_identity::change_history::IdentityHistoryComparison;
 use ockam_node::Context;
 use ockam_vault::Vault;
 
@@ -161,14 +162,14 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     // Start services
     ctx.start_worker(
         "1",
-        IdentityService::new(ctx, vault1, cli_state.clone()).await?,
+        IdentityService::new(NodeIdentities::new(vault1, cli_state.clone())).await?,
         LocalSourceOnly,
         LocalOnwardOnly,
     )
     .await?;
     ctx.start_worker(
         "2",
-        IdentityService::new(ctx, vault2, cli_state).await?,
+        IdentityService::new(NodeIdentities::new(vault2, cli_state)).await?,
         LocalSourceOnly,
         LocalOnwardOnly,
     )
@@ -178,8 +179,8 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     let (identity2, _identity_id2) = create_identity(ctx, "2").await?;
 
     // Identity is updated here
+    let _identity_id1 = validate_identity_change_history(ctx, &identity1, "2").await?;
     let _identity_id2 = validate_identity_change_history(ctx, &identity2, "1").await?;
-    let _identity_id1 = validate_identity_change_history(ctx, &identity2, "2").await?;
 
     let comparison1 = compare_identity_change_history(ctx, &identity2, &[], "1").await?;
     let comparison2 = compare_identity_change_history(ctx, &identity1, &[], "2").await?;
@@ -192,8 +193,8 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     let proof1 = create_signature(ctx, &identity1, &state, "1").await?;
     let proof2 = create_signature(ctx, &identity2, &state, "2").await?;
 
-    let verified1 = verify_signature(ctx, &identity2, &state, &proof2, "1").await?;
-    let verified2 = verify_signature(ctx, &identity1, &state, &proof1, "2").await?;
+    let verified1 = verify_signature(ctx, &identity1, &state, &proof1, "2").await?;
+    let verified2 = verify_signature(ctx, &identity2, &state, &proof2, "1").await?;
 
     assert!(verified1);
     assert!(verified2);

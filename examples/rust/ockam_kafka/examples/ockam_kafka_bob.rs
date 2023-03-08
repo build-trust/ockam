@@ -1,9 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::identity::SecureChannelListenerOptions;
-use ockam::{
-    identity::Identity, route, stream::Stream, vault::Vault, Context, Result, Routed, TcpConnectionOptions,
-    TcpTransport, Worker,
-};
+use ockam::{node, route, Context, Result, Routed, TcpConnectionOptions, Worker};
 
 struct Echoer;
 
@@ -25,17 +22,15 @@ impl Worker for Echoer {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create();
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Bob.
-    let bob = Identity::create(&ctx, vault).await?;
+    let bob = node.create_identity().await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
+    node.create_secure_channel_listener(&bob, "listener", SecureChannelListenerOptions::new())
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and
@@ -52,7 +47,7 @@ async fn main(ctx: Context) -> Result<()> {
     let b_to_a_stream_address = ockam::unique_with_prefix("bob_to_alice");
     let a_to_b_stream_address = ockam::unique_with_prefix("alice_to_bob");
 
-    Stream::new(&ctx)
+    node.create_stream()
         .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
@@ -70,7 +65,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // We won't call ctx.stop() here, this program will run until you stop it with Ctrl-C
     Ok(())

@@ -55,7 +55,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let cloud_opts = cmd.cloud_opts.clone();
     let space = default_space(ctx, &opts, &cloud_opts, &node_name).await?;
     default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
-    update_enrolled_identity(ctx, &opts, &node_name).await?;
+    update_enrolled_identity(&opts, &node_name).await?;
     delete_embedded_node(&opts, &node_name).await;
 
     Ok(())
@@ -365,18 +365,14 @@ impl Auth0Service {
     }
 }
 
-async fn update_enrolled_identity(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-) -> Result<()> {
+async fn update_enrolled_identity(opts: &CommandGlobalOpts, node_name: &str) -> Result<()> {
     let identities = opts.state.identities.list()?;
 
     let node_state = opts.state.nodes.get(node_name)?;
-    let node_identity = node_state.config.identity(ctx).await?;
+    let node_identity = node_state.config.default_identity().await?;
 
     for mut identity in identities {
-        if node_identity.identifier() == &identity.config.identifier {
+        if node_identity.identifier() == identity.config.identifier {
             identity.set_enrollment_status()?;
         }
     }

@@ -4,20 +4,18 @@ use crate::cli_state::{CliStateError, CredentialState};
 use crate::cloud::project::Project;
 use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::error::ApiError;
-use crate::{
-    cli_state, CredentialIssuerInfo, CredentialIssuerRetriever, CredentialStateRetriever,
-    HexByteVec,
-};
-use ockam::TcpTransport;
+use crate::{cli_state, multiaddr_to_route, DefaultAddress, HexByteVec};
 use ockam_core::compat::sync::Arc;
-use ockam_core::Result;
+use ockam_core::flow_control::FlowControls;
+use ockam_core::{Result, Route};
 use ockam_identity::credential::Credential;
 use ockam_identity::{
-    AuthorityInfo, CredentialMemoryRetriever, CredentialRetriever, IdentityIdentifier,
-    IdentityVault, PublicIdentity, TrustContext,
+    identities, AuthorityService, CredentialsMemoryRetriever, CredentialsRetriever, Identities,
+    Identity, IdentityIdentifier, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo,
+    SecureChannels, TrustContext,
 };
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::Vault;
+use ockam_transport_tcp::TcpTransport;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -112,23 +110,31 @@ impl TrustContextConfig {
 
     pub async fn to_trust_context(
         &self,
+        secure_channels: Arc<SecureChannels>,
         tcp_transport: Option<TcpTransport>,
     ) -> Result<TrustContext> {
-        let authority = if let Some(authority_config) = self.authority.as_ref() {
-            let identity = authority_config.identity.clone();
-            let own_cred = if let Some(retriever_type) = &authority_config.own_credential {
-                Some(retriever_type.to_credential_retriever(tcp_transport)?)
+        let authority =
+            if let Some(authority_config) = self.authority.as_ref() {
+                let identity = authority_config.identity().await?;
+                let credential_retriever =
+                    if let Some(retriever_type) = &authority_config.own_credential {
+                        Some(retriever_type.to_credential_retriever(
+                            secure_channels.clone(),
+                            tcp_transport,
+                            Default::default(), /* FIXME: Replace with proper shared instance */
+                        ).await?)
+                    } else {
+                        None
+                    };
+
+                Some(AuthorityService::new(
+                    secure_channels.identities().credentials(),
+                    identity,
+                    credential_retriever,
+                ))
             } else {
                 None
             };
-            let decoded_ident = hex::decode(&identity)
-                .map_err(|_| ApiError::generic("Invalid project authority"))?;
-            let public_identity = PublicIdentity::import(&decoded_ident, Vault::create()).await?;
-
-            Some(AuthorityInfo::new(public_identity, own_cred))
-        } else {
-            None
-        };
 
         Ok(TrustContext::new(self.id.clone(), authority))
     }
@@ -137,7 +143,7 @@ impl TrustContextConfig {
         authority_identity: &str,
         credential: Option<CredentialState>,
     ) -> Result<Self> {
-        let own_cred = credential.map(CredentialRetrieverType::FromPath);
+        let own_cred = credential.map(CredentialRetrieverConfig::FromPath);
         let trust_context = TrustContextConfig::new(
             authority_identity.to_string(),
             Some(TrustAuthorityConfig::new(
@@ -155,10 +161,9 @@ impl TryFrom<CredentialState> for TrustContextConfig {
 
     fn try_from(state: CredentialState) -> std::result::Result<Self, Self::Error> {
         let issuer = state.config()?.issuer;
-        let bytes = issuer.export()?;
-        let public_identity = hex::encode(bytes);
-        let retriever = CredentialRetrieverType::FromPath(state);
-        let authority = TrustAuthorityConfig::new(public_identity, Some(retriever));
+        let identity = issuer.export_hex()?;
+        let retriever = CredentialRetrieverConfig::FromPath(state);
+        let authority = TrustAuthorityConfig::new(identity, Some(retriever));
         Ok(TrustContextConfig::new(
             issuer.identifier().to_string(),
             Some(authority),
@@ -177,8 +182,8 @@ impl TryFrom<Project<'_>> for TrustContextConfig {
             (Some(route), Some(identity)) => {
                 let authority_route = MultiAddr::from_str(route)
                     .map_err(|_| ApiError::generic("incorrect multi address"))?;
-                let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                    CredentialIssuerInfo::new(identity.to_string(), authority_route),
+                let retriever = CredentialRetrieverConfig::FromCredentialIssuer(
+                    CredentialIssuerConfig::new(identity.to_string(), authority_route),
                 );
                 let authority = TrustAuthorityConfig::new(identity.to_string(), Some(retriever));
                 Some(authority)
@@ -205,8 +210,8 @@ impl TryFrom<ProjectLookup> for TrustContextConfig {
             .expect("Project lookup is missing authority");
         let public_identity = hex::encode(proj_auth.identity());
         let authority = {
-            let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                CredentialIssuerInfo::new(public_identity.clone(), proj_auth.address().clone()),
+            let retriever = CredentialRetrieverConfig::FromCredentialIssuer(
+                CredentialIssuerConfig::new(public_identity.clone(), proj_auth.address().clone()),
             );
             let authority = TrustAuthorityConfig::new(public_identity, Some(retriever));
             Some(authority)
@@ -219,14 +224,14 @@ impl TryFrom<ProjectLookup> for TrustContextConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TrustAuthorityConfig {
     identity: String,
-    own_credential: Option<CredentialRetrieverType>,
+    own_credential: Option<CredentialRetrieverConfig>,
 }
 
 impl TrustAuthorityConfig {
-    pub fn new(identity: String, own_credential: Option<CredentialRetrieverType>) -> Self {
+    pub fn new(identity: String, own_credential: Option<CredentialRetrieverConfig>) -> Self {
         Self {
             identity,
             own_credential,
@@ -237,18 +242,17 @@ impl TrustAuthorityConfig {
         &self.identity
     }
 
-    pub async fn identity(&self) -> Result<PublicIdentity> {
-        let vault = Vault::create();
-        let ident = PublicIdentity::import(
-            &hex::decode(&self.identity)
-                .map_err(|_| ApiError::generic("unable to decode authority public identity"))?,
-            vault,
-        )
-        .await?;
-        Ok(ident)
+    pub async fn identity(&self) -> Result<Identity> {
+        identities()
+            .identities_creation()
+            .import_identity(
+                &hex::decode(&self.identity)
+                    .map_err(|_| ApiError::generic("unable to decode authority identity"))?,
+            )
+            .await
     }
 
-    pub fn own_credential(&self) -> Result<&CredentialRetrieverType> {
+    pub fn own_credential(&self) -> Result<&CredentialRetrieverConfig> {
         self.own_credential
             .as_ref()
             .ok_or_else(|| ApiError::generic("Missing own credential on trust authority config"))
@@ -257,32 +261,43 @@ impl TrustAuthorityConfig {
 
 /// Type of credential retriever
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub enum CredentialRetrieverType {
+pub enum CredentialRetrieverConfig {
     /// Credential is stored in memory
     FromMemory(Credential),
     /// Path to credential file
     FromPath(CredentialState),
     /// MultiAddr to Credential Issuer
-    FromCredentialIssuer(CredentialIssuerInfo),
+    FromCredentialIssuer(CredentialIssuerConfig),
 }
 
-impl CredentialRetrieverType {
-    fn to_credential_retriever(
+impl CredentialRetrieverConfig {
+    async fn to_credential_retriever(
         &self,
+        secure_channels: Arc<SecureChannels>,
         tcp_transport: Option<TcpTransport>,
-    ) -> Result<Arc<dyn CredentialRetriever>> {
+        flow_controls: FlowControls,
+    ) -> Result<Arc<dyn CredentialsRetriever>> {
         match self {
-            CredentialRetrieverType::FromMemory(credential) => {
-                Ok(Arc::new(CredentialMemoryRetriever::new(credential.clone())))
-            }
-            CredentialRetrieverType::FromPath(credential_state) => Ok(Arc::new(
-                CredentialStateRetriever::new(credential_state.clone()),
+            CredentialRetrieverConfig::FromMemory(credential) => Ok(Arc::new(
+                CredentialsMemoryRetriever::new(credential.clone()),
             )),
-            CredentialRetrieverType::FromCredentialIssuer(credential_issuer_info) => {
+            CredentialRetrieverConfig::FromPath(state) => Ok(Arc::new(
+                CredentialsMemoryRetriever::new(state.config()?.credential()?),
+            )),
+            CredentialRetrieverConfig::FromCredentialIssuer(issuer_config) => {
                 let tcp_transport = tcp_transport.ok_or_else(|| ApiError::generic("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
-                Ok(Arc::new(CredentialIssuerRetriever::new(
-                    credential_issuer_info.clone(),
-                    tcp_transport,
+                let credential_issuer_info = RemoteCredentialsRetrieverInfo::new(
+                    issuer_config.resolve_identity().await?,
+                    issuer_config
+                        .resolve_route(tcp_transport, flow_controls.clone())
+                        .await?,
+                    DefaultAddress::CREDENTIAL_ISSUER.into(),
+                );
+
+                Ok(Arc::new(RemoteCredentialsRetriever::new(
+                    secure_channels,
+                    credential_issuer_info,
+                    flow_controls,
                 )))
             }
         }
@@ -303,13 +318,15 @@ impl AuthoritiesConfig {
         self.authorities.iter()
     }
 
-    pub async fn to_public_identities(
-        &self,
-        vault: Arc<dyn IdentityVault>,
-    ) -> Result<Vec<PublicIdentity>> {
+    pub async fn to_identities(&self, identities: Arc<Identities>) -> Result<Vec<Identity>> {
         let mut v = Vec::new();
         for a in self.authorities.values() {
-            v.push(PublicIdentity::import(a.identity.as_slice(), vault.clone()).await?)
+            v.push(
+                identities
+                    .identities_creation()
+                    .import_identity(a.identity.as_slice())
+                    .await?,
+            )
         }
         Ok(v)
     }
@@ -341,5 +358,42 @@ impl Authority {
 
     pub fn access_route(&self) -> &MultiAddr {
         &self.access
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CredentialIssuerConfig {
+    pub identity: String,
+    pub multiaddr: MultiAddr,
+}
+
+impl CredentialIssuerConfig {
+    pub fn new(encoded_identity: String, multiaddr: MultiAddr) -> CredentialIssuerConfig {
+        CredentialIssuerConfig {
+            identity: encoded_identity,
+            multiaddr,
+        }
+    }
+
+    async fn resolve_route(
+        &self,
+        tcp_transport: TcpTransport,
+        flow_controls: FlowControls,
+    ) -> Result<Route> {
+        let Some(authority_tcp_session) = multiaddr_to_route(&self.multiaddr, &tcp_transport, &flow_controls).await else {
+            let err_msg = format!("Invalid route within trust context: {}", &self.multiaddr);
+            error!("{err_msg}");
+            return Err(ApiError::generic(&err_msg));
+        };
+        Ok(authority_tcp_session.route)
+    }
+
+    async fn resolve_identity(&self) -> Result<Identity> {
+        let encoded = hex::decode(&self.identity)
+            .map_err(|_| ApiError::generic("Invalid project authority"))?;
+        identities()
+            .identities_creation()
+            .import_identity(&encoded)
+            .await
     }
 }

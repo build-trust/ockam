@@ -1,10 +1,13 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
 use minicbor::Decoder;
-use ockam_abac::expr::{and, eq, ident, str};
-
-use ockam::identity::{Identity, IdentityIdentifier};
+use ockam::identity::{
+    secure_channels, Credentials, CredentialsServer, CredentialsServerModule, Identities,
+    IdentitiesRepository, IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
+};
+use ockam::identity::{Identity, IdentityIdentifier, SecureChannels};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
+use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{
@@ -15,11 +18,6 @@ use ockam_core::compat::{
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{route, AllowAll, AsyncTryClone, IncomingAccessControl};
-use ockam_identity::authenticated_storage::{
-    AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
-};
-
-use ockam_identity::{IdentityVault, TrustContext};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
@@ -54,11 +52,15 @@ pub mod message;
 
 mod credentials;
 mod forwarder;
+mod node_identities;
+mod node_services;
 mod policy;
 mod portals;
 mod secure_channel;
-mod services;
 mod transport;
+
+pub use node_identities::*;
+use ockam_identity::TrustContext;
 
 const TARGET: &str = "ockam_api::nodemanager::service";
 
@@ -91,16 +93,53 @@ pub struct NodeManager {
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
-    vault: Arc<dyn IdentityVault>,
-    pub(crate) identity: Arc<Identity>,
+    identity: Identity,
+    pub(crate) secure_channels: Arc<SecureChannels>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: Arc<dyn PolicyStorage>,
-    attributes_storage: Arc<dyn IdentityAttributeStorage>,
     pub(crate) flow_controls: FlowControls,
+}
+
+impl NodeManager {
+    pub(super) fn identity(&self) -> Identity {
+        self.identity.clone()
+    }
+
+    pub(super) fn identities(&self) -> Arc<Identities> {
+        self.secure_channels.identities()
+    }
+
+    pub(super) fn identities_vault(&self) -> Arc<dyn IdentitiesVault> {
+        self.identities().vault()
+    }
+
+    pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
+        self.identities().repository().clone()
+    }
+
+    pub(super) fn attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
+        self.identities_repository().as_attributes_writer()
+    }
+
+    pub(super) fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
+        self.identities_repository().as_attributes_reader()
+    }
+
+    pub(super) fn credentials(&self) -> Arc<dyn Credentials> {
+        self.identities().credentials()
+    }
+
+    pub(super) fn credentials_service(&self) -> Arc<dyn CredentialsServer> {
+        Arc::new(CredentialsServerModule::new(self.credentials()))
+    }
+
+    pub(super) fn secure_channels_vault(&self) -> Arc<dyn IdentitiesVault> {
+        self.secure_channels.vault().clone()
+    }
 }
 
 pub struct NodeManagerWorker {
@@ -125,10 +164,6 @@ pub struct IdentityOverride {
 }
 
 impl NodeManager {
-    pub(crate) fn vault(&self) -> Result<Arc<dyn IdentityVault>> {
-        Ok(self.vault.clone())
-    }
-
     async fn access_control(
         &self,
         r: &Resource,
@@ -164,11 +199,10 @@ impl NodeManager {
                 };
                 self.policies.set_policy(r, a, &fallback).await?
             }
-            let store = self.attributes_storage.async_try_clone().await?;
             let policies = self.policies.clone();
             Ok(Arc::new(PolicyAccessControl::new(
                 policies,
-                store,
+                self.identities_repository(),
                 r.clone(),
                 a.clone(),
                 env,
@@ -286,31 +320,29 @@ impl NodeManager {
         let cli_state = general_options.cli_state;
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
-        let authenticated_storage: Arc<dyn AuthenticatedStorage> =
-            cli_state.identities.authenticated_storage().await?;
+        let repository: Arc<dyn IdentitiesRepository> =
+            cli_state.identities.identities_repository().await?;
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
-        let attributes_storage: Arc<dyn IdentityAttributeStorage> =
+        let vault: Arc<dyn IdentitiesVault> = Arc::new(node_state.config.vault().await?);
+        let identities_repository: Arc<dyn IdentitiesRepository> =
             Arc::new(match general_options.pre_trusted_identities {
                 None => BootstrapedIdentityStore::new(
                     Arc::new(PreTrustedIdentities::new_from_string("{}")?),
-                    Arc::new(AuthenticatedAttributeStorage::new(
-                        authenticated_storage.clone(),
-                    )),
+                    repository.clone(),
                 ),
-                Some(f) => BootstrapedIdentityStore::new(
-                    Arc::new(f),
-                    Arc::new(AuthenticatedAttributeStorage::new(
-                        authenticated_storage.clone(),
-                    )),
-                ),
+                Some(f) => BootstrapedIdentityStore::new(Arc::new(f), repository.clone()),
             });
+
+        let secure_channels = secure_channels::builder()
+            .with_identities_vault(vault)
+            .with_identities_repository(identities_repository)
+            .build();
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
-        let vault: Arc<dyn IdentityVault> = Arc::new(node_state.config.vault().await?);
-        let identity = Arc::new(node_state.config.identity(ctx).await?);
+        let identity = node_state.config.default_identity().await?;
 
         let flow_controls = FlowControls::default();
         let medic = Medic::new(flow_controls.clone());
@@ -330,8 +362,8 @@ impl NodeManager {
                     .unwrap()
                     .authority()
                     .is_ok(),
-            vault,
             identity,
+            secure_channels,
             projects: Arc::new(projects_options.projects),
             trust_context: None,
             registry: Default::default(),
@@ -341,7 +373,6 @@ impl NodeManager {
             },
             sessions,
             policies,
-            attributes_storage,
             flow_controls,
         };
 
@@ -359,8 +390,11 @@ impl NodeManager {
 
     async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
         self.trust_context = Some(
-            tc.to_trust_context(Some(self.tcp_transport.async_try_clone().await?))
-                .await?,
+            tc.to_trust_context(
+                self.secure_channels.clone(),
+                Some(self.tcp_transport.async_try_clone().await?),
+            )
+            .await?,
         );
 
         info!("NodeManager::configure_trust_context: trust context configured");
@@ -401,6 +435,7 @@ impl NodeManager {
         // If we've been configured with a trust context, we can start Credential Exchange service
         if let Ok(tc) = self.trust_context() {
             self.start_credentials_service_impl(
+                ctx,
                 tc.clone(),
                 DefaultAddress::CREDENTIALS_SERVICE.into(),
                 false,
@@ -476,9 +511,9 @@ impl NodeManager {
                         i,
                         m,
                         timeout,
-                        identity_name,
+                        identity_name.map(|i| i.to_string()),
                         ctx,
-                        credential_name,
+                        credential_name.map(|c| c.to_string()),
                     )
                     .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
@@ -512,9 +547,9 @@ impl NodeManager {
                             authorized_identities.clone(),
                             m,
                             timeout,
-                            identity_name,
+                            identity_name.map(|i| i.to_string()),
                             ctx,
-                            credential_name,
+                            credential_name.map(|c| c.to_string()),
                         )
                         .await?;
 
@@ -681,7 +716,7 @@ impl NodeManagerWorker {
                 .await?
                 .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
             (Post, ["node", "credentials", "actions", "present"]) => {
-                self.present_credential(req, dec).await?.to_vec()?
+                self.present_credential(req, dec, ctx).await?.to_vec()?
             }
 
             // ==*== Secure channels ==*==
@@ -700,7 +735,7 @@ impl NodeManagerWorker {
                 self.create_secure_channel(req, dec, ctx).await?.to_vec()?
             }
             (Delete, ["node", "secure_channel"]) => {
-                self.delete_secure_channel(req, dec).await?.to_vec()?
+                self.delete_secure_channel(req, dec, ctx).await?.to_vec()?
             }
             (Get, ["node", "show_secure_channel"]) => {
                 self.show_secure_channel(req, dec).await?.to_vec()?

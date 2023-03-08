@@ -6,13 +6,11 @@ use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport,
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let _tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a vault
-    let vault = Vault::create(&ctx).await?;
+    let node = node(ctx);
+    let _tcp = node.create_tcp_transport().await?;
 
     // Create a bi-directional stream
-    let (sender, _receiver) = Stream::new(&ctx).await?
+    let (sender, _receiver) = node.create_stream()
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
         .connect(
             route![(TCP, "localhost:4000")],
@@ -24,28 +22,26 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Create a secure channel via the stream
-    let channel = SecureChannel::create(
-        &ctx,
+    let channel = node.create_secure_channel(
         route![
             // Send via the stream
             sender.clone(),
             // And then to the secure_channel_listener
             "secure_channel_listener"
         ],
-        &vault,
     )
-    .await?;
+        .await?;
 
     // Send a message via the channel to the echoer worker
-    ctx.send(
+    node.send(
         route![channel.address(), "echoer"],
         "Hello World!".to_string(),
     )
-    .await?;
+        .await?;
 
     // Wait for the reply
-    let reply = ctx.receive_block::<String>().await?;
+    let reply = node.receive_block::<String>().await?;
     println!("Reply via secure channel via stream: {}", reply);
 
-    ctx.stop().await
+    node.stop().await
 }

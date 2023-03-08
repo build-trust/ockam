@@ -18,11 +18,13 @@ use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 use crate::project::util::create_secure_channel_to_authority;
-use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
+use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::DefaultAddress;
 use ockam_core::route;
+use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
+use ockam_node::RpcClient;
 
 /// Authenticate with a project node
 #[derive(Clone, Debug, Args)]
@@ -76,11 +78,13 @@ async fn run_impl(
     {
         let cred_retr = tc.authority()?.own_credential()?;
         let addr = match cred_retr {
-            ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => &c.maddr,
+            ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
+                &c.multiaddr
+            }
             _ => {
                 return Err(
                     anyhow!("Trust context must be configured with a credential issuer").into(),
-                )
+                );
             }
         };
         create_secure_channel_to_authority(
@@ -139,13 +143,11 @@ async fn run_impl(
         ockam_api::local_multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {addr}"))?
     };
 
-    let client2 = CredentialIssuerClient::new(
-        RpcClient::new(
-            route![DefaultAddress::RPC_PROXY, credential_issuer_route],
-            &ctx,
-        )
-        .await?,
-    );
+    let client2 = CredentialsIssuerClient::new(
+        route![DefaultAddress::RPC_PROXY, credential_issuer_route],
+        &ctx,
+    )
+    .await?;
 
     opts.state.projects.create(&project.name, project.clone())?;
     opts.state

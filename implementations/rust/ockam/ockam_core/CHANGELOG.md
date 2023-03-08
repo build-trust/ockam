@@ -685,4 +685,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Error` - an error type that can be returned is both `std` and `no_std` modes.
 - `Result` - a result type that can be returned is both `std` and `no_std` modes.
-

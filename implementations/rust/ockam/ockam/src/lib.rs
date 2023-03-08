@@ -67,7 +67,7 @@ pub use ockam_core::{
 /// Access Control
 pub mod access_control {
     pub use ockam_core::access_control::*;
-    pub use ockam_identity::access_control::*;
+    pub use ockam_identity::secure_channel::access_control::*;
 }
 
 /// Flow Controls
@@ -122,13 +122,12 @@ pub mod vault {
     }
 }
 
-/// Authenticated Storage
-pub mod authenticated_storage {
-    pub use ockam_identity::authenticated_storage::mem::*;
-    pub use ockam_identity::authenticated_storage::*;
-}
-
 #[cfg(feature = "ockam_transport_tcp")]
 pub use ockam_transport_tcp::{
     TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
 };
+
+/// List of all top-level services
+pub mod node;
+
+pub use node::*;

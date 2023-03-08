@@ -1,19 +1,17 @@
 pub mod types;
 
-use core::{fmt, str};
+use core::str;
 use lru::LruCache;
-use minicbor::{Decode, Decoder, Encode};
-use ockam::identity::authenticated_storage::{
-    AttributesEntry, IdentityAttributeStorage, IdentityAttributeStorageReader,
-};
-use ockam::identity::credential::{Credential, OneTimeCode, SchemaId, Timestamp};
-use ockam::identity::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo};
-use ockam_core::api::{self, Error, Method, Request, RequestBuilder, Response, Status};
+use minicbor::Decoder;
+use ockam::identity::{AttributesEntry, IdentityAttributesWriter};
+use ockam::identity::{IdentityIdentifier, IdentitySecureChannelLocalInfo};
+use ockam::identity::{OneTimeCode, Timestamp};
+use ockam_core::api::{self, Method, Request, Response, Status};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControls;
-use ockam_core::{self, Address, CowStr, DenyAll, Result, Route, Routed, Worker};
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_core::{self, CowStr, Result, Routed, Worker};
+use ockam_identity::{secure_channel_required, LEGACY_ID, TRUST_CONTEXT_ID};
+use ockam_node::{Context, RpcClient};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
@@ -23,7 +21,6 @@ use types::AddMember;
 use crate::authenticator::direct::types::CreateToken;
 
 const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
-const DEFAULT_CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Schema identifier for a project membership credential.
 ///
@@ -31,9 +28,6 @@ const DEFAULT_CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 ///
 /// - `project_id` : bytes
 /// - `role`: b"member"
-pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
-pub const LEGACY_ID: &str = "project_id"; // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-pub const TRUST_CONTEXT_ID: &str = "trust_context_id";
 pub const LEGACY_MEMBER: &str = "member";
 
 // This acts as a facade, modifying and forwarding incoming messages from legacy clients
@@ -152,97 +146,19 @@ impl Worker for LegacyApiConverter {
     }
 }
 
-pub struct CredentialIssuer {
-    trust_context: Vec<u8>,
-    store: Arc<dyn IdentityAttributeStorageReader>,
-    ident: Arc<Identity>,
-}
-
-impl CredentialIssuer {
-    pub async fn new(
-        trust_context: Vec<u8>,
-        store: Arc<dyn IdentityAttributeStorageReader>,
-        identity: Arc<Identity>,
-    ) -> Result<Self> {
-        Ok(Self {
-            trust_context,
-            store,
-            ident: identity,
-        })
-    }
-
-    async fn issue_credential(&self, from: &IdentityIdentifier) -> Result<Option<Credential>> {
-        match self.store.get_attributes(from).await? {
-            Some(entry) => {
-                let crd = entry
-                    .attrs()
-                    .iter()
-                    .fold(
-                        Credential::builder(from.clone()).with_schema(PROJECT_MEMBER_SCHEMA),
-                        |crd, (a, v)| crd.with_attribute(a, v),
-                    )
-                    .with_attribute(LEGACY_ID, &self.trust_context) // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                    .with_attribute(TRUST_CONTEXT_ID, &self.trust_context);
-                Ok(Some(self.ident.issue_credential(crd).await?))
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-#[ockam_core::worker]
-impl Worker for CredentialIssuer {
-    type Context = Context;
-    type Message = Vec<u8>;
-
-    async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
-        if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
-            let from = i.their_identity_id();
-            let mut dec = Decoder::new(m.as_body());
-            let req: Request = dec.decode()?;
-            trace! {
-                target: "ockam_api::authenticator::direct::credential_issuer",
-                from   = %from,
-                id     = %req.id(),
-                method = ?req.method(),
-                path   = %req.path(),
-                body   = %req.has_body(),
-                "request"
-            }
-            let res = match (req.method(), req.path()) {
-                (Some(Method::Post), "/") | (Some(Method::Post), "/credential") => {
-                    match self.issue_credential(from).await {
-                        Ok(Some(crd)) => Response::ok(req.id()).body(crd).to_vec()?,
-                        Ok(None) => {
-                            // Again, this has already been checked by the access control, so if we
-                            // reach this point there is an error actually.
-                            api::forbidden(&req, "unauthorized member").to_vec()?
-                        }
-                        Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
-                    }
-                }
-                _ => api::unknown_path(&req).to_vec()?,
-            };
-            c.send(m.return_route(), res).await
-        } else {
-            secure_channel_required(c, m).await
-        }
-    }
-}
-
 pub struct DirectAuthenticator {
-    trust_context: Vec<u8>,
-    store: Arc<dyn IdentityAttributeStorage>,
+    trust_context: String,
+    attributes_writer: Arc<dyn IdentityAttributesWriter>,
 }
 
 impl DirectAuthenticator {
     pub async fn new(
-        trust_context: Vec<u8>,
-        store: Arc<dyn IdentityAttributeStorage>,
+        trust_context: String,
+        attributes_writer: Arc<dyn IdentityAttributesWriter>,
     ) -> Result<Self> {
         Ok(Self {
             trust_context,
-            store,
+            attributes_writer,
         })
     }
 
@@ -255,8 +171,16 @@ impl DirectAuthenticator {
         let auth_attrs = attrs
             .iter()
             .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
-            .chain([(LEGACY_ID.to_owned(), self.trust_context.clone())].into_iter())
-            .chain([(TRUST_CONTEXT_ID.to_owned(), self.trust_context.clone())].into_iter())
+            .chain(
+                [
+                    (LEGACY_ID.to_owned(), self.trust_context.as_bytes().to_vec()),
+                    (
+                        TRUST_CONTEXT_ID.to_owned(),
+                        self.trust_context.as_bytes().to_vec(),
+                    ),
+                ]
+                .into_iter(),
+            )
             .collect();
         let entry = AttributesEntry::new(
             auth_attrs,
@@ -264,7 +188,7 @@ impl DirectAuthenticator {
             None,
             Some(enroller.clone()),
         );
-        self.store.put_attributes(id, entry).await
+        self.attributes_writer.put_attributes(id, entry).await
     }
 }
 
@@ -290,7 +214,7 @@ impl Worker for DirectAuthenticator {
             let res = match (req.method(), req.path()) {
                 (Some(Method::Post), "/") | (Some(Method::Post), "/members") => {
                     let add: AddMember = dec.decode()?;
-                    self.add_member(from, add.member(), add.attributes())
+                    self.add_member(&from, add.member(), add.attributes())
                         .await?;
                     Response::ok(req.id()).to_vec()?
                 }
@@ -305,20 +229,21 @@ impl Worker for DirectAuthenticator {
 
 #[derive(Clone)]
 pub struct EnrollmentTokenAuthenticator {
-    trust_context: Vec<u8>,
+    trust_context: String,
     tokens: Arc<RwLock<LruCache<[u8; 32], Token>>>,
 }
 
 pub struct EnrollmentTokenIssuer(EnrollmentTokenAuthenticator);
+
 pub struct EnrollmentTokenAcceptor(
     EnrollmentTokenAuthenticator,
-    Arc<dyn IdentityAttributeStorage>,
+    Arc<dyn IdentityAttributesWriter>,
 );
 
 impl EnrollmentTokenAuthenticator {
     pub fn new_worker_pair(
-        trust_context: Vec<u8>,
-        storage: Arc<dyn IdentityAttributeStorage>,
+        trust_context: String,
+        attributes_writer: Arc<dyn IdentityAttributesWriter>,
     ) -> (EnrollmentTokenIssuer, EnrollmentTokenAcceptor) {
         let base = Self {
             trust_context,
@@ -328,7 +253,7 @@ impl EnrollmentTokenAuthenticator {
         };
         (
             EnrollmentTokenIssuer(base.clone()),
-            EnrollmentTokenAcceptor(base, storage),
+            EnrollmentTokenAcceptor(base, attributes_writer),
         )
     }
 }
@@ -384,7 +309,7 @@ impl Worker for EnrollmentTokenIssuer {
             let res = match (req.method(), req.path()) {
                 (Some(Method::Post), "/") | (Some(Method::Post), "/tokens") => {
                     let att: CreateToken = dec.decode()?;
-                    match self.issue_token(from, att.into_owned_attributes()).await {
+                    match self.issue_token(&from, att.into_owned_attributes()).await {
                         Ok(otc) => Response::ok(req.id()).body(&otc).to_vec()?,
                         Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
                     }
@@ -441,17 +366,17 @@ impl Worker for EnrollmentTokenAcceptor {
                     match token {
                         Ok(tkn) => {
                             //TODO: fixme:  unify use of hashmap vs btreemap
+                            let trust_context = self.0.trust_context.as_bytes().to_vec();
                             let attrs = tkn
                                 .attrs
                                 .iter()
                                 .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
                                 .chain(
-                                    [(LEGACY_ID.to_owned(), self.0.trust_context.clone())]
-                                        .into_iter(),
-                                )
-                                .chain(
-                                    [(TRUST_CONTEXT_ID.to_owned(), self.0.trust_context.clone())]
-                                        .into_iter(),
+                                    [
+                                        (LEGACY_ID.to_owned(), trust_context.clone()),
+                                        (TRUST_CONTEXT_ID.to_owned(), trust_context),
+                                    ]
+                                    .into_iter(),
                                 )
                                 .collect();
                             let entry = AttributesEntry::new(
@@ -460,7 +385,7 @@ impl Worker for EnrollmentTokenAcceptor {
                                 None,
                                 Some(tkn.generated_by),
                             );
-                            self.1.put_attributes(from, entry).await?;
+                            self.1.put_attributes(&from, entry).await?;
                             Response::ok(req.id()).to_vec()?
                         }
                         Err(err) => err.to_vec()?,
@@ -481,40 +406,8 @@ struct Token {
     time: Instant,
 }
 
-/// Decode, log and map response error to ockam_core error.
-fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> ockam_core::Error {
-    if res.has_body() {
-        let err = match dec.decode::<Error>() {
-            Ok(e) => e,
-            Err(e) => return e.into(),
-        };
-        warn! {
-            target: "ockam_api::authenticator::direct::client",
-            id     = %res.id(),
-            re     = %res.re(),
-            status = ?res.status(),
-            error  = ?err.message(),
-            "<- {label}"
-        }
-        let msg = err.message().unwrap_or(label);
-        ockam_core::Error::new(Origin::Application, Kind::Protocol, msg)
-    } else {
-        ockam_core::Error::new(Origin::Application, Kind::Protocol, label)
-    }
-}
-
-pub struct CredentialIssuerClient(RpcClient);
-impl CredentialIssuerClient {
-    pub fn new(client: RpcClient) -> Self {
-        CredentialIssuerClient(client)
-    }
-
-    pub async fn credential(&self) -> Result<Credential> {
-        self.0.request(&Request::post("/")).await
-    }
-}
-
 pub struct DirectAuthenticatorClient(RpcClient);
+
 impl DirectAuthenticatorClient {
     pub fn new(client: RpcClient) -> Self {
         DirectAuthenticatorClient(client)
@@ -534,6 +427,7 @@ impl DirectAuthenticatorClient {
 }
 
 pub struct TokenIssuerClient(RpcClient);
+
 impl TokenIssuerClient {
     pub fn new(client: RpcClient) -> Self {
         TokenIssuerClient(client)
@@ -547,6 +441,7 @@ impl TokenIssuerClient {
 }
 
 pub struct TokenAcceptorClient(RpcClient);
+
 impl TokenAcceptorClient {
     pub fn new(client: RpcClient) -> Self {
         TokenAcceptorClient(client)
@@ -557,107 +452,4 @@ impl TokenAcceptorClient {
             .request_no_resp_body(&Request::post("/").body(c))
             .await
     }
-}
-
-pub struct RpcClient {
-    ctx: Context,
-    route: Route,
-    timeout: Duration,
-    flow_controls: Option<FlowControls>,
-}
-
-impl fmt::Debug for RpcClient {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RpcClient")
-            .field("route", &self.route)
-            .finish()
-    }
-}
-
-impl RpcClient {
-    pub async fn new(r: Route, ctx: &Context) -> Result<Self> {
-        let ctx = ctx
-            .new_detached(Address::random_tagged("RpcClient"), DenyAll, DenyAll)
-            .await?;
-        Ok(RpcClient {
-            ctx,
-            route: r,
-            flow_controls: None,
-            timeout: DEFAULT_CLIENT_TIMEOUT,
-        })
-    }
-
-    pub fn with_timeout(self, timeout: Duration) -> Self {
-        Self { timeout, ..self }
-    }
-
-    pub fn with_flow_control(self, flow_controls: &FlowControls) -> Self {
-        Self {
-            flow_controls: Some(flow_controls.clone()),
-            ..self
-        }
-    }
-
-    fn options(&self) -> MessageSendReceiveOptions {
-        let options = MessageSendReceiveOptions::new().with_timeout(self.timeout);
-        if let Some(flow_controls) = &self.flow_controls {
-            options.with_flow_control(flow_controls)
-        } else {
-            options
-        }
-    }
-
-    /// Encode request header and body (if any) and send the package to the server.
-    async fn request<T, R>(&self, req: &RequestBuilder<'_, T>) -> Result<R>
-    where
-        T: Encode<()>,
-        R: for<'a> Decode<'a, ()>,
-    {
-        let mut buf = Vec::new();
-        req.encode(&mut buf)?;
-
-        let vec = self
-            .ctx
-            .send_and_receive_extended::<Vec<u8>>(self.route.clone(), buf, self.options())
-            .await?
-            .body();
-        let mut d = Decoder::new(&vec);
-        let resp: Response = d.decode()?;
-        if resp.status() == Some(Status::Ok) {
-            Ok(d.decode()?)
-        } else {
-            Err(error("new-credential", &resp, &mut d))
-        }
-    }
-
-    /// Encode request header and body (if any) and send the package to the server.
-    async fn request_no_resp_body<T>(&self, req: &RequestBuilder<'_, T>) -> Result<()>
-    where
-        T: Encode<()>,
-    {
-        let mut buf = Vec::new();
-        req.encode(&mut buf)?;
-        let vec = self
-            .ctx
-            .send_and_receive_extended::<Vec<u8>>(self.route.clone(), buf, self.options())
-            .await?
-            .body();
-        let mut d = Decoder::new(&vec);
-        let resp: Response = d.decode()?;
-        if resp.status() == Some(Status::Ok) {
-            Ok(())
-        } else {
-            Err(error("new-credential", &resp, &mut d))
-        }
-    }
-}
-
-async fn secure_channel_required(c: &mut Context, m: Routed<Vec<u8>>) -> Result<()> {
-    // This was, actually, already checked by the access control. So if we reach this point
-    // it means there is a bug.  Also, if it' already checked, we should receive the Peer'
-    // identity, not an Option to the peer' identity.
-    let mut dec = Decoder::new(m.as_body());
-    let req: Request = dec.decode()?;
-    let res = api::forbidden(&req, "secure channel required").to_vec()?;
-    c.send(m.return_route(), res).await
 }

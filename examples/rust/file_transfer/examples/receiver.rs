@@ -6,10 +6,7 @@ use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{
     errcode::{Kind, Origin},
-    identity::Identity,
-    remote::RemoteForwarder,
-    vault::Vault,
-    Context, Error, Result, Routed, TcpConnectionOptions, TcpTransport, Worker,
+    node, Context, Error, Result, Routed, TcpConnectionOptions, Worker,
 };
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
@@ -82,19 +79,15 @@ impl Worker for FileReception {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a Vault to safely store secret keys for Receiver.
-    let vault = Vault::create();
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Receiver.
-    let receiver = Identity::create(&ctx, vault).await?;
+    let receiver = node.create_identity().await?;
 
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    receiver
-        .create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
+    node.create_secure_channel_listener(&receiver, "listener", SecureChannelListenerOptions::new())
         .await?;
 
     // The computer that is running this program is likely within a private network and
@@ -109,13 +102,15 @@ async fn main(ctx: Context) -> Result<()> {
     let node_in_hub = tcp
         .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderOptions::new()).await?;
+    let forwarder = node
+        .create_forwarder(node_in_hub, RemoteForwarderOptions::new())
+        .await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Receiver is:");
     println!("{}", forwarder.remote_address());
 
     // Start a worker, of type FileReception, at address "receiver".
-    ctx.start_worker("receiver", FileReception::default(), AllowAll, AllowAll)
+    node.start_worker("receiver", FileReception::default(), AllowAll, AllowAll)
         .await?;
 
     // We won't call ctx.stop() here, this program will quit when the file will be entirely received

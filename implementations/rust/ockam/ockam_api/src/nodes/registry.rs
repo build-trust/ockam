@@ -1,9 +1,9 @@
 use crate::nodes::service::Alias;
+use ockam::identity::IdentityIdentifier;
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Route};
-use ockam_identity::IdentityIdentifier;
 
 #[derive(Default)]
 pub(crate) struct SecureChannelRegistry {

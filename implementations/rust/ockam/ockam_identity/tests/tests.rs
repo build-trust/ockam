@@ -1,30 +1,23 @@
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
+use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
 use ockam_core::{Error, Result};
-use ockam_identity::Identity;
+use ockam_identity::identities;
 use ockam_node::Context;
-use ockam_vault::Vault;
 use rand::{thread_rng, RngCore};
-
-fn test_error<S: Into<String>>(error: S) -> Result<()> {
-    Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
-}
 
 #[ockam_macros::test]
 async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
-    let alice_vault = Vault::create();
-    let bob_vault = Vault::create();
+    let identities = identities();
+    let identities_creation = identities.identities_creation();
+    let identities_repository = identities.repository();
+    let identities_keys = identities.identities_keys();
 
     // Alice and Bob are distinct Entities.
-    let alice = Identity::create(ctx, alice_vault.clone()).await?;
-    let bob = Identity::create(ctx, bob_vault.clone()).await?;
+    let alice = identities_creation.create_identity().await?;
+    let bob = identities_creation.create_identity().await?;
 
-    alice
-        .update_known_identity(bob.identifier(), &bob.to_public().await?)
-        .await?;
-
-    bob.update_known_identity(alice.identifier(), &alice.to_public().await?)
-        .await?;
+    identities_repository.update_known_identity(&bob).await?;
+    identities_repository.update_known_identity(&alice).await?;
 
     // Some state known to both parties. In Noise this would be a computed hash, for example.
     let state = {
@@ -34,20 +27,28 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
         state
     };
 
-    let alice_proof = alice.create_signature(&state, None).await?;
-    let bob_proof = bob.create_signature(&state, None).await?;
+    let alice_proof = identities_keys
+        .create_signature(&alice, &state, None)
+        .await?;
+    let bob_proof = identities_keys.create_signature(&bob, &state, None).await?;
 
-    let known_bob = alice.get_known_identity(bob.identifier()).await?.unwrap();
-    if !known_bob
-        .verify_signature(&bob_proof, &state, None, alice_vault)
+    let known_bob = identities_repository
+        .get_identity(&bob.identifier())
+        .await?
+        .unwrap();
+    if !identities_keys
+        .verify_signature(&known_bob, &bob_proof, &state, None)
         .await?
     {
         return test_error("bob's proof was invalid");
     }
 
-    let known_alice = bob.get_known_identity(alice.identifier()).await?.unwrap();
-    if !known_alice
-        .verify_signature(&alice_proof, &state, None, bob_vault)
+    let known_alice = identities_repository
+        .get_identity(&alice.identifier())
+        .await?
+        .unwrap();
+    if !identities_keys
+        .verify_signature(&known_alice, &alice_proof, &state, None)
         .await?
     {
         return test_error("alice's proof was invalid");
@@ -60,23 +61,21 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_key_rotation(ctx: &mut Context) -> Result<()> {
-    let alice_vault = Vault::create();
-    let bob_vault = Vault::create();
+    let identities = identities();
+    let identities_creation = identities.identities_creation();
+    let identities_repository = identities.repository();
+    let identities_keys = identities.identities_keys();
 
     // Alice and Bob are distinct Entities.
-    let alice = Identity::create(ctx, alice_vault).await?;
-    let bob = Identity::create(ctx, bob_vault).await?;
+    let mut alice = identities_creation.create_identity().await?;
+    let mut bob = identities_creation.create_identity().await?;
 
     // Both identities rotate keys.
-    alice.rotate_root_key().await?;
-    bob.rotate_root_key().await?;
+    identities_keys.rotate_root_key(&mut alice).await?;
+    identities_keys.rotate_root_key(&mut bob).await?;
 
-    alice
-        .update_known_identity(bob.identifier(), &bob.to_public().await?)
-        .await?;
-
-    bob.update_known_identity(alice.identifier(), &alice.to_public().await?)
-        .await?;
+    identities_repository.update_known_identity(&bob).await?;
+    identities_repository.update_known_identity(&alice).await?;
 
     ctx.stop().await?;
 
@@ -85,29 +84,23 @@ async fn test_key_rotation(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
-    let alice_vault = Vault::create();
-    let bob_vault = Vault::create();
+    let identities = identities();
+    let identities_creation = identities.identities_creation();
+    let identities_repository = identities.repository();
+    let identities_keys = identities.identities_keys();
 
     // Alice and Bob are distinct Entities.
-    let alice = Identity::create(ctx, alice_vault.clone()).await?;
-    let bob = Identity::create(ctx, bob_vault.clone()).await?;
+    let mut alice = identities_creation.create_identity().await?;
+    let mut bob = identities_creation.create_identity().await?;
 
-    alice
-        .update_known_identity(bob.identifier(), &bob.to_public().await?)
-        .await?;
+    identities_repository.update_known_identity(&bob).await?;
+    identities_repository.update_known_identity(&alice).await?;
 
-    bob.update_known_identity(alice.identifier(), &alice.to_public().await?)
-        .await?;
+    identities_keys.rotate_root_key(&mut alice).await?;
+    identities_keys.rotate_root_key(&mut bob).await?;
 
-    alice.rotate_root_key().await?;
-    bob.rotate_root_key().await?;
-
-    alice
-        .update_known_identity(bob.identifier(), &bob.to_public().await?)
-        .await?;
-
-    bob.update_known_identity(alice.identifier(), &alice.to_public().await?)
-        .await?;
+    identities_repository.update_known_identity(&bob).await?;
+    identities_repository.update_known_identity(&alice).await?;
 
     // Re-Prove
     let state = {
@@ -117,20 +110,28 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
         state
     };
 
-    let alice_proof = alice.create_signature(&state, None).await?;
-    let bob_proof = bob.create_signature(&state, None).await?;
+    let alice_proof = identities_keys
+        .create_signature(&alice, &state, None)
+        .await?;
+    let bob_proof = identities_keys.create_signature(&bob, &state, None).await?;
 
-    let known_bob = alice.get_known_identity(bob.identifier()).await?.unwrap();
-    if !known_bob
-        .verify_signature(&bob_proof, &state, None, alice_vault)
+    let known_bob = identities_repository
+        .get_identity(&bob.identifier())
+        .await?
+        .unwrap();
+    if !identities_keys
+        .verify_signature(&known_bob, &bob_proof, &state, None)
         .await?
     {
         return test_error("bob's proof was invalid");
     }
 
-    let known_alice = bob.get_known_identity(alice.identifier()).await?.unwrap();
-    if !known_alice
-        .verify_signature(&alice_proof, &state, None, bob_vault)
+    let known_alice = identities_repository
+        .get_identity(&alice.identifier())
+        .await?
+        .unwrap();
+    if !identities_keys
+        .verify_signature(&known_alice, &alice_proof, &state, None)
         .await?
     {
         return test_error("alice's proof was invalid");
@@ -143,10 +144,13 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn add_key(ctx: &mut Context) -> Result<()> {
-    let vault = Vault::create();
-    let e = Identity::create(ctx, vault.clone()).await?;
+    let identities = identities();
+    let identities_creation = identities.identities_creation();
+    let identities_vault = identities.vault();
+    let identities_keys = identities.identities_keys();
+    let mut identity = identities_creation.create_identity().await?;
 
-    let key = vault
+    let key = identities_vault
         .secret_generate(SecretAttributes::new(
             SecretType::Ed25519,
             SecretPersistence::Ephemeral,
@@ -154,7 +158,13 @@ async fn add_key(ctx: &mut Context) -> Result<()> {
         ))
         .await?;
 
-    e.add_key("test".into(), &key).await?;
+    identities_keys
+        .add_key(&mut identity, "test".into(), &key)
+        .await?;
 
     ctx.stop().await
+}
+
+fn test_error<S: Into<String>>(error: S) -> Result<()> {
+    Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
 }

@@ -18,12 +18,15 @@ use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
-use ockam_core::{route, CowStr};
+use ockam_core::route;
 
+use crate::cli_state::CliStateError;
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
-use ockam_identity::{
-    Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerOptions,
-    SecureChannelOptions, TrustMultiIdentifiersPolicy,
+use crate::nodes::service::NodeIdentities;
+use ockam::identity::{
+    secure_channels, Identities, IdentitiesVault, Identity, IdentityIdentifier,
+    SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    TrustMultiIdentifiersPolicy,
 };
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -32,6 +35,7 @@ impl NodeManager {
     pub(crate) async fn create_secure_channel_internal(
         &mut self,
         identity: &Identity,
+        ctx: &Context,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
@@ -66,8 +70,9 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        let sc_addr = identity
-            .create_secure_channel_extended(sc_route.clone(), options, timeout)
+        let sc_addr = self
+            .secure_channels
+            .create_secure_channel_extended(ctx, identity, sc_route.clone(), options, timeout)
             .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
@@ -89,23 +94,11 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         credential_exchange_mode: CredentialExchangeMode,
         timeout: Option<Duration>,
-        identity_name: Option<CowStr<'_>>,
+        identity_name: Option<String>,
         ctx: &Context,
-        credential_name: Option<CowStr<'_>>,
+        credential_name: Option<String>,
     ) -> Result<(Address, FlowControlId)> {
-        let identity: Arc<Identity> = if let Some(identity) = identity_name {
-            let idt_state = self.cli_state.identities.get(&identity)?;
-            match idt_state.get(ctx, self.vault()?).await {
-                Ok(idt) => Arc::new(idt),
-                Err(_) => {
-                    let default_vault = &self.cli_state.vaults.default()?.get().await?;
-                    let vault: Arc<dyn IdentityVault> = Arc::new(default_vault.clone());
-                    Arc::new(idt_state.get(ctx, vault).await?)
-                }
-            }
-        } else {
-            self.identity.clone()
-        };
+        let identity = self.get_identity(None, identity_name.clone()).await?;
         let provided_credential = if let Some(credential_name) = credential_name {
             Some(
                 self.cli_state
@@ -119,7 +112,13 @@ impl NodeManager {
         };
 
         let (sc_addr, sc_flow_control_id) = self
-            .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
+            .create_secure_channel_internal(
+                &identity,
+                ctx,
+                sc_route,
+                authorized_identifiers,
+                timeout,
+            )
             .await?;
 
         // TODO: Determine when we can remove this? Or find a better way to determine
@@ -143,15 +142,16 @@ impl NodeManager {
                     None => {
                         self.trust_context()?
                             .authority()?
-                            .credential(&identity)
+                            .credential(ctx, &identity)
                             .await?
                     }
                 };
 
-                identity
+                self.credentials_service()
                     .present_credential(
+                        ctx,
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        &credential,
+                        credential,
                         MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
                     )
                     .await?;
@@ -164,17 +164,17 @@ impl NodeManager {
                     None => {
                         self.trust_context()?
                             .authority()?
-                            .credential(&identity)
+                            .credential(ctx, &identity)
                             .await?
                     }
                 };
 
-                identity
+                self.credentials_service()
                     .present_credential_mutual(
+                        ctx,
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        vec![self.trust_context()?.authority()?.identity()],
-                        self.attributes_storage.clone(),
-                        &credential,
+                        &[self.trust_context()?.authority()?.identity()],
+                        credential,
                         MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
                     )
                     .await?;
@@ -188,35 +188,25 @@ impl NodeManager {
 
     pub(super) async fn create_secure_channel_listener_impl(
         &mut self,
-        addr: Address,
+        address: Address,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-        vault_name: Option<CowStr<'_>>,
-        identity_name: Option<CowStr<'_>>,
+        vault_name: Option<String>,
+        identity_name: Option<String>,
         ctx: &Context,
     ) -> Result<FlowControlId> {
         info!(
             "Handling request to create a new secure channel listener: {}",
-            addr
+            address
         );
 
+        let secure_channels = self
+            .get_secure_channels(vault_name.clone(), identity_name.clone())
+            .await?;
+        let identity = self
+            .get_identity(vault_name.clone(), identity_name.clone())
+            .await?;
+
         let flow_control_id = self.flow_controls.generate_id();
-
-        let identity: Arc<Identity> = if let Some(identity) = identity_name {
-            let idt_state = self.cli_state.identities.get(&identity)?;
-            if let Some(vault) = vault_name {
-                let default_vault = self.cli_state.vaults.get(&vault)?.get().await?;
-                let vault: Arc<dyn IdentityVault> = Arc::new(default_vault.clone());
-                Arc::new(idt_state.get(ctx, vault).await?)
-            } else {
-                Arc::new(idt_state.get(ctx, self.vault()?).await?)
-            }
-        } else {
-            if vault_name.is_some() {
-                warn!("The optional vault is ignored when an optional identity is not specified. Using the default identity.");
-            }
-            self.identity.clone()
-        };
-
         let options =
             SecureChannelListenerOptions::as_spawner(&self.flow_controls, &flow_control_id)
                 .as_consumer(&self.flow_controls);
@@ -225,12 +215,12 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        identity
-            .create_secure_channel_listener(addr.clone(), options)
+        secure_channels
+            .create_secure_channel_listener(ctx, &identity, address.clone(), options)
             .await?;
 
         self.registry.secure_channel_listeners.insert(
-            addr,
+            address,
             SecureChannelListenerInfo::new(flow_control_id.clone()),
         );
 
@@ -263,9 +253,82 @@ impl NodeManager {
         Ok(flow_control_id)
     }
 
-    pub(super) async fn delete_secure_channel(&mut self, addr: &Address) -> Result<()> {
+    pub(crate) async fn get_secure_channels(
+        &mut self,
+        vault_name: Option<String>,
+        identity_name: Option<String>,
+    ) -> Result<Arc<SecureChannels>> {
+        let secure_channels = if let Some(identity) = identity_name {
+            let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
+            let identities = self.get_identities(vault_name, identity).await?;
+            let registry = self.secure_channels.secure_channel_registry();
+            secure_channels::builder()
+                .with_identities_vault(vault)
+                .with_identities(identities)
+                .with_secure_channels_registry(registry)
+                .build()
+        } else {
+            if vault_name.is_some() {
+                warn!("The optional vault is ignored when an optional identity is not specified. Using the default identity.");
+            }
+            self.secure_channels.clone()
+        };
+        Ok(secure_channels)
+    }
+
+    pub(super) fn node_identities(&self) -> NodeIdentities {
+        NodeIdentities::new(self.identities_vault(), self.cli_state.clone())
+    }
+
+    pub(crate) async fn get_identity(
+        &self,
+        vault_name: Option<String>,
+        identity_name: Option<String>,
+    ) -> Result<Identity> {
+        if let Some(name) = identity_name {
+            if let Some(identity) = self
+                .node_identities()
+                .get_identity(name.clone(), vault_name)
+                .await?
+            {
+                Ok(identity)
+            } else {
+                Err(CliStateError::NotFound(format!("identity not found with name {name}")).into())
+            }
+        } else {
+            Ok(self.identity.clone())
+        }
+    }
+
+    async fn get_identities(
+        &mut self,
+        vault_name: Option<String>,
+        identity_name: String,
+    ) -> Result<Arc<Identities>> {
+        self.node_identities()
+            .get_identities(vault_name, identity_name)
+            .await
+    }
+
+    async fn get_secure_channels_vault(
+        &mut self,
+        vault_name: Option<String>,
+    ) -> Result<Arc<dyn IdentitiesVault>> {
+        if let Some(vault) = vault_name {
+            let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
+            Ok(Arc::new(existing_vault))
+        } else {
+            Ok(self.secure_channels_vault())
+        }
+    }
+
+    pub(super) async fn delete_secure_channel(
+        &mut self,
+        ctx: &Context,
+        addr: &Address,
+    ) -> Result<()> {
         debug!(%addr, "deleting secure channel");
-        self.identity.stop_secure_channel(addr).await?;
+        self.secure_channels.stop_secure_channel(ctx, addr).await?;
         self.registry.secure_channels.remove_by_addr(addr);
         Ok(())
     }
@@ -358,9 +421,9 @@ impl NodeManagerWorker {
                 authorized_identifiers,
                 credential_exchange_mode,
                 timeout,
-                identity,
+                identity.map(|i| i.to_string()),
                 ctx,
-                credential_name,
+                credential_name.map(|c| c.to_string()),
             )
             .await?;
 
@@ -376,12 +439,13 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
+        ctx: &Context,
     ) -> Result<ResponseBuilder<DeleteSecureChannelResponse<'_>>> {
         let body: DeleteSecureChannelRequest = dec.decode()?;
         let addr = Address::from(body.channel.as_ref());
         info!(%addr, "Handling request to delete secure channel");
         let mut node_manager = self.node_manager.write().await;
-        let res = match node_manager.delete_secure_channel(&addr).await {
+        let res = match node_manager.delete_secure_channel(ctx, &addr).await {
             Ok(()) => {
                 trace!(%addr, "Removed secure channel");
                 Some(addr)
@@ -448,7 +512,13 @@ impl NodeManagerWorker {
 
         // TODO: Return to the client side flow_control_id
         node_manager
-            .create_secure_channel_listener_impl(addr, authorized_identifiers, vault, identity, ctx)
+            .create_secure_channel_listener_impl(
+                addr,
+                authorized_identifiers,
+                vault.map(|v| v.to_string()),
+                identity.map(|v| v.to_string()),
+                ctx,
+            )
             .await?;
 
         let response = Response::ok(req.id());
