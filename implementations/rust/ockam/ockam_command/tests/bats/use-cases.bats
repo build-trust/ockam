@@ -46,7 +46,7 @@ teardown() {
               | $OCKAM tcp-inlet create --at /node/client_sidecar --from 127.0.0.1:$port --to -/service/outlet"
   assert_success
 
-  curl --head --max-time 10 "127.0.0.1:$port"
+  run curl --head --max-time 10 "127.0.0.1:$port"
   assert_success
 }
 
@@ -70,7 +70,7 @@ teardown() {
               | $OCKAM tcp-inlet create --at /node/c --from 127.0.0.1:$port --to -/service/outlet"
   assert_success
 
-  curl --head --max-time 10 "127.0.0.1:$port"
+  run curl --head --max-time 10 "127.0.0.1:$port"
   assert_success
 }
 

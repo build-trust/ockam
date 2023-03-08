@@ -169,8 +169,8 @@ teardown() {
 
   fwd="$(random_str)"
   run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/blue
-  assert_output --partial "forward_to_$fwd"
   assert_success
+  assert_output --partial "forward_to_$fwd"
 
   run bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"

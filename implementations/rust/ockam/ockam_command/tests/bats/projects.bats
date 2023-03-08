@@ -51,8 +51,6 @@ teardown() {
   blue_token=$($OCKAM project enroll --attribute role=member)
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
 
-  echo "OCKAM_HOME=$OCKAM_HOME;PROJECT=$(project_json_path)"
-
   # Green' identity was added by enroller
   run "$OCKAM" project authenticate --identity green --project-path "$PROJECT_JSON_PATH"
   assert_success
@@ -86,7 +84,6 @@ teardown() {
   run "$OCKAM" identity create green
   run "$OCKAM" identity create blue
   green_identifier=$($OCKAM identity show green)
-  blue_identifier=$($OCKAM identity show blue)
 
   # Create nodes for the non-enrolled identities using the exported project information
   run "$OCKAM" node create green --project "$ENROLLED_OCKAM_HOME/${project_name}_project.json" --identity green
@@ -116,6 +113,9 @@ teardown() {
   assert_success
   run "$OCKAM" space delete "${space_name}"
   assert_success
+
+  OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
+  teardown_home_dir
 }
 
 @test "projects - send a message to a project node from an embedded node, enrolled member on different install" {
