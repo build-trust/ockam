@@ -60,7 +60,7 @@ teardown() {
   assert_success
 }
 
-@test "portals - inlet/outlet example with credentials, not provided" {
+@test "portals - inlet/outlet example with credential, not provided" {
   port=7102
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
@@ -96,12 +96,12 @@ teardown() {
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
   assert_success
 
-  # Green can't establish secure channel with blue, because it didn't exchange credentials with it.
+  # Green can't establish secure channel with blue, because it didn't exchange credential with it.
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
   assert_failure
 }
 
-@test "portals - inlet (with implicit secure channel creation) / outlet example with credentials, not provided" {
+@test "portals - inlet (with implicit secure channel creation) / outlet example with credential, not provided" {
   port=7103
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
@@ -139,7 +139,7 @@ teardown() {
   assert_failure
 }
 
-@test "portals - inlet/outlet example with credentials" {
+@test "portals - inlet/outlet example with credential" {
   port=7104
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
@@ -195,12 +195,16 @@ teardown() {
   run --separate-stderr "$OCKAM" identity create blue
   assert_success
 
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH" --identity green --enrollment-token "$green_token"
+  run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity green --token $green_token
+  assert_success
+  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH" --identity green
   assert_success
   run "$OCKAM" policy set --at green --resource tcp-inlet --expression '(= subject.app "app1")'
   assert_success
 
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --identity blue --enrollment-token "$blue_token"
+  run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity blue --token $blue_token
+  assert_success
+  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --identity blue
   assert_success
   run "$OCKAM" policy set --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
   assert_success

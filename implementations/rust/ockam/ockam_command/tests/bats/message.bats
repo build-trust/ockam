@@ -23,7 +23,7 @@ teardown() {
 
 # ===== TESTS
 
-@test "message - send a message to a project node command embedded node" {
+@test "message - send a message to a project node from an embedded node" {
   msg=$(random_str)
   run --separate-stderr "$OCKAM" message send "$msg" --to /project/default/service/echo
   assert_success
