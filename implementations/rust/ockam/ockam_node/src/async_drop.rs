@@ -45,12 +45,12 @@ impl AsyncDrop {
 
             let (msg, mut reply) = NodeMessage::stop_worker(addr, true);
             if let Err(e) = self.sender.send(msg).await {
-                warn!("Failed sending AsyncDrop request to router: {}", e);
+                debug!("Failed sending AsyncDrop request to router: {}", e);
             }
 
             // Then check that address was properly shut down
             if reply.recv().await.is_none() {
-                warn!("AsyncDrop router reply was None");
+                debug!("AsyncDrop router reply was None");
             }
         }
     }

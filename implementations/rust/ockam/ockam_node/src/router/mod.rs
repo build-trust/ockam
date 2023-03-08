@@ -311,7 +311,7 @@ impl Router {
                     }
                 }
                 Err(err) => {
-                    warn!("Router error: {} while handling {}", err, msg_str);
+                    debug!("Router error: {} while handling {}", err, msg_str);
                 }
             }
         }
