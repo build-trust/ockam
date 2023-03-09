@@ -1,7 +1,8 @@
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, DeleteOutlet, InletList, InletStatus, OutletList, OutletStatus,
+    CreateInlet, CreateOutlet, DeleteInlet, DeleteOutlet, InletList, InletStatus, OutletList,
+    OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
@@ -245,6 +246,55 @@ impl NodeManagerWorker {
         })
     }
 
+    pub(super) async fn delete_inlet<'a>(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<InletStatus<'a>>> {
+        let mut node_manager = self.node_manager.write().await;
+        let DeleteInlet { alias, .. } = dec.decode()?;
+
+        let alias = alias.into_owned();
+
+        info!(%alias, "Handling request to delete inlet portal");
+        if let Some(inlet_to_delete) = node_manager.registry.inlets.remove(&alias) {
+            info!(%alias, "Sucessfully removed inlet from node registry");
+            let was_stopped = node_manager
+                .tcp_transport
+                .stop_inlet(inlet_to_delete.worker_addr.clone())
+                .await
+                .is_ok();
+            if was_stopped {
+                info!(%alias, "Successfully stopped inlet");
+                Ok(Response::ok(req.id()).body(InletStatus::new(
+                    inlet_to_delete.bind_addr,
+                    inlet_to_delete.worker_addr.to_string(),
+                    alias,
+                    None,
+                    inlet_to_delete.outlet_route.to_string(),
+                )))
+            } else {
+                error!(%alias, "Failed to remove inlet from node registry");
+                Ok(Response::internal_error(req.id()).body(InletStatus::new(
+                    inlet_to_delete.bind_addr,
+                    inlet_to_delete.worker_addr.to_string(),
+                    alias.clone(),
+                    Some(format!("Failed to remove inlet with alias {alias}").into()),
+                    inlet_to_delete.outlet_route.to_string(),
+                )))
+            }
+        } else {
+            error!(%alias, "Inlet not found in the node registry");
+            Ok(Response::not_found(req.id()).body(InletStatus::new(
+                "".to_string(),
+                "".to_string(),
+                alias.clone(),
+                Some(format!("Inlet with alias {alias} not found").into()),
+                "".to_string(),
+            )))
+        }
+    }
+
     pub(super) async fn create_outlet<'a>(
         &mut self,
         req: &Request<'_>,
@@ -327,12 +377,14 @@ impl NodeManagerWorker {
 
         info!(%alias, "Handling request to delete outlet portal");
         if let Some(outlet_to_delete) = node_manager.registry.outlets.remove(&alias) {
+            info!(%alias, "Successfully removed outlet from node registry");
             let was_stopped = node_manager
                 .tcp_transport
                 .stop_outlet(outlet_to_delete.worker_addr.clone())
                 .await
                 .is_ok();
             if was_stopped {
+                info!(%alias, "Successfully stopped outlet");
                 Ok(Response::ok(req.id()).body(OutletStatus::new(
                     outlet_to_delete.tcp_addr,
                     outlet_to_delete.worker_addr.to_string(),

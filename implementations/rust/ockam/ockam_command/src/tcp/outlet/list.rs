@@ -32,14 +32,14 @@ async fn run_impl(
     rpc.request(Request::get("/node/outlet")).await?;
     let response = rpc.parse_response::<OutletList>()?;
 
-    println!("Outlet:");
     for outlet in &response.list {
-        println!("    Alias: {}", outlet.alias);
+        println!("Outlet:");
+
+        println!("  Alias: {}", outlet.alias);
         let addr = route_to_multiaddr(&route![outlet.worker_addr.to_string()])
             .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;
-        println!("    From Outlet: {addr}");
-
-        println!("    To TCP: {}", outlet.tcp_addr);
+        println!("  From Outlet: {addr}");
+        println!("  To TCP: {}", outlet.tcp_addr);
     }
     Ok(())
 }
