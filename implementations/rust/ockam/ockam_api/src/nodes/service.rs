@@ -16,9 +16,10 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
-use ockam_core::{route, AllowAll, AsyncTryClone, IncomingAccessControl};
-use ockam_multiaddr::proto::{Project, Secure};
+use ockam_core::flow_control::{FlowControlId, FlowControls};
+use ockam_core::IncomingAccessControl;
+use ockam_core::{AllowAll, AsyncTryClone, LOCAL};
+use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::tokio;
@@ -28,7 +29,6 @@ use std::error::Error as _;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
@@ -36,22 +36,21 @@ use crate::cli_state::CliState;
 use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
-use crate::nodes::connection::Connection;
+use crate::nodes::connection::{
+    Connection, ConnectionInstance, ConnectionInstanceBuilder, PlainTcpInstantiator,
+    ProjectInstantiator, SecureChannelInstantiator,
+};
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::rpc_proxy::RpcProxyService;
-use crate::session::util::{starts_with_host_tcp, starts_with_secure};
-use crate::session::{Medic, Sessions};
-use crate::{
-    local_multiaddr_to_route, multiaddr_to_route, route_to_multiaddr, try_address_to_multiaddr,
-    DefaultAddress,
-};
-
-pub mod message;
+use crate::session::sessions::Sessions;
+use crate::session::Medic;
+use crate::{local_worker, DefaultAddress};
 
 mod credentials;
 mod forwarder;
+pub mod message;
 mod node_identities;
 mod node_services;
 mod policy;
@@ -298,12 +297,6 @@ impl NodeManagerTrustOptions {
     }
 }
 
-pub(crate) struct ConnectResult {
-    pub(crate) secure_channel: MultiAddr,
-    pub(crate) suffix: MultiAddr,
-    pub(crate) flow_control_id: Option<FlowControlId>,
-}
-
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
@@ -447,173 +440,74 @@ impl NodeManager {
     }
 
     /// Resolve project ID (if any), create secure channel (if needed) and create a tcp connection
-    ///
-    /// Returns the secure channel worker address (if any) and the remainder
-    /// of the address argument.
-    pub(crate) async fn connect(&mut self, connection: Connection<'_>) -> Result<ConnectResult> {
-        let add_default_consumers = connection.add_default_consumers;
-
-        let res = self.connect_impl(connection).await?;
-
-        if add_default_consumers {
-            if let Some(flow_control_id) = &res.flow_control_id {
-                self.flow_controls.add_consumer(
-                    &DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
-                    flow_control_id,
-                    FlowControlPolicy::ProducerAllowMultiple,
-                );
-                self.flow_controls.add_consumer(
-                    &DefaultAddress::UPPERCASE_SERVICE.into(),
-                    flow_control_id,
-                    FlowControlPolicy::ProducerAllowMultiple,
-                );
-                self.flow_controls.add_consumer(
-                    &DefaultAddress::ECHO_SERVICE.into(),
-                    flow_control_id,
-                    FlowControlPolicy::ProducerAllowMultiple,
-                );
-            }
-        }
-
-        Ok(res)
-    }
-    pub(crate) async fn connect_impl(
-        &mut self,
+    /// Returns [`ConnectionInstance`]
+    pub(crate) async fn connect(
+        node_manager: Arc<RwLock<NodeManager>>,
         connection: Connection<'_>,
-    ) -> Result<ConnectResult> {
-        let Connection {
-            ctx,
-            addr,
-            identity_name,
-            credential_name,
-            authorized_identities,
-            timeout,
-            ..
-        } = connection;
+    ) -> Result<ConnectionInstance> {
+        debug!("connecting to {}", &connection.addr);
+        let context = Arc::new(connection.ctx.async_try_clone().await?);
 
-        let transport = &self.tcp_transport;
+        let mut intermediary_services = vec![];
+        for protocol_value in connection.addr.iter() {
+            if protocol_value.code() == Service::CODE {
+                let local = protocol_value
+                    .cast::<Service>()
+                    .ok_or_else(|| ApiError::generic("invalid service address"))?;
+                intermediary_services.push(Address::new(LOCAL, &*local));
+            }
 
-        if let Some(p) = addr.first() {
-            if p.code() == Project::CODE {
-                let p = p
-                    .cast::<Project>()
-                    .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
-                let (a, i) = self.resolve_project(&p)?;
-                debug!(addr = %a, "creating secure channel");
-                let route = multiaddr_to_route(&a, transport, &self.flow_controls)
-                    .await
-                    .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                let i = Some(vec![i]);
-                let m = CredentialExchangeMode::Oneway;
-                let (sc_address, sc_flow_control_id) = self
-                    .create_secure_channel_impl(
-                        route.route,
-                        i,
-                        m,
-                        timeout,
-                        identity_name.map(|i| i.to_string()),
-                        ctx,
-                        credential_name.map(|c| c.to_string()),
-                    )
-                    .await?;
-                let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
-
-                let res = ConnectResult {
-                    secure_channel: try_address_to_multiaddr(&sc_address)?,
-                    suffix: a,
-                    flow_control_id: Some(sc_flow_control_id),
-                };
-
-                return Ok(res);
+            if !local_worker(&protocol_value.code())? {
+                break;
             }
         }
 
-        if let Some(pos1) = starts_with_host_tcp(addr) {
-            debug!(%addr, "creating a tcp connection");
-            let (a1, b1) = addr.split(pos1);
-            return match starts_with_secure(&b1) {
-                Some(pos2) => {
-                    let route = multiaddr_to_route(&a1, transport, &self.flow_controls)
-                        .await
-                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                    debug!(%addr, "creating a secure channel");
-                    let (a2, b2) = b1.split(pos2);
-                    let m = CredentialExchangeMode::Mutual;
-                    let r2 = local_multiaddr_to_route(&a2)
-                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                    let (sc_address, sc_flow_control_id) = self
-                        .create_secure_channel_impl(
-                            route![route.route, r2],
-                            authorized_identities.clone(),
-                            m,
-                            timeout,
-                            identity_name.map(|i| i.to_string()),
-                            ctx,
-                            credential_name.map(|c| c.to_string()),
-                        )
-                        .await?;
+        let tcp_transport = node_manager
+            .clone()
+            .read()
+            .await
+            .tcp_transport
+            .async_try_clone()
+            .await?;
 
-                    let res = ConnectResult {
-                        secure_channel: try_address_to_multiaddr(&sc_address)?,
-                        suffix: b2,
-                        flow_control_id: Some(sc_flow_control_id),
-                    };
+        let connection_instance =
+            ConnectionInstanceBuilder::new(connection.addr.clone(), connection.flow_controls)
+                .instantiate(ProjectInstantiator::new(
+                    context.clone(),
+                    node_manager.clone(),
+                    connection.timeout,
+                    connection.credential_name.map(|x| x.to_string()),
+                    connection.identity_name.map(|x| x.to_string()),
+                ))
+                .await?
+                .instantiate(PlainTcpInstantiator::new(tcp_transport))
+                .await?
+                .instantiate(SecureChannelInstantiator::new(
+                    context.clone(),
+                    node_manager.clone(),
+                    connection.timeout,
+                    connection.authorized_identities,
+                ))
+                .await?
+                .build();
 
-                    Ok(res)
-                }
-                None => {
-                    let route = multiaddr_to_route(addr, transport, &self.flow_controls)
-                        .await
-                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+        debug!("connected to {connection_instance:?}");
 
-                    let res = ConnectResult {
-                        secure_channel: route_to_multiaddr(&route.route)
-                            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?,
-                        suffix: Default::default(),
-                        flow_control_id: route.flow_control_id,
-                    };
-
-                    Ok(res)
-                }
-            };
+        // Every piece of the chain must be part of the session to allow communication
+        for service in intermediary_services {
+            connection_instance.add_consumer(&service);
         }
 
-        if Some(Secure::CODE) == addr.last().map(|p| p.code()) {
-            debug!(%addr, "creating secure channel");
-            let r = local_multiaddr_to_route(addr)
-                .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-            let m = CredentialExchangeMode::Mutual;
-            let (sc_address, sc_flow_control_id) = self
-                .create_secure_channel_impl(
-                    r,
-                    authorized_identities.clone(),
-                    m,
-                    timeout,
-                    None,
-                    ctx,
-                    None,
-                )
-                .await?;
-
-            let res = ConnectResult {
-                secure_channel: try_address_to_multiaddr(&sc_address)?,
-                suffix: Default::default(),
-                flow_control_id: Some(sc_flow_control_id),
-            };
-
-            return Ok(res);
+        if connection.add_default_consumers {
+            connection_instance.add_consumer(&DefaultAddress::SECURE_CHANNEL_LISTENER.into());
+            connection_instance.add_consumer(&DefaultAddress::UPPERCASE_SERVICE.into());
+            connection_instance.add_consumer(&DefaultAddress::ECHO_SERVICE.into());
         }
 
-        let res = ConnectResult {
-            secure_channel: Default::default(),
-            suffix: addr.clone(),
-            flow_control_id: None,
-        };
-
-        Ok(res)
+        Ok(connection_instance)
     }
 
-    fn resolve_project(&self, name: &str) -> Result<(MultiAddr, IdentityIdentifier)> {
+    pub(crate) fn resolve_project(&self, name: &str) -> Result<(MultiAddr, IdentityIdentifier)> {
         if let Some(info) = self.projects.get(name) {
             let node_route = info
                 .node_route

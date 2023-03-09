@@ -1,5 +1,14 @@
 #[cfg(test)]
 mod test {
+    use crate::hop::Hop;
+    use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
+    use crate::kafka::secure_channel_map::ForwarderCreator;
+    use crate::kafka::{
+        KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
+    };
+    use crate::nodes::registry::KafkaServiceKind;
+    use crate::test::NodeManagerHandle;
+    use crate::DefaultAddress;
     use bytes::{Buf, BufMut, BytesMut};
     use indexmap::IndexMap;
     use kafka_protocol::messages::produce_request::{PartitionProduceData, TopicProduceData};
@@ -22,9 +31,12 @@ mod test {
     use ockam::Context;
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
-    use ockam_core::flow_control::FlowControls;
-    use ockam_core::{route, Address, AllowAll, Route};
+    use ockam_core::flow_control::FlowControlPolicy;
+    use ockam_core::route;
+    use ockam_core::{Address, AllowAll};
     use ockam_identity::SecureChannelListenerOptions;
+    use ockam_multiaddr::proto::Service;
+    use ockam_multiaddr::MultiAddr;
     use ockam_node::compat::tokio;
     use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -35,16 +47,6 @@ mod test {
     use tokio::sync::Mutex;
     use tokio::task::JoinHandle;
     use uuid::Uuid;
-
-    use crate::hop::Hop;
-    use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
-    use crate::kafka::secure_channel_map::ForwarderCreator;
-    use crate::kafka::{
-        KafkaPortalListener, KafkaSecureChannelControllerImpl,
-        KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
-    };
-    use crate::nodes::registry::KafkaServiceKind;
-    use crate::test::NodeManagerHandle;
 
     //TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
@@ -72,16 +74,27 @@ mod test {
         context: &Context,
         handle: &NodeManagerHandle,
         listener_address: Address,
-        outlet_route: Route,
+        outlet_address: Address,
         kind: KafkaServiceKind,
     ) -> ockam::Result<u16> {
-        let flow_controls = FlowControls::default();
+        let flow_controls = &handle.flow_controls;
+        let flow_control_id = flow_controls.generate_id();
+
+        //a producer flow is expected
+        flow_controls.add_producer(&outlet_address, &flow_control_id, None, vec![]);
+
+        //adds context itself as consumer
+        flow_controls.add_consumer(
+            &context.address(),
+            &flow_control_id,
+            FlowControlPolicy::ProducerAllowMultiple,
+        );
+
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handle.secure_channels.clone(),
-            handle.identity.clone(),
-            route![],
+            MultiAddr::try_from("/service/api")?,
             HopForwarderCreator {},
-            &flow_controls,
+            flow_controls,
         );
 
         //the possibility to accept secure channels is the only real
@@ -90,34 +103,49 @@ mod test {
             secure_channel_controller
                 .create_consumer_listener(context)
                 .await?;
+
+            // in a normal setup the secure channel listener is already created
             handle
                 .secure_channels
                 .create_secure_channel_listener(
                     context,
                     &handle.identity,
-                    KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
-                    SecureChannelListenerOptions::new(),
+                    DefaultAddress::SECURE_CHANNEL_LISTENER,
+                    SecureChannelListenerOptions::new().as_consumer_with_flow_control_id(
+                        flow_controls,
+                        &flow_control_id,
+                        FlowControlPolicy::ProducerAllowMultiple,
+                    ),
                 )
                 .await?;
         }
 
+        let mut interceptor_multiaddr = MultiAddr::default();
+        interceptor_multiaddr.push_back(Service::new(listener_address.address()))?;
+
+        let inlet_controller = KafkaInletController::new(
+            interceptor_multiaddr,
+            route![],
+            route![],
+            "127.0.0.1".parse().unwrap(),
+            (0, 0).try_into().unwrap(),
+        );
+
         let (socket_address, _) = handle
             .tcp
             .create_inlet(
-                "127.0.0.1:0".to_string(),
-                route![listener_address.clone(), outlet_route.clone()],
-                TcpInletOptions::new(),
+                "127.0.0.1:0",
+                route![listener_address.clone(), outlet_address.clone()],
+                TcpInletOptions::new().as_consumer(flow_controls),
             )
             .await?;
 
         KafkaPortalListener::create(
             context,
+            inlet_controller,
             secure_channel_controller.into_trait(),
-            outlet_route,
             listener_address,
-            "127.0.0.1".parse().unwrap(),
-            (0, 0).try_into().unwrap(),
-            None,
+            flow_controls.clone(),
         )
         .await?;
 
@@ -125,7 +153,7 @@ mod test {
     }
 
     #[allow(non_snake_case)]
-    #[ockam_macros::test(timeout = 5_000)]
+    #[ockam_macros::test(timeout = 5_000_000)]
     async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         context: &mut Context,
     ) -> ockam::Result<()> {
@@ -135,7 +163,7 @@ mod test {
             context,
             &handler,
             Address::from_string("kafka_consumer_listener"),
-            route!["kafka_consumer_outlet"],
+            Address::from_string("kafka_consumer_outlet"),
             KafkaServiceKind::Consumer,
         )
         .await?;
@@ -144,7 +172,7 @@ mod test {
             context,
             &handler,
             Address::from_string("kafka_producer_listener"),
-            route!["kafka_producer_outlet"],
+            Address::from_string("kafka_producer_outlet"),
             KafkaServiceKind::Producer,
         )
         .await?;

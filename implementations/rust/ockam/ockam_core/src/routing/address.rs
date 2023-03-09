@@ -3,10 +3,13 @@ use crate::compat::{
     string::{String, ToString},
     vec::Vec,
 };
+#[cfg(feature = "tag")]
+use crate::TypeTag;
 use crate::{AddressParseError, AddressParseErrorKind, Result, TransportType, LOCAL};
 use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
 use core::str::from_utf8;
+use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// A generic address type.
@@ -28,11 +31,16 @@ use serde::{Deserialize, Serialize};
 /// * `"0#alice"` represents a local worker with the address: `alice`.
 /// * `"1#carol"` represents a remote worker with the address `carol`, reachable over TCP transport.
 ///
-#[derive(Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Decode, Encode, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[rustfmt::skip]
+#[cbor(map)]
 pub struct Address {
-    tt: TransportType,
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[n(0)] tag: TypeTag<4977955>,
+    #[n(1)] tt: TransportType,
     // It's binary but in most cases we assume it to be an UTF-8 string
-    inner: Vec<u8>,
+    #[n(2)] inner: Vec<u8>,
 }
 
 impl Address {
@@ -48,6 +56,8 @@ impl Address {
     /// ```
     pub fn new<S: Into<String>>(tt: TransportType, data: S) -> Self {
         Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             tt,
             inner: data.into().as_bytes().to_vec(),
         }
@@ -154,6 +164,8 @@ impl core::str::FromStr for Address {
         // `#` separator, so the type needs to be implicitly `= 0`
         if vec.len() == 1 {
             Ok(Address {
+                #[cfg(feature = "tag")]
+                tag: TypeTag,
                 tt: LOCAL,
                 inner: vec.remove(0).as_bytes().to_vec(),
             })
@@ -163,6 +175,8 @@ impl core::str::FromStr for Address {
         else if vec.len() == 2 {
             match str::parse(vec.remove(0)) {
                 Ok(tt) => Ok(Address {
+                    #[cfg(feature = "tag")]
+                    tag: TypeTag,
                     tt: TransportType::new(tt),
                     inner: vec.remove(0).as_bytes().to_vec(),
                 }),
@@ -217,6 +231,8 @@ impl<'a> From<&'a str> for Address {
 impl From<Vec<u8>> for Address {
     fn from(data: Vec<u8>) -> Self {
         Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             tt: LOCAL,
             inner: data,
         }
@@ -225,13 +241,20 @@ impl From<Vec<u8>> for Address {
 
 impl From<(TransportType, Vec<u8>)> for Address {
     fn from((tt, data): (TransportType, Vec<u8>)) -> Self {
-        Self { tt, inner: data }
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            tt,
+            inner: data,
+        }
     }
 }
 
 impl<'a> From<(TransportType, &'a str)> for Address {
     fn from((tt, data): (TransportType, &'a str)) -> Self {
         Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             tt,
             inner: data.as_bytes().to_vec(),
         }
@@ -253,6 +276,8 @@ impl From<(TransportType, String)> for Address {
 impl<'a> From<&'a [u8]> for Address {
     fn from(data: &'a [u8]) -> Self {
         Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             tt: LOCAL,
             inner: data.to_vec(),
         }
@@ -262,6 +287,8 @@ impl<'a> From<&'a [u8]> for Address {
 impl<'a> From<&'a [&u8]> for Address {
     fn from(data: &'a [&u8]) -> Self {
         Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             tt: LOCAL,
             inner: data.iter().map(|x| **x).collect(),
         }
@@ -287,6 +314,8 @@ fn parse_addr_simple() {
     assert_eq!(
         addr,
         Address {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             tt: LOCAL,
             inner: "local_friend".as_bytes().to_vec()
         }
@@ -299,6 +328,8 @@ fn parse_addr_with_type() {
     assert_eq!(
         addr,
         Address {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             tt: TransportType::new(1),
             inner: "remote_friend".as_bytes().to_vec()
         }

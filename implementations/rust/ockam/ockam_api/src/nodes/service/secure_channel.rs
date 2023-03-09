@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
-use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
     CredentialExchangeMode, DeleteSecureChannelListenerRequest,
@@ -23,6 +22,8 @@ use ockam_core::route;
 use crate::cli_state::traits::StateTrait;
 use crate::cli_state::CliStateError;
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
+use crate::nodes::connection::Connection;
+use crate::nodes::service::invalid_multiaddr_error;
 use crate::nodes::service::NodeIdentities;
 use ockam::identity::{
     Identities, IdentitiesVault, Identity, IdentityIdentifier, SecureChannelListenerOptions,
@@ -39,6 +40,7 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
+        flow_control_id: Option<FlowControlId>,
     ) -> Result<(Address, FlowControlId)> {
         // If channel was already created, do nothing.
         if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
@@ -52,7 +54,8 @@ impl NodeManager {
 
         debug!(%sc_route, "Creating secure channel");
         let timeout = timeout.unwrap_or(Duration::from_secs(120));
-        let sc_flow_control_id = self.flow_controls.generate_id();
+        let sc_flow_control_id =
+            flow_control_id.unwrap_or_else(|| self.flow_controls.generate_id());
         let options = SecureChannelOptions::as_producer(&self.flow_controls, &sc_flow_control_id);
 
         // Just add ourself as consumer for the next hop if it's a producer
@@ -88,7 +91,7 @@ impl NodeManager {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(super) async fn create_secure_channel_impl(
+    pub(crate) async fn create_secure_channel_impl(
         &mut self,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
@@ -97,6 +100,7 @@ impl NodeManager {
         identity_name: Option<String>,
         ctx: &Context,
         credential_name: Option<String>,
+        flow_control_id: Option<FlowControlId>,
     ) -> Result<(Address, FlowControlId)> {
         let identity = self.get_identity(None, identity_name.clone()).await?;
         let provided_credential = if let Some(credential_name) = credential_name {
@@ -118,6 +122,7 @@ impl NodeManager {
                 sc_route,
                 authorized_identifiers,
                 timeout,
+                flow_control_id,
             )
             .await?;
 
@@ -379,7 +384,6 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_, '_>>> {
-        let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelRequest {
             addr,
             authorized_identifiers,
@@ -405,25 +409,38 @@ impl NodeManagerWorker {
             None => None,
         };
 
+        let flow_controls;
+        {
+            let node_manager = self.node_manager.read().await;
+            flow_controls = node_manager.flow_controls.clone();
+        }
+
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
-        let tcp_route = multiaddr_to_route(
-            &addr,
+
+        let connection = Connection::new(ctx, &addr, &flow_controls);
+        let connection_instance =
+            NodeManager::connect(self.node_manager.clone(), connection).await?;
+
+        let mut node_manager = self.node_manager.write().await;
+        let result = multiaddr_to_route(
+            &connection_instance.normalized_addr,
             &node_manager.tcp_transport,
-            &node_manager.flow_controls,
+            node_manager.flow_controls(),
         )
         .await
-        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+        .ok_or_else(invalid_multiaddr_error)?;
 
         let (sc_address, sc_flow_control_id) = node_manager
             .create_secure_channel_impl(
-                tcp_route.route,
+                result.route,
                 authorized_identifiers,
                 credential_exchange_mode,
                 timeout,
                 identity.map(|i| i.to_string()),
                 ctx,
                 credential_name.map(|c| c.to_string()),
+                None,
             )
             .await?;
 

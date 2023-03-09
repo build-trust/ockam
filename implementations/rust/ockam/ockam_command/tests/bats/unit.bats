@@ -342,6 +342,18 @@ teardown() {
   assert [ "$output" == "$(to_uppercase "$msg")" ]
 }
 
+@test "secure channel - send message directly using secure multiaddr" {
+    run "$OCKAM" node create n1
+    assert_success
+    run "$OCKAM" node create n2
+    assert_success
+
+    msg=$(random_str)
+    run "$OCKAM" message send "$msg" --timeout 5 --from /node/n1 --to "/node/n2/secure/api/service/uppercase"
+    assert_success
+    assert_output "$(to_uppercase "$msg")"
+}
+
 # ===== RELAY
 
 @test "relay - create relay with default parameters" {

@@ -15,6 +15,7 @@ use ockam_abac::Resource;
 use ockam_api::nodes::models::portal::CreateInlet;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_core::api::Request;
+use ockam_core::route;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -86,9 +87,9 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
             if cmd.authorized.is_some() {
                 return Err(anyhow!("--authorized can not be used with project addresses").into());
             }
-            CreateInlet::via_project(cmd.from, cmd.to)
+            CreateInlet::via_project(cmd.from, cmd.to, route![], route![])
         } else {
-            CreateInlet::to_node(cmd.from, cmd.to, cmd.authorized)
+            CreateInlet::to_node(cmd.from, cmd.to, route![], route![], cmd.authorized)
         };
         if let Some(a) = cmd.alias {
             payload.set_alias(a)

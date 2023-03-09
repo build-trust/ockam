@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::kafka::inlet_map::KafkaInletMap;
+    use crate::kafka::inlet_controller::KafkaInletController;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
     use crate::kafka::protocol_aware::{Interceptor, UniqueSecureChannelId};
     use crate::kafka::secure_channel_map::{KafkaEncryptedContent, KafkaSecureChannelController};
@@ -10,8 +10,10 @@ mod test {
     use kafka_protocol::messages::{ApiVersionsRequest, MetadataRequest, MetadataResponse};
     use kafka_protocol::messages::{ApiVersionsResponse, RequestHeader, ResponseHeader};
     use kafka_protocol::protocol::{Builder, StrBytes};
+    use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
-    use ockam_core::{async_trait, route};
+    use ockam_core::route;
+    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
     struct DummySecureChannelController;
@@ -60,9 +62,11 @@ mod test {
             Default::default(),
         );
 
-        let inlet_map = KafkaInletMap::new(
+        let inlet_map = KafkaInletController::new(
+            MultiAddr::default(),
             route![],
-            "invalid-address".to_string(),
+            route![],
+            [127, 0, 0, 1].into(),
             PortRange::new(0, 0).unwrap(),
         );
 

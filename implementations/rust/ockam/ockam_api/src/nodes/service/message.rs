@@ -48,7 +48,7 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::{Context, MessageSendReceiveOptions};
 
-    use crate::nodes::NodeManagerWorker;
+    use crate::nodes::{NodeManager, NodeManagerWorker};
 
     const TARGET: &str = "ockam_api::message";
 
@@ -64,20 +64,22 @@ mod node {
             let msg = req_body.message.to_vec();
             let msg_length = msg.len();
 
-            let mut node_manager = self.node_manager.write().await;
-            let connection = Connection::new(ctx, &multiaddr);
-            let connection = node_manager.connect(connection).await?;
-            let full = connection.secure_channel.try_with(&connection.suffix)?;
-            let route =
-                local_multiaddr_to_route(&full).ok_or(ApiError::generic("Invalid route"))?;
+            let flow_controls = self.node_manager.read().await.flow_controls.clone();
 
-            trace!(target: TARGET, route = %req_body.route, msg_l = %msg_length, "sending message");
+            let connection = Connection::new(ctx, &multiaddr, &flow_controls);
+            let connection_instance =
+                NodeManager::connect(self.node_manager.clone(), connection).await?;
+
+            let route = local_multiaddr_to_route(&connection_instance.normalized_addr)
+                .ok_or_else(|| ApiError::generic("Invalid route"))?;
+
+            trace!(target: TARGET, route = %route, msg_l = %msg_length, "sending message");
 
             let res = ctx
                 .send_and_receive_extended::<Vec<u8>>(
                     route,
                     msg,
-                    MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
+                    MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
                 )
                 .await;
             match res {

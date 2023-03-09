@@ -3,8 +3,10 @@ use anyhow::anyhow;
 use ockam::TcpTransport;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Tcp, Worker};
-use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_multiaddr::proto::{
+    DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
+};
+use ockam_multiaddr::{Code, MultiAddr, Protocol};
 use ockam_transport_tcp::TcpConnectionOptions;
 use std::net::{SocketAddrV4, SocketAddrV6};
 
@@ -45,6 +47,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
 pub struct MultiAddrToRouteResult {
     pub flow_control_id: Option<FlowControlId>,
     pub route: Route,
+    pub tcp_worker: Option<Address>,
 }
 
 pub async fn multiaddr_to_route(
@@ -57,6 +60,7 @@ pub async fn multiaddr_to_route(
 
     let mut flow_control_id = None;
     let mut number_of_tcp_hops = 0;
+    let mut tcp_worker = None;
 
     while let Some(p) = it.next() {
         match p.code() {
@@ -79,6 +83,8 @@ pub async fn multiaddr_to_route(
                 };
 
                 let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                tcp_worker = Some(addr.clone());
+
                 number_of_tcp_hops += 1;
                 rb = rb.append(addr)
             }
@@ -101,6 +107,8 @@ pub async fn multiaddr_to_route(
                 };
 
                 let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                tcp_worker = Some(addr.clone());
+
                 number_of_tcp_hops += 1;
                 rb = rb.append(addr)
             }
@@ -122,6 +130,8 @@ pub async fn multiaddr_to_route(
                             .connect(format!("{}:{}", &*host, *port), options)
                             .await
                             .ok()?;
+                        tcp_worker = Some(addr.clone());
+
                         number_of_tcp_hops += 1;
                         rb = rb.append(addr);
                         let _ = it.next();
@@ -150,6 +160,7 @@ pub async fn multiaddr_to_route(
 
     Some(MultiAddrToRouteResult {
         flow_control_id,
+        tcp_worker,
         route: rb.into(),
     })
 }
@@ -308,6 +319,23 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
     }
 }
 
+/// Tells whether the input [`Code`] references a local worker.
+pub fn local_worker(code: &Code) -> Result<bool> {
+    match *code {
+        Node::CODE
+        | Space::CODE
+        | Project::CODE
+        | DnsAddr::CODE
+        | Ip4::CODE
+        | Ip6::CODE
+        | Tcp::CODE
+        | Secure::CODE => Ok(false),
+        Worker::CODE | Service::CODE => Ok(true),
+
+        _ => Err(ApiError::message(format!("unknown transport type: {code}"))),
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
@@ -319,6 +347,7 @@ pub mod test {
     use ockam::identity::{Identity, SecureChannels};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
+    use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
     use ockam_node::compat::asynchronous::RwLock;
     use ockam_node::Context;
@@ -335,6 +364,7 @@ pub mod test {
         pub tcp: TcpTransport,
         pub secure_channels: Arc<SecureChannels>,
         pub identity: Identity,
+        pub flow_controls: FlowControls,
     }
 
     impl Drop for NodeManagerHandle {
@@ -367,12 +397,15 @@ pub mod test {
             .with_identities_vault(Arc::new(vault))
             .with_identities_repository(cli_state.identities.identities_repository().await?)
             .build();
+
         let identity = secure_channels
             .identities()
             .identities_creation()
             .create_identity()
             .await
             .unwrap();
+
+        drop(secure_channels);
         let config = IdentityConfig::new(&identity).await;
         cli_state.identities.create(&identity_name, config).unwrap();
 
@@ -400,6 +433,8 @@ pub mod test {
 
         let mut node_manager_worker = NodeManagerWorker::new(node_manager);
         let node_manager = node_manager_worker.get().clone();
+        let flow_controls = node_manager.read().await.flow_controls.clone();
+        let secure_channels = node_manager.read().await.secure_channels.clone();
         context
             .start_worker(
                 NODEMANAGER_ADDR,
@@ -415,6 +450,7 @@ pub mod test {
             tcp: tcp.async_try_clone().await?,
             secure_channels: secure_channels.clone(),
             identity: identity.clone(),
+            flow_controls,
         })
     }
 }
