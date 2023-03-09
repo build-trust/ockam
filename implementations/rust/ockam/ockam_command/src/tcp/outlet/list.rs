@@ -1,6 +1,7 @@
 use crate::node::NodeOpts;
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts};
+use anyhow::anyhow;
 use clap::Args;
 use ockam_api::nodes::models::portal::OutletList;
 use ockam_api::{error::ApiError, route_to_multiaddr};
@@ -32,9 +33,15 @@ async fn run_impl(
     rpc.request(Request::get("/node/outlet")).await?;
     let response = rpc.parse_response::<OutletList>()?;
 
+    if response.list.is_empty() {
+        return Err(crate::Error::new(
+            exitcode::IOERR,
+            anyhow!("No Outlets found on this system!"),
+        ));
+    }
+
     for outlet in &response.list {
         println!("Outlet:");
-
         println!("  Alias: {}", outlet.alias);
         let addr = route_to_multiaddr(&route![outlet.worker_addr.to_string()])
             .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;

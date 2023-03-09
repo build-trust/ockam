@@ -1,8 +1,7 @@
 use crate::node::NodeOpts;
+use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
-use crate::Result;
-use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
 use ockam_api::nodes::models::portal::DeleteOutlet;
@@ -48,12 +47,4 @@ fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a, 
     let payload = DeleteOutlet::new(cmd.alias);
     let request = Request::delete("/node/outlet").body(payload);
     Ok(request)
-}
-
-fn alias_parser(arg: &str) -> Result<String> {
-    if arg.contains(':') {
-        Err(anyhow!("an outlet alias must not contain ':' characters").into())
-    } else {
-        Ok(arg.to_string())
-    }
 }

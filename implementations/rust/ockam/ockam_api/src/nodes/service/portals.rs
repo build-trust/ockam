@@ -258,14 +258,14 @@ impl NodeManagerWorker {
 
         info!(%alias, "Handling request to delete inlet portal");
         if let Some(inlet_to_delete) = node_manager.registry.inlets.remove(&alias) {
-            info!(%alias, "Sucessfully removed inlet from node registry");
+            debug!(%alias, "Sucessfully removed inlet from node registry");
             let was_stopped = node_manager
                 .tcp_transport
                 .stop_inlet(inlet_to_delete.worker_addr.clone())
                 .await
                 .is_ok();
             if was_stopped {
-                info!(%alias, "Successfully stopped inlet");
+                debug!(%alias, "Successfully stopped inlet");
                 Ok(Response::ok(req.id()).body(InletStatus::new(
                     inlet_to_delete.bind_addr,
                     inlet_to_delete.worker_addr.to_string(),
@@ -377,14 +377,14 @@ impl NodeManagerWorker {
 
         info!(%alias, "Handling request to delete outlet portal");
         if let Some(outlet_to_delete) = node_manager.registry.outlets.remove(&alias) {
-            info!(%alias, "Successfully removed outlet from node registry");
+            debug!(%alias, "Successfully removed outlet from node registry");
             let was_stopped = node_manager
                 .tcp_transport
                 .stop_outlet(outlet_to_delete.worker_addr.clone())
                 .await
                 .is_ok();
             if was_stopped {
-                info!(%alias, "Successfully stopped outlet");
+                debug!(%alias, "Successfully stopped outlet");
                 Ok(Response::ok(req.id()).body(OutletStatus::new(
                     outlet_to_delete.tcp_addr,
                     outlet_to_delete.worker_addr.to_string(),

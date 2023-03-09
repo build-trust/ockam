@@ -1,6 +1,7 @@
 use crate::node::NodeOpts;
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
+use anyhow::anyhow;
 use clap::Args;
 use ockam_api::nodes::models;
 use ockam_api::route_to_multiaddr;
@@ -28,6 +29,13 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
     rpc.request(Request::get("/node/inlet")).await?;
     let response = rpc.parse_response::<models::portal::InletList>()?;
+
+    if response.list.is_empty() {
+        return Err(crate::Error::new(
+            exitcode::IOERR,
+            anyhow!("No Inlets found on this system!"),
+        ));
+    }
 
     for inlet_infor in response.list.iter() {
         println!("Inlet:");
