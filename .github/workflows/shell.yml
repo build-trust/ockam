@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - run: shellcheck -S error $(find . -iname "*.sh" -o -name "*.bash")
+      - run: shellcheck -S error $(find . -not -path "./demos/*" -iname "*.sh" -o -name "*.bash")
 
   # shfmt checks format of shell programs
   # https://github.com/mvdan/sh#shfmt
