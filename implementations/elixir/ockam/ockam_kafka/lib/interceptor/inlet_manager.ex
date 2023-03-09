@@ -9,12 +9,12 @@ defmodule Ockam.Kafka.Interceptor.InletManager do
 
   require Logger
 
-  def start_link([base_port, allowed_ports, base_route, outlet_prefix]) do
+  def start_link([base_port, allowed_ports, base_route, outlet_prefix], name \\ __MODULE__) do
     GenServer.start_link(
       __MODULE__,
       [base_port, allowed_ports, base_route, outlet_prefix],
       ## TODO: make this optional
-      name: __MODULE__
+      name: name
     )
   end
 

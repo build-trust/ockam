@@ -88,7 +88,9 @@ defmodule Ockam.Worker do
       ## handle_message definition may not return {:error, ...} and it shouldn't fail because of that
       @dialyzer {:no_match, handle_info: 2, handle_continue: 2}
 
-      def create(options \\ [], timeout \\ @default_timeout) when is_list(options) do
+      def create(options \\ [], timeout \\ @default_timeout)
+
+      def create(options, timeout) when is_list(options) do
         Ockam.Worker.create(__MODULE__, options, timeout)
       end
 
@@ -146,7 +148,7 @@ defmodule Ockam.Worker do
         Ockam.Worker.is_authorized(message, state)
       end
 
-      defoverridable setup: 2, address_prefix: 1, is_authorized: 2
+      defoverridable setup: 2, address_prefix: 1, is_authorized: 2, create: 2
     end
   end
 

@@ -205,6 +205,7 @@ defmodule Ockam.Identity.SecureChannel do
   This identity is added to all messages coming from the channel
   """
   def get_remote_identity(worker) do
+    ## TODO: make sure handshake is finished
     Ockam.Worker.call(worker, :get_remote_identity)
   end
 
@@ -214,6 +215,15 @@ defmodule Ockam.Identity.SecureChannel do
   This identifier is added to all messages coming from the channel
   """
   def get_remote_identity_id(worker) do
+    ## TODO: make sure handshake is finished
     Ockam.Worker.call(worker, :get_remote_identity_id)
+  end
+
+  @doc """
+  Stop secure channel and it's remote endpoint
+  """
+  def disconnect(worker) do
+    ## TODO: make sure handshake is finished
+    Ockam.Worker.call(worker, :disconnect)
   end
 end

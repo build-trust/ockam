@@ -107,6 +107,7 @@ defmodule Ockam.Kafka.Interceptor.Test do
   alias Ockam.Kafka.Interceptor.Test.FakeOutlet
 
   alias Ockam.Kafka.Interceptor.InletManager
+  alias Ockam.Kafka.Interceptor.OutletManager
 
   @api_metadata 3
   @api_version 12
@@ -129,29 +130,17 @@ defmodule Ockam.Kafka.Interceptor.Test do
         peer_route: bootstrap_route
       )
 
-    {:ok, _pid} =
-      Ockam.Kafka.Interceptor.InletManager.start_link([
-        base_port,
-        allowed_ports,
-        outlet_route,
-        outlet_prefix
-      ])
+    start_supervised!(
+      {InletManager,
+       [
+         base_port,
+         allowed_ports,
+         outlet_route,
+         outlet_prefix
+       ]}
+    )
 
-    {:ok, _pid} = Ockam.Kafka.Interceptor.OutletManager.start_link([outlet_prefix, false, []])
-
-    on_exit(fn ->
-      try do
-        GenServer.stop(OutletManager)
-      catch
-        _type, _reason -> :ok
-      end
-
-      try do
-        GenServer.stop(InletManager)
-      catch
-        _type, _reason -> :ok
-      end
-    end)
+    start_supervised!({OutletManager, [outlet_prefix, false, []]})
 
     {:ok, _pid, "kafka_interceptor"} =
       Ockam.Transport.Portal.Interceptor.start_link(

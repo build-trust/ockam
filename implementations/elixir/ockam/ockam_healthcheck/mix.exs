@@ -50,7 +50,8 @@ defmodule Ockam.Healthcheck.MixProject do
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:ockam_services, path: "../ockam_services"},
       {:ockam_metrics, path: "../ockam_metrics"},
-      {:sched_ex, "~> 1.0"}
+      {:sched_ex, "~> 1.0"},
+      {:jason, "~> 1.3"}
     ]
   end
 

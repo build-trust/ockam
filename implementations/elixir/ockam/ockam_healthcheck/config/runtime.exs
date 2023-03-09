@@ -70,22 +70,39 @@ config :ockam_services,
   ## Start services by default
   services: identity_sidecar_services
 
-## Healthcheck config
+## Healthcheck targets config
+targets_config = System.get_env("HEALTHCHECK_TARGETS", "[]")
 
-node_host = System.get_env("HEALTHCHECK_NODE_HOST", "localhost")
-node_port = String.to_integer(System.get_env("HEALTHCHECK_NODE_PORT", "4000"))
+targets =
+  case Ockam.Healthcheck.Application.parse_config(targets_config) do
+    {:ok, targets} ->
+      targets
 
-storage_path = System.get_env("STORAGE", "/tmp/ockam_healthcheck")
+    {:error, reason} ->
+      IO.puts(
+        :stderr,
+        "Invalid targets configuration #{inspect(targets_config)} : #{inspect(reason)}"
+      )
 
-api_worker = System.get_env("HEALTHCHECK_API_WORKER", "api")
-ping_worker = System.get_env("HEALTHCHECK_PING_WORKER", "healthcheck")
+      exit(:invalid_config)
+  end
 
 crontab = System.get_env("HEALTHCHECK_CRONTAB")
 
+identity_source =
+  case System.get_env("HEALTHCHECK_IDENTITY_SOURCE", "function") do
+    "function" ->
+      :function
+
+    "file" ->
+      :file
+  end
+
+identity_file = System.get_env("HEALTHCHECK_IDENTITY_FILE")
+
 config :ockam_healthcheck,
   crontab: crontab,
-  node_host: node_host,
-  node_port: node_port,
-  storage_path: storage_path,
-  api_worker: api_worker,
-  ping_worker: ping_worker
+  targets: targets,
+  identity_source: identity_source,
+  identity_file: identity_file,
+  identity_function: &Ockam.Healthcheck.generate_identity/0

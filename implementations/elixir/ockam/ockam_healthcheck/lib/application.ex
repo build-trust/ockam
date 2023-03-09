@@ -2,8 +2,9 @@ defmodule Ockam.Healthcheck.Application do
   @moduledoc """
   Main application for Ockam Healthcheck
   """
-
   use Application
+
+  alias Ockam.Healthcheck.Target
 
   require Logger
 
@@ -14,14 +15,51 @@ defmodule Ockam.Healthcheck.Application do
     Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
   end
 
+  def parse_config(config_json) when is_binary(config_json) do
+    case Jason.decode(config_json) do
+      {:ok, targets} when is_list(targets) ->
+        Enum.reduce(targets, {:ok, []}, fn
+          target, {:ok, targets} ->
+            case target do
+              %{
+                "name" => name,
+                "host" => host,
+                "port" => port
+              }
+              when is_integer(port) ->
+                api_worker = Map.get(target, "api_worker", "api")
+                healthcheck_worker = Map.get(target, "healthcheck_worker", "healthcheck")
+
+                {:ok,
+                 [
+                   %Target{
+                     name: name,
+                     host: host,
+                     port: port,
+                     api_worker: api_worker,
+                     healthcheck_worker: healthcheck_worker
+                   }
+                   | targets
+                 ]}
+
+              other ->
+                {:error, {:invalid_target, other}}
+            end
+
+          _target, {:error, reason} ->
+            {:error, reason}
+        end)
+
+      {:ok, other} ->
+        {:error, {:invalid_config, other}}
+
+      {:error, reason} ->
+        {:error, {:invalid_config, reason}}
+    end
+  end
+
   def healthcheck_schedule() do
-    ## TODO: crontab resolution is per minute
-    ## maybe we can use some other tool to schedule healthchecks?
     tab = Application.get_env(:ockam_healthcheck, :crontab)
-    node_host = Application.get_env(:ockam_healthcheck, :node_host)
-    node_port = Application.get_env(:ockam_healthcheck, :node_port)
-    api_worker = Application.get_env(:ockam_healthcheck, :api_worker)
-    ping_worker = Application.get_env(:ockam_healthcheck, :ping_worker)
 
     case tab do
       nil ->
@@ -30,30 +68,17 @@ defmodule Ockam.Healthcheck.Application do
       _string ->
         [
           %{
-            id: "secure_channel_healthcheck",
+            id: "healthcheck_schedule",
             start:
               {SchedEx, :run_every,
                [
                  Ockam.Healthcheck,
-                 :check_node,
-                 [
-                   node_host,
-                   node_port,
-                   api_worker,
-                   ping_worker
-                 ],
+                 :check_targets,
+                 [],
                  tab
                ]}
           }
         ]
     end
-  end
-
-  def check_node() do
-    node_host = Application.get_env(:ockam_healthcheck, :node_host)
-    node_port = Application.get_env(:ockam_healthcheck, :node_port)
-    api_worker = Application.get_env(:ockam_healthcheck, :api_worker)
-    ping_worker = Application.get_env(:ockam_healthcheck, :ping_worker)
-    Ockam.Healthcheck.check_node(node_host, node_port, api_worker, ping_worker)
   end
 end
