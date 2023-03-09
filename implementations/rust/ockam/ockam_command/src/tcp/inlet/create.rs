@@ -1,10 +1,11 @@
 use crate::node::default_node_name;
+use crate::tcp::util::alias_parser;
 use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, node_rpc, process_nodes_multiaddr,
     RpcBuilder,
 };
-use crate::Result;
-use crate::{help, CommandGlobalOpts};
+use crate::{help, CommandGlobalOpts, Result};
+
 use anyhow::anyhow;
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
@@ -83,12 +84,4 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
     rpc.parse_response::<InletStatus>()?;
 
     Ok(())
-}
-
-fn alias_parser(arg: &str) -> Result<String> {
-    if arg.contains(':') {
-        Err(anyhow!("an inlet alias must not contain ':' characters").into())
-    } else {
-        Ok(arg.to_string())
-    }
 }

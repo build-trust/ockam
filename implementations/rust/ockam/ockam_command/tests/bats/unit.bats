@@ -341,8 +341,8 @@ teardown() {
   assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
 }
 
-@test "portals - delete a tcp outlet" {
-  port=5000
+@test "portals - tcp outlet CRUD" {
+  port=9000
   run --separate-stderr "$OCKAM" node create n1
   assert_success
 
@@ -358,9 +358,9 @@ teardown() {
   assert_output --partial "NotFound"
 }
 
-@test "portals - delete a tcp inlet" {
-  outlet_port=5000
-  inlet_port=6000
+@test "portals - tcp inlet CRUD" {
+  outlet_port=7000
+  inlet_port=8000
 
   # Create nodes for inlet/outlet pair
   run --separate-stderr "$OCKAM" node create n1
