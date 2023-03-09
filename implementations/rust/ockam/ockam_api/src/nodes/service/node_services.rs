@@ -5,10 +5,10 @@ use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::identity::IdentityService;
 use crate::kafka::{
-    KafkaPortalListener, KafkaSecureChannelControllerImpl, ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS,
-    ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+    KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
+    ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS, ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
 };
-use crate::nodes::connection::Connection;
+use crate::nodes::models::portal::CreateInlet;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
@@ -24,21 +24,21 @@ use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
+use crate::DefaultAddress;
 use crate::{actions, resources};
-use crate::{local_multiaddr_to_route, DefaultAddress};
-use core::time::Duration;
 use minicbor::Decoder;
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
+use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, AllowAll, IncomingAccessControl};
 use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
-use ockam_transport_tcp::TcpInletOptions;
+use std::net::IpAddr;
 
 use super::NodeManagerWorker;
 
@@ -418,102 +418,6 @@ impl NodeManager {
             .insert(addr, OktaIdentityProviderServiceInfo::default());
         Ok(())
     }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(super) async fn start_kafka_service_impl<'a>(
-        &mut self,
-        context: &Context,
-        project_name: String,
-        local_interceptor_address: Address,
-        bind_ip: String,
-        server_bootstrap_port: u16,
-        brokers_port_range: (u16, u16),
-        project_route_multiaddr: MultiAddr,
-        kind: KafkaServiceKind,
-    ) -> Result<()> {
-        let connection = Connection::new(context, &project_route_multiaddr)
-            .with_authorized_identity(self.identity.identifier())
-            .with_timeout(Duration::from_secs(60))
-            .add_default_consumers();
-
-        let connection = self.connect(connection).await?;
-
-        let flow_control_id = connection
-            .flow_control_id
-            .ok_or_else(|| ApiError::generic("empty connect flow_control_id"))?;
-
-        let project_multiaddr = connection.secure_channel.try_with(&connection.suffix)?;
-        let project_route = local_multiaddr_to_route(&project_multiaddr)
-            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-
-        let bootstrap_address_route = route![
-            local_interceptor_address.clone(),
-            project_route.clone(),
-            ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-            ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS
-        ];
-
-        let interceptor_route = route![
-            local_interceptor_address.clone(),
-            project_route.clone(),
-            ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-        ];
-
-        debug!("bootstrap_address_route: {bootstrap_address_route:?}");
-        debug!("interceptor_route: {interceptor_route:?}");
-        debug!("project_route: {project_route:?}");
-
-        // override default policy to allow incoming packets from the project
-        let (_addr, identity_identifier) = self.resolve_project(&project_name)?;
-        self.policies
-            .set_policy(
-                &resources::INLET,
-                &actions::HANDLE_MESSAGE,
-                &eq([
-                    ident("subject.identifier"),
-                    str(identity_identifier.to_string()),
-                ]),
-            )
-            .await?;
-
-        self.tcp_transport
-            .create_inlet(
-                format!("{}:{}", &bind_ip, server_bootstrap_port),
-                bootstrap_address_route,
-                TcpInletOptions::new(),
-            )
-            .await?;
-
-        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
-            self.secure_channels.clone(),
-            self.identity.clone(),
-            project_route,
-            &self.flow_controls,
-        );
-
-        if let KafkaServiceKind::Consumer = kind {
-            secure_channel_controller
-                .create_consumer_listener(context)
-                .await?;
-        }
-
-        KafkaPortalListener::create(
-            context,
-            secure_channel_controller.into_trait(),
-            interceptor_route,
-            local_interceptor_address.clone(),
-            bind_ip,
-            PortRange::try_from(brokers_port_range)
-                .map_err(|_| ApiError::message("invalid port range"))?,
-            Some((self.flow_controls.clone(), flow_control_id)),
-        )
-        .await?;
-
-        self.registry
-            .kafka_services
-            .insert(local_interceptor_address, KafkaServiceInfo::new(kind));
-        Ok(())
-    }
 }
 
 impl NodeManagerWorker {
@@ -730,7 +634,7 @@ impl NodeManagerWorker {
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        let mut node_manager = self.node_manager.write().await;
+        // let mut node_manager = self.node_manager.write().await;
         let body: StartServiceRequest<StartKafkaConsumerRequest> = dec.decode()?;
         let listener_address: Address = body.address().into();
         let body_req = body.request();
@@ -743,18 +647,18 @@ impl NodeManagerWorker {
             }
         };
 
-        node_manager
-            .start_kafka_service_impl(
-                context,
-                project_name,
-                listener_address,
-                body_req.bootstrap_server_addr.ip().to_string(),
-                body_req.bootstrap_server_addr.port(),
-                body_req.brokers_port_range(),
-                project_route,
-                KafkaServiceKind::Consumer,
-            )
-            .await?;
+        self.start_kafka_service_impl(
+            context,
+            req,
+            project_name,
+            listener_address,
+            body_req.bootstrap_server_addr.ip(),
+            body_req.bootstrap_server_addr.port(),
+            body_req.brokers_port_range(),
+            project_route,
+            KafkaServiceKind::Consumer,
+        )
+        .await?;
 
         Ok(Response::ok(req.id()).to_vec()?)
     }
@@ -765,7 +669,7 @@ impl NodeManagerWorker {
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        let mut node_manager = self.node_manager.write().await;
+        // let mut node_manager = self.node_manager.write().await;
         let body: StartServiceRequest<StartKafkaProducerRequest> = dec.decode()?;
         let listener_address: Address = body.address().into();
         let body_req = body.request();
@@ -778,20 +682,121 @@ impl NodeManagerWorker {
             }
         };
 
-        node_manager
-            .start_kafka_service_impl(
-                context,
-                project_name,
-                listener_address,
-                body_req.bootstrap_server_addr.ip().to_string(),
-                body_req.bootstrap_server_addr.port(),
-                body_req.brokers_port_range(),
-                body_req.project_route().to_string().parse()?,
-                KafkaServiceKind::Producer,
-            )
-            .await?;
+        self.start_kafka_service_impl(
+            context,
+            req,
+            project_name,
+            listener_address,
+            body_req.bootstrap_server_addr.ip(),
+            body_req.bootstrap_server_addr.port(),
+            body_req.brokers_port_range(),
+            body_req.project_route().to_string().parse()?,
+            KafkaServiceKind::Producer,
+        )
+        .await?;
 
         Ok(Response::ok(req.id()).to_vec()?)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) async fn start_kafka_service_impl<'a>(
+        &mut self,
+        context: &Context,
+        request: &'a Request<'_>,
+        project_name: String,
+        local_interceptor_address: Address,
+        bind_ip: IpAddr,
+        server_bootstrap_port: u16,
+        brokers_port_range: (u16, u16),
+        project_multiaddr: MultiAddr,
+        kind: KafkaServiceKind,
+    ) -> Result<()> {
+        debug!("project_multiaddr: {}", project_multiaddr.to_string());
+
+        let secure_channels;
+        let flow_controls;
+        {
+            // override default policy to allow incoming packets from the project
+            let node_manager = self.node_manager.read().await;
+            let (_addr, identity_identifier) = node_manager.resolve_project(&project_name)?;
+            node_manager
+                .policies
+                .set_policy(
+                    &resources::INLET,
+                    &actions::HANDLE_MESSAGE,
+                    &eq([
+                        ident("subject.identifier"),
+                        str(identity_identifier.to_string()),
+                    ]),
+                )
+                .await?;
+
+            secure_channels = node_manager.secure_channels.clone();
+            flow_controls = node_manager.flow_controls.clone();
+        }
+
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            secure_channels,
+            project_multiaddr.clone(),
+            &flow_controls,
+        );
+
+        if let KafkaServiceKind::Consumer = kind {
+            secure_channel_controller
+                .create_consumer_listener(context)
+                .await?;
+        }
+
+        let inlet_controller = KafkaInletController::new(
+            project_multiaddr.clone(),
+            route![local_interceptor_address.clone()],
+            route![ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS],
+            bind_ip,
+            PortRange::try_from(brokers_port_range)
+                .map_err(|_| ApiError::message("invalid port range"))?,
+        );
+
+        // since we cannot call APIs of node manager via message due to the read/write lock
+        // we need to call it directly
+        self.create_inlet_impl(
+            request.id(),
+            CreateInlet::to_node(
+                SocketAddr::new(bind_ip, server_bootstrap_port),
+                project_multiaddr,
+                route![local_interceptor_address.clone()],
+                route![
+                    ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+                    ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS
+                ],
+                None,
+            ),
+            context,
+        )
+        .await?;
+
+        let flow_controls = {
+            let node_manager = self.node_manager.write().await;
+            node_manager.flow_controls.clone()
+        };
+
+        KafkaPortalListener::create(
+            context,
+            inlet_controller,
+            secure_channel_controller.into_trait(),
+            local_interceptor_address.clone(),
+            flow_controls,
+        )
+        .await?;
+
+        {
+            let mut node_manager = self.node_manager.write().await;
+            node_manager
+                .registry
+                .kafka_services
+                .insert(local_interceptor_address, KafkaServiceInfo::new(kind));
+        }
+
+        Ok(())
     }
 
     fn extract_project<'a>(

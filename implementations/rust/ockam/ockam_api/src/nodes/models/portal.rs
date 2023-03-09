@@ -5,11 +5,10 @@ use std::net::SocketAddr;
 use minicbor::{Decode, Encode};
 use ockam::route;
 use ockam_core::compat::borrow::Cow;
-
-use ockam::identity::IdentityIdentifier;
-use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_core::{CowStr, Route};
+use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use serde::ser::SerializeStruct;
 use serde::Serialize;
@@ -35,11 +34,22 @@ pub struct CreateInlet<'a> {
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(4)] authorized: Option<IdentityIdentifier>
+    #[n(4)] authorized: Option<IdentityIdentifier>,
+    /// A prefix route that will be applied before outlet_addr, and won't be used
+    /// to monitor the state of the connection
+    #[n(5)] prefix_route: Route,
+    /// A suffix route that will be applied after outlet_addr, and won't be used
+    /// to monitor the state of the connection
+    #[n(6)] suffix_route: Route,
 }
 
 impl<'a> CreateInlet<'a> {
-    pub fn via_project(listen: SocketAddr, to: MultiAddr) -> Self {
+    pub fn via_project(
+        listen: SocketAddr,
+        to: MultiAddr,
+        prefix_route: Route,
+        suffix_route: Route,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -47,10 +57,18 @@ impl<'a> CreateInlet<'a> {
             outlet_addr: to,
             alias: None,
             authorized: None,
+            prefix_route,
+            suffix_route,
         }
     }
 
-    pub fn to_node(listen: SocketAddr, to: MultiAddr, auth: Option<IdentityIdentifier>) -> Self {
+    pub fn to_node(
+        listen: SocketAddr,
+        to: MultiAddr,
+        prefix_route: Route,
+        suffix_route: Route,
+        auth: Option<IdentityIdentifier>,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -58,6 +76,8 @@ impl<'a> CreateInlet<'a> {
             outlet_addr: to,
             alias: None,
             authorized: auth,
+            prefix_route,
+            suffix_route,
         }
     }
 
@@ -79,6 +99,14 @@ impl<'a> CreateInlet<'a> {
 
     pub fn alias(&self) -> Option<&str> {
         self.alias.as_deref()
+    }
+
+    pub fn prefix_route(&self) -> &Route {
+        &self.prefix_route
+    }
+
+    pub fn suffix_route(&self) -> &Route {
+        &self.suffix_route
     }
 }
 

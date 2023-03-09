@@ -1,10 +1,14 @@
 use core::fmt::{self, Debug, Display};
+use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// The transport type of an [`Address`].
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Serialize, Deserialize, Decode, Encode, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 #[serde(transparent)]
-pub struct TransportType(u8);
+#[cbor(transparent)]
+pub struct TransportType(#[n(0)] u8);
 
 /// The local transport type.
 pub const LOCAL: TransportType = TransportType::new(0);

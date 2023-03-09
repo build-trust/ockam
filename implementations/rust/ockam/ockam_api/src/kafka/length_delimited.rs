@@ -1,4 +1,3 @@
-use crate::kafka::portal_worker::MAX_KAFKA_MESSAGE_SIZE;
 use bytes::{Buf, BufMut, BytesMut};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
@@ -22,13 +21,14 @@ impl KafkaMessageDecoder {
     pub(super) fn decode_messages(
         &mut self,
         mut incoming: BytesMut,
+        max_message_size: u32,
     ) -> ockam::Result<Vec<BytesMut>> {
         let mut kafka_messages = Vec::new();
 
         while incoming.remaining() > 0 {
             if self.current_message_length == 0 {
                 let current_message_length = incoming.get_u32();
-                if current_message_length > MAX_KAFKA_MESSAGE_SIZE {
+                if current_message_length > max_message_size {
                     return Err(Error::new(
                         Origin::Transport,
                         Kind::Io,

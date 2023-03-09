@@ -1,14 +1,22 @@
+#[cfg(feature = "tag")]
+use crate::TypeTag;
 use crate::{
     compat::{collections::VecDeque, string::String, vec::Vec},
     Address, Result, RouteError, TransportType,
 };
 use core::fmt::{self, Display};
+use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// A full route to a peer.
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Decode, Encode, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[rustfmt::skip]
+#[cbor(map)]
 pub struct Route {
-    inner: VecDeque<Address>,
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[n(0)] tag: TypeTag<2409749>,
+    #[n(1)] inner: VecDeque<Address>,
 }
 
 impl Route {
@@ -264,6 +272,8 @@ impl Display for Route {
 impl From<RouteBuilder<'_>> for Route {
     fn from(RouteBuilder { ref inner, .. }: RouteBuilder) -> Self {
         Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             inner: inner.clone(),
         }
     }
@@ -470,6 +480,8 @@ impl Drop for RouteBuilder<'_> {
     fn drop(&mut self) {
         if self.write_back.is_some() {
             **self.write_back.as_mut().unwrap() = Route {
+                #[cfg(feature = "tag")]
+                tag: TypeTag,
                 inner: self.inner.clone(),
             };
         }

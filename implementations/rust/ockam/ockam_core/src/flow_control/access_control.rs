@@ -92,6 +92,11 @@ impl OutgoingAccessControl for FlowControlOutgoingAccessControl {
             }
         }
 
+        #[cfg(feature = "debugger")]
+        {
+            self.flow_controls.debug_address(relay_msg.source());
+            self.flow_controls.debug_address(next);
+        }
         crate::deny()
     }
 }

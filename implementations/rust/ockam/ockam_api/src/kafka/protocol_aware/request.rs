@@ -14,7 +14,7 @@ use ockam_core::TypeTag;
 use ockam_node::Context;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind};
-use tracing::{trace, warn};
+use tracing::warn;
 
 use crate::kafka::portal_worker::InterceptError;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
@@ -56,7 +56,7 @@ impl Interceptor {
             }
         };
 
-        trace!(
+        debug!(
             "request: length: {}, correlation {}, version {}, api {:?}",
             buffer.len(),
             header.correlation_id,

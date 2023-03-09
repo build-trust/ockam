@@ -1,22 +1,18 @@
-mod sessions;
-pub(crate) mod util;
+pub(crate) mod sessions;
 
-use crate::{local_multiaddr_to_route, DefaultAddress};
+use crate::session::sessions::{Key, Ping, Sessions, Status};
+use crate::DefaultAddress;
 use minicbor::{Decode, Encode};
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
 use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
-use ockam_core::{Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
-use ockam_multiaddr::MultiAddr;
+use ockam_core::{route, Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
 use ockam_node::tokio;
 use ockam_node::tokio::sync::mpsc;
 use ockam_node::tokio::task::JoinSet;
 use ockam_node::tokio::time::{timeout, Duration};
 use ockam_node::Context;
-use sessions::{Key, Ping, Status};
 use tracing as log;
-
-pub use sessions::{Data, Replacer, Session, Sessions};
 
 const MAX_FAILURES: usize = 3;
 const DELAY: Duration = Duration::from_secs(3);
@@ -26,7 +22,7 @@ pub struct Medic {
     delay: Duration,
     sessions: Arc<Mutex<Sessions>>,
     pings: JoinSet<(Key, Result<(), Error>)>,
-    replacements: JoinSet<(Key, Result<MultiAddr, Error>)>,
+    replacements: JoinSet<(Key, Result<Route, Error>)>,
     flow_controls: FlowControls,
 }
 
@@ -69,7 +65,7 @@ impl Medic {
     async fn go(mut self, ctx: Context, mut rx: mpsc::Receiver<Message>) -> ! {
         let ctx = Arc::new(ctx);
         loop {
-            log::debug!("check sessions");
+            log::trace!("check sessions");
             {
                 let mut sessions = self.sessions.lock().unwrap();
                 for (&key, session) in sessions.iter_mut() {
@@ -78,32 +74,20 @@ impl Medic {
                         session.add_ping(m.ping);
                         let l = {
                             let v = Encodable::encode(&m).expect("message can be encoded");
-                            let r: Route =
-                                if let Some(r) = local_multiaddr_to_route(session.ping_address()) {
-                                    r.clone()
-                                        .modify()
-                                        .append(DefaultAddress::ECHO_SERVICE)
-                                        .into()
-                                } else {
-                                    log::error! {
-                                        key  = %key,
-                                        addr = %session.ping_address(),
-                                        "failed to convert address to route"
-                                    }
-                                    continue;
-                                };
-                            log::debug! {
+                            let echo_route =
+                                route![session.ping_route().clone(), DefaultAddress::ECHO_SERVICE];
+                            log::trace! {
                                 key  = %key,
-                                addr = %session.ping_address(),
+                                addr = %session.ping_route(),
                                 ping = %m.ping,
                                 "send ping"
                             }
-                            let next = match r.next() {
+                            let next = match echo_route.next() {
                                 Ok(n) => n,
                                 Err(_) => {
                                     log::error! {
                                         key  = %key,
-                                        addr = %session.ping_address(),
+                                        addr = %session.ping_route(),
                                         "empty route"
                                     }
                                     continue;
@@ -120,7 +104,7 @@ impl Medic {
                                     FlowControlPolicy::ProducerAllowMultiple,
                                 );
                             }
-                            let t = TransportMessage::v1(r, Collector::address(), v);
+                            let t = TransportMessage::v1(echo_route, Collector::address(), v);
                             LocalMessage::new(t, Vec::new())
                         };
                         let sender = ctx.clone();
@@ -130,7 +114,7 @@ impl Medic {
                         match session.status() {
                             Status::Up => {
                                 log::warn!(%key, "session unresponsive");
-                                let f = session.replacement(session.ping_address().clone());
+                                let f = session.replacement(session.ping_route().clone());
                                 session.set_status(Status::Down);
                                 log::info!(%key, "replacing session");
                                 self.replacements.spawn(async move { (key, f.await) });
@@ -154,7 +138,7 @@ impl Medic {
                     None                  => log::debug!("no pings to send"),
                     Some(Err(e))          => log::error!("task failed: {e:?}"),
                     Some(Ok((k, Err(e)))) => log::debug!(key = %k, err = %e, "failed to send ping"),
-                    Some(Ok((k, Ok(())))) => log::debug!(key = %k, "sent ping"),
+                    Some(Ok((k, Ok(())))) => log::trace!(key = %k, "sent ping"),
                 },
                 r = self.replacements.join_next(), if !self.replacements.is_empty() => match r {
                     None                  => log::debug!("no replacements"),
@@ -163,17 +147,17 @@ impl Medic {
                         let mut sessions = self.sessions.lock().unwrap();
                         if let Some(s) = sessions.session_mut(&k) {
                             log::warn!(key = %k, err = %e, "replacing session failed");
-                            let f = s.replacement(s.ping_address().clone());
+                            let f = s.replacement(s.ping_route().clone());
                             log::info!(key = %k, "replacing session");
                             self.replacements.spawn(async move { (k, f.await) });
                         }
                     }
-                    Some(Ok((k, Ok(a)))) => {
+                    Some(Ok((k, Ok(ping_route)))) => {
                         let mut sessions = self.sessions.lock().unwrap();
                         if let Some(s) = sessions.session_mut(&k) {
-                            log::info!(key = %k, addr = %a, "replacement is up");
+                            log::info!(key = %k, ping_route = %ping_route, "replacement is up");
                             s.set_status(Status::Up);
-                            s.set_ping_address(a);
+                            s.set_ping_address(ping_route);
                             s.clear_pings();
                         }
                     }
@@ -181,7 +165,7 @@ impl Medic {
                 Some(m) = rx.recv() => {
                     if let Some(s) = self.sessions.lock().unwrap().session_mut(&m.key) {
                         if s.pings().contains(&m.ping) {
-                            log::debug!(key = %m.key, ping = %m.ping, "recv pong");
+                            log::trace!(key = %m.key, ping = %m.ping, "recv pong");
                             s.clear_pings()
                         }
                     }

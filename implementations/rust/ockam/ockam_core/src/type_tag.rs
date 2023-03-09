@@ -1,4 +1,6 @@
+use core::cmp::Ordering;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use minicbor::decode::{self, Decoder};
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
@@ -10,13 +12,37 @@ use zeroize::Zeroize;
 /// This zero-sized type is meant to help catching type errors in cases where
 /// CBOR items structurally match various nominal types. It will end up as an
 /// unsigned integer in CBOR and decoding checks that the value is expected.
-#[derive(Clone, Copy, Default, PartialEq, Eq, Zeroize)]
+#[derive(Clone, Copy, Default, Eq, Zeroize)]
 pub struct TypeTag<const N: usize>;
 
 // Custom `Debug` impl to include the tag number.
 impl<const N: usize> fmt::Debug for TypeTag<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("TypeTag").field(&N).finish()
+    }
+}
+
+impl<const N: usize> Hash for TypeTag<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_usize(N)
+    }
+}
+
+impl<const N: usize> PartialEq for TypeTag<N> {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl<const N: usize> PartialOrd for TypeTag<N> {
+    fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+        Some(Ordering::Equal)
+    }
+}
+
+impl<const N: usize> Ord for TypeTag<N> {
+    fn cmp(&self, _other: &Self) -> Ordering {
+        Ordering::Equal
     }
 }
 

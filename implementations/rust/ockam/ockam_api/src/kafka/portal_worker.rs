@@ -11,7 +11,7 @@ use ockam_core::{
 use ockam_node::Context;
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
 
-use crate::kafka::inlet_map::KafkaInletMap;
+use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::length_delimited::{length_encode, KafkaMessageDecoder};
 use crate::kafka::protocol_aware::{Interceptor, TopicUuidMap};
 use crate::kafka::secure_channel_map::KafkaSecureChannelController;
@@ -48,9 +48,10 @@ pub(crate) struct KafkaPortalWorker {
     other_worker_address: Address,
     receiving: Receiving,
     shared_protocol_state: Interceptor,
-    inlet_map: KafkaInletMap,
+    inlet_map: KafkaInletController,
     disconnect_received: Arc<AtomicBool>,
     decoder: KafkaMessageDecoder,
+    max_message_size: u32,
 }
 
 #[ockam::worker]
@@ -207,7 +208,10 @@ impl KafkaPortalWorker {
 
         for complete_kafka_message in self
             .decoder
-            .decode_messages(BytesMut::from(encoded_message.as_slice()))
+            .decode_messages(
+                BytesMut::from(encoded_message.as_slice()),
+                self.max_message_size,
+            )
             .map_err(InterceptError::Ockam)?
         {
             let transformed_message = match self.receiving {
@@ -247,48 +251,61 @@ impl KafkaPortalWorker {
         context: &mut Context,
         secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         uuid_to_name: TopicUuidMap,
-        inlet_map: KafkaInletMap,
+        inlet_map: KafkaInletController,
+        max_kafka_message_size: Option<u32>,
         flow_control: Option<&(FlowControls, FlowControlId)>,
     ) -> ockam_core::Result<Address> {
         let shared_protocol_state = Interceptor::new(secure_channel_controller, uuid_to_name);
 
-        let inlet_address = Address::random_tagged("KafkaPortalWorker.inlet");
-        let outlet_address = Address::random_tagged("KafkaPortalWorker.outlet");
+        let requests_worker_address = Address::random_tagged("KafkaPortalWorker.requests");
+        let responses_worker_address = Address::random_tagged("KafkaPortalWorker.responses");
         let disconnect_received = Arc::new(AtomicBool::new(false));
 
-        let inlet_worker = Self {
+        let request_worker = Self {
             inlet_map: inlet_map.clone(),
             shared_protocol_state: shared_protocol_state.async_try_clone().await?,
-            other_worker_address: outlet_address.clone(),
+            other_worker_address: responses_worker_address.clone(),
             receiving: Receiving::Requests,
             disconnect_received: disconnect_received.clone(),
             decoder: KafkaMessageDecoder::new(),
+            max_message_size: max_kafka_message_size.unwrap_or(MAX_KAFKA_MESSAGE_SIZE),
         };
-        let outlet_worker = Self {
+        let response_worker = Self {
             inlet_map: inlet_map.clone(),
             shared_protocol_state,
-            other_worker_address: inlet_address.clone(),
+            other_worker_address: requests_worker_address.clone(),
             receiving: Receiving::Responses,
             disconnect_received: disconnect_received.clone(),
             decoder: KafkaMessageDecoder::new(),
+            max_message_size: max_kafka_message_size.unwrap_or(MAX_KAFKA_MESSAGE_SIZE),
         };
 
         context
-            .start_worker(inlet_address.clone(), inlet_worker, AllowAll, AllowAll)
+            .start_worker(
+                requests_worker_address.clone(),
+                request_worker,
+                AllowAll,
+                AllowAll,
+            )
             .await?;
 
         if let Some((flow_controls, flow_control_id)) = flow_control {
             flow_controls.add_consumer(
-                &outlet_address,
+                &responses_worker_address.clone(),
                 flow_control_id,
                 FlowControlPolicy::ProducerAllowMultiple,
             );
         }
         context
-            .start_worker(outlet_address, outlet_worker, AllowAll, AllowAll)
+            .start_worker(
+                responses_worker_address,
+                response_worker,
+                AllowAll,
+                AllowAll,
+            )
             .await?;
 
-        Ok(inlet_address)
+        Ok(requests_worker_address)
     }
 }
 
@@ -308,17 +325,19 @@ mod test {
     use ockam_core::compat::sync::{Arc, Mutex};
     use ockam_core::flow_control::FlowControls;
     use ockam_core::{route, Address, AllowAll, Routed, Worker};
+    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
     use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
     use std::collections::BTreeMap;
     use std::time::Duration;
 
-    use crate::kafka::inlet_map::KafkaInletMap;
-    use crate::kafka::portal_worker::{KafkaPortalWorker, MAX_KAFKA_MESSAGE_SIZE};
+    use crate::kafka::inlet_controller::KafkaInletController;
+    use crate::kafka::portal_worker::KafkaPortalWorker;
     use crate::kafka::secure_channel_map::KafkaSecureChannelControllerImpl;
     use crate::port_range::PortRange;
     use ockam::MessageReceiveOptions;
 
+    const TEST_MAX_KAFKA_MESSAGE_SIZE: u32 = 128 * 1024;
     const TEST_KAFKA_API_VERSION: i16 = 13;
 
     //a simple worker that keep receiving buffer
@@ -465,7 +484,7 @@ mod test {
 
         //with the message container it goes well over the max allowed message kafka size
         let mut zero_buffer: Vec<u8> = Vec::new();
-        for _n in 0..MAX_KAFKA_MESSAGE_SIZE + 1 {
+        for _n in 0..TEST_MAX_KAFKA_MESSAGE_SIZE + 1 {
             zero_buffer.push(0);
         }
 
@@ -517,7 +536,7 @@ mod test {
 
         //let's build the message to 90% of max. size
         let mut zero_buffer: Vec<u8> = Vec::new();
-        for _n in 0..(MAX_KAFKA_MESSAGE_SIZE as f64 * 0.9) as usize {
+        for _n in 0..(TEST_MAX_KAFKA_MESSAGE_SIZE as f64 * 0.9) as usize {
             zero_buffer.push(0);
         }
 
@@ -584,25 +603,19 @@ mod test {
     }
 
     async fn setup_only_worker(context: &mut Context) -> Address {
-        let inlet_map = KafkaInletMap::new(
+        let inlet_map = KafkaInletController::new(
+            MultiAddr::default(),
             route![],
-            "0.0.0.0".into(),
-            PortRange::new(20_000, 40_000).unwrap(),
+            route![],
+            [255, 255, 255, 255].into(),
+            PortRange::new(0, 0).unwrap(),
         );
 
         let secure_channels = secure_channels();
-        let identity = secure_channels
-            .identities()
-            .identities_creation()
-            .create_identity()
-            .await
-            .unwrap();
-
         let flow_controls = FlowControls::default();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
-            identity,
-            route![],
+            MultiAddr::default(),
             &flow_controls,
         )
         .into_trait();
@@ -612,6 +625,7 @@ mod test {
             secure_channel_controller,
             Default::default(),
             inlet_map,
+            Some(TEST_MAX_KAFKA_MESSAGE_SIZE),
             None,
         )
         .await
@@ -651,34 +665,29 @@ mod test {
     async fn kafka_portal_worker__metadata_exchange__response_changed(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        crate::test::start_manager_for_tests(context).await?;
-
-        let secure_channels = secure_channels();
-        let identity = secure_channels
-            .identities()
-            .identities_creation()
-            .create_identity()
-            .await?;
+        let handler = crate::test::start_manager_for_tests(context).await?;
 
         let flow_controls = FlowControls::default();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
-            secure_channels.clone(),
-            identity,
-            route![],
+            handler.secure_channels.clone(),
+            MultiAddr::default(),
             &flow_controls,
         )
         .into_trait();
 
-        let inlet_map = KafkaInletMap::new(
+        let inlet_map = KafkaInletController::new(
+            MultiAddr::default(),
             route![],
-            "127.0.0.1".into(),
-            PortRange::new(20_000, 40_000).unwrap(),
+            route![],
+            [127, 0, 0, 1].into(),
+            PortRange::new(0, 0).unwrap(),
         );
         let portal_inlet_address = KafkaPortalWorker::start_kafka_portal(
             context,
             secure_channel_controller,
             Default::default(),
             inlet_map.clone(),
+            None,
             None,
         )
         .await?;
@@ -777,11 +786,11 @@ mod test {
             assert_eq!(1, response.brokers.len());
             let broker = response.brokers.get(&BrokerId::from(1)).unwrap();
             assert_eq!("127.0.0.1", &broker.host.to_string());
-            assert_eq!(20_000, broker.port);
+            assert_eq!(0, broker.port);
 
             let address = inlet_map.retrieve_inlet(1).await.expect("inlet not found");
             assert_eq!("127.0.0.1".to_string(), address.ip().to_string());
-            assert_eq!(20_000, address.port());
+            assert_eq!(0, address.port());
         } else {
             panic!("invalid message type")
         }
