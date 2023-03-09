@@ -1,4 +1,5 @@
 // This node creates a tcp connection to a node at 127.0.0.1:4000
+// Starts a forwarder worker to forward messages to 127.0.0.1:4000
 // Starts a tcp listener at 127.0.0.1:3000
 // It then runs forever waiting to route messages.
 
