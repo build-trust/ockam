@@ -13,9 +13,5 @@ ockam enroll
 
 PROJECT_NAME="default"
 result=$(ockam project information $PROJECT_NAME &>/dev/null)
-# if [ ! $? -eq 0 ]; then
-#     SPACE=$(ockam space list --output json | jq -j '.[0].name')
-#     ockam project create $SPACE $PROJECT_NAME
-# fi
 mkdir -p config
 ockam project information --output json $PROJECT_NAME > config/project.json
