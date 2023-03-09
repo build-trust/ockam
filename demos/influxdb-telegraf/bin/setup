@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo ""
-echo "We're going to run a reset to start with a fresh Ockam setup, you cool with that? "
+echo "We're going to run a reset to start with a fresh Ockam setup, are *really* ok with that? "
 select yn in "Yes" "No"; do
     case $yn in
         Yes ) break;;
