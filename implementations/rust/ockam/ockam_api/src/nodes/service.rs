@@ -667,6 +667,7 @@ impl NodeManagerWorker {
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "outlet"]) => self.delete_outlet(req, dec).await?.to_vec()?,
+            (Delete, ["node", "inlet"]) => self.delete_inlet(req, dec).await?.to_vec()?,
 
             (Delete, ["node", "portal"]) => todo!(),
 

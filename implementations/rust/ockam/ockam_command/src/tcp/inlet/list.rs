@@ -29,8 +29,6 @@ async fn run_impl(
     rpc.request(Request::get("/node/inlet")).await?;
     let response = rpc.parse_response::<models::portal::InletList>()?;
 
-    // let mut inlet_infor = response.list.iter();
-
     for inlet_infor in response.list.iter() {
         println!("Inlet:");
         println!("  Alias: {}", inlet_infor.alias);

@@ -76,6 +76,27 @@ impl<'a> CreateInlet<'a> {
     }
 }
 
+/// Request body to delete an inlet
+#[derive(Clone, Debug, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct DeleteInlet<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<4775492>,
+    /// The alias of the TCP inlet to be deleted
+    #[b(1)] pub alias: CowStr<'a>,
+}
+
+impl<'a> DeleteInlet<'a> {
+    pub fn new(alias: impl Into<CowStr<'a>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            alias: alias.into(),
+        }
+    }
+}
+
 /// Request body to create an outlet
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]

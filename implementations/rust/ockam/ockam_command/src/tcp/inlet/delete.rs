@@ -5,18 +5,18 @@ use crate::Result;
 use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
-use ockam_api::nodes::models::portal::DeleteOutlet;
+use ockam_api::nodes::models::portal::DeleteInlet;
 use ockam_core::api::{Request, RequestBuilder};
 
 /// Delete a TCP Outlet
 #[derive(Clone, Debug, Args)]
 #[command()]
 pub struct DeleteCommand {
-    /// Name assigned to outlet that will be deleted
+    /// Name assigned to inlet that will be deleted
     #[arg(display_order = 900, required = true, id = "ALIAS", value_parser = alias_parser)]
     alias: String,
 
-    /// Node on which to stop the tcp outlet. If none are provided, the default node will be used
+    /// Node on which to stop the tcp inlet. If none are provided, the default node will be used
     #[command(flatten)]
     node_opts: NodeOpts,
 }
@@ -39,20 +39,20 @@ pub async fn run_impl(
 
     rpc.is_ok()?;
 
-    println!("Deleted TCP Outlet '{alias}' on node '{node}'");
+    println!("Deleted TCP Inlet '{alias}' on node '{node}'");
     Ok(())
 }
 
 /// Construct a request to delete a tcp outlet
-fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a, DeleteOutlet<'a>>> {
-    let payload = DeleteOutlet::new(cmd.alias);
-    let request = Request::delete("/node/outlet").body(payload);
+fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a, DeleteInlet<'a>>> {
+    let payload = DeleteInlet::new(cmd.alias);
+    let request = Request::delete("/node/inlet").body(payload);
     Ok(request)
 }
 
 fn alias_parser(arg: &str) -> Result<String> {
     if arg.contains(':') {
-        Err(anyhow!("an outlet alias must not contain ':' characters").into())
+        Err(anyhow!("an inlet alias must not contain ':' characters").into())
     } else {
         Ok(arg.to_string())
     }
