@@ -11,6 +11,8 @@ defmodule Ockam.Identity.SecureChannel.Data do
   """
   use Ockam.AsymmetricWorker
 
+  alias Ockam.Identity.SecureChannel.ServiceMessage
+
   alias Ockam.Message
   alias Ockam.Router
 
@@ -60,42 +62,79 @@ defmodule Ockam.Identity.SecureChannel.Data do
   @impl true
   def handle_inner_message(
         message,
-        %{
-          address: address,
-          contact_id: contact_id,
-          contact: contact,
-          additional_metadata: additional_metadata
-        } = state
+        state
       ) do
     with [_me | onward_route] <- Message.onward_route(message),
-         [_channel | return_route] <- Message.return_route(message) do
-      payload = Message.payload(message)
-
+         [_channel | _return_route] <- Message.return_route(message) do
       ## Assertion. This should be checked by authorization
       %{channel: :secure_channel, source: :channel} = Message.local_metadata(message)
 
-      metadata =
-        Map.merge(additional_metadata, %{
-          channel: :identity_secure_channel,
-          source: :channel,
-          identity_id: contact_id,
-          identity: contact
-        })
+      case onward_route do
+        [] ->
+          ## Message is directed to the secure channel worker
+          handle_service_message(message, state)
 
-      forwarded_message =
-        %Message{
-          payload: payload,
-          onward_route: onward_route,
-          return_route: [address | return_route]
-        }
-        |> Message.set_local_metadata(metadata)
-
-      Router.route(forwarded_message)
-      {:ok, state}
+        _route ->
+          handle_data_message(message, state)
+      end
     else
       _other ->
         {:error, {:invalid_inner_message, message}}
     end
+  end
+
+  defp handle_service_message(message, state) do
+    payload = Message.payload(message)
+
+    case ServiceMessage.decode_strict(payload) do
+      {:ok, %ServiceMessage{command: :disconnect}} ->
+        Logger.info("Secure channel disconnected")
+        ## TODO: should we use reason other than normal here?
+        Ockam.Node.stop(Map.fetch!(state, :encryption_channel))
+        {:stop, :normal, state}
+
+      {:ok, other} ->
+        Logger.warn("Unsupported service message: #{inspect(other)}")
+        {:ok, state}
+
+      {:error, _reason} ->
+        ## It's not a service message, handle as data message routed nowhere
+        ## TODO: should we just error here instead?
+        handle_data_message(message, state)
+    end
+  end
+
+  defp handle_data_message(
+         message,
+         %{
+           address: address,
+           contact_id: contact_id,
+           contact: contact,
+           additional_metadata: additional_metadata
+         } = state
+       ) do
+    [_me | onward_route] = Message.onward_route(message)
+    [_channel | return_route] = Message.return_route(message)
+    payload = Message.payload(message)
+
+    metadata =
+      Map.merge(additional_metadata, %{
+        channel: :identity_secure_channel,
+        source: :channel,
+        identity_id: contact_id,
+        identity: contact
+      })
+
+    forwarded_message =
+      %Message{
+        payload: payload,
+        onward_route: onward_route,
+        return_route: [address | return_route]
+      }
+      |> Message.set_local_metadata(metadata)
+
+    Router.route(forwarded_message)
+    {:ok, state}
   end
 
   @impl true
@@ -127,5 +166,20 @@ defmodule Ockam.Identity.SecureChannel.Data do
   def handle_call(:get_remote_identity_id, _form, state) do
     contact_id = Map.fetch!(state, :contact_id)
     {:reply, contact_id, state}
+  end
+
+  def handle_call(:disconnect, _from, %{encryption_channel: channel, peer_address: peer} = state) do
+    disconnect_message = %Message{
+      payload: ServiceMessage.encode!(%ServiceMessage{command: :disconnect}),
+      onward_route: [channel, peer],
+      return_route: [],
+      local_metadata: %{from_pid: self()}
+    }
+
+    ## Technically it should be fine to send route first and then stop and the message
+    ## should be processed before the exit signal.
+    Router.route(disconnect_message)
+    Ockam.Node.stop(channel)
+    {:stop, :normal, :ok, state}
   end
 end

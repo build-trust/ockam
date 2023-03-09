@@ -1,5 +1,7 @@
-defmodule Ockam.Tests do
-  use ExUnit.Case, async: true
+defmodule Ockam.Healthcheck.Test do
+  use ExUnit.Case
+
+  alias Ockam.Healthcheck.Target
 
   require Logger
 
@@ -24,41 +26,72 @@ defmodule Ockam.Tests do
     :ok
   end
 
-  test "healthcheck OK" do
-    node_host = "localhost"
-    node_port = 4000
-    api_worker = "api"
-    ping_worker = "healthcheck"
-    assert :ok = Ockam.Healthcheck.check_node(node_host, node_port, api_worker, ping_worker, 1000)
+  test "healthcheck targets OK" do
+    target = %Target{
+      name: "target",
+      host: "localhost",
+      port: 4000,
+      api_worker: "api",
+      healthcheck_worker: "healthcheck"
+    }
+
+    old = Application.get_env(:ockam_healthcheck, :targets, [])
+    Application.put_env(:ockam_healthcheck, :targets, [target, target])
+
+    on_exit(fn ->
+      Application.put_env(:ockam_healthcheck, :targets, old)
+    end)
+
+    assert :ok = Ockam.Healthcheck.check_targets()
+  end
+
+  test "healthcheck target OK" do
+    target = %Target{
+      name: "target",
+      host: "localhost",
+      port: 4000,
+      api_worker: "api",
+      healthcheck_worker: "healthcheck"
+    }
+
+    assert :ok = Ockam.Healthcheck.check_target(target, 1000)
   end
 
   test "healthcheck ping error" do
-    node_host = "localhost"
-    node_port = 4000
-    api_worker = "api"
-    ping_worker = "not_healthcheck"
+    target = %Target{
+      name: "target",
+      host: "localhost",
+      port: 4000,
+      api_worker: "api",
+      healthcheck_worker: "not_healthcheck"
+    }
 
-    assert {:error, :timeout} =
-             Ockam.Healthcheck.check_node(node_host, node_port, api_worker, ping_worker, 1000)
+    assert {:error, :timeout} = Ockam.Healthcheck.check_target(target, 1000)
   end
 
   test "healthcheck channel error" do
-    node_host = "localhost"
-    node_port = 4000
-    api_worker = "not_api"
-    ping_worker = "healthcheck"
+    target = %Target{
+      name: "target",
+      host: "localhost",
+      port: 4000,
+      api_worker: "not_api",
+      healthcheck_worker: "healthcheck"
+    }
 
-    assert {:error, :key_exchange_timeout} =
-             Ockam.Healthcheck.check_node(node_host, node_port, api_worker, ping_worker, 1000)
+    assert {:error, {:secure_channel_error, :key_exchange_timeout}} =
+             Ockam.Healthcheck.check_target(target, 1000)
   end
 
   test "healthcheck TCP error" do
-    node_host = "localhost"
-    node_port = 1234
-    api_worker = "api"
-    ping_worker = "healthcheck"
+    target = %Target{
+      name: "target",
+      host: "localhost",
+      port: 1234,
+      api_worker: "api",
+      healthcheck_worker: "healthcheck"
+    }
 
     assert {:error, {:tcp_connection_error, :econnrefused}} =
-             Ockam.Healthcheck.check_node(node_host, node_port, api_worker, ping_worker, 1000)
+             Ockam.Healthcheck.check_target(target, 1000)
   end
 end

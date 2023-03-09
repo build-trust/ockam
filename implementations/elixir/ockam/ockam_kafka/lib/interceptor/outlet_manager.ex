@@ -18,11 +18,11 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
 
   require Logger
 
-  def start_link([outlet_prefix, ssl, ssl_options]) do
+  def start_link([outlet_prefix, ssl, ssl_options], name \\ __MODULE__) do
     GenServer.start_link(
       __MODULE__,
       [outlet_prefix, ssl, ssl_options],
-      name: __MODULE__
+      name: name
     )
   end
 

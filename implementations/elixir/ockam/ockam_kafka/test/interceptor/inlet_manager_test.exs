@@ -9,16 +9,7 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     base_route = ["outlets"]
     outlet_prefix = "outlet_"
 
-    {:ok, _manager} =
-      InletManager.start_link([base_port, allowed_ports, base_route, outlet_prefix])
-
-    on_exit(fn ->
-      try do
-        GenServer.stop(InletManager)
-      catch
-        _type, _reason -> :ok
-      end
-    end)
+    start_supervised!({InletManager, [base_port, allowed_ports, base_route, outlet_prefix]})
 
     inlets = InletManager.list_inlets()
 
@@ -39,8 +30,6 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     inlets = InletManager.list_inlets()
 
     assert map_size(inlets) == 3
-
-    GenServer.stop(InletManager)
   end
 
   test "inlet internals" do
@@ -49,16 +38,7 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     base_route = ["outlets"]
     outlet_prefix = "outlet_"
 
-    {:ok, _manager} =
-      InletManager.start_link([base_port, allowed_ports, base_route, outlet_prefix])
-
-    on_exit(fn ->
-      try do
-        GenServer.stop(InletManager)
-      catch
-        _type, _reason -> :ok
-      end
-    end)
+    start_supervised!({InletManager, [base_port, allowed_ports, base_route, outlet_prefix]})
 
     :ok = InletManager.set_inlets([1])
     inlets = InletManager.list_inlets()
@@ -70,7 +50,5 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     expected_port = base_port + 1
 
     assert {:ok, ^expected_port} = Map.get(inlet1_state, :listen_socket) |> :inet.port()
-
-    GenServer.stop(InletManager)
   end
 end

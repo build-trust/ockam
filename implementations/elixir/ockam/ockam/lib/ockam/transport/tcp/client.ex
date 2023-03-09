@@ -2,8 +2,10 @@ defmodule Ockam.Transport.TCP.Client do
   @moduledoc false
   use Ockam.Worker
 
+  alias Ockam.Address
   alias Ockam.Message
   alias Ockam.Transport.TCP
+  alias Ockam.Transport.TCPAddress
   alias Ockam.Wire
 
   require Logger
@@ -11,47 +13,76 @@ defmodule Ockam.Transport.TCP.Client do
   @impl true
   def address_prefix(_options), do: "TCP_C_"
 
+  ## Override default create in order to alway set restart_type: :temporary
+  def create(options, timeout) when is_list(options) do
+    options = Keyword.put(options, :restart_type, :temporary)
+    Ockam.Worker.create(__MODULE__, options, timeout)
+  end
+
   @impl true
   def setup(options, state) do
-    {host, port} = Keyword.fetch!(options, :destination)
-    heartbeat = Keyword.get(options, :heartbeat)
+    with {:ok, {host, port}} <- get_destination(options) do
+      heartbeat = Keyword.get(options, :heartbeat)
 
-    {protocol, inet_address} =
-      case host do
-        string when is_binary(string) ->
-          {:inet, to_charlist(string)}
+      {protocol, inet_address} =
+        case host do
+          string when is_binary(string) ->
+            {:inet, to_charlist(string)}
 
-        ipv4 when is_tuple(ipv4) and tuple_size(ipv4) == 4 ->
-          {:inet, ipv4}
+          charlist when is_list(charlist) ->
+            {:inet, charlist}
 
-        ipv6 when is_tuple(ipv6) and tuple_size(ipv6) == 8 ->
-          {:inet6, ipv6}
+          ipv4 when is_tuple(ipv4) and tuple_size(ipv4) == 4 ->
+            {:inet, ipv4}
+
+          ipv6 when is_tuple(ipv6) and tuple_size(ipv6) == 8 ->
+            {:inet6, ipv6}
+        end
+
+      # TODO: connect/3 and controlling_process/2 should be in a callback.
+      case :gen_tcp.connect(inet_address, port, [
+             :binary,
+             protocol,
+             active: true,
+             packet: 2,
+             nodelay: true
+           ]) do
+        {:ok, socket} ->
+          :gen_tcp.controlling_process(socket, self())
+
+          state =
+            Map.merge(state, %{
+              socket: socket,
+              inet_address: inet_address,
+              port: port,
+              heartbeat: heartbeat
+            })
+
+          schedule_heartbeat(state)
+          {:ok, state}
+
+        {:error, reason} ->
+          {:error, reason}
       end
+    end
+  end
 
-    # TODO: connect/3 and controlling_process/2 should be in a callback.
-    case :gen_tcp.connect(inet_address, port, [
-           :binary,
-           protocol,
-           active: true,
-           packet: 2,
-           nodelay: true
-         ]) do
-      {:ok, socket} ->
-        :gen_tcp.controlling_process(socket, self())
+  defp get_destination(options) do
+    case Keyword.fetch(options, :destination) do
+      {:ok, {host, port}} ->
+        {:ok, {host, port}}
 
-        state =
-          Map.merge(state, %{
-            socket: socket,
-            inet_address: inet_address,
-            port: port,
-            heartbeat: heartbeat
-          })
+      {:ok, %Address{} = address} ->
+        TCPAddress.to_host_port(address)
 
-        schedule_heartbeat(state)
-        {:ok, state}
-
-      {:error, reason} ->
-        {:error, reason}
+      :error ->
+        with {:ok, host} <- Keyword.fetch(options, :host),
+             {:ok, port} <- Keyword.fetch(options, :port) do
+          {:ok, {host, port}}
+        else
+          :error ->
+            {:error, :destination_missing}
+        end
     end
   end
 
