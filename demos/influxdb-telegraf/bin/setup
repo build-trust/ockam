@@ -1,0 +1,21 @@
+#!/bin/bash
+
+echo ""
+echo "We're going to run a reset to start with a fresh Ockam setup, you cool with that? "
+select yn in "Yes" "No"; do
+    case $yn in
+        Yes ) break;;
+        No ) exit;;
+    esac
+done
+ockam reset
+ockam enroll
+
+PROJECT_NAME="default"
+result=$(ockam project information $PROJECT_NAME &>/dev/null)
+# if [ ! $? -eq 0 ]; then
+#     SPACE=$(ockam space list --output json | jq -j '.[0].name')
+#     ockam project create $SPACE $PROJECT_NAME
+# fi
+mkdir -p config
+ockam project information --output json $PROJECT_NAME > config/project.json

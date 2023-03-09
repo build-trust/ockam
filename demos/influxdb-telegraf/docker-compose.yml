@@ -1,0 +1,37 @@
+version: '3'
+
+volumes:
+  influxdb_data:
+
+services:
+
+  influxdb:
+    build: ./influxdb
+    environment:
+      OCKAM_PROJECT_NAME: influxdb-demo
+      OCKAM_TOKEN: ${INFLUXDB_TOKEN}
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: myusername
+      DOCKER_INFLUXDB_INIT_PASSWORD: passwordpasswordpassword
+      DOCKER_INFLUXDB_INIT_ORG: myorg
+      DOCKER_INFLUXDB_INIT_BUCKET: mybucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: mytoken
+    volumes:
+      - influxdb_data:/var/lib/influxdb2:rw
+      - ./config:/config
+    ports:
+      - 8087:8086
+
+  telegraf:
+    build: ./telegraf
+    depends_on:
+      - influxdb
+    environment:
+      OCKAM_PROJECT_NAME: influxdb-demo
+      OCKAM_TOKEN: ${TELEGRAF_TOKEN}
+      DOCKER_INFLUXDB_INIT_ORG: myorg
+      DOCKER_INFLUXDB_INIT_BUCKET: mybucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: mytoken
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./config:/config

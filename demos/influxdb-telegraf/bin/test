@@ -1,0 +1,8 @@
+#!/bin/bash
+
+curl \
+    --header "Authorization: Token $INFLUX_TOKEN" \
+    --header "Accept: application/csv" \
+    --header 'Content-type: application/vnd.flux' \
+    --data "from(bucket:\"$INFLUX_BUCKET\") |> range(start:-1m)" \
+    http://localhost:8087/api/v2/query?org=$INFLUX_ORG
