@@ -218,7 +218,7 @@ teardown() {
   refute_output --partial "127.0.0.1:5000"
 }
 
-@test "tcp - create a tcp connection and then delete it " {
+@test "tcp - create a tcp connection and then delete it" {
   run "$OCKAM" node create n1
   run "$OCKAM" tcp-connection create --from n1 --to 127.0.0.1:5000 --output json
   assert_success
@@ -331,18 +331,19 @@ teardown() {
 # ===== PORTALS (INLET/OUTLET)
 
 @test "portals - list inlets on a node" {
+  port=6002
   $OCKAM node create n1
   $OCKAM node create n2
-  $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet --alias tcp-inlet-2
+  $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias tcp-inlet-2
   run $OCKAM tcp-inlet list --node /node/n2
 
   assert_output --partial "Alias: tcp-inlet-2"
-  assert_output --partial "TCP Address: 127.0.0.1:6000"
+  assert_output --partial "TCP Address: 127.0.0.1:$port"
   assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
 }
 
 @test "portals - tcp outlet CRUD" {
-  port=9000
+  port=6003
   run --separate-stderr "$OCKAM" node create n1
   assert_success
 
@@ -359,8 +360,8 @@ teardown() {
 }
 
 @test "portals - tcp inlet CRUD" {
-  outlet_port=7000
-  inlet_port=8000
+  outlet_port=6004
+  inlet_port=6005
 
   # Create nodes for inlet/outlet pair
   run --separate-stderr "$OCKAM" node create n1
