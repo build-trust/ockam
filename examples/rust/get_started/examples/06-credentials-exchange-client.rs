@@ -16,29 +16,39 @@ async fn main(mut ctx: Context) -> Result<()> {
     // which is an identifier known to the credential issuer, with some preset attributes
     let vault = Vault::create();
 
+    // Create an Identity representing the server
+    // Load an identity corresponding to the following public identifier
+    // Pada09e0f96e56580f6a0cb54f55ecbde6c973db6732e30dfb39b178760aed041
+    //
+    // We're hard coding this specific identity because its public identifier is known
+    // to the credential issuer as a member of the production cluster.
     let identity_history = "01dcf392551f796ef1bcb368177e53f9a5875a962f67279259207d24a01e690721000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020a0d205f09cab9a9467591fcee560429aab1215d8136e5c985a6b7dc729e6f08203010140b098463a727454c0e5292390d8f4cbd4dd0cae5db95606832f3d0a138936487e1da1489c40d8a0995fce71cc1948c6bcfd67186467cdd78eab7e95c080141505";
     let secret = "41b6873b20d95567bf958e6bab2808e9157720040882630b1bb37a72f4015cd2";
     let client = Identity::create_identity_with_history(&ctx, vault, identity_history, secret).await?;
+    let store = client.authenticated_storage();
 
-    // Create a client to the credential issuer
+    // Connect with the credential issuer and authenticate using the latest private
+    // key of this program's hardcoded identity.
+    //
+    // The credential issuer already knows the public identifier of this identity
+    // as a member of the production cluster so it returns a signed credential
+    // attesting to that knowledge.
     let sessions = Sessions::default();
-    let issuer_session_id = sessions.generate_session_id();
-    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &issuer_session_id);
+    let session_id = sessions.generate_session_id();
+    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &session_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
     let issuer_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
-        .with_ciphertext_session(&sessions, &issuer_session_id);
+        .with_ciphertext_session(&sessions, &session_id);
     let issuer_channel = client
-        .create_secure_channel(route![issuer_connection, "issuer_listener"], issuer_trust_options)
+        .create_secure_channel(route![issuer_connection, "secure"], issuer_trust_options)
         .await?;
-    let issuer = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
-
-    // Get a credential for the client (this is done via a secure channel)
-    let credential = issuer.get_credential(client.identifier()).await?.unwrap();
-    println!("got a credential from the issuer\n{credential}");
+    let issuer_client = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
+    let credential = issuer_client.get_credential(client.identifier()).await?.unwrap();
+    println!("Credential:\n{credential}");
     client.set_credential(credential).await;
 
-    // Create a secure channel to the server node
+    // Create a secure channel to the node that is running the Echoer service.
     let server_session_id = sessions.generate_session_id();
     let server_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &server_session_id);
     let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_trust_options).await?;
@@ -46,28 +56,22 @@ async fn main(mut ctx: Context) -> Result<()> {
         .with_trust_policy(TrustEveryonePolicy)
         .with_ciphertext_session(&sessions, &server_session_id);
     let channel = client
-        .create_secure_channel(route![server_connection, "server_listener"], channel_trust_options)
+        .create_secure_channel(route![server_connection, "secure"], channel_trust_options)
         .await?;
-    println!("created a secure channel at {channel:?}");
 
-    // Send the client credentials over the secure channel
-    let storage = AuthenticatedAttributeStorage::new(client.authenticated_storage().clone());
-    client
-        .present_credential_mutual(
-            route![channel.clone(), "credential_exchange"],
-            vec![&issuer.public_identity().await?],
-            Arc::new(storage),
-            None,
-        )
-        .await?;
-    println!("exchange done!");
+    // Present credentials over the secure channel
+    let storage = Arc::new(AuthenticatedAttributeStorage::new(store.clone()));
+    let issuer = issuer_client.public_identity().await?;
+    let r = route![channel.clone(), "credentials"];
+    client.present_credential_mutual(r, &[issuer], storage, None).await?;
 
-    // The echoer service should now be accessible to the client because she
-    // presented the right credentials to the server
-    let received: String = ctx
-        .send_and_receive(route![channel, "echoer"], "Hello!".to_string())
-        .await?;
-    println!("{received}");
+    // Send a message to the worker at address "echoer".
+    ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;
 
-    ctx.stop().await
+    // Wait to receive a reply and print it.
+    let reply = ctx.receive::<String>().await?;
+    println!("Received: {}", reply); // should print "Hello Ockam!"
+
+    // Don't call ctx.stop() here so this node runs forever.
+    Ok(())
 }
