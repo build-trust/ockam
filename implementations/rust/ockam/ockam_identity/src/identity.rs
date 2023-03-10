@@ -257,7 +257,7 @@ impl Identity {
     /// encoded as a hex string.
     /// Such a key can be obtained by running vault.secret_export and then encoding
     /// the exported secret as a hex string
-    pub async fn create_identity_with_history(
+    pub async fn create_identity_with_change_history(
         ctx: &Context,
         vault: Arc<dyn IdentityVault>,
         identity_history: &str,
