@@ -16,34 +16,48 @@ use ockam::{Context, Result, TcpListenerTrustOptions, TcpTransport};
 ///
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let issuer = CredentialIssuer::create(&ctx).await?;
+    let issuer_change_history = issuer.identity().change_history().await;
+    let exported = issuer_change_history.export().unwrap();
+    println!("Credential Issuer Identifier: {}", issuer.identity().identifier());
+    println!("Credential Issuer Change History: {}", hex::encode(exported));
 
-    // Create a TCP listener and wait for incoming connections.
+    // Tell this credential issuer about a set of public identifiers that are
+    // known, in advance, to be members of the production cluster.
+    let known_identifiers = vec![
+        "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638".try_into()?,
+        "Pada09e0f96e56580f6a0cb54f55ecbde6c973db6732e30dfb39b178760aed041".try_into()?,
+    ];
+
+    // Tell this credential issuer about the attributes to include in credentials
+    // that will be issued to each of the above known_identifiers, after and only
+    // if, they authenticate with their corresponding latest private key.
+    //
+    // Since this issuer knows that the above identifiers are for members of the
+    // production cluster, it will issue a credential that attests to the attribute
+    // set: [{cluster, production}] for all identifiers in the above list.
+    //
+    // For a different application this attested attribute set can be different and
+    // distinct for each identifier, but for this example we'll keep things simple.
+    for identifier in known_identifiers.iter() {
+        issuer.put_attribute_value(&identifier, "cluster", "production").await?;
+    }
+
+    // Start a secure channel listener that only allows channels where the identity
+    // at the other end of the channel can authenticate with the latest private key
+    // corresponding to one of the above known public identifiers.
+    let p = TrustEveryonePolicy;
+    issuer.identity().create_secure_channel_listener("secure", p).await?;
+
+    // Start a credential issuer worker that will only accept incoming requests from
+    // authenticated secure channels with our known public identifiers.
+    let allow_known = IdentityIdAccessControl::new(known_identifiers);
+    ctx.start_worker("issuer", issuer, allow_known, AllowAll).await?;
+
+    // Initialize TCP Transport, create a TCP listener, and wait for connections.
+    let tcp = TcpTransport::create(&ctx).await?;
     tcp.listen("127.0.0.1:5000", TcpListenerTrustOptions::new()).await?;
 
-    // Create a CredentialIssuer which stores attributes for Alice and Bob, knowing their identity
-    let issuer = CredentialIssuer::create(&ctx).await?;
-    let alice = "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638".try_into()?;
-    let bob = "Pada09e0f96e56580f6a0cb54f55ecbde6c973db6732e30dfb39b178760aed041".try_into()?;
-
-    issuer.put_attribute_value(&alice, "name", "alice").await?;
-    issuer.put_attribute_value(&bob, "name", "bob").await?;
-
-    // Start a secure channel listener that alice and bob can use to retrieve their credential
-    issuer
-        .identity()
-        .create_secure_channel_listener("issuer_listener", TrustEveryonePolicy)
-        .await?;
-    println!("created a secure channel listener");
-
-    ctx.start_worker(
-        "issuer",
-        issuer,
-        IdentityIdAccessControl::new(vec![alice, bob]),
-        AllowAll,
-    )
-    .await?;
-
+    // Don't call ctx.stop() here so this node runs forever.
     Ok(())
 }
