@@ -7,7 +7,7 @@ use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc, vec::Vec};
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 
@@ -133,11 +133,11 @@ impl CredentialExchangeWorker {
                     let credential = self.identity.credential.read().await;
                     match credential.as_ref() {
                         Some(p) if self.present_back => {
-                            warn!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
+                            info!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
                             Response::ok(req.id()).body(p).to_vec()?
                         }
                         _ => {
-                            warn!("Mutual credential presentation request processed successfully with {}. No credential to respond!", sender);
+                            info!("Mutual credential presentation request processed successfully with {}. No credential to respond!", sender);
                             Response::ok(req.id()).to_vec()?
                         }
                     }

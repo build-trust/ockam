@@ -1,4 +1,3 @@
-use std::sync::Arc;
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 use hello_ockam::Echoer;
@@ -9,6 +8,7 @@ use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerCl
 use ockam::identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy};
 use ockam::sessions::Sessions;
 use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
+use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
