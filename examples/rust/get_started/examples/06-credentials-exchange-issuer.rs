@@ -4,16 +4,6 @@ use ockam::identity::credential_issuer::CredentialIssuer;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Context, Result, TcpListenerTrustOptions, TcpTransport};
 
-/// This node starts a temporary credential issuer accessible via TCP on localhost:5000
-///
-/// In a real-life scenario this node would be an "Authority", a node holding
-/// attributes for a number of identities and able to issue credentials signed with its own key.
-///
-/// The process by which we declare to that Authority which identity holds which attributes is an
-/// enrollment process and would be driven by an "enroller node".
-/// For the simplicity of the example provided here we preload the credential issues node with some existing attributes
-/// for both Alice's and Bob's identities.
-///
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     let issuer = CredentialIssuer::create(&ctx).await?;
