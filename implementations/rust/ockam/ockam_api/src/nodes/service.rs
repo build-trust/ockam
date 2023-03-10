@@ -668,6 +668,8 @@ impl NodeManagerWorker {
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "outlet"]) => self.delete_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "inlet"]) => self.delete_inlet(req, dec).await?.to_vec()?,
+            //TO-DO Move show parameter to node/outlet endpoint, make it conditionak
+            (Get, ["node", "outlet", "show"]) => self.show_outlet(req, dec).await?.to_vec()?,
 
             (Delete, ["node", "portal"]) => todo!(),
 
