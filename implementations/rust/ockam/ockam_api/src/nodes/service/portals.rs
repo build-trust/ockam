@@ -2,7 +2,7 @@ use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, DeleteInlet, DeleteOutlet, InletList, InletStatus, OutletList,
-    OutletStatus,
+    OutletStatus, PortalAlias
 };
 use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
@@ -400,6 +400,36 @@ impl NodeManagerWorker {
                     Some(format!("Failed to remove outlet with alias {alias}").into()),
                 )))
             }
+        } else {
+            error!(%alias, "Outlet not found in the node registry");
+            Ok(Response::not_found(req.id()).body(OutletStatus::new(
+                "".to_string(),
+                "".to_string(),
+                alias.clone(),
+                Some(format!("Outlet with alias {alias} not found").into()),
+            )))
+        }
+    }
+
+    pub(super) async fn show_outlet<'a>(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
+        let node_manager = self.node_manager.write().await;
+        let PortalAlias { alias, .. } = dec.decode()?;
+
+        let alias = alias.into_owned();
+
+        info!(%alias, "Handling request to show outlet portal");
+        if let Some(outlet_to_show) = node_manager.registry.outlets.get(&alias) {
+            debug!(%alias, "Outlet not found in node registry");
+            Ok(Response::ok(req.id()).body(OutletStatus::new(
+                outlet_to_show.tcp_addr.to_string(),
+                outlet_to_show.worker_addr.to_string(),
+                alias,
+                None,
+            )))
         } else {
             error!(%alias, "Outlet not found in the node registry");
             Ok(Response::not_found(req.id()).body(OutletStatus::new(
