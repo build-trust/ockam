@@ -1,3 +1,4 @@
+use crate::node::default_node_name;
 use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, node_rpc, process_nodes_multiaddr,
     RpcBuilder,
@@ -22,7 +23,7 @@ const HELP_DETAIL: &str = include_str!("../../constants/tcp/inlet/help_detail.tx
 #[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
-    #[arg(long, display_order = 900, id = "NODE")]
+    #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name())]
     at: String,
 
     /// Address on which to accept tcp connections.

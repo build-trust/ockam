@@ -1,3 +1,4 @@
+use crate::node::default_node_name;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts, Result};
 use anyhow::anyhow;
@@ -19,7 +20,7 @@ const HELP_DETAIL: &str = include_str!("../../constants/tcp/outlet/help_detail.t
 #[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
-    #[arg(long, display_order = 900, id = "NODE")]
+    #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name())]
     at: String,
 
     /// Address of the tcp outlet.
