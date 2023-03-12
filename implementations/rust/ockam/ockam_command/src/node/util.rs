@@ -13,7 +13,8 @@ use ockam_api::cli_state;
 use ockam_api::config::cli::{self, Authority};
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
-    NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+    ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
+    NodeManagerTransportOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_core::compat::sync::Arc;
@@ -90,12 +91,12 @@ pub async fn start_embedded_node_with_vault_and_identity(
             None,
         ),
         NodeManagerTransportOptions::new(
-            (
-                TransportType::Tcp,
-                TransportMode::Listen,
-                listened_worker_address,
-                socket_addr.to_string(),
-            ),
+            ApiTransport {
+                tt: TransportType::Tcp,
+                tm: TransportMode::Listen,
+                socket_address: socket_addr,
+                worker_address: listened_worker_address,
+            },
             tcp,
         ),
     )

@@ -25,6 +25,7 @@ use ockam_node::tokio;
 use ockam_node::tokio::task::JoinHandle;
 use std::collections::BTreeMap;
 use std::error::Error as _;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use super::models::secure_channel::CredentialExchangeMode;
@@ -100,7 +101,7 @@ pub(crate) struct AuthorityInfo {
     addr: MultiAddr,
 }
 
-type Transports = BTreeMap<Alias, (TransportType, TransportMode, Address, String)>;
+type Transports = BTreeMap<Alias, ApiTransport>;
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
@@ -209,16 +210,26 @@ impl<'a> NodeManagerProjectsOptions<'a> {
     }
 }
 
+#[derive(Clone)]
+/// Transport to build connection
+pub struct ApiTransport {
+    /// Type of transport being requested
+    pub tt: TransportType,
+    /// Mode of transport being requested
+    pub tm: TransportMode,
+    /// Socket address
+    pub socket_address: SocketAddr,
+    /// Worker address
+    pub worker_address: Address,
+}
+
 pub struct NodeManagerTransportOptions {
-    api_transport: (TransportType, TransportMode, Address, String),
+    api_transport: ApiTransport,
     tcp_transport: TcpTransport,
 }
 
 impl NodeManagerTransportOptions {
-    pub fn new(
-        api_transport: (TransportType, TransportMode, Address, String),
-        tcp_transport: TcpTransport,
-    ) -> Self {
+    pub fn new(api_transport: ApiTransport, tcp_transport: TcpTransport) -> Self {
         Self {
             api_transport,
             tcp_transport,

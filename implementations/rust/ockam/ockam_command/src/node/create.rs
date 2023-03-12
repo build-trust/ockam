@@ -32,6 +32,7 @@ use crate::{
 use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::authority_node;
+use ockam_api::nodes::service::ApiTransport;
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     config::cli::Authority,
@@ -303,12 +304,12 @@ async fn run_foreground_node(
             credential,
         ),
         NodeManagerTransportOptions::new(
-            (
-                TransportType::Tcp,
-                TransportMode::Listen,
-                listener_addr,
-                socket_addr.to_string(),
-            ),
+            ApiTransport {
+                tt: TransportType::Tcp,
+                tm: TransportMode::Listen,
+                socket_address: socket_addr,
+                worker_address: listener_addr,
+            },
             tcp.async_try_clone().await?,
         ),
     )
