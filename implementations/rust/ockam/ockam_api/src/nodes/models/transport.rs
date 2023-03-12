@@ -6,6 +6,7 @@ use std::net::SocketAddrV4;
 
 use crate::cli_state::CliStateError;
 use crate::config::lookup::InternetAddress;
+use crate::nodes::service::ApiTransport;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
@@ -161,20 +162,14 @@ pub struct TransportStatus<'a> {
 }
 
 impl<'a> TransportStatus<'a> {
-    pub fn new(
-        tt: TransportType,
-        tm: TransportMode,
-        socket_addr: impl Into<CowStr<'a>>,
-        worker_addr: impl Into<CowStr<'a>>,
-        tid: impl Into<CowStr<'a>>,
-    ) -> Self {
+    pub fn new(api_transport: ApiTransport, tid: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tt,
-            tm,
-            socket_addr: socket_addr.into(),
-            worker_addr: worker_addr.into(),
+            tt: api_transport.tt,
+            tm: api_transport.tm,
+            socket_addr: CowStr::from(api_transport.socket_address.to_string()),
+            worker_addr: CowStr::from(api_transport.worker_address.to_string()),
             tid: tid.into(),
         }
     }

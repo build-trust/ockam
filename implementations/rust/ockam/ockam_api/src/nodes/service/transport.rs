@@ -1,11 +1,13 @@
+use crate::error::ApiError;
 use crate::nodes::models::transport::{
     CreateTransport, DeleteTransport, TransportList, TransportMode, TransportStatus,
 };
-use crate::nodes::service::{random_alias, Alias, Transports};
+use crate::nodes::service::{random_alias, Alias, ApiTransport, Transports};
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions};
+use std::net::{AddrParseError, SocketAddr};
 
 use super::NodeManagerWorker;
 
@@ -19,15 +21,9 @@ impl NodeManagerWorker {
         Response::ok(req.id()).body(TransportList::new(
             transports
                 .iter()
-                .filter(|(_, (_, tm, _, _))| *tm == mode)
-                .map(|(tid, (tt, tm, worker_addr, socket_addr))| {
-                    TransportStatus::new(
-                        *tt,
-                        *tm,
-                        socket_addr,
-                        worker_addr.address().to_string(),
-                        tid.to_string(),
-                    )
+                .filter(|(_, ApiTransport { tm, .. })| *tm == mode)
+                .map(|(tid, api_transport)| {
+                    TransportStatus::new(api_transport.clone(), tid.to_string())
                 })
                 .collect(),
         ))
@@ -70,25 +66,40 @@ impl NodeManagerWorker {
         let response = match res {
             Ok((socket_address, worker_address)) => {
                 let tid = random_alias();
+                let socket_address: SocketAddr = socket_address
+                    .parse()
+                    .map_err(|err: AddrParseError| ApiError::generic(&err.to_string()))?;
                 node_manager.transports.insert(
                     tid.clone(),
-                    (tt, tm, worker_address.clone(), socket_address.clone()),
+                    ApiTransport {
+                        tt,
+                        tm,
+                        socket_address,
+                        worker_address: worker_address.address().into(),
+                    },
                 );
                 Response::ok(req.id()).body(TransportStatus::new(
-                    tt,
-                    tm,
-                    socket_address,
-                    worker_address.address().to_string(),
+                    ApiTransport {
+                        tt,
+                        tm,
+                        socket_address,
+                        worker_address: worker_address.address().into(),
+                    },
                     tid,
                 ))
             }
-            Err(msg) => Response::bad_request(req.id()).body(TransportStatus::new(
-                tt,
-                tm,
-                msg.to_string(),
-                "<none>".to_string(),
-                "<none>".to_string(),
-            )),
+            Err(msg) => {
+                error!("{}", msg.to_string());
+                Response::bad_request(req.id()).body(TransportStatus::new(
+                    ApiTransport {
+                        tt,
+                        tm,
+                        socket_address: "0.0.0.0:0000".parse().unwrap(),
+                        worker_address: "<none>".into(),
+                    },
+                    "<none>".to_string(),
+                ))
+            }
         };
 
         Ok(response)
@@ -106,12 +117,15 @@ impl NodeManagerWorker {
         let tid: Alias = body.tid.to_string();
 
         match node_manager.transports.get(&tid) {
-            Some(t) if t.1 == TransportMode::Listen => {
+            Some(t) if t.tm == TransportMode::Listen => {
                 warn!("It is not currently supported to destroy LISTEN transports");
                 Ok(Response::bad_request(req.id()))
             }
             Some(t) => {
-                node_manager.tcp_transport.disconnect(&t.2).await?;
+                node_manager
+                    .tcp_transport
+                    .disconnect(&t.worker_address)
+                    .await?;
                 node_manager.transports.remove(&tid);
                 Ok(Response::ok(req.id()))
             }

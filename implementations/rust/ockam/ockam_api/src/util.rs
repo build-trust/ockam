@@ -343,7 +343,8 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
 pub mod test {
     use crate::cli_state::{CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::nodes::service::{
-        NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+        ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
+        NodeManagerTransportOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
     use ockam::Result;
@@ -412,12 +413,12 @@ pub mod test {
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None),
             NodeManagerProjectsOptions::new(None, None, Default::default(), None),
             NodeManagerTransportOptions::new(
-                (
-                    crate::nodes::models::transport::TransportType::Tcp,
-                    crate::nodes::models::transport::TransportMode::Listen,
-                    "127.0.0.1".into(),
-                    "".into(),
-                ),
+                ApiTransport {
+                    tt: crate::nodes::models::transport::TransportType::Tcp,
+                    tm: crate::nodes::models::transport::TransportMode::Listen,
+                    socket_address: "127.0.0.1:123".parse().unwrap(),
+                    worker_address: "".into(),
+                },
                 tcp.async_try_clone().await?,
             ),
         )
