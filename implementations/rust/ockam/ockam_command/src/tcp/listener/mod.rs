@@ -1,10 +1,12 @@
 mod create;
 mod delete;
 mod list;
+mod show;
 
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
+pub(crate) use show::ShowCommand;
 
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
@@ -26,6 +28,9 @@ pub enum TcpListenerSubCommand {
 
     /// List tcp listeners registered on the selected node
     List(ListCommand),
+
+    /// Show tcp listener details
+    Show(ShowCommand),
 }
 
 impl TcpListenerCommand {
@@ -34,6 +39,7 @@ impl TcpListenerCommand {
             TcpListenerSubCommand::Create(c) => c.run(options),
             TcpListenerSubCommand::Delete(c) => c.run(options),
             TcpListenerSubCommand::List(c) => c.run(options),
+            TcpListenerSubCommand::Show(c) => c.run(options),
         }
     }
 }

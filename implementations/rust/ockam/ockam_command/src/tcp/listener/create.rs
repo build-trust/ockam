@@ -11,18 +11,12 @@ use ockam_multiaddr::MultiAddr;
 
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
-    #[command(flatten)]
-    node_opts: TCPListenerNodeOpts,
-
-    /// Address for this listener (eg. 127.0.0.1:7000)
-    pub address: String,
-}
-
-#[derive(Clone, Debug, Args)]
-pub struct TCPListenerNodeOpts {
     /// Node at which to create the listener
     #[arg(global = true, long, value_name = "NODE", default_value_t = default_node_name())]
     pub at: String,
+
+    /// Address for this listener (eg. 127.0.0.1:7000)
+    pub address: String,
 }
 
 impl CreateCommand {
@@ -35,7 +29,7 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let node_name = parse_node_name(&cmd.node_opts.at)?;
+    let node_name = parse_node_name(&cmd.at)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(
         Request::post("/node/tcp/listener").body(CreateTransport::new(
