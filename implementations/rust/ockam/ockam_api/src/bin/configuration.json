@@ -1,0 +1,18 @@
+{
+  "vault_path": "/tmp/ockam/vault",
+  "storage_path": "/tmp/ockam/storage",
+  "project_identifier": "12345",
+  "tcp_listener_address": "127.0.0.1:4000",
+  "secure_channel_listener_name": "secure",
+  "authenticator_name": "authenticator",
+  "trusted_identities": [{
+    "identifier": "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638",
+    "attributes": { "ockam-role": "enroller" }
+  }],
+  "okta": {
+    "tenant_base_url": "okta.url",
+    "certificate": "okta.ca",
+    "address": "okta",
+    "attributes": ["attribute_1", "attribute_2"]
+  }
+}

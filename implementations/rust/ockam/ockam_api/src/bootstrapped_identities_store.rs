@@ -85,6 +85,10 @@ impl IdentityAttributeStorageWriter for BootstrapedIdentityStore {
                 */
         }
     }
+
+    async fn delete(&self, identity: &IdentityIdentifier) -> Result<()> {
+        self.storage.delete(identity).await
+    }
 }
 
 impl IdentityAttributeStorage for BootstrapedIdentityStore {
@@ -113,7 +117,11 @@ impl PreTrustedIdentities {
     }
 
     pub fn new_from_string(entries: &str) -> Result<Self> {
-        Ok(PreTrustedIdentities::Fixed(Self::parse(entries)?))
+        Ok(Self::new_from_hashmap(Self::parse(entries)?))
+    }
+
+    pub fn new_from_hashmap(entries: HashMap<IdentityIdentifier, AttributesEntry>) -> Self {
+        PreTrustedIdentities::Fixed(entries)
     }
 
     fn parse_from_disk(path: &PathBuf) -> Result<HashMap<IdentityIdentifier, AttributesEntry>> {
