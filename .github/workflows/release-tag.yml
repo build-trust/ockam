@@ -13,6 +13,11 @@ permissions:
   # Contents permission allows us read this repository.
   contents: read
 
+# runs every command in bash (for every job in the workflow)
+defaults:
+  run:
+    shell: bash
+
 jobs:
   release_ockam:
     runs-on: ubuntu-20.04
@@ -25,7 +30,6 @@ jobs:
     steps:
       - name: Get Commit Of Develop
         id: develop_sha
-        shell: bash
         run: |
           develop_sha=$(git ls-remote https://github.com/${{ github.repository_owner }}/ockam.git refs/heads/develop | head -1 | cut -f 1)
           echo "sha=$develop_sha" >> $GITHUB_OUTPUT
@@ -44,7 +48,6 @@ jobs:
           gpg_email: '${{ secrets.GPG_EMAIL }}'
 
       - name: Update Tag Commit To That Merged by Mergify On Develop
-        shell: bash
         run: |
           git tag -s -a ${{ github.event.inputs.git_tag }} ${{ steps.develop_sha.outputs.sha }} -m "Ockam Release" -f
           git push origin ${{ github.event.inputs.git_tag }} -f
