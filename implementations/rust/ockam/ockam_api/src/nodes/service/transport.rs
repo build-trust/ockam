@@ -1,6 +1,6 @@
 use crate::error::ApiError;
 use crate::nodes::models::transport::{
-    CreateTransport, DeleteTransport, TransportList, TransportMode, TransportStatus,
+    CreateTransport, DeleteTransport, TransportList, TransportMode, TransportStatus, TransportType,
 };
 use crate::nodes::service::{random_alias, Alias, ApiTransport, Transports};
 use minicbor::Decoder;
@@ -27,6 +27,32 @@ impl NodeManagerWorker {
                 })
                 .collect(),
         ))
+    }
+
+    pub(super) async fn get_transport<'a>(
+        &self,
+        req: &Request<'a>,
+        id: &str,
+        tt: TransportType,
+        tm: TransportMode,
+    ) -> Result<Vec<u8>> {
+        let transport = {
+            let inner = self.node_manager.read().await;
+            inner.transports.get(id).cloned()
+        };
+        let res = match transport {
+            None => Response::not_found(req.id()).to_vec()?,
+            Some(transport) => {
+                if transport.tt == tt && transport.tm == tm {
+                    Response::ok(req.id())
+                        .body(TransportStatus::new(transport, id.to_string()))
+                        .to_vec()?
+                } else {
+                    Response::not_found(req.id()).to_vec()?
+                }
+            }
+        };
+        Ok(res)
     }
 
     pub(super) async fn add_transport<'a>(
