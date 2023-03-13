@@ -21,7 +21,9 @@ use ockam_core::Result;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use serde::{Serialize, Serializer};
+#[cfg(feature = "std")]
 use time::format_description::well_known::iso8601::{Iso8601, TimePrecision};
+#[cfg(feature = "std")]
 use time::{Error::Format, OffsetDateTime};
 
 #[cfg(feature = "std")]
@@ -61,9 +63,7 @@ impl fmt::Display for Credential {
             .map_err(|_| fmt::Error)?
             .into_verified();
         write!(f, "{}", data)?;
-        writeln!(f, " Signature: {}", hex::encode(self.signature.deref()))?;
-        writeln!(f, "---")?;
-        writeln!(f, "\n")
+        writeln!(f, "Signature:  {}", hex::encode(self.signature.deref()))
     }
 
     #[cfg(not(feature = "std"))]
@@ -77,14 +77,16 @@ impl fmt::Display for CredentialData<Verified> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use time::format_description::well_known::iso8601;
 
-        writeln!(f, "---")?;
-        writeln!(f, " Subject: {}", self.subject)?;
-        writeln!(f, " Issuer: {} ({})", self.issuer, self.issuer_key_label)?;
+        if let Some(schema_id) = self.schema {
+            writeln!(f, "Schema:     {schema_id}")?;
+        }
+        writeln!(f, "Subject:    {}", self.subject)?;
+        writeln!(f, "Issuer:     {} ({})", self.issuer, self.issuer_key_label)?;
 
         let human_readable_time =
             |time: Timestamp| match OffsetDateTime::from_unix_timestamp(u64::from(time) as i64) {
                 Ok(time) => {
-                    let now_iso = match time.format(
+                    match time.format(
                         &Iso8601::<
                             {
                                 iso8601::Config::DEFAULT
@@ -98,17 +100,16 @@ impl fmt::Display for CredentialData<Verified> {
                         Ok(now_iso) => now_iso,
                         Err(_) => Format(time::error::Format::InvalidComponent("timestamp error"))
                             .to_string(),
-                    };
-                    now_iso
+                    }
                 }
                 Err(_) => Format(time::error::Format::InvalidComponent(
                     "unix time is invalid",
                 ))
                 .to_string(),
             };
-        writeln!(f, " Created: {}", human_readable_time(self.created))?;
-        writeln!(f, " Expires: {}", human_readable_time(self.expires))?;
-        write!(f, " Attributes: ")?;
+        writeln!(f, "Created:    {}", human_readable_time(self.created))?;
+        writeln!(f, "Expires:    {}", human_readable_time(self.expires))?;
+        write!(f, "Attributes: ")?;
         f.debug_map()
             .entries(
                 self.attributes
@@ -116,7 +117,7 @@ impl fmt::Display for CredentialData<Verified> {
                     .map(|(k, v)| (k, std::str::from_utf8(v).unwrap_or("**binary**"))),
             )
             .finish()?;
-        writeln!(f, "\n")
+        writeln!(f)
     }
 
     #[cfg(not(feature = "std"))]
@@ -335,6 +336,12 @@ impl From<SchemaId> for u64 {
     }
 }
 
+impl fmt::Display for SchemaId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// Convenience structure to create [`Credential`]s.
 pub struct CredentialBuilder {
     schema: Option<SchemaId>,
@@ -447,11 +454,54 @@ mod test {
     }
 
     #[test]
+    fn test_display_credential_data() {
+        let credential_data = make_credential_data();
+        let actual = format!("{credential_data}");
+        let expected = r#"Schema:     1
+Subject:    P6474cfdbf547240b6d716bff89c976810859bc3f47be8ea620df12a392ea6cb7
+Issuer:     P0db4fec87ff764485f1311e68d6f474e786f1fdbafcd249a5eb73dd681fd1d5d (OCKAM_RK)
+Created:    1970-01-01T00:02:00Z
+Expires:    1970-01-01T00:03:20Z
+Attributes: {"name": "value"}
+"#;
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn test_display_credential() {
-        // this test makes sure that we are using the minicbor Bytes encoder
-        // for the Credential fields
-        let credential = Credential::new(vec![1, 2, 3], vec![5, 6, 7]);
+        let credential_data = make_credential_data();
+        let data = minicbor::to_vec(&credential_data).unwrap();
+        let credential = Credential::new(data, vec![1, 2, 3]);
+
         let actual = format!("{credential}");
-        assert_eq!(actual, "expected")
+        let expected = r#"Schema:     1
+Subject:    P6474cfdbf547240b6d716bff89c976810859bc3f47be8ea620df12a392ea6cb7
+Issuer:     P0db4fec87ff764485f1311e68d6f474e786f1fdbafcd249a5eb73dd681fd1d5d (OCKAM_RK)
+Created:    1970-01-01T00:02:00Z
+Expires:    1970-01-01T00:03:20Z
+Attributes: {"name": "value"}
+Signature:  010203
+"#;
+        assert_eq!(actual, expected);
+    }
+
+    fn make_credential_data() -> CredentialData<Verified> {
+        let mut attributes = Attributes::new();
+        attributes.put("name", "value".as_bytes());
+
+        CredentialData {
+            schema: Some(SchemaId(1)),
+            subject: IdentityIdentifier::from_key_id(
+                "6474cfdbf547240b6d716bff89c976810859bc3f47be8ea620df12a392ea6cb7",
+            ),
+            issuer: IdentityIdentifier::from_key_id(
+                "0db4fec87ff764485f1311e68d6f474e786f1fdbafcd249a5eb73dd681fd1d5d",
+            ),
+            attributes,
+            issuer_key_label: "OCKAM_RK".into(),
+            created: Timestamp(120),
+            expires: Timestamp(200),
+            status: None::<PhantomData<Verified>>,
+        }
     }
 }

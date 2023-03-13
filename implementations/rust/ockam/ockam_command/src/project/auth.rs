@@ -115,7 +115,9 @@ async fn run_impl(
     let client2 = CredentialIssuerClient::new(RpcClient::new(credential_issuer_route, &ctx).await?);
 
     let credential = client2.credential().await?;
+    println!("---");
     println!("{credential}");
+    println!("---");
     delete_embedded_node(&opts, &node_name).await;
     Ok(())
 }
