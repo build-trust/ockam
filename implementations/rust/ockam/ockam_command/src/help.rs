@@ -1,4 +1,4 @@
-use crate::terminal::{Terminal, TerminalBackground};
+use crate::terminal::TerminalBackground;
 use colorful::Colorful;
 use once_cell::sync::Lazy;
 use syntect::highlighting::Theme;
@@ -32,7 +32,7 @@ pub(crate) fn template(body: &str) -> &'static str {
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 static RE: Lazy<Regex> = Lazy::new(|| Regex::new("^[A-Za-z][A-Za-z0-9 ]+:$".into()));
 static THEME: Lazy<Option<Theme>> = Lazy::new(|| {
-    let theme_name = match Terminal::detect_background_color() {
+    let theme_name = match TerminalBackground::detect_background_color() {
         TerminalBackground::Light => "base16-ocean.light",
         TerminalBackground::Dark => "base16-ocean.dark",
         TerminalBackground::Unknown => return None,

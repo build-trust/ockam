@@ -2,6 +2,7 @@ use crate::node::default_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 use clap::Args;
+use colorful::Colorful;
 
 /// Delete a node
 #[derive(Clone, Debug, Args)]
@@ -34,7 +35,16 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
         delete_all_nodes(opts, cmd.force)?;
     } else {
         delete_node(&opts, &cmd.node_name, cmd.force)?;
-        println!("Deleted node '{}'", &cmd.node_name);
+        opts.shell
+            .stdout()
+            .plain(format!(
+                "{}Node with name '{}' has been deleted.",
+                "✔︎".light_green(),
+                &cmd.node_name
+            ))
+            .machine(&cmd.node_name)
+            .json(&serde_json::json!({ "node": { "name": &cmd.node_name } }))
+            .write_line()?;
     }
     Ok(())
 }

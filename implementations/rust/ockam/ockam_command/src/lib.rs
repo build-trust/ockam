@@ -63,7 +63,9 @@ use worker::WorkerCommand;
 
 use crate::admin::AdminCommand;
 use crate::subscription::SubscriptionCommand;
+use crate::terminal::{Terminal, TerminalStream};
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
+use console::Term;
 use ockam_api::cli_state::CliState;
 use upgrade::check_if_an_upgrade_is_available;
 
@@ -121,6 +123,10 @@ pub struct GlobalArgs {
     #[arg(hide = help::hide(), global = true, long)]
     no_color: bool,
 
+    /// Disable tty functionality
+    #[arg(hide = help::hide(), global = true, long)]
+    no_input: bool,
+
     /// Output format
     #[arg(
         hide = help::hide(),
@@ -154,14 +160,23 @@ pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     pub config: OckamConfig,
     pub state: CliState,
+    pub shell: Terminal<TerminalStream<Term>>,
 }
 
 impl CommandGlobalOpts {
     fn new(global_args: GlobalArgs, config: OckamConfig) -> Self {
+        let state = CliState::try_default().expect("Failed to load CLI state");
+        let terminal = Terminal::new(
+            global_args.quiet,
+            global_args.no_color,
+            global_args.no_input,
+            global_args.output_format.clone(),
+        );
         Self {
             global_args,
             config,
-            state: CliState::try_default().expect("Failed to load CLI state"),
+            state,
+            shell: terminal,
         }
     }
 }
