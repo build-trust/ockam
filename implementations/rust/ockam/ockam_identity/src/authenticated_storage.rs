@@ -100,6 +100,9 @@ pub trait IdentityAttributeStorageWriter: Send + Sync + 'static {
         identity: &IdentityIdentifier,
         entry: AttributesEntry,
     ) -> Result<()>;
+
+    /// Remove all attributes for a given identity identifier
+    async fn delete(&self, identity: &IdentityIdentifier) -> Result<()>;
 }
 
 /// Trait implementing read/write access to an AuthenticatedIdentities table
@@ -206,6 +209,15 @@ impl IdentityAttributeStorageWriter for AuthenticatedAttributeStorage {
             .await?;
 
         Ok(())
+    }
+
+    async fn delete(&self, identity: &IdentityIdentifier) -> Result<()> {
+        self.storage
+            .del(
+                identity.to_string().as_str(),
+                IdentityStateConst::ATTRIBUTES_KEY,
+            )
+            .await
     }
 }
 
