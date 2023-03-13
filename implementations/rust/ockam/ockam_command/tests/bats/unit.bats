@@ -205,7 +205,7 @@ teardown() {
   # Check that the connection is listed
   run "$OCKAM" tcp-connection list --node n1
   assert_success
-  assert_output --partial "127.0.0.1:5000"
+  assert_output --partial "$id"
 
   # Delete the connection
   id=$($OCKAM tcp-connection list --node n1 | grep -o "[0-9a-f]\{32\}" | head -1)
@@ -215,7 +215,7 @@ teardown() {
   # Check that it's no longer listed
   run "$OCKAM" tcp-connection list --node n1
   assert_success
-  refute_output --partial "127.0.0.1:5000"
+  refute_output --partial "$id"
 }
 
 @test "tcp listener - CRUD" {
@@ -232,15 +232,21 @@ teardown() {
   assert_success
   assert_output --partial "127.0.0.1:7000"
 
-  # Delete the listener
   id=$($OCKAM tcp-listener list --node n1 | grep -o "[0-9a-f]\{32\}" | head -1)
+
+  # Show the listener details
+  run "$OCKAM" tcp-listener show --node n1 "$id"
+  assert_success
+  assert_output --partial "$id"
+
+  # Delete the listener
   run "$OCKAM" tcp-listener delete --node n1 "$id"
   assert_success
 
   # Check that it's no longer listed
   run "$OCKAM" tcp-listener list --node n1
   assert_success
-  refute_output --partial "127.0.0.1:7000"
+  refute_output --partial "$id"
 }
 
 @test "tcp - create a tcp connection and then delete it" {

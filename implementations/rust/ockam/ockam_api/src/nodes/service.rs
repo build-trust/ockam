@@ -575,6 +575,10 @@ impl NodeManagerWorker {
                 )
                 .to_vec()?
             }
+            (Get, ["node", "tcp", "listener", id]) => {
+                self.get_transport(req, id, TransportType::Tcp, TransportMode::Listen)
+                    .await?
+            }
             (Post, ["node", "tcp", "listener"]) => self.add_transport(req, dec).await?.to_vec()?,
             (Delete, ["node", "tcp", "listener"]) => {
                 self.delete_transport(req, dec).await?.to_vec()?
