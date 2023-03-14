@@ -13,7 +13,6 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 
 use crate::error::ApiError;
-use crate::multiaddr_to_socket_addr;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default)]
 #[cbor(map)]
@@ -121,13 +120,9 @@ impl Project<'_> {
     // then this will return the string "node.dnsaddr.com:4000".
     fn access_route_socket_addr(&self) -> Result<String> {
         let ma = self.access_route()?;
-        if let Some(addr) = multiaddr_to_socket_addr(&ma) {
-            Ok(addr)
-        } else {
-            Err(ApiError::generic(
-                "Project's access route has not a valid structure",
-            ))
-        }
+        ma.multiaddr_to_socket_addr()
+            .map(|addr| addr.to_string())
+            .map_err(|e| ApiError::generic(&e.to_string()))
     }
 }
 
