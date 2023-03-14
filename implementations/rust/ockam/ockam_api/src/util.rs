@@ -42,40 +42,6 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
     Some(rb.into())
 }
 
-/// If the input MultiAddr is "/dnsaddr/localhost/tcp/4000/service/api",
-/// then this will return string format of the SocketAddr: "127.0.0.1:4000".
-pub fn multiaddr_to_socket_addr(ma: &MultiAddr) -> Option<String> {
-    let mut it = ma.iter().peekable();
-    while let Some(p) = it.next() {
-        match p.code() {
-            Ip4::CODE => {
-                let ip4 = p.cast::<Ip4>()?;
-                let port = it.next()?.cast::<Tcp>()?;
-                return Some(SocketAddrV4::new(*ip4, *port).to_string());
-            }
-            Ip6::CODE => {
-                let ip6 = p.cast::<Ip6>()?;
-                let port = it.next()?.cast::<Tcp>()?;
-                return Some(SocketAddrV6::new(*ip6, *port, 0, 0).to_string());
-            }
-            DnsAddr::CODE => {
-                let host = p.cast::<DnsAddr>()?;
-                if let Some(p) = it.peek() {
-                    if p.code() == Tcp::CODE {
-                        let port = p.cast::<Tcp>()?;
-                        return Some(format!("{}:{}", &*host, *port));
-                    }
-                }
-            }
-            other => {
-                error!(target: "ockam_api", code = %other, "unsupported protocol");
-                return None;
-            }
-        }
-    }
-    None
-}
-
 pub struct TcpSession {
     pub session: Option<(Sessions, SessionId)>,
     pub route: Route,

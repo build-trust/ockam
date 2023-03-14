@@ -23,11 +23,13 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::Deref;
 use core::str::FromStr;
+use std::net::{SocketAddrV4, SocketAddrV6};
 use once_cell::race::OnceBox;
 use tinyvec::{Array, ArrayVec, TinyVec};
 
 pub use error::Error;
 pub use registry::{Registry, RegistryBuilder};
+use crate::proto::{DnsAddr, Ip4, Ip6, Tcp};
 
 /// Global default registry of known protocols.
 fn default_registry() -> &'static Registry {
@@ -572,6 +574,39 @@ impl MultiAddr {
         addr.concat_mut(other)?;
 
         Ok(addr)
+    }
+
+    /// If the input MultiAddr is "/dnsaddr/localhost/tcp/4000/service/api",
+    /// then this will return string format of the SocketAddr: "127.0.0.1:4000".
+    pub fn multiaddr_to_socket_addr(self) -> Result<String, Error> {
+        let mut it = self.iter().peekable();
+        while let Some(p) = it.next() {
+            match p.code() {
+                Ip4::CODE => {
+                    let ip4 = p.cast::<Ip4>().unwrap();
+                    let port = it.next().unwrap().cast::<Tcp>().unwrap();
+                    return Ok(SocketAddrV4::new(*ip4, *port).to_string());
+                }
+                Ip6::CODE => {
+                    let ip6 = p.cast::<Ip6>().unwrap();
+                    let port = it.next().unwrap().cast::<Tcp>().unwrap();
+                    return Ok(SocketAddrV6::new(*ip6, *port, 0, 0).to_string());
+                }
+                DnsAddr::CODE => {
+                    let host = p.cast::<DnsAddr>().unwrap();
+                    if let Some(p) = it.peek() {
+                        if p.code() == Tcp::CODE {
+                            let port = p.cast::<Tcp>().unwrap();
+                            return Ok(format!("{}:{}", &*host, *port));
+                        }
+                    }
+                }
+                other => {
+                    return Err(Error::invalid_proto(other));
+                }
+            }
+        }
+        return Err(Error::message("No socket address found"));
     }
 }
 
