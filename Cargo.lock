@@ -2784,9 +2784,9 @@ dependencies = [
 
 [[package]]
 name = "minimad"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f0c6050964e706796ad6e94b036ab0b7ca97e871905e1caab6b6771366e946d"
+checksum = "38b136454924e4d020e55c4992e07c105b40d5c41b84662862f0e15bc0a2efef"
 dependencies = [
  "once_cell",
 ]
@@ -4925,9 +4925,9 @@ dependencies = [
 
 [[package]]
 name = "termimad"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56f87b17ba3babbffcbfe44d5e29fa90d80c5449034a799c9d87017358000e5f"
+checksum = "749b18b17745261a883ab334d931adffc8c5e07e71c73a861e77124557e7b41f"
 dependencies = [
  "coolor",
  "crossbeam",
