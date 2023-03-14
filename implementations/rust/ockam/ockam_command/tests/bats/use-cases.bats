@@ -76,7 +76,6 @@ teardown() {
 
 # https://docs.ockam.io/use-cases/apply-fine-grained-permissions-with-attribute-based-access-control-abac
 @test "use-case - abac" {
-  skip "TODO: Update after latest ABAC changes"
   skip_if_orchestrator_tests_not_enabled
   copy_orchestrator_data
 
@@ -92,30 +91,38 @@ teardown() {
   # Control plane
   setup_home_dir
   CONTROL_OCKAM_HOME=$OCKAM_HOME
-  run "$OCKAM" node create control_plane1 --project "$PROJECT_JSON_PATH" --enrollment-token "$cp1_token"
-  run "$OCKAM" policy set --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
-  run "$OCKAM" tcp-outlet create --at /node/control_plane1 --from /service/outlet --to 127.0.0.1:5000
-
   fwd=$(random_str)
+  $OCKAM identity create control_identity
+  $OCKAM project authenticate --token "$cp1_token" --project-path "$PROJECT_JSON_PATH" --identity control_identity
+  $OCKAM node create control_plane1 --project "$PROJECT_JSON_PATH" --identity control_identity
+  $OCKAM policy set --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
+  $OCKAM tcp-outlet create --at /node/control_plane1 --from /service/outlet --to 127.0.0.1:5000
   run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/control_plane1
+  assert_success
 
   # Edge plane
   setup_home_dir
-  run "$OCKAM" node create edge_plane1 --project "$PROJECT_JSON_PATH" --enrollment-token "$ep1_token"
-  run "$OCKAM" policy set --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
-  run "$OCKAM" tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
+  $OCKAM identity create edge_identity
+  $OCKAM project authenticate --token "$ep1_token" --project-path "$PROJECT_JSON_PATH" --identity edge_identity
+  $OCKAM node create edge_plane1 --project "$PROJECT_JSON_PATH" --identity edge_identity
+  $OCKAM policy set --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
+  $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
   run curl --fail --head --max-time 5 "127.0.0.1:$port_1"
   assert_success
 
   ## The following is denied
-  run "$OCKAM" node create x --project "$PROJECT_JSON_PATH" --enrollment-token "$x_token"
-  run "$OCKAM" policy set --at x --resource tcp-inlet --expression '(= subject.component "control")'
-  run "$OCKAM" tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
+  $OCKAM identity create x_identity
+  $OCKAM project authenticate --token "$x_token" --project-path "$PROJECT_JSON_PATH" --identity x_identity
+  $OCKAM node create x --project "$PROJECT_JSON_PATH" --identity x_identity
+  $OCKAM policy set --at x --resource tcp-inlet --expression '(= subject.component "control")'
+  $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
   run curl --fail --head --max-time 5 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
 
-  teardown_home_dir
+  # Cleanup
+  teardown_home_dir # edge_plane
   OCKAM_HOME=$CONTROL_OCKAM_HOME
-  teardown_home_dir
+  teardown_home_dir # control_plane
   OCKAM_HOME=$ADMIN_OCKAM_HOME
+  teardown_home_dir # admin
 }
