@@ -30,7 +30,7 @@ async fn main(ctx: Context) -> Result<()> {
     // For a different application this attested attribute set can be different and
     // distinct for each identifier, but for this example we'll keep things simple.
     for identifier in known_identifiers.iter() {
-        issuer.put_attribute_value(&identifier, "cluster", "production").await?;
+        issuer.put_attribute_value(identifier, "cluster", "production").await?;
     }
 
     // Start a secure channel listener that only allows channels where the identity

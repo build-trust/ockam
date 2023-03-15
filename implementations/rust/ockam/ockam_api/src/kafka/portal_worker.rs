@@ -327,14 +327,9 @@ mod test {
             _context: &mut Self::Context,
             message: Routed<Self::Message>,
         ) -> ockam_core::Result<()> {
-            match message.as_body() {
-                PortalMessage::Payload(payload) => {
-                    self.buffer.lock().unwrap().extend_from_slice(payload);
-                }
-
-                _ => {}
+            if let PortalMessage::Payload(payload) = message.as_body() {
+                self.buffer.lock().unwrap().extend_from_slice(payload);
             }
-
             Ok(())
         }
     }
@@ -356,7 +351,7 @@ mod test {
         let message: Routed<PortalMessage> = context.receive::<PortalMessage>().await?.take();
         if let PortalMessage::Ping = message.as_body() {
         } else {
-            assert!(false, "invalid message type")
+            panic!("invalid message type")
         }
 
         context
@@ -366,7 +361,7 @@ mod test {
         let message: Routed<PortalMessage> = context.receive::<PortalMessage>().await?.take();
         if let PortalMessage::Pong = message.as_body() {
         } else {
-            assert!(false, "invalid message type")
+            panic!("invalid message type")
         }
 
         context.stop().await
@@ -443,7 +438,7 @@ mod test {
         let message = context.receive::<PortalMessage>().await?.take();
 
         if let PortalMessage::Payload(payload) = message.as_body() {
-            assert_eq!(payload, double_payload.as_ref());
+            assert_eq!(payload, double_payload);
         } else {
             panic!("invalid message")
         }
@@ -547,7 +542,7 @@ mod test {
             .await?;
 
         // let's duplicate the message
-        huge_outgoing_request.extend_from_slice(&huge_outgoing_request.to_vec());
+        huge_outgoing_request.extend(huge_outgoing_request.clone());
 
         for chunk in huge_outgoing_request.as_ref().chunks(MAX_PAYLOAD_SIZE) {
             context
@@ -588,15 +583,14 @@ mod test {
         let secure_channel_controller =
             KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![]).into_trait();
 
-        let portal_inlet_address = KafkaPortalWorker::start_kafka_portal(
+        KafkaPortalWorker::start_kafka_portal(
             context,
             secure_channel_controller,
             Default::default(),
             inlet_map,
         )
         .await
-        .unwrap();
-        portal_inlet_address
+        .unwrap()
     }
 
     fn encode<H, R>(mut request_buffer: &mut BytesMut, header: H, request: R)
@@ -673,7 +667,7 @@ mod test {
         if let PortalMessage::Payload(payload) = message.as_body() {
             assert_eq!(&request_buffer.to_vec(), payload);
         } else {
-            assert!(false, "invalid message type")
+            panic!("invalid message type")
         }
         trace!("return_route: {:?}", &message.return_route());
 
@@ -749,7 +743,7 @@ mod test {
             assert_eq!("127.0.0.1".to_string(), address.ip().to_string());
             assert_eq!(20_000, address.port());
         } else {
-            assert!(false, "invalid message type")
+            panic!("invalid message type")
         }
 
         context.stop().await

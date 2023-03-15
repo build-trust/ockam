@@ -81,7 +81,7 @@ async fn sessions__secure_channel_over_tcp_with_alice_session__should_not_pass_m
 async fn sessions__secure_channel_over_tcp_with_bob_session__should_not_pass_messages(
     ctx: &mut Context,
 ) -> Result<()> {
-    let bob_tcp_info = create_tcp_listener_with_session(&ctx).await?;
+    let bob_tcp_info = create_tcp_listener_with_session(ctx).await?;
 
     let connection_to_bob = create_tcp_connection(ctx, &bob_tcp_info.socket_addr, false).await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
@@ -169,7 +169,7 @@ async fn check_message_flow(ctx: &Context, route: Route, should_pass: bool) -> R
         .await?;
 
     let msg: [u8; 4] = random();
-    let msg = hex::encode(&msg);
+    let msg = hex::encode(msg);
     ctx.send(route![route, address], msg.clone()).await?;
 
     if should_pass {

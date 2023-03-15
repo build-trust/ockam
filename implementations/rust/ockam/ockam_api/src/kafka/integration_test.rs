@@ -97,7 +97,7 @@ mod test {
         let (_, socket_address) = handle
             .tcp
             .create_inlet(
-                format!("127.0.0.1:0"),
+                "127.0.0.1:0".to_string(),
                 route![listener_address.clone(), outlet_route.clone()],
                 AllowAll,
             )
@@ -201,7 +201,7 @@ mod test {
             "hello world!".as_bytes()
         );
 
-        let mut consumer_mock_kafka = TcpServerSimulator::start(&format!("127.0.0.1:0")).await;
+        let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
         handler
             .tcp
             .create_outlet(
@@ -326,7 +326,7 @@ mod test {
     async fn simulate_first_kafka_consumer_empty_reply_and_ignore_result(
         consumer_bootstrap_port: u16,
         mock_kafka_connection: &mut TcpServerSimulator,
-    ) -> () {
+    ) {
         let mut kafka_client_connection =
             TcpStream::connect(format!("127.0.0.1:{consumer_bootstrap_port}"))
                 .await
@@ -359,7 +359,7 @@ mod test {
             )
             .await;
 
-        send_kafka_fetch_response(mock_kafka_connection.stream(), &producer_request).await;
+        send_kafka_fetch_response(mock_kafka_connection.stream(), producer_request).await;
         read_kafka_response::<&mut TcpStream, ResponseHeader, FetchResponse>(
             &mut kafka_client_connection,
             ApiKey::FetchKey,
@@ -578,7 +578,7 @@ mod test {
         /// Stops every async task running and wait for completion
         /// must be called to avoid leaks to be sure everything is closed before
         /// moving on the next test
-        pub async fn destroy_and_wait(self) -> () {
+        pub async fn destroy_and_wait(self) {
             self.is_stopping.store(true, Ordering::SeqCst);
             //we want to close the channel _before_ joining current handles to interrupt them
             drop(self.stream);

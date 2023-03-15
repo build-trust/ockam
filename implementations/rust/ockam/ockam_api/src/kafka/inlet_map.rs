@@ -55,7 +55,7 @@ impl KafkaInletMap {
     #[cfg(test)]
     pub(crate) async fn retrieve_inlet(&self, broker_id: BrokerId) -> Option<SocketAddr> {
         let self_guard = self.inner.lock().await;
-        self_guard.broker_map.get(&broker_id).map(|x| x.clone())
+        self_guard.broker_map.get(&broker_id).copied()
     }
 
     /// Asserts the presence of an inlet for a broker

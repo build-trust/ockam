@@ -17,7 +17,7 @@ const AVAILABLE_LOCAL_PORTS_ADDR: &str = "127.0.0.1:0";
 #[ockam_macros::test]
 async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
     // Find an available port
-    let bind_addr = available_local_ports(1).await?.first().unwrap().clone();
+    let bind_addr = *available_local_ports(1).await?.first().unwrap();
     debug!("bind_addr = {:?}", bind_addr);
 
     // Transport
