@@ -5,6 +5,7 @@ use crate::util::Rpc;
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam_api::nodes::models;
+use ockam_api::nodes::models::transport::{CreateTransport, TransportMode, TransportType};
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Service, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -38,7 +39,14 @@ async fn run_impl(
     let at_node_name = &cmd.node_opts.at;
     let node_name = extract_address_value(at_node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(Request::post("/node/tcp/listener")).await?;
+    rpc.request(
+        Request::post("/node/tcp/listener").body(CreateTransport::new(
+            TransportType::Tcp,
+            TransportMode::Listen,
+            cmd.address,
+        )),
+    )
+    .await?;
     let response = rpc.parse_response::<models::transport::TransportStatus>()?;
 
     let port = opts
