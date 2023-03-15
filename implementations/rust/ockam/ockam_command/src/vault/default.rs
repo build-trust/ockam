@@ -11,8 +11,8 @@ pub struct DefaultCommand {
 }
 
 impl DefaultCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        if let Err(e) = run_impl(options, self) {
+    pub fn run(self, opts: CommandGlobalOpts) {
+        if let Err(e) = run_impl(opts, self) {
             eprintln!("{e:?}");
             std::process::exit(e.code());
         }
