@@ -77,7 +77,7 @@ impl TryFrom<&str> for PortRange {
 }
 
 #[test]
-fn port_range_parse() -> () {
+fn port_range_parse() {
     assert_eq!(
         PortRange::try_from("10-20").unwrap(),
         PortRange { start: 10, end: 20 }

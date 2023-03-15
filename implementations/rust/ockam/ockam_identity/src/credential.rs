@@ -470,7 +470,7 @@ Attributes: {"name": "value"}
     #[test]
     fn test_display_credential() {
         let credential_data = make_credential_data();
-        let data = minicbor::to_vec(&credential_data).unwrap();
+        let data = minicbor::to_vec(credential_data).unwrap();
         let credential = Credential::new(data, vec![1, 2, 3]);
 
         let actual = format!("{credential}");

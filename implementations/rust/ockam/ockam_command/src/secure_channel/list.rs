@@ -143,7 +143,6 @@ async fn rpc(
     let results: Result<Vec<_>, _> = response_rpcs
         .iter()
         .map(|rpc| rpc.parse_response::<ShowSecureChannelResponse>())
-        .into_iter()
         .collect();
     let responses = results?;
 

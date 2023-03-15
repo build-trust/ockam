@@ -177,7 +177,7 @@ mod test {
                             .throttle_time_ms(0)
                             .brokers(Default::default())
                             .cluster_id(None)
-                            .controller_id(BrokerId::from(0 as i32))
+                            .controller_id(BrokerId::from(0_i32))
                             .cluster_authorized_operations(-2147483648)
                             .topics(Default::default())
                             .unknown_tagged_fields(Default::default())

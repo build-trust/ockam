@@ -106,10 +106,8 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let access_control = AbacAccessControl::create(control_plane.authenticated_storage().clone(), "component", "edge");
 
     // 4. create a tcp outlet with the above policy
-    let outlet = tcp
-        .create_outlet_impl("outlet".into(), "127.0.0.1:5000".into(), Arc::new(access_control))
+    tcp.create_outlet_impl("outlet".into(), "127.0.0.1:5000".into(), Arc::new(access_control))
         .await?;
-    println!("{outlet:?}");
 
     // 5. create a forwarder on the Ockam orchestrator
 
@@ -147,7 +145,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 6. create a secure channel listener which will allow the edge node to
     //    start a secure channel when it is ready
-    let _ = control_plane
+    control_plane
         .create_secure_channel_listener("untrusted", TrustEveryonePolicy)
         .await?;
     println!("created a secure channel listener");
