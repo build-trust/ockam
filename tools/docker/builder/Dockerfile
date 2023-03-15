@@ -1,7 +1,7 @@
 FROM gcc:11.2.0@sha256:0eaeaee298c154ecd383cabe5301a5df9fde0cd3a729124caf574500b936389b
 
 ARG RUSTUP_INIT_VERSION=1.25.2
-ARG RUST_VERSION=1.67.1
+ARG RUST_VERSION=1.68.0
 ARG ERLANG_VERSION=24.1.7-1~debian~buster
 ARG ELIXIR_VERSION=1.13.0-1~debian~buster
 ARG NODEJS_VERSION=16.13.1
@@ -53,7 +53,7 @@ RUN set -xe; \
     esac; \
 # Setup base tools
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends ca-certificates curl locales xz-utils clang; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends parallel ca-certificates curl locales xz-utils clang; \
 # Setup locale
     LANG=en_US.UTF-8; \
     echo $LANG UTF-8 > /etc/locale.gen; \
