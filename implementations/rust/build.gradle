@@ -51,7 +51,7 @@ task lint_cargo_clippy {
   doLast {
     exec {
       environment environmentVars()
-      commandLine cargo('clippy', '--no-deps', '--', '-D', 'warnings')
+      commandLine cargo('clippy', '--no-deps', "--all-targets", '--', '-D', 'warnings')
     }
   }
 }
