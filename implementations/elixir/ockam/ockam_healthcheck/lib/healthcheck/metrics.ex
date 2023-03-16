@@ -27,7 +27,14 @@ defmodule Ockam.Healthcheck.Metrics do
         measurement: :duration,
         unit: {:native, :millisecond},
         reporter_options: [buckets: [1, 10, 50, 100, 1000]],
-        tags: [:target_host, :target_port, :api_worker, :healthcheck_worker, :reason],
+        tags: [
+          :target_name,
+          :target_host,
+          :target_port,
+          :api_worker,
+          :healthcheck_worker,
+          :reason
+        ],
         tag_values: fn meta ->
           meta = expand_target(meta)
 
