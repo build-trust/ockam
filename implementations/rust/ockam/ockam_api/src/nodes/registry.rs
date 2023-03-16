@@ -122,7 +122,7 @@ impl KafkaServiceInfo {
         &self.kind
     }
 }
-
+#[derive(Clone)]
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
     pub(crate) worker_addr: Address,
@@ -147,6 +147,7 @@ impl InletInfo {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct OutletInfo {
     pub(crate) tcp_addr: String,
     pub(crate) worker_addr: Address,
