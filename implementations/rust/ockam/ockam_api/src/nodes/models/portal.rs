@@ -76,27 +76,6 @@ impl<'a> CreateInlet<'a> {
     }
 }
 
-/// Request body to delete an inlet
-#[derive(Clone, Debug, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct DeleteInlet<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<4775492>,
-    /// The alias of the TCP inlet to be deleted
-    #[b(1)] pub alias: CowStr<'a>,
-}
-
-impl<'a> DeleteInlet<'a> {
-    pub fn new(alias: impl Into<CowStr<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            alias: alias.into(),
-        }
-    }
-}
-
 /// Request body to create an outlet
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
@@ -123,28 +102,6 @@ impl<'a> CreateOutlet<'a> {
             tag: TypeTag,
             tcp_addr: tcp_addr.into(),
             worker_addr: worker_addr.into(),
-            alias: alias.into(),
-        }
-    }
-}
-
-// TO-DO use PortalAlias struct instead of this
-/// Request body to delete an outlet
-#[derive(Clone, Debug, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct DeleteOutlet<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1193889>,
-    /// The alias of the TCP outlet to be deleted
-    #[b(1)] pub alias: CowStr<'a>,
-}
-
-impl<'a> DeleteOutlet<'a> {
-    pub fn new(alias: impl Into<CowStr<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             alias: alias.into(),
         }
     }
@@ -281,14 +238,13 @@ impl<'a> OutletList<'a> {
 }
 
 /// Response body to access an Inlet or Outlet by its alias
-// TO-DO: reuse this struct for `tcp-outlet delete`, and `tcp-inlet delete` as well
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct PortalAlias<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<1193889>,
-    /// The alias of the TCP outlet to be deleted
+    /// The alias of the TCP inlet/outlet to be accessed
     #[b(1)] pub alias: CowStr<'a>,
 }
 

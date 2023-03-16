@@ -330,38 +330,9 @@ teardown() {
 
 # ===== PORTALS (INLET/OUTLET)
 
-@test "portals - list inlets on a node" {
-  port=6002
-  $OCKAM node create n1
-  $OCKAM node create n2
-  $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias tcp-inlet-2
-  run $OCKAM tcp-inlet list --node /node/n2
-
-  assert_output --partial "Alias: tcp-inlet-2"
-  assert_output --partial "TCP Address: 127.0.0.1:$port"
-  assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
-}
-
-@test "portals - tcp outlet CRUD" {
-  port=6003
-  run --separate-stderr "$OCKAM" node create n1
-  assert_success
-
-  run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
-  assert_output --partial "/service/outlet"
-  assert_success
-
-  run $OCKAM tcp-outlet delete "test-outlet"
-  assert_success
-
-  # Test deletion of a previously deleted TCP outlet
-  run $OCKAM tcp-outlet delete "test-outlet"
-  assert_output --partial "NotFound"
-}
-
 @test "portals - tcp inlet CRUD" {
-  outlet_port=6004
-  inlet_port=6005
+  outlet_port=6100
+  inlet_port=6101
 
   # Create nodes for inlet/outlet pair
   run --separate-stderr "$OCKAM" node create n1
@@ -377,11 +348,13 @@ teardown() {
   run $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$inlet_port --to /node/n1/service/outlet --alias "test-inlet"
   assert_success
 
+
   # Check that inlet is available for deletion and delete it
-  run $OCKAM tcp-inlet list --node /node/n2
+  run $OCKAM tcp-inlet show test-inlet --node /node/n2
   assert_output --partial "Alias: test-inlet"
   assert_output --partial "TCP Address: 127.0.0.1:$inlet_port"
   assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
+  assert_success
 
   run $OCKAM tcp-inlet delete "test-inlet" --node /node/n2
   assert_success
@@ -391,8 +364,80 @@ teardown() {
   assert_output --partial "NotFound"
 }
 
+@test "portals - tcp outlet CRUD" {
+  port=6103
+  run --separate-stderr "$OCKAM" node create n1
+  assert_success
+
+  run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
+  assert_output --partial "/service/outlet"
+  assert_success
+
+  run $OCKAM tcp-outlet show test-outlet --node /node/n1
+  assert_output --partial "Alias: test-outlet"
+  assert_output --partial "From Outlet: /service/outlet"
+  assert_output --regexp "To TCP: 127.0.0.1:$port"
+  assert_success
+
+  run $OCKAM tcp-outlet delete "test-outlet"
+  assert_success
+
+  # Test deletion of a previously deleted TCP outlet
+  run $OCKAM tcp-outlet delete "test-outlet"
+  assert_output --partial "NotFound"
+}
+
+@test "portals - list inlets on a node" {
+  port=6104
+  run --separate-stderr "$OCKAM" node create n1
+  assert_success
+  run --separate-stderr "$OCKAM" node create n2
+  assert_success
+
+  run $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias tcp-inlet-2
+  run $OCKAM tcp-inlet list --node /node/n2
+
+  assert_output --partial "Alias: tcp-inlet-2"
+  assert_output --partial "TCP Address: 127.0.0.1:$port"
+  assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
+  assert_success
+}
+
+@test "portals - list outlets on a node" {
+  port=6105
+  run --separate-stderr "$OCKAM" node create n1
+
+  run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
+  assert_output --partial "/service/outlet"
+  assert_success
+
+  run $OCKAM tcp-outlet list --node /node/n1
+  assert_output --partial "Alias: test-outlet"
+  assert_output --partial "From Outlet: /service/outlet"
+  assert_output --regexp "To TCP: 127.0.0.1:$port"
+  assert_success
+}
+
+@test "portals - show a tcp inlet" {
+  port=6106
+  run --separate-stderr "$OCKAM" node create n1
+  assert_success
+  run --separate-stderr "$OCKAM" node create n2
+  assert_success
+
+  run $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias "test-inlet"
+  assert_success
+
+  run $OCKAM tcp-inlet show "test-inlet" --node /node/n2
+  assert_success
+
+  # Test if non-existing TCP inlet returns NotFound
+  run $OCKAM tcp-inlet show "non-existing-inlet"
+  assert_output --partial "NotFound"
+}
+
 @test "portals - show a tcp outlet" {
-  port=5100
+  port=6107
   run --separate-stderr "$OCKAM" node create n1
   assert_success
 
@@ -407,7 +452,6 @@ teardown() {
   run $OCKAM tcp-outlet show "non-existing-outlet"
   assert_output --partial "NotFound"
 }
-
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it" {
   port=6000

@@ -1,8 +1,7 @@
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, DeleteInlet, DeleteOutlet, InletList, InletStatus, OutletList,
-    OutletStatus, PortalAlias
+    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus, PortalAlias,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
@@ -252,7 +251,7 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<InletStatus<'a>>> {
         let mut node_manager = self.node_manager.write().await;
-        let DeleteInlet { alias, .. } = dec.decode()?;
+        let PortalAlias { alias, .. } = dec.decode()?;
 
         let alias = alias.into_owned();
 
@@ -283,6 +282,38 @@ impl NodeManagerWorker {
                     inlet_to_delete.outlet_route.to_string(),
                 )))
             }
+        } else {
+            error!(%alias, "Inlet not found in the node registry");
+            Ok(Response::not_found(req.id()).body(InletStatus::new(
+                "".to_string(),
+                "".to_string(),
+                alias.clone(),
+                Some(format!("Inlet with alias {alias} not found").into()),
+                "".to_string(),
+            )))
+        }
+    }
+
+    pub(super) async fn show_inlet<'a>(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<InletStatus<'a>>> {
+        let node_manager = self.node_manager.write().await;
+        let PortalAlias { alias, .. } = dec.decode()?;
+
+        let alias = alias.into_owned();
+
+        info!(%alias, "Handling request to show inlet portal");
+        if let Some(inlet_to_show) = node_manager.registry.inlets.get(&alias) {
+            debug!(%alias, "Inlet not found in node registry");
+            Ok(Response::ok(req.id()).body(InletStatus::new(
+                inlet_to_show.bind_addr.to_string(),
+                inlet_to_show.worker_addr.to_string(),
+                alias,
+                None,
+                inlet_to_show.outlet_route.to_string(),
+            )))
         } else {
             error!(%alias, "Inlet not found in the node registry");
             Ok(Response::not_found(req.id()).body(InletStatus::new(
@@ -371,7 +402,7 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
         let mut node_manager = self.node_manager.write().await;
-        let DeleteOutlet { alias, .. } = dec.decode()?;
+        let PortalAlias { alias, .. } = dec.decode()?;
 
         let alias = alias.into_owned();
 

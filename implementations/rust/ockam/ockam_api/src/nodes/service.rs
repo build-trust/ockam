@@ -657,20 +657,25 @@ impl NodeManagerWorker {
 
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "inlet"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.get_inlets(req, &node_manager.registry).to_vec()?
+                if req.has_body() {
+                    self.show_inlet(req, dec).await?.to_vec()?
+                } else {
+                    let node_manager = self.node_manager.read().await;
+                    self.get_inlets(req, &node_manager.registry).to_vec()?
+                }
             }
             (Get, ["node", "outlet"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.get_outlets(req, &node_manager.registry).to_vec()?
+                if req.has_body() {
+                    self.show_outlet(req, dec).await?.to_vec()?
+                } else {
+                    let node_manager = self.node_manager.read().await;
+                    self.get_outlets(req, &node_manager.registry).to_vec()?
+                }
             }
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "outlet"]) => self.delete_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "inlet"]) => self.delete_inlet(req, dec).await?.to_vec()?,
-            //TO-DO Move show parameter to node/outlet endpoint, make it conditionak
-            (Get, ["node", "outlet", "show"]) => self.show_outlet(req, dec).await?.to_vec()?,
-
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Workers ==*==
