@@ -24,6 +24,10 @@ env:
   ARTIFACT_NAME: ockam
   ORGANIZATION: ${{ github.repository_owner }}
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build-and-publish-artifact:
     if: github.event.inputs.is_release == 'false'
@@ -37,7 +41,6 @@ jobs:
 
     steps:
       - name: Checker
-        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -50,14 +53,12 @@ jobs:
           path: ockam
 
       - id: image
-        shell: bash
         run: |
           tag_name="${{ github.event.inputs.tag }}"
           version=${tag_name:7}
           echo "image=ghcr.io/${ORGANIZATION}/$ARTIFACT_NAME:${version}-draft" >> $GITHUB_OUTPUT
 
       - name: Update Docker Template
-        shell: bash
         run: |
           set -x
           temp_dir=$(mktemp -d)
@@ -135,7 +136,6 @@ jobs:
           echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Deploy Latest Image
-        shell: bash
         run: |
           set -o xtrace
 
