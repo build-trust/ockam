@@ -37,7 +37,7 @@ jobs:
     name: Rust - lint_cargo_lock
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
+      image: ghcr.io/build-trust/ockam-builder@sha256:0a4c3640f78650e35207a047891e55863d8648a9333ea0bcfe03f09e2d57480c
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
