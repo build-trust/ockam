@@ -11,7 +11,7 @@ use ockam_core::{Error, Result};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// An identifier of an Identity.
-#[allow(clippy::derive_hash_xor_eq)] // we manually implement a constant time Eq
+#[allow(clippy::derived_hash_with_manual_eq)] // we manually implement a constant time Eq
 #[derive(Clone, Debug, Hash, Encode, Serialize, Default, PartialOrd, Ord)]
 #[cbor(transparent)]
 pub struct IdentityIdentifier(#[n(0)] KeyId);
