@@ -11,8 +11,27 @@ use ockam_node::compat::futures::FutureExt;
 use ockam_node::{Context, NodeBuilder};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicI8, AtomicU32};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::sleep;
 use tracing::info;
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn receive_timeout__1_sec__should_return_from_call(ctx: &mut Context) -> Result<()> {
+    let mut child_ctx = ctx.new_detached("random", AllowAll, AllowAll).await?;
+
+    let time = SystemTime::now();
+    let start = time.duration_since(UNIX_EPOCH).unwrap();
+    let res = child_ctx.receive_timeout::<String>(1).await;
+    let end = time.duration_since(UNIX_EPOCH).unwrap();
+    assert!(res.is_err(), "Should not receive the message");
+    let diff = end - start;
+    assert!(
+        diff < Duration::from_secs(2),
+        "1 sec timeout definitely should not take longer than 2 secs"
+    );
+    ctx.stop().await
+}
 
 #[allow(non_snake_case)]
 #[test]
@@ -77,6 +96,7 @@ impl Worker for SimpleWorker {
         ctx.send(msg.return_route(), msg.body()).await
     }
 }
+
 #[allow(non_snake_case)]
 #[ockam_macros::test]
 async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
