@@ -241,7 +241,7 @@ async fn run_foreground_node(
     }
 
     if let Some(authority_identities) = &cmd.authority_identities {
-        for auth in authority_identities.into_iter() {
+        for auth in authority_identities.iter() {
             let vault = Vault::create();
             let i = PublicIdentity::import(auth.identity(), vault).await?;
             cfg.authorities(&node_name)?
@@ -277,7 +277,7 @@ async fn run_foreground_node(
             .add_transport(CreateTransportJson::new(
                 TransportType::Tcp,
                 TransportMode::Listen,
-                &bind,
+                bind,
             )?),
     )?;
 
@@ -287,7 +287,7 @@ async fn run_foreground_node(
         Some(cred_name) => Some(
             opts.state
                 .credentials
-                .get(&cred_name)?
+                .get(cred_name)?
                 .config()
                 .await?
                 .credential()?,
