@@ -118,8 +118,13 @@ impl NodeManagerWorker {
 
         match node_manager.transports.get(&tid) {
             Some(t) if t.tm == TransportMode::Listen => {
-                warn!("It is not currently supported to destroy LISTEN transports");
-                Ok(Response::bad_request(req.id()))
+                // FIXME: stopping the listener shuts down the entire node
+                // node_manager
+                //     .tcp_transport
+                //     .stop_listener(&t.worker_address)
+                //     .await?;
+                node_manager.transports.remove(&tid);
+                Ok(Response::ok(req.id()))
             }
             Some(t) => {
                 node_manager

@@ -1,13 +1,13 @@
-use anyhow::anyhow;
 use clap::Args;
+use colorful::Colorful;
 
-use crate::util::extract_address_value;
+use crate::util::parse_node_name;
 use ockam::Context;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
 use crate::util::{node_rpc, Rpc};
-use crate::{exitcode, node::NodeOpts, CommandGlobalOpts};
+use crate::{node::NodeOpts, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -28,19 +28,24 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
-    let node = extract_address_value(&cmd.node_opts.api_node)?;
-
+    let node = parse_node_name(&cmd.node_opts.api_node)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     let req = Request::delete("/node/tcp/listener")
         .body(models::transport::DeleteTransport::new(&cmd.id));
     rpc.request(req).await?;
-    if rpc.parse_response::<Vec<u8>>().is_ok() {
-        println!("Tcp listener `{}` successfully deleted", cmd.id);
-        Ok(())
-    } else {
-        Err(crate::error::Error::new(
-            exitcode::UNAVAILABLE,
-            anyhow!(format!("Failed to delete tcp listener `{}`", cmd.id)),
+    rpc.is_ok()?;
+
+    // log the deletion
+    opts.shell
+        .stdout()
+        .plain(format!(
+            "{}TCP listener with id '{}' has been deleted.",
+            "✔︎".light_green(),
+            &cmd.id
         ))
-    }
+        .machine(&cmd.id)
+        .json(&serde_json::json!({ "tcp-listener": { "id": &cmd.id } }))
+        .write_line()?;
+
+    Ok(())
 }
