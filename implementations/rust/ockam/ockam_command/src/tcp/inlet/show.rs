@@ -4,7 +4,7 @@ use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::{Context, Route};
-use ockam_api::nodes::models::portal::{InletStatus};
+use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::{Request, RequestBuilder};
 
@@ -51,7 +51,7 @@ pub async fn run_impl(
 
 /// Construct a request to show a tcp inlet
 fn make_api_request<'a>(cmd: ShowCommand) -> crate::Result<RequestBuilder<'a>> {
-    let alias = cmd.alias.clone();
+    let alias = cmd.alias;
     let request = Request::get(format!("/node/inlet/{alias}"));
     Ok(request)
 }

@@ -5,7 +5,7 @@ use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::{route, Context};
 use ockam_api::error::ApiError;
-use ockam_api::nodes::models::portal::{OutletStatus};
+use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::{Request, RequestBuilder};
 
@@ -50,7 +50,7 @@ pub async fn run_impl(
 
 /// Construct a request to show a tcp outlet
 fn make_api_request<'a>(cmd: ShowCommand) -> crate::Result<RequestBuilder<'a>> {
-    let alias = cmd.alias.clone();
+    let alias = cmd.alias;
     let request = Request::get(format!("/node/outlet/{alias}"));
     Ok(request)
 }
