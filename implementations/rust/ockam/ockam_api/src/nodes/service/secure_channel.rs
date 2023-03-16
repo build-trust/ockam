@@ -62,9 +62,7 @@ impl NodeManager {
         let trust_options = SecureChannelTrustOptions::new();
 
         let trust_options = match session {
-            Some((sessions, session_id)) => {
-                trust_options.with_ciphertext_session(&sessions, &session_id)
-            }
+            Some((sessions, session_id)) => trust_options.as_consumer(&sessions, &session_id),
             None => trust_options,
         };
 

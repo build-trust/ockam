@@ -24,6 +24,7 @@ pub mod access_control;
 /// SecureChannel API
 pub mod api;
 
+use crate::channel::addresses::Addresses;
 use crate::channel::decryptor_worker::DecryptorWorker;
 use crate::channel::listener::IdentityChannelListener;
 use crate::error::IdentityError;
@@ -59,11 +60,15 @@ impl Identity {
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
 
+        let addresses = Addresses::generate(Role::Initiator);
+        let trust_options_processed = trust_options.into().process(&addresses);
+
         DecryptorWorker::create_initiator(
             &self.ctx,
             route.into(),
             identity_clone,
-            trust_options.into(),
+            addresses,
+            trust_options_processed,
             Duration::from_secs(120),
         )
         .await
@@ -78,11 +83,15 @@ impl Identity {
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
 
+        let addresses = Addresses::generate(Role::Initiator);
+        let trust_options_processed = trust_options.into().process(&addresses);
+
         DecryptorWorker::create_initiator(
             &self.ctx,
             route.into(),
             identity_clone,
-            trust_options.into(),
+            addresses,
+            trust_options_processed,
             timeout,
         )
         .await

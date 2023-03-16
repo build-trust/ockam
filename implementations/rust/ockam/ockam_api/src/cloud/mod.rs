@@ -199,7 +199,7 @@ mod node {
                     TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
                 );
                 let trust_options = if let Some((sessions, session_id)) = cloud_session.session {
-                    trust_options.with_ciphertext_session(&sessions, &session_id)
+                    trust_options.as_consumer(&sessions, &session_id)
                 } else {
                     trust_options
                 };

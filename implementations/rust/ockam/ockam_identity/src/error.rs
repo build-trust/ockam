@@ -44,6 +44,8 @@ pub enum IdentityError {
     NonceOverflow,
     /// SecureChannel was not found in the Registry
     SecureChannelNotFound,
+    /// Sessions setup inconsistency
+    SessionsInconsistency,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

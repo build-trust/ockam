@@ -1,5 +1,7 @@
+use crate::channel::addresses::Addresses;
 use crate::channel::common::CreateResponderChannelMessage;
 use crate::channel::decryptor_worker::DecryptorWorker;
+use crate::channel::Role;
 use crate::{Identity, SecureChannelListenerTrustOptions};
 use ockam_core::compat::boxed::Box;
 use ockam_core::sessions::SessionIdLocalInfo;
@@ -25,8 +27,12 @@ impl IdentityChannelListener {
         trust_options: SecureChannelListenerTrustOptions,
         identity: Identity,
     ) -> Result<()> {
-        if let Some((sessions, session_id)) = &trust_options.session {
-            sessions.set_listener_session_id(&address, session_id);
+        if let Some(ciphertext_session) = &trust_options.consumer_session {
+            ciphertext_session.sessions.add_consumer(
+                &address,
+                &ciphertext_session.session_id,
+                ciphertext_session.session_policy,
+            );
         }
 
         let listener = Self::new(trust_options, identity);
@@ -56,11 +62,15 @@ impl Worker for IdentityChannelListener {
         // Check if there is a session that connection worker added to LocalInfo
         // If yes - decryptor will be added to that session to be able to receive further messages
         // from the transport connection
+        // TODO: Instead look in Sessions struct
         let session_id = SessionIdLocalInfo::find_info(msg.local_message())
             .ok()
             .map(|x| x.session_id().clone());
-        let trust_options = self.trust_options.secure_channel_trust_options(session_id);
 
-        DecryptorWorker::create_responder(ctx, identity, trust_options, msg).await
+        let addresses = Addresses::generate(Role::Responder);
+        let trust_options_processed = self.trust_options.process(&addresses, session_id)?;
+
+        DecryptorWorker::create_responder(ctx, identity, addresses, trust_options_processed, msg)
+            .await
     }
 }

@@ -85,6 +85,11 @@ impl TcpRegistry {
     pub fn get_all_sender_workers(&self) -> Vec<Address> {
         self.registry.read().unwrap().sender_workers.clone()
     }
+
+    /// Return [`Address`]es of all active receiver processors
+    pub fn get_all_receiver_processors(&self) -> Vec<Address> {
+        self.registry.read().unwrap().receiver_processors.clone()
+    }
 }
 
 #[derive(Default)]
