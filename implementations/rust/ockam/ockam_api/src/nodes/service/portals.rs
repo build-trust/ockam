@@ -274,7 +274,7 @@ impl NodeManagerWorker {
                 Ok(Response::internal_error(req.id()).body(InletStatus::new(
                     inlet_to_delete.bind_addr,
                     inlet_to_delete.worker_addr.to_string(),
-                    alias.clone(),
+                    alias,
                     Some(format!("Failed to remove inlet with alias {alias}").into()),
                     inlet_to_delete.outlet_route.to_string(),
                 )))
@@ -284,7 +284,7 @@ impl NodeManagerWorker {
             Ok(Response::not_found(req.id()).body(InletStatus::new(
                 "".to_string(),
                 "".to_string(),
-                alias.clone(),
+                alias,
                 Some(format!("Inlet with alias {alias} not found").into()),
                 "".to_string(),
             )))
@@ -313,7 +313,7 @@ impl NodeManagerWorker {
             Ok(Response::not_found(req.id()).body(InletStatus::new(
                 "".to_string(),
                 "".to_string(),
-                alias.clone(),
+                alias,
                 Some(format!("Inlet with alias {alias} not found").into()),
                 "".to_string(),
             )))
@@ -418,7 +418,7 @@ impl NodeManagerWorker {
                 Ok(Response::internal_error(req.id()).body(OutletStatus::new(
                     outlet_to_delete.tcp_addr,
                     outlet_to_delete.worker_addr.to_string(),
-                    alias.clone(),
+                    alias,
                     Some(format!("Failed to remove outlet with alias {alias}").into()),
                 )))
             }
@@ -427,7 +427,7 @@ impl NodeManagerWorker {
             Ok(Response::not_found(req.id()).body(OutletStatus::new(
                 "".to_string(),
                 "".to_string(),
-                alias.clone(),
+                alias,
                 Some(format!("Outlet with alias {alias} not found").into()),
             )))
         }
@@ -454,7 +454,7 @@ impl NodeManagerWorker {
             Ok(Response::not_found(req.id()).body(OutletStatus::new(
                 "".to_string(),
                 "".to_string(),
-                alias.clone(),
+                alias,
                 Some(format!("Outlet with alias {alias} not found").into()),
             )))
         }

@@ -43,7 +43,7 @@ pub async fn run_impl(
 
 /// Construct a request to delete a tcp outlet
 fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a>> {
-    let alias = cmd.alias.clone();
+    let alias = cmd.alias;
     let request = Request::delete(format!("/node/outlet/{alias}"));
     Ok(request)
 }
