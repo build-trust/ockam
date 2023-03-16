@@ -129,6 +129,10 @@ impl VaultsState {
         Ok(Self { dir })
     }
 
+    pub fn directory(&self) -> String {
+        self.dir.to_string_lossy().into()
+    }
+
     pub async fn create(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
         let path = {
             let mut path = self.dir.clone();
@@ -331,6 +335,10 @@ impl IdentitiesState {
         let dir = cli_path.join("identities");
         std::fs::create_dir_all(dir.join("data"))?;
         Ok(Self { dir })
+    }
+
+    pub fn directory(&self) -> String {
+        self.dir.to_string_lossy().into()
     }
 
     pub fn create(&self, name: &str, config: IdentityConfig) -> Result<IdentityState> {
