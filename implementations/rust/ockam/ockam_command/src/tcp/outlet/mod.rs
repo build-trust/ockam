@@ -21,8 +21,8 @@ pub struct TcpOutletCommand {
 pub enum TcpOutletSubCommand {
     Create(CreateCommand),
     Delete(DeleteCommand),
-    Show(ShowCommand),
     List(ListCommand),
+    Show(ShowCommand),
 }
 
 impl TcpOutletCommand {
@@ -30,8 +30,8 @@ impl TcpOutletCommand {
         match self.subcommand {
             TcpOutletSubCommand::Create(c) => c.run(options),
             TcpOutletSubCommand::Delete(c) => c.run(options),
-            TcpOutletSubCommand::Show(c) => c.run(options),
             TcpOutletSubCommand::List(c) => c.run(options),
+            TcpOutletSubCommand::Show(c) => c.run(options),
         }
     }
 }

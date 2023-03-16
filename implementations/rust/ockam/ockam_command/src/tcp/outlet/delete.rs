@@ -4,7 +4,7 @@ use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
-use ockam_api::nodes::models::portal::DeleteOutlet;
+use ockam_api::nodes::models::portal::PortalAlias;
 use ockam_core::api::{Request, RequestBuilder};
 
 /// Delete a TCP Outlet
@@ -43,8 +43,8 @@ pub async fn run_impl(
 }
 
 /// Construct a request to delete a tcp outlet
-fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a, DeleteOutlet<'a>>> {
-    let payload = DeleteOutlet::new(cmd.alias);
+fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a, PortalAlias<'a>>> {
+    let payload = PortalAlias::new(cmd.alias);
     let request = Request::delete("/node/outlet").body(payload);
     Ok(request)
 }
