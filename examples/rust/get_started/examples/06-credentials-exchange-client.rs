@@ -35,11 +35,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     // attesting to that knowledge.
     let sessions = Sessions::default();
     let session_id = sessions.generate_session_id();
-    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &session_id);
+    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().as_producer(&sessions, &session_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
     let issuer_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
-        .with_ciphertext_session(&sessions, &session_id);
+        .as_consumer(&sessions, &session_id);
     let issuer_channel = client
         .create_secure_channel(route![issuer_connection, "secure"], issuer_trust_options)
         .await?;
@@ -50,11 +50,11 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a secure channel to the node that is running the Echoer service.
     let server_session_id = sessions.generate_session_id();
-    let server_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &server_session_id);
+    let server_tcp_trust_options = TcpConnectionTrustOptions::new().as_producer(&sessions, &server_session_id);
     let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_trust_options).await?;
     let channel_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
-        .with_ciphertext_session(&sessions, &server_session_id);
+        .as_consumer(&sessions, &server_session_id);
     let channel = client
         .create_secure_channel(route![server_connection, "secure"], channel_trust_options)
         .await?;
