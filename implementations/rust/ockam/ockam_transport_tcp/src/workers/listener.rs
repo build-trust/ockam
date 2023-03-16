@@ -69,9 +69,9 @@ impl Processor for TcpListenProcessor {
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
         debug!("TCP connection accepted");
 
-        let access_control = self.trust_options.access_control();
-
         let addresses = Addresses::generate(ConnectionRole::Responder);
+
+        let trust_options_processed = self.trust_options.process(addresses.receiver_address());
 
         let (read_half, write_half) = stream.into_split();
 
@@ -82,7 +82,7 @@ impl Processor for TcpListenProcessor {
             write_half,
             &addresses,
             peer,
-            access_control.sender_incoming_access_control,
+            trust_options_processed.sender_incoming_access_control,
         )
         .await?;
 
@@ -93,9 +93,9 @@ impl Processor for TcpListenProcessor {
             read_half,
             &addresses,
             peer,
-            access_control.receiver_outgoing_access_control,
+            trust_options_processed.receiver_outgoing_access_control,
             // This session_id (if present) will be added to messages' LocalInfo
-            access_control.session_id,
+            trust_options_processed.session_id,
         )
         .await?;
 

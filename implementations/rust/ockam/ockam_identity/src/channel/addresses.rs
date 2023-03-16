@@ -9,6 +9,8 @@ use ockam_core::Address;
 pub(crate) struct Addresses {
     // Used to send decrypted messages and secure channel creation completion notification
     pub(crate) decryptor_internal: Address,
+    // Used to send completion callback message
+    pub(crate) decryptor_callback: Address,
     // Used for KeyExchange and receiving encrypted messages
     pub(crate) decryptor_remote: Address,
     // Used to encrypt messages without sending them with Ockam Routing to the other end of the channel
@@ -33,6 +35,8 @@ impl Addresses {
         let role_str = role.str();
         let decryptor_internal =
             Address::random_tagged(&format!("SecureChannel.{}.decryptor.internal", role_str));
+        let decryptor_callback =
+            Address::random_tagged(&format!("SecureChannel.{}.decryptor.callback", role_str));
         let decryptor_remote =
             Address::random_tagged(&format!("SecureChannel.{}.decryptor.remote", role_str));
         let decryptor_api =
@@ -52,6 +56,7 @@ impl Addresses {
 
         Self {
             decryptor_internal,
+            decryptor_callback,
             decryptor_remote,
             decryptor_api,
             decryptor_backwards_compatibility,

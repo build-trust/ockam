@@ -135,9 +135,9 @@ impl TcpTransport {
 
         let (read_half, write_half) = TcpSendWorker::connect(socket).await?;
 
-        let access_control = trust_options.access_control();
-
         let addresses = Addresses::generate(ConnectionRole::Initiator);
+
+        let trust_options_processed = trust_options.process(addresses.receiver_address());
 
         TcpSendWorker::start(
             &self.ctx,
@@ -145,7 +145,7 @@ impl TcpTransport {
             write_half,
             &addresses,
             socket,
-            access_control.sender_incoming_access_control,
+            trust_options_processed.sender_incoming_access_control,
         )
         .await?;
 
@@ -155,8 +155,8 @@ impl TcpTransport {
             read_half,
             &addresses,
             socket,
-            access_control.receiver_outgoing_access_control,
-            access_control.session_id,
+            trust_options_processed.receiver_outgoing_access_control,
+            trust_options_processed.session_id,
         )
         .await?;
 

@@ -6,16 +6,16 @@ use crate::channel::decryptor_state::{ExchangeIdentity, Initialized, KeyExchange
 use crate::channel::encryptor::Encryptor;
 use crate::channel::encryptor_worker::EncryptorWorker;
 use crate::channel::messages::IdentityChannelMessage;
+use crate::channel::SecureChannelTrustOptionsProcessed;
 use crate::{
     to_symmetric_vault, to_xx_vault, Identity, IdentityError, IdentitySecureChannelLocalInfo,
-    PublicIdentity, SecureChannelRegistryEntry, SecureChannelTrustInfo, SecureChannelTrustOptions,
-    TrustPolicy,
+    PublicIdentity, SecureChannelRegistryEntry, SecureChannelTrustInfo, TrustPolicy,
 };
 use core::time::Duration;
 use ockam_core::compat::vec::Vec;
 use ockam_core::compat::{boxed::Box, sync::Arc};
+use ockam_core::sessions::{SessionId, SessionIdLocalInfo};
 use ockam_core::vault::Signature;
-use ockam_core::NewKeyExchanger;
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, DenyAll, LocalOnwardOnly,
     LocalSourceOnly, Mailbox, Mailboxes,
@@ -24,6 +24,7 @@ use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Result, Route, Routed,
     TransportMessage, Worker,
 };
+use ockam_core::{NewKeyExchanger, OutgoingAccessControl};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info, warn};
@@ -40,6 +41,7 @@ pub(crate) struct DecryptorWorker {
     state_key_exchange: Option<KeyExchange>,
     state_exchange_identity: Option<ExchangeIdentity>,
     state_initialized: Option<Initialized>,
+    plaintext_session_id: Option<SessionId>,
 }
 
 impl DecryptorWorker {
@@ -47,15 +49,14 @@ impl DecryptorWorker {
         ctx: &Context,
         remote_route: Route,
         identity: Identity,
-        trust_options: SecureChannelTrustOptions,
+        addresses: Addresses,
+        trust_options_processed: SecureChannelTrustOptionsProcessed,
         timeout: Duration,
     ) -> Result<Address> {
-        let addresses = Addresses::generate(Role::Initiator);
-
         let mut completion_callback_ctx = ctx
             .new_detached(
                 addresses.completion_callback.clone(),
-                AllowSourceAddress(addresses.decryptor_internal.clone()),
+                AllowSourceAddress(addresses.decryptor_callback.clone()),
                 DenyAll,
             )
             .await?;
@@ -64,12 +65,10 @@ impl DecryptorWorker {
             .initiator()
             .await?;
 
-        let mailboxes = Self::mailboxes(&addresses);
-
-        if let Some((sessions, session_id)) = trust_options.ciphertext_session {
-            // Allow a sender with corresponding session_id send messages to this address
-            sessions.set_session_id(&addresses.decryptor_remote, &session_id);
-        }
+        let mailboxes = Self::mailboxes(
+            &addresses,
+            trust_options_processed.decryptor_outgoing_access_control,
+        );
 
         let worker = DecryptorWorker {
             role: Role::Initiator,
@@ -78,12 +77,13 @@ impl DecryptorWorker {
             remote_backwards_compatibility_address: None,
             init_payload: None,
             identity,
-            trust_policy: trust_options.trust_policy,
+            trust_policy: trust_options_processed.trust_policy,
             state_key_exchange: Some(KeyExchange {
                 key_exchanger: Box::new(key_exchanger),
             }),
             state_exchange_identity: None,
             state_initialized: None,
+            plaintext_session_id: trust_options_processed.plaintext_session_id,
         };
 
         WorkerBuilder::with_mailboxes(mailboxes, worker)
@@ -107,7 +107,8 @@ impl DecryptorWorker {
     pub(crate) async fn create_responder(
         ctx: &Context,
         identity: Identity,
-        trust_options: SecureChannelTrustOptions,
+        addresses: Addresses,
+        trust_options_processed: SecureChannelTrustOptionsProcessed,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
         // Route to the decryptor on the other side
@@ -122,17 +123,13 @@ impl DecryptorWorker {
         let remote_backwards_compatibility_address =
             Address::decode(remote_backwards_compatibility_address)?;
 
-        let addresses = Addresses::generate(Role::Responder);
-
         let vault = to_xx_vault(identity.vault.clone());
         let key_exchanger = XXNewKeyExchanger::new(vault).responder().await?;
 
-        let mailboxes = Self::mailboxes(&addresses);
-
-        if let Some((sessions, session_id)) = trust_options.ciphertext_session {
-            // Allow a sender with corresponding session_id send messages to this address
-            sessions.set_session_id(&addresses.decryptor_remote, &session_id);
-        }
+        let mailboxes = Self::mailboxes(
+            &addresses,
+            trust_options_processed.decryptor_outgoing_access_control,
+        );
 
         let worker = DecryptorWorker {
             role: Role::Responder,
@@ -141,12 +138,13 @@ impl DecryptorWorker {
             remote_backwards_compatibility_address: Some(remote_backwards_compatibility_address),
             init_payload: Some(body.payload().to_vec()),
             identity,
-            trust_policy: trust_options.trust_policy,
+            trust_policy: trust_options_processed.trust_policy,
             state_key_exchange: Some(KeyExchange {
                 key_exchanger: Box::new(key_exchanger),
             }),
             state_exchange_identity: None,
             state_initialized: None,
+            plaintext_session_id: trust_options_processed.plaintext_session_id,
         };
 
         WorkerBuilder::with_mailboxes(mailboxes, worker)
@@ -163,7 +161,10 @@ impl DecryptorWorker {
 }
 
 impl DecryptorWorker {
-    fn mailboxes(addresses: &Addresses) -> Mailboxes {
+    fn mailboxes(
+        addresses: &Addresses,
+        decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Mailboxes {
         let remote_mailbox = Mailbox::new(
             addresses.decryptor_remote.clone(),
             // Doesn't matter since we check incoming messages cryptographically,
@@ -173,11 +174,15 @@ impl DecryptorWorker {
             // Communicate to the other side of the channel during key exchange
             Arc::new(AllowAll),
         );
+        let callback_mailbox = Mailbox::new(
+            addresses.decryptor_callback.clone(),
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        );
         let internal_mailbox = Mailbox::new(
             addresses.decryptor_internal.clone(),
             Arc::new(DenyAll),
-            // FIXME: @ac Also deny to other secure channels
-            Arc::new(LocalOnwardOnly), // Prevent exploit of using our node as an authorized proxy
+            decryptor_outgoing_access_control,
         );
         let api_mailbox = Mailbox::new(
             addresses.decryptor_api.clone(),
@@ -185,7 +190,10 @@ impl DecryptorWorker {
             Arc::new(LocalOnwardOnly),
         );
 
-        Mailboxes::new(remote_mailbox, vec![internal_mailbox, api_mailbox])
+        Mailboxes::new(
+            remote_mailbox,
+            vec![internal_mailbox, callback_mailbox, api_mailbox],
+        )
     }
 }
 
@@ -522,7 +530,7 @@ impl DecryptorWorker {
                 ctx.send_from_address(
                     route![self.addresses.completion_callback.clone()],
                     AuthenticationConfirmation,
-                    self.addresses.decryptor_internal.clone(),
+                    self.addresses.decryptor_callback.clone(),
                 )
                 .await?;
             }
@@ -566,12 +574,8 @@ impl DecryptorWorker {
         };
 
         // Send reply to the caller
-        ctx.send_from_address(
-            return_route,
-            response,
-            self.addresses.decryptor_internal.clone(),
-        )
-        .await?;
+        ctx.send_from_address(return_route, response, self.addresses.decryptor_api.clone())
+            .await?;
 
         Ok(())
     }
@@ -618,8 +622,15 @@ impl DecryptorWorker {
 
         // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
         // replacing any pre-existing entries
-        let local_info =
+        let mut local_info =
             IdentitySecureChannelLocalInfo::mark(vec![], state.their_identity_id.clone())?;
+
+        match &self.plaintext_session_id {
+            Some(session_id) => {
+                local_info.push(SessionIdLocalInfo::new(session_id.clone()).to_local_info()?)
+            }
+            None => {}
+        }
 
         let msg = LocalMessage::new(transport_message, local_info);
 

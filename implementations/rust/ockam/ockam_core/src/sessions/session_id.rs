@@ -4,7 +4,7 @@ use crate::compat::string::String;
 use serde::{Deserialize, Serialize};
 
 /// Unique random identifier of a session
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct SessionId(String);
 
 impl Distribution<SessionId> for Standard {

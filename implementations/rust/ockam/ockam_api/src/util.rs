@@ -88,7 +88,7 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
     let session_id = sessions.generate_session_id();
 
     let mut trust_options =
-        Some(TcpConnectionTrustOptions::new().with_session(&sessions, &session_id));
+        Some(TcpConnectionTrustOptions::new().as_producer(&sessions, &session_id));
 
     while let Some(p) = it.next() {
         match p.code() {

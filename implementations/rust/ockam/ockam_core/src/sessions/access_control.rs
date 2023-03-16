@@ -1,47 +1,9 @@
 use crate::compat::boxed::Box;
+use crate::compat::collections::BTreeSet;
 use crate::compat::sync::RwLock;
-use crate::sessions::{SessionId, Sessions};
-use crate::Result;
+use crate::sessions::{SessionId, SessionPolicy, Sessions};
+use crate::{Address, Result};
 use crate::{OutgoingAccessControl, RelayMessage};
-
-/// Builder for [`SessionOutgoingAccessControl`]
-pub struct SessionOutgoingAccessControlBuilder {
-    session_id: SessionId,
-    listener_session_id: Option<SessionId>,
-    allow_one_message_to_the_listener: bool,
-    sessions: Sessions,
-}
-
-impl SessionOutgoingAccessControlBuilder {
-    /// Constructor
-    pub fn new(session_id: SessionId, sessions: Sessions) -> Self {
-        Self {
-            session_id,
-            listener_session_id: None,
-            allow_one_message_to_the_listener: true,
-            sessions,
-        }
-    }
-
-    /// Consume the builder and build [`SessionOutgoingAccessControl`]
-    pub fn build(self) -> SessionOutgoingAccessControl {
-        SessionOutgoingAccessControl::new(
-            self.session_id,
-            self.listener_session_id,
-            self.allow_one_message_to_the_listener,
-            self.sessions,
-        )
-    }
-
-    /// Allow one message to the listener with given listener session id (this will
-    /// make listener to spawn a new session)
-    pub fn allow_one_message_to_the_listener(mut self, listener_session_id: SessionId) -> Self {
-        self.listener_session_id = Some(listener_session_id);
-        self.allow_one_message_to_the_listener = true;
-
-        self
-    }
-}
 
 /// Session Outgoing Access Control
 ///
@@ -49,27 +11,24 @@ impl SessionOutgoingAccessControlBuilder {
 /// with given [`SessionId`]. Optionally, only 1 message can be passed to the listener.
 #[derive(Debug)]
 pub struct SessionOutgoingAccessControl {
-    session_id: SessionId,
-    listener_session_id: Option<SessionId>,
-    allow_only_1_message_to_the_listener: bool,
-    message_was_sent_to_the_listener: RwLock<bool>,
     sessions: Sessions,
+    session_id: SessionId,
+    spawner_session_id: Option<SessionId>,
+    sent_single_message_to_addresses: RwLock<BTreeSet<Address>>,
 }
 
 impl SessionOutgoingAccessControl {
     /// Constructor
     pub fn new(
-        session_id: SessionId,
-        listener_session_id: Option<SessionId>,
-        allow_only_1_message_to_the_listener: bool,
         sessions: Sessions,
+        session_id: SessionId,
+        spawner_session_id: Option<SessionId>,
     ) -> Self {
         Self {
-            session_id,
-            listener_session_id,
-            allow_only_1_message_to_the_listener,
-            message_was_sent_to_the_listener: RwLock::new(false),
             sessions,
+            session_id,
+            spawner_session_id,
+            sent_single_message_to_addresses: Default::default(),
         }
     }
 }
@@ -81,28 +40,43 @@ impl OutgoingAccessControl for SessionOutgoingAccessControl {
 
         let next = onward_route.next()?;
 
-        // Allow messages to workers with the same session id
-        if let Some(address_session_id) = self.sessions.get_session_id(next) {
-            if address_session_id == self.session_id {
-                return crate::allow();
+        let session_consumers_info = self.sessions.get_consumers_info(&self.session_id);
+
+        if let Some(policy) = session_consumers_info.0.get(next) {
+            match policy {
+                SessionPolicy::ProducerAllowMultiple => {
+                    return crate::allow();
+                }
+                SessionPolicy::SpawnerAllowOnlyOneMessage => {}
+                SessionPolicy::SpawnerAllowMultipleMessages => {}
             }
         }
 
-        // Allow messages to the corresponding listener
-        if let (Some(listener_session_id), Some(address_listener_session_id)) = (
-            &self.listener_session_id,
-            self.sessions.get_listener_session_id(next),
-        ) {
-            // This is the intended listener
-            #[allow(clippy::collapsible_if)]
-            if listener_session_id == &address_listener_session_id {
-                // We haven't yet sent a message to it
-                if !self.allow_only_1_message_to_the_listener
-                    || !*self.message_was_sent_to_the_listener.read().unwrap()
-                {
-                    // Prevent further message to it
-                    *self.message_was_sent_to_the_listener.write().unwrap() = true;
-                    return crate::allow();
+        if let Some(spawner_session_id) = &self.spawner_session_id {
+            let session_consumers_info = self.sessions.get_consumers_info(spawner_session_id);
+
+            if let Some(policy) = session_consumers_info.0.get(next) {
+                match policy {
+                    SessionPolicy::SpawnerAllowOnlyOneMessage => {
+                        // We haven't yet sent a message to this address
+                        if !self
+                            .sent_single_message_to_addresses
+                            .read()
+                            .unwrap()
+                            .contains(next)
+                        {
+                            // Prevent further messages to this address
+                            self.sent_single_message_to_addresses
+                                .write()
+                                .unwrap()
+                                .insert(next.clone());
+
+                            // Allow this message
+                            return crate::allow();
+                        }
+                    }
+                    SessionPolicy::SpawnerAllowMultipleMessages => return crate::allow(),
+                    SessionPolicy::ProducerAllowMultiple => {}
                 }
             }
         }
