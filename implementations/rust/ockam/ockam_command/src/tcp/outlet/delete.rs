@@ -2,6 +2,7 @@ use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
+use crate::Result;
 use clap::Args;
 use ockam::Context;
 use ockam_core::api::{Request, RequestBuilder};
@@ -42,7 +43,7 @@ pub async fn run_impl(
 }
 
 /// Construct a request to delete a tcp outlet
-fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a>> {
+fn make_api_request<'a>(cmd: DeleteCommand) -> Result<RequestBuilder<'a>> {
     let alias = cmd.alias;
     let request = Request::delete(format!("/node/outlet/{alias}"));
     Ok(request)

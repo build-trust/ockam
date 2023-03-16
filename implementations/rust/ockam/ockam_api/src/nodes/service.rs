@@ -657,13 +657,19 @@ impl NodeManagerWorker {
 
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "inlet"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.get_inlets(req, &node_manager.registry).to_vec()?
+                let inlet_registry = {
+                    let node_manager = self.node_manager.read().await;
+                    &node_manager.registry.inlets.clone()
+                };
+                self.get_inlets(req, inlet_registry).to_vec()?
             }
             (Get, ["node", "inlet", alias]) => self.show_inlet(req, alias).await?.to_vec()?,
             (Get, ["node", "outlet"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.get_outlets(req, &node_manager.registry).to_vec()?
+                let outlet_registry = {
+                    let node_manager = self.node_manager.read().await;
+                    &node_manager.registry.outlets.clone()
+                };
+                self.get_outlets(req, outlet_registry).to_vec()?
             }
             (Get, ["node", "outlet", alias]) => self.show_outlet(req, alias).await?.to_vec()?,
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,

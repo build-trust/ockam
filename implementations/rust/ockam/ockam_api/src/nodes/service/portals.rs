@@ -3,7 +3,7 @@ use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
-use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
+use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::random_alias;
 use crate::session::{util, Data, Replacer, Session};
 use crate::{actions, resources};
@@ -21,6 +21,7 @@ use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
+use std::collections::BTreeMap;
 
 use super::{NodeManager, NodeManagerWorker};
 
@@ -66,11 +67,10 @@ impl NodeManagerWorker {
     pub(super) fn get_inlets<'a>(
         &self,
         req: &Request<'a>,
-        registry: &'a Registry,
+        inlet_registry: &'a BTreeMap<String, InletInfo>,
     ) -> ResponseBuilder<InletList<'a>> {
         Response::ok(req.id()).body(InletList::new(
-            registry
-                .inlets
+            inlet_registry
                 .iter()
                 .map(|(alias, info)| {
                     InletStatus::new(
@@ -87,12 +87,11 @@ impl NodeManagerWorker {
 
     pub(super) fn get_outlets<'a>(
         &self,
-        req: &Request<'a>,
-        registry: &'a Registry,
+        req: &Request<'_>,
+        outlet_registry: &'a BTreeMap<String, OutletInfo>,
     ) -> ResponseBuilder<OutletList<'a>> {
         Response::ok(req.id()).body(OutletList::new(
-            registry
-                .outlets
+            outlet_registry
                 .iter()
                 .map(|(alias, info)| {
                     OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
@@ -296,7 +295,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         alias: &'a str,
     ) -> Result<ResponseBuilder<InletStatus<'a>>> {
-        let node_manager = self.node_manager.write().await;
+        let node_manager = self.node_manager.read().await;
 
         info!(%alias, "Handling request to show inlet portal");
         if let Some(inlet_to_show) = node_manager.registry.inlets.get(alias) {
@@ -438,7 +437,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         alias: &'a str,
     ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
-        let node_manager = self.node_manager.write().await;
+        let node_manager = self.node_manager.read().await;
 
         info!(%alias, "Handling request to show outlet portal");
         if let Some(outlet_to_show) = node_manager.registry.outlets.get(alias) {

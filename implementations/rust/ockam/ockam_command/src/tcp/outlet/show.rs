@@ -2,6 +2,7 @@ use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
+use crate::Result;
 use clap::Args;
 use ockam::{route, Context};
 use ockam_api::error::ApiError;
@@ -49,7 +50,7 @@ pub async fn run_impl(
 }
 
 /// Construct a request to show a tcp outlet
-fn make_api_request<'a>(cmd: ShowCommand) -> crate::Result<RequestBuilder<'a>> {
+fn make_api_request<'a>(cmd: ShowCommand) -> Result<RequestBuilder<'a>> {
     let alias = cmd.alias;
     let request = Request::get(format!("/node/outlet/{alias}"));
     Ok(request)
