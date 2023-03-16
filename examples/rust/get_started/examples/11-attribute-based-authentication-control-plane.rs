@@ -64,7 +64,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         project.authority_public_identifier(),
     ]));
     let trust_options = if let Some((sessions, session_id)) = tcp_session.session {
-        trust_options.with_ciphertext_session(&sessions, &session_id)
+        trust_options.as_consumer(&sessions, &session_id)
     } else {
         trust_options
     };
@@ -115,7 +115,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let project_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
     let project_trust_options = if let Some((sessions, session_id)) = tcp_project_session.session {
-        project_trust_options.with_ciphertext_session(&sessions, &session_id)
+        project_trust_options.as_consumer(&sessions, &session_id)
     } else {
         project_trust_options
     };
