@@ -9,12 +9,6 @@ repository  = "https://github.com/ockam-network/ockam/implementations/rust/ockam
 description = "Ockam's request-response API"
 publish = true
 
-[[bin]]
-name = "authority"
-path = "src/bin/authority_node.rs"
-doc = false
-test = false
-
 [features]
 std = [
     "either/use_std",
