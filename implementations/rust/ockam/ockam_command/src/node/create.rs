@@ -1,5 +1,5 @@
 use clap::Args;
-use ockam_identity::PublicIdentity;
+use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 use rand::prelude::random;
@@ -31,6 +31,8 @@ use crate::{
 };
 use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
+use ockam_api::nodes::authority_node;
+use ockam_api::nodes::authority_node::TrustedIdentity;
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     config::cli::Authority,
@@ -44,7 +46,9 @@ use ockam_api::{
 };
 use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
 
+use ockam_core::compat::collections::HashMap;
 use ockam_core::{AllowAll, LOCAL};
+use ockam_identity::authenticated_storage::AttributesEntry;
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
@@ -130,6 +134,16 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
+        if self.node_name == "authority" && self.launch_config.is_some() {
+            if let Err(e) = embedded_node_that_is_not_stopped(start_authority_node, (options, self))
+            {
+                error!(%e);
+                eprintln!("{e:?}");
+                std::process::exit(e.code());
+            }
+            return;
+        }
+
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
             if let Err(e) = create_foreground_node(&options, &self) {
@@ -226,12 +240,12 @@ async fn run_foreground_node(
         .await?;
     }
 
-    if let Some(authority_identities) = cmd.authority_identities {
+    if let Some(authority_identities) = &cmd.authority_identities {
         for auth in authority_identities.into_iter() {
             let vault = Vault::create();
             let i = PublicIdentity::import(auth.identity(), vault).await?;
             cfg.authorities(&node_name)?
-                .add_authority(i.identifier().clone(), auth)?;
+                .add_authority(i.identifier().clone(), auth.clone())?;
         }
     }
 
@@ -248,7 +262,7 @@ async fn run_foreground_node(
     };
 
     let tcp = TcpTransport::create(&ctx).await?;
-    let bind = cmd.tcp_listener_address;
+    let bind = &cmd.tcp_listener_address;
 
     // This listener gives exclusive access to our node, make sure this is intended
     // + make sure this tcp address is only reachable from the local loopback and/or intended
@@ -267,19 +281,9 @@ async fn run_foreground_node(
             )?),
     )?;
 
-    let pre_trusted_identities = match (
-        cmd.trusted_identities,
-        cmd.trusted_identities_file,
-        cmd.reload_from_trusted_identities_file,
-    ) {
-        (Some(val), _, _) => Some(PreTrustedIdentities::new_from_string(&val)?),
-        (_, Some(val), _) => Some(PreTrustedIdentities::new_from_disk(val, false)?),
-        (_, _, Some(val)) => Some(PreTrustedIdentities::new_from_disk(val, true)?),
-        _ => None,
-    };
     let projects = cfg.inner().lookup().projects().collect();
 
-    let credential = match cmd.credential {
+    let credential = match &cmd.credential {
         Some(cred_name) => Some(
             opts.state
                 .credentials
@@ -290,6 +294,8 @@ async fn run_foreground_node(
         ),
         None => None,
     };
+
+    let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
 
     let node_man = NodeManager::create(
         &ctx,
@@ -352,6 +358,21 @@ async fn run_foreground_node(
     }
 
     Ok(())
+}
+
+fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrustedIdentities>> {
+    let command = cmd.clone();
+    let pre_trusted_identities = match (
+        command.trusted_identities,
+        command.trusted_identities_file,
+        command.reload_from_trusted_identities_file,
+    ) {
+        (Some(val), _, _) => Some(PreTrustedIdentities::new_from_string(&val)?),
+        (_, Some(val), _) => Some(PreTrustedIdentities::new_from_disk(val, false)?),
+        (_, _, Some(val)) => Some(PreTrustedIdentities::new_from_disk(val, true)?),
+        _ => None,
+    };
+    Ok(pre_trusted_identities)
 }
 
 // Read STDIN until EOF is encountered and then stop the node
@@ -512,4 +533,58 @@ fn parse_identity_authority(identity: &str) -> Result<Authority> {
     //        -  Oakley
     let a = cli::Authority::new(identity_as_bytes, MultiAddr::from_str("/secure")?);
     Ok(a)
+}
+
+async fn start_authority_node(
+    ctx: Context,
+    opts: (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
+    let (options, cmd) = opts;
+    let command = cmd.clone();
+    let launch_config = cmd.clone().launch_config.unwrap();
+    if let Some(services) = launch_config.startup_services {
+        let authenticator_config = services.authenticator.ok_or(crate::Error::new(
+            exitcode::CONFIG,
+            anyhow!("The authenticator service must be specified for an authority node"),
+        ))?;
+        let secure_channel_config = services.secure_channel_listener.ok_or(crate::Error::new(
+            exitcode::CONFIG,
+            anyhow!("The authenticator service must be specified for an authority node"),
+        ))?;
+
+        let trusted = load_pre_trusted_identities(&command)?
+            .and_then(|ts| ts.get_trusted_identities().ok())
+            .unwrap_or_default();
+        let trusted_identities = trusted
+            .iter()
+            .map(|(identifier, attributes)| trusted_identity(identifier, attributes))
+            .collect();
+
+        let configuration = authority_node::Configuration {
+            storage_path: options.state.identities.directory(),
+            vault_path: options.state.vaults.directory(),
+            project_identifier: authenticator_config.project,
+            tcp_listener_address: command.tcp_listener_address,
+            secure_channel_listener_name: Some(secure_channel_config.address),
+            authenticator_name: Some(authenticator_config.address),
+            trusted_identities,
+            okta: None,
+        };
+        authority_node::start_node(&ctx, configuration).await?;
+    }
+    Ok(())
+}
+
+fn trusted_identity(
+    identifier: &IdentityIdentifier,
+    attributes: &AttributesEntry,
+) -> TrustedIdentity {
+    let mut attributes_map: HashMap<String, String> = HashMap::new();
+    for (attribute_name, attribute_value) in attributes.attrs().iter() {
+        attributes_map.insert(
+            attribute_name.into(),
+            String::from_utf8(attribute_value.clone()).unwrap(),
+        );
+    }
+    TrustedIdentity::new(identifier, &attributes_map)
 }

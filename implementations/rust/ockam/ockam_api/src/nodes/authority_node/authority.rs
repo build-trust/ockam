@@ -9,7 +9,7 @@ use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::Sessions;
+use ockam_core::sessions::{SessionPolicy, Sessions};
 use ockam_core::{AllowAll, AsyncTryClone, Error, Message, Result, Worker};
 use ockam_identity::authenticated_storage::{
     AttributesEntry, AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
@@ -108,7 +108,8 @@ impl Authority {
 
         // Start a secure channel listener that only allows channels with
         // authenticated identities.
-        let listener_session_id = sessions.generate_session_id();
+        let tcp_listener_session_id = sessions.generate_session_id();
+        let secure_channel_listener_session_id = sessions.generate_session_id();
 
         let trust_options = SecureChannelListenerTrustOptions::new()
             .with_trust_policy(TrustMultiIdentifiersPolicy::new(
@@ -118,7 +119,12 @@ impl Authority {
                     .map(|a| a.identifier())
                     .collect(),
             ))
-            .with_session(&sessions, &listener_session_id);
+            .as_consumer(
+                &sessions,
+                &tcp_listener_session_id,
+                SessionPolicy::SpawnerAllowOnlyOneMessage,
+            )
+            .as_spawner(&sessions, &secure_channel_listener_session_id);
 
         let listener_name = configuration.secure_channel_listener_name();
         self.identity
@@ -129,7 +135,7 @@ impl Authority {
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_listener_trust_options =
-            TcpListenerTrustOptions::new().with_session(&sessions, &listener_session_id);
+            TcpListenerTrustOptions::new().as_spawner(&sessions, &tcp_listener_session_id);
 
         let (address, _) = tcp
             .listen(
