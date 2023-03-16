@@ -360,7 +360,7 @@ teardown() {
   assert_success
 
   # Test deletion of a previously deleted TCP inlet
-  run $OCKAM tcp-inlet delete "test-inlet"
+  run $OCKAM tcp-inlet delete "test-inlet" --node /node/n2
   assert_output --partial "NotFound"
 }
 

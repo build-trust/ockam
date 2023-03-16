@@ -657,25 +657,19 @@ impl NodeManagerWorker {
 
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "inlet"]) => {
-                if req.has_body() {
-                    self.show_inlet(req, dec).await?.to_vec()?
-                } else {
-                    let node_manager = self.node_manager.read().await;
-                    self.get_inlets(req, &node_manager.registry).to_vec()?
-                }
+                let node_manager = self.node_manager.read().await;
+                self.get_inlets(req, &node_manager.registry).to_vec()?
             }
+            (Get, ["node", "inlet", alias]) => self.show_inlet(req, alias).await?.to_vec()?,
             (Get, ["node", "outlet"]) => {
-                if req.has_body() {
-                    self.show_outlet(req, dec).await?.to_vec()?
-                } else {
-                    let node_manager = self.node_manager.read().await;
-                    self.get_outlets(req, &node_manager.registry).to_vec()?
-                }
+                let node_manager = self.node_manager.read().await;
+                self.get_outlets(req, &node_manager.registry).to_vec()?
             }
+            (Get, ["node", "outlet", alias]) => self.show_outlet(req, alias).await?.to_vec()?,
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
-            (Delete, ["node", "outlet"]) => self.delete_outlet(req, dec).await?.to_vec()?,
-            (Delete, ["node", "inlet"]) => self.delete_inlet(req, dec).await?.to_vec()?,
+            (Delete, ["node", "outlet", alias]) => self.delete_outlet(req, alias).await?.to_vec()?,
+            (Delete, ["node", "inlet", alias]) => self.delete_inlet(req, alias).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Workers ==*==
