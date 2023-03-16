@@ -218,6 +218,31 @@ teardown() {
   refute_output --partial "127.0.0.1:5000"
 }
 
+@test "tcp listener - CRUD" {
+  run "$OCKAM" node create n1
+  assert_success
+
+  # Create tcp-listener and check output
+  run "$OCKAM" tcp-listener create --at n1 127.0.0.1:7000
+  assert_success
+  assert_output --regexp '/dnsaddr/localhost/tcp/[[:digit:]]+/service/[[:graph:]]+'
+
+  # Check that the listener is listed
+  run "$OCKAM" tcp-listener list --node n1
+  assert_success
+  assert_output --partial "127.0.0.1:7000"
+
+  # Delete the listener
+  id=$($OCKAM tcp-listener list --node n1 | grep -o "[0-9a-f]\{32\}" | head -1)
+  run "$OCKAM" tcp-listener delete --node n1 "$id"
+  assert_success
+
+  # Check that it's no longer listed
+  run "$OCKAM" tcp-listener list --node n1
+  assert_success
+  refute_output --partial "127.0.0.1:7000"
+}
+
 @test "tcp - create a tcp connection and then delete it" {
   run "$OCKAM" node create n1
   run "$OCKAM" tcp-connection create --from n1 --to 127.0.0.1:5000 --output json

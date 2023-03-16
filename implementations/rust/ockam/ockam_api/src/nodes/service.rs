@@ -553,7 +553,6 @@ impl NodeManagerWorker {
             }
 
             // ==*== Tcp Connection ==*==
-            // TODO: Get all tcp connections
             (Get, ["node", "tcp", "connection"]) => {
                 let node_manager = self.node_manager.read().await;
                 self.get_tcp_con_or_list(req, &node_manager.transports, TransportMode::Connect)
