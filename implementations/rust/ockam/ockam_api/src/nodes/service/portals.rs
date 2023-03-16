@@ -1,7 +1,7 @@
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus, PortalAlias,
+    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
@@ -248,15 +248,12 @@ impl NodeManagerWorker {
     pub(super) async fn delete_inlet<'a>(
         &mut self,
         req: &Request<'_>,
-        dec: &mut Decoder<'_>,
+        alias: &'a str,
     ) -> Result<ResponseBuilder<InletStatus<'a>>> {
         let mut node_manager = self.node_manager.write().await;
-        let PortalAlias { alias, .. } = dec.decode()?;
-
-        let alias = alias.into_owned();
 
         info!(%alias, "Handling request to delete inlet portal");
-        if let Some(inlet_to_delete) = node_manager.registry.inlets.remove(&alias) {
+        if let Some(inlet_to_delete) = node_manager.registry.inlets.remove(alias) {
             debug!(%alias, "Sucessfully removed inlet from node registry");
             let was_stopped = node_manager
                 .tcp_transport
@@ -297,15 +294,12 @@ impl NodeManagerWorker {
     pub(super) async fn show_inlet<'a>(
         &mut self,
         req: &Request<'_>,
-        dec: &mut Decoder<'_>,
+        alias: &'a str,
     ) -> Result<ResponseBuilder<InletStatus<'a>>> {
         let node_manager = self.node_manager.write().await;
-        let PortalAlias { alias, .. } = dec.decode()?;
-
-        let alias = alias.into_owned();
 
         info!(%alias, "Handling request to show inlet portal");
-        if let Some(inlet_to_show) = node_manager.registry.inlets.get(&alias) {
+        if let Some(inlet_to_show) = node_manager.registry.inlets.get(alias) {
             debug!(%alias, "Inlet not found in node registry");
             Ok(Response::ok(req.id()).body(InletStatus::new(
                 inlet_to_show.bind_addr.to_string(),
@@ -399,15 +393,12 @@ impl NodeManagerWorker {
     pub(super) async fn delete_outlet<'a>(
         &mut self,
         req: &Request<'_>,
-        dec: &mut Decoder<'_>,
+        alias: &'a str,
     ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
         let mut node_manager = self.node_manager.write().await;
-        let PortalAlias { alias, .. } = dec.decode()?;
-
-        let alias = alias.into_owned();
 
         info!(%alias, "Handling request to delete outlet portal");
-        if let Some(outlet_to_delete) = node_manager.registry.outlets.remove(&alias) {
+        if let Some(outlet_to_delete) = node_manager.registry.outlets.remove(alias) {
             debug!(%alias, "Successfully removed outlet from node registry");
             let was_stopped = node_manager
                 .tcp_transport
@@ -445,15 +436,12 @@ impl NodeManagerWorker {
     pub(super) async fn show_outlet<'a>(
         &mut self,
         req: &Request<'_>,
-        dec: &mut Decoder<'_>,
+        alias: &'a str,
     ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
         let node_manager = self.node_manager.write().await;
-        let PortalAlias { alias, .. } = dec.decode()?;
-
-        let alias = alias.into_owned();
 
         info!(%alias, "Handling request to show outlet portal");
-        if let Some(outlet_to_show) = node_manager.registry.outlets.get(&alias) {
+        if let Some(outlet_to_show) = node_manager.registry.outlets.get(alias) {
             debug!(%alias, "Outlet not found in node registry");
             Ok(Response::ok(req.id()).body(OutletStatus::new(
                 outlet_to_show.tcp_addr.to_string(),

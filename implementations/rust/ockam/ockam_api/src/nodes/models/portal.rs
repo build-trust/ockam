@@ -236,24 +236,3 @@ impl<'a> OutletList<'a> {
         }
     }
 }
-
-/// Response body to access an Inlet or Outlet by its alias
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct PortalAlias<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1193889>,
-    /// The alias of the TCP inlet/outlet to be accessed
-    #[b(1)] pub alias: CowStr<'a>,
-}
-
-impl<'a> PortalAlias<'a> {
-    pub fn new(alias: impl Into<CowStr<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            alias: alias.into(),
-        }
-    }
-}
