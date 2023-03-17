@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Message)]
 pub(crate) struct AuthenticationConfirmation;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) enum Role {
     Initiator,
     Responder,

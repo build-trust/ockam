@@ -1,7 +1,6 @@
 use crate::api::{EncryptionRequest, EncryptionResponse};
 use crate::channel::addresses::Addresses;
 use crate::channel::encryptor::Encryptor;
-use crate::channel::Role;
 use crate::error::IdentityError;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, Address, Decodable, Encodable, Route};
@@ -10,7 +9,8 @@ use ockam_node::Context;
 use tracing::debug;
 
 pub(crate) struct EncryptorWorker {
-    role: Role,
+    //for debug purposes only
+    role: &'static str,
     addresses: Addresses,
     remote_route: Route,
     remote_backwards_compatibility_address: Address,
@@ -19,7 +19,7 @@ pub(crate) struct EncryptorWorker {
 
 impl EncryptorWorker {
     pub fn new(
-        role: Role,
+        role: &'static str,
         addresses: Addresses,
         remote_route: Route,
         remote_backwards_compatibility_address: Address,
@@ -41,8 +41,7 @@ impl EncryptorWorker {
     ) -> Result<()> {
         debug!(
             "SecureChannel {} received Encrypt API {}",
-            self.role.str(),
-            &self.addresses.encryptor
+            self.role, &self.addresses.encryptor
         );
 
         let return_route = msg.return_route();
@@ -72,8 +71,7 @@ impl EncryptorWorker {
     ) -> Result<()> {
         debug!(
             "SecureChannel {} received Encrypt {}",
-            self.role.str(),
-            &self.addresses.encryptor
+            self.role, &self.addresses.encryptor
         );
 
         let mut onward_route = msg.onward_route();
