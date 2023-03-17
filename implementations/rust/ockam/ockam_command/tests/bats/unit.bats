@@ -225,6 +225,12 @@ teardown() {
 
 }
 
+@test "tcp - create a tcp listner " {
+  run "$OCKAM" tcp-listener create 127.0.0.1:55001
+  assert_output --regexp '[{"/dnsaddr/localhost/tcp/[[:digit:]]+/service/*"}]'
+
+}
+
 # ===== MESSAGE
 
 @test "message - send messages between local nodes" {
