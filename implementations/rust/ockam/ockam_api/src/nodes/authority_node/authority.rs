@@ -23,7 +23,6 @@ use ockam_transport_tcp::{TcpListenerTrustOptions, TcpTransport};
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 use std::path::PathBuf;
-use std::str::FromStr;
 use tracing::info;
 
 /// This struct represents an Authority, which is an
@@ -42,8 +41,8 @@ impl Authority {
     /// Create a new Authority with a given identity
     /// The list of trusted identities is used to pre-populate an attributes storage
     /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
-    pub(crate) fn new(identity: Identity, configuration: Configuration) -> Self {
-        let attributes_storage = Self::make_attributes_storage(&identity, configuration);
+    pub(crate) fn new(identity: Identity, configuration: &Configuration) -> Self {
+        let attributes_storage = Self::make_attributes_storage(&identity, &configuration);
         Self {
             identity,
             attributes_storage,
@@ -60,39 +59,22 @@ impl Authority {
         self.identity.to_public().await
     }
 
-    /// Create an identity for an authority if it has not been created before
-    /// otherwise retrieve it from storage
-    pub async fn create(ctx: &Context, configuration: Configuration) -> Result<Authority> {
-        let vault = Self::create_identity_vault(&configuration).await?;
-        let storage = Self::create_authenticated_storage(&configuration).await?;
+    /// Create an identity for an authority from the configured public identity and configured vault
+    pub async fn create(ctx: &Context, configuration: &Configuration) -> Result<Authority> {
+        info!("configuration {:?}", configuration);
+        let vault = Self::create_identity_vault(configuration).await?;
+        let storage = Self::create_authenticated_storage(configuration).await?;
 
-        let identity = if let Some(authority_change_history) =
-            storage.get("authority", "change_history").await?
-        {
-            let identity = Identity::import_ext(
-                ctx,
-                authority_change_history.as_slice(),
-                storage.clone(),
-                &SecureChannelRegistry::new(),
-                vault,
-            )
-            .await?;
-            info!("retrieved the authority identity");
-            identity
-        } else {
-            let identity = Identity::create_ext(ctx, storage.clone(), vault).await?;
-            // persist the identity for later retrieval
-            storage
-                .set(
-                    "authority",
-                    "change_history".to_string(),
-                    identity.change_history().await.export()?,
-                )
-                .await?;
+        let identity = Identity::import_ext(
+            ctx,
+            &configuration.identity.export()?.as_slice(),
+            storage.clone(),
+            &SecureChannelRegistry::new(),
+            vault,
+        )
+        .await?;
+        info!("retrieved the authority identity {}", identity.identifier());
 
-            info!("created the authority identity");
-            identity
-        };
         Ok(Authority::new(identity, configuration))
     }
 
@@ -102,7 +84,7 @@ impl Authority {
     pub async fn start_secure_channel_listener(
         &self,
         ctx: &Context,
-        configuration: Configuration,
+        configuration: &Configuration,
     ) -> Result<()> {
         let sessions = Sessions::default();
 
@@ -152,7 +134,7 @@ impl Authority {
     pub async fn start_direct_authenticator(
         &self,
         ctx: &Context,
-        configuration: Configuration,
+        configuration: &Configuration,
     ) -> Result<()> {
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             configuration.clone().project_identifier(),
@@ -173,7 +155,7 @@ impl Authority {
     pub async fn start_enrollment_services(
         &self,
         ctx: &Context,
-        configuration: Configuration,
+        configuration: &Configuration,
     ) -> Result<()> {
         let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
             configuration.project_identifier(),
@@ -185,7 +167,7 @@ impl Authority {
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
         self.start(
             ctx,
-            configuration.clone(),
+            configuration,
             issuer_address.clone(),
             EnrollerOnly,
             issuer,
@@ -216,7 +198,7 @@ impl Authority {
     pub async fn start_credential_issuer(
         &self,
         ctx: &Context,
-        configuration: Configuration,
+        configuration: &Configuration,
     ) -> Result<()> {
         // create and start a credential issuer worker
         let issuer = CredentialIssuer::new(
@@ -237,7 +219,7 @@ impl Authority {
     }
 
     /// Start the Okta service to retrieve attributes authenticated by Okta
-    pub async fn start_okta(&self, ctx: &Context, configuration: Configuration) -> Result<()> {
+    pub async fn start_okta(&self, ctx: &Context, configuration: &Configuration) -> Result<()> {
         if let Some(okta) = configuration.clone().okta {
             let okta_worker = crate::okta::Server::new(
                 configuration.project_identifier(),
@@ -271,9 +253,9 @@ impl Authority {
     async fn create_identity_vault(
         configuration: &Configuration,
     ) -> Result<Arc<dyn IdentityVault>> {
-        let vault_path = PathBuf::from_str(configuration.vault_path.as_str()).unwrap();
-        Self::create_ockam_directory_if_necessary(vault_path.clone())?;
-        let mut file_storage = FileStorage::new(vault_path);
+        let vault_path = &configuration.vault_path;
+        Self::create_ockam_directory_if_necessary(&vault_path)?;
+        let mut file_storage = FileStorage::new(vault_path.clone());
         file_storage.init().await?;
         let vault = Arc::new(Vault::new(Some(Arc::new(file_storage))));
         Ok(vault)
@@ -283,14 +265,14 @@ impl Authority {
     async fn create_authenticated_storage(
         configuration: &Configuration,
     ) -> Result<Arc<dyn AuthenticatedStorage>> {
-        let storage_path = PathBuf::from_str(configuration.storage_path.as_str()).unwrap();
-        Self::create_ockam_directory_if_necessary(storage_path.clone())?;
-        let storage = Arc::new(LmdbStorage::new(storage_path).await?);
+        let storage_path = &configuration.storage_path;
+        Self::create_ockam_directory_if_necessary(&storage_path)?;
+        let storage = Arc::new(LmdbStorage::new(&storage_path).await?);
         Ok(storage)
     }
 
     /// Create a directory to save storage files if they haven't been  created before
-    fn create_ockam_directory_if_necessary(path: PathBuf) -> Result<()> {
+    fn create_ockam_directory_if_necessary(path: &PathBuf) -> Result<()> {
         let parent = path.parent().unwrap();
         if !parent.exists() {
             std::fs::create_dir_all(parent).map_err(|e| Error::new(Origin::Node, Kind::Io, e))?;
@@ -304,10 +286,10 @@ impl Authority {
     /// of truth is always the content of the configuration file for the authority node
     fn make_attributes_storage(
         authority: &Identity,
-        configuration: Configuration,
+        configuration: &Configuration,
     ) -> Arc<dyn IdentityAttributeStorage> {
-        let project_identifier = configuration.project_identifier;
-        let trusted_identities = configuration.trusted_identities;
+        let project_identifier = &configuration.project_identifier;
+        let trusted_identities = &configuration.trusted_identities;
 
         let trusted: HashMap<IdentityIdentifier, AttributesEntry> =
             HashMap::from_iter(trusted_identities.iter().map(|t: &TrustedIdentity| {
@@ -332,7 +314,7 @@ impl Authority {
     async fn start<M, W>(
         &self,
         ctx: &Context,
-        configuration: Configuration,
+        configuration: &Configuration,
         address: String,
         enroller_check: EnrollerCheck,
         worker: W,

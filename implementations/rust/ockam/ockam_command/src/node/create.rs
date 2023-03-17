@@ -134,16 +134,6 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        if self.node_name == "authority" && self.launch_config.is_some() {
-            if let Err(e) = embedded_node_that_is_not_stopped(start_authority_node, (options, self))
-            {
-                error!(%e);
-                eprintln!("{e:?}");
-                std::process::exit(e.code());
-            }
-            return;
-        }
-
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
             if let Err(e) = create_foreground_node(&options, &self) {
@@ -226,6 +216,10 @@ async fn run_foreground_node(
 ) -> crate::Result<()> {
     let cfg = &opts.config;
     let node_name = parse_node_name(&cmd.node_name)?;
+
+    if node_name == "authority" && cmd.launch_config.is_some() {
+        return start_authority_node(ctx, (opts, cmd)).await;
+    };
 
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
@@ -549,33 +543,36 @@ async fn start_authority_node(
         ))?;
         let secure_channel_config = services.secure_channel_listener.ok_or(crate::Error::new(
             exitcode::CONFIG,
-            anyhow!("The authenticator service must be specified for an authority node"),
+            anyhow!("The secure channel listener service must be specified for an authority node"),
         ))?;
 
-        let trusted = load_pre_trusted_identities(&command)?
-            .and_then(|ts| ts.get_trusted_identities().ok())
-            .unwrap_or_default();
-        let trusted_identities = trusted
-            .iter()
-            .map(|(identifier, attributes)| trusted_identity(identifier, attributes))
-            .collect();
-
         let configuration = authority_node::Configuration {
-            storage_path: options.state.identities.directory(),
-            vault_path: options.state.vaults.directory(),
+            identity: options.state.identities.default()?.config.public_identity(),
+            storage_path: options.state.identities.authenticated_storage_path()?,
+            vault_path: options.state.vaults.default()?.vault_file_path()?,
             project_identifier: authenticator_config.project,
-            tcp_listener_address: command.tcp_listener_address,
+            tcp_listener_address: (&command).tcp_listener_address.clone(),
             secure_channel_listener_name: Some(secure_channel_config.address),
             authenticator_name: Some(authenticator_config.address),
-            trusted_identities,
+            trusted_identities: get_trusted_identities(&command)?,
             okta: None,
         };
-        authority_node::start_node(&ctx, configuration).await?;
+        authority_node::start_node(&ctx, &configuration).await?;
     }
     Ok(())
 }
 
-fn trusted_identity(
+fn get_trusted_identities(command: &CreateCommand) -> Result<Vec<TrustedIdentity>> {
+    let trusted = load_pre_trusted_identities(&command)?
+        .and_then(|ts| ts.get_trusted_identities().ok())
+        .unwrap_or_default();
+    Ok(trusted
+        .iter()
+        .map(|(identifier, attributes)| make_trusted_identity(identifier, attributes))
+        .collect())
+}
+
+fn make_trusted_identity(
     identifier: &IdentityIdentifier,
     attributes: &AttributesEntry,
 ) -> TrustedIdentity {
@@ -587,4 +584,39 @@ fn trusted_identity(
         );
     }
     TrustedIdentity::new(identifier, &attributes_map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_trusted_identities() {
+        let mut cmd = CreateCommand::default();
+        let identity1 = IdentityIdentifier::from_str(
+            "Pe86be15e83d1c93e24dd1967010b01b6df491b459725fd9ae0bebfd7c1bf8ea3",
+        )
+        .unwrap();
+        let identity2 = IdentityIdentifier::from_str(
+            "P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94",
+        )
+        .unwrap();
+
+        cmd.trusted_identities = Some(format!("{{\"{identity1}\": {{\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}}, \"{identity2}\" : {{\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}"));
+        let actual = get_trusted_identities(&cmd).unwrap();
+
+        let attributes1 = HashMap::from([
+            ("sample_attr".into(), "sample_val".into()),
+            ("project_id".into(), "1".into()),
+        ]);
+        let attributes2 = HashMap::from([
+            ("project_id".into(), "1".into()),
+            ("ockam-role".into(), "enroller".into()),
+        ]);
+        let expected = vec![
+            TrustedIdentity::new(&identity1, &attributes1),
+            TrustedIdentity::new(&identity2, &attributes2),
+        ];
+        assert_eq!(actual, expected);
+    }
 }

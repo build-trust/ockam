@@ -5,7 +5,9 @@ use crate::nodes::models::transport::{CreateTransportJson, TransportMode, Transp
 use nix::errno::Errno;
 use ockam_core::compat::sync::Arc;
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use ockam_identity::{Identity, IdentityIdentifier, IdentityVault, SecureChannelRegistry};
+use ockam_identity::{
+    Identity, IdentityIdentifier, IdentityVault, PublicIdentity, SecureChannelRegistry,
+};
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -258,12 +260,16 @@ impl VaultState {
     }
 
     pub async fn get(&self) -> Result<Vault> {
-        let vault_storage = FileStorage::create(self.data_path(&self.name)?).await?;
+        let vault_storage = FileStorage::create(self.vault_file_path()?).await?;
         let mut vault = Vault::new(Some(Arc::new(vault_storage)));
         if self.config.aws_kms {
             vault.enable_aws_kms().await?
         }
         Ok(vault)
+    }
+
+    pub fn vault_file_path(&self) -> Result<PathBuf> {
+        self.data_path(&self.name)
     }
 
     pub fn delete(&self) -> Result<()> {
@@ -456,6 +462,11 @@ impl IdentitiesState {
     }
 
     pub async fn authenticated_storage(&self) -> Result<Arc<dyn AuthenticatedStorage>> {
+        let lmdb_path = self.authenticated_storage_path()?;
+        Ok(Arc::new(LmdbStorage::new(lmdb_path).await?))
+    }
+
+    pub fn authenticated_storage_path(&self) -> Result<PathBuf> {
         //TODO: remove this once we don't need to convert from old location anymore
         //      there is probably a better place for this than here, but this code
         //      is going to be short-lived and authenticated_storage/1 is anyway
@@ -465,8 +476,7 @@ impl IdentitiesState {
         if legacy_location.exists() {
             std::fs::rename(&legacy_location, &lmdb_path)?;
         }
-
-        Ok(Arc::new(LmdbStorage::new(lmdb_path).await?))
+        Ok(lmdb_path)
     }
 }
 
@@ -591,6 +601,10 @@ impl IdentityConfig {
             change_history,
             enrollment_status: None,
         }
+    }
+
+    pub fn public_identity(&self) -> PublicIdentity {
+        PublicIdentity::new(self.identifier.clone(), self.change_history.clone())
     }
 }
 
