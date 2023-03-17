@@ -1,0 +1,13 @@
+#!/bin/bash
+
+docker compose rm -svf
+
+export INFLUXDB_TOKEN=$(ockam project ticket --attribute component=influxdb)
+export TELEGRAF_TOKEN=$(ockam project ticket --attribute component=telegraf)
+export CONSUMER_TOKEN=$(ockam project ticket --attribute role=member)
+export PRODUCER_TOKEN=$(ockam project ticket --attribute role=member)
+docker compose up influxdb telegraf settopbox 
+# clear
+
+# update compose to run everything, then can access a local UI below:
+# open http://localhost:8080/ui/clusters/confluentcloud/all-topics/settopbox/messages
