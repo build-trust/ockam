@@ -33,19 +33,12 @@ If you use Homebrew, you can install Ockam using brew.
 brew install build-trust/ockam/ockam
 ```
 
-This will download a precompiled binary and add it to your path. If you don’t
-use Homebrew, you can also install on Linux and MacOS systems using curl.
+This will download a precompiled binary and add it to your path.
+If you don’t use Homebrew, you can also install on Linux and MacOS systems using curl.
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf \
-    https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | sh
-```
-
-After the binary downloads, please move it to a location that is in your
-shell's `$PATH`
-
-```bash
-mv ockam /usr/local/bin
+    https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | bash
 ```
 
 ### End-to-end encrypted and mutually authenticated communication
