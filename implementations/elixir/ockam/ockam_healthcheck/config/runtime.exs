@@ -28,11 +28,14 @@ config :ockam, identity_module: identity_module
 
 ## Metrics config
 
-# must be set for prometheus metrics to be enabled
+# PROMETHEUS_PORT must be set for prometheus metrics to be enabled
 config :ockam_metrics,
+  include_node_metrics: false,
   prometheus_port: System.get_env("PROMETHEUS_PORT"),
-  metrics_fun: {Ockam.Healthcheck.Metrics, :metrics, []},
-  poller_measurements: []
+  poller_measurements: [],
+  metrics:
+    Ockam.Healthcheck.Metrics.metrics() ++
+      Ockam.Metrics.vm_metrics() ++ Ockam.Metrics.ockam_workers_metrics()
 
 ## Logger config
 

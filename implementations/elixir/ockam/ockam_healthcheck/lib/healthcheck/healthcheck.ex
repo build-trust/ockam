@@ -120,7 +120,7 @@ defmodule Ockam.Healthcheck do
     api_route = [tcp_conn, api_worker]
 
     with {:ok, identity, vault_name} <- get_healthcheck_identity() do
-      Logger.info("Identity: #{inspect(identity)}")
+      Logger.debug("Identity: #{inspect(identity)}")
 
       case SecureChannel.create_channel(
              route: api_route,
@@ -148,7 +148,7 @@ defmodule Ockam.Healthcheck do
   end
 
   defp log_healthcheck(message, duration, target) do
-    Logger.info(
+    Logger.debug(
       message <>
         " for target #{inspect(target)} " <>
         "duration: #{inspect(duration)}"
