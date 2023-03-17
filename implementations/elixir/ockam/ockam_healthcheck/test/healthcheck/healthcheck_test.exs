@@ -54,7 +54,38 @@ defmodule Ockam.Healthcheck.Test do
       healthcheck_worker: "healthcheck"
     }
 
+    test_proc = self()
+
+    :telemetry.attach_many(
+      "test_handler",
+      [
+        [:ockam, :healthcheck, :result],
+        [:ockam, :healthcheck, :ok],
+        [:ockam, :healthcheck, :error]
+      ],
+      fn event, measurements, metadata, _config ->
+        send(test_proc, {:telemetry_event, event, measurements, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn ->
+      :telemetry.detach("test_handler")
+    end)
+
     assert :ok = Ockam.Healthcheck.check_target(target, 1000)
+
+    assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 1},
+                    %{target: %{name: "target"}}},
+                   5000
+
+    assert_receive {:telemetry_event, [:ockam, :healthcheck, :ok], %{duration: _duration},
+                    %{target: %{name: "target"}}},
+                   5000
+
+    refute_receive {:telemetry_event, [:ockam, :healthcheck, :error], %{duration: _duration},
+                    %{target: %{name: "target"}}},
+                   500
   end
 
   test "healthcheck ping error" do
@@ -66,7 +97,38 @@ defmodule Ockam.Healthcheck.Test do
       healthcheck_worker: "not_healthcheck"
     }
 
+    test_proc = self()
+
+    :telemetry.attach_many(
+      "test_handler",
+      [
+        [:ockam, :healthcheck, :result],
+        [:ockam, :healthcheck, :ok],
+        [:ockam, :healthcheck, :error]
+      ],
+      fn event, measurements, metadata, _config ->
+        send(test_proc, {:telemetry_event, event, measurements, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn ->
+      :telemetry.detach("test_handler")
+    end)
+
     assert {:error, :timeout} = Ockam.Healthcheck.check_target(target, 1000)
+
+    assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 0},
+                    %{target: %{name: "target"}}},
+                   1000
+
+    assert_receive {:telemetry_event, [:ockam, :healthcheck, :error], %{duration: _duration},
+                    %{target: %{name: "target"}}},
+                   1000
+
+    refute_receive {:telemetry_event, [:ockam, :healthcheck, :ok], %{duration: _duration},
+                    %{target: %{name: "target"}}},
+                   500
   end
 
   test "healthcheck channel error" do
