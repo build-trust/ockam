@@ -1,12 +1,9 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, SessionOutgoingAccessControl, Sessions};
-use ockam_core::{
-    Address, AllowAll, IncomingAccessControl, LocalOnwardOnly, LocalSourceOnly,
-    OutgoingAccessControl,
-};
+use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl, Result};
+use ockam_transport_core::TransportError;
 
-pub(crate) struct TcpConnectionTrustOptionsProcessed {
-    pub session_id: Option<SessionId>,
+pub(crate) struct TcpConnectionAccessControl {
     pub sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
 }
@@ -34,21 +31,25 @@ impl TcpConnectionTrustOptions {
         self
     }
 
-    pub(crate) fn process(self, address: &Address) -> TcpConnectionTrustOptionsProcessed {
-        match self.producer_session {
-            Some((sessions, session_id)) => {
-                sessions.add_producer(address, &session_id, None);
+    pub(crate) fn setup_session(&self, address: &Address) -> Option<SessionId> {
+        if let Some((sessions, session_id)) = &self.producer_session {
+            sessions.add_producer(address, session_id, None);
 
-                TcpConnectionTrustOptionsProcessed {
-                    session_id: Some(session_id.clone()),
-                    sender_incoming_access_control: Arc::new(AllowAll),
-                    receiver_outgoing_access_control: Arc::new(SessionOutgoingAccessControl::new(
-                        sessions, session_id, None,
-                    )),
-                }
-            }
-            None => TcpConnectionTrustOptionsProcessed {
-                session_id: None,
+            Some(session_id.clone())
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn create_access_control(self) -> TcpConnectionAccessControl {
+        match self.producer_session {
+            Some((sessions, session_id)) => TcpConnectionAccessControl {
+                sender_incoming_access_control: Arc::new(AllowAll),
+                receiver_outgoing_access_control: Arc::new(SessionOutgoingAccessControl::new(
+                    sessions, session_id, None,
+                )),
+            },
+            None => TcpConnectionAccessControl {
                 sender_incoming_access_control: Arc::new(AllowAll),
                 receiver_outgoing_access_control: Arc::new(AllowAll),
             },
@@ -78,28 +79,38 @@ impl TcpListenerTrustOptions {
         self
     }
 
-    pub(crate) fn process(&self, address: &Address) -> TcpConnectionTrustOptionsProcessed {
-        match &self.spawner_session {
-            Some((sessions, listener_session_id)) => {
-                let session_id = sessions.generate_session_id();
+    pub(crate) fn setup_session(&self, address: &Address) -> Option<SessionId> {
+        if let Some((sessions, listener_session_id)) = &self.spawner_session {
+            let session_id = sessions.generate_session_id();
 
-                sessions.add_producer(address, &session_id, Some(listener_session_id));
+            sessions.add_producer(address, &session_id, Some(listener_session_id));
 
-                TcpConnectionTrustOptionsProcessed {
-                    session_id: Some(session_id.clone()),
-                    sender_incoming_access_control: Arc::new(LocalSourceOnly),
+            Some(session_id)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn create_access_control(
+        &self,
+        session_id: Option<SessionId>,
+    ) -> Result<TcpConnectionAccessControl> {
+        match (&self.spawner_session, session_id) {
+            (Some((sessions, listener_session_id)), Some(session_id)) => {
+                Ok(TcpConnectionAccessControl {
+                    sender_incoming_access_control: Arc::new(AllowAll),
                     receiver_outgoing_access_control: Arc::new(SessionOutgoingAccessControl::new(
                         sessions.clone(),
                         session_id,
                         Some(listener_session_id.clone()),
                     )),
-                }
+                })
             }
-            None => TcpConnectionTrustOptionsProcessed {
-                session_id: None,
-                sender_incoming_access_control: Arc::new(LocalSourceOnly),
-                receiver_outgoing_access_control: Arc::new(LocalOnwardOnly),
-            },
+            (None, None) => Ok(TcpConnectionAccessControl {
+                sender_incoming_access_control: Arc::new(AllowAll),
+                receiver_outgoing_access_control: Arc::new(AllowAll),
+            }),
+            _ => Err(TransportError::SessionInconsistency.into()),
         }
     }
 }

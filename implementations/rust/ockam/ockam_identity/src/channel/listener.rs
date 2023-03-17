@@ -68,9 +68,20 @@ impl Worker for IdentityChannelListener {
             .map(|x| x.session_id().clone());
 
         let addresses = Addresses::generate(Role::Responder);
-        let trust_options_processed = self.trust_options.process(&addresses, session_id)?;
+        let session_id = self.trust_options.setup_session(&addresses, session_id)?;
+        let access_control = self
+            .trust_options
+            .create_access_control(session_id.clone())?;
 
-        DecryptorWorker::create_responder(ctx, identity, addresses, trust_options_processed, msg)
-            .await
+        DecryptorWorker::create_responder(
+            ctx,
+            identity,
+            addresses,
+            self.trust_options.trust_policy.clone(),
+            access_control.decryptor_outgoing_access_control,
+            session_id,
+            msg,
+        )
+        .await
     }
 }
