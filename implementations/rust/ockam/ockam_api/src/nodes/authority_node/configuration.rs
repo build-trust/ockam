@@ -1,23 +1,23 @@
 use crate::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Error, Result};
 use ockam_identity::authenticated_storage::AttributesEntry;
 use ockam_identity::credential::Timestamp;
-use ockam_identity::IdentityIdentifier;
+use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 /// Configuration for the Authority node
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
+    /// Authority identity or identity associated with the newly created node
+    pub identity: PublicIdentity,
+
     /// path where the storage for identity attributes should be persisted
-    pub storage_path: String,
+    pub storage_path: PathBuf,
 
     /// path where secrets should be persisted
-    pub vault_path: String,
+    pub vault_path: PathBuf,
 
     /// Project identifier on the Orchestrator node
     pub project_identifier: String,
@@ -64,24 +64,6 @@ impl Configuration {
         self.authenticator_name
             .clone()
             .unwrap_or(DefaultAddress::DIRECT_AUTHENTICATOR.to_string())
-    }
-
-    /// Read the configuration either from a string or a file path
-    pub fn read(path_or_string: &str) -> Result<Configuration> {
-        Self::read_from_string(path_or_string).or_else(|_| Self::read_from_path(path_or_string))
-    }
-
-    /// Read the configuration from a file
-    pub fn read_from_path(path: &str) -> Result<Configuration> {
-        let path = PathBuf::from_str(path).unwrap();
-        let contents =
-            std::fs::read_to_string(path).map_err(|e| Error::new(Origin::Node, Kind::Io, e))?;
-        Self::read_from_string(&contents)
-    }
-
-    /// Read the configuration from a JSON string
-    pub fn read_from_string(contents: &str) -> Result<Configuration> {
-        serde_json::from_str(contents).map_err(|e| Error::new(Origin::Node, Kind::Io, e))
     }
 }
 
@@ -158,62 +140,5 @@ impl TrustedIdentity {
             None,
             Some(authority_identifier.clone()),
         )
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use std::str::FromStr;
-
-    #[test]
-    fn test_read_configuration_as_json() {
-        let actual = r#"
-        {
-          "vault_path": "/tmp/ockam/vault",
-          "storage_path": "/tmp/ockam/storage",
-          "project_identifier": "project",
-          "tcp_listener_address": "127.0.0.1:4000",
-          "secure_channel_listener_name": "secure",
-          "authenticator_name": "direct_authenticator",
-          "trusted_identities": [{
-            "identifier": "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638",
-            "attributes": { "ockam-role": "enroller" }
-          }],
-          "okta": {
-            "tenant_base_url": "okta.url",
-            "certificate": "okta.ca",
-            "address": "okta",
-            "attributes": ["attribute_1", "attribute_2"]
-          }
-        }
-        "#;
-        let actual: Configuration = Configuration::read(actual).unwrap();
-
-        let expected = Configuration {
-            storage_path: "/tmp/ockam/storage".to_string(),
-            vault_path: "/tmp/ockam/vault".to_string(),
-            project_identifier: "project".to_string(),
-            tcp_listener_address: "127.0.0.1:4000".to_string(),
-            secure_channel_listener_name: Some("secure".to_string()),
-            authenticator_name: Some("direct_authenticator".to_string()),
-            trusted_identities: vec![TrustedIdentity {
-                identifier: IdentityIdentifier::from_str(
-                    "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638",
-                )
-                .unwrap(),
-                attributes: HashMap::from_iter(vec![(
-                    "ockam-role".to_string(),
-                    "enroller".to_string(),
-                )]),
-            }],
-            okta: Some(OktaConfiguration {
-                tenant_base_url: "okta.url".to_string(),
-                certificate: "okta.ca".to_string(),
-                address: "okta".to_string(),
-                attributes: vec!["attribute_1".to_string(), "attribute_2".to_string()],
-            }),
-        };
-        assert_eq!(actual, expected);
     }
 }

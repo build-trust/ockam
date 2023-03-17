@@ -10,14 +10,15 @@ use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
 /// Public part of an `Identity`
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicIdentity {
     id: IdentityIdentifier,
     change_history: IdentityChangeHistory,
 }
 
 impl PublicIdentity {
-    pub(crate) fn new(id: IdentityIdentifier, change_history: IdentityChangeHistory) -> Self {
+    /// Create a new public identity
+    pub fn new(id: IdentityIdentifier, change_history: IdentityChangeHistory) -> Self {
         Self { id, change_history }
     }
 
