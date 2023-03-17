@@ -22,7 +22,7 @@ use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerTrustOptions, TcpTransport};
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
-use std::path::PathBuf;
+use std::path::Path;
 use tracing::info;
 
 /// This struct represents an Authority, which is an
@@ -42,7 +42,7 @@ impl Authority {
     /// The list of trusted identities is used to pre-populate an attributes storage
     /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
     pub(crate) fn new(identity: Identity, configuration: &Configuration) -> Self {
-        let attributes_storage = Self::make_attributes_storage(&identity, &configuration);
+        let attributes_storage = Self::make_attributes_storage(&identity, configuration);
         Self {
             identity,
             attributes_storage,
@@ -67,7 +67,7 @@ impl Authority {
 
         let identity = Identity::import_ext(
             ctx,
-            &configuration.identity.export()?.as_slice(),
+            configuration.identity.export()?.as_slice(),
             storage.clone(),
             &SecureChannelRegistry::new(),
             vault,
@@ -95,11 +95,11 @@ impl Authority {
         let trust_options = SecureChannelListenerTrustOptions::new()
             .with_trust_policy(TrustEveryonePolicy)
             .as_consumer(
-                &sessions,
+                sessions,
                 &tcp_listener_session_id,
                 SessionPolicy::SpawnerAllowOnlyOneMessage,
             )
-            .as_spawner(&sessions, &secure_channel_listener_session_id);
+            .as_spawner(sessions, &secure_channel_listener_session_id);
 
         let listener_name = configuration.secure_channel_listener_name();
         self.identity
@@ -110,7 +110,7 @@ impl Authority {
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_listener_trust_options =
-            TcpListenerTrustOptions::new().as_spawner(&sessions, &tcp_listener_session_id);
+            TcpListenerTrustOptions::new().as_spawner(sessions, &tcp_listener_session_id);
 
         let (address, _) = tcp
             .listen(
@@ -277,7 +277,7 @@ impl Authority {
         configuration: &Configuration,
     ) -> Result<Arc<dyn IdentityVault>> {
         let vault_path = &configuration.vault_path;
-        Self::create_ockam_directory_if_necessary(&vault_path)?;
+        Self::create_ockam_directory_if_necessary(vault_path)?;
         let mut file_storage = FileStorage::new(vault_path.clone());
         file_storage.init().await?;
         let vault = Arc::new(Vault::new(Some(Arc::new(file_storage))));
@@ -289,13 +289,13 @@ impl Authority {
         configuration: &Configuration,
     ) -> Result<Arc<dyn AuthenticatedStorage>> {
         let storage_path = &configuration.storage_path;
-        Self::create_ockam_directory_if_necessary(&storage_path)?;
+        Self::create_ockam_directory_if_necessary(storage_path)?;
         let storage = Arc::new(LmdbStorage::new(&storage_path).await?);
         Ok(storage)
     }
 
     /// Create a directory to save storage files if they haven't been  created before
-    fn create_ockam_directory_if_necessary(path: &PathBuf) -> Result<()> {
+    fn create_ockam_directory_if_necessary(path: &Path) -> Result<()> {
         let parent = path.parent().unwrap();
         if !parent.exists() {
             std::fs::create_dir_all(parent).map_err(|e| Error::new(Origin::Node, Kind::Io, e))?;
@@ -346,7 +346,7 @@ impl Authority {
         M: Message + Send + 'static,
         W: Worker<Context = Context, Message = M>,
     {
-        let abac = self.create_abac_policy(&configuration, address.clone(), enroller_check);
+        let abac = self.create_abac_policy(configuration, address.clone(), enroller_check);
         WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), address.clone(), worker)
             .start(ctx)
             .await
