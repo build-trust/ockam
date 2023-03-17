@@ -551,7 +551,7 @@ async fn start_authority_node(
             storage_path: options.state.identities.authenticated_storage_path()?,
             vault_path: options.state.vaults.default()?.vault_file_path()?,
             project_identifier: authenticator_config.project,
-            tcp_listener_address: (&command).tcp_listener_address.clone(),
+            tcp_listener_address: command.tcp_listener_address.clone(),
             secure_channel_listener_name: Some(secure_channel_config.address),
             authenticator_name: Some(authenticator_config.address),
             trusted_identities: get_trusted_identities(&command)?,
@@ -563,7 +563,7 @@ async fn start_authority_node(
 }
 
 fn get_trusted_identities(command: &CreateCommand) -> Result<Vec<TrustedIdentity>> {
-    let trusted = load_pre_trusted_identities(&command)?
+    let trusted = load_pre_trusted_identities(command)?
         .and_then(|ts| ts.get_trusted_identities().ok())
         .unwrap_or_default();
     Ok(trusted

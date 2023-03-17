@@ -1,4 +1,6 @@
 use crate::{IdentityIdentifier, SecureChannelTrustInfo, TrustPolicy};
+use ockam_core::compat::string::String;
+use ockam_core::compat::string::ToString;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, vec::Vec},
