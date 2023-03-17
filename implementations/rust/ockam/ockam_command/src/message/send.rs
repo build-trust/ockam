@@ -11,11 +11,18 @@ use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and
 use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
 use crate::Result;
-use crate::{help, message::HELP_DETAIL, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
+
+const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/send/after_long_help.txt");
 
 /// Send messages
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct SendCommand {
     /// The node to send messages from
     #[arg(short, long, value_name = "NODE")]

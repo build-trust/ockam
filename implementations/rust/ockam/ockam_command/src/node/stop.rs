@@ -1,12 +1,9 @@
 use crate::node::default_node_name;
-use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use clap::Args;
 
 /// Stop a node
 #[derive(Clone, Debug, Args)]
-#[command(
-    after_long_help = help::template(HELP_DETAIL)
-)]
 pub struct StopCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

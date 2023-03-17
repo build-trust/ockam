@@ -10,17 +10,20 @@ use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::forwarder::HELP_DETAIL;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::Result;
-use crate::{help, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
+
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
 /// Create Forwarders
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,
-    after_long_help = help::template(HELP_DETAIL)
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     /// Name of the forwarder (optional)

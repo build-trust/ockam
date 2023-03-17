@@ -1,18 +1,12 @@
-use crate::{help, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 pub use send::SendCommand;
 
 mod send;
 
-const HELP_DETAIL: &str = include_str!("../constants/message/help_detail.txt");
-
 /// Send and Receive Messages
 #[derive(Clone, Debug, Args)]
-#[command(
-    arg_required_else_help = true,
-    subcommand_required = true,
-    after_long_help = help::template(HELP_DETAIL)
-)]
+#[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct MessageCommand {
     #[command(subcommand)]
     subcommand: MessageSubcommand,

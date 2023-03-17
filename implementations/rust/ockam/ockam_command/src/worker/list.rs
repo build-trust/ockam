@@ -1,6 +1,6 @@
 use crate::node::default_node_name;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{help, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::workers::WorkerList;
@@ -11,7 +11,7 @@ const HELP_DETAIL: &str = "";
 
 /// List workers
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(HELP_DETAIL))]
+#[command(after_long_help = docs::after_help(HELP_DETAIL))]
 pub struct ListCommand {
     /// Node at which to lookup workers (required)
     #[arg(value_name = "NODE", long, default_value_t = default_node_name(), display_order = 800)]

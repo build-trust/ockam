@@ -6,7 +6,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::{
-    help,
+    docs,
     util::{
         api::{CloudOpts, ProjectOpts},
         node_rpc,
@@ -19,7 +19,7 @@ const HELP_DETAIL: &str = "";
 
 /// Revoke a token within the lease token manager
 #[derive(Clone, Debug, Args)]
-#[command(help_template = help::template(HELP_DETAIL))]
+#[command(help_template = docs::after_help(HELP_DETAIL))]
 pub struct RevokeCommand {
     /// ID of the token to revoke
     #[arg(long, short, id = "token_id", value_name = "TOKEN_ID")]

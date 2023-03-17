@@ -10,17 +10,19 @@ pub use delete::DeleteCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
 
-use crate::{help, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 
-const HELP_DETAIL: &str = include_str!("../constants/secure_channel/help_detail.txt");
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
 /// Manage Secure Channels.
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    after_long_help = help::template(HELP_DETAIL)
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct SecureChannelCommand {
     #[command(subcommand)]

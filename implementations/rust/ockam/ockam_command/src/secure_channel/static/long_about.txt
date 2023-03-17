@@ -1,0 +1,2 @@
+Secure Channels provide end-to-end encrypted and mutually authenticated communication
+that is safe against eavesdropping, tampering, and forgery of messages en-route.

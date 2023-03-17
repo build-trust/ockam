@@ -1,0 +1,8 @@
+Generate shell completion scripts for Ockam commands.
+
+If you’ve installed `ockam` command using a package manager, you likely
+don't need to do any additional shell configuration to gain completion support.
+
+If you need to set up completions manually, follow the instructions below.
+The exact configuration file locations might vary based on your system. Remember
+to restart your shell before testing whether completions are working.

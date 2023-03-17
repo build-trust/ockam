@@ -1,6 +1,6 @@
 use crate::node::default_node_name;
 use crate::util::{api, node_rpc, Rpc, RpcBuilder};
-use crate::{help, node::HELP_DETAIL, CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
 use ockam::TcpTransport;
@@ -19,7 +19,7 @@ const IS_NODE_UP_MAX_ATTEMPTS: usize = 20; // 1 second
 
 /// Show node details
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true)]
 pub struct ShowCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

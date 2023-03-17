@@ -4,7 +4,7 @@ use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, node_rpc, process_nodes_multiaddr,
     RpcBuilder,
 };
-use crate::{help, CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, Result};
 
 use anyhow::anyhow;
 use clap::Args;
@@ -17,11 +17,8 @@ use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 use std::net::SocketAddr;
 
-const HELP_DETAIL: &str = include_str!("../../constants/tcp/inlet/help_detail.txt");
-
 /// Create TCP Inlets
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
     #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name())]

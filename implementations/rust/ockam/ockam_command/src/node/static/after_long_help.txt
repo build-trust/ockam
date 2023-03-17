@@ -1,0 +1,46 @@
+```sh
+# Create two nodes
+$ ockam node create n1
+$ ockam node create n2
+
+# Send a message to the uppercase service on node 2
+$ ockam message send hello --to /node/n2/service/uppercase
+HELLO
+
+# A more verbose version of the above would be,
+# assuming n2 started its tcp listener on port 4000.
+$ ockam message send hello --to /ip4/127.0.0.1/tcp/4000/service/uppercase
+HELLO
+
+# Send a message to the uppercase service on node n2 from node n1
+$ ockam message send hello --from /node/n1 --to /node/n2/service/uppercase
+HELLO
+
+# Create a secure channel from node n1 to the api service on node n2
+# The /service/api is a secure channel listener that is started on every node
+# Send a message through this encrypted channel to the uppercase service
+$ ockam secure-channel create --from /node/n1 --to /node/n2/service/api \\
+    | ockam message send hello --from /node/n1 --to -/service/uppercase
+HELLO
+
+# Create a node, with a specified tcp listener address
+$ ockam node create n1 --tcp-listener-address 127.0.0.1:6001
+
+# Create a node, and run it in the foreground with verbose traces
+$ ockam node create n1 --foreground -vvv
+
+# Show information about a specific node
+$ ockam node show n1
+
+# List all created nodes
+$ ockam node list
+
+# Delete the node
+$ ockam node delete n1
+
+# Delete all nodes
+$ ockam node delete --all
+
+# Delete all nodes and force cleanup
+$ ockam node delete --all --force
+```

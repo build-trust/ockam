@@ -1,6 +1,7 @@
 use crate::terminal::TerminalBackground;
 use colorful::Colorful;
 use once_cell::sync::Lazy;
+use std::io::Write;
 use syntect::highlighting::Theme;
 use syntect::{
     easy::HighlightLines,
@@ -9,6 +10,7 @@ use syntect::{
     parsing::SyntaxSet,
     util::{as_24_bit_terminal_escaped, LinesWithEndings},
 };
+use termcolor::WriteColor;
 
 const TEMPLATE_BOTTOM: &str = "
 Learn More:
@@ -19,15 +21,6 @@ Feedback:
     If you have any questions or feedback, please start a discussion
     on Github https://github.com/build-trust/ockam/discussions/new
 ";
-
-pub(crate) fn template(body: &str) -> &'static str {
-    let mut template: String = body.to_string();
-
-    template.push_str(TEMPLATE_BOTTOM);
-    let highlighted = highlight_syntax(template);
-
-    Box::leak(highlighted.into_boxed_str())
-}
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 static RE: Lazy<Regex> = Lazy::new(|| Regex::new("^[A-Za-z][A-Za-z0-9 ]+:$".into()));
@@ -41,6 +34,44 @@ static THEME: Lazy<Option<Theme>> = Lazy::new(|| {
     let theme = theme_set.themes.remove(theme_name).unwrap();
     Some(theme)
 });
+
+pub(crate) fn about(body: &str) -> &'static str {
+    Box::leak(highlight_syntax(body.to_string()).into_boxed_str())
+}
+
+#[allow(unused)]
+pub(crate) fn before_help(body: &str) -> &'static str {
+    Box::leak(highlight_syntax(body.to_string()).into_boxed_str())
+}
+
+pub(crate) fn after_help(body: &str) -> &'static str {
+    let mut template = String::new();
+    if is_markdown() {
+        template.push_str("### Examples\n\n");
+    } else {
+        let mut buffer = termcolor::Buffer::ansi();
+        let mut color = termcolor::ColorSpec::new();
+        color.set_bold(true);
+        color.set_underline(true);
+        let err_msg = "Failed to create styled header";
+        buffer.set_color(&color).expect(err_msg);
+        buffer.write_all(template.as_bytes()).expect(err_msg);
+        buffer.reset().expect(err_msg);
+    }
+    template.push_str(body);
+    if !is_markdown() {
+        template.push_str(TEMPLATE_BOTTOM);
+    }
+    let highlighted = highlight_syntax(template);
+    Box::leak(highlighted.into_boxed_str())
+}
+
+pub(crate) fn is_markdown() -> bool {
+    match std::env::var("MARKDOWN_RENDER") {
+        Ok(v) => v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("1"),
+        Err(_e) => false,
+    }
+}
 
 pub fn highlight_syntax(input: String) -> String {
     let mut highlighted: Vec<String> = Vec::new();

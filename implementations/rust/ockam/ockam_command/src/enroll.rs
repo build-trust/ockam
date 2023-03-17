@@ -24,13 +24,13 @@ use crate::space::util::config;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{help, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const HELP_DETAIL: &str = "";
 
 /// Enroll with Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(HELP_DETAIL))]
+#[command(after_long_help = docs::after_help(HELP_DETAIL))]
 pub struct EnrollCommand {
     #[command(flatten)]
     pub cloud_opts: CloudOpts,

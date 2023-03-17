@@ -7,17 +7,12 @@ pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 
-use crate::secure_channel::HELP_DETAIL;
-use crate::{help, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
 /// Manage Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
-#[command(
-    arg_required_else_help = true,
-    subcommand_required = true,
-    after_long_help = help::template(HELP_DETAIL)
-)]
+#[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct SecureChannelListenerCommand {
     #[command(subcommand)]
     subcommand: SecureChannelListenerSubcommand,

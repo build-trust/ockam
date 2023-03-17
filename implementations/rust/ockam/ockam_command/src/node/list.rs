@@ -1,5 +1,5 @@
 use crate::util::{api, exitcode, node_rpc, RpcBuilder};
-use crate::{help, node::show::print_query_status, node::HELP_DETAIL, CommandGlobalOpts};
+use crate::{node::show::print_query_status, CommandGlobalOpts};
 use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::{Context, TcpTransport};
@@ -8,7 +8,6 @@ use std::time::Duration;
 
 /// List nodes
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct ListCommand {}
 
 impl ListCommand {

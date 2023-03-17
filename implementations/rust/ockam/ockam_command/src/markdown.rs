@@ -1,4 +1,4 @@
-use crate::help;
+use crate::docs;
 use crate::OckamCommand;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Command, CommandFactory};
@@ -14,7 +14,7 @@ Fallback: \"ockam_markdown_pages/\" in the current working directory.";
 
 /// Generate Ockam markdown pages
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide())]
+#[command(hide = docs::hide())]
 pub struct MarkdownCommand {
     #[arg(
         short,
@@ -32,6 +32,7 @@ impl MarkdownCommand {
             Ok(path) => path,
             Err(error) => panic!("Error getting markdown page directory: {error:?}"),
         };
+        env::set_var("MARKDOWN_RENDER", "1");
         let clap_command = <OckamCommand as CommandFactory>::command();
         generate_markdown_pages(mark_dir.as_path(), &clap_command, None, Vec::new());
     }
@@ -125,17 +126,24 @@ fn generate_markdown_page(
     // append parent commands in beginning of the usage
     writeln!(buffer, "`{}{}`\n", p_cmd, usage)?;
 
-    // About
-    // prints the long about if provided else moves to short about
+    // Before help
+    if let Some(s) = cmd.get_before_long_help() {
+        writeln!(buffer, "{}\n", s)?;
+    } else if let Some(s) = cmd.get_before_help() {
+        writeln!(buffer, "{}\n", s)?;
+    }
+
+    // About: print the short version first, then the long version.
+    if let Some(about) = cmd.get_about() {
+        writeln!(buffer, "{}.\n", about.to_string().trim_end_matches('.'))?;
+    }
     if let Some(about) = cmd.get_long_about() {
-        writeln!(buffer, "{}\n", about)?;
-    } else if let Some(about) = cmd.get_about() {
         writeln!(buffer, "{}\n", about)?;
     }
 
     // Subcommands list
     if cmd.get_subcommands().next().is_some() {
-        writeln!(buffer, "#### **Subcommands:**\n")?;
+        writeln!(buffer, "### Subcommands\n")?;
 
         for s_cmd in cmd.get_subcommands() {
             if s_cmd.is_hide_set() {
@@ -161,7 +169,7 @@ fn generate_markdown_page(
 
     // Arguments
     if cmd.get_positionals().next().is_some() {
-        writeln!(buffer, "#### **Arguments:**\n")?;
+        writeln!(buffer, "### Arguments\n")?;
 
         for pos_arg in cmd.get_positionals() {
             generate_arg_markdown(buffer, pos_arg)?;
@@ -177,13 +185,20 @@ fn generate_markdown_page(
         .collect();
 
     if !non_pos.is_empty() {
-        writeln!(buffer, "#### **Options:**\n")?;
+        writeln!(buffer, "### Options\n")?;
 
         for arg in non_pos {
             generate_arg_markdown(buffer, arg)?;
         }
 
         writeln!(buffer)?;
+    }
+
+    // After help
+    if let Some(s) = cmd.get_after_long_help() {
+        writeln!(buffer, "{}\n", s)?;
+    } else if let Some(s) = cmd.get_after_help() {
+        writeln!(buffer, "{}\n", s)?;
     }
 
     // make a .md file and add the buffer to it

@@ -1,13 +1,10 @@
 use crate::node::default_node_name;
-use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use clap::Args;
 use std::path::PathBuf;
 
 /// Get the stdout/stderr log file of a node
 #[derive(Clone, Debug, Args)]
-#[command(
-    after_long_help = help::template(HELP_DETAIL)
-)]
 pub struct LogCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

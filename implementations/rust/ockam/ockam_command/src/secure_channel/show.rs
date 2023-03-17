@@ -1,6 +1,4 @@
-use crate::secure_channel::HELP_DETAIL;
 use crate::{
-    help,
     util::{api, extract_address_value, node_rpc, Rpc},
     CommandGlobalOpts, Result,
 };
@@ -12,7 +10,7 @@ use ockam_core::Address;
 
 /// Show Secure Channels
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true)]
 pub struct ShowCommand {
     /// Node
     #[arg(value_name = "NODE", long, display_order = 800)]

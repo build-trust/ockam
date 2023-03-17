@@ -9,13 +9,12 @@ use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
 use super::common::SecureChannelListenerNodeOpts;
-use crate::secure_channel::HELP_DETAIL;
 use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, Result};
 
 /// Create Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true)]
 pub struct CreateCommand {
     #[command(flatten)]
     node_opts: SecureChannelListenerNodeOpts,

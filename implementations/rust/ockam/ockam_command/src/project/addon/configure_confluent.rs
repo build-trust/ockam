@@ -16,7 +16,7 @@ use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const CONFLUENT_HELP_DETAIL: &str = r#"
 About:
@@ -29,7 +29,7 @@ Examples:
 
 /// Configure the Confluent Cloud addon for a project
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(CONFLUENT_HELP_DETAIL))]
+#[command(after_long_help = docs::after_help(CONFLUENT_HELP_DETAIL))]
 pub struct AddonConfigureConfluentSubcommand {
     /// Ockam project name
     #[arg(
