@@ -1,4 +1,5 @@
 use crate::nodes::authority_node::{Authority, Configuration};
+use ockam_core::sessions::Sessions;
 use ockam_core::Result;
 use ockam_node::Context;
 use tracing::info;
@@ -12,19 +13,20 @@ pub async fn start_node(ctx: &Context, configuration: &Configuration) -> Result<
     let authority = Authority::create(ctx, configuration).await?;
 
     // start a secure channel listener (this also starts a TCP transport)
-    authority
-        .start_secure_channel_listener(ctx, configuration)
+    let sessions = Sessions::default();
+    let secure_channel_session_id = authority
+        .start_secure_channel_listener(ctx, &sessions, configuration)
         .await?;
 
     // start the authenticator services
     authority
-        .start_direct_authenticator(ctx, configuration)
+        .start_direct_authenticator(ctx, &sessions, &secure_channel_session_id, configuration)
         .await?;
     authority
-        .start_enrollment_services(ctx, configuration)
+        .start_enrollment_services(ctx, &sessions, &secure_channel_session_id, configuration)
         .await?;
     authority
-        .start_credential_issuer(ctx, configuration)
+        .start_credential_issuer(ctx, &sessions, &secure_channel_session_id, configuration)
         .await?;
 
     // start the Okta service (if the optional configuration has been provided)

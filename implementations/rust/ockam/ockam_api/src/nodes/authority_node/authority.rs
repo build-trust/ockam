@@ -9,14 +9,14 @@ use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::{SessionPolicy, Sessions};
-use ockam_core::{AllowAll, AsyncTryClone, Error, Message, Result, Worker};
+use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
+use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Message, Result, Worker};
 use ockam_identity::authenticated_storage::{
     AttributesEntry, AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
 use ockam_identity::{
     Identity, IdentityIdentifier, IdentityVault, PublicIdentity, SecureChannelListenerTrustOptions,
-    SecureChannelRegistry, TrustMultiIdentifiersPolicy,
+    SecureChannelRegistry, TrustEveryonePolicy,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerTrustOptions, TcpTransport};
@@ -84,23 +84,16 @@ impl Authority {
     pub async fn start_secure_channel_listener(
         &self,
         ctx: &Context,
+        sessions: &Sessions,
         configuration: &Configuration,
-    ) -> Result<()> {
-        let sessions = Sessions::default();
-
+    ) -> Result<SessionId> {
         // Start a secure channel listener that only allows channels with
         // authenticated identities.
         let tcp_listener_session_id = sessions.generate_session_id();
         let secure_channel_listener_session_id = sessions.generate_session_id();
 
         let trust_options = SecureChannelListenerTrustOptions::new()
-            .with_trust_policy(TrustMultiIdentifiersPolicy::new(
-                configuration
-                    .trusted_identities
-                    .iter()
-                    .map(|a| a.identifier())
-                    .collect(),
-            ))
+            .with_trust_policy(TrustEveryonePolicy)
             .as_consumer(
                 &sessions,
                 &tcp_listener_session_id,
@@ -127,13 +120,15 @@ impl Authority {
             .await?;
 
         info!("started a TCP listener at {address:?}");
-        Ok(())
+        Ok(secure_channel_listener_session_id)
     }
 
     /// Start the authenticator service to enroll project members
     pub async fn start_direct_authenticator(
         &self,
         ctx: &Context,
+        sessions: &Sessions,
+        secure_channel_session_id: &SessionId,
         configuration: &Configuration,
     ) -> Result<()> {
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
@@ -144,6 +139,12 @@ impl Authority {
         .await?;
 
         let name = configuration.clone().authenticator_name();
+        sessions.add_consumer(
+            &Address::from_string(name.clone()),
+            secure_channel_session_id,
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
+
         self.start(ctx, configuration, name.clone(), EnrollerOnly, direct)
             .await?;
 
@@ -155,6 +156,8 @@ impl Authority {
     pub async fn start_enrollment_services(
         &self,
         ctx: &Context,
+        sessions: &Sessions,
+        secure_channel_session_id: &SessionId,
         configuration: &Configuration,
     ) -> Result<()> {
         let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
@@ -165,6 +168,12 @@ impl Authority {
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
+        sessions.add_consumer(
+            &Address::from_string(issuer_address.clone()),
+            secure_channel_session_id,
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
+
         self.start(
             ctx,
             configuration,
@@ -179,6 +188,12 @@ impl Authority {
         // that service is to access a one-time token stating that the sender of the message
         // is a project member
         let acceptor_address: String = DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into();
+        sessions.add_consumer(
+            &Address::from_string(acceptor_address.clone()),
+            secure_channel_session_id,
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
+
         WorkerBuilder::with_access_control(
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -198,6 +213,8 @@ impl Authority {
     pub async fn start_credential_issuer(
         &self,
         ctx: &Context,
+        sessions: &Sessions,
+        secure_channel_session_id: &SessionId,
         configuration: &Configuration,
     ) -> Result<()> {
         // create and start a credential issuer worker
@@ -211,6 +228,12 @@ impl Authority {
         .await?;
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
+        sessions.add_consumer(
+            &Address::from_string(address.clone()),
+            secure_channel_session_id,
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
+
         self.start(ctx, configuration, address.clone(), AnyMember, issuer)
             .await?;
 
