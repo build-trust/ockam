@@ -1,10 +1,9 @@
 use crate::authority::HELP_DETAIL;
-use crate::help;
 use crate::node::util::init_node_state;
 use crate::node::util::run_ockam;
 use crate::util::node_rpc;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
-use crate::{identity, CommandGlobalOpts, Result};
+use crate::{docs, identity, CommandGlobalOpts, Result};
 use anyhow::anyhow;
 use clap::{ArgGroup, Args};
 use ockam::AsyncTryClone;
@@ -25,7 +24,7 @@ use tracing::error;
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(HELP_DETAIL))]
+#[command(after_long_help = docs::after_help(HELP_DETAIL))]
 #[clap(group(ArgGroup::new("okta").args(&["tenant_base_url", "certificate", "attributes"])))]
 #[clap(group(ArgGroup::new("trusted").required(true).args(&["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {

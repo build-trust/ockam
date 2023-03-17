@@ -1,12 +1,12 @@
 use crate::node::default_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
-use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use clap::Args;
 use colorful::Colorful;
 
 /// Delete a node
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true)]
 pub struct DeleteCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name(), group = "nodes")]

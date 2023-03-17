@@ -1,14 +1,14 @@
 use clap::{Args, Subcommand};
 
 use crate::util::api::CloudOpts;
-use crate::{help, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 mod subscription;
 
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide(), after_long_help = help::template(HELP_DETAIL))]
+#[command(hide = docs::hide(), after_long_help = docs::after_help(HELP_DETAIL))]
 pub struct AdminCommand {
     #[command(subcommand)]
     pub subcommand: AdminSubCommand,

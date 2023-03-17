@@ -12,20 +12,14 @@ use crate::vault::default::DefaultCommand;
 use crate::vault::delete::DeleteCommand;
 use crate::vault::list::ListCommand;
 use crate::vault::show::ShowCommand;
-use crate::{help, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::CliState;
 
-const HELP_DETAIL: &str = "";
-
 /// Manage vaults
 #[derive(Clone, Debug, Args)]
-#[command(
-    arg_required_else_help = true,
-    subcommand_required = true,
-    after_long_help = help::template(HELP_DETAIL)
-)]
+#[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct VaultCommand {
     #[command(subcommand)]
     subcommand: VaultSubcommand,

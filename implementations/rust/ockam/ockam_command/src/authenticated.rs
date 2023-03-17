@@ -1,4 +1,4 @@
-use crate::help;
+use crate::docs;
 use crate::util::embedded_node;
 use crate::Result;
 use anyhow::{anyhow, Context as _};
@@ -29,7 +29,7 @@ ${identity
 "#;
 
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide(), after_long_help = help::template(HELP_DETAIL))]
+#[command(hide = docs::hide(), after_long_help = docs::after_help(HELP_DETAIL))]
 pub struct AuthenticatedCommand {
     #[command(subcommand)]
     subcommand: AuthenticatedSubcommand,

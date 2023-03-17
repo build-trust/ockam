@@ -2,19 +2,13 @@ use clap::{Args, Subcommand};
 
 pub(crate) use create::CreateCommand;
 
-use crate::{help, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 
 mod create;
 
-const HELP_DETAIL: &str = include_str!("../constants/forwarder/help_detail.txt");
-
 /// Manage Forwarders
 #[derive(Clone, Debug, Args)]
-#[command(
-    arg_required_else_help = true,
-    subcommand_required = true,
-    after_long_help = help::template(HELP_DETAIL)
-)]
+#[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct ForwarderCommand {
     #[command(subcommand)]
     subcommand: ForwarderSubCommand,

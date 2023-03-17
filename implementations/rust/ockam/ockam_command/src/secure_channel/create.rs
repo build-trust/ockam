@@ -1,5 +1,4 @@
 use crate::{
-    help,
     util::{exitcode, extract_address_value, node_rpc},
     CommandGlobalOpts, OutputFormat, Result,
 };
@@ -10,7 +9,6 @@ use colorful::Colorful;
 use ockam_core::api::Request;
 use serde_json::json;
 
-use crate::secure_channel::HELP_DETAIL;
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
@@ -21,7 +19,7 @@ use ockam_multiaddr::MultiAddr;
 
 /// Create Secure Channels
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true)]
 pub struct CreateCommand {
     /// Node from which to initiate the secure channel (required)
     #[arg(value_name = "NODE", long, display_order = 800)]

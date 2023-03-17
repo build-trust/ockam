@@ -8,17 +8,16 @@ use ockam_core::{route, Address};
 
 use serde_json::json;
 
-use crate::secure_channel::HELP_DETAIL;
 use crate::util::{is_tty, RpcBuilder};
 use crate::{
-    exitcode, help,
+    exitcode,
     util::{api, node_rpc},
     CommandGlobalOpts, OutputFormat,
 };
 
 /// List Secure Channels
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true)]
 pub struct ListCommand {
     /// Node at which the returned secure channels were initiated (required)
     #[arg(value_name = "NODE", long, display_order = 800)]

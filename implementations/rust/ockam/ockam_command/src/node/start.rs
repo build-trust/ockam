@@ -6,13 +6,10 @@ use crate::node::default_node_name;
 use crate::node::show::print_query_status;
 use crate::node::util::spawn_node;
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 
 /// Start a node
 #[derive(Clone, Debug, Args)]
-#[command(
-    after_long_help = help::template(HELP_DETAIL)
-)]
 pub struct StartCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

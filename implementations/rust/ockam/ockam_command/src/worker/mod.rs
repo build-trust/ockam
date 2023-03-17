@@ -1,4 +1,4 @@
-use crate::{help, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 
 use list::ListCommand;
@@ -12,7 +12,7 @@ const HELP_DETAIL: &str = "";
 #[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    after_long_help = help::template(HELP_DETAIL)
+    after_long_help = docs::after_help(HELP_DETAIL)
 )]
 pub struct WorkerCommand {
     #[command(subcommand)]

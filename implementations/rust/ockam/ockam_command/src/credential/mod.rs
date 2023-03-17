@@ -22,15 +22,15 @@ pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
 use crate::CommandGlobalOpts;
-use crate::{help, Result};
+use crate::{docs, Result};
 use clap::{Args, Subcommand};
 
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
 #[command(
-    hide = help::hide(),
-    after_long_help = help::template(HELP_DETAIL),
+    hide = docs::hide(),
+    after_long_help = docs::after_help(HELP_DETAIL),
     arg_required_else_help = true,
     subcommand_required = true
 )]

@@ -9,7 +9,6 @@ use ockam_core::api::{Request, RequestBuilder};
 
 /// Delete a TCP Outlet
 #[derive(Clone, Debug, Args)]
-#[command()]
 pub struct DeleteCommand {
     /// Name assigned to inlet that will be deleted
     #[arg(display_order = 900, required = true, id = "ALIAS", value_parser = alias_parser)]

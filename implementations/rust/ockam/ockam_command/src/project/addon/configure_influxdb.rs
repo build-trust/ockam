@@ -18,7 +18,7 @@ use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, exitcode, node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const INFLUXDB_HELP_DETAIL: &str = r#"
 About:
@@ -31,7 +31,7 @@ Examples:
 
 /// Configure the InfluxDB Cloud addon for a project
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(INFLUXDB_HELP_DETAIL))]
+#[command(after_long_help = docs::after_help(INFLUXDB_HELP_DETAIL))]
 pub struct AddonConfigureInfluxdbSubcommand {
     /// Ockam Project Name
     #[arg(

@@ -5,14 +5,14 @@ pub(crate) mod util;
 
 pub(crate) use start::StartCommand;
 
-use crate::help;
+use crate::docs;
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
 use list::ListCommand;
 
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide())]
+#[command(hide = docs::hide())]
 pub struct ServiceCommand {
     #[command(subcommand)]
     subcommand: ServiceSubcommand,

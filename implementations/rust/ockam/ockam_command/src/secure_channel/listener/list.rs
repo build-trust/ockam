@@ -3,14 +3,13 @@ use clap::Args;
 use ockam::Context;
 
 use crate::node::NodeOpts;
-use crate::secure_channel::HELP_DETAIL;
 use crate::util::api;
 use crate::util::{node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 
 /// List Secure Channel Listeners
 #[derive(Args, Clone, Debug)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true)]
 pub struct ListCommand {
     /// Node of which secure listeners shall be listed
     #[command(flatten)]

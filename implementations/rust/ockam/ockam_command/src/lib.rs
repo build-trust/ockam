@@ -7,10 +7,10 @@ mod authority;
 mod completion;
 mod configuration;
 mod credential;
+mod docs;
 mod enroll;
 mod error;
 mod forwarder;
-mod help;
 mod identity;
 mod lease;
 mod manpages;
@@ -71,16 +71,17 @@ use console::Term;
 use ockam_api::cli_state::CliState;
 use upgrade::check_if_an_upgrade_is_available;
 
-const ABOUT: &str = include_str!("constants/lib/about.txt");
-const HELP_DETAIL: &str = include_str!("constants/lib/help_detail.txt");
+const ABOUT: &str = include_str!("./static/about.txt");
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
 #[derive(Debug, Parser)]
 #[command(
     name = "ockam",
     term_width = 100,
-    about = ABOUT,
-    long_about = ABOUT,
-    after_long_help = help::template(HELP_DETAIL),
+    about = docs::about(ABOUT),
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
     version,
     long_version = Version::long(),
     next_help_heading = "Global Options",
@@ -122,16 +123,16 @@ pub struct GlobalArgs {
     verbose: u8,
 
     /// Output without any colors
-    #[arg(hide = help::hide(), global = true, long)]
+    #[arg(hide = docs::hide(), global = true, long)]
     no_color: bool,
 
     /// Disable tty functionality
-    #[arg(hide = help::hide(), global = true, long)]
+    #[arg(hide = docs::hide(), global = true, long)]
     no_input: bool,
 
     /// Output format
     #[arg(
-        hide = help::hide(),
+        hide = docs::hide(),
         global = true,
         long = "output",
         value_enum,

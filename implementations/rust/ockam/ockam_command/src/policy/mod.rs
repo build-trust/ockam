@@ -6,14 +6,12 @@ use crate::policy::delete::DeleteCommand;
 use crate::policy::get::GetCommand;
 use crate::policy::list::ListCommand;
 use crate::policy::set::SetCommand;
-use crate::{help, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 use ockam_abac::{Action, Resource};
 
-const HELP_DETAIL: &str = "";
-
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide(), after_long_help = help::template(HELP_DETAIL))]
+#[command(hide = docs::hide())]
 pub struct PolicyCommand {
     #[command(subcommand)]
     subcommand: PolicySubcommand,

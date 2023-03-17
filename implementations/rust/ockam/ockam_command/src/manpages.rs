@@ -1,4 +1,4 @@
-use crate::help;
+use crate::docs;
 use crate::OckamCommand;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{ArgAction, Args, Command, CommandFactory};
@@ -17,7 +17,7 @@ Fallback: \"ockam_man_pages/\" in the current working directory.";
 
 /// Generate Ockam man pages
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide())]
+#[command(hide = docs::hide())]
 pub struct ManpagesCommand {
     #[arg(
         short,

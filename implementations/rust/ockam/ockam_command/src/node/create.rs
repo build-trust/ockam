@@ -21,8 +21,8 @@ use crate::service::start;
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
-    help, identity, node::show::print_query_status, node::HELP_DETAIL, project,
-    util::find_available_port, CommandGlobalOpts, Result,
+    identity, node::show::print_query_status, project, util::find_available_port,
+    CommandGlobalOpts, Result,
 };
 use crate::{node::util::spawn_node, util::parse_node_name};
 use crate::{
@@ -48,7 +48,6 @@ use ockam_core::{AllowAll, LOCAL};
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Name of the node (Optional).
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]

@@ -1,7 +1,7 @@
 use crate::node::default_node_name;
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
 use ockam_api::{
@@ -13,11 +13,8 @@ use ockam_core::api::{Request, RequestBuilder};
 use ockam_core::route;
 use std::net::SocketAddr;
 
-const HELP_DETAIL: &str = include_str!("../../constants/tcp/outlet/help_detail.txt");
-
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
     #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name())]

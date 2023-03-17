@@ -14,12 +14,12 @@ use crate::node::util::delete_embedded_node;
 use crate::subscription::utils;
 use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide(), after_long_help = help::template(HELP_DETAIL))]
+#[command(hide = docs::hide(), after_long_help = docs::after_help(HELP_DETAIL))]
 pub struct SubscriptionCommand {
     #[command(subcommand)]
     subcommand: SubscriptionSubcommand,
