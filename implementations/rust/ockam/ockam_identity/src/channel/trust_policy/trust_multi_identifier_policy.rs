@@ -4,6 +4,7 @@ use ockam_core::{
     compat::{boxed::Box, vec::Vec},
     Result,
 };
+use tracing::info;
 
 /// `TrustPolicy` based on list of pre-known `IdentityIdentifier`s of the possible participants
 #[derive(Clone)]
@@ -29,6 +30,19 @@ impl TrustMultiIdentifiersPolicy {
 #[async_trait]
 impl TrustPolicy for TrustMultiIdentifiersPolicy {
     async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
-        Ok(self.contains(trust_info.their_identity_id()))
+        if !self.contains(trust_info.their_identity_id()) {
+            info!(
+                "{} is not one of the trusted identifiers {}",
+                trust_info.their_identity_id(),
+                self.identity_ids
+                    .iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            );
+            Ok(false)
+        } else {
+            Ok(true)
+        }
     }
 }
