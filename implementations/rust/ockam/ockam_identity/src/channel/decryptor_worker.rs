@@ -6,7 +6,6 @@ use crate::channel::decryptor_state::{ExchangeIdentity, Initialized, KeyExchange
 use crate::channel::encryptor::Encryptor;
 use crate::channel::encryptor_worker::EncryptorWorker;
 use crate::channel::messages::IdentityChannelMessage;
-use crate::channel::SecureChannelTrustOptionsProcessed;
 use crate::{
     to_symmetric_vault, to_xx_vault, Identity, IdentityError, IdentitySecureChannelLocalInfo,
     PublicIdentity, SecureChannelRegistryEntry, SecureChannelTrustInfo, TrustPolicy,
@@ -45,12 +44,15 @@ pub(crate) struct DecryptorWorker {
 }
 
 impl DecryptorWorker {
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_initiator(
         ctx: &Context,
         remote_route: Route,
         identity: Identity,
         addresses: Addresses,
-        trust_options_processed: SecureChannelTrustOptionsProcessed,
+        trust_policy: Arc<dyn TrustPolicy>,
+        decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+        plaintext_session_id: Option<SessionId>,
         timeout: Duration,
     ) -> Result<Address> {
         let mut completion_callback_ctx = ctx
@@ -65,10 +67,7 @@ impl DecryptorWorker {
             .initiator()
             .await?;
 
-        let mailboxes = Self::mailboxes(
-            &addresses,
-            trust_options_processed.decryptor_outgoing_access_control,
-        );
+        let mailboxes = Self::mailboxes(&addresses, decryptor_outgoing_access_control);
 
         let worker = DecryptorWorker {
             role: Role::Initiator,
@@ -77,13 +76,13 @@ impl DecryptorWorker {
             remote_backwards_compatibility_address: None,
             init_payload: None,
             identity,
-            trust_policy: trust_options_processed.trust_policy,
+            trust_policy,
             state_key_exchange: Some(KeyExchange {
                 key_exchanger: Box::new(key_exchanger),
             }),
             state_exchange_identity: None,
             state_initialized: None,
-            plaintext_session_id: trust_options_processed.plaintext_session_id,
+            plaintext_session_id,
         };
 
         WorkerBuilder::with_mailboxes(mailboxes, worker)
@@ -108,7 +107,9 @@ impl DecryptorWorker {
         ctx: &Context,
         identity: Identity,
         addresses: Addresses,
-        trust_options_processed: SecureChannelTrustOptionsProcessed,
+        trust_policy: Arc<dyn TrustPolicy>,
+        decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+        plaintext_session_id: Option<SessionId>,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
         // Route to the decryptor on the other side
@@ -126,10 +127,7 @@ impl DecryptorWorker {
         let vault = to_xx_vault(identity.vault.clone());
         let key_exchanger = XXNewKeyExchanger::new(vault).responder().await?;
 
-        let mailboxes = Self::mailboxes(
-            &addresses,
-            trust_options_processed.decryptor_outgoing_access_control,
-        );
+        let mailboxes = Self::mailboxes(&addresses, decryptor_outgoing_access_control);
 
         let worker = DecryptorWorker {
             role: Role::Responder,
@@ -138,13 +136,13 @@ impl DecryptorWorker {
             remote_backwards_compatibility_address: Some(remote_backwards_compatibility_address),
             init_payload: Some(body.payload().to_vec()),
             identity,
-            trust_policy: trust_options_processed.trust_policy,
+            trust_policy,
             state_key_exchange: Some(KeyExchange {
                 key_exchanger: Box::new(key_exchanger),
             }),
             state_exchange_identity: None,
             state_initialized: None,
-            plaintext_session_id: trust_options_processed.plaintext_session_id,
+            plaintext_session_id,
         };
 
         WorkerBuilder::with_mailboxes(mailboxes, worker)
@@ -489,7 +487,7 @@ impl DecryptorWorker {
 
             let main_mailbox = Mailbox::new(
                 self.addresses.encryptor.clone(),
-                Arc::new(LocalSourceOnly),
+                Arc::new(AllowAll),
                 Arc::new(AllowOnwardAddress(next_hop)),
             );
             let api_mailbox = Mailbox::new(

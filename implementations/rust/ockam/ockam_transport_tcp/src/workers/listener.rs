@@ -71,7 +71,12 @@ impl Processor for TcpListenProcessor {
 
         let addresses = Addresses::generate(ConnectionRole::Responder);
 
-        let trust_options_processed = self.trust_options.process(addresses.receiver_address());
+        let session_id = self
+            .trust_options
+            .setup_session(addresses.receiver_address());
+        let access_control = self
+            .trust_options
+            .create_access_control(session_id.clone())?;
 
         let (read_half, write_half) = stream.into_split();
 
@@ -82,7 +87,7 @@ impl Processor for TcpListenProcessor {
             write_half,
             &addresses,
             peer,
-            trust_options_processed.sender_incoming_access_control,
+            access_control.sender_incoming_access_control,
         )
         .await?;
 
@@ -93,9 +98,9 @@ impl Processor for TcpListenProcessor {
             read_half,
             &addresses,
             peer,
-            trust_options_processed.receiver_outgoing_access_control,
+            access_control.receiver_outgoing_access_control,
             // This session_id (if present) will be added to messages' LocalInfo
-            trust_options_processed.session_id,
+            session_id,
         )
         .await?;
 

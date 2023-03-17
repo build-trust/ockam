@@ -18,10 +18,8 @@ impl Default for SecureChannelTrustOptions {
     }
 }
 
-pub(crate) struct SecureChannelTrustOptionsProcessed {
+pub(crate) struct SecureChannelAccessControl {
     pub(crate) decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-    pub(crate) plaintext_session_id: Option<SessionId>,
-    pub(crate) trust_policy: Arc<dyn TrustPolicy>,
 }
 
 impl SecureChannelTrustOptions {
@@ -55,40 +53,37 @@ impl SecureChannelTrustOptions {
         self
     }
 
-    pub(crate) fn process(self, addresses: &Addresses) -> SecureChannelTrustOptionsProcessed {
-        let (decryptor_outgoing_access_control, plaintext_session_id) = match self.producer_session
-        {
-            Some((sessions, session_id)) => {
-                sessions.add_producer(&addresses.decryptor_internal, &session_id, None);
-
-                let ac = SessionOutgoingAccessControl::new(sessions, session_id.clone(), None);
-
-                #[allow(trivial_casts)]
-                (
-                    Arc::new(ac) as Arc<dyn OutgoingAccessControl>,
-                    Some(session_id),
-                )
-            }
-            None =>
-            {
-                #[allow(trivial_casts)]
-                (Arc::new(AllowAll) as Arc<dyn OutgoingAccessControl>, None)
-            }
-        };
-
-        if let Some((sessions, session_id)) = self.consumer_session {
+    pub(crate) fn setup_session(&self, addresses: &Addresses) -> Option<SessionId> {
+        if let Some((sessions, session_id)) = &self.consumer_session {
             // Allow a sender with corresponding session_id send messages to this address
             sessions.add_consumer(
                 &addresses.decryptor_remote,
-                &session_id,
+                session_id,
                 SessionPolicy::ProducerAllowMultiple,
             );
         }
 
-        SecureChannelTrustOptionsProcessed {
-            decryptor_outgoing_access_control,
-            plaintext_session_id,
-            trust_policy: self.trust_policy,
+        if let Some((sessions, session_id)) = &self.producer_session {
+            sessions.add_producer(&addresses.decryptor_internal, session_id, None);
+            Some(session_id.clone())
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn create_access_control(&self) -> SecureChannelAccessControl {
+        match &self.producer_session {
+            Some((sessions, session_id)) => {
+                let ac =
+                    SessionOutgoingAccessControl::new(sessions.clone(), session_id.clone(), None);
+
+                SecureChannelAccessControl {
+                    decryptor_outgoing_access_control: Arc::new(ac),
+                }
+            }
+            None => SecureChannelAccessControl {
+                decryptor_outgoing_access_control: Arc::new(AllowAll),
+            },
         }
     }
 }
@@ -154,46 +149,17 @@ impl SecureChannelListenerTrustOptions {
         self
     }
 
-    pub(crate) fn process(
+    pub(crate) fn setup_session(
         &self,
         addresses: &Addresses,
         producer_session_id: Option<SessionId>,
-    ) -> Result<SecureChannelTrustOptionsProcessed> {
-        let (decryptor_outgoing_access_control, plaintext_session_id) =
-            match &self.channels_producer_session {
-                Some((sessions, listener_session_id)) => {
-                    let session_id = sessions.generate_session_id();
-                    sessions.add_producer(
-                        &addresses.decryptor_internal,
-                        &session_id,
-                        Some(listener_session_id),
-                    );
-
-                    let ac = SessionOutgoingAccessControl::new(
-                        sessions.clone(),
-                        session_id.clone(),
-                        Some(listener_session_id.clone()),
-                    );
-
-                    #[allow(trivial_casts)]
-                    (
-                        Arc::new(ac) as Arc<dyn OutgoingAccessControl>,
-                        Some(session_id),
-                    )
-                }
-                None =>
-                {
-                    #[allow(trivial_casts)]
-                    (Arc::new(AllowAll) as Arc<dyn OutgoingAccessControl>, None)
-                }
-            };
-
+    ) -> Result<Option<SessionId>> {
         match (&self.consumer_session, producer_session_id) {
-            (Some(ciphertext_session), Some(producers_session_id)) => {
+            (Some(ciphertext_session), Some(producer_session_id)) => {
                 // Allow a sender with corresponding session_id send messages to this address
                 ciphertext_session.sessions.add_consumer(
                     &addresses.decryptor_remote,
-                    &producers_session_id,
+                    &producer_session_id,
                     SessionPolicy::ProducerAllowMultiple,
                 );
             }
@@ -203,11 +169,42 @@ impl SecureChannelListenerTrustOptions {
             }
         }
 
-        Ok(SecureChannelTrustOptionsProcessed {
-            decryptor_outgoing_access_control,
-            plaintext_session_id,
-            trust_policy: self.trust_policy.clone(),
-        })
+        match &self.channels_producer_session {
+            Some((sessions, listener_session_id)) => {
+                let session_id = sessions.generate_session_id();
+                sessions.add_producer(
+                    &addresses.decryptor_internal,
+                    &session_id,
+                    Some(listener_session_id),
+                );
+
+                Ok(Some(session_id))
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub(crate) fn create_access_control(
+        &self,
+        session_id: Option<SessionId>,
+    ) -> Result<SecureChannelAccessControl> {
+        match (&self.channels_producer_session, session_id) {
+            (Some((sessions, listener_session_id)), Some(session_id)) => {
+                let ac = SessionOutgoingAccessControl::new(
+                    sessions.clone(),
+                    session_id,
+                    Some(listener_session_id.clone()),
+                );
+
+                Ok(SecureChannelAccessControl {
+                    decryptor_outgoing_access_control: Arc::new(ac),
+                })
+            }
+            (None, None) => Ok(SecureChannelAccessControl {
+                decryptor_outgoing_access_control: Arc::new(AllowAll),
+            }),
+            _ => Err(IdentityError::SessionsInconsistency.into()),
+        }
     }
 }
 
