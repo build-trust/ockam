@@ -1,7 +1,10 @@
+mod common;
 pub mod create;
+pub mod delete;
 pub mod list;
 
 pub(crate) use create::CreateCommand;
+pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 
 use crate::secure_channel::HELP_DETAIL;
@@ -25,6 +28,8 @@ pub enum SecureChannelListenerSubcommand {
     #[command(display_order = 800)]
     Create(CreateCommand),
     #[command(display_order = 800)]
+    Delete(DeleteCommand),
+    #[command(display_order = 800)]
     List(ListCommand),
 }
 
@@ -32,6 +37,7 @@ impl SecureChannelListenerCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
             SecureChannelListenerSubcommand::Create(c) => c.run(options),
+            SecureChannelListenerSubcommand::Delete(c) => c.run(options),
             SecureChannelListenerSubcommand::List(c) => c.run(options),
         }
     }
