@@ -21,8 +21,8 @@ use crate::service::start;
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
-    help, node::show::print_query_status, node::HELP_DETAIL, project, util::find_available_port,
-    CommandGlobalOpts, Result,
+    help, identity, node::show::print_query_status, node::HELP_DETAIL, project,
+    util::find_available_port, CommandGlobalOpts, Result,
 };
 use crate::{node::util::spawn_node, util::parse_node_name};
 use crate::{
@@ -546,8 +546,19 @@ async fn start_authority_node(
             anyhow!("The secure channel listener service must be specified for an authority node"),
         ))?;
 
+        // retrieve the authority identity if it has been created before
+        // otherwise create a new one
+        let public_identity = match options.state.identities.default().ok() {
+            Some(state) => state.config.public_identity(),
+            None => {
+                let cmd = identity::CreateCommand::new("authority".into(), None);
+                cmd.create_identity(ctx.async_try_clone().await?, options.clone())
+                    .await?
+            }
+        };
+
         let configuration = authority_node::Configuration {
-            identity: options.state.identities.default()?.config.public_identity(),
+            identity: public_identity,
             storage_path: options.state.identities.authenticated_storage_path()?,
             vault_path: options.state.vaults.default()?.vault_file_path()?,
             project_identifier: authenticator_config.project,
