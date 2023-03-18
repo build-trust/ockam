@@ -69,11 +69,11 @@ impl Signer for Vault {
                 let key = entry.secret().try_as_key()?.as_ref();
                 cfg_if! {
                     if #[cfg(feature = "rustcrypto")] {
-                        use p256::ecdsa::{self, signature::Signer as _};
+                        use p256::ecdsa::signature::Signer;
                         use p256::pkcs8::DecodePrivateKey;
-                        let sec = ecdsa::SigningKey::from_pkcs8_der(key).map_err(from_pkcs8)?;
+                        let sec = p256::ecdsa::SigningKey::from_pkcs8_der(key).map_err(from_pkcs8)?;
 
-                        let sig: ecdsa::Signature = sec.sign(data);
+                        let sig: p256::ecdsa::Signature = sec.sign(data);
                         Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
                     } else {
                         compile_error!("NIST P-256 requires feature `rustcrypto`")
