@@ -1,6 +1,9 @@
 use ockam_core::TransportType;
+
+pub use rendezvous_service::{RendezvousRequest, RendezvousResponse, RendezvousWorker};
 pub use transport::*;
 
+mod rendezvous_service;
 mod router;
 mod transport;
 mod workers;

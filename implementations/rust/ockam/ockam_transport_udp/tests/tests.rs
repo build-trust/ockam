@@ -1,23 +1,21 @@
-use ockam::errcode::Origin;
-use ockam::{Address, Error};
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, AllowAll, Result, Routed, Worker};
+use ockam_core::{route, Address, AllowAll, Result, Routed, Worker};
 use ockam_node::{Context, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_transport_udp::{UdpTransport, UDP};
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::net::UdpSocket;
 use tracing::{debug, error, trace};
 
+mod utils;
+
 const TIMEOUT: Duration = Duration::from_secs(5);
-const AVAILABLE_LOCAL_PORTS_ADDR: &str = "127.0.0.1:0";
 
 /// When acting as a server, the transport should reply using the same
 /// UDP port that we sent to.
 #[ockam_macros::test]
 async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
     // Find an available port
-    let bind_addr = *available_local_ports(1).await?.first().unwrap();
+    let bind_addr = *utils::available_local_ports(1).await?.first().unwrap();
     debug!("bind_addr = {:?}", bind_addr);
 
     // Transport
@@ -69,7 +67,11 @@ async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
     // Find an available port
-    let addr_ok = available_local_ports(1).await?.first().unwrap().to_string();
+    let addr_ok = utils::available_local_ports(1)
+        .await?
+        .first()
+        .unwrap()
+        .to_string();
     let addr_nok = "192.168.1.10:0";
     debug!("addr_ok = {:?}", addr_ok);
     debug!("addr_nok = {:?}", addr_nok);
@@ -115,7 +117,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
     // Find available ports
-    let bind_addrs = available_local_ports(2).await?;
+    let bind_addrs = utils::available_local_ports(2).await?;
     debug!("bind_addrs = {:?}", bind_addrs);
 
     // Transport
@@ -150,7 +152,11 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     // Find an available port
-    let bind_addr = available_local_ports(1).await?.first().unwrap().to_string();
+    let bind_addr = utils::available_local_ports(1)
+        .await?
+        .first()
+        .unwrap()
+        .to_string();
     debug!("bind_addr = {:?}", bind_addr);
 
     // Transport
@@ -186,28 +192,6 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
 
     ctx.stop().await?;
     Ok(())
-}
-
-/// Helper function. Try to find numbers of available local UDP ports.
-async fn available_local_ports(count: usize) -> Result<Vec<SocketAddr>> {
-    let mut sockets = Vec::new();
-    let mut addrs = Vec::new();
-
-    for _ in 0..count {
-        let s = UdpSocket::bind(AVAILABLE_LOCAL_PORTS_ADDR)
-            .await
-            .map_err(|e| Error::new_unknown(Origin::Unknown, e))?;
-        let a = s
-            .local_addr()
-            .map_err(|e| Error::new_unknown(Origin::Unknown, e))?;
-
-        addrs.push(a);
-
-        // Keep sockets open until we are done asking for available ports
-        sockets.push(s);
-    }
-
-    Ok(addrs)
 }
 
 pub struct Echoer {
