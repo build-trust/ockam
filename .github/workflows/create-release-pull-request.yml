@@ -31,6 +31,10 @@ on:
         - major
         - minor
         - patch
+# runs every command in bash (for every job in the workflow)
+defaults:
+  run:
+    shell: bash
 
 jobs:
   bump_crates:
@@ -70,7 +74,6 @@ jobs:
           gpg_email: '${{ secrets.GPG_EMAIL }}'
 
       - name: Bump Ockam
-        shell: bash
         env:
           OCKAM_BUMP_RELEASE_VERSION: '${{ github.event.inputs.ockam_bump_release_version }}'
           OCKAM_BUMP_MODIFIED_RELEASE: '${{ github.event.inputs.ockam_bump_modified_release }}'
@@ -79,13 +82,11 @@ jobs:
         run: bash -ex ./tools/scripts/release/crate-bump.sh
 
       - name: Generate Changelogs
-        shell: bash
         env:
           GIT_TAG: '${{ github.event.inputs.git_tag }}'
         run: bash -ex ./tools/scripts/release/changelog.sh
 
       - name: Push Update
-        shell: bash
         run: |
           # Squash commits
           git reset ${{ steps.commit.outputs.sha }}
