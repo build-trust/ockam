@@ -79,6 +79,7 @@ impl CreateCommand {
     }
 }
 
+/// Given a Context start a node in a new OS process
 async fn create_background_node(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
@@ -87,6 +88,8 @@ async fn create_background_node(
     spawn_background_node(&ctx, &opts, &cmd).await
 }
 
+/// Start an authority node by calling the `ockam` executable with the current command-line
+/// arguments
 async fn spawn_background_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
@@ -128,6 +131,10 @@ async fn spawn_background_node(
     run_ockam(opts, &cmd.node_name, args)
 }
 
+/// Start an authority node:
+///   - retrieve the node identity if the authority identity has been created before
+///   - persist the node state
+///   - start the node services
 async fn start_authority_node(
     ctx: Context,
     opts: (CommandGlobalOpts, CreateCommand),
@@ -193,6 +200,7 @@ async fn start_authority_node(
     Ok(())
 }
 
+/// Return a list of trusted identities passed as a JSON string on the command line
 fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
     serde_json::from_str::<TrustedIdentities>(values).map_err(|e| {
         crate::Error::new(
