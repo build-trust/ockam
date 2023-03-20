@@ -26,12 +26,8 @@ teardown() {
   m1_identifier=$($OCKAM identity show m1)
   m2_identifier=$($OCKAM identity show m2)
 
-  # Create a launch configuration json file,  to be used to start the authority node
-  echo '{"startup_services" : {"authenticator" : {"project" : "1"}, "secure_channel_listener": {}}}' >"$OCKAM_HOME/auth_launch_config.json"
-
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
-
-  run "$OCKAM" node create --tcp-listener-address=127.0.0.1:4200 --identity authority --launch-config "$OCKAM_HOME/auth_launch_config.json" --trusted-identities "{\"$m1_identifier\": {\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\" : {\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}" authority
+  run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:4200 --project-identifier 1 --trusted-identities "[{\"identifier\": \"$m1_identifier\", \"attributes\": {\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}}, {\"identifier\": \"$enroller_identifier\", \"attributes\": {\"project_id\": \"1\", \"ockam-role\": \"enroller\"}} ]"
   assert_success
 
   echo "{\"id\": \"1\",

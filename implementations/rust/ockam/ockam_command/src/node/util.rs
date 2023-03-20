@@ -148,7 +148,7 @@ pub async fn add_project_info_to_node_state(
         None => Ok(None),
     }
 }
-pub(super) async fn init_node_state(
+pub(crate) async fn init_node_state(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
@@ -282,26 +282,6 @@ pub fn spawn_node(
     authority_identities: Option<&Vec<Authority>>,
     credential: Option<&String>,
 ) -> crate::Result<()> {
-    // On systems with non-obvious path setups (or during
-    // development) re-executing the current binary is a more
-    // deterministic way of starting a node.
-    let ockam_exe = current_exe().unwrap_or_else(|_| "ockam".into());
-    let node_state = opts.state.nodes.get(name)?;
-
-    let (mlog, elog) = { (node_state.stdout_log(), node_state.stderr_log()) };
-
-    let main_log_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(mlog)
-        .context("failed to open log path")?;
-
-    let stderr_log_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(elog)
-        .context("failed to open stderr log path")?;
-
     let mut args = vec![
         match verbose {
             0 => "-vv".to_string(),
@@ -362,6 +342,35 @@ pub fn spawn_node(
     }
 
     args.push(name.to_owned());
+
+    run_ockam(opts, name, args)
+}
+
+/// Run the ockam command line with specific arguments
+pub fn run_ockam(
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    args: Vec<String>,
+) -> crate::Result<()> {
+    // On systems with non-obvious path setups (or during
+    // development) re-executing the current binary is a more
+    // deterministic way of starting a node.
+    let ockam_exe = current_exe().unwrap_or_else(|_| "ockam".into());
+    let node_state = opts.state.nodes.get(node_name)?;
+
+    let (mlog, elog) = { (node_state.stdout_log(), node_state.stderr_log()) };
+
+    let main_log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(mlog)
+        .context("failed to open log path")?;
+
+    let stderr_log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(elog)
+        .context("failed to open stderr log path")?;
 
     let child = Command::new(ockam_exe)
         .args(args)
