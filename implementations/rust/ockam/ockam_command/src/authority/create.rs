@@ -11,6 +11,7 @@ use ockam::AsyncTryClone;
 use ockam::Context;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::authority_node::{OktaConfiguration, TrustedIdentity};
+use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::DefaultAddress;
 use ockam_core::compat::fmt;
 use serde::{Deserialize, Serialize};
@@ -158,6 +159,23 @@ async fn start_authority_node(
         }),
         _ => None,
     };
+
+    // persist the node state and mark it as an authority node
+    // That flag allows the node to be seen as UP when listing the nodes with the
+    // the `ockam node list` command, without having to send a TCP query to open a connection
+    // because this would fail if there is no intention to create a secure channel
+    let node_state = options.state.nodes.get(&command.node_name)?;
+    let setup_config = node_state.setup()?;
+    node_state.set_setup(
+        &setup_config
+            .set_verbose(options.global_args.verbose)
+            .set_authority_node()
+            .add_transport(CreateTransportJson::new(
+                TransportType::Tcp,
+                TransportMode::Listen,
+                command.tcp_listener_address.as_str(),
+            )?),
+    )?;
 
     let configuration = authority_node::Configuration {
         identity: public_identity,

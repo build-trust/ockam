@@ -165,8 +165,24 @@ pub async fn print_query_status(
                 .ok()
                 .map(|listener| listener.addr.port())
         });
+
+        // it is expected to not be able to open an arbitrary TCP connection on an authority node
+        // so in that case we display an UP status
+        let is_authority_node = node_state
+            .setup()
+            .ok()
+            .map(|setup| setup.authority_node)
+            .unwrap_or_default();
         print_node_info(
-            node_port, node_name, is_default, false, None, None, None, None, None,
+            node_port,
+            node_name,
+            is_default,
+            is_authority_node,
+            None,
+            None,
+            None,
+            None,
+            None,
         );
     } else {
         // Get short id for the node

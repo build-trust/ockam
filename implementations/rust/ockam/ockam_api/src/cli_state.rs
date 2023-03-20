@@ -1034,6 +1034,11 @@ impl FromStr for NodeConfigVersion {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
 pub struct NodeSetupConfig {
     pub verbose: u8,
+
+    /// This flag is used to determine how the node status should be
+    /// displayed in print_query_status
+    pub authority_node: bool,
+
     transports: Vec<CreateTransportJson>,
     // TODO
     // secure_channels: ?,
@@ -1045,6 +1050,11 @@ pub struct NodeSetupConfig {
 impl NodeSetupConfig {
     pub fn set_verbose(mut self, verbose: u8) -> Self {
         self.verbose = verbose;
+        self
+    }
+
+    pub fn set_authority_node(mut self) -> Self {
+        self.authority_node = true;
         self
     }
 
