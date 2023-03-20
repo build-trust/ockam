@@ -217,6 +217,8 @@ async fn run_foreground_node(
     let cfg = &opts.config;
     let node_name = parse_node_name(&cmd.node_name)?;
 
+    // TODO: remove this special case once the Orchestrator has migrated to the
+    // new ockam authority create command
     if node_name == "authority" && cmd.launch_config.is_some() {
         return start_authority_node(ctx, (opts, cmd)).await;
     };
