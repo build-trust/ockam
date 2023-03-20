@@ -8,6 +8,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
+use serde::{Deserialize, Serialize};
 
 /// Storage for Authenticated data
 #[async_trait]
@@ -27,7 +28,7 @@ pub trait AuthenticatedStorage: Send + Sync + 'static {
 }
 
 /// An entry on the AuthenticatedIdentities table.
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Serialize, Deserialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AttributesEntry {
