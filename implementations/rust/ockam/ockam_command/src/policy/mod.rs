@@ -1,11 +1,11 @@
+mod create;
 mod delete;
-mod get;
 mod list;
-mod set;
+mod show;
+use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;
-use crate::policy::get::GetCommand;
 use crate::policy::list::ListCommand;
-use crate::policy::set::SetCommand;
+use crate::policy::show::ShowCommand;
 use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 use ockam_abac::{Action, Resource};
@@ -19,8 +19,8 @@ pub struct PolicyCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum PolicySubcommand {
-    Set(SetCommand),
-    Get(GetCommand),
+    Create(CreateCommand),
+    Show(ShowCommand),
     Delete(DeleteCommand),
     List(ListCommand),
 }
@@ -28,8 +28,8 @@ pub enum PolicySubcommand {
 impl PolicyCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         match self.subcommand {
-            PolicySubcommand::Set(c) => c.run(opts),
-            PolicySubcommand::Get(c) => c.run(opts),
+            PolicySubcommand::Create(c) => c.run(opts),
+            PolicySubcommand::Show(c) => c.run(opts),
             PolicySubcommand::Delete(c) => c.run(opts),
             PolicySubcommand::List(c) => c.run(opts),
         }
