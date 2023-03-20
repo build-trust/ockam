@@ -9,19 +9,25 @@ use anyhow::anyhow;
 use clap::{ArgGroup, Args};
 use ockam::AsyncTryClone;
 use ockam::Context;
+use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::DefaultAddress;
+use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
+use ockam_identity::authenticated_storage::AttributesEntry;
+use ockam_identity::IdentityIdentifier;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
 use tracing::error;
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = help::template(HELP_DETAIL))]
 #[clap(group(ArgGroup::new("okta").args(&["tenant_base_url", "certificate", "attributes"])))]
+#[clap(group(ArgGroup::new("trusted").args(&["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {
     /// Name of the node
     #[arg(default_value = "authority")]
@@ -41,9 +47,15 @@ pub struct CreateCommand {
     )]
     tcp_listener_address: String,
 
-    /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage
-    #[arg(long, value_name = "JSON_ARRAY", value_parser=parse_trusted_identities)]
-    trusted_identities: TrustedIdentities,
+    /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage.
+    /// Format: [{"identifier": "identifier1", "attributes": {"attribute1": "value1", "attribute2": "value12"}}, ...]
+    #[arg(group = "trusted", long, value_name = "JSON_ARRAY", value_parser=parse_trusted_identities)]
+    trusted_identities: Option<TrustedIdentities>,
+
+    /// Path of a file containing trusted identities and their attributes encoded as JSON.
+    /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
+    #[arg(group = "trusted", long, value_name = "PATH")]
+    reload_from_trusted_identities_file: Option<PathBuf>,
 
     /// Okta: URL used for accessing the Okta API (optional)
     #[arg(long, group = "okta", value_name = "URL", default_value = None)]
@@ -77,6 +89,30 @@ impl CreateCommand {
             node_rpc(create_background_node, (options, self))
         }
     }
+
+    /// Return a source of pre trusted identities and their attributes
+    /// This is either a file which is used as the backend of the AttributesStorage
+    /// or an explicit list of identities passed on the command line
+    pub(crate) fn trusted_identities(
+        &self,
+        project_identifier: &str,
+        authority_identifier: &IdentityIdentifier,
+    ) -> Result<PreTrustedIdentities> {
+        match (
+            &self.reload_from_trusted_identities_file,
+            &self.trusted_identities,
+        ) {
+            (Some(path), None) => Ok(PreTrustedIdentities::ReloadFrom(path.clone())),
+            (None, Some(trusted)) => Ok(PreTrustedIdentities::Fixed(trusted.to_map(
+                project_identifier.to_string(),
+                authority_identifier,
+            ))),
+            _ => Err(crate::Error::new(
+                exitcode::CONFIG,
+                anyhow!("Exactly one of 'reload-from-trusted-identities-file' or 'trusted-identities' must be defined"),
+            )),
+        }
+    }
 }
 
 /// Given a Context start a node in a new OS process
@@ -107,10 +143,22 @@ async fn spawn_background_node(
         cmd.project_identifier.clone(),
         "--tcp-listener-address".to_string(),
         cmd.tcp_listener_address.clone(),
-        "--trusted-identities".to_string(),
-        cmd.trusted_identities.to_string(),
         "--foreground".to_string(),
     ];
+
+    if let Some(trusted_identities) = &cmd.trusted_identities {
+        args.push("--trusted-identities".to_string());
+        args.push(trusted_identities.to_string());
+    }
+
+    if let Some(reload_from_trusted_identities_file) = &cmd.reload_from_trusted_identities_file {
+        args.push("--reload-from-trusted-identities-file".to_string());
+        args.push(
+            reload_from_trusted_identities_file
+                .to_string_lossy()
+                .to_string(),
+        );
+    }
 
     if let Some(tenant_base_url) = &cmd.tenant_base_url {
         args.push("--tenant-base-url".to_string());
@@ -154,15 +202,15 @@ async fn start_authority_node(
     };
 
     let okta_configuration = match (
-        command.tenant_base_url,
-        command.certificate,
-        command.attributes,
+        &command.tenant_base_url,
+        &command.certificate,
+        &command.attributes,
     ) {
         (Some(tenant_base_url), Some(certificate), Some(attributes)) => Some(OktaConfiguration {
             address: DefaultAddress::OKTA_IDENTITY_PROVIDER.to_string(),
-            tenant_base_url,
-            certificate,
-            attributes,
+            tenant_base_url: tenant_base_url.clone(),
+            certificate: certificate.clone(),
+            attributes: attributes.clone(),
         }),
         _ => None,
     };
@@ -184,6 +232,11 @@ async fn start_authority_node(
             )?),
     )?;
 
+    let trusted_identities = &command.trusted_identities(
+        &command.project_identifier.clone(),
+        public_identity.identifier(),
+    )?;
+
     let configuration = authority_node::Configuration {
         identity: public_identity,
         storage_path: options.state.identities.authenticated_storage_path()?,
@@ -192,7 +245,7 @@ async fn start_authority_node(
         tcp_listener_address: command.tcp_listener_address.clone(),
         secure_channel_listener_name: None,
         authenticator_name: None,
-        trusted_identities: command.trusted_identities.0,
+        trusted_identities: trusted_identities.clone(),
         okta: okta_configuration,
     };
     authority_node::start_node(&ctx, &configuration).await?;
@@ -249,6 +302,24 @@ mod tests {
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 struct TrustedIdentities(Vec<TrustedIdentity>);
+
+impl TrustedIdentities {
+    /// Return a map from IdentityIdentifier to AttributesEntry and:
+    ///   - add the project identifier as an attribute
+    ///   - use the authority identifier an the attributes issuer
+    pub(crate) fn to_map(
+        &self,
+        project_identifier: String,
+        authority_identifier: &IdentityIdentifier,
+    ) -> HashMap<IdentityIdentifier, AttributesEntry> {
+        HashMap::from_iter(self.0.iter().map(|trusted| {
+            (
+                trusted.identifier(),
+                trusted.attributes_entry(project_identifier.clone(), authority_identifier),
+            )
+        }))
+    }
+}
 
 impl Display for TrustedIdentities {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

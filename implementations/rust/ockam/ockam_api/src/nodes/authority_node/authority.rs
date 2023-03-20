@@ -1,22 +1,21 @@
 use crate::authenticator::direct::{CredentialIssuer, EnrollmentTokenAuthenticator};
-use crate::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
+use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::echoer::Echoer;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
-use crate::nodes::authority_node::{Configuration, TrustedIdentity};
+use crate::nodes::authority_node::Configuration;
 use crate::{actions, DefaultAddress};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
-use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
 use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Message, Result, Worker};
 use ockam_identity::authenticated_storage::{
-    AttributesEntry, AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
+    AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
 use ockam_identity::{
-    Identity, IdentityIdentifier, IdentityVault, PublicIdentity, SecureChannelListenerTrustOptions,
+    Identity, IdentityVault, PublicIdentity, SecureChannelListenerTrustOptions,
     SecureChannelRegistry, TrustEveryonePolicy,
 };
 use ockam_node::{Context, WorkerBuilder};
@@ -311,31 +310,19 @@ impl Authority {
     }
 
     /// Make an identity attributes storage pre-populated with the attributes of some trusted
-    /// identities.
-    /// Note that the trusted identities attributes are never persisted to disk so the only source
-    /// of truth is always the content of the configuration file for the authority node
+    /// identities. The values either come from the command line or are read directly from a file
+    /// every time the IdentityAttributeStorage tries to retrieve some attributes
     fn make_attributes_storage(
         authority: &Identity,
         configuration: &Configuration,
     ) -> Arc<dyn IdentityAttributeStorage> {
-        let project_identifier = &configuration.project_identifier;
         let trusted_identities = &configuration.trusted_identities;
-
-        let trusted: HashMap<IdentityIdentifier, AttributesEntry> =
-            HashMap::from_iter(trusted_identities.iter().map(|t: &TrustedIdentity| {
-                (
-                    t.clone().identifier(),
-                    t.attributes_entry(project_identifier.clone(), authority.identifier()),
-                )
-            }));
-        let attributes_storage: Arc<dyn IdentityAttributeStorage> =
-            Arc::new(BootstrapedIdentityStore::new(
-                Arc::new(PreTrustedIdentities::new_from_hashmap(trusted)),
-                Arc::new(AuthenticatedAttributeStorage::new(
-                    authority.authenticated_storage(),
-                )),
-            ));
-        attributes_storage
+        Arc::new(BootstrapedIdentityStore::new(
+            Arc::new(trusted_identities.clone()),
+            Arc::new(AuthenticatedAttributeStorage::new(
+                authority.authenticated_storage(),
+            )),
+        ))
     }
 
     /// Start a worker at a given address
