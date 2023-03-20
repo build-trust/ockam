@@ -32,6 +32,9 @@ pub async fn start_node(ctx: &Context, configuration: &Configuration) -> Result<
     // start the Okta service (if the optional configuration has been provided)
     authority.start_okta(ctx, configuration).await?;
 
+    // start an echo service so that the node can be queried as healthy
+    authority.start_echo_service(ctx).await?;
+
     info!(
         "Authority node started with identity\n{}",
         authority.public_identity().await?

@@ -1,5 +1,6 @@
 use crate::authenticator::direct::{CredentialIssuer, EnrollmentTokenAuthenticator};
 use crate::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
+use crate::echoer::Echoer;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
 use crate::nodes::authority_node::{Configuration, TrustedIdentity};
@@ -262,6 +263,12 @@ impl Authority {
             .await?;
         }
         Ok(())
+    }
+
+    /// Start an echo service
+    pub async fn start_echo_service(&self, ctx: &Context) -> Result<()> {
+        ctx.start_worker(DefaultAddress::ECHO_SERVICE, Echoer, AllowAll, AllowAll)
+            .await
     }
 }
 
