@@ -229,7 +229,7 @@ mod tests {
         .unwrap();
 
         let trusted = format!("[{{\"identifier\":\"{identity1}\", \"attributes\": {{\"name\" : \"value\", \"project_id\" : \"1\"}}}}, {{\"identifier\":\"{identity2}\", \"attributes\": {{\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}]");
-        let actual = parse_trusted_identities(&trusted.as_str()).unwrap();
+        let actual = parse_trusted_identities(trusted.as_str()).unwrap();
 
         let attributes1 = HashMap::from([
             ("name".into(), "value".into()),
