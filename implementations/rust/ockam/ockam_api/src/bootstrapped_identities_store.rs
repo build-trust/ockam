@@ -9,6 +9,7 @@ use ockam_identity::authenticated_storage::{
 };
 use ockam_identity::credential::Timestamp;
 use ockam_identity::IdentityIdentifier;
+use serde::{Deserialize, Serialize};
 use serde_json as json;
 use std::path::PathBuf;
 use tracing::trace;
@@ -101,7 +102,7 @@ impl IdentityAttributeStorage for BootstrapedIdentityStore {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum PreTrustedIdentities {
     Fixed(HashMap<IdentityIdentifier, AttributesEntry>),
     ReloadFrom(PathBuf),

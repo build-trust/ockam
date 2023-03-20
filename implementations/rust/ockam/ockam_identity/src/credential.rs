@@ -292,7 +292,9 @@ impl Attributes {
 }
 
 /// A Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
-#[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[cbor(transparent)]
 pub struct Timestamp(#[n(0)] u64);
 
