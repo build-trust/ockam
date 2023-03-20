@@ -1,5 +1,7 @@
 use crate::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::fmt;
+use ockam_core::compat::fmt::{Display, Formatter};
 use ockam_identity::authenticated_storage::AttributesEntry;
 use ockam_identity::credential::Timestamp;
 use ockam_identity::{IdentityIdentifier, PublicIdentity};
@@ -101,6 +103,16 @@ impl OktaConfiguration {
 pub struct TrustedIdentity {
     identifier: IdentityIdentifier,
     attributes: HashMap<String, String>,
+}
+
+impl Display for TrustedIdentity {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(
+            serde_json::to_string(self)
+                .map_err(|_| fmt::Error)?
+                .as_str(),
+        )
+    }
 }
 
 impl TrustedIdentity {

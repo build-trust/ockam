@@ -822,8 +822,8 @@ impl Worker for NodeManagerWorker {
                     cause  = ?err.source(),
                     "failed to handle request"
                 }
-                let err =
-                    Error::new(req.path()).with_message(format!("failed to handle request: {err}"));
+                let err = Error::new(req.path())
+                    .with_message(format!("failed to handle request: {err} {req:?}"));
                 Response::builder(req.id(), Status::InternalServerError)
                     .body(err)
                     .to_vec()?
