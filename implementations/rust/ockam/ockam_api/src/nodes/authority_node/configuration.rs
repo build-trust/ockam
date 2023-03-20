@@ -1,3 +1,4 @@
+use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
@@ -36,7 +37,7 @@ pub struct Configuration {
     pub authenticator_name: Option<String>,
 
     /// list of trusted identities (identities with the ockam-role: enroller)
-    pub trusted_identities: Vec<TrustedIdentity>,
+    pub trusted_identities: PreTrustedIdentities,
 
     /// optional configuration for the okta service
     pub okta: Option<OktaConfiguration>,
