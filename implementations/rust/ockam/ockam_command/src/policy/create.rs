@@ -8,7 +8,7 @@ use ockam_api::nodes::models::policy::Policy;
 use ockam_core::api::Request;
 
 #[derive(Clone, Debug, Args)]
-pub struct SetCommand {
+pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
     #[arg(long, display_order = 900, id = "NODE")]
     at: String,
@@ -23,17 +23,17 @@ pub struct SetCommand {
     expression: Expr,
 }
 
-impl SetCommand {
+impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SetCommand)) -> Result<()> {
+async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts, cmd: SetCommand) -> Result<()> {
+async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts, cmd: CreateCommand) -> Result<()> {
     let node = extract_address_value(&cmd.at)?;
     let bdy = Policy::new(cmd.expression);
     let req = Request::post(policy_path(&cmd.resource, &cmd.action)).body(bdy);
