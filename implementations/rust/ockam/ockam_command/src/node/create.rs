@@ -1,5 +1,5 @@
 use clap::Args;
-use ockam_identity::{IdentityIdentifier, PublicIdentity};
+use ockam_identity::PublicIdentity;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 use rand::prelude::random;
@@ -32,7 +32,6 @@ use crate::{
 use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::authority_node;
-use ockam_api::nodes::authority_node::TrustedIdentity;
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     config::cli::Authority,
@@ -45,10 +44,7 @@ use ockam_api::{
     },
 };
 use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
-
-use ockam_core::compat::collections::HashMap;
 use ockam_core::{AllowAll, LOCAL};
-use ockam_identity::authenticated_storage::AttributesEntry;
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
@@ -559,6 +555,10 @@ async fn start_authority_node(
             }
         };
 
+        let trusted_identities = load_pre_trusted_identities(&command)
+            .map(|ts| ts.unwrap_or(PreTrustedIdentities::Fixed(Default::default())))
+            .map_err(|e| crate::Error::new(exitcode::CONFIG, anyhow!("{e}")))?;
+
         let configuration = authority_node::Configuration {
             identity: public_identity,
             storage_path: options.state.identities.authenticated_storage_path()?,
@@ -567,69 +567,10 @@ async fn start_authority_node(
             tcp_listener_address: command.tcp_listener_address.clone(),
             secure_channel_listener_name: Some(secure_channel_config.address),
             authenticator_name: Some(authenticator_config.address),
-            trusted_identities: get_trusted_identities(&command)?,
+            trusted_identities,
             okta: None,
         };
         authority_node::start_node(&ctx, &configuration).await?;
     }
     Ok(())
-}
-
-fn get_trusted_identities(command: &CreateCommand) -> Result<Vec<TrustedIdentity>> {
-    let trusted = load_pre_trusted_identities(command)?
-        .and_then(|ts| ts.get_trusted_identities().ok())
-        .unwrap_or_default();
-    Ok(trusted
-        .iter()
-        .map(|(identifier, attributes)| make_trusted_identity(identifier, attributes))
-        .collect())
-}
-
-fn make_trusted_identity(
-    identifier: &IdentityIdentifier,
-    attributes: &AttributesEntry,
-) -> TrustedIdentity {
-    let mut attributes_map: HashMap<String, String> = HashMap::new();
-    for (attribute_name, attribute_value) in attributes.attrs().iter() {
-        attributes_map.insert(
-            attribute_name.into(),
-            String::from_utf8(attribute_value.clone()).unwrap(),
-        );
-    }
-    TrustedIdentity::new(identifier, &attributes_map)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_get_trusted_identities() {
-        let mut cmd = CreateCommand::default();
-        let identity1 = IdentityIdentifier::from_str(
-            "Pe86be15e83d1c93e24dd1967010b01b6df491b459725fd9ae0bebfd7c1bf8ea3",
-        )
-        .unwrap();
-        let identity2 = IdentityIdentifier::from_str(
-            "P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94",
-        )
-        .unwrap();
-
-        cmd.trusted_identities = Some(format!("{{\"{identity1}\": {{\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}}, \"{identity2}\" : {{\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}"));
-        let actual = get_trusted_identities(&cmd).unwrap();
-
-        let attributes1 = HashMap::from([
-            ("sample_attr".into(), "sample_val".into()),
-            ("project_id".into(), "1".into()),
-        ]);
-        let attributes2 = HashMap::from([
-            ("project_id".into(), "1".into()),
-            ("ockam-role".into(), "enroller".into()),
-        ]);
-        let expected = vec![
-            TrustedIdentity::new(&identity1, &attributes1),
-            TrustedIdentity::new(&identity2, &attributes2),
-        ];
-        assert_eq!(actual, expected);
-    }
 }
