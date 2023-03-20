@@ -122,6 +122,7 @@ async fn spawn_background_node(
         args.push("--attributes".to_string());
         args.push(attributes.join(","));
     }
+    args.push(cmd.node_name.to_string());
 
     run_ockam(opts, &cmd.node_name, args)
 }
