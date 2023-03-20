@@ -3,6 +3,7 @@
 
 mod admin;
 mod authenticated;
+mod authority;
 mod completion;
 mod configuration;
 mod credential;
@@ -62,6 +63,7 @@ use version::Version;
 use worker::WorkerCommand;
 
 use crate::admin::AdminCommand;
+use crate::authority::AuthorityCommand;
 use crate::subscription::SubscriptionCommand;
 use crate::terminal::{Terminal, TerminalStream};
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
@@ -194,6 +196,8 @@ pub enum OckamSubcommand {
     #[command(display_order = 804)]
     Reset(ResetCommand),
 
+    #[command(display_order = 810)]
+    Authority(AuthorityCommand),
     #[command(display_order = 811)]
     Node(NodeCommand),
     #[command(display_order = 812)]
@@ -272,6 +276,7 @@ impl OckamCommand {
             OckamSubcommand::Status(c) => c.run(options),
             OckamSubcommand::Reset(c) => c.run(options),
 
+            OckamSubcommand::Authority(c) => c.run(options),
             OckamSubcommand::Node(c) => c.run(options),
             OckamSubcommand::Identity(c) => c.run(options),
             OckamSubcommand::TcpListener(c) => c.run(options),

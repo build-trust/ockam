@@ -162,7 +162,7 @@ impl CreateCommand {
     }
 }
 
-fn parse_launch_config(config_or_path: &str) -> Result<Config> {
+pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
     match serde_json::from_str::<Config>(config_or_path) {
         Ok(c) => Ok(c),
         Err(_) => {
@@ -354,7 +354,7 @@ async fn run_foreground_node(
     Ok(())
 }
 
-fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrustedIdentities>> {
+pub fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrustedIdentities>> {
     let command = cmd.clone();
     let pre_trusted_identities = match (
         command.trusted_identities,
@@ -517,7 +517,7 @@ async fn spawn_background_node(
     Ok(())
 }
 
-fn parse_identity_authority(identity: &str) -> Result<Authority> {
+pub fn parse_identity_authority(identity: &str) -> Result<Authority> {
     let identity_as_bytes = match hex::decode(identity) {
         Ok(b) => b,
         Err(e) => return Err(anyhow!(e).into()),
