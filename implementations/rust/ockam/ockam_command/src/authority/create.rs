@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use tracing::error;
+use tokio::time::{sleep, Duration};
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
@@ -80,6 +81,8 @@ impl CreateCommand {
             // Create a new node in the foreground (i.e. in this OS process)
             if let Err(e) = embedded_node_that_is_not_stopped(start_authority_node, (options, self))
             {
+                //TODO: this is never reached,  embedded_node_that_is_not_stopped/2 do not returns
+                //with error even if the passed function do error out.
                 error!(%e);
                 eprintln!("{e:?}");
                 std::process::exit(e.code());
@@ -184,6 +187,29 @@ async fn spawn_background_node(
 ///   - persist the node state
 ///   - start the node services
 async fn start_authority_node(
+    ctx: Context,
+    opts: (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
+    match start_authority_node_internal(ctx, opts).await.err() {
+        Some(e) => {
+            error!(%e);
+            eprintln!("{e:?}");
+            eprintln!("Terminating failing node...");
+            //TODO: This sleep here is a workaround on some orchestrated environment.
+            //      The lmdb db, that is used for policy storage, and so for the services
+            //      of this authority node, fails to be re-opened if it's still opened from
+            //      another docker container, where they share the same pid.
+            //      By sleeping for a while we let this container be promoted
+            //      and the other being terminated, so when restarted it works.  This is
+            //      FAR from ideal.
+            sleep(Duration::from_secs(10)).await;
+            std::process::exit(e.code())
+        },
+        None => Ok(())
+    }
+}
+
+async fn start_authority_node_internal(
     ctx: Context,
     opts: (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
