@@ -131,7 +131,7 @@ async fn spawn_background_node(
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
 ) -> crate::Result<()> {
-    // Create node state, including the vault and identity if don't exist
+    // Create node state, including the vault and identity if they don't exist
     init_node_state(ctx, opts, &cmd.node_name, None, None).await?;
 
     // Construct the arguments list and re-execute the ockam
@@ -189,6 +189,11 @@ async fn start_authority_node(
 ) -> crate::Result<()> {
     let (options, cmd) = opts;
     let command = cmd.clone();
+
+    // Create node state, including the vault and identity if they don't exist
+    if options.state.nodes.get(&command.node_name).is_err() {
+        init_node_state(&ctx, &options, &command.node_name, None, None).await?;
+    };
 
     // retrieve the authority identity if it has been created before
     // otherwise create a new one
