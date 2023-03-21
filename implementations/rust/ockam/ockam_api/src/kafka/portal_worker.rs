@@ -348,7 +348,7 @@ mod test {
             )
             .await?;
 
-        let message: Routed<PortalMessage> = context.receive::<PortalMessage>().await?.take();
+        let message: Routed<PortalMessage> = context.receive::<PortalMessage>().await?;
         if let PortalMessage::Ping = message.as_body() {
         } else {
             panic!("invalid message type")
@@ -358,7 +358,7 @@ mod test {
             .send(message.return_route(), PortalMessage::Pong)
             .await?;
 
-        let message: Routed<PortalMessage> = context.receive::<PortalMessage>().await?.take();
+        let message: Routed<PortalMessage> = context.receive::<PortalMessage>().await?;
         if let PortalMessage::Pong = message.as_body() {
         } else {
             panic!("invalid message type")
@@ -398,7 +398,7 @@ mod test {
             )
             .await?;
 
-        let message = context.receive::<PortalMessage>().await?.take();
+        let message = context.receive::<PortalMessage>().await?;
 
         if let PortalMessage::Payload(payload) = message.as_body() {
             assert_eq!(payload, request_buffer.as_ref());
@@ -435,7 +435,7 @@ mod test {
                 PortalMessage::Payload(double_payload.to_vec()),
             )
             .await?;
-        let message = context.receive::<PortalMessage>().await?.take();
+        let message = context.receive::<PortalMessage>().await?;
 
         if let PortalMessage::Payload(payload) = message.as_body() {
             assert_eq!(payload, double_payload);
@@ -662,7 +662,7 @@ mod test {
             )
             .await?;
 
-        let message: Routed<PortalMessage> = context.receive_block::<PortalMessage>().await?.take();
+        let message: Routed<PortalMessage> = context.receive_block::<PortalMessage>().await?;
 
         if let PortalMessage::Payload(payload) = message.as_body() {
             assert_eq!(&request_buffer.to_vec(), payload);
@@ -723,7 +723,7 @@ mod test {
             )
             .await?;
 
-        let message: Routed<PortalMessage> = context.receive_block::<PortalMessage>().await?.take();
+        let message: Routed<PortalMessage> = context.receive_block::<PortalMessage>().await?;
 
         if let PortalMessage::Payload(payload) = message.body() {
             assert_ne!(&response_buffer.to_vec(), &payload);

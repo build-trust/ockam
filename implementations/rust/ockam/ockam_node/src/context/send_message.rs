@@ -67,7 +67,6 @@ impl Context {
         Ok(child_ctx
             .receive_duration_timeout::<N>(timeout)
             .await?
-            .take()
             .body())
     }
 

@@ -130,11 +130,7 @@ impl RemoteForwarder {
             .start(ctx)
             .await?;
 
-        let resp = child_ctx
-            .receive::<RemoteForwarderInfo>()
-            .await?
-            .take()
-            .body();
+        let resp = child_ctx.receive::<RemoteForwarderInfo>().await?.body();
 
         Ok(resp)
     }
@@ -184,11 +180,7 @@ impl RemoteForwarder {
             .start(ctx)
             .await?;
 
-        let resp = child_ctx
-            .receive::<RemoteForwarderInfo>()
-            .await?
-            .take()
-            .body();
+        let resp = child_ctx.receive::<RemoteForwarderInfo>().await?.body();
 
         Ok(resp)
     }
@@ -248,11 +240,7 @@ impl RemoteForwarder {
             .start(ctx)
             .await?;
 
-        let resp = child_ctx
-            .receive::<RemoteForwarderInfo>()
-            .await?
-            .take()
-            .body();
+        let resp = child_ctx.receive::<RemoteForwarderInfo>().await?.body();
 
         Ok(resp)
     }

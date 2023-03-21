@@ -42,7 +42,6 @@ pub mod api;
 pub mod debugger;
 
 mod async_drop;
-mod cancel;
 mod context;
 mod delayed;
 mod error;
@@ -55,7 +54,6 @@ mod relay;
 mod router;
 mod worker_builder;
 
-pub use cancel::*;
 pub use context::*;
 pub use delayed::*;
 pub use error::*;

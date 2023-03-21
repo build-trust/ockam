@@ -71,7 +71,7 @@ pub struct ReceiverAddress {
 impl ReceiverAddress {
     /// Wait for the next message received by the stream consumer
     pub async fn next<T: Message>(&mut self) -> Result<Routed<T>> {
-        let routed = self.ctx.receive_block::<StreamMessage>().await?.take();
+        let routed = self.ctx.receive_block::<StreamMessage>().await?;
         let stream_msg = routed.as_body();
         let (addr, local_msg) = routed.dissolve();
 

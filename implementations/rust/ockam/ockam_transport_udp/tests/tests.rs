@@ -40,8 +40,7 @@ async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
         child_ctx.send(route, String::from("Hola")).await?;
         let res = child_ctx
             .receive_duration_timeout::<String>(TIMEOUT)
-            .await?
-            .take();
+            .await?;
 
         trace!(return_route = %res.return_route());
 
