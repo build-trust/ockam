@@ -172,11 +172,14 @@ impl<E: Display> From<minicbor::encode::Error<E>> for Error {
 /// See `ockam_node::WorkerRelay` for a usage example.
 ///
 pub struct Routed<M: Message> {
-    // The wrapped message.
+    /// The wrapped message.
     inner: M,
-    // The address of the wrapped message.
+    /// The address of the wrapped message.
     msg_addr: Address,
-    // A `LocalMessage` that contains routing information for the wrapped message.
+    /// True sender of the message (guaranteed by the implementation)
+    /// May be different from a return_route first hop
+    src_addr: Address,
+    /// A `LocalMessage` that contains routing information for the wrapped message.
     local_msg: LocalMessage,
 }
 
@@ -184,10 +187,11 @@ impl<M: Message> Routed<M> {
     /// Create a new `Routed` message wrapper from the given message,
     /// message address and a local message that contains routing
     /// information.
-    pub fn new(inner: M, msg_addr: Address, local_msg: LocalMessage) -> Self {
+    pub fn new(inner: M, msg_addr: Address, src_addr: Address, local_msg: LocalMessage) -> Self {
         Self {
             inner,
             msg_addr,
+            src_addr,
             local_msg,
         }
     }
@@ -202,6 +206,12 @@ impl<M: Message> Routed<M> {
     #[inline]
     pub fn msg_addr(&self) -> Address {
         self.msg_addr.clone()
+    }
+
+    /// True sender of the message
+    #[inline]
+    pub fn src_addr(&self) -> Address {
+        self.src_addr.clone()
     }
 
     /// Return a copy of the onward route for the wrapped message.
@@ -272,6 +282,7 @@ impl Routed<Any> {
             inner,
             msg_addr: self.msg_addr,
             local_msg: self.local_msg,
+            src_addr: self.src_addr,
         })
     }
 }

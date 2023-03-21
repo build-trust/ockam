@@ -92,7 +92,8 @@ impl PipeSender {
         );
 
         // Grab data from the Routed wrapper
-        let msg_addr = msg.msg_addr().clone();
+        let msg_addr = msg.msg_addr();
+        let src_addr = msg.src_addr();
         let onward_route = msg.onward_route();
         let return_route = msg.return_route();
 
@@ -107,7 +108,7 @@ impl PipeSender {
         if self.system.is_empty() {
             self.handle_fin_msg(ctx, ockam_msg).await?;
         } else {
-            let routed = ockam_msg.into_routed(msg_addr, onward_route, return_route)?;
+            let routed = ockam_msg.into_routed(msg_addr, src_addr, onward_route, return_route)?;
             self.system.dispatch_entry(ctx, routed).await?;
         }
 

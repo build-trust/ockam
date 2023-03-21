@@ -72,11 +72,12 @@ impl ReceiverAddress {
     /// Wait for the next message received by the stream consumer
     pub async fn next<T: Message>(&mut self) -> Result<Routed<T>> {
         let routed = self.ctx.receive_block::<StreamMessage>().await?;
+        let src_addr = routed.src_addr();
         let stream_msg = routed.as_body();
         let (addr, local_msg) = routed.dissolve();
 
         let transport = TransportMessage::decode(&stream_msg.data).unwrap();
-        T::decode(&transport.payload).map(|t| Routed::new(t, addr, local_msg))
+        T::decode(&transport.payload).map(|t| Routed::new(t, addr, src_addr, local_msg))
     }
 }
 
