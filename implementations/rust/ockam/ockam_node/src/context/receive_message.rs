@@ -39,13 +39,6 @@ impl Context {
         }
     }
 
-    /// This function will block and re-queue messages into the
-    /// mailbox until it can receive the correct message payload.
-    ///
-    /// WARNING: this will temporarily create a busyloop, this
-    /// mechanism should be replaced with a waker system that lets the
-    /// mailbox work not yield another message until the relay worker
-    /// has woken it.
     /// A convenience function to get a Routed message from the Mailbox
     async fn next_from_mailbox<M: Message>(&mut self) -> Result<Routed<M>> {
         loop {
@@ -58,11 +51,13 @@ impl Context {
             let local_msg = msg.into_local_message();
 
             // FIXME: make message parsing idempotent to avoid cloning
-            match parser::message(&local_msg.transport().payload).ok() {
-                Some(msg) => break Ok((msg, local_msg, addr)),
-                None => {
-                    // Requeue
-                    self.forward(local_msg).await?;
+            match parser::message(&local_msg.transport().payload) {
+                Ok(msg) => {
+                    let routed_msg = Routed::new(msg, destination_addr, src_addr, local_msg);
+                    break Ok(routed_msg);
+                }
+                Err(_err) => {
+                    error!(destination_addr = %destination_addr, "Encountered unparseable message")
                 }
             }
         }
