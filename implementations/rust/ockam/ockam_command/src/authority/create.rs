@@ -27,7 +27,7 @@ use tracing::error;
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = help::template(HELP_DETAIL))]
 #[clap(group(ArgGroup::new("okta").args(&["tenant_base_url", "certificate", "attributes"])))]
-#[clap(group(ArgGroup::new("trusted").args(&["trusted_identities", "reload_from_trusted_identities_file"])))]
+#[clap(group(ArgGroup::new("trusted").required(true).args(&["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {
     /// Name of the node
     #[arg(default_value = "authority")]
