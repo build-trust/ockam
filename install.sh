@@ -275,6 +275,7 @@ add_to_path() {
     fi
 
     info "Adding source command to $_rcpath"
+    echo >>"$_rcpath"
     echo "$_source_cmd" >>"$_rcpath"
   done
 }
