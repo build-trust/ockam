@@ -1,5 +1,5 @@
 FROM telegraf:1.25
-RUN curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | sh
+RUN curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/build-trust/ockam/ockam_v0.82.0/install.sh | sh
 RUN mv ockam /usr/local/bin
 RUN chmod +x /usr/local/bin/ockam
 
