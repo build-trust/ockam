@@ -69,6 +69,7 @@ impl OckamMessage {
     pub fn into_routed(
         self,
         msg_addr: Address,
+        src_addr: Address,
         onward_route: Route,
         return_route: Route,
     ) -> Result<Routed<Self>> {
@@ -76,7 +77,7 @@ impl OckamMessage {
             TransportMessage::v1(onward_route, return_route, self.encode()?),
             vec![],
         );
-        Ok(Routed::new(self, msg_addr, local))
+        Ok(Routed::new(self, msg_addr, src_addr, local))
     }
 
     /// Add some metadata to this scope

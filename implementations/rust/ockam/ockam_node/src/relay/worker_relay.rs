@@ -58,6 +58,7 @@ where
         let routed = Routed::new(
             msg,
             relay_msg.destination().clone(),
+            relay_msg.source().clone(),
             relay_msg.into_local_message(),
         );
         Ok(routed)

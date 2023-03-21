@@ -4,7 +4,7 @@ use crate::{error::*, parser};
 use crate::{Context, DEFAULT_TIMEOUT};
 use core::sync::atomic::Ordering;
 use core::time::Duration;
-use ockam_core::{Address, LocalMessage, Message, RelayMessage, Result, Routed};
+use ockam_core::{Message, RelayMessage, Result, Routed};
 
 impl Context {
     /// Wait for the next message from the mailbox
@@ -39,12 +39,6 @@ impl Context {
         }
     }
 
-    /// A convenience function to get a data 3-tuple from the mailbox
-    ///
-    /// The reason this function doesn't construct a `Cancel<_, M>` is
-    /// to avoid the lifetime collision between the mutation on `self`
-    /// and the ref to `Context` passed to `Cancel::new(..)`
-    ///
     /// This function will block and re-queue messages into the
     /// mailbox until it can receive the correct message payload.
     ///
@@ -52,13 +46,15 @@ impl Context {
     /// mechanism should be replaced with a waker system that lets the
     /// mailbox work not yield another message until the relay worker
     /// has woken it.
-    async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, LocalMessage, Address)> {
+    /// A convenience function to get a Routed message from the Mailbox
+    async fn next_from_mailbox<M: Message>(&mut self) -> Result<Routed<M>> {
         loop {
             let msg = self
                 .receiver_next()
                 .await?
                 .ok_or_else(|| NodeError::Data.not_found())?;
-            let addr = msg.destination().clone();
+            let destination_addr = msg.destination().clone();
+            let src_addr = msg.source().clone();
             let local_msg = msg.into_local_message();
 
             // FIXME: make message parsing idempotent to avoid cloning
@@ -79,8 +75,7 @@ impl Context {
     /// [`receive`](Self::receive) and
     /// [`receive_timeout`](Self::receive_timeout).
     pub async fn receive_block<M: Message>(&mut self) -> Result<Routed<M>> {
-        let (msg, data, addr) = self.next_from_mailbox().await?;
-        Ok(Routed::new(msg, addr, data))
+        self.next_from_mailbox().await
     }
 
     /// Block the current worker to wait for a typed message
@@ -104,10 +99,9 @@ impl Context {
         &mut self,
         timeout_duration: Duration,
     ) -> Result<Routed<M>> {
-        let (msg, data, addr) = timeout(timeout_duration, async { self.next_from_mailbox().await })
+        timeout(timeout_duration, async { self.next_from_mailbox().await })
             .await
-            .map_err(|e| NodeError::Data.with_elapsed(e))??;
-        Ok(Routed::new(msg, addr, data))
+            .map_err(|e| NodeError::Data.with_elapsed(e))?
     }
 
     /// Wait to receive a message up to a specified timeout
