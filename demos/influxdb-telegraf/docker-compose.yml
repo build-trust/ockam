@@ -8,7 +8,7 @@ services:
   influxdb:
     build: ./influxdb
     environment:
-      OCKAM_PROJECT_NAME: influxdb-demo
+      OCKAM_PROJECT_NAME: default
       OCKAM_TOKEN: ${INFLUXDB_TOKEN}
       DOCKER_INFLUXDB_INIT_MODE: setup
       DOCKER_INFLUXDB_INIT_USERNAME: myusername
@@ -27,7 +27,7 @@ services:
     depends_on:
       - influxdb
     environment:
-      OCKAM_PROJECT_NAME: influxdb-demo
+      OCKAM_PROJECT_NAME: default
       OCKAM_TOKEN: ${TELEGRAF_TOKEN}
       DOCKER_INFLUXDB_INIT_ORG: myorg
       DOCKER_INFLUXDB_INIT_BUCKET: mybucket
