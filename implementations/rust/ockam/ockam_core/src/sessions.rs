@@ -25,12 +25,10 @@ use crate::compat::vec::Vec;
 use crate::Address;
 
 mod access_control;
-mod local_info;
 mod policy;
 mod session_id;
 
 pub use access_control::*;
-pub use local_info::*;
 pub use policy::*;
 pub use session_id::*;
 

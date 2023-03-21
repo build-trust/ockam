@@ -39,9 +39,6 @@ impl SecureChannelTrustOptions {
     }
 
     /// Mark this Secure Channel Decryptor as a Producer for a given [`SessionId`]
-    ///
-    /// Also this [`SessionId`] will be added to [`LocalInfo`] of the messages from that
-    /// Secure Channel
     pub fn as_producer(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
         self.producer_session = Some((sessions.clone(), session_id.clone()));
         self
@@ -53,7 +50,7 @@ impl SecureChannelTrustOptions {
         self
     }
 
-    pub(crate) fn setup_session(&self, addresses: &Addresses) -> Option<SessionId> {
+    pub(crate) fn setup_session(&self, addresses: &Addresses) {
         if let Some((sessions, session_id)) = &self.consumer_session {
             // Allow a sender with corresponding session_id send messages to this address
             sessions.add_consumer(
@@ -65,9 +62,6 @@ impl SecureChannelTrustOptions {
 
         if let Some((sessions, session_id)) = &self.producer_session {
             sessions.add_producer(&addresses.decryptor_internal, session_id, None);
-            Some(session_id.clone())
-        } else {
-            None
         }
     }
 

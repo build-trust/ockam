@@ -2,7 +2,6 @@ use crate::workers::Addresses;
 use crate::{TcpRegistry, TcpSendWorkerMsg};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::{SessionId, SessionIdLocalInfo};
 use ockam_core::{async_trait, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl};
 use ockam_core::{Decodable, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::{Context, ProcessorBuilder};
@@ -23,7 +22,6 @@ pub(crate) struct TcpRecvProcessor {
     read_half: OwnedReadHalf,
     peer: SocketAddr,
     addresses: Addresses,
-    session_id: Option<SessionId>,
 }
 
 impl TcpRecvProcessor {
@@ -33,14 +31,12 @@ impl TcpRecvProcessor {
         read_half: OwnedReadHalf,
         peer: SocketAddr,
         addresses: Addresses,
-        session_id: Option<SessionId>,
     ) -> Self {
         Self {
             registry,
             read_half,
             peer,
             addresses,
-            session_id,
         }
     }
 
@@ -51,10 +47,8 @@ impl TcpRecvProcessor {
         addresses: &Addresses,
         peer: SocketAddr,
         receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        session_id: Option<SessionId>,
     ) -> Result<()> {
-        let receiver =
-            TcpRecvProcessor::new(registry, read_half, peer, addresses.clone(), session_id);
+        let receiver = TcpRecvProcessor::new(registry, read_half, peer, addresses.clone());
 
         let mailbox = Mailbox::new(
             addresses.receiver_address().clone(),
@@ -152,13 +146,8 @@ impl Processor for TcpRecvProcessor {
         trace!("Message onward route: {}", msg.onward_route);
         trace!("Message return route: {}", msg.return_route);
 
-        let local_info = match &self.session_id {
-            Some(session_id) => vec![SessionIdLocalInfo::new(session_id.clone()).to_local_info()?],
-            None => vec![],
-        };
-
         // Forward the message to the next hop in the route
-        ctx.forward(LocalMessage::new(msg, local_info)).await?;
+        ctx.forward(LocalMessage::new(msg, vec![])).await?;
 
         Ok(true)
     }

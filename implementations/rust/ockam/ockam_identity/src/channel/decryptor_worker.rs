@@ -13,7 +13,6 @@ use crate::{
 use core::time::Duration;
 use ockam_core::compat::vec::Vec;
 use ockam_core::compat::{boxed::Box, sync::Arc};
-use ockam_core::sessions::{SessionId, SessionIdLocalInfo};
 use ockam_core::vault::Signature;
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, DenyAll, LocalOnwardOnly,
@@ -40,7 +39,6 @@ pub(crate) struct DecryptorWorker {
     state_key_exchange: Option<KeyExchange>,
     state_exchange_identity: Option<ExchangeIdentity>,
     state_initialized: Option<Initialized>,
-    plaintext_session_id: Option<SessionId>,
 }
 
 impl DecryptorWorker {
@@ -52,7 +50,6 @@ impl DecryptorWorker {
         addresses: Addresses,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        plaintext_session_id: Option<SessionId>,
         timeout: Duration,
     ) -> Result<Address> {
         let mut completion_callback_ctx = ctx
@@ -82,7 +79,6 @@ impl DecryptorWorker {
             }),
             state_exchange_identity: None,
             state_initialized: None,
-            plaintext_session_id,
         };
 
         WorkerBuilder::with_mailboxes(mailboxes, worker)
@@ -111,7 +107,6 @@ impl DecryptorWorker {
         addresses: Addresses,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        plaintext_session_id: Option<SessionId>,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
         // Route to the decryptor on the other side
@@ -144,7 +139,6 @@ impl DecryptorWorker {
             }),
             state_exchange_identity: None,
             state_initialized: None,
-            plaintext_session_id,
         };
 
         WorkerBuilder::with_mailboxes(mailboxes, worker)
@@ -622,15 +616,8 @@ impl DecryptorWorker {
 
         // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
         // replacing any pre-existing entries
-        let mut local_info =
+        let local_info =
             IdentitySecureChannelLocalInfo::mark(vec![], state.their_identity_id.clone())?;
-
-        match &self.plaintext_session_id {
-            Some(session_id) => {
-                local_info.push(SessionIdLocalInfo::new(session_id.clone()).to_local_info()?)
-            }
-            None => {}
-        }
 
         let msg = LocalMessage::new(transport_message, local_info);
 

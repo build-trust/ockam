@@ -63,7 +63,7 @@ impl Identity {
         let addresses = Addresses::generate(Role::Initiator);
         let trust_options = trust_options.into();
 
-        let session_id = trust_options.setup_session(&addresses);
+        trust_options.setup_session(&addresses);
         let access_control = trust_options.create_access_control();
 
         DecryptorWorker::create_initiator(
@@ -73,7 +73,6 @@ impl Identity {
             addresses,
             trust_options.trust_policy,
             access_control.decryptor_outgoing_access_control,
-            session_id,
             Duration::from_secs(120),
         )
         .await
@@ -91,7 +90,7 @@ impl Identity {
         let addresses = Addresses::generate(Role::Initiator);
 
         let trust_options = trust_options.into();
-        let session_id = trust_options.setup_session(&addresses);
+        trust_options.setup_session(&addresses);
         let access_control = trust_options.create_access_control();
 
         DecryptorWorker::create_initiator(
@@ -101,7 +100,6 @@ impl Identity {
             addresses,
             trust_options.trust_policy,
             access_control.decryptor_outgoing_access_control,
-            session_id,
             timeout,
         )
         .await
