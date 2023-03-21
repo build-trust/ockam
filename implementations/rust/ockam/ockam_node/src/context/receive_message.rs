@@ -117,35 +117,4 @@ impl Context {
         self.receive_duration_timeout(Duration::from_secs(timeout_secs))
             .await
     }
-
-    /// Block the current worker to wait for a message satisfying a conditional
-    ///
-    /// Will return `Err` if the corresponding worker has been
-    /// stopped, or the underlying node has shut down.  This operation
-    /// has a [default timeout](DEFAULT_TIMEOUT).
-    ///
-    /// Internally this function uses [`receive`](Self::receive), so
-    /// is subject to the same timeout.
-    pub async fn receive_match<M, F>(&mut self, check: F) -> Result<Routed<M>>
-    where
-        M: Message,
-        F: Fn(&M) -> bool,
-    {
-        let (m, data, addr) = timeout(Duration::from_secs(DEFAULT_TIMEOUT), async {
-            loop {
-                match self.next_from_mailbox().await {
-                    Ok((m, data, addr)) if check(&m) => break Ok((m, data, addr)),
-                    Ok((_, data, _)) => {
-                        // Requeue
-                        self.forward(data).await?;
-                    }
-                    e => break e,
-                }
-            }
-        })
-        .await
-        .map_err(|e| NodeError::Data.with_elapsed(e))??;
-
-        Ok(Routed::new(m, addr, data))
-    }
 }
