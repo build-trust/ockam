@@ -23,21 +23,14 @@ impl TcpConnectionTrustOptions {
     }
 
     /// Mark this Tcp Receivers as a Producer for a given [`SessionId`]
-    ///
-    /// Also this [`SessionId`] will be added to [`LocalInfo`] of the messages from that
-    /// connection
     pub fn as_producer(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
         self.producer_session = Some((sessions.clone(), session_id.clone()));
         self
     }
 
-    pub(crate) fn setup_session(&self, address: &Address) -> Option<SessionId> {
+    pub(crate) fn setup_session(&self, address: &Address) {
         if let Some((sessions, session_id)) = &self.producer_session {
             sessions.add_producer(address, session_id, None);
-
-            Some(session_id.clone())
-        } else {
-            None
         }
     }
 
