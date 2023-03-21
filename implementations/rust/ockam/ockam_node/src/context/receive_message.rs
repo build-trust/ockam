@@ -1,10 +1,10 @@
 use crate::debugger;
 use crate::tokio::time::timeout;
 use crate::{error::*, parser};
-use crate::{Cancel, Context, DEFAULT_TIMEOUT};
+use crate::{Context, DEFAULT_TIMEOUT};
 use core::sync::atomic::Ordering;
 use core::time::Duration;
-use ockam_core::{Address, LocalMessage, Message, RelayMessage, Result};
+use ockam_core::{Address, LocalMessage, Message, RelayMessage, Result, Routed};
 
 impl Context {
     /// Wait for the next message from the mailbox
@@ -78,9 +78,9 @@ impl Context {
     /// node is shut down.  A safer variant of this function is
     /// [`receive`](Self::receive) and
     /// [`receive_timeout`](Self::receive_timeout).
-    pub async fn receive_block<M: Message>(&mut self) -> Result<Cancel<'_, M>> {
+    pub async fn receive_block<M: Message>(&mut self) -> Result<Routed<M>> {
         let (msg, data, addr) = self.next_from_mailbox().await?;
-        Ok(Cancel::new(msg, data, addr, self))
+        Ok(Routed::new(msg, addr, data))
     }
 
     /// Block the current worker to wait for a typed message
@@ -93,7 +93,7 @@ impl Context {
     ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
-    pub async fn receive<M: Message>(&mut self) -> Result<Cancel<'_, M>> {
+    pub async fn receive<M: Message>(&mut self) -> Result<Routed<M>> {
         self.receive_timeout(DEFAULT_TIMEOUT).await
     }
 
@@ -103,20 +103,17 @@ impl Context {
     pub async fn receive_duration_timeout<M: Message>(
         &mut self,
         timeout_duration: Duration,
-    ) -> Result<Cancel<'_, M>> {
+    ) -> Result<Routed<M>> {
         let (msg, data, addr) = timeout(timeout_duration, async { self.next_from_mailbox().await })
             .await
             .map_err(|e| NodeError::Data.with_elapsed(e))??;
-        Ok(Cancel::new(msg, data, addr, self))
+        Ok(Routed::new(msg, addr, data))
     }
 
     /// Wait to receive a message up to a specified timeout
     ///
     /// See [`receive`](Self::receive) for more details.
-    pub async fn receive_timeout<M: Message>(
-        &mut self,
-        timeout_secs: u64,
-    ) -> Result<Cancel<'_, M>> {
+    pub async fn receive_timeout<M: Message>(&mut self, timeout_secs: u64) -> Result<Routed<M>> {
         self.receive_duration_timeout(Duration::from_secs(timeout_secs))
             .await
     }
@@ -129,7 +126,7 @@ impl Context {
     ///
     /// Internally this function uses [`receive`](Self::receive), so
     /// is subject to the same timeout.
-    pub async fn receive_match<M, F>(&mut self, check: F) -> Result<Cancel<'_, M>>
+    pub async fn receive_match<M, F>(&mut self, check: F) -> Result<Routed<M>>
     where
         M: Message,
         F: Fn(&M) -> bool,
@@ -149,6 +146,6 @@ impl Context {
         .await
         .map_err(|e| NodeError::Data.with_elapsed(e))??;
 
-        Ok(Cancel::new(m, data, addr, self))
+        Ok(Routed::new(m, addr, data))
     }
 }

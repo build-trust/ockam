@@ -30,7 +30,7 @@ async fn check_message_flow(ctx: &Context, route: Route, should_pass: bool) -> R
     ctx.send(route![route, address], msg.clone()).await?;
 
     if should_pass {
-        let msg_received = receiving_ctx.receive::<String>().await?.take().body();
+        let msg_received = receiving_ctx.receive::<String>().await?.body();
         assert_eq!(msg_received, msg);
     } else {
         let res = receiving_ctx.receive_timeout::<String>(1).await;
@@ -73,7 +73,7 @@ async fn check_message_flow_with_ctx(
     .await?;
 
     if should_pass {
-        let msg_received = receiving_ctx.receive::<String>().await?.take().body();
+        let msg_received = receiving_ctx.receive::<String>().await?.body();
         assert_eq!(msg_received, msg);
     } else {
         let res = receiving_ctx.receive_timeout::<String>(1).await;

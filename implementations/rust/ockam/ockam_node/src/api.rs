@@ -124,7 +124,7 @@ where
     );
     let mut child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
     child_ctx.send(route, buf).await?;
-    let resp = child_ctx.receive::<Vec<u8>>().await?.take();
+    let resp = child_ctx.receive::<Vec<u8>>().await?;
     let local_info = resp.local_message().local_info().to_vec();
     let body = resp.body();
 

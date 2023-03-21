@@ -47,7 +47,7 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
                         .send(route!["child2"], "Hello".to_string())
                         .await?;
 
-                    let m = child_ctx2.receive::<String>().await?.take().body();
+                    let m = child_ctx2.receive::<String>().await?.body();
 
                     assert_eq!(m, "Hello");
                     Result::<()>::Ok(())
@@ -298,7 +298,7 @@ impl Processor for MessagingProcessor {
     }
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
-        let msg = ctx.receive::<String>().await.unwrap().take();
+        let msg = ctx.receive::<String>().await.unwrap();
         let route = msg.return_route();
         let body = msg.body();
 

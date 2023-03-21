@@ -44,7 +44,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let msg = child_ctx.receive::<String>().await?.take();
+    let msg = child_ctx.receive::<String>().await?;
 
     let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
     assert_eq!(local_info.their_identity_id(), alice.identifier());
@@ -56,7 +56,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
         .send(return_route, "Hello, Alice!".to_string())
         .await?;
 
-    let msg = child_ctx.receive::<String>().await?.take();
+    let msg = child_ctx.receive::<String>().await?;
 
     let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
     assert_eq!(local_info.their_identity_id(), bob.identifier());
@@ -104,7 +104,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     )
     .await?;
 
-    let msg = bob_ctx.receive::<String>().await?.take();
+    let msg = bob_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
 
     assert_eq!("Hello, Alice!", msg.body());
@@ -152,7 +152,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     )
     .await?;
 
-    let msg = bob_ctx.receive::<String>().await?.take();
+    let msg = bob_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
 
     assert_eq!("Hello, Alice!", msg.body());
@@ -260,17 +260,14 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
             "Hello, Bob!".to_string(),
         )
         .await?;
-    let msg = child_ctx.receive::<String>().await?.take();
+    let msg = child_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.body());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
         .await?;
-    assert_eq!(
-        "Hello, Alice!",
-        child_ctx.receive::<String>().await?.take().body()
-    );
+    assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
 
     ctx.stop().await
 }
@@ -326,17 +323,14 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
             "Hello, Bob!".to_string(),
         )
         .await?;
-    let msg = child_ctx.receive::<String>().await?.take();
+    let msg = child_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.body());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
         .await?;
-    assert_eq!(
-        "Hello, Alice!",
-        child_ctx.receive::<String>().await?.take().body()
-    );
+    assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
 
     ctx.stop().await
 }
@@ -381,17 +375,14 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
             "Hello, Bob!".to_string(),
         )
         .await?;
-    let msg = child_ctx.receive::<String>().await?.take();
+    let msg = child_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.body());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
         .await?;
-    assert_eq!(
-        "Hello, Alice!",
-        child_ctx.receive::<String>().await?.take().body()
-    );
+    assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
 
     ctx.stop().await
 }
