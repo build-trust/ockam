@@ -88,7 +88,7 @@ defmodule Ockam.Identity.SecureChannel.Data do
 
     case ServiceMessage.decode_strict(payload) do
       {:ok, %ServiceMessage{command: :disconnect}} ->
-        Logger.info("Secure channel disconnected")
+        Logger.debug("Secure channel disconnected")
         ## TODO: should we use reason other than normal here?
         Ockam.Node.stop(Map.fetch!(state, :encryption_channel))
         {:stop, :normal, state}

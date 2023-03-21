@@ -9,10 +9,17 @@ defmodule Ockam.Services.Echo do
   require Logger
 
   @impl true
+  def setup(options, state) do
+    log_level = Keyword.get(options, :log_level, :info)
+    {:ok, Map.put(state, :log_level, log_level)}
+  end
+
+  @impl true
   def handle_message(message, state) do
     reply = Message.reply(message, state.address, Message.payload(message))
 
-    Logger.info("\nECHO\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
+    log_level = Map.get(state, :log_level, :info)
+    Logger.log(log_level, "\nECHO\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
     Router.route(reply)
 
     {:ok, state}
