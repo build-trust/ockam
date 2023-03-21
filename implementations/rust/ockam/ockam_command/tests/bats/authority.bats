@@ -21,6 +21,8 @@ teardown() {
   run "$OCKAM" identity create m1
   run "$OCKAM" identity create m2
   run "$OCKAM" identity create m3
+
+  unset OCKAM_LOG
   enroller_identifier=$($OCKAM identity show enroller)
   authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
   m1_identifier=$($OCKAM identity show m1)
@@ -41,6 +43,12 @@ teardown() {
   run "$OCKAM" project authenticate --project-path "$OCKAM_HOME/project.json" --identity m1
   assert_success
   assert_output --partial "sample_val"
+
+  echo "{\"$m1_identifier\": {\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\": {\"project_id\": \"1\", \"ockam-role\": \"enroller\"}}" > "$OCKAM_HOME/trusted-anchors.json"
+  # Restart the authority node with a trusted identities file and check that m1 can still authenticate
+  run "$OCKAM" node delete authority
+  run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:4200 --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
+  assert_success
 
   run "$OCKAM" project enroll --identity enroller --project-path "$OCKAM_HOME/project.json" --member $m2_identifier --attribute sample_attr=m2_member
   assert_success
