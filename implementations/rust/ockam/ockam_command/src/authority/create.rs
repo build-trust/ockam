@@ -48,11 +48,11 @@ pub struct CreateCommand {
     tcp_listener_address: String,
 
     /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage.
-    /// Format: [{"identifier": "identifier1", "attributes": {"attribute1": "value1", "attribute2": "value12"}}, ...]
-    #[arg(group = "trusted", long, value_name = "JSON_ARRAY", value_parser=parse_trusted_identities)]
+    /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
+    #[arg(group = "trusted", long, value_name = "JSON_OBJECT", value_parser=parse_trusted_identities)]
     trusted_identities: Option<TrustedIdentities>,
 
-    /// Path of a file containing trusted identities and their attributes encoded as JSON.
+    /// Path of a file containing trusted identities and their attributes encoded as a JSON object.
     /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
     #[arg(group = "trusted", long, value_name = "PATH")]
     reload_from_trusted_identities_file: Option<PathBuf>,
@@ -286,7 +286,7 @@ mod tests {
         )
         .unwrap();
 
-        let trusted = format!("[{{\"identifier\":\"{identity1}\", \"attributes\": {{\"name\" : \"value\", \"project_id\" : \"1\"}}}}, {{\"identifier\":\"{identity2}\", \"attributes\": {{\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}]");
+        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"project_id\": \"1\"}}, \"{identity2}\": {{\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
 
         let attributes1 = HashMap::from([
@@ -301,14 +301,21 @@ mod tests {
             TrustedIdentity::new(&identity1, &attributes1),
             TrustedIdentity::new(&identity2, &attributes2),
         ];
-        assert_eq!(actual.0, expected);
+        assert_eq!(actual.trusted_identities(), expected);
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
-struct TrustedIdentities(Vec<TrustedIdentity>);
+struct TrustedIdentities(HashMap<IdentityIdentifier, HashMap<String, String>>);
 
 impl TrustedIdentities {
+    pub fn trusted_identities(&self) -> Vec<TrustedIdentity> {
+        self.0
+            .iter()
+            .map(|(k, v)| TrustedIdentity::new(k, v))
+            .collect()
+    }
+
     /// Return a map from IdentityIdentifier to AttributesEntry and:
     ///   - add the project identifier as an attribute
     ///   - use the authority identifier an the attributes issuer
@@ -317,10 +324,10 @@ impl TrustedIdentities {
         project_identifier: String,
         authority_identifier: &IdentityIdentifier,
     ) -> HashMap<IdentityIdentifier, AttributesEntry> {
-        HashMap::from_iter(self.0.iter().map(|trusted| {
+        HashMap::from_iter(self.trusted_identities().iter().map(|t| {
             (
-                trusted.identifier(),
-                trusted.attributes_entry(project_identifier.clone(), authority_identifier),
+                t.identifier(),
+                t.attributes_entry(project_identifier.clone(), authority_identifier),
             )
         }))
     }
