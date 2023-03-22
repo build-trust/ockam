@@ -4,8 +4,7 @@ use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 
 use ockam::abac::AbacAccessControl;
-use ockam::access_control::AllowAll;
-use ockam::remote::RemoteForwarder;
+use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport};
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
 use ockam_api::{create_tcp_session, DefaultAddress};
@@ -140,7 +139,13 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .await?;
 
     // finally create a forwarder using the secure channel to the project
-    let forwarder = RemoteForwarder::create_static(&ctx, secure_channel_address, "control_plane1", AllowAll).await?;
+    let forwarder = RemoteForwarder::create_static(
+        &ctx,
+        secure_channel_address,
+        "control_plane1",
+        RemoteForwarderTrustOptions::new(),
+    )
+    .await?;
     println!("forwarder is {forwarder:?}");
 
     // 6. create a secure channel listener which will allow the edge node to
