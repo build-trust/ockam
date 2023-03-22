@@ -423,7 +423,7 @@ where
     Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
-    let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
+    let (mut ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor.execute(async move {
         let child_ctx = ctx
             .new_detached(
@@ -433,7 +433,13 @@ where
             )
             .await
             .expect("Embedded node child ctx can't be created");
-        f(child_ctx, a).await
+        let result = f(child_ctx, a).await;
+        if result.is_err() {
+            ctx.stop().await?;
+            result
+        } else {
+            result
+        }
     })?
 }
 
@@ -752,5 +758,32 @@ mod tests {
 
         ctx.stop().await?;
         Ok(())
+    }
+
+    #[test]
+    fn test_execute_error() {
+        let result = embedded_node_that_is_not_stopped(function_returning_an_error, 1);
+        assert!(result.is_err());
+
+        async fn function_returning_an_error(_ctx: Context, _parameter: u8) -> crate::Result<()> {
+            Err(crate::Error::new(exitcode::CONFIG, anyhow!("boom")))
+        }
+    }
+
+    #[test]
+    fn test_execute_error_() {
+        let result = embedded_node_that_is_not_stopped(
+            function_returning_an_error_and_stopping_the_context,
+            1,
+        );
+        assert!(result.is_err());
+
+        async fn function_returning_an_error_and_stopping_the_context(
+            mut ctx: Context,
+            _parameter: u8,
+        ) -> crate::Result<()> {
+            ctx.stop().await?;
+            Err(crate::Error::new(exitcode::CONFIG, anyhow!("boom")))
+        }
     }
 }
