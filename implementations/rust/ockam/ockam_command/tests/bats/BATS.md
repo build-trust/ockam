@@ -5,16 +5,21 @@
 - https://github.com/ztombol/bats-assert
 
 MacOS:
-  brew tap kaos/shell
-  brew install bats-assert
+
+```bash
+brew tap kaos/shell
+brew install bats-assert
+```
 
 Linux:
-  npm install -g bats bats-support bats-assert
+```bash
+npm install -g bats bats-support bats-assert
+```
 
-#### Bats tests can also be run by our Builder Docker image
+### Bats tests can also be run using our Builder Docker image
 
 docker run --rm -it -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ghcr.io/build-trust/ockam-builder:latest bash
-bats implementations/rust/ockam/ockam_command/tests/commands.bats
+bats implementations/rust/ockam/ockam_command/tests/bats
 
 ## How to run the unit tests
 
