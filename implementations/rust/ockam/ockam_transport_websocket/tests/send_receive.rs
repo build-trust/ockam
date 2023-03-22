@@ -19,7 +19,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
             .map(char::from)
             .collect();
         let r = route![(WS, listener_address.to_string()), "echoer"];
-        let reply = ctx.send_and_receive::<_, _, String>(r, msg.clone()).await?;
+        let reply = ctx.send_and_receive::<String>(r, msg.clone()).await?;
 
         assert_eq!(reply, msg, "Should receive the same message");
     };

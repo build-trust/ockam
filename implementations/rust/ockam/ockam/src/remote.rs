@@ -386,7 +386,7 @@ mod test {
         let remote_info = RemoteForwarder::create(ctx, node_in_hub.clone(), AllowAll).await?;
 
         let resp = ctx
-            .send_and_receive::<_, _, String>(
+            .send_and_receive::<String>(
                 route![node_in_hub, remote_info.remote_address(), "echoer"],
                 "Hello".to_string(),
             )
@@ -418,7 +418,7 @@ mod test {
         let _ = RemoteForwarder::create_static(ctx, node_in_hub.clone(), "alias", AllowAll).await?;
 
         let resp = ctx
-            .send_and_receive::<_, _, String>(
+            .send_and_receive::<String>(
                 route![node_in_hub, "forward_to_alias", "echoer"],
                 "Hello".to_string(),
             )

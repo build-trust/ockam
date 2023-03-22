@@ -1,5 +1,8 @@
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
+use ockam::{
+    route, stream::Stream, vault::Vault, Context, MessageReceiveOptions, Result, TcpConnectionTrustOptions,
+    TcpTransport,
+};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -52,7 +55,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     .await?;
 
     // Receive a message from the "sc-responder-to-initiator" stream
-    let reply = ctx.receive_block::<String>().await?;
+    let reply = ctx
+        .receive_extended::<String>(MessageReceiveOptions::new().without_timeout())
+        .await?;
     println!("Reply through secure channel via stream: {}", reply);
 
     ctx.stop().await

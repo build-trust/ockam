@@ -25,7 +25,7 @@ use ockam_core::{
 };
 use ockam_core::{NewKeyExchanger, OutgoingAccessControl};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use tracing::{debug, info, warn};
 
 pub(crate) struct DecryptorWorker {
@@ -95,7 +95,9 @@ impl DecryptorWorker {
         );
 
         completion_callback_ctx
-            .receive_timeout::<AuthenticationConfirmation>(timeout.as_secs())
+            .receive_extended::<AuthenticationConfirmation>(
+                MessageReceiveOptions::new().with_timeout(timeout),
+            )
             .await?;
 
         Ok(addresses.encryptor)

@@ -2,7 +2,7 @@ use ockam::errcode::Origin;
 use ockam::{Address, Error};
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::{route, AllowAll, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_node::{Context, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_transport_udp::{UdpTransport, UDP};
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -39,7 +39,7 @@ async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
 
         child_ctx.send(route, String::from("Hola")).await?;
         let res = child_ctx
-            .receive_duration_timeout::<String>(TIMEOUT)
+            .receive_extended::<String>(MessageReceiveOptions::new().with_timeout(TIMEOUT))
             .await?;
 
         trace!(return_route = %res.return_route());
@@ -85,14 +85,22 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
     // Send message to try and cause a socket send error
     let r = route![(UDP, addr_nok), "echoer"];
     let res: Result<String> = ctx
-        .send_and_receive_with_timeout(r, String::from("Hola"), TIMEOUT)
+        .send_and_receive_extended(
+            r,
+            String::from("Hola"),
+            MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+        )
         .await;
     assert!(res.is_err(), "Expected an error sending");
 
     // Send message to working peer
     let r = route![(UDP, addr_ok), "echoer"];
     let res: Result<String> = ctx
-        .send_and_receive_with_timeout(r, String::from("Hola"), TIMEOUT)
+        .send_and_receive_extended(
+            r,
+            String::from("Hola"),
+            MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+        )
         .await;
     assert!(res.is_ok(), "Should have been able to send message");
 
@@ -126,7 +134,11 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
         let msg = String::from("Ockam. Testing. 1, 2, 3...");
         let r = route![(UDP, addr.to_string()), "echoer"];
         let reply: String = ctx
-            .send_and_receive_with_timeout(r, msg.clone(), TIMEOUT)
+            .send_and_receive_extended(
+                r,
+                msg.clone(),
+                MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+            )
             .await?;
         assert_eq!(reply, msg, "Should receive the same message");
     }
@@ -161,7 +173,11 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
                 .collect();
             let r = route![(UDP, bind_addr.clone()), "echoer"];
             let reply: String = ctx
-                .send_and_receive_with_timeout(r, msg.clone(), TIMEOUT)
+                .send_and_receive_extended(
+                    r,
+                    msg.clone(),
+                    MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+                )
                 .await?;
 
             assert_eq!(reply, msg, "Should receive the same message");

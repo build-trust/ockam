@@ -26,7 +26,10 @@ pub use ockam_macros::{node, test};
 // ---
 
 // Export node implementation
-pub use ockam_node::{debugger, Context, DelayedEvent, Executor, NodeBuilder, WorkerBuilder};
+pub use ockam_node::{
+    debugger, Context, DelayedEvent, Executor, MessageReceiveOptions, MessageSendReceiveOptions,
+    NodeBuilder, WorkerBuilder,
+};
 // ---
 
 mod delay;
