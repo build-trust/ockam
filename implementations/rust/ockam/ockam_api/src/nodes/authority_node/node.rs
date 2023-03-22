@@ -22,9 +22,11 @@ pub async fn start_node(ctx: &Context, configuration: &Configuration) -> Result<
     authority
         .start_direct_authenticator(ctx, &sessions, &secure_channel_session_id, configuration)
         .await?;
+
     authority
         .start_enrollment_services(ctx, &sessions, &secure_channel_session_id, configuration)
         .await?;
+
     authority
         .start_credential_issuer(ctx, &sessions, &secure_channel_session_id, configuration)
         .await?;

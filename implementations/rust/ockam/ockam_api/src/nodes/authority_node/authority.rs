@@ -131,6 +131,10 @@ impl Authority {
         secure_channel_session_id: &SessionId,
         configuration: &Configuration,
     ) -> Result<()> {
+        if !configuration.direct_authentication {
+            return Ok(());
+        }
+
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             configuration.clone().project_identifier(),
             self.attributes_storage().clone(),
@@ -159,6 +163,10 @@ impl Authority {
         secure_channel_session_id: &SessionId,
         configuration: &Configuration,
     ) -> Result<()> {
+        if !configuration.token_enrollment {
+            return Ok(());
+        }
+
         let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
             configuration.project_identifier(),
             self.attributes_storage(),

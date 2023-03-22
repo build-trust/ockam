@@ -39,6 +39,12 @@ pub struct Configuration {
     /// list of trusted identities (identities with the ockam-role: enroller)
     pub trusted_identities: PreTrustedIdentities,
 
+    /// If true start the direct authenticator service
+    pub direct_authentication: bool,
+
+    /// If true start the token enroller service
+    pub token_enrollment: bool,
+
     /// optional configuration for the okta service
     pub okta: Option<OktaConfiguration>,
 }
