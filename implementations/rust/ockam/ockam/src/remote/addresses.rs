@@ -1,20 +1,20 @@
-use crate::remote::Ftype;
+use crate::remote::lifecycle::Ftype;
 use ockam_core::Address;
 
 #[derive(Clone, Debug)]
-pub(crate) struct Addresses {
+pub(super) struct Addresses {
     // Used to talk to the service
-    pub(crate) main_remote: Address,
+    pub(super) main_remote: Address,
     // Used to forward messages inside the node
-    pub(crate) main_internal: Address,
+    pub(super) main_internal: Address,
     // Used to receive heartbeats
-    pub(crate) heartbeat: Address,
+    pub(super) heartbeat: Address,
     // Used to receive completion callback
-    pub(crate) completion_callback: Address,
+    pub(super) completion_callback: Address,
 }
 
 impl Addresses {
-    pub(crate) fn generate(ftype: Ftype) -> Self {
+    pub(super) fn generate(ftype: Ftype) -> Self {
         let type_str = ftype.str();
         let main_remote =
             Address::random_tagged(&format!("RemoteForwarder.{}.main_remote", type_str));

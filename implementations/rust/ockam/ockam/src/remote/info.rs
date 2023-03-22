@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 /// Information about a remotely forwarded worker.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Message)]
 pub struct RemoteForwarderInfo {
-    pub(crate) forwarding_route: Route,
-    pub(crate) remote_address: String,
-    pub(crate) worker_address: Address,
+    pub(super) forwarding_route: Route,
+    pub(super) remote_address: String,
+    pub(super) worker_address: Address,
 }
 
 impl RemoteForwarderInfo {
