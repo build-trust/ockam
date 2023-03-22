@@ -6,7 +6,7 @@ use ockam_core::{AllowAll, OutgoingAccessControl};
 /// Trust options for [`RemoteForwarder`]
 #[derive(Default)]
 pub struct RemoteForwarderTrustOptions {
-    pub(crate) session: Option<(Sessions, SessionId)>,
+    pub(super) session: Option<(Sessions, SessionId)>,
 }
 
 impl RemoteForwarderTrustOptions {
@@ -26,7 +26,7 @@ impl RemoteForwarderTrustOptions {
         self
     }
 
-    pub(crate) fn setup_session(&self, addresses: &Addresses) {
+    pub(super) fn setup_session(&self, addresses: &Addresses) {
         if let Some((sessions, session_id)) = &self.session {
             // Allow a sender with corresponding session_id send messages to this address
             sessions.add_consumer(
@@ -39,7 +39,7 @@ impl RemoteForwarderTrustOptions {
         }
     }
 
-    pub(crate) fn create_access_control(&self) -> Arc<dyn OutgoingAccessControl> {
+    pub(super) fn create_access_control(&self) -> Arc<dyn OutgoingAccessControl> {
         match &self.session {
             Some((sessions, session_id)) => {
                 let ac =

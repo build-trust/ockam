@@ -2,13 +2,28 @@
 //! which allows other nodes forward messages to local workers on this node using that alias.
 
 mod addresses;
-mod forwarder;
-mod forwarder_worker;
 mod info;
+mod lifecycle;
 mod trust_options;
+mod worker;
 
-pub(crate) use addresses::*;
-pub use forwarder::*;
-pub use forwarder_worker::*;
 pub use info::*;
 pub use trust_options::*;
+
+use crate::remote::addresses::Addresses;
+use core::time::Duration;
+use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::Route;
+use ockam_node::DelayedEvent;
+
+/// This Worker is responsible for registering on Ockam Hub and forwarding messages to local Worker
+pub struct RemoteForwarder {
+    /// Address used from other node
+    addresses: Addresses,
+    completion_msg_sent: bool,
+    registration_route: Route,
+    registration_payload: String,
+    // We only use Heartbeat for static RemoteForwarder
+    heartbeat: Option<DelayedEvent<Vec<u8>>>,
+    heartbeat_interval: Duration,
+}

@@ -1,4 +1,4 @@
-use crate::remote::{Addresses, RemoteForwarderInfo, RemoteForwarderTrustOptions};
+use crate::remote::{Addresses, RemoteForwarder, RemoteForwarderInfo, RemoteForwarderTrustOptions};
 use crate::Context;
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
@@ -14,7 +14,7 @@ use ockam_node::{DelayedEvent, WorkerBuilder};
 use tracing::debug;
 
 #[derive(Clone, Copy)]
-pub(crate) enum Ftype {
+pub(super) enum Ftype {
     Static,
     Ephemeral,
     StaticWithoutHeartbeats,
@@ -28,18 +28,6 @@ impl Ftype {
             Ftype::StaticWithoutHeartbeats => "static_w/o_heartbeats",
         }
     }
-}
-
-/// This Worker is responsible for registering on Ockam Hub and forwarding messages to local Worker
-pub struct RemoteForwarder {
-    /// Address used from other node
-    pub(super) addresses: Addresses,
-    pub(super) completion_msg_sent: bool,
-    pub(super) registration_route: Route,
-    pub(super) registration_payload: String,
-    // We only use Heartbeat for static RemoteForwarder
-    pub(super) heartbeat: Option<DelayedEvent<Vec<u8>>>,
-    pub(super) heartbeat_interval: Duration,
 }
 
 impl RemoteForwarder {
