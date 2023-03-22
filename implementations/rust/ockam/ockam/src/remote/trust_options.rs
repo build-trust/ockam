@@ -15,12 +15,12 @@ impl RemoteForwarderTrustOptions {
         Self { session: None }
     }
 
-    /// Mark this Secure Channel Decryptor as a Producer and Producer for a given [`SessionId`]
+    /// Mark this [`RemoteForwarder`] as a Producer and Consumer for a given [`SessionId`]
     /// Usually [`SessionId`] should be shared with the Producer that was used to create this
-    /// forwarder (probably Secure Channel), since RemoteForwarder doesn't imply a new "trust"
-    /// Context, it's just a Message Routing helper. Therefore, workers that are allowed to receive
+    /// forwarder (probably Secure Channel), since [`RemoteForwarder`] doesn't imply any new "trust"
+    /// context, it's just a Message Routing helper. Therefore, workers that are allowed to receive
     /// messages from the corresponding Secure Channel should as well be allowed to receive messages
-    /// through the RemoteForwarder through the same Secure Channel.
+    /// through the [`RemoteForwarder`] through the same Secure Channel.
     pub fn as_consumer_and_producer(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
         self.session = Some((sessions.clone(), session_id.clone()));
         self

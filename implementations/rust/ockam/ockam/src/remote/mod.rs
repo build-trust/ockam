@@ -16,7 +16,7 @@ use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::Route;
 use ockam_node::DelayedEvent;
 
-/// This Worker is responsible for registering on Ockam Hub and forwarding messages to local Worker
+/// This Worker is responsible for registering on Ockam Orchestrator and forwarding messages to local Worker
 pub struct RemoteForwarder {
     /// Address used from other node
     addresses: Addresses,
