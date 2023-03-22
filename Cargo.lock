@@ -3222,6 +3222,7 @@ dependencies = [
  "thiserror",
  "time",
  "tinyvec",
+ "tokio-retry",
  "tracing",
  "uuid",
 ]
