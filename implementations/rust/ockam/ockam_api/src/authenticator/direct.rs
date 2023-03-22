@@ -12,7 +12,7 @@ use ockam_core::api::{self, Error, Method, Request, RequestBuilder, Response, St
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, CowStr, DenyAll, Result, Route, Routed, Worker};
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
@@ -608,7 +608,11 @@ impl RpcClient {
         req.encode(&mut buf)?;
         let vec: Vec<u8> = self
             .ctx
-            .send_and_receive_with_timeout(self.route.clone(), buf, self.timeout)
+            .send_and_receive_extended(
+                self.route.clone(),
+                buf,
+                MessageSendReceiveOptions::new().with_timeout(self.timeout),
+            )
             .await?;
         let mut d = Decoder::new(&vec);
         let resp: Response = d.decode()?;

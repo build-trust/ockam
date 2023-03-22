@@ -8,7 +8,7 @@ use ockam_core::compat::{
 use ockam_core::{async_trait, Address, AllowAll, Any, Decodable, DenyAll, Message, LOCAL};
 use ockam_core::{route, Processor, Result, Routed, Worker};
 use ockam_node::compat::futures::FutureExt;
-use ockam_node::{Context, NodeBuilder};
+use ockam_node::{Context, MessageReceiveOptions, NodeBuilder};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicI8, AtomicU32};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -22,7 +22,9 @@ async fn receive_timeout__1_sec__should_return_from_call(ctx: &mut Context) -> R
 
     let time = SystemTime::now();
     let start = time.duration_since(UNIX_EPOCH).unwrap();
-    let res = child_ctx.receive_timeout::<String>(1).await;
+    let res = child_ctx
+        .receive_extended::<String>(MessageReceiveOptions::new().with_timeout_secs(1))
+        .await;
     let end = time.duration_since(UNIX_EPOCH).unwrap();
     assert!(res.is_err(), "Should not receive the message");
     let diff = end - start;

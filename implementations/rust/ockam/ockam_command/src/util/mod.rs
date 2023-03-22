@@ -13,7 +13,10 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub use config::*;
-use ockam::{Address, Context, NodeBuilder, Route, TcpConnectionTrustOptions, TcpTransport};
+use ockam::{
+    Address, Context, MessageSendReceiveOptions, NodeBuilder, Route, TcpConnectionTrustOptions,
+    TcpTransport,
+};
 use ockam_api::cli_state::{CliState, NodeState};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
@@ -172,7 +175,7 @@ impl<'a> Rpc<'a> {
         let route = self.route_impl(self.ctx).await?;
         self.buf = self
             .ctx
-            .send_and_receive_with_timeout(route.clone(), req.to_vec()?, timeout)
+            .send_and_receive_extended(route.clone(), req.to_vec()?, MessageSendReceiveOptions::new().with_timeout(timeout))
             .await
             .map_err(|_err| {
                 // Overwrite error to swallow inner cause and hide it from end-user

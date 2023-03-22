@@ -16,6 +16,7 @@ use core::{ops::Deref, time::Duration};
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::compat::string::String;
 use ockam_core::{AllowAll, Decodable, DenyAll, RouteBuilder, TransportType};
+use ockam_node::MessageReceiveOptions;
 
 /// Stream controller transport type.
 pub const STREAM: TransportType = TransportType::new(16);
@@ -71,7 +72,10 @@ pub struct ReceiverAddress {
 impl ReceiverAddress {
     /// Wait for the next message received by the stream consumer
     pub async fn next<T: Message>(&mut self) -> Result<Routed<T>> {
-        let routed = self.ctx.receive_block::<StreamMessage>().await?;
+        let routed = self
+            .ctx
+            .receive_extended::<StreamMessage>(MessageReceiveOptions::new().without_timeout())
+            .await?;
         let src_addr = routed.src_addr();
         let stream_msg = routed.as_body();
         let (addr, local_msg) = routed.dissolve();

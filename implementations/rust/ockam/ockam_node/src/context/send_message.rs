@@ -1,8 +1,10 @@
 use crate::channel_types::small_channel;
-use crate::{debugger, Context, DEFAULT_TIMEOUT};
+use crate::context::MessageWait;
+use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
 use crate::{error::*, NodeMessage};
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
+use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
@@ -10,7 +12,74 @@ use ockam_core::{
 };
 use ockam_core::{LocalInfo, Mailbox};
 
+/// Full set of options to `send_and_receive_extended` function
+pub struct MessageSendReceiveOptions {
+    session: Option<(Sessions, SessionId, SessionPolicy)>,
+    message_wait: MessageWait,
+}
+
+impl Default for MessageSendReceiveOptions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MessageSendReceiveOptions {
+    /// Default options with [`DEFAULT_TIMEOUT`] and no session
+    pub fn new() -> Self {
+        Self {
+            session: None,
+            message_wait: MessageWait::Timeout(Duration::from_secs(DEFAULT_TIMEOUT)),
+        }
+    }
+
+    /// Set custom timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.message_wait = MessageWait::Timeout(timeout);
+        self
+    }
+
+    /// Wait for the message forever
+    pub fn without_timeout(mut self) -> Self {
+        self.message_wait = MessageWait::Blocking;
+        self
+    }
+
+    /// Set session to be able to receive a resposne
+    pub fn with_session(
+        mut self,
+        sessions: &Sessions,
+        session_id: &SessionId,
+        policy: SessionPolicy,
+    ) -> Self {
+        self.session = Some((sessions.clone(), session_id.clone(), policy));
+        self
+    }
+}
+
 impl Context {
+    /// Using a temporary new context, send a message and then receive a message
+    /// with default timeout and no session
+    ///
+    /// This helper function uses [`new_detached`], [`send`], and
+    /// [`receive`] internally. See their documentation for more
+    /// details.
+    ///
+    /// [`new_detached`]: Self::new_detached
+    /// [`send`]: Self::send
+    /// [`receive`]: Self::receive
+    pub async fn send_and_receive<M>(
+        &self,
+        route: impl Into<Route>,
+        msg: impl Message + Send + 'static,
+    ) -> Result<M>
+    where
+        M: Message,
+    {
+        self.send_and_receive_extended(route, msg, MessageSendReceiveOptions::new())
+            .await
+    }
+
     /// Using a temporary new context, send a message and then receive a message
     ///
     /// This helper function uses [`new_detached`], [`send`], and
@@ -20,52 +89,40 @@ impl Context {
     /// [`new_detached`]: Self::new_detached
     /// [`send`]: Self::send
     /// [`receive`]: Self::receive
-    pub async fn send_and_receive<R, M, N>(&self, route: R, msg: M) -> Result<N>
-    where
-        R: Into<Route>,
-        M: Message + Send + 'static,
-        N: Message,
-    {
-        self.send_and_receive_with_timeout(route, msg, Duration::from_secs(DEFAULT_TIMEOUT))
-            .await
-    }
-
-    /// Using a temporary new context, send a message and then receive a message with custom timeout
-    ///
-    /// This helper function uses [`new_detached`], [`send`], and
-    /// [`receive`] internally. See their documentation for more
-    /// details.
-    ///
-    /// [`new_detached`]: Self::new_detached
-    /// [`send`]: Self::send
-    /// [`receive`]: Self::receive
-    pub async fn send_and_receive_with_timeout<R, M, N>(
+    pub async fn send_and_receive_extended<M>(
         &self,
-        route: R,
-        msg: M,
-        timeout: Duration,
-    ) -> Result<N>
+        route: impl Into<Route>,
+        msg: impl Message,
+        options: MessageSendReceiveOptions,
+    ) -> Result<M>
     where
-        R: Into<Route>,
-        M: Message + Send + 'static,
-        N: Message,
+        M: Message,
     {
         let route: Route = route.into();
 
         let next = route.next()?.clone();
+        let address = Address::random_tagged("Context.send_and_receive.detached");
         let mailboxes = Mailboxes::new(
             Mailbox::new(
-                Address::random_tagged("Context.send_and_receive.detached"),
-                Arc::new(AllowAll), // FIXME: @ac there is no way to ensure that we're receiving response from the worker we sent request to
+                address.clone(),
+                Arc::new(AllowAll),
                 Arc::new(AllowOnwardAddress(next)),
             ),
             vec![],
         );
+
+        if let Some((sessions, session_id, policy)) = options.session {
+            // To be able to receive the response
+            sessions.add_consumer(&address, &session_id, policy);
+        }
+
         let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
 
         child_ctx.send(route, msg).await?;
         Ok(child_ctx
-            .receive_duration_timeout::<N>(timeout)
+            .receive_extended::<M>(
+                MessageReceiveOptions::new().with_message_wait(options.message_wait),
+            )
             .await?
             .body())
     }

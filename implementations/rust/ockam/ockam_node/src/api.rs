@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use crate::Context;
+use crate::{Context, MessageSendReceiveOptions};
 use core::fmt::Display;
 use core::time::Duration;
 use minicbor::Encode;
@@ -80,7 +80,11 @@ where
     // TODO: Check IdentityId is the same we sent message to?
     // TODO: Check response id matches request id?
     let vec: Vec<u8> = ctx
-        .send_and_receive_with_timeout(route, buf, timeout)
+        .send_and_receive_extended(
+            route,
+            buf,
+            MessageSendReceiveOptions::new().with_timeout(timeout),
+        )
         .await?;
     Ok(vec)
 }

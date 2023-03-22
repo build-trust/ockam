@@ -4,7 +4,7 @@ use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::{
     Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy,
 };
-use ockam_node::Context;
+use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 use ockam_vault::Vault;
 use rand::random;
@@ -33,7 +33,9 @@ async fn check_message_flow(ctx: &Context, route: Route, should_pass: bool) -> R
         let msg_received = receiving_ctx.receive::<String>().await?.body();
         assert_eq!(msg_received, msg);
     } else {
-        let res = receiving_ctx.receive_timeout::<String>(1).await;
+        let res = receiving_ctx
+            .receive_extended::<String>(MessageReceiveOptions::new().with_timeout_secs(1))
+            .await;
         assert!(res.is_err(), "Messages should not pass for given route");
     }
 
@@ -76,7 +78,9 @@ async fn check_message_flow_with_ctx(
         let msg_received = receiving_ctx.receive::<String>().await?.body();
         assert_eq!(msg_received, msg);
     } else {
-        let res = receiving_ctx.receive_timeout::<String>(1).await;
+        let res = receiving_ctx
+            .receive_extended::<String>(MessageReceiveOptions::new().with_timeout_secs(1))
+            .await;
         assert!(res.is_err(), "Messages should not pass for given route");
     }
 

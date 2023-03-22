@@ -6,6 +6,54 @@ use core::sync::atomic::Ordering;
 use core::time::Duration;
 use ockam_core::{Message, RelayMessage, Result, Routed};
 
+pub(super) enum MessageWait {
+    Timeout(Duration),
+    Blocking,
+}
+
+/// Full set of options to `send_and_receive_extended` function
+pub struct MessageReceiveOptions {
+    message_wait: MessageWait,
+}
+
+impl Default for MessageReceiveOptions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MessageReceiveOptions {
+    /// Default options with [`DEFAULT_TIMEOUT`]
+    pub fn new() -> Self {
+        Self {
+            message_wait: MessageWait::Timeout(Duration::from_secs(DEFAULT_TIMEOUT)),
+        }
+    }
+
+    pub(super) fn with_message_wait(mut self, message_wait: MessageWait) -> Self {
+        self.message_wait = message_wait;
+        self
+    }
+
+    /// Set custom timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.message_wait = MessageWait::Timeout(timeout);
+        self
+    }
+
+    /// Set custom timeout in seconds
+    pub fn with_timeout_secs(mut self, timeout: u64) -> Self {
+        self.message_wait = MessageWait::Timeout(Duration::from_secs(timeout));
+        self
+    }
+
+    /// Wait for the message forever
+    pub fn without_timeout(mut self) -> Self {
+        self.message_wait = MessageWait::Blocking;
+        self
+    }
+}
+
 impl Context {
     /// Wait for the next message from the mailbox
     pub(crate) async fn receiver_next(&mut self) -> Result<Option<RelayMessage>> {
@@ -65,16 +113,6 @@ impl Context {
 
     /// Block the current worker to wait for a typed message
     ///
-    /// **Warning** this function will wait until its running ockam
-    /// node is shut down.  A safer variant of this function is
-    /// [`receive`](Self::receive) and
-    /// [`receive_timeout`](Self::receive_timeout).
-    pub async fn receive_block<M: Message>(&mut self) -> Result<Routed<M>> {
-        self.next_from_mailbox().await
-    }
-
-    /// Block the current worker to wait for a typed message
-    ///
     /// This function may return a `Err(FailedLoadData)` if the
     /// underlying worker was shut down, or `Err(Timeout)` if the call
     /// was waiting for longer than the `default timeout`.  Use
@@ -84,26 +122,21 @@ impl Context {
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
     pub async fn receive<M: Message>(&mut self) -> Result<Routed<M>> {
-        self.receive_timeout(DEFAULT_TIMEOUT).await
+        self.receive_extended(MessageReceiveOptions::new()).await
     }
 
-    /// Wait to receive a message up to a specified timeout
-    ///
-    /// See [`receive`](Self::receive) for more details.
-    pub async fn receive_duration_timeout<M: Message>(
+    /// Wait to receive a typed message
+    pub async fn receive_extended<M: Message>(
         &mut self,
-        timeout_duration: Duration,
+        options: MessageReceiveOptions,
     ) -> Result<Routed<M>> {
-        timeout(timeout_duration, async { self.next_from_mailbox().await })
-            .await
-            .map_err(|e| NodeError::Data.with_elapsed(e))?
-    }
-
-    /// Wait to receive a message up to a specified timeout
-    ///
-    /// See [`receive`](Self::receive) for more details.
-    pub async fn receive_timeout<M: Message>(&mut self, timeout_secs: u64) -> Result<Routed<M>> {
-        self.receive_duration_timeout(Duration::from_secs(timeout_secs))
-            .await
+        match options.message_wait {
+            MessageWait::Timeout(timeout_duration) => {
+                timeout(timeout_duration, async { self.next_from_mailbox().await })
+                    .await
+                    .map_err(|e| NodeError::Data.with_elapsed(e))?
+            }
+            MessageWait::Blocking => self.next_from_mailbox().await,
+        }
     }
 }

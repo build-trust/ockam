@@ -298,7 +298,7 @@ mod test {
     use ockam_core::compat::sync::{Arc, Mutex};
     use ockam_core::{route, Address, AllowAll, Routed, Worker};
     use ockam_identity::Identity;
-    use ockam_node::Context;
+    use ockam_node::{Context, MessageReceiveOptions};
     use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
     use ockam_vault::Vault;
     use std::collections::BTreeMap;
@@ -489,7 +489,9 @@ mod test {
         }
 
         let message = context
-            .receive_duration_timeout::<PortalMessage>(Duration::from_millis(200))
+            .receive_extended::<PortalMessage>(
+                MessageReceiveOptions::new().with_timeout(Duration::from_millis(200)),
+            )
             .await;
 
         assert!(message.is_err(), "expected timeout!");
@@ -662,7 +664,9 @@ mod test {
             )
             .await?;
 
-        let message: Routed<PortalMessage> = context.receive_block::<PortalMessage>().await?;
+        let message: Routed<PortalMessage> = context
+            .receive_extended::<PortalMessage>(MessageReceiveOptions::new().without_timeout())
+            .await?;
 
         if let PortalMessage::Payload(payload) = message.as_body() {
             assert_eq!(&request_buffer.to_vec(), payload);
@@ -723,7 +727,9 @@ mod test {
             )
             .await?;
 
-        let message: Routed<PortalMessage> = context.receive_block::<PortalMessage>().await?;
+        let message: Routed<PortalMessage> = context
+            .receive_extended::<PortalMessage>(MessageReceiveOptions::new().without_timeout())
+            .await?;
 
         if let PortalMessage::Payload(payload) = message.body() {
             assert_ne!(&response_buffer.to_vec(), &payload);
