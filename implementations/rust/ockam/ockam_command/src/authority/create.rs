@@ -47,6 +47,16 @@ pub struct CreateCommand {
     )]
     tcp_listener_address: String,
 
+    /// Set this option to false if the authority node should not support the enrollment
+    /// of new project members
+    #[arg(long, value_name = "BOOL", default_value_t = true)]
+    direct_authentication: bool,
+
+    /// Set this option to false if the authority node should not support
+    /// the issuing of enrollment tokens
+    #[arg(long, value_name = "BOOL", default_value_t = true)]
+    token_enrollment: bool,
+
     /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage.
     /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
     #[arg(group = "trusted", long, value_name = "JSON_OBJECT", value_parser=parse_trusted_identities)]
@@ -72,6 +82,69 @@ pub struct CreateCommand {
     /// Run the node in foreground.
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
     foreground: bool,
+}
+
+/// Start an authority node by calling the `ockam` executable with the current command-line
+/// arguments
+async fn spawn_background_node(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    cmd: &CreateCommand,
+) -> crate::Result<()> {
+    // Create node state, including the vault and identity if they don't exist
+    init_node_state(ctx, opts, &cmd.node_name, None, None).await?;
+
+    // Construct the arguments list and re-execute the ockam
+    // CLI in foreground mode to start the newly created node
+    let mut args = vec![
+        "authority".to_string(),
+        "create".to_string(),
+        "--project-identifier".to_string(),
+        cmd.project_identifier.clone(),
+        "--tcp-listener-address".to_string(),
+        cmd.tcp_listener_address.clone(),
+        "--foreground".to_string(),
+    ];
+
+    if cmd.direct_authentication {
+        args.push("--direct-authentication".to_string());
+    }
+
+    if cmd.token_enrollment {
+        args.push("--token-enrollment".to_string());
+    }
+
+    if let Some(trusted_identities) = &cmd.trusted_identities {
+        args.push("--trusted-identities".to_string());
+        args.push(trusted_identities.to_string());
+    }
+
+    if let Some(reload_from_trusted_identities_file) = &cmd.reload_from_trusted_identities_file {
+        args.push("--reload-from-trusted-identities-file".to_string());
+        args.push(
+            reload_from_trusted_identities_file
+                .to_string_lossy()
+                .to_string(),
+        );
+    }
+
+    if let Some(tenant_base_url) = &cmd.tenant_base_url {
+        args.push("--tenant-base-url".to_string());
+        args.push(tenant_base_url.clone());
+    }
+
+    if let Some(certificate) = &cmd.certificate {
+        args.push("--certificate".to_string());
+        args.push(certificate.clone());
+    }
+
+    if let Some(attributes) = &cmd.attributes {
+        args.push("--attributes".to_string());
+        args.push(attributes.join(","));
+    }
+    args.push(cmd.node_name.to_string());
+
+    run_ockam(opts, &cmd.node_name, args)
 }
 
 impl CreateCommand {
@@ -122,61 +195,6 @@ async fn create_background_node(
 ) -> crate::Result<()> {
     // Spawn node in another, new process
     spawn_background_node(&ctx, &opts, &cmd).await
-}
-
-/// Start an authority node by calling the `ockam` executable with the current command-line
-/// arguments
-async fn spawn_background_node(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    cmd: &CreateCommand,
-) -> crate::Result<()> {
-    // Create node state, including the vault and identity if they don't exist
-    init_node_state(ctx, opts, &cmd.node_name, None, None).await?;
-
-    // Construct the arguments list and re-execute the ockam
-    // CLI in foreground mode to start the newly created node
-    let mut args = vec![
-        "authority".to_string(),
-        "create".to_string(),
-        "--project-identifier".to_string(),
-        cmd.project_identifier.clone(),
-        "--tcp-listener-address".to_string(),
-        cmd.tcp_listener_address.clone(),
-        "--foreground".to_string(),
-    ];
-
-    if let Some(trusted_identities) = &cmd.trusted_identities {
-        args.push("--trusted-identities".to_string());
-        args.push(trusted_identities.to_string());
-    }
-
-    if let Some(reload_from_trusted_identities_file) = &cmd.reload_from_trusted_identities_file {
-        args.push("--reload-from-trusted-identities-file".to_string());
-        args.push(
-            reload_from_trusted_identities_file
-                .to_string_lossy()
-                .to_string(),
-        );
-    }
-
-    if let Some(tenant_base_url) = &cmd.tenant_base_url {
-        args.push("--tenant-base-url".to_string());
-        args.push(tenant_base_url.clone());
-    }
-
-    if let Some(certificate) = &cmd.certificate {
-        args.push("--certificate".to_string());
-        args.push(certificate.clone());
-    }
-
-    if let Some(attributes) = &cmd.attributes {
-        args.push("--attributes".to_string());
-        args.push(attributes.join(","));
-    }
-    args.push(cmd.node_name.to_string());
-
-    run_ockam(opts, &cmd.node_name, args)
 }
 
 /// Start an authority node:
@@ -251,6 +269,8 @@ async fn start_authority_node(
         secure_channel_listener_name: None,
         authenticator_name: None,
         trusted_identities: trusted_identities.clone(),
+        direct_authentication: command.direct_authentication,
+        token_enrollment: command.token_enrollment,
         okta: okta_configuration,
     };
     authority_node::start_node(&ctx, &configuration).await?;
