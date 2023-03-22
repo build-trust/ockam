@@ -199,14 +199,14 @@ teardown() {
   assert_success
   run "$OCKAM" node create green --project "$PROJECT_JSON_PATH" --identity green
   assert_success
-  run "$OCKAM" policy set --at green --resource tcp-inlet --expression '(= subject.app "app1")'
+  run "$OCKAM" policy create --at green --resource tcp-inlet --expression '(= subject.app "app1")'
   assert_success
 
   run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity blue --token $blue_token
   assert_success
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --identity blue
   assert_success
-  run "$OCKAM" policy set --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
+  run "$OCKAM" policy create --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
   assert_success
 
   run "$OCKAM" tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000

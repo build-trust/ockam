@@ -95,7 +95,7 @@ teardown() {
   $OCKAM identity create control_identity
   $OCKAM project authenticate --token "$cp1_token" --project-path "$PROJECT_JSON_PATH" --identity control_identity
   $OCKAM node create control_plane1 --project "$PROJECT_JSON_PATH" --identity control_identity
-  $OCKAM policy set --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
+  $OCKAM policy create --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
   $OCKAM tcp-outlet create --at /node/control_plane1 --from /service/outlet --to 127.0.0.1:5000
   run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/control_plane1
   assert_success
@@ -105,7 +105,7 @@ teardown() {
   $OCKAM identity create edge_identity
   $OCKAM project authenticate --token "$ep1_token" --project-path "$PROJECT_JSON_PATH" --identity edge_identity
   $OCKAM node create edge_plane1 --project "$PROJECT_JSON_PATH" --identity edge_identity
-  $OCKAM policy set --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
+  $OCKAM policy create --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
   run curl --fail --head --max-time 5 "127.0.0.1:$port_1"
   assert_success
@@ -114,7 +114,7 @@ teardown() {
   $OCKAM identity create x_identity
   $OCKAM project authenticate --token "$x_token" --project-path "$PROJECT_JSON_PATH" --identity x_identity
   $OCKAM node create x --project "$PROJECT_JSON_PATH" --identity x_identity
-  $OCKAM policy set --at x --resource tcp-inlet --expression '(= subject.component "control")'
+  $OCKAM policy create --at x --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
   run curl --fail --head --max-time 5 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
