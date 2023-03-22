@@ -37,3 +37,5 @@ pub use trust_options::*;
 
 mod workers;
 pub(crate) use workers::*;
+
+pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
