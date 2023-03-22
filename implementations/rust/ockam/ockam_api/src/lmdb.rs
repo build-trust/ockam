@@ -11,6 +11,8 @@ use std::borrow::Cow;
 use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
+use tokio_retry::strategy::{jitter, FixedInterval};
+use tokio_retry::Retry;
 use tracing as log;
 
 /// Lmdb AuthenticatedStorage implementation
@@ -29,22 +31,32 @@ impl fmt::Debug for LmdbStorage {
 impl LmdbStorage {
     /// Constructor
     pub async fn new<P: AsRef<Path>>(p: P) -> Result<Self> {
-        let p = p.as_ref().to_path_buf();
-        let t = move || {
-            let env = Environment::new()
-                .set_flags(lmdb::EnvironmentFlags::NO_SUB_DIR | lmdb::EnvironmentFlags::NO_TLS)
-                .set_max_dbs(1)
-                .open(p.as_ref())
-                .map_err(map_lmdb_err)?;
-            let map = env
-                .create_db(Some("map"), lmdb::DatabaseFlags::empty())
-                .map_err(map_lmdb_err)?;
-            Ok(LmdbStorage {
-                env: Arc::new(env),
-                map,
-            })
-        };
-        task::spawn_blocking(t).await.map_err(map_join_err)?
+        // creating a new database might be failing a few times
+        // if the files are currently being held by another pod which is shutting down.
+        // In that case we retry a few times, between 1 and 10 seconds.
+        let retry_strategy = FixedInterval::from_millis(1000)
+            .map(jitter) // add jitter to delays
+            .take(10); // limit to 10 retries
+
+        let path: &Path = p.as_ref();
+        Retry::spawn(retry_strategy, || async { Self::make(path).await }).await
+    }
+
+    async fn make(p: &Path) -> Result<Self> {
+        debug!("create the LMDB database");
+        let p = p.to_path_buf();
+        let env = Environment::new()
+            .set_flags(lmdb::EnvironmentFlags::NO_SUB_DIR | lmdb::EnvironmentFlags::NO_TLS)
+            .set_max_dbs(1)
+            .open(p.as_ref())
+            .map_err(map_lmdb_err)?;
+        let map = env
+            .create_db(Some("map"), lmdb::DatabaseFlags::empty())
+            .map_err(map_lmdb_err)?;
+        Ok(LmdbStorage {
+            env: Arc::new(env),
+            map,
+        })
     }
 
     async fn write(&self, k: String, v: Vec<u8>) -> Result<()> {
