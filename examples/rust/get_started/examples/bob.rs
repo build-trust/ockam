@@ -1,5 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::remote::RemoteForwarderTrustOptions;
 use ockam::{remote::RemoteForwarder, Routed, TcpConnectionTrustOptions, TcpTransport, Worker};
 use ockam::{vault::Vault, Context, Result};
 
@@ -52,7 +53,7 @@ async fn main(ctx: Context) -> Result<()> {
     let node_in_hub = tcp
         .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
         .await?;
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, AllowAll).await?;
+    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderTrustOptions::new()).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
     println!("{}", forwarder.remote_address());

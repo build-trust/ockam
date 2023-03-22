@@ -2,7 +2,7 @@ use crate::kafka::{
     KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
     ORCHESTRATOR_KAFKA_CONSUMERS,
 };
-use ockam::remote::RemoteForwarder;
+use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -85,7 +85,7 @@ impl ForwarderCreator for RemoteForwarderCreator {
             context,
             self.hub_route.clone(),
             alias.clone(),
-            AllowAll,
+            RemoteForwarderTrustOptions::new(),
         )
         .await?;
         trace!("remote forwarder created: {remote_forwarder_information:?}");

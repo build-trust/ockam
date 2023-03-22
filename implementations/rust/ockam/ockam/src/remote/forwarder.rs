@@ -1,0 +1,236 @@
+use crate::remote::{Addresses, RemoteForwarderInfo, RemoteForwarderTrustOptions};
+use crate::Context;
+use core::time::Duration;
+use ockam_core::compat::sync::Arc;
+use ockam_core::compat::{
+    string::{String, ToString},
+    vec::Vec,
+};
+use ockam_core::{
+    route, Address, AllowAll, AllowSourceAddress, DenyAll, Mailbox, Mailboxes,
+    OutgoingAccessControl, Result, Route,
+};
+use ockam_node::{DelayedEvent, WorkerBuilder};
+use tracing::debug;
+
+#[derive(Clone, Copy)]
+pub(crate) enum Ftype {
+    Static,
+    Ephemeral,
+    StaticWithoutHeartbeats,
+}
+
+impl Ftype {
+    pub fn str(&self) -> &'static str {
+        match self {
+            Ftype::Static => "static",
+            Ftype::Ephemeral => "ephemeral",
+            Ftype::StaticWithoutHeartbeats => "static_w/o_heartbeats",
+        }
+    }
+}
+
+/// This Worker is responsible for registering on Ockam Hub and forwarding messages to local Worker
+pub struct RemoteForwarder {
+    /// Address used from other node
+    pub(super) addresses: Addresses,
+    pub(super) completion_msg_sent: bool,
+    pub(super) registration_route: Route,
+    pub(super) registration_payload: String,
+    // We only use Heartbeat for static RemoteForwarder
+    pub(super) heartbeat: Option<DelayedEvent<Vec<u8>>>,
+    pub(super) heartbeat_interval: Duration,
+}
+
+impl RemoteForwarder {
+    fn mailboxes(
+        addresses: Addresses,
+        heartbeat_source_address: Option<Address>,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Mailboxes {
+        let main_internal = Mailbox::new(
+            addresses.main_internal,
+            Arc::new(DenyAll),
+            outgoing_access_control,
+        );
+
+        let main_remote = Mailbox::new(
+            addresses.main_remote,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        );
+
+        let mut additional_mailboxes = vec![main_remote];
+
+        if let Some(heartbeat_source_address) = heartbeat_source_address {
+            let heartbeat = Mailbox::new(
+                addresses.heartbeat,
+                Arc::new(AllowSourceAddress(heartbeat_source_address)),
+                Arc::new(DenyAll),
+            );
+            additional_mailboxes.push(heartbeat);
+        }
+
+        Mailboxes::new(main_internal, additional_mailboxes)
+    }
+}
+
+impl RemoteForwarder {
+    fn new(
+        addresses: Addresses,
+        registration_route: Route,
+        registration_payload: String,
+        heartbeat: Option<DelayedEvent<Vec<u8>>>,
+        heartbeat_interval: Duration,
+    ) -> Self {
+        Self {
+            addresses,
+            completion_msg_sent: false,
+            registration_route,
+            registration_payload,
+            heartbeat,
+            heartbeat_interval,
+        }
+    }
+
+    /// Create and start static RemoteForwarder at predefined address with given Ockam Hub route
+    pub async fn create_static(
+        ctx: &Context,
+        hub_route: impl Into<Route>,
+        alias: impl Into<String>,
+        trust_options: RemoteForwarderTrustOptions,
+    ) -> Result<RemoteForwarderInfo> {
+        let addresses = Addresses::generate(Ftype::Static);
+
+        let mut child_ctx = ctx
+            .new_detached_with_mailboxes(Mailboxes::main(
+                addresses.completion_callback.clone(),
+                Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
+                Arc::new(DenyAll),
+            ))
+            .await?;
+
+        let registration_route = route![hub_route.into(), "static_forwarding_service"];
+
+        let heartbeat = DelayedEvent::create(ctx, addresses.heartbeat.clone(), vec![]).await?;
+        let heartbeat_source_address = heartbeat.address();
+
+        trust_options.setup_session(&addresses);
+        let outgoing_access_control = trust_options.create_access_control();
+
+        let forwarder = Self::new(
+            addresses.clone(),
+            registration_route,
+            alias.into(),
+            Some(heartbeat),
+            Duration::from_secs(5),
+        );
+
+        debug!(
+            "Starting static RemoteForwarder at {}",
+            &addresses.heartbeat
+        );
+        let mailboxes = Self::mailboxes(
+            addresses,
+            Some(heartbeat_source_address),
+            outgoing_access_control,
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+            .start(ctx)
+            .await?;
+
+        let resp = child_ctx.receive::<RemoteForwarderInfo>().await?.body();
+
+        Ok(resp)
+    }
+
+    /// Create and start new ephemeral RemoteForwarder at random address with given Ockam Hub route
+    pub async fn create(
+        ctx: &Context,
+        hub_route: impl Into<Route>,
+        trust_options: RemoteForwarderTrustOptions,
+    ) -> Result<RemoteForwarderInfo> {
+        let addresses = Addresses::generate(Ftype::Ephemeral);
+
+        let mut callback_ctx = ctx
+            .new_detached_with_mailboxes(Mailboxes::main(
+                addresses.completion_callback.clone(),
+                Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
+                Arc::new(DenyAll),
+            ))
+            .await?;
+
+        let registration_route = route![hub_route, "forwarding_service"];
+
+        trust_options.setup_session(&addresses);
+        let outgoing_access_control = trust_options.create_access_control();
+
+        let forwarder = Self::new(
+            addresses.clone(),
+            registration_route,
+            "register".to_string(),
+            None,
+            Duration::from_secs(10),
+        );
+
+        debug!(
+            "Starting ephemeral RemoteForwarder at {}",
+            &addresses.main_internal
+        );
+        let mailboxes = Self::mailboxes(addresses, None, outgoing_access_control);
+        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+            .start(ctx)
+            .await?;
+
+        let resp = callback_ctx.receive::<RemoteForwarderInfo>().await?.body();
+
+        Ok(resp)
+    }
+
+    /// Create and start new static RemoteForwarder without heart beats
+    // This is a temporary kind of RemoteForwarder that will only run on
+    // rust nodes (hence the `forwarding_service` addr to create static forwarders).
+    // We will use it while we don't have heartbeats implemented on rust nodes.
+    pub async fn create_static_without_heartbeats(
+        ctx: &Context,
+        hub_route: impl Into<Route>,
+        alias: impl Into<String>,
+        trust_options: RemoteForwarderTrustOptions,
+    ) -> Result<RemoteForwarderInfo> {
+        let addresses = Addresses::generate(Ftype::StaticWithoutHeartbeats);
+
+        let mut callback_ctx = ctx
+            .new_detached_with_mailboxes(Mailboxes::main(
+                addresses.completion_callback.clone(),
+                Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
+                Arc::new(DenyAll),
+            ))
+            .await?;
+
+        let registration_route = route![hub_route.into(), "forwarding_service"];
+
+        trust_options.setup_session(&addresses);
+        let outgoing_access_control = trust_options.create_access_control();
+
+        let forwarder = Self::new(
+            addresses.clone(),
+            registration_route,
+            alias.into(),
+            None,
+            Duration::from_secs(10),
+        );
+
+        debug!(
+            "Starting static RemoteForwarder without heartbeats at {}",
+            &addresses.main_internal
+        );
+        let mailboxes = Self::mailboxes(addresses, None, outgoing_access_control);
+        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+            .start(ctx)
+            .await?;
+
+        let resp = callback_ctx.receive::<RemoteForwarderInfo>().await?.body();
+
+        Ok(resp)
+    }
+}
