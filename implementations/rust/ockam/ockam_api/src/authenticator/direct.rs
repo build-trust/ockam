@@ -4,7 +4,7 @@ use core::{fmt, str};
 use lru::LruCache;
 use minicbor::{Decode, Decoder, Encode};
 use ockam::identity::authenticated_storage::{
-    AttributesEntry, AuthenticatedStorage, IdentityAttributeStorage, IdentityAttributeStorageReader,
+    AttributesEntry, IdentityAttributeStorage, IdentityAttributeStorageReader,
 };
 use ockam::identity::credential::{Credential, OneTimeCode, SchemaId, Timestamp};
 use ockam::identity::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo};
@@ -233,31 +233,7 @@ pub struct DirectAuthenticator {
 }
 
 impl DirectAuthenticator {
-    pub async fn new(
-        project: Vec<u8>,
-        store: Arc<dyn IdentityAttributeStorage>,
-        legacy_store: Arc<dyn AuthenticatedStorage>,
-    ) -> Result<Self> {
-        //TODO: This block is from converting old-style member' data into
-        //      the new format suitable for our ABAC framework.  Remove it
-        //      once we don't have more legacy data around.
-        for k in legacy_store.keys(LEGACY_MEMBER).await? {
-            if let Some(data) = legacy_store.get(&k, LEGACY_MEMBER).await? {
-                let m: HashMap<String, String> = minicbor::decode(&data)?;
-                let attrs = m
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
-                    .chain([(PROJECT_ID.to_owned(), project.clone())].into_iter())
-                    .collect();
-                let entry = AttributesEntry::new(attrs, Timestamp::now().unwrap(), None, None);
-                let identifier = IdentityIdentifier::from_key_id(&k);
-                match store.put_attributes(&identifier, entry).await {
-                    Ok(()) => info!("Converted membership information for {identifier:?}"),
-                    Err(err) => info!("Can't convert member: {identifier:?} : {err:?}"),
-                }
-            }
-            legacy_store.del(&k, LEGACY_MEMBER).await?;
-        }
+    pub async fn new(project: Vec<u8>, store: Arc<dyn IdentityAttributeStorage>) -> Result<Self> {
         Ok(Self { project, store })
     }
 
