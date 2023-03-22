@@ -32,6 +32,8 @@ pub enum OckamError {
     NoSuchProtocol,
     SystemAddressNotBound,
     SystemInvalidConfiguration,
+    UnknownForwarderDestinationAddress,
+    UnknownForwarderNextHopAddress,
 }
 
 impl ockam_core::compat::error::Error for OckamError {}
