@@ -165,6 +165,46 @@ impl<'a> DeleteSecureChannelListenerResponse<'a> {
     }
 }
 
+/// Request body to show a Secure Channel Listener
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ShowSecureChannelListenerRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<3538219>,
+    #[b(1)] pub addr: Cow<'a, str>,
+}
+
+impl<'a> ShowSecureChannelListenerRequest<'a> {
+    pub fn new(addr: &Address) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.to_string().into(),
+        }
+    }
+}
+
+/// Response body to show a Secure Channel Listener
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ShowSecureChannelListenerResponse<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<9365445>,
+    #[b(1)] pub addr: CowStr<'a>,
+}
+
+impl<'a> ShowSecureChannelListenerResponse<'a> {
+    pub fn new(addr: &Address) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.to_string().into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
