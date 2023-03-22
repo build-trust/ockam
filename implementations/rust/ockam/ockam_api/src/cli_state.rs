@@ -689,6 +689,12 @@ impl NodesState {
 
     pub fn create(&self, name: &str, mut config: NodeConfig) -> Result<NodeState> {
         config.name = name.to_string();
+
+        // check if node name already exists
+        if self.dir.join(name).exists() {
+            return Err(CliStateError::AlreadyExists(format!("node with name `{}` already exists", name)));
+        }
+
         let path = {
             let mut path = self.dir.clone();
             path.push(name);
