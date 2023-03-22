@@ -6,7 +6,8 @@ use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
     CredentialExchangeMode, DeleteSecureChannelListenerRequest,
     DeleteSecureChannelListenerResponse, DeleteSecureChannelRequest, DeleteSecureChannelResponse,
-    ShowSecureChannelRequest, ShowSecureChannelResponse,
+    ShowSecureChannelListenerRequest, ShowSecureChannelListenerResponse, ShowSecureChannelRequest,
+    ShowSecureChannelResponse,
 };
 use crate::nodes::registry::Registry;
 use crate::nodes::NodeManager;
@@ -439,5 +440,22 @@ impl NodeManagerWorker {
             }
         };
         Ok(Response::ok(req.id()).body(DeleteSecureChannelListenerResponse::new(res)))
+    }
+
+    pub(super) async fn show_secure_channel_listener<'a>(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<ShowSecureChannelListenerResponse<'a>>> {
+        let node_manager = self.node_manager.read().await;
+        let body: ShowSecureChannelListenerRequest = dec.decode()?;
+
+        let address = Address::from(body.addr.as_ref());
+
+        debug!(%address, "On show secure channel listener");
+
+        let _info = node_manager.registry.secure_channel_listeners.get(&address);
+
+        Ok(Response::ok(req.id()).body(ShowSecureChannelListenerResponse::new(&address)))
     }
 }

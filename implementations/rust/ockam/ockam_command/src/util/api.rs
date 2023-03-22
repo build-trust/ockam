@@ -123,6 +123,14 @@ pub(crate) fn delete_secure_channel_listener(
     Request::delete("/node/secure_channel_listener").body(payload)
 }
 
+/// Construct a request to show Secure Channel Listener
+pub(crate) fn show_secure_channel_listener(
+    addr: &Address,
+) -> RequestBuilder<'static, models::secure_channel::ShowSecureChannelListenerRequest<'static>> {
+    let payload = models::secure_channel::ShowSecureChannelListenerRequest::new(addr);
+    Request::get("/node/show_secure_channel_listener").body(payload)
+}
+
 /// Construct a request to start a Vault Service
 pub(crate) fn start_vault_service(addr: &str) -> RequestBuilder<'static, StartVaultServiceRequest> {
     let payload = StartVaultServiceRequest::new(addr);
