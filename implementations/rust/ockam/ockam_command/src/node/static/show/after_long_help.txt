@@ -1,0 +1,7 @@
+```sh
+# To show the default node
+$ ockam node show
+
+# To show a node with a specific name
+$ ockam node show n
+```

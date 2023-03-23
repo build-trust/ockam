@@ -1,0 +1,1 @@
+This command will delete the specified space. Deleting a space implies deleting all the projects associated with it.

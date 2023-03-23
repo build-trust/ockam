@@ -1,0 +1,1 @@
+This command will create a new space. If the space already exists, it will just fetch it and show its details.

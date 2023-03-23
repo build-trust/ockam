@@ -1,12 +1,18 @@
 use crate::node::default_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 
-/// Delete a node
+const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
+
+/// Delete nodes
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct DeleteCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name(), group = "nodes")]

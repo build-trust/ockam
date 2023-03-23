@@ -1,0 +1,2 @@
+This command will create a new identity. It will create a vault if none exists and will be assigned as the default for the system.
+

@@ -1,0 +1,1 @@
+This command will return the path to the node's log file. The user can select whether to return the stdout or the stderr log file. The default is to return the stdout log file.

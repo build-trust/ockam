@@ -1,8 +1,6 @@
 use crate::util::output::Output;
 use crate::util::print_output;
-use crate::{
-    EncodeFormat, {CommandGlobalOpts, Result},
-};
+use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
 use anyhow::anyhow;
 use clap::Args;
 use core::fmt::Write;
@@ -10,7 +8,15 @@ use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_identity::change_history::IdentityChangeHistory;
 
+const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
+
+/// Show the details of a node
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ShowCommand {
     #[arg(default_value_t = default_identity_name())]
     name: String,

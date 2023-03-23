@@ -1,0 +1,7 @@
+```sh
+# To stop the default node sending a SIGTERM signal
+$ ockam node stop
+
+# To stop the given node sending a SIGKILL signal
+$ ockam node stop n --force
+```

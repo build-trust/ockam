@@ -1,12 +1,20 @@
 use crate::util::node_rpc;
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::CliStateError;
 
+const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
+
 /// Delete an identity
 #[derive(Clone, Debug, Args)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct DeleteCommand {
     /// Name of the identity to be deleted
     name: String,

@@ -1,0 +1,1 @@
+This command will start a node as a background process that was previously stopped via the command `ockam node stop`. The node will be started with the same configuration as when it was created.

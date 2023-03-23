@@ -1,9 +1,17 @@
 use crate::node::default_node_name;
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 
-/// Stop a node
+const LONG_ABOUT: &str = include_str!("./static/stop/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/stop/after_long_help.txt");
+
+/// Stop a running node
 #[derive(Clone, Debug, Args)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct StopCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

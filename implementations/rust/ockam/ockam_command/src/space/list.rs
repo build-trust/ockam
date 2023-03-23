@@ -7,9 +7,17 @@ use crate::node::util::delete_embedded_node;
 use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
+
+/// List spaces
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ListCommand {
     #[command(flatten)]
     pub cloud_opts: CloudOpts,

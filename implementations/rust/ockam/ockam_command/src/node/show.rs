@@ -1,6 +1,6 @@
 use crate::node::default_node_name;
 use crate::util::{api, node_rpc, Rpc, RpcBuilder};
-use crate::{CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
 use ockam::TcpTransport;
@@ -14,12 +14,18 @@ use ockam_multiaddr::MultiAddr;
 use tokio_retry::strategy::FixedInterval;
 use tracing::debug;
 
+const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
+
 const IS_NODE_UP_TIME_BETWEEN_CHECKS_MS: usize = 50;
 const IS_NODE_UP_MAX_ATTEMPTS: usize = 20; // 1 second
 
-/// Show node details
+/// Show the details of a node
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ShowCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

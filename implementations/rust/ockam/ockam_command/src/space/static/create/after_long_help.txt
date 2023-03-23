@@ -1,0 +1,7 @@
+```sh
+# To create a new space with a random name
+$ ockam space create
+
+# To create a new space with a specific name
+$ ockam space create s
+```

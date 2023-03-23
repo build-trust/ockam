@@ -21,7 +21,7 @@ use crate::service::start;
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
-    identity, node::show::print_query_status, project, util::find_available_port,
+    docs, identity, node::show::print_query_status, project, util::find_available_port,
     CommandGlobalOpts, Result,
 };
 use crate::{node::util::spawn_node, util::parse_node_name};
@@ -47,8 +47,15 @@ use ockam_api::{
 use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
 use ockam_core::{AllowAll, LOCAL};
 
-/// Create a node
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
+/// Create a new node
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct CreateCommand {
     /// Name of the node (Optional).
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]

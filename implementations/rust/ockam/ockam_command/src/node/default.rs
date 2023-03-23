@@ -1,10 +1,17 @@
 use crate::node::default_node_name;
 use crate::node::util::{check_default, set_default_node};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 
-/// Changes default node
+const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
+
+/// Change the default node
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct DefaultCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

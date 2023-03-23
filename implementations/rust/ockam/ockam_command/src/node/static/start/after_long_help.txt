@@ -1,0 +1,7 @@
+```sh
+# To start the default node
+$ ockam node start
+
+# To start a node with a specific name
+$ ockam node start n
+```

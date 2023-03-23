@@ -1,0 +1,7 @@
+```sh
+# To create a new node with a random name
+$ ockam node create
+
+# To create a new node with a specific name
+$ ockam node create n
+```
