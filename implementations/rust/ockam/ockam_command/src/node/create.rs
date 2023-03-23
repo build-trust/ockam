@@ -567,8 +567,8 @@ async fn start_authority_node(
             secure_channel_listener_name: Some(secure_channel_config.address),
             authenticator_name: Some(authenticator_config.address),
             trusted_identities,
-            direct_authentication: true,
-            token_enrollment: true,
+            no_direct_authentication: true,
+            no_token_enrollment: true,
             okta: None,
         };
         authority_node::start_node(&ctx, &configuration).await?;

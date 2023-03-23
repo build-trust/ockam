@@ -131,7 +131,7 @@ impl Authority {
         secure_channel_session_id: &SessionId,
         configuration: &Configuration,
     ) -> Result<()> {
-        if !configuration.direct_authentication {
+        if configuration.no_direct_authentication {
             return Ok(());
         }
 
@@ -163,7 +163,7 @@ impl Authority {
         secure_channel_session_id: &SessionId,
         configuration: &Configuration,
     ) -> Result<()> {
-        if !configuration.token_enrollment {
+        if configuration.no_token_enrollment {
             return Ok(());
         }
 
