@@ -14,18 +14,18 @@ use ockam_node::{DelayedEvent, WorkerBuilder};
 use tracing::debug;
 
 #[derive(Clone, Copy)]
-pub(super) enum Ftype {
+pub(super) enum ForwardType {
     Static,
     Ephemeral,
     StaticWithoutHeartbeats,
 }
 
-impl Ftype {
+impl ForwardType {
     pub fn str(&self) -> &'static str {
         match self {
-            Ftype::Static => "static",
-            Ftype::Ephemeral => "ephemeral",
-            Ftype::StaticWithoutHeartbeats => "static_w/o_heartbeats",
+            ForwardType::Static => "static",
+            ForwardType::Ephemeral => "ephemeral",
+            ForwardType::StaticWithoutHeartbeats => "static_w/o_heartbeats",
         }
     }
 }
@@ -88,7 +88,7 @@ impl RemoteForwarder {
         alias: impl Into<String>,
         trust_options: RemoteForwarderTrustOptions,
     ) -> Result<RemoteForwarderInfo> {
-        let addresses = Addresses::generate(Ftype::Static);
+        let addresses = Addresses::generate(ForwardType::Static);
 
         let mut child_ctx = ctx
             .new_detached_with_mailboxes(Mailboxes::main(
@@ -138,7 +138,7 @@ impl RemoteForwarder {
         hub_route: impl Into<Route>,
         trust_options: RemoteForwarderTrustOptions,
     ) -> Result<RemoteForwarderInfo> {
-        let addresses = Addresses::generate(Ftype::Ephemeral);
+        let addresses = Addresses::generate(ForwardType::Ephemeral);
 
         let mut callback_ctx = ctx
             .new_detached_with_mailboxes(Mailboxes::main(
@@ -185,7 +185,7 @@ impl RemoteForwarder {
         alias: impl Into<String>,
         trust_options: RemoteForwarderTrustOptions,
     ) -> Result<RemoteForwarderInfo> {
-        let addresses = Addresses::generate(Ftype::StaticWithoutHeartbeats);
+        let addresses = Addresses::generate(ForwardType::StaticWithoutHeartbeats);
 
         let mut callback_ctx = ctx
             .new_detached_with_mailboxes(Mailboxes::main(
