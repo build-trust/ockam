@@ -46,15 +46,15 @@ pub struct CreateCommand {
     )]
     tcp_listener_address: String,
 
-    /// Set this option to false if the authority node should not support the enrollment
+    /// Set this option if the authority node should not support the enrollment
     /// of new project members
-    #[arg(long, value_name = "BOOL", default_value_t = true)]
-    direct_authentication: bool,
+    #[arg(long, value_name = "BOOL", default_value_t = false)]
+    no_direct_authentication: bool,
 
-    /// Set this option to false if the authority node should not support
+    /// Set this option if the authority node should not support
     /// the issuing of enrollment tokens
-    #[arg(long, value_name = "BOOL", default_value_t = true)]
-    token_enrollment: bool,
+    #[arg(long, value_name = "BOOL", default_value_t = false)]
+    no_token_enrollment: bool,
 
     /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage.
     /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
@@ -105,12 +105,12 @@ async fn spawn_background_node(
         "--foreground".to_string(),
     ];
 
-    if cmd.direct_authentication {
-        args.push("--direct-authentication".to_string());
+    if cmd.no_direct_authentication {
+        args.push("--no-direct-authentication".to_string());
     }
 
-    if cmd.token_enrollment {
-        args.push("--token-enrollment".to_string());
+    if cmd.no_token_enrollment {
+        args.push("--no-token-enrollment".to_string());
     }
 
     if let Some(trusted_identities) = &cmd.trusted_identities {
@@ -268,8 +268,8 @@ async fn start_authority_node(
         secure_channel_listener_name: None,
         authenticator_name: None,
         trusted_identities: trusted_identities.clone(),
-        direct_authentication: command.direct_authentication,
-        token_enrollment: command.token_enrollment,
+        no_direct_authentication: command.no_direct_authentication,
+        no_token_enrollment: command.no_token_enrollment,
         okta: okta_configuration,
     };
     authority_node::start_node(&ctx, &configuration).await?;
