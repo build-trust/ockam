@@ -692,7 +692,7 @@ impl NodesState {
 
         // check if node name already exists
         if self.dir.join(name).exists() {
-            return Err(CliStateError::AlreadyExists(format!("node with name `{}` already exists", name)));
+            return Err(CliStateError::AlreadyExists(format!("node `{name}`")));
         }
 
         let path = {
