@@ -1,0 +1,1 @@
+This command will show all the details of a space such as its name, ID, and users that have access to it.

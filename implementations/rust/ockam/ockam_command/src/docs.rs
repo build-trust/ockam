@@ -1,6 +1,7 @@
 use crate::terminal::TerminalBackground;
 use colorful::Colorful;
 use once_cell::sync::Lazy;
+use std::io::{Read, Write};
 use syntect::highlighting::Theme;
 use syntect::{
     easy::HighlightLines,
@@ -9,6 +10,7 @@ use syntect::{
     parsing::SyntaxSet,
     util::{as_24_bit_terminal_escaped, LinesWithEndings},
 };
+use termcolor::WriteColor;
 
 const FOOTER: &str = "
 Learn More:
@@ -123,4 +125,18 @@ fn highlight_syntax(input: String) -> String {
     } else {
         input
     }
+}
+
+#[allow(unused)]
+fn to_bold_and_underline(mut b: String, s: &str) -> String {
+    let mut buffer = termcolor::Buffer::ansi();
+    let mut color = termcolor::ColorSpec::new();
+    color.set_bold(true);
+    color.set_underline(true);
+    let err_msg = "Failed to create styled text";
+    buffer.set_color(&color).expect(err_msg);
+    buffer.write_all(s.as_bytes()).expect(err_msg);
+    buffer.reset().expect(err_msg);
+    buffer.as_slice().read_to_string(&mut b).expect(err_msg);
+    b
 }

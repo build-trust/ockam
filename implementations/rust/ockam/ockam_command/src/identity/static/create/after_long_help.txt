@@ -1,0 +1,10 @@
+```sh
+# To create a new identity with a random name
+$ ockam identity create
+
+# To create a new identity with a specific name
+$ ockam identity create i
+
+# To create a new identity for a specific vault
+$ ockam identity create --vault v
+```

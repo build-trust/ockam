@@ -1,13 +1,20 @@
 use crate::util::{api, exitcode, node_rpc, RpcBuilder};
-use crate::{node::show::print_query_status, CommandGlobalOpts};
+use crate::{docs, node::show::print_query_status, CommandGlobalOpts};
 use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::base::NodeStatus;
 use std::time::Duration;
 
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
+
 /// List nodes
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ListCommand {}
 
 impl ListCommand {

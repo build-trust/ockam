@@ -1,0 +1,1 @@
+This command will delete the specified identity. If a running node is using that identity, it won't be deleted and an error will be raised.

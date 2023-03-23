@@ -7,10 +7,18 @@ use crate::node::util::delete_embedded_node;
 use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
 
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
+/// Create a new space
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct CreateCommand {
     /// Name of the space.
     #[arg(display_order = 1001, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_space_name)]

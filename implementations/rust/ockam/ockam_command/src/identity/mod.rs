@@ -10,12 +10,21 @@ pub(crate) use list::ListCommand;
 use ockam_api::cli_state::CliState;
 pub(crate) use show::ShowCommand;
 
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
 
-/// Manage Identities
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
+
+/// Manage identities
 #[derive(Clone, Debug, Args)]
+#[command(
+    arg_required_else_help = true,
+    subcommand_required = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct IdentityCommand {
     #[command(subcommand)]
     subcommand: IdentitySubcommand,
@@ -23,15 +32,10 @@ pub struct IdentityCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum IdentitySubcommand {
-    /// Create Identity
     Create(CreateCommand),
-    /// Print short existing identity, `--full` for long identity
     Show(ShowCommand),
-    /// Print all existing identities, `--full` for long identities
     List(ListCommand),
-    /// Set the default identity
     Default(DefaultCommand),
-    /// Delete an identity
     Delete(DeleteCommand),
 }
 

@@ -1,0 +1,8 @@
+```sh
+# The first created node will be set as the default node
+$ ockam node create n1
+
+# Let's create a second node and assign it as default
+$ ockam node create n2
+$ ockam node default n2
+```

@@ -1,10 +1,18 @@
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
 use ockam_api::cli_state::CliStateError;
 
-/// Set the default identity
+const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
+
+/// Change the default identity
 #[derive(Clone, Debug, Args)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct DefaultCommand {
     /// Name of the identity to be set as default
     name: String,

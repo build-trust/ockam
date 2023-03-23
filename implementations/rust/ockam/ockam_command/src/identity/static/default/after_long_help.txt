@@ -1,0 +1,8 @@
+```sh
+# The first created identity will be set as the default identity
+$ ockam identity create i1
+
+# Let's create a second identity and assign it as default
+$ ockam identity create i2
+$ ockam identity default i2
+```

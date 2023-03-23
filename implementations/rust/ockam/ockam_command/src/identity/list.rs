@@ -1,12 +1,19 @@
 use crate::util::exitcode;
 use crate::util::output::Output;
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 
-/// List nodes
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
+
+/// List identities
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ListCommand {
     #[arg(short, long)]
     full: bool,

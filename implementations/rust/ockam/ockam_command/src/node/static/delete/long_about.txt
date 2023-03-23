@@ -1,0 +1,1 @@
+This command will delete the specified node or all the available nodes if the `--all` flag is used. Deleting a node implies killing the process and removing its data directory. To temporary pause a node use `ockam node stop` instead.

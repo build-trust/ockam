@@ -1,10 +1,17 @@
 use crate::node::default_node_name;
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use std::path::PathBuf;
 
+const LONG_ABOUT: &str = include_str!("./static/logs/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/logs/after_long_help.txt");
+
 /// Get the stdout/stderr log file of a node
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct LogCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

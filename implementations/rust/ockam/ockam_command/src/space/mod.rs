@@ -6,7 +6,7 @@ pub use list::ListCommand;
 pub use show::ShowCommand;
 pub use util::config;
 
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 
 mod create;
 mod delete;
@@ -14,9 +14,17 @@ mod list;
 mod show;
 pub mod util;
 
-/// Manage Spaces in Ockam Orchestrator
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
+
+/// Manage spaces in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(
+    arg_required_else_help = true,
+    subcommand_required = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct SpaceCommand {
     #[command(subcommand)]
     subcommand: SpaceSubcommand,
@@ -24,19 +32,12 @@ pub struct SpaceCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum SpaceSubcommand {
-    /// Create spaces
     #[command(display_order = 800)]
     Create(CreateCommand),
-
-    /// Delete spaces
     #[command(display_order = 800)]
     Delete(DeleteCommand),
-
-    /// List spaces
     #[command(display_order = 800)]
     List(ListCommand),
-
-    /// Show spaces
     #[command(display_order = 800)]
     Show(ShowCommand),
 }

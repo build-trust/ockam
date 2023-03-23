@@ -1,0 +1,1 @@
+This command will show by default the identifier of a given identity. If the `--full` flag is passed, it will show the change history of the identity.

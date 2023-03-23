@@ -1,5 +1,5 @@
 use crate::util::node_rpc;
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::{self, VaultConfig};
@@ -7,7 +7,15 @@ use ockam_core::compat::sync::Arc;
 use ockam_identity::{Identity, PublicIdentity};
 use rand::prelude::random;
 
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
+/// Create a new identity
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct CreateCommand {
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     name: String,

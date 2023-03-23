@@ -1,0 +1,1 @@
+This command will a running node, killing the associated background process. This operation will keep the node state in the `$OCKAM_HOME` directory, so it can be restarted with `ockam node start`.

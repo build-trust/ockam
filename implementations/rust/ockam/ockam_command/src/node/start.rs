@@ -6,10 +6,18 @@ use crate::node::default_node_name;
 use crate::node::show::print_query_status;
 use crate::node::util::spawn_node;
 use crate::util::{node_rpc, RpcBuilder};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 
-/// Start a node
+const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt");
+
+/// Start a node that was previously stopped
 #[derive(Clone, Debug, Args)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct StartCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

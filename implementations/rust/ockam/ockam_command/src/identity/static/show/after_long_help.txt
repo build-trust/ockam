@@ -1,0 +1,10 @@
+```sh
+# To show the default identity
+$ ockam identity show
+
+# To show a specific identity
+$ ockam identity show i
+
+# To show the full details
+$ ockam identity show --full
+```

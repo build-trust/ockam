@@ -1,0 +1,4 @@
+```sh
+# To show a space with a specific name
+$ ockam space show s
+```

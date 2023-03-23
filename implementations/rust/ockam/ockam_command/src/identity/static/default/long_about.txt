@@ -1,0 +1,1 @@
+This command will change the default identity. The default identity is used when creating a node if not specified otherwise.

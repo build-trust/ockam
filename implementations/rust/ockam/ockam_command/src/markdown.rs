@@ -2,6 +2,8 @@ use crate::docs;
 use crate::OckamCommand;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Command, CommandFactory};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use std::fs::create_dir_all;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -119,22 +121,22 @@ fn generate_markdown_page(
     )?;
     writeln!(buffer, "---")?;
 
-    // command usage template
+    // Usage
     let mut usage = cmd.clone().render_usage().to_string();
     // remove `usage:` from the string
     usage = usage.replace("Usage: ", "");
     // append parent commands in beginning of the usage
     writeln!(buffer, "`{}{}`\n", p_cmd, usage)?;
 
-    // Before help
-    if let Some(s) = cmd.get_before_long_help() {
-        writeln!(buffer, "{}\n", s)?;
-    } else if let Some(s) = cmd.get_before_help() {
-        writeln!(buffer, "{}\n", s)?;
+    // Before help: print either the short or the long version
+    if let Some(s) = cmd.get_before_help() {
+        writeln!(buffer, "{}.\n", s)?;
+    } else if let Some(s) = cmd.get_before_long_help() {
+        writeln!(buffer, "{}", process_txt_to_md(s.to_string()))?;
     }
 
-    if let Some(about) = cmd.get_long_about() {
-        writeln!(buffer, "{}\n", about)?;
+    if let Some(s) = cmd.get_long_about() {
+        writeln!(buffer, "{}", process_txt_to_md(s.to_string()))?;
     }
 
     // Subcommands list
@@ -190,11 +192,11 @@ fn generate_markdown_page(
         writeln!(buffer)?;
     }
 
-    // After help
-    if let Some(s) = cmd.get_after_long_help() {
+    // After help: print either the long or the short version
+    if let Some(s) = cmd.get_after_help() {
         writeln!(buffer, "{}\n", s)?;
-    } else if let Some(s) = cmd.get_after_help() {
-        writeln!(buffer, "{}\n", s)?;
+    } else if let Some(s) = cmd.get_after_long_help() {
+        writeln!(buffer, "{}", process_txt_to_md(s.to_string()))?;
     }
 
     // make a .md file and add the buffer to it
@@ -256,4 +258,16 @@ fn generate_arg_markdown(buffer: &mut Vec<u8>, arg: &clap::Arg) -> io::Result<()
     }
 
     Ok(())
+}
+
+static SUBHEADER3: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"([\w :,.]+)\n(-{6})").expect("Invalid regex for SUBHEADER3"));
+
+fn process_txt_to_md(contents: String) -> String {
+    // Converts the following:
+    //   <TEXT>
+    //   ------
+    // To: ### <TEXT>
+    let res = SUBHEADER3.replace_all(&contents, "### $1");
+    res.to_string()
 }

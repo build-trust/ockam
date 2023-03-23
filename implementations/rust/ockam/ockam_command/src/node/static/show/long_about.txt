@@ -1,0 +1,1 @@
+This command will show all the details of a node such as its name, route, default identity, and the services running on it.

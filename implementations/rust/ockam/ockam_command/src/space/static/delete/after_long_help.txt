@@ -1,0 +1,4 @@
+```sh
+# To delete a space given its name
+$ ockam space delete s
+```

@@ -1,0 +1,10 @@
+```sh
+# To delete the default node
+$ ockam node delete
+
+# To delete a node given its name
+$ ockam node delete n
+
+# To delete all existing nodes
+$ ockam node delete --all
+```

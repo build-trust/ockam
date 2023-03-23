@@ -7,9 +7,18 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 
+const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
+
+/// Show the details of a space
 #[derive(Clone, Debug, Args)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ShowCommand {
     /// Name of the space.
     #[arg(display_order = 1001)]
