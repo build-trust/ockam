@@ -1,4 +1,4 @@
-use crate::remote::lifecycle::Ftype;
+use crate::remote::lifecycle::ForwardType;
 use ockam_core::Address;
 
 #[derive(Clone, Debug)]
@@ -14,7 +14,7 @@ pub(super) struct Addresses {
 }
 
 impl Addresses {
-    pub(super) fn generate(ftype: Ftype) -> Self {
+    pub(super) fn generate(ftype: ForwardType) -> Self {
         let type_str = ftype.str();
         let main_remote =
             Address::random_tagged(&format!("RemoteForwarder.{}.main_remote", type_str));
