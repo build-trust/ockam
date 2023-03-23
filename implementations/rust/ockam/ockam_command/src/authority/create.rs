@@ -91,7 +91,9 @@ async fn spawn_background_node(
     cmd: &CreateCommand,
 ) -> crate::Result<()> {
     // Create node state, including the vault and identity if they don't exist
-    init_node_state(ctx, opts, &cmd.node_name, None, None).await?;
+    if opts.state.nodes.get(&cmd.node_name).is_err() {
+        init_node_state(ctx, opts, &cmd.node_name, None, None).await?;
+    }
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
