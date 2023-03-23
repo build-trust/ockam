@@ -4,10 +4,11 @@ use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
 use clap::Args;
+use colorful::Colorful;
 use ockam::Context;
 use ockam_core::api::{Request, RequestBuilder};
 
-/// Delete a TCP Outlet
+/// Delete a TCP Inlet
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     /// Name assigned to inlet that will be deleted
@@ -36,7 +37,16 @@ pub async fn run_impl(
 
     rpc.is_ok()?;
 
-    println!("Deleted TCP Inlet '{alias}' on node '{node}'");
+    options
+        .shell
+        .stdout()
+        .plain(format!(
+            "{}TCP Inlet with alias {alias} on Node {node} has been deleted.",
+            "✔︎".light_green(),
+        ))
+        .machine(&alias)
+        .json(&serde_json::json!({ "tcp-inlet": { "alias": alias, "node": node } }))
+        .write_line()?;
     Ok(())
 }
 
