@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use clap::Args;
+use colorful::Colorful;
 
 use ockam::Context;
 use ockam_api::cli_state::CliStateError;
@@ -38,7 +39,19 @@ async fn run_impl(
         // If it exists, proceed
         Ok(_) => {
             state.delete(&name).await?;
-            println!("Vault '{name}' deleted");
+
+            // log the deletion
+            opts.shell
+                .stdout()
+                .plain(format!(
+                    "{}Vault with name '{}' has been deleted.",
+                    "✔︎".light_green(),
+                    &name
+                ))
+                .machine(&name)
+                .json(&serde_json::json!({ "vault": { "name": &name } }))
+                .write_line()?;
+
             Ok(())
         }
         // Return the appropriate error
