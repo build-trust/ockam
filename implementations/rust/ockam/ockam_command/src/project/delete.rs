@@ -1,4 +1,5 @@
 use clap::Args;
+use colorful::Colorful;
 
 use ockam::Context;
 
@@ -81,5 +82,18 @@ async fn run_impl(
     let _ = config::remove_project(&opts.config, &cmd.project_name);
 
     delete_embedded_node(&opts, rpc.node_name()).await;
+
+    // log the deletion
+    opts.shell
+        .stdout()
+        .plain(format!(
+            "{}Project with name '{}' has been deleted.",
+            "✔︎".light_green(),
+            &cmd.project_name
+        ))
+        .machine(&cmd.project_name)
+        .json(&serde_json::json!({ "project": { "name": &cmd.project_name } }))
+        .write_line()?;
+
     Ok(())
 }
