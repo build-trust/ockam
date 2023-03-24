@@ -171,7 +171,7 @@ pub async fn print_query_status(
         let is_authority_node = node_state
             .setup()
             .ok()
-            .map(|setup| setup.authority_node)
+            .map(|setup| setup.authority_node.unwrap_or(false))
             .unwrap_or_default();
         print_node_info(
             node_port,
