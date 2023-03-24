@@ -1,8 +1,7 @@
-use crate::{PortalMessage, TcpPortalWorker, TcpRegistry};
+use crate::portal::addresses::{Addresses, PortalType};
+use crate::{PortalMessage, TcpOutletTrustOptions, TcpPortalWorker, TcpRegistry};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{
-    async_trait, Address, DenyAll, IncomingAccessControl, Mailboxes, Result, Routed, Worker,
-};
+use ockam_core::{async_trait, Address, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
@@ -16,20 +15,16 @@ use tracing::debug;
 pub(crate) struct TcpOutletListenWorker {
     registry: TcpRegistry,
     peer: SocketAddr,
-    access_control: Arc<dyn IncomingAccessControl>,
+    trust_options: TcpOutletTrustOptions,
 }
 
 impl TcpOutletListenWorker {
     /// Create a new `TcpOutletListenWorker`
-    pub(crate) fn new(
-        registry: TcpRegistry,
-        peer: SocketAddr,
-        access_control: Arc<dyn IncomingAccessControl>,
-    ) -> Self {
+    fn new(registry: TcpRegistry, peer: SocketAddr, trust_options: TcpOutletTrustOptions) -> Self {
         Self {
             registry,
             peer,
-            access_control,
+            trust_options,
         }
     }
 
@@ -38,9 +33,19 @@ impl TcpOutletListenWorker {
         registry: TcpRegistry,
         address: Address,
         peer: SocketAddr,
-        access_control: Arc<dyn IncomingAccessControl>,
+        trust_options: TcpOutletTrustOptions,
     ) -> Result<()> {
-        let worker = Self::new(registry, peer, access_control.clone());
+        let access_control = trust_options.incoming_access_control.clone();
+
+        if let Some(consumer_session) = &trust_options.consumer_session {
+            consumer_session.sessions.add_consumer(
+                &address,
+                &consumer_session.session_id,
+                consumer_session.session_policy,
+            );
+        }
+
+        let worker = Self::new(registry, peer, trust_options);
         WorkerBuilder::with_mailboxes(
             Mailboxes::main(address, access_control, Arc::new(DenyAll)),
             worker,
@@ -75,22 +80,40 @@ impl Worker for TcpOutletListenWorker {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let return_route = msg.return_route();
+        let src_addr = msg.src_addr();
 
         if let PortalMessage::Ping = msg.body() {
         } else {
             return Err(TransportError::Protocol.into());
         }
 
-        let address = TcpPortalWorker::start_new_outlet(
+        // Check if the Worker that send us this message is a Producer
+        // If yes - outlet worker will be added to that session to be able to receive further
+        // messages from that Producer
+        let session_id = if let Some(consumer_session) = &self.trust_options.consumer_session {
+            consumer_session
+                .sessions
+                .get_session_with_producer(&src_addr)
+                .map(|x| x.session_id().clone())
+        } else {
+            None
+        };
+
+        let addresses = Addresses::generate(PortalType::Outlet);
+
+        self.trust_options.setup_session(&addresses, session_id)?;
+
+        TcpPortalWorker::start_new_outlet(
             ctx,
             self.registry.clone(),
             self.peer,
             return_route.clone(),
-            self.access_control.clone(),
+            addresses.clone(),
+            self.trust_options.incoming_access_control.clone(),
         )
         .await?;
 
-        debug!("Created Tcp Outlet at {}", &address);
+        debug!("Created Tcp Outlet at {}", addresses.remote);
 
         Ok(())
     }

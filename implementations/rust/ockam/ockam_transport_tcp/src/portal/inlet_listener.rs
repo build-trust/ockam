@@ -1,12 +1,9 @@
-use crate::{TcpPortalWorker, TcpRegistry};
+use crate::portal::addresses::{Addresses, PortalType};
+use crate::{TcpInletTrustOptions, TcpPortalWorker, TcpRegistry};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::{
-    async_trait,
-    compat::{boxed::Box, sync::Arc},
-    DenyAll,
-};
-use ockam_core::{Address, IncomingAccessControl, Mailboxes, Processor, Result, Route};
-use ockam_node::{Context, ProcessorBuilder};
+use ockam_core::{async_trait, compat::boxed::Box, DenyAll};
+use ockam_core::{Address, Processor, Result, Route};
+use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 use tracing::{debug, error};
@@ -20,19 +17,33 @@ pub(crate) struct TcpInletListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
     outlet_listener_route: Route,
-    access_control: Arc<dyn IncomingAccessControl>,
+    trust_options: TcpInletTrustOptions,
 }
 
 impl TcpInletListenProcessor {
+    pub fn new(
+        registry: TcpRegistry,
+        inner: TcpListener,
+        outlet_listener_route: Route,
+        trust_options: TcpInletTrustOptions,
+    ) -> Self {
+        Self {
+            registry,
+            inner,
+            outlet_listener_route,
+            trust_options,
+        }
+    }
+
     /// Start a new `TcpInletListenProcessor`
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
         outlet_listener_route: Route,
         addr: SocketAddr,
-        access_control: Arc<dyn IncomingAccessControl>,
-    ) -> Result<(Address, SocketAddr)> {
-        let waddr = Address::random_tagged("TcpInletListenProcessor");
+        trust_options: TcpInletTrustOptions,
+    ) -> Result<(SocketAddr, Address)> {
+        let processor_address = Address::random_tagged("TcpInletListenProcessor");
 
         debug!("Binding TcpPortalListenerWorker to {}", addr);
         let inner = match TcpListener::bind(addr).await {
@@ -42,22 +53,13 @@ impl TcpInletListenProcessor {
                 return Err(TransportError::from(err).into());
             }
         };
-        let saddr = inner.local_addr().map_err(TransportError::from)?;
-        let processor = Self {
-            registry,
-            inner,
-            outlet_listener_route,
-            access_control: access_control.clone(),
-        };
+        let socket_addr = inner.local_addr().map_err(TransportError::from)?;
+        let processor = Self::new(registry, inner, outlet_listener_route, trust_options);
 
-        ProcessorBuilder::with_mailboxes(
-            Mailboxes::main(waddr.clone(), Arc::new(DenyAll), Arc::new(DenyAll)),
-            processor,
-        )
-        .start(ctx)
-        .await?;
+        ctx.start_processor(processor_address.clone(), processor, DenyAll, DenyAll)
+            .await?;
 
-        Ok((waddr, saddr))
+        Ok((socket_addr, processor_address))
     }
 }
 
@@ -79,6 +81,10 @@ impl Processor for TcpInletListenProcessor {
     }
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+        let addresses = Addresses::generate(PortalType::Inlet);
+
+        self.trust_options.setup_session(&addresses)?;
+
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
         TcpPortalWorker::start_new_inlet(
             ctx,
@@ -86,7 +92,8 @@ impl Processor for TcpInletListenProcessor {
             stream,
             peer,
             self.outlet_listener_route.clone(),
-            self.access_control.clone(),
+            addresses,
+            self.trust_options.incoming_access_control.clone(),
         )
         .await?;
 
