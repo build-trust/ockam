@@ -277,13 +277,15 @@ jobs:
 
     - name: Install Cosign
       uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65
+      with:
+        cosign-release: 'v2.0.0'
 
     - name: Sign Binary
       env:
         PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
         COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
       run: |
-        cosign sign-blob --key env://PRIVATE_KEY ${{ env.ASSET }} > ${{ env.ASSET }}.sig
+        cosign sign-blob --yes --key env://PRIVATE_KEY ${{ env.ASSET }} > ${{ env.ASSET }}.sig
 
     - name: Upload release archive
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
@@ -383,6 +385,8 @@ jobs:
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65
+        with:
+          cosign-release: 'v2.0.0'
 
       - name: Sign NIFs
         working-directory: ${{ matrix.release_path }}
@@ -390,7 +394,7 @@ jobs:
           PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
         run: |
-          cosign sign-blob --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig
+          cosign sign-blob --yes --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig
 
       - name: Upload Library
         uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
@@ -431,12 +435,14 @@ jobs:
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65
+        with:
+          cosign-release: 'v2.0.0'
 
       - name: Sign Files
         env:
           PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
-        run: cosign sign-blob --key env://PRIVATE_KEY sha256sums.txt > sha256sums.txt.sig
+        run: cosign sign-blob --yes --key env://PRIVATE_KEY sha256sums.txt > sha256sums.txt.sig
 
       - name: Upload SHASum File
         uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
