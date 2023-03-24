@@ -208,7 +208,12 @@ async fn start_authority_node(
     let command = cmd.clone();
 
     // Create node state, including the vault and identity if they don't exist
-    if options.state.nodes.get(&command.node_name).is_err() {
+    if !options
+        .state
+        .nodes
+        .get_node_path(&command.node_name)
+        .exists()
+    {
         init_node_state(&ctx, &options, &command.node_name, None, None).await?;
     };
 

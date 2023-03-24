@@ -691,7 +691,7 @@ impl NodesState {
         config.name = name.to_string();
 
         // check if node name already exists
-        if self.dir.join(name).exists() {
+        if self.get_node_path(name).exists() {
             return Err(CliStateError::AlreadyExists(format!("node `{name}`")));
         }
 
@@ -739,16 +739,17 @@ impl NodesState {
     }
 
     pub fn get(&self, name: &str) -> Result<NodeState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(name);
-            if !path.exists() {
-                return Err(CliStateError::NotFound(format!("node `{name}`")));
-            }
-            path
-        };
+        let path = self.get_node_path(name);
+        if !path.exists() {
+            return Err(CliStateError::NotFound(format!("node `{name}`")));
+        }
+
         let config = NodeConfig::try_from(&path)?;
         Ok(NodeState::new(path, config))
+    }
+
+    pub fn get_node_path(&self, name: &str) -> PathBuf {
+        self.dir.join(name)
     }
 
     pub fn delete(&self, name: &str, sigkill: bool) -> Result<()> {
