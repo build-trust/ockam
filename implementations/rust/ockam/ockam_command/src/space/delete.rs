@@ -1,4 +1,5 @@
 use clap::Args;
+use colorful::Colorful;
 
 use ockam::Context;
 
@@ -62,5 +63,18 @@ async fn run_impl(
     let _ = config::remove_space(&opts.config, &cmd.name);
 
     delete_embedded_node(&opts, rpc.node_name()).await;
+
+    // log the deletion
+    opts.shell
+        .stdout()
+        .plain(format!(
+            "{}Space with name '{}' has been deleted.",
+            "✔︎".light_green(),
+            &cmd.name
+        ))
+        .machine(&cmd.name)
+        .json(&serde_json::json!({ "space": { "name": &cmd.name } }))
+        .write_line()?;
+
     Ok(())
 }
