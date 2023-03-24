@@ -23,13 +23,13 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::Deref;
 use core::str::FromStr;
-use std::net::{SocketAddrV4, SocketAddrV6};
 use once_cell::race::OnceBox;
+use std::net::{SocketAddrV4, SocketAddrV6};
 use tinyvec::{Array, ArrayVec, TinyVec};
 
+use crate::proto::{DnsAddr, Ip4, Ip6, Tcp};
 pub use error::Error;
 pub use registry::{Registry, RegistryBuilder};
-use crate::proto::{DnsAddr, Ip4, Ip6, Tcp};
 
 /// Global default registry of known protocols.
 fn default_registry() -> &'static Registry {
@@ -606,7 +606,7 @@ impl MultiAddr {
                 }
             }
         }
-        return Err(Error::message("No socket address found"));
+        Err(Error::message("No socket address found"))
     }
 }
 
