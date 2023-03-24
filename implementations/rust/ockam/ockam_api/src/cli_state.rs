@@ -1035,8 +1035,9 @@ pub struct NodeSetupConfig {
     pub verbose: u8,
 
     /// This flag is used to determine how the node status should be
-    /// displayed in print_query_status
-    pub authority_node: bool,
+    /// displayed in print_query_status.
+    /// The field might be missing in previous configuration files, hence it is an Option
+    pub authority_node: Option<bool>,
 
     transports: Vec<CreateTransportJson>,
     // TODO
@@ -1053,7 +1054,7 @@ impl NodeSetupConfig {
     }
 
     pub fn set_authority_node(mut self) -> Self {
-        self.authority_node = true;
+        self.authority_node = Some(true);
         self
     }
 
