@@ -5,7 +5,7 @@ use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy, 
 
 use ockam::abac::AbacAccessControl;
 use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport};
+use ockam::{route, vault::Vault, Context, Result, TcpOutletTrustOptions, TcpTransport};
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
 use ockam_api::{create_tcp_session, DefaultAddress};
 use std::sync::Arc;
@@ -105,8 +105,12 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let access_control = AbacAccessControl::create(control_plane.authenticated_storage().clone(), "component", "edge");
 
     // 4. create a tcp outlet with the above policy
-    tcp.create_outlet_impl("outlet".into(), "127.0.0.1:5000".into(), Arc::new(access_control))
-        .await?;
+    tcp.create_outlet(
+        "outlet",
+        "127.0.0.1:5000",
+        TcpOutletTrustOptions::new().with_incoming_access_control_impl(access_control),
+    )
+    .await?;
 
     // 5. create a forwarder on the Ockam orchestrator
 

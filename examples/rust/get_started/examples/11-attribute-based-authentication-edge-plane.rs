@@ -6,7 +6,7 @@ use ockam::abac::AbacAccessControl;
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport};
+use ockam::{route, vault::Vault, Context, Result, TcpInletTrustOptions, TcpTransport};
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
 use ockam_api::{create_tcp_session, DefaultAddress};
 
@@ -161,7 +161,11 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4.5 create a TCP inlet connected to the TCP outlet on the control node
     let outlet_route = route![secure_channel_to_control, "outlet"];
     let inlet = tcp
-        .create_inlet_impl("127.0.0.1:7000".into(), outlet_route.clone(), Arc::new(access_control))
+        .create_inlet(
+            "127.0.0.1:7000",
+            outlet_route.clone(),
+            TcpInletTrustOptions::new().with_incoming_access_control_impl(access_control),
+        )
         .await?;
     println!("the inlet is {inlet:?}");
 

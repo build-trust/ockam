@@ -1,10 +1,9 @@
-use ockam::access_control::AllowAll;
 use ockam::remote::RemoteForwarderTrustOptions;
 use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
-    Context, Result, TcpConnectionTrustOptions, TcpTransport,
+    Context, Result, TcpConnectionTrustOptions, TcpOutletTrustOptions, TcpTransport,
 };
 
 #[ockam::node]
@@ -34,7 +33,8 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, AllowAll).await?;
+    tcp.create_outlet("outlet", outlet_target, TcpOutletTrustOptions::new())
+        .await?;
 
     // To allow Inlet Node and others to initiate an end-to-end secure channel with this program
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
