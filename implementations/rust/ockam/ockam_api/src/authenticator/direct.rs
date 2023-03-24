@@ -12,6 +12,7 @@ use ockam_core::api::{self, Error, Method, Request, RequestBuilder, Response, St
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, CowStr, DenyAll, Result, Route, Routed, Worker};
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_node::{Context, MessageSendReceiveOptions};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
@@ -230,11 +231,22 @@ impl Worker for CredentialIssuer {
 pub struct DirectAuthenticator {
     project: Vec<u8>,
     store: Arc<dyn IdentityAttributeStorage>,
+    legacy_store: Arc<dyn AuthenticatedStorage>,
+    is_legacy_migrated: Arc<RwLock<bool>>,
 }
 
 impl DirectAuthenticator {
-    pub async fn new(project: Vec<u8>, store: Arc<dyn IdentityAttributeStorage>) -> Result<Self> {
-        Ok(Self { project, store })
+    pub async fn new(
+        project: Vec<u8>,
+        store: Arc<dyn IdentityAttributeStorage>,
+        legacy_store: Arc<dyn AuthenticatedStorage>,
+    ) -> Result<Self> {
+        Ok(Self {
+            project,
+            store,
+            legacy_store,
+            is_legacy_migrated: Arc::new(RwLock::new(false)),
+        })
     }
 
     async fn add_member<'a>(
@@ -243,6 +255,8 @@ impl DirectAuthenticator {
         id: &IdentityIdentifier,
         attrs: &HashMap<CowStr<'a>, CowStr<'a>>,
     ) -> Result<()> {
+        self.migrate_legacy_store().await?;
+
         let auth_attrs = attrs
             .iter()
             .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
@@ -255,6 +269,45 @@ impl DirectAuthenticator {
             Some(enroller.clone()),
         );
         self.store.put_attributes(id, entry).await
+    }
+
+    /// Remove all this code once all the projects have been migrated
+    async fn migrate_legacy_store(&self) -> Result<()> {
+        if self.is_already_migrated() {
+            return Ok(());
+        }
+
+        //TODO: This block is from converting old-style member' data into
+        //      the new format suitable for our ABAC framework.  Remove it
+        //      once we don't have more legacy data around.
+        for k in self.legacy_store.keys(LEGACY_MEMBER).await? {
+            if let Some(data) = self.legacy_store.get(&k, LEGACY_MEMBER).await? {
+                let m: HashMap<String, String> = minicbor::decode(&data)?;
+                let attrs = m
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+                    .chain([(PROJECT_ID.to_owned(), self.project.clone())].into_iter())
+                    .collect();
+                let entry = AttributesEntry::new(attrs, Timestamp::now().unwrap(), None, None);
+                let identifier = IdentityIdentifier::from_key_id(&k);
+                match self.store.put_attributes(&identifier, entry).await {
+                    Ok(()) => info!("Converted membership information for {identifier:?}"),
+                    Err(err) => info!("Can't convert member: {identifier:?} : {err:?}"),
+                }
+            }
+            self.legacy_store.del(&k, LEGACY_MEMBER).await?;
+        }
+        self.set_as_already_migrated()
+    }
+
+    fn set_as_already_migrated(&self) -> Result<()> {
+        *self.is_legacy_migrated.write().unwrap() = true;
+        Ok(())
+    }
+
+    fn is_already_migrated(&self) -> bool {
+        let migrated = self.is_legacy_migrated.read().unwrap();
+        *migrated
     }
 }
 

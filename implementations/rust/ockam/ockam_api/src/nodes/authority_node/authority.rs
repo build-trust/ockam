@@ -138,6 +138,7 @@ impl Authority {
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             configuration.clone().project_identifier(),
             self.attributes_storage().clone(),
+            self.identity.authenticated_storage().clone(),
         )
         .await?;
 

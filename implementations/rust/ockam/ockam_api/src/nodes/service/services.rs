@@ -312,6 +312,7 @@ impl NodeManager {
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             proj.to_vec(),
             self.attributes_storage.clone(),
+            self.identity.authenticated_storage().clone(),
         )
         .await?;
 
