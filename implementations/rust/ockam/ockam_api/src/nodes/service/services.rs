@@ -37,6 +37,7 @@ use ockam_identity::authenticated_storage::IdentityAttributeStorageReader;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
+use ockam_transport_tcp::TcpInletTrustOptions;
 
 use super::NodeManagerWorker;
 
@@ -482,7 +483,7 @@ impl NodeManager {
             .create_inlet(
                 format!("{}:{}", &bind_ip, server_bootstrap_port),
                 bootstrap_address_route,
-                AllowAll,
+                TcpInletTrustOptions::new(),
             )
             .await?;
 

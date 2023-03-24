@@ -21,6 +21,7 @@ use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
+use ockam_transport_tcp::{TcpInletTrustOptions, TcpOutletTrustOptions};
 use std::collections::BTreeMap;
 
 use super::{NodeManager, NodeManagerWorker};
@@ -185,15 +186,15 @@ impl NodeManagerWorker {
 
         let res = node_manager
             .tcp_transport
-            .create_inlet_impl(
+            .create_inlet(
                 listen_addr.clone(),
                 outlet_route.clone(),
-                access_control.clone(),
+                TcpInletTrustOptions::new().with_incoming_access_control(access_control.clone()),
             )
             .await;
 
         Ok(match res {
-            Ok((worker_addr, _)) => {
+            Ok((_, worker_addr)) => {
                 // TODO: Use better way to store inlets?
                 node_manager.registry.inlets.insert(
                     alias.clone(),
@@ -354,7 +355,11 @@ impl NodeManagerWorker {
 
         let res = node_manager
             .tcp_transport
-            .create_outlet_impl(worker_addr.clone(), tcp_addr.clone(), access_control)
+            .create_outlet(
+                worker_addr.clone(),
+                tcp_addr.clone(),
+                TcpOutletTrustOptions::new().with_incoming_access_control(access_control),
+            )
             .await;
 
         Ok(match res {
@@ -534,9 +539,13 @@ fn replacer(
                 // Finally attempt to create a new inlet using the new route:
                 let wa = this
                     .tcp_transport
-                    .create_inlet_impl(bind, r, access)
+                    .create_inlet(
+                        bind,
+                        r,
+                        TcpInletTrustOptions::new().with_incoming_access_control(access),
+                    )
                     .await?
-                    .0;
+                    .1;
                 data.put(INLET_WORKER, wa);
 
                 Ok(without_outlet_address(rest))

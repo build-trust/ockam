@@ -25,6 +25,7 @@ mod test {
     use ockam_core::{route, Address, AllowAll, Route};
     use ockam_identity::TrustEveryonePolicy;
     use ockam_node::compat::tokio;
+    use ockam_transport_tcp::{TcpInletTrustOptions, TcpOutletTrustOptions};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -94,12 +95,12 @@ mod test {
                 .await?;
         }
 
-        let (_, socket_address) = handle
+        let (socket_address, _) = handle
             .tcp
             .create_inlet(
                 "127.0.0.1:0".to_string(),
                 route![listener_address.clone(), outlet_route.clone()],
-                AllowAll,
+                TcpInletTrustOptions::new(),
             )
             .await?;
 
@@ -150,7 +151,7 @@ mod test {
                 .create_outlet(
                     "kafka_consumer_outlet",
                     format!("127.0.0.1:{}", consumer_mock_kafka.port),
-                    AllowAll,
+                    TcpOutletTrustOptions::new(),
                 )
                 .await?;
 
@@ -170,7 +171,7 @@ mod test {
             .create_outlet(
                 "kafka_producer_outlet",
                 format!("127.0.0.1:{}", producer_mock_kafka.port),
-                AllowAll,
+                TcpOutletTrustOptions::new(),
             )
             .await?;
         let request = simulate_kafka_producer_and_read_request(
@@ -207,7 +208,7 @@ mod test {
             .create_outlet(
                 "kafka_consumer_outlet",
                 format!("127.0.0.1:{}", consumer_mock_kafka.port),
-                AllowAll,
+                TcpOutletTrustOptions::new(),
             )
             .await?;
         let plain_fetch_response = simulate_kafka_consumer_and_read_response(

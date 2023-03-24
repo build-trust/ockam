@@ -4,6 +4,8 @@ mod lifecycle;
 mod listener;
 mod portals;
 
+pub use crate::portal::trust_options::*;
+
 use crate::TcpRegistry;
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
