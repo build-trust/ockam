@@ -109,7 +109,7 @@ embedded-hal = { version = "0.2.3", optional = true }
 
 # Processor stm32: TODO move this into its own "Ockam Addon" crate
 stm32-device-signature = { version = "0.3.3", optional = true }
-stm32f4xx-hal = { version = "0.14.0", features = ["rt", "stm32f407"], optional = true }
+stm32f4xx-hal = { version = "0.15.0", features = ["rt", "stm32f407"], optional = true }
 stm32h7xx-hal = { version = "0.14.0", features = ["rt", "stm32h747cm7"], optional = true }
 
 # Processor pic32: TODO move this into its own "Ockam Addon" crate
