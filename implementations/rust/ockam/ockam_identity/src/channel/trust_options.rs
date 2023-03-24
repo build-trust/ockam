@@ -23,7 +23,7 @@ pub(crate) struct SecureChannelAccessControl {
 }
 
 impl SecureChannelTrustOptions {
-    /// Constructor
+    /// Constructor without Consumer and Producer sessions, with [`TrustEveryonePolicy`]
     pub fn new() -> Self {
         Self {
             consumer_session: None,
@@ -102,7 +102,7 @@ impl Default for SecureChannelListenerTrustOptions {
 }
 
 impl SecureChannelListenerTrustOptions {
-    /// Constructor
+    /// Constructor without Consumer and Producer sessions, with [`TrustEveryonePolicy`]
     pub fn new() -> Self {
         Self {
             consumer_session: None,
@@ -113,7 +113,7 @@ impl SecureChannelListenerTrustOptions {
 
     /// Mark that this Secure Channel Listener is a Consumer for to the given [`SessionId`]
     /// Also, in this case spawned Secure Channels will be marked as Consumers with [`SessionId`]
-    /// of the message that was used to create a Secure Channel
+    /// of the message that was used to create the Secure Channel
     pub fn as_consumer(
         mut self,
         sessions: &Sessions,
