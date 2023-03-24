@@ -1,6 +1,5 @@
-use ockam::access_control::AllowAll;
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{vault::Vault, Context, Result, TcpListenerTrustOptions, TcpTransport};
+use ockam::{vault::Vault, Context, Result, TcpListenerTrustOptions, TcpOutletTrustOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -35,7 +34,8 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, AllowAll).await?;
+    tcp.create_outlet("outlet", outlet_target, TcpOutletTrustOptions::new())
+        .await?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
     //
