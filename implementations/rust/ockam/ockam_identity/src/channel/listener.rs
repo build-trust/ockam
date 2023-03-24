@@ -58,9 +58,9 @@ impl Worker for IdentityChannelListener {
     ) -> Result<()> {
         let identity = self.identity.async_try_clone().await?;
 
-        // Check if there is a session that connection worker added to LocalInfo
+        // Check if the Worker that send us this message is a Producer
         // If yes - decryptor will be added to that session to be able to receive further messages
-        // from the transport connection
+        // from that Producer
         let session_id = if let Some(ciphertext_session) = &self.trust_options.consumer_session {
             ciphertext_session
                 .sessions
