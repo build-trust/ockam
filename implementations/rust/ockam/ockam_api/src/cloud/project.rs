@@ -121,7 +121,6 @@ impl Project<'_> {
     fn access_route_socket_addr(&self) -> Result<String> {
         let ma = self.access_route()?;
         ma.multiaddr_to_socket_addr()
-            .map(|addr| addr.to_string())
             .map_err(|e| ApiError::generic(&e.to_string()))
     }
 }
