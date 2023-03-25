@@ -11,11 +11,11 @@ use ockam_identity::{
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::SystemTime;
+use std::{fmt, fs};
 use sysinfo::{Pid, System, SystemExt};
 
 use crate::lmdb::LmdbStorage;
@@ -96,10 +96,26 @@ impl CliState {
     }
 
     pub fn delete(&self, force: bool) -> Result<()> {
+        // Delete all nodes
         for n in self.nodes.list()? {
             let _ = n.delete(force);
         }
-        std::fs::remove_dir_all(&self.dir)?;
+
+        let dir = &self.dir;
+        fs::remove_dir_all(&self.nodes.dir)?;
+        fs::remove_dir_all(&self.identities.dir)?;
+        fs::remove_dir_all(&self.vaults.dir)?;
+        fs::remove_dir_all(&self.projects.dir)?;
+        fs::remove_dir_all(&self.credentials.dir)?;
+        fs::remove_dir_all(dir.join("defaults"))?;
+        fs::remove_file(dir.join("config.json"))?;
+
+        // If the state directory is now empty, delete it.
+        let is_empty = fs::read_dir(dir)?.next().is_none();
+        if is_empty {
+            fs::remove_dir(dir)?;
+        }
+
         Ok(())
     }
 
