@@ -277,12 +277,12 @@ impl NodeManagerWorker {
         )
     }
 
-    pub(super) async fn create_secure_channel<'a>(
+    pub(super) async fn create_secure_channel(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'a>>> {
+    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_>>> {
         let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelRequest {
             addr,
@@ -333,11 +333,11 @@ impl NodeManagerWorker {
         Ok(response)
     }
 
-    pub(super) async fn delete_secure_channel<'a>(
+    pub(super) async fn delete_secure_channel(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<DeleteSecureChannelResponse<'a>>> {
+    ) -> Result<ResponseBuilder<DeleteSecureChannelResponse<'_>>> {
         let body: DeleteSecureChannelRequest = dec.decode()?;
         let addr = Address::from(body.channel.as_ref());
         info!(%addr, "Handling request to delete secure channel");
@@ -355,11 +355,11 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()).body(DeleteSecureChannelResponse::new(res)))
     }
 
-    pub(super) async fn show_secure_channel<'a>(
+    pub(super) async fn show_secure_channel(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<ShowSecureChannelResponse<'a>>> {
+    ) -> Result<ResponseBuilder<ShowSecureChannelResponse<'_>>> {
         let node_manager = self.node_manager.read().await;
         let body: ShowSecureChannelRequest = dec.decode()?;
 
@@ -416,11 +416,11 @@ impl NodeManagerWorker {
         Ok(response)
     }
 
-    pub(super) async fn delete_secure_channel_listener<'a>(
+    pub(super) async fn delete_secure_channel_listener(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<DeleteSecureChannelListenerResponse<'a>>> {
+    ) -> Result<ResponseBuilder<DeleteSecureChannelListenerResponse<'_>>> {
         let body: DeleteSecureChannelListenerRequest = dec.decode()?;
         let addr = Address::from(body.addr.as_ref());
         info!(%addr, "Handling request to delete secure channel listener");
