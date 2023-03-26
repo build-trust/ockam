@@ -12,7 +12,7 @@
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn::{parse_macro_input, AttributeArgs, DeriveInput, ItemFn};
+use syn::{parse_macro_input, DeriveInput, ItemFn};
 
 mod async_try_clone_derive;
 mod internals;
@@ -90,10 +90,9 @@ pub fn message_derive(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn node(attrs: TokenStream, item: TokenStream) -> TokenStream {
+pub fn node(args: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = syn::parse_macro_input!(item as ItemFn);
-    let attrs = syn::parse_macro_input!(attrs as AttributeArgs);
-    node_attribute::expand(input_fn, attrs)
+    node_attribute::expand(input_fn, &args.into())
         .unwrap_or_else(to_compile_errors)
         .into()
 }
@@ -125,10 +124,9 @@ pub fn node(attrs: TokenStream, item: TokenStream) -> TokenStream {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn test(attrs: TokenStream, item: TokenStream) -> TokenStream {
+pub fn test(args: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = syn::parse_macro_input!(item as ItemFn);
-    let attrs = syn::parse_macro_input!(attrs as AttributeArgs);
-    node_test_attribute::expand(input_fn, attrs)
+    node_test_attribute::expand(input_fn, &args.into())
         .unwrap_or_else(to_compile_errors)
         .into()
 }
@@ -151,10 +149,9 @@ pub fn test(attrs: TokenStream, item: TokenStream) -> TokenStream {
 /// fn hkdf() {}
 /// ```
 #[proc_macro_attribute]
-pub fn vault_test(attrs: TokenStream, item: TokenStream) -> TokenStream {
+pub fn vault_test(_attrs: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
-    let attrs = syn::parse_macro_input!(attrs as AttributeArgs);
-    vault_test_attribute::expand(input_fn, attrs).unwrap_or_else(to_compile_error)
+    vault_test_attribute::expand(input_fn).unwrap_or_else(to_compile_error)
 }
 
 fn to_compile_errors(errors: Vec<syn::Error>) -> proc_macro2::TokenStream {

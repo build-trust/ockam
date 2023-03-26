@@ -1,11 +1,11 @@
+use crate::internals::attr::{parse_lit_into_path, Attr};
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{
-    parse_quote, punctuated::Punctuated, token::Comma, Attribute, Data::Struct, DeriveInput, Field,
-    GenericParam, Generics, Ident, Meta::NameValue, NestedMeta, Type,
+    parse_quote, punctuated::Punctuated, token::Comma, Attribute, Data::Struct, DeriveInput, Expr,
+    Field, GenericParam, Generics, Ident, Type,
 };
 
-use crate::internals::attr::{get_serde_meta_items, parse_lit_into_path, Attr};
 use crate::internals::ctx::Context;
 use crate::internals::symbol::{ASYNC_TRY_CLONE, OCKAM_CRATE};
 
@@ -55,8 +55,11 @@ fn output(cont: Container) -> TokenStream {
     let async_trait: Attribute = match ockam_crate.to_string().as_str() {
         "ockam" => parse_quote!(#[#ockam_crate::worker]),
         "crate" | "ockam_core" => parse_quote!(#[#ockam_crate::async_trait]),
-        _ => {
-            unreachable!("'crate' attribute is already checked in Attributes")
+        other => {
+            unreachable!(
+                "'crate' attribute is already checked in Attributes, got {}",
+                other
+            )
         }
     };
     quote! {
@@ -266,15 +269,11 @@ struct Attributes {
 impl Attributes {
     fn from_ast(ctx: &Context, attrs: &[Attribute]) -> Self {
         let mut ockam_crate = Attr::none(ctx, OCKAM_CRATE);
-        for attr in attrs
-            .iter()
-            .flat_map(|attr| get_serde_meta_items(ctx, &ASYNC_TRY_CLONE, attr))
-            .flatten()
-        {
-            match attr {
-                // Parse `#[async_try_clone(crate = "ockam")]`
-                NestedMeta::Meta(NameValue(nv)) if nv.path == OCKAM_CRATE => {
-                    if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &nv.lit) {
+        for attr in attrs.iter() {
+            if attr.path().is_ident(&ASYNC_TRY_CLONE) {
+                attr.parse_nested_meta(|meta| {
+                    let value_expr: Expr = meta.value()?.parse()?;
+                    if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &value_expr) {
                         let path = quote! { #path };
                         let path_string = path.to_string();
                         if !["ockam", "ockam_core", "crate"].contains(&path_string.as_str()) {
@@ -286,19 +285,13 @@ impl Attributes {
                                 ),
                             );
                         }
-                        ockam_crate.set(&nv.path, path);
-                    }
-                }
-                NestedMeta::Meta(m) => {
-                    let path = m.path().into_token_stream().to_string().replace(' ', "");
-                    ctx.error_spanned_by(m.path(), format!("unknown attribute `{}`", path));
-                }
-                NestedMeta::Lit(lit) => {
-                    ctx.error_spanned_by(lit, "unexpected literal in attribute");
-                }
+                        ockam_crate.set(&meta.path, path);
+                    };
+                    Ok(())
+                })
+                .unwrap_or_default();
             }
         }
-
         Self {
             ockam_crate: ockam_crate.get().unwrap_or(quote! { ockam }),
         }

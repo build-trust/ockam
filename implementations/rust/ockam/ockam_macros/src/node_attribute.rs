@@ -1,20 +1,18 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{
-    AttributeArgs, ItemFn,
-    Meta::{NameValue, Path},
-    NestedMeta, ReturnType,
-};
+use syn::meta::parser;
+use syn::parse::Parser;
+use syn::{Expr, ItemFn, ReturnType};
 
 use crate::internals::attr::{parse_lit_into_path, Attr, BoolAttr};
 use crate::internals::{ast, ast::FnVariable, check, ctx::Context, symbol::*};
 
 pub(crate) fn expand(
     input_fn: ItemFn,
-    attrs: AttributeArgs,
+    attrs: &TokenStream,
 ) -> Result<TokenStream, Vec<syn::Error>> {
     let ctx = Context::new();
-    let cont = Container::from_ast(&ctx, &input_fn, &attrs);
+    let cont = Container::from_ast(&ctx, &input_fn, attrs);
     ctx.check()?;
     Ok(output(cont))
 }
@@ -22,7 +20,7 @@ pub(crate) fn expand(
 fn output(cont: Container) -> TokenStream {
     let body = &cont.original_fn.block;
     let ret_type = cont.data.ret;
-    let ockam_crate = cont.data.attrs.ockam_crate;
+    let ockam_crate = cont.data.arguments.ockam_crate;
 
     // Get the ockam context variable identifier and mutability token extracted
     // from the function arguments, or sets them to their default values.
@@ -53,7 +51,7 @@ fn output(cont: Container) -> TokenStream {
         quote! {}
     };
 
-    if !cont.data.attrs.no_main {
+    if !cont.data.arguments.no_main {
         // Assumes the target platform knows about main() functions
         quote! {
             fn main() #ret_type {
@@ -86,9 +84,9 @@ struct Container<'a> {
 }
 
 impl<'a> Container<'a> {
-    fn from_ast(ctx: &Context, input_fn: &'a ItemFn, attrs: &'a AttributeArgs) -> Self {
+    fn from_ast(ctx: &Context, input_fn: &'a ItemFn, args: &'a TokenStream) -> Self {
         let cont = Self {
-            data: Data::from_ast(ctx, input_fn, attrs),
+            data: Data::from_ast(ctx, input_fn, args),
             original_fn: input_fn,
         };
         cont.check(ctx);
@@ -111,7 +109,7 @@ impl<'a> Container<'a> {
 
 struct Data<'a> {
     // Macro attributes.
-    attrs: Attributes,
+    arguments: TestArguments,
     // The `ctx` variable data extracted from the input function arguments.
     // (e.g. from `ctx: &mut ockam::Context` it extracts `ctx`, `&` and `mut`).
     ockam_ctx: Option<FnVariable<'a>>,
@@ -120,45 +118,46 @@ struct Data<'a> {
 }
 
 impl<'a> Data<'a> {
-    fn from_ast(ctx: &Context, input_fn: &'a ItemFn, attrs: &AttributeArgs) -> Self {
+    fn from_ast(ctx: &Context, input_fn: &'a ItemFn, args: &TokenStream) -> Self {
         Self {
-            attrs: Attributes::from_ast(ctx, attrs),
+            arguments: TestArguments::from_ast(ctx, args),
             ockam_ctx: ast::ockam_context_variable_from_input_fn(ctx, input_fn),
             ret: &input_fn.sig.output,
         }
     }
 }
 
-struct Attributes {
+struct TestArguments {
     ockam_crate: TokenStream,
     no_main: bool,
 }
 
-impl Attributes {
-    fn from_ast(ctx: &Context, attrs: &AttributeArgs) -> Self {
+impl TestArguments {
+    fn from_ast(ctx: &Context, args: &TokenStream) -> Self {
         let mut ockam_crate = Attr::none(ctx, OCKAM_CRATE);
         let mut no_main = BoolAttr::none(ctx, NO_MAIN);
-        for attr in attrs {
-            match attr {
-                // Parse `#[ockam::test(crate = "ockam")]`
-                NestedMeta::Meta(NameValue(nv)) if nv.path == OCKAM_CRATE => {
-                    if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &nv.lit) {
-                        ockam_crate.set(&nv.path, quote! { #path });
-                    }
-                }
-                // Parse `#[ockam::node(no_main)]`
-                NestedMeta::Meta(Path(p)) if p == NO_MAIN => {
-                    no_main.set_true(p);
-                }
-                NestedMeta::Meta(m) => {
-                    let path = m.path().into_token_stream().to_string().replace(' ', "");
-                    ctx.error_spanned_by(m.path(), format!("unknown attribute `{}`", path));
-                }
-                NestedMeta::Lit(lit) => {
-                    ctx.error_spanned_by(lit, "unexpected literal in attribute");
-                }
+
+        let p = parser(|meta| {
+            if meta.path.is_ident(&OCKAM_CRATE) {
+                let value_expr: Expr = meta.value()?.parse()?;
+                if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &value_expr) {
+                    let path = quote! { #path };
+                    ockam_crate.set(&meta.path, path);
+                };
+                Ok(())
+            } else if meta.path.is_ident(&NO_MAIN) {
+                no_main.set_true(meta.path);
+                Ok(())
+            } else {
+                ctx.error_spanned_by(
+                    meta.path.clone(),
+                    format!("unknown attribute `{}`", meta.path.into_token_stream()),
+                );
+                Ok(())
             }
-        }
+        });
+        p.parse(args.clone().into()).unwrap_or_default();
+
         Self {
             ockam_crate: ockam_crate.get().unwrap_or(quote! { ockam }),
             no_main: no_main.get(),

@@ -38,11 +38,6 @@ impl Context {
             .push(syn::Error::new_spanned(obj.into_token_stream(), msg));
     }
 
-    /// Add one of Syn's parse errors.
-    pub(crate) fn syn_error(&self, err: syn::Error) {
-        self.errors.borrow_mut().as_mut().unwrap().push(err);
-    }
-
     /// Consume this object, producing a formatted error string if there are errors.
     pub(crate) fn check(self) -> Result<(), Vec<syn::Error>> {
         let errors = self.errors.borrow_mut().take().unwrap();

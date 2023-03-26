@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{parse, parse::Parse, Meta::List, Path};
+use syn::{parse, parse::Parse, Lit, Path};
 
 use crate::internals::{ctx::Context, respan::respan, symbol::Symbol};
 
@@ -86,9 +86,12 @@ impl<'c> BoolAttr<'c> {
 fn get_lit_str<'a>(
     ctx: &Context,
     attr_name: Symbol,
-    lit: &'a syn::Lit,
+    lit: &'a syn::Expr,
 ) -> Result<&'a syn::LitStr, ()> {
-    if let syn::Lit::Str(lit) = lit {
+    if let syn::Expr::Lit(syn::ExprLit {
+        lit: Lit::Str(lit), ..
+    }) = lit
+    {
         Ok(lit)
     } else {
         ctx.error_spanned_by(
@@ -105,9 +108,12 @@ fn get_lit_str<'a>(
 fn get_lit_int<'a>(
     ctx: &Context,
     attr_name: Symbol,
-    lit: &'a syn::Lit,
+    lit: &'a syn::Expr,
 ) -> Result<&'a syn::LitInt, ()> {
-    if let syn::Lit::Int(lit) = lit {
+    if let syn::Expr::Lit(syn::ExprLit {
+        lit: Lit::Int(lit), ..
+    }) = lit
+    {
         Ok(lit)
     } else {
         ctx.error_spanned_by(
@@ -137,7 +143,7 @@ fn spanned_tokens(s: &syn::LitStr) -> parse::Result<TokenStream> {
 pub(crate) fn parse_lit_into_path(
     ctx: &Context,
     attr_name: Symbol,
-    lit: &syn::Lit,
+    lit: &syn::Expr,
 ) -> Result<Path, ()> {
     let string = get_lit_str(ctx, attr_name, lit)?;
     parse_lit_str(string).map_err(|_| {
@@ -148,7 +154,7 @@ pub(crate) fn parse_lit_into_path(
 pub(crate) fn parse_lit_into_int<T>(
     ctx: &Context,
     attr_name: Symbol,
-    lit: &syn::Lit,
+    lit: &syn::Expr,
 ) -> Result<T, ()>
 where
     T: FromStr,
@@ -161,27 +167,5 @@ where
             Err(())
         }
         Ok(int) => Ok(int),
-    }
-}
-
-pub(crate) fn get_serde_meta_items(
-    ctx: &Context,
-    helper_attr: &Symbol,
-    attr: &syn::Attribute,
-) -> Result<Vec<syn::NestedMeta>, ()> {
-    if attr.path.ne(helper_attr) {
-        return Ok(Vec::new());
-    }
-
-    match attr.parse_meta() {
-        Ok(List(meta)) => Ok(meta.nested.into_iter().collect()),
-        Ok(other) => {
-            ctx.error_spanned_by(other, format!("expected #[{}(...)]", helper_attr));
-            Err(())
-        }
-        Err(err) => {
-            ctx.syn_error(err);
-            Err(())
-        }
     }
 }
