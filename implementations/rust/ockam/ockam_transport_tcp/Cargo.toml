@@ -44,7 +44,7 @@ tokio = { version = "1.27", features = [
 rand = "0.8"
 hashbrown = { version = "0.13", default-features = false }
 tracing = { version = "0.1", default-features = false }
-socket2 = "0.4.7"
+socket2 = { version = "0.5.1", features = ["all"] }
 cfg-if = "1.0.0"
 
 [dev-dependencies]
