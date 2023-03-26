@@ -41,4 +41,4 @@ tokio = { version = "1.27", features = [
     "io-util",
 ] }
 tracing = "0.1.37"
-socket2 = "0.4.7"
+socket2 = "0.5.1"
