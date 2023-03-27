@@ -3,7 +3,7 @@
 
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelListenerTrustOptions};
 use ockam::{vault::Vault, Context, Result, TcpListenerTrustOptions, TcpTransport};
 
 #[ockam::node]
@@ -21,11 +21,12 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
+    bob.create_secure_channel_listener("bob_listener", SecureChannelListenerTrustOptions::insecure_test())
         .await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:4000", TcpListenerTrustOptions::new()).await?;
+    tcp.listen("127.0.0.1:4000", TcpListenerTrustOptions::insecure_test())
+        .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

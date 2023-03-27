@@ -1,9 +1,7 @@
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
 use ockam_core::{route, Address, AllowAll, Result, Route};
-use ockam_identity::{
-    Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy,
-};
+use ockam_identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions};
 use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 use ockam_vault::Vault;
@@ -138,12 +136,12 @@ async fn create_tcp_listener(ctx: &Context, with_session: bool) -> Result<TcpLis
     let (socket_addr, session) = if with_session {
         let sessions = Sessions::default();
         let session_id = sessions.generate_session_id();
-        let trust_options = TcpListenerTrustOptions::new().as_spawner(&sessions, &session_id);
+        let trust_options = TcpListenerTrustOptions::as_spawner(&sessions, &session_id);
         let (socket_addr, _) = tcp.listen("127.0.0.1:0", trust_options).await?;
         (socket_addr, Some((sessions, session_id)))
     } else {
         let (socket_addr, _) = tcp
-            .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+            .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
             .await?;
         (socket_addr, None)
     };
@@ -188,12 +186,15 @@ async fn create_tcp_connection(
     let (address, session) = if with_session {
         let sessions = Sessions::default();
         let session_id = sessions.generate_session_id();
-        let trust_options = TcpConnectionTrustOptions::new().as_producer(&sessions, &session_id);
+        let trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &session_id);
         let address = tcp.connect(socket_addr.to_string(), trust_options).await?;
         (address, Some((sessions, session_id)))
     } else {
         let address = tcp
-            .connect(socket_addr.to_string(), TcpConnectionTrustOptions::new())
+            .connect(
+                socket_addr.to_string(),
+                TcpConnectionTrustOptions::insecure_test(),
+            )
             .await?;
         (address, None)
     };
@@ -229,8 +230,7 @@ pub async fn create_secure_channel_listener(
 ) -> Result<SecureChannelListenerInfo> {
     let identity = Identity::create(ctx, Vault::create()).await?;
 
-    let trust_options =
-        SecureChannelListenerTrustOptions::new().with_trust_policy(TrustEveryonePolicy);
+    let trust_options = SecureChannelListenerTrustOptions::insecure_test();
     let trust_options = if let Some((sessions, session_id)) = session {
         let policy = if with_tcp_listener {
             SessionPolicy::SpawnerAllowOnlyOneMessage
@@ -265,7 +265,7 @@ pub async fn create_secure_channel(
 ) -> Result<SecureChannelInfo> {
     let identity = Identity::create(ctx, Vault::create()).await?;
 
-    let trust_options = SecureChannelTrustOptions::new();
+    let trust_options = SecureChannelTrustOptions::insecure_test();
     let trust_options = if let Some((sessions, session_id)) = &connection.session {
         trust_options.as_consumer(sessions, session_id)
     } else {

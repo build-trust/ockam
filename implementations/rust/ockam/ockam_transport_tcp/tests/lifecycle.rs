@@ -24,7 +24,7 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
 
     let transport = TcpTransport::create(ctx).await?;
     let listener_address = transport
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?
         .0
         .to_string();
@@ -41,7 +41,10 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
         .collect();
 
     let tx_address1 = transport
-        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .connect(
+            &listener_address,
+            TcpConnectionTrustOptions::insecure_test(),
+        )
         .await?;
 
     let reply1: String = ctx
@@ -50,7 +53,10 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
     assert_eq!(reply1, msg1, "Should receive the same message");
 
     let tx_address2 = transport
-        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .connect(
+            &listener_address,
+            TcpConnectionTrustOptions::insecure_test(),
+        )
         .await?;
     let reply2: String = ctx
         .send_and_receive(route![tx_address2.clone(), "echoer"], msg2.clone())
@@ -72,7 +78,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
 
     let transport = TcpTransport::create(ctx).await?;
     let listener_address = transport
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?
         .0
         .to_string();
@@ -94,7 +100,10 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .collect();
 
     let tx_address1 = transport
-        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .connect(
+            &listener_address,
+            TcpConnectionTrustOptions::insecure_test(),
+        )
         .await?;
 
     let reply1: String = ctx
@@ -103,7 +112,10 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
     assert_eq!(reply1, msg1, "Should receive the same message");
 
     let tx_address2 = transport
-        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .connect(
+            &listener_address,
+            TcpConnectionTrustOptions::insecure_test(),
+        )
         .await?;
     let reply2: String = ctx
         .send_and_receive(route![tx_address2.clone(), "echoer"], msg2.clone())
@@ -144,7 +156,7 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
 
     let transport = TcpTransport::create(ctx).await?;
     let (listener_socket, listener_worker) = transport
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?;
     let listener_address = listener_socket.to_string();
 
@@ -160,7 +172,10 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
         .collect();
 
     let tx_address = transport
-        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .connect(
+            &listener_address,
+            TcpConnectionTrustOptions::insecure_test(),
+        )
         .await?;
 
     let reply1: String = ctx
@@ -172,7 +187,10 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
     ctx.sleep(Duration::from_millis(10)).await;
 
     let res = transport
-        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .connect(
+            &listener_address,
+            TcpConnectionTrustOptions::insecure_test(),
+        )
         .await;
     assert!(
         res.is_err(),

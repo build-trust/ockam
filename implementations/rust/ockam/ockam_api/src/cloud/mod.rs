@@ -195,7 +195,7 @@ mod node {
                     crate::create_tcp_session(cloud_multiaddr, &node_manager.tcp_transport)
                         .await
                         .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
-                let trust_options = SecureChannelTrustOptions::new().with_trust_policy(
+                let trust_options = SecureChannelTrustOptions::insecure().with_trust_policy(
                     TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
                 );
                 let trust_options = if let Some((sessions, session_id)) = cloud_session.session {

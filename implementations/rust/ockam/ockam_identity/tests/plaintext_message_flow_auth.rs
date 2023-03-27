@@ -26,15 +26,14 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 
     bob.create_secure_channel_listener(
         "listener",
-        SecureChannelListenerTrustOptions::new().as_spawner(&sessions_bob, &session_id_bob_channel),
+        SecureChannelListenerTrustOptions::as_spawner(&sessions_bob, &session_id_bob_channel),
     )
     .await?;
 
     let channel_to_bob = alice
         .create_secure_channel(
             route!["listener"],
-            SecureChannelTrustOptions::new()
-                .as_producer(&sessions_alice, &session_id_alice_channel),
+            SecureChannelTrustOptions::as_producer(&sessions_alice, &session_id_alice_channel),
         )
         .await?;
 
@@ -86,14 +85,14 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let (socket_addr, _) = tcp_bob
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::new().as_spawner(&sessions_bob, &session_id_bob_tcp),
+            TcpListenerTrustOptions::as_spawner(&sessions_bob, &session_id_bob_tcp),
         )
         .await?;
 
     let connection_to_bob = tcp_alice
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&sessions_alice, &session_id_alice_tcp),
+            TcpConnectionTrustOptions::as_producer(&sessions_alice, &session_id_alice_tcp),
         )
         .await?;
 
@@ -111,22 +110,20 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     bob.create_secure_channel_listener(
         "listener",
-        SecureChannelListenerTrustOptions::new()
+        SecureChannelListenerTrustOptions::as_spawner(&sessions_bob, &session_id_bob_plaintext)
             .as_consumer(
                 &sessions_bob,
                 &session_id_bob_tcp,
                 SessionPolicy::SpawnerAllowOnlyOneMessage,
-            )
-            .as_spawner(&sessions_bob, &session_id_bob_plaintext),
+            ),
     )
     .await?;
 
     let channel_to_bob = alice
         .create_secure_channel(
             route![connection_to_bob, "listener"],
-            SecureChannelTrustOptions::new()
-                .as_consumer(&sessions_alice, &session_id_alice_tcp)
-                .as_producer(&sessions_alice, &session_id_alice_plaintext),
+            SecureChannelTrustOptions::as_producer(&sessions_alice, &session_id_alice_plaintext)
+                .as_consumer(&sessions_alice, &session_id_alice_tcp),
         )
         .await?;
 

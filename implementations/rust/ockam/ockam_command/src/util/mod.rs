@@ -199,12 +199,12 @@ impl<'a> Rpc<'a> {
                         let tcp = TcpTransport::create(ctx).await?;
                         // Connection without a Session gives exclusive access to the node
                         // that runs that connection, make sure it's intended
-                        tcp.connect(addr_str, TcpConnectionTrustOptions::new())
+                        tcp.connect(addr_str, TcpConnectionTrustOptions::insecure())
                             .await?
                     }
                     Some(tcp) => {
                         // Create a new connection anyway
-                        tcp.connect(addr_str, TcpConnectionTrustOptions::new())
+                        tcp.connect(addr_str, TcpConnectionTrustOptions::insecure())
                             .await?
                         // Connection without a Session gives exclusive access to the node
                         // that runs that connection, make sure it's intended

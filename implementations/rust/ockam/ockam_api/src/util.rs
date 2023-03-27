@@ -53,8 +53,10 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
     let sessions = Sessions::default();
     let session_id = sessions.generate_session_id();
 
-    let mut trust_options =
-        Some(TcpConnectionTrustOptions::new().as_producer(&sessions, &session_id));
+    let mut trust_options = Some(TcpConnectionTrustOptions::as_producer(
+        &sessions,
+        &session_id,
+    ));
 
     while let Some(p) = it.next() {
         match p.code() {
@@ -145,7 +147,7 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
 /// Try to convert a multi-address to an Ockam route.
 pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Route> {
     // Guaranteed to be called when we use Tcp connection without a secure channel
-    let trust_options = TcpConnectionTrustOptions::new();
+    let trust_options = TcpConnectionTrustOptions::insecure();
     let mut rb = Route::new();
     let mut it = ma.iter().peekable();
     while let Some(p) = it.next() {
