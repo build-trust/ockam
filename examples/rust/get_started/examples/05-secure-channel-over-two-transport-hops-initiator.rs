@@ -16,7 +16,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     let alice = Identity::create(&ctx, vault).await?;
 
     // Create a TCP connection to the middle node.
-    let connection_to_middle_node = tcp.connect("localhost:3000", TcpConnectionTrustOptions::new()).await?;
+    let connection_to_middle_node = tcp
+        .connect("localhost:3000", TcpConnectionTrustOptions::insecure())
+        .await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let r = route![connection_to_middle_node, "forward_to_bob", "bob_listener"];

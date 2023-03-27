@@ -25,7 +25,8 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:4000", TcpListenerTrustOptions::new()).await?;
+    tcp.listen("127.0.0.1:4000", TcpListenerTrustOptions::insecure())
+        .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

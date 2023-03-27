@@ -53,7 +53,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Connect to the cloud node over TCP
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure())
         .await?;
 
     // Combine the tcp address of the cloud node and the forwarding_address to get a route

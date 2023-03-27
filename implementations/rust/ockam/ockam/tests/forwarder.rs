@@ -42,7 +42,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     ForwardingService::create(ctx, "forwarding_service", AllowAll, AllowAll).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?;
 
     let server_sessions = Sessions::default();
@@ -60,7 +60,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let cloud_connection = server_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&server_sessions, &server_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&server_sessions, &server_tcp_session_id),
         )
         .await?;
 
@@ -79,7 +79,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let cloud_connection = client_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&client_sessions, &client_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&client_sessions, &client_tcp_session_id),
         )
         .await?;
 
@@ -107,7 +107,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     ForwardingService::create(ctx, "forwarding_service", AllowAll, AllowAll).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?;
 
     let server_sessions = Sessions::default();
@@ -117,7 +117,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     let cloud_connection = server_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&server_sessions, &server_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&server_sessions, &server_tcp_session_id),
         )
         .await?;
 
@@ -196,7 +196,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?;
 
     // Server
@@ -217,7 +217,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_server_connection = server_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&server_sessions, &server_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&server_sessions, &server_tcp_session_id),
         )
         .await?;
     let server_identity = Identity::create(ctx, Vault::create()).await?;
@@ -260,7 +260,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_client_connection = client_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&client_sessions, &client_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&client_sessions, &client_tcp_session_id),
         )
         .await?;
     let client_identity = Identity::create(ctx, Vault::create()).await?;

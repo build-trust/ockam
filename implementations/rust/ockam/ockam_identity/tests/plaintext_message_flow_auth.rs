@@ -86,14 +86,14 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let (socket_addr, _) = tcp_bob
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::new().as_spawner(&sessions_bob, &session_id_bob_tcp),
+            TcpListenerTrustOptions::as_spawner(&sessions_bob, &session_id_bob_tcp),
         )
         .await?;
 
     let connection_to_bob = tcp_alice
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&sessions_alice, &session_id_alice_tcp),
+            TcpConnectionTrustOptions::as_producer(&sessions_alice, &session_id_alice_tcp),
         )
         .await?;
 

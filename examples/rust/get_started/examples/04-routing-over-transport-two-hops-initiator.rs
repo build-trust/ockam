@@ -8,7 +8,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP connection to the middle node.
-    let connection_to_middle_node = tcp.connect("localhost:3000", TcpConnectionTrustOptions::new()).await?;
+    let connection_to_middle_node = tcp
+        .connect("localhost:3000", TcpConnectionTrustOptions::insecure())
+        .await?;
 
     // Send a message to the "echoer" worker, on a different node, over two tcp hops.
     let r = route![connection_to_middle_node, "forward_to_responder", "echoer"];

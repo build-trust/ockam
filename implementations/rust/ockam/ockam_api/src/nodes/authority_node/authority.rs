@@ -110,7 +110,7 @@ impl Authority {
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_listener_trust_options =
-            TcpListenerTrustOptions::new().as_spawner(sessions, &tcp_listener_session_id);
+            TcpListenerTrustOptions::as_spawner(sessions, &tcp_listener_session_id);
 
         let (address, _) = tcp
             .listen(

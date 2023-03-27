@@ -43,7 +43,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // for the `bob_to_alice` stream to get two-way communication.
 
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure())
         .await?;
     let (sender, _receiver) = Stream::new(&ctx)
         .await?

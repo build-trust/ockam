@@ -35,7 +35,7 @@ async fn main(ctx: Context) -> Result<()> {
     // attesting to that knowledge.
     let sessions = Sessions::default();
     let session_id = sessions.generate_session_id();
-    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().as_producer(&sessions, &session_id);
+    let issuer_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &session_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
     let issuer_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
@@ -71,7 +71,7 @@ async fn main(ctx: Context) -> Result<()> {
     server.create_secure_channel_listener("secure", trust_options).await?;
 
     // Create a TCP listener and wait for incoming connections
-    let tcp_listener_trust_options = TcpListenerTrustOptions::new().as_spawner(&sessions, &listener_session_id);
+    let tcp_listener_trust_options = TcpListenerTrustOptions::as_spawner(&sessions, &listener_session_id);
     tcp.listen("127.0.0.1:4000", tcp_listener_trust_options).await?;
 
     // Don't call ctx.stop() here so this node runs forever.

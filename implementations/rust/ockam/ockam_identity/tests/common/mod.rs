@@ -138,12 +138,12 @@ async fn create_tcp_listener(ctx: &Context, with_session: bool) -> Result<TcpLis
     let (socket_addr, session) = if with_session {
         let sessions = Sessions::default();
         let session_id = sessions.generate_session_id();
-        let trust_options = TcpListenerTrustOptions::new().as_spawner(&sessions, &session_id);
+        let trust_options = TcpListenerTrustOptions::as_spawner(&sessions, &session_id);
         let (socket_addr, _) = tcp.listen("127.0.0.1:0", trust_options).await?;
         (socket_addr, Some((sessions, session_id)))
     } else {
         let (socket_addr, _) = tcp
-            .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+            .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
             .await?;
         (socket_addr, None)
     };
@@ -188,12 +188,15 @@ async fn create_tcp_connection(
     let (address, session) = if with_session {
         let sessions = Sessions::default();
         let session_id = sessions.generate_session_id();
-        let trust_options = TcpConnectionTrustOptions::new().as_producer(&sessions, &session_id);
+        let trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &session_id);
         let address = tcp.connect(socket_addr.to_string(), trust_options).await?;
         (address, Some((sessions, session_id)))
     } else {
         let address = tcp
-            .connect(socket_addr.to_string(), TcpConnectionTrustOptions::new())
+            .connect(
+                socket_addr.to_string(),
+                TcpConnectionTrustOptions::insecure_test(),
+            )
             .await?;
         (address, None)
     };

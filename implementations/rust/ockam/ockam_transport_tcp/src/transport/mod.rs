@@ -31,8 +31,8 @@ use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
 /// let tcp = TcpTransport::create(&ctx).await?;
-/// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::new()).await?; // Listen on port 8000
-/// tcp.connect("127.0.0.1:5000", TcpConnectionTrustOptions::new()).await?; // And connect to port 5000
+/// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::insecure()).await?; // Listen on port 8000
+/// tcp.connect("127.0.0.1:5000", TcpConnectionTrustOptions::insecure()).await?; // And connect to port 5000
 /// # Ok(()) }
 /// ```
 ///
@@ -44,8 +44,8 @@ use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
 /// let tcp = TcpTransport::create(&ctx).await?;
-/// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::new()).await?; // Listen on port 8000
-/// tcp.listen("127.0.0.1:9000", TcpListenerTrustOptions::new()).await?; // Listen on port 9000
+/// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::insecure()).await?; // Listen on port 8000
+/// tcp.listen("127.0.0.1:9000", TcpListenerTrustOptions::insecure()).await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
 #[derive(AsyncTryClone)]
