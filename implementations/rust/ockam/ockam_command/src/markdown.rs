@@ -32,7 +32,7 @@ impl MarkdownCommand {
             Ok(path) => path,
             Err(error) => panic!("Error getting markdown page directory: {error:?}"),
         };
-        env::set_var("MARKDOWN_RENDER", "1");
+        env::set_var("OCKAM_HELP_RENDER_MARKDOWN", "1");
         let clap_command = <OckamCommand as CommandFactory>::command();
         generate_markdown_pages(mark_dir.as_path(), &clap_command, None, Vec::new());
     }
@@ -133,10 +133,6 @@ fn generate_markdown_page(
         writeln!(buffer, "{}\n", s)?;
     }
 
-    // About: print the short version first, then the long version.
-    if let Some(about) = cmd.get_about() {
-        writeln!(buffer, "{}.\n", about.to_string().trim_end_matches('.'))?;
-    }
     if let Some(about) = cmd.get_long_about() {
         writeln!(buffer, "{}\n", about)?;
     }
