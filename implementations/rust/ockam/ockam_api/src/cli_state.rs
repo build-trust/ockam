@@ -102,13 +102,23 @@ impl CliState {
         }
 
         let dir = &self.dir;
-        fs::remove_dir_all(&self.nodes.dir)?;
-        fs::remove_dir_all(&self.identities.dir)?;
-        fs::remove_dir_all(&self.vaults.dir)?;
-        fs::remove_dir_all(&self.projects.dir)?;
-        fs::remove_dir_all(&self.credentials.dir)?;
-        fs::remove_dir_all(dir.join("defaults"))?;
-        fs::remove_file(dir.join("config.json"))?;
+        for dir in &[
+            &self.nodes.dir,
+            &self.identities.dir,
+            &self.vaults.dir,
+            &self.projects.dir,
+            &self.credentials.dir,
+            &dir.join("defaults"),
+        ] {
+            if dir.exists() {
+                fs::remove_dir_all(dir)?
+            };
+        }
+
+        let config_file = dir.join("config.json");
+        if config_file.exists() {
+            fs::remove_file(config_file)?;
+        }
 
         // If the state directory is now empty, delete it.
         let is_empty = fs::read_dir(dir)?.next().is_none();
