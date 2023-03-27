@@ -1,9 +1,7 @@
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
 use ockam_core::{route, Address, AllowAll, Result, Route};
-use ockam_identity::{
-    Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy,
-};
+use ockam_identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions};
 use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 use ockam_vault::Vault;
@@ -232,8 +230,7 @@ pub async fn create_secure_channel_listener(
 ) -> Result<SecureChannelListenerInfo> {
     let identity = Identity::create(ctx, Vault::create()).await?;
 
-    let trust_options =
-        SecureChannelListenerTrustOptions::new().with_trust_policy(TrustEveryonePolicy);
+    let trust_options = SecureChannelListenerTrustOptions::insecure_test();
     let trust_options = if let Some((sessions, session_id)) = session {
         let policy = if with_tcp_listener {
             SessionPolicy::SpawnerAllowOnlyOneMessage
@@ -268,7 +265,7 @@ pub async fn create_secure_channel(
 ) -> Result<SecureChannelInfo> {
     let identity = Identity::create(ctx, Vault::create()).await?;
 
-    let trust_options = SecureChannelTrustOptions::new();
+    let trust_options = SecureChannelTrustOptions::insecure_test();
     let trust_options = if let Some((sessions, session_id)) = &connection.session {
         trust_options.as_consumer(sessions, session_id)
     } else {

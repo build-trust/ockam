@@ -37,7 +37,7 @@ async fn main(ctx: Context) -> Result<()> {
     let session_id = sessions.generate_session_id();
     let issuer_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &session_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
-    let issuer_trust_options = SecureChannelTrustOptions::new()
+    let issuer_trust_options = SecureChannelTrustOptions::insecure()
         .with_trust_policy(TrustEveryonePolicy)
         .as_consumer(&sessions, &session_id);
     let issuer_channel = server
@@ -65,9 +65,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
     let listener_session_id = sessions.generate_session_id();
-    let trust_options = SecureChannelListenerTrustOptions::new()
-        .with_trust_policy(TrustEveryonePolicy)
-        .as_spawner(&sessions, &listener_session_id);
+    let trust_options = SecureChannelListenerTrustOptions::as_spawner(&sessions, &listener_session_id)
+        .with_trust_policy(TrustEveryonePolicy);
+
     server.create_secure_channel_listener("secure", trust_options).await?;
 
     // Create a TCP listener and wait for incoming connections

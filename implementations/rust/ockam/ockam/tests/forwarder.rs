@@ -3,9 +3,7 @@ use ockam::workers::Echoer;
 use ockam::ForwardingService;
 use ockam_core::sessions::{SessionPolicy, Sessions};
 use ockam_core::{route, Address, AllowAll, Result};
-use ockam_identity::{
-    Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy,
-};
+use ockam_identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions};
 use ockam_node::{Context, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 use ockam_vault::Vault;
@@ -191,7 +189,10 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     let cloud_identity = Identity::create(ctx, Vault::create()).await?;
     cloud_identity
-        .create_secure_channel_listener("cloud_listener", TrustEveryonePolicy)
+        .create_secure_channel_listener(
+            "cloud_listener",
+            SecureChannelListenerTrustOptions::insecure_test(),
+        )
         .await?;
 
     let cloud_tcp = TcpTransport::create(ctx).await?;
@@ -224,21 +225,22 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_server_channel = server_identity
         .create_secure_channel(
             route![cloud_server_connection, "cloud_listener"],
-            SecureChannelTrustOptions::new()
-                .as_consumer(&server_sessions, &server_tcp_session_id)
-                .as_producer(&server_sessions, &server_channel_session_id),
+            SecureChannelTrustOptions::as_producer(&server_sessions, &server_channel_session_id)
+                .as_consumer(&server_sessions, &server_tcp_session_id),
         )
         .await?;
     server_identity
         .create_secure_channel_listener(
             "server_listener",
-            SecureChannelListenerTrustOptions::new()
-                .as_consumer(
-                    &server_sessions,
-                    &server_channel_session_id,
-                    SessionPolicy::ProducerAllowMultiple,
-                )
-                .as_spawner(&server_sessions, &server_tunnel_session_id),
+            SecureChannelListenerTrustOptions::as_spawner(
+                &server_sessions,
+                &server_tunnel_session_id,
+            )
+            .as_consumer(
+                &server_sessions,
+                &server_channel_session_id,
+                SessionPolicy::ProducerAllowMultiple,
+            ),
         )
         .await?;
 
@@ -267,9 +269,8 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_client_channel = client_identity
         .create_secure_channel(
             route![cloud_client_connection, "cloud_listener"],
-            SecureChannelTrustOptions::new()
-                .as_consumer(&client_sessions, &client_tcp_session_id)
-                .as_producer(&client_sessions, &client_channel_session_id),
+            SecureChannelTrustOptions::as_producer(&client_sessions, &client_channel_session_id)
+                .as_consumer(&client_sessions, &client_tcp_session_id),
         )
         .await?;
 
@@ -280,9 +281,8 @@ async fn test4(ctx: &mut Context) -> Result<()> {
                 remote_info.remote_address(),
                 "server_listener"
             ],
-            SecureChannelTrustOptions::new()
-                .as_consumer(&client_sessions, &client_channel_session_id)
-                .as_producer(&client_sessions, &client_tunnel_session_id),
+            SecureChannelTrustOptions::as_producer(&client_sessions, &client_tunnel_session_id)
+                .as_consumer(&client_sessions, &client_channel_session_id),
         )
         .await?;
 

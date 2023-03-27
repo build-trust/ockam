@@ -1,7 +1,7 @@
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelTrustOptions};
 use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
 
 #[ockam::node]
@@ -22,7 +22,9 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Connect to a secure channel listener and perform a handshake.
     let r = route![connection_to_middle_node, "forward_to_bob", "bob_listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
+    let channel = alice
+        .create_secure_channel(r, SecureChannelTrustOptions::insecure())
+        .await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;

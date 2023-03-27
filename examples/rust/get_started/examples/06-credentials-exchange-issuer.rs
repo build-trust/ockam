@@ -1,7 +1,7 @@
 use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::credential_issuer::CredentialIssuer;
-use ockam::identity::TrustEveryonePolicy;
+use ockam::identity::SecureChannelListenerTrustOptions;
 use ockam::{Context, Result, TcpListenerTrustOptions, TcpTransport};
 
 #[ockam::node]
@@ -36,8 +36,10 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a secure channel listener that only allows channels where the identity
     // at the other end of the channel can authenticate with the latest private key
     // corresponding to one of the above known public identifiers.
-    let p = TrustEveryonePolicy;
-    issuer.identity().create_secure_channel_listener("secure", p).await?;
+    issuer
+        .identity()
+        .create_secure_channel_listener("secure", SecureChannelListenerTrustOptions::insecure())
+        .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from
     // authenticated secure channels with our known public identifiers.

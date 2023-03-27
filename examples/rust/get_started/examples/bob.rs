@@ -1,5 +1,5 @@
 use ockam::access_control::AllowAll;
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelListenerTrustOptions};
 use ockam::remote::RemoteForwarderTrustOptions;
 use ockam::{remote::RemoteForwarder, Routed, TcpConnectionTrustOptions, TcpTransport, Worker};
 use ockam::{vault::Vault, Context, Result};
@@ -38,7 +38,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
+    bob.create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure())
         .await?;
 
     // The computer that is running this program is likely within a private network and

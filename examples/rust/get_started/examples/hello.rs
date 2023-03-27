@@ -1,9 +1,5 @@
-use ockam::{
-    identity::{Identity, TrustEveryonePolicy},
-    route,
-    vault::Vault,
-    Context, Result,
-};
+use ockam::identity::{SecureChannelListenerTrustOptions, SecureChannelTrustOptions};
+use ockam::{identity::Identity, route, vault::Vault, Context, Result};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -15,14 +11,17 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob", TrustEveryonePolicy).await?;
+    bob.create_secure_channel_listener("bob", SecureChannelListenerTrustOptions::insecure())
+        .await?;
 
     // Create an entity to represent Alice.
     let alice = Identity::create(&ctx, vault.clone()).await?;
 
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
-    let channel = alice.create_secure_channel("bob", TrustEveryonePolicy).await?;
+    let channel = alice
+        .create_secure_channel("bob", SecureChannelTrustOptions::insecure())
+        .await?;
 
     // Send a message, ** THROUGH ** the secure channel,
     // to the "app" worker on the other side.

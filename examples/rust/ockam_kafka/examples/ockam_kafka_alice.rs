@@ -1,10 +1,7 @@
+use ockam::identity::SecureChannelTrustOptions;
 use ockam::{
-    identity::{Identity, TrustEveryonePolicy},
-    route,
-    stream::Stream,
-    unique_with_prefix,
-    vault::Vault,
-    Context, Result, TcpConnectionTrustOptions, TcpTransport,
+    identity::Identity, route, stream::Stream, unique_with_prefix, vault::Vault, Context, Result,
+    TcpConnectionTrustOptions, TcpTransport,
 };
 use std::io;
 
@@ -57,7 +54,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
+    let channel = alice
+        .create_secure_channel(r, SecureChannelTrustOptions::insecure())
+        .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 

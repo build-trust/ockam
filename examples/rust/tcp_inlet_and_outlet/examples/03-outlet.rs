@@ -1,4 +1,4 @@
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelListenerTrustOptions};
 use ockam::{vault::Vault, Context, Result, TcpListenerTrustOptions, TcpOutletTrustOptions, TcpTransport};
 
 #[ockam::node]
@@ -14,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+    e.create_secure_channel_listener("secure_channel_listener", SecureChannelListenerTrustOptions::insecure())
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.

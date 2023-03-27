@@ -1,10 +1,8 @@
 use ockam::access_control::AllowAll;
+use ockam::identity::SecureChannelListenerTrustOptions;
 use ockam::{
-    identity::{Identity, TrustEveryonePolicy},
-    route,
-    stream::Stream,
-    vault::Vault,
-    Context, Result, Routed, TcpConnectionTrustOptions, TcpTransport, Worker,
+    identity::Identity, route, stream::Stream, vault::Vault, Context, Result, Routed, TcpConnectionTrustOptions,
+    TcpTransport, Worker,
 };
 
 struct Echoer;
@@ -37,7 +35,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
+    bob.create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure())
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and

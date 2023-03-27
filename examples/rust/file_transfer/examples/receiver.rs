@@ -2,10 +2,11 @@
 
 use file_transfer::FileData;
 use ockam::access_control::AllowAll;
+use ockam::identity::SecureChannelListenerTrustOptions;
 use ockam::remote::RemoteForwarderTrustOptions;
 use ockam::{
     errcode::{Kind, Origin},
-    identity::{Identity, TrustEveryonePolicy},
+    identity::Identity,
     remote::RemoteForwarder,
     vault::Vault,
     Context, Error, Result, Routed, TcpConnectionTrustOptions, TcpTransport, Worker,
@@ -93,7 +94,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.
     receiver
-        .create_secure_channel_listener("listener", TrustEveryonePolicy)
+        .create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure())
         .await?;
 
     // The computer that is running this program is likely within a private network and

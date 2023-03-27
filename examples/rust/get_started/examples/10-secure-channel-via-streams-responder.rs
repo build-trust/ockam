@@ -1,6 +1,6 @@
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelListenerTrustOptions};
 use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
 
 #[ockam::node]
@@ -23,7 +23,7 @@ async fn main(ctx: Context) -> Result<()> {
     let bob = Identity::create(&ctx, vault).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+    bob.create_secure_channel_listener("secure_channel_listener", SecureChannelListenerTrustOptions::insecure())
         .await?;
 
     // Create a stream client

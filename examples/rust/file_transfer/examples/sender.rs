@@ -1,17 +1,13 @@
 // examples/sender.rs
 
 use file_transfer::{FileData, FileDescription};
-use ockam::{
-    identity::{Identity, TrustEveryonePolicy},
-    route,
-    vault::Vault,
-    Context,
-};
+use ockam::{identity::Identity, route, vault::Vault, Context};
 use ockam::{TcpConnectionTrustOptions, TcpTransport};
 
 use std::path::PathBuf;
 
 use anyhow::Result;
+use ockam::identity::SecureChannelTrustOptions;
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -63,7 +59,7 @@ async fn main(ctx: Context) -> Result<()> {
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.
     let channel = sender
-        .create_secure_channel(route_to_receiver_listener, TrustEveryonePolicy)
+        .create_secure_channel(route_to_receiver_listener, SecureChannelTrustOptions::insecure())
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

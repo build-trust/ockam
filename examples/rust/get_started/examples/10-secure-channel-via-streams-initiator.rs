@@ -1,4 +1,4 @@
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelTrustOptions};
 use ockam::{
     route, stream::Stream, vault::Vault, Context, MessageReceiveOptions, Result, TcpConnectionTrustOptions,
     TcpTransport,
@@ -40,7 +40,7 @@ async fn main(mut ctx: Context) -> Result<()> {
                 sender.clone(),            // via the "sc-initiator-to-responder" stream
                 "secure_channel_listener"  // to the "secure_channel_listener" listener
             ],
-            TrustEveryonePolicy,
+            SecureChannelTrustOptions::insecure(),
         )
         .await?;
 
