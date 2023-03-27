@@ -85,7 +85,7 @@ impl ForwarderCreator for RemoteForwarderCreator {
             context,
             self.hub_route.clone(),
             alias.clone(),
-            RemoteForwarderTrustOptions::new(),
+            RemoteForwarderTrustOptions::insecure(),
         )
         .await?;
         trace!("remote forwarder created: {remote_forwarder_information:?}");

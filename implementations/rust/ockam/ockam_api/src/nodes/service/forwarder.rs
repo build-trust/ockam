@@ -50,11 +50,11 @@ impl NodeManagerWorker {
                     ctx,
                     route,
                     alias,
-                    RemoteForwarderTrustOptions::new(),
+                    RemoteForwarderTrustOptions::insecure(),
                 )
                 .await
             } else {
-                RemoteForwarder::create(ctx, route, RemoteForwarderTrustOptions::new()).await
+                RemoteForwarder::create(ctx, route, RemoteForwarderTrustOptions::insecure()).await
             }
         } else {
             let f = if let Some(alias) = req.alias() {
@@ -62,11 +62,11 @@ impl NodeManagerWorker {
                     ctx,
                     route,
                     alias,
-                    RemoteForwarderTrustOptions::new(),
+                    RemoteForwarderTrustOptions::insecure(),
                 )
                 .await
             } else {
-                RemoteForwarder::create(ctx, route, RemoteForwarderTrustOptions::new()).await
+                RemoteForwarder::create(ctx, route, RemoteForwarderTrustOptions::insecure()).await
             };
             if f.is_ok() && !sec_chan.is_empty() {
                 let ctx = Arc::new(ctx.async_try_clone().await?);
@@ -181,11 +181,12 @@ fn replacer(
                         &ctx,
                         r,
                         alias,
-                        RemoteForwarderTrustOptions::new(),
+                        RemoteForwarderTrustOptions::insecure(),
                     )
                     .await?;
                 } else {
-                    RemoteForwarder::create(&ctx, r, RemoteForwarderTrustOptions::new()).await?;
+                    RemoteForwarder::create(&ctx, r, RemoteForwarderTrustOptions::insecure())
+                        .await?;
                 }
                 Ok(sec)
             };

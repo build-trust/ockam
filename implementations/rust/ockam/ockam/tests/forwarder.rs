@@ -18,7 +18,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let remote_info =
-        RemoteForwarder::create(ctx, route![], RemoteForwarderTrustOptions::new()).await?;
+        RemoteForwarder::create(ctx, route![], RemoteForwarderTrustOptions::insecure_test())
+            .await?;
 
     let resp = ctx
         .send_and_receive::<String>(
@@ -65,8 +66,10 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_connection.clone(),
-        RemoteForwarderTrustOptions::new()
-            .as_consumer_and_producer(&server_sessions, &server_tcp_session_id),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(
+            &server_sessions,
+            &server_tcp_session_id,
+        ),
     )
     .await?;
 
@@ -122,8 +125,10 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_connection.clone(),
-        RemoteForwarderTrustOptions::new()
-            .as_consumer_and_producer(&server_sessions, &server_tcp_session_id),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(
+            &server_sessions,
+            &server_tcp_session_id,
+        ),
     )
     .await?;
 
@@ -247,8 +252,10 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_server_channel.clone(),
-        RemoteForwarderTrustOptions::new()
-            .as_consumer_and_producer(&server_sessions, &server_channel_session_id),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(
+            &server_sessions,
+            &server_channel_session_id,
+        ),
     )
     .await?;
 

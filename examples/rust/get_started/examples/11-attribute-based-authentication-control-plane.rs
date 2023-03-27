@@ -150,7 +150,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         &ctx,
         secure_channel_address,
         "control_plane1",
-        RemoteForwarderTrustOptions::new(),
+        RemoteForwarderTrustOptions::insecure(),
     )
     .await?;
     println!("forwarder is {forwarder:?}");
