@@ -20,7 +20,7 @@ impl Worker for Echoer {
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let transport = TcpTransport::create(ctx).await?;
     let (listener_address, _) = transport
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?;
     WorkerBuilder::with_mailboxes(
         Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
@@ -32,7 +32,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     let addr = transport
         .connect(
             listener_address.to_string(),
-            TcpConnectionTrustOptions::new(),
+            TcpConnectionTrustOptions::insecure_test(),
         )
         .await?;
 

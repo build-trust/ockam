@@ -85,7 +85,7 @@ impl ForwarderCreator for RemoteForwarderCreator {
             context,
             self.hub_route.clone(),
             alias.clone(),
-            RemoteForwarderTrustOptions::new(),
+            RemoteForwarderTrustOptions::insecure(),
         )
         .await?;
         trace!("remote forwarder created: {remote_forwarder_information:?}");
@@ -240,7 +240,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 // This route should not use Sessions because we are using tunnel over existing
                 // secure channel
                 let trust_options =
-                    SecureChannelTrustOptions::new().with_trust_policy(TrustEveryonePolicy);
+                    SecureChannelTrustOptions::insecure().with_trust_policy(TrustEveryonePolicy);
                 let encryptor_address = inner
                     .identity
                     .create_secure_channel(

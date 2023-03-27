@@ -266,7 +266,9 @@ async fn run_foreground_node(
     // This listener gives exclusive access to our node, make sure this is intended
     // + make sure this tcp address is only reachable from the local loopback and/or intended
     // network
-    let (socket_addr, listener_addr) = tcp.listen(&bind, TcpListenerTrustOptions::new()).await?;
+    let (socket_addr, listener_addr) = tcp
+        .listen(&bind, TcpListenerTrustOptions::insecure())
+        .await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     let setup_config = node_state.setup()?;
@@ -430,7 +432,7 @@ async fn start_services(
     // Connection without a Session gives exclusive access to the node
     // that runs that connection, make sure it's intended
     let addr = tcp
-        .connect(addr.to_string(), TcpConnectionTrustOptions::new())
+        .connect(addr.to_string(), TcpConnectionTrustOptions::insecure())
         .await?;
 
     if let Some(cfg) = config.vault {

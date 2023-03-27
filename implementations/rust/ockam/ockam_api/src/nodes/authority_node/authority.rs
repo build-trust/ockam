@@ -92,14 +92,16 @@ impl Authority {
         let tcp_listener_session_id = sessions.generate_session_id();
         let secure_channel_listener_session_id = sessions.generate_session_id();
 
-        let trust_options = SecureChannelListenerTrustOptions::new()
-            .with_trust_policy(TrustEveryonePolicy)
-            .as_consumer(
-                sessions,
-                &tcp_listener_session_id,
-                SessionPolicy::SpawnerAllowOnlyOneMessage,
-            )
-            .as_spawner(sessions, &secure_channel_listener_session_id);
+        let trust_options = SecureChannelListenerTrustOptions::as_spawner(
+            sessions,
+            &secure_channel_listener_session_id,
+        )
+        .with_trust_policy(TrustEveryonePolicy)
+        .as_consumer(
+            sessions,
+            &tcp_listener_session_id,
+            SessionPolicy::SpawnerAllowOnlyOneMessage,
+        );
 
         let listener_name = configuration.secure_channel_listener_name();
         self.identity
@@ -110,7 +112,7 @@ impl Authority {
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_listener_trust_options =
-            TcpListenerTrustOptions::new().as_spawner(sessions, &tcp_listener_session_id);
+            TcpListenerTrustOptions::as_spawner(sessions, &tcp_listener_session_id);
 
         let (address, _) = tcp
             .listen(

@@ -23,7 +23,7 @@ mod test {
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
     use ockam_core::{route, Address, AllowAll, Route};
-    use ockam_identity::TrustEveryonePolicy;
+    use ockam_identity::SecureChannelListenerTrustOptions;
     use ockam_node::compat::tokio;
     use ockam_transport_tcp::{TcpInletTrustOptions, TcpOutletTrustOptions};
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -90,7 +90,7 @@ mod test {
                 .identity
                 .create_secure_channel_listener(
                     KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
-                    TrustEveryonePolicy,
+                    SecureChannelListenerTrustOptions::insecure(),
                 )
                 .await?;
         }
