@@ -4,8 +4,6 @@
 
 setup_file() {
   load load/base.bash
-  load load/orchestrator.bash
-  load_orchestrator_data
 }
 
 setup() {
@@ -14,7 +12,7 @@ setup() {
   load_bats_ext
   setup_home_dir
   skip_if_orchestrator_tests_not_enabled
-  copy_orchestrator_data
+  load_orchestrator_data
 }
 
 teardown() {
@@ -34,11 +32,11 @@ teardown() {
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  run --separate-stderr "$OCKAM" identity create green
+  run "$OCKAM" identity create green
   assert_success
   green_identifier=$($OCKAM identity show green)
 
-  run --separate-stderr "$OCKAM" identity create blue
+  run "$OCKAM" identity create blue
   assert_success
   blue_identifier=$($OCKAM identity show blue)
 
@@ -138,17 +136,17 @@ teardown() {
   run $OCKAM project authenticate --identity m1 --project-path "$PROJECT_JSON_PATH"
 
   # m1 is a member,  must be able to contact the project' service
-  run --separate-stderr $OCKAM message send --identity m1 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo hello
+  run $OCKAM message send --identity m1 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo hello
   assert_success
   assert_output "hello"
 
   # m2 is not a member,  must not be able to contact the project' service
-  run --separate-stderr $OCKAM message send --identity m2 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo hello
+  run $OCKAM message send --identity m2 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo hello
   assert_failure
 }
 
 @test "projects - list addons" {
-  run --separate-stderr "$OCKAM" project addon list --project default
+  run "$OCKAM" project addon list --project default
   assert_success
   assert_output --partial "Id: okta"
 }
@@ -156,26 +154,26 @@ teardown() {
 @test "projects - enable and disable addons" {
   skip # TODO: wait until cloud has the influxdb and confluent addons enabled
 
-  run --separate-stderr "$OCKAM" project addon list --project default
+  run "$OCKAM" project addon list --project default
   assert_success
   assert_output --partial --regex "Id: okta\n +Enabled: false"
   assert_output --partial --regex "Id: confluent\n +Enabled: false"
 
-  run --separate-stderr "$OCKAM" project addon enable okta --project default --tenant tenant --client-id client_id --cert cert
+  run "$OCKAM" project addon enable okta --project default --tenant tenant --client-id client_id --cert cert
   assert_success
-  run --separate-stderr "$OCKAM" project addon enable confluent --project default --bootstrap-server bootstrap-server.confluent:9092 --api-key ApIkEy --api-secret ApIsEcrEt
+  run "$OCKAM" project addon enable confluent --project default --bootstrap-server bootstrap-server.confluent:9092 --api-key ApIkEy --api-secret ApIsEcrEt
   assert_success
 
-  run --separate-stderr "$OCKAM" project addon list --project default
+  run "$OCKAM" project addon list --project default
   assert_success
   assert_output --partial --regex "Id: okta\n +Enabled: true"
   assert_output --partial --regex "Id: confluent\n +Enabled: true"
 
-  run --separate-stderr "$OCKAM" project addon disable --addon okta --project default
-  run --separate-stderr "$OCKAM" project addon disable --addon --project default
-  run --separate-stderr "$OCKAM" project addon disable --addon confluent --project default
+  run "$OCKAM" project addon disable --addon okta --project default
+  run "$OCKAM" project addon disable --addon --project default
+  run "$OCKAM" project addon disable --addon confluent --project default
 
-  run --separate-stderr "$OCKAM" project addon list --project default
+  run "$OCKAM" project addon list --project default
   assert_success
   assert_output --partial --regex "Id: okta\n +Enabled: false"
   assert_output --partial --regex "Id: confluent\n +Enabled: false"
