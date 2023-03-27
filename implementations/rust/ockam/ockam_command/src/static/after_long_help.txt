@@ -15,8 +15,7 @@ $ ockam enroll
 You can also create encrypted relays outside the orchestrator.
 See `ockam forwarder --help`.
 
-Application Service
-------
+Application Service:
 
 Next let's prepare the service side of our application.
 
@@ -36,10 +35,9 @@ $ ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:
 $ ockam forwarder create blue --at /project/default --to /node/blue
 ```
 
-Application Client
-------
+Application Client:
 
-Now on the client side:
+Now on the client side
 
 ```sh
 # Setup an ockam node, called green, as a sidecar next to our application service.

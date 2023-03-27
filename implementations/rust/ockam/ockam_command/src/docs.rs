@@ -1,7 +1,6 @@
 use crate::terminal::TerminalBackground;
 use colorful::Colorful;
 use once_cell::sync::Lazy;
-use std::io::Write;
 use syntect::highlighting::Theme;
 use syntect::{
     easy::HighlightLines,
@@ -10,16 +9,17 @@ use syntect::{
     parsing::SyntaxSet,
     util::{as_24_bit_terminal_escaped, LinesWithEndings},
 };
-use termcolor::WriteColor;
 
-const TEMPLATE_BOTTOM: &str = "
+const FOOTER: &str = "
 Learn More:
-    Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
-    Learn more at https://docs.ockam.io/get-started#command
+
+Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
+Learn more at https://docs.ockam.io/reference/command
 
 Feedback:
-    If you have any questions or feedback, please start a discussion
-    on Github https://github.com/build-trust/ockam/discussions/new
+
+If you have any questions or feedback, please start a discussion
+on Github https://github.com/build-trust/ockam/discussions/new
 ";
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
@@ -35,45 +35,60 @@ static THEME: Lazy<Option<Theme>> = Lazy::new(|| {
     Some(theme)
 });
 
-pub(crate) fn about(body: &str) -> &'static str {
-    Box::leak(highlight_syntax(body.to_string()).into_boxed_str())
-}
-
-#[allow(unused)]
-pub(crate) fn before_help(body: &str) -> &'static str {
-    Box::leak(highlight_syntax(body.to_string()).into_boxed_str())
-}
-
-pub(crate) fn after_help(body: &str) -> &'static str {
-    let mut template = String::new();
-    if is_markdown() {
-        template.push_str("### Examples\n\n");
-    } else {
-        let mut buffer = termcolor::Buffer::ansi();
-        let mut color = termcolor::ColorSpec::new();
-        color.set_bold(true);
-        color.set_underline(true);
-        let err_msg = "Failed to create styled header";
-        buffer.set_color(&color).expect(err_msg);
-        buffer.write_all(template.as_bytes()).expect(err_msg);
-        buffer.reset().expect(err_msg);
-    }
-    template.push_str(body);
-    if !is_markdown() {
-        template.push_str(TEMPLATE_BOTTOM);
-    }
-    let highlighted = highlight_syntax(template);
-    Box::leak(highlighted.into_boxed_str())
-}
-
-pub(crate) fn is_markdown() -> bool {
-    match std::env::var("MARKDOWN_RENDER") {
+fn is_markdown() -> bool {
+    match std::env::var("OCKAM_HELP_RENDER_MARKDOWN") {
         Ok(v) => v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("1"),
         Err(_e) => false,
     }
 }
 
-pub fn highlight_syntax(input: String) -> String {
+pub(crate) fn hide() -> bool {
+    match std::env::var("OCKAM_HELP_SHOW_HIDDEN") {
+        Ok(v) => !v.eq_ignore_ascii_case("true") || !v.eq_ignore_ascii_case("1"),
+        Err(_e) => true,
+    }
+}
+
+pub(crate) fn about(body: &str) -> &'static str {
+    if is_markdown() {
+        Box::leak(body.to_string().into_boxed_str())
+    } else {
+        let syntax_highlighted = highlight_syntax(body.to_string());
+        Box::leak(syntax_highlighted.into_boxed_str())
+    }
+}
+
+#[allow(unused)]
+pub(crate) fn before_help(body: &str) -> &'static str {
+    if is_markdown() {
+        Box::leak(body.to_string().into_boxed_str())
+    } else {
+        let syntax_highlighted = highlight_syntax(body.to_string());
+        Box::leak(syntax_highlighted.into_boxed_str())
+    }
+}
+
+pub(crate) fn after_help(body: &str) -> &'static str {
+    let mut after_help = String::new();
+    if is_markdown() {
+        after_help.push_str("### Examples\n\n");
+        after_help.push_str(body);
+        Box::leak(after_help.into_boxed_str())
+    } else {
+        after_help.push_str("Examples:\n\n");
+        after_help.push_str(body);
+        after_help.push_str(FOOTER);
+
+        let syntax_highlighted = highlight_syntax(after_help);
+        Box::leak(syntax_highlighted.into_boxed_str())
+    }
+}
+
+fn highlight_syntax(input: String) -> String {
+    if is_markdown() {
+        return input;
+    }
+
     let mut highlighted: Vec<String> = Vec::new();
     let mut in_fenced_block = false;
 
@@ -112,12 +127,5 @@ pub fn highlight_syntax(input: String) -> String {
         highlighted.join("")
     } else {
         input
-    }
-}
-
-pub(crate) fn hide() -> bool {
-    match std::env::var("SHOW_HIDDEN") {
-        Ok(v) => !v.eq_ignore_ascii_case("true"),
-        Err(_e) => true,
     }
 }
