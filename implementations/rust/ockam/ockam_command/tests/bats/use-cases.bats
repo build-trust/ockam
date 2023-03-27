@@ -6,8 +6,6 @@
 
 setup_file() {
   load load/base.bash
-  load load/orchestrator.bash
-  load_orchestrator_data
 }
 
 setup() {
@@ -26,11 +24,11 @@ teardown() {
 # https://docs.ockam.io/guides/use-cases/add-end-to-end-encryption-to-any-client-and-server-application-with-no-code-change
 @test "use-case - end-to-end encryption, local" {
   port=9000
-  run --separate-stderr "$OCKAM" node create relay
+  run "$OCKAM" node create relay
   assert_success
 
   # Service
-  run --separate-stderr "$OCKAM" node create server_sidecar
+  run "$OCKAM" node create server_sidecar
   assert_success
 
   run "$OCKAM" tcp-outlet create --at /node/server_sidecar --from /service/outlet --to 127.0.0.1:5000
@@ -40,7 +38,7 @@ teardown() {
   assert_success
 
   # Client
-  run --separate-stderr "$OCKAM" node create client_sidecar
+  run "$OCKAM" node create client_sidecar
   assert_success
   run bash -c "$OCKAM secure-channel create --from /node/client_sidecar --to /node/relay/service/hop/service/forward_to_server_sidecar/service/api \
               | $OCKAM tcp-inlet create --at /node/client_sidecar --from 127.0.0.1:$port --to -/service/outlet"
@@ -53,7 +51,7 @@ teardown() {
 # https://docs.ockam.io/
 @test "use-case - end-to-end encryption, orchestrator" {
   skip_if_orchestrator_tests_not_enabled
-  copy_orchestrator_data
+  load_orchestrator_data
 
   port=9001
 
@@ -77,7 +75,7 @@ teardown() {
 # https://docs.ockam.io/use-cases/apply-fine-grained-permissions-with-attribute-based-access-control-abac
 @test "use-case - abac" {
   skip_if_orchestrator_tests_not_enabled
-  copy_orchestrator_data
+  load_orchestrator_data
 
   port_1=9002
   port_2=9003

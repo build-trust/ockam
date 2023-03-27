@@ -4,8 +4,6 @@
 
 setup_file() {
   load load/base.bash
-  load load/orchestrator.bash
-  load_orchestrator_data
 }
 
 setup() {
@@ -14,7 +12,7 @@ setup() {
   load_bats_ext
   setup_home_dir
   skip_if_orchestrator_tests_not_enabled
-  copy_orchestrator_data
+  load_orchestrator_data
 }
 
 teardown() {

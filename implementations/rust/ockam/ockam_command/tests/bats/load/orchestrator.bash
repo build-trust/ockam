@@ -22,15 +22,8 @@ function skip_if_long_tests_not_enabled() {
 
 function load_orchestrator_data() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
-    if [ ! -f "$OCKAM_HOME_BASE/project.json" ]; then
-      OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM project information --output json >"$OCKAM_HOME_BASE/project.json"
-    fi
-    export PROJECT_JSON_PATH="$OCKAM_HOME_BASE/project.json"
-  fi
-}
-
-function copy_orchestrator_data() {
-  if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
     cp -a $OCKAM_HOME_BASE $OCKAM_HOME
+    export PROJECT_JSON_PATH="$OCKAM_HOME/project.json"
+    $OCKAM project information --output json >"$PROJECT_JSON_PATH"
   fi
 }

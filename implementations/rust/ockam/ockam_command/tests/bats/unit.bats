@@ -32,7 +32,7 @@ teardown() {
 }
 
 @test "node - start services" {
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
 
   # Check we can start service, but only once with the same name
@@ -194,7 +194,7 @@ teardown() {
 # ===== TCP
 
 @test "tcp connection - CRUD" {
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
 
   # Create tcp-connection and check output
@@ -266,24 +266,24 @@ teardown() {
 
 @test "message - send messages between local nodes" {
   # Send from a temporary node to a background node
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
   msg=$(random_str)
-  run --separate-stderr "$OCKAM" message send "$msg" --to /node/n1/service/uppercase
+  run "$OCKAM" message send "$msg" --to /node/n1/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 
   # Send between two background nodes
-  run --separate-stderr "$OCKAM" node create n2
+  run "$OCKAM" node create n2
   assert_success
   msg=$(random_str)
-  run --separate-stderr "$OCKAM" message send "$msg" --from n1 --to /node/n2/service/uppercase
+  run "$OCKAM" message send "$msg" --from n1 --to /node/n2/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 
   # Same, but using the `/node/` prefix in the `--from` argument
   msg=$(random_str)
-  run --separate-stderr "$OCKAM" message send "$msg" --from /node/n1 --to /node/n2/service/uppercase
+  run "$OCKAM" message send "$msg" --from /node/n1 --to /node/n2/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 }
@@ -317,15 +317,15 @@ teardown() {
 # ===== SECURE CHANNEL
 
 @test "secure channel - create secure channel and send message through it" {
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
-  run --separate-stderr "$OCKAM" node create n2
+  run "$OCKAM" node create n2
   assert_success
 
   # In two separate commands
   msg=$(random_str)
   output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api)
-  run --separate-stderr "$OCKAM" message send "$msg" --from /node/n1 --to "$output/service/uppercase"
+  run "$OCKAM" message send "$msg" --from /node/n1 --to "$output/service/uppercase"
   assert_success
   assert_output "$(to_uppercase "$msg")"
 
@@ -346,15 +346,15 @@ teardown() {
 # ===== FORWARDER
 
 @test "forwarder - create forwarder and send message through it" {
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
-  run --separate-stderr "$OCKAM" node create n2
+  run "$OCKAM" node create n2
   assert_success
 
   # In two separate commands
   $OCKAM forwarder create n2 --at /node/n1 --to /node/n2
   msg=$(random_str)
-  run --separate-stderr "$OCKAM" message send "$msg" --to /node/n1/service/hop/service/forward_to_n2/service/uppercase
+  run "$OCKAM" message send "$msg" --to /node/n1/service/hop/service/forward_to_n2/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 
@@ -372,9 +372,9 @@ teardown() {
   inlet_port=6101
 
   # Create nodes for inlet/outlet pair
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
-  run --separate-stderr "$OCKAM" node create n2
+  run "$OCKAM" node create n2
   assert_success
 
   # Create inlet/outlet pair
@@ -403,7 +403,7 @@ teardown() {
 
 @test "portals - tcp outlet CRUD" {
   port=6103
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
@@ -426,9 +426,9 @@ teardown() {
 
 @test "portals - list inlets on a node" {
   port=6104
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
-  run --separate-stderr "$OCKAM" node create n2
+  run "$OCKAM" node create n2
   assert_success
 
   run $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias tcp-inlet-2
@@ -442,7 +442,7 @@ teardown() {
 
 @test "portals - list outlets on a node" {
   port=6105
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
 
   run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
   assert_output --partial "/service/outlet"
@@ -457,9 +457,9 @@ teardown() {
 
 @test "portals - show a tcp inlet" {
   port=6106
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
-  run --separate-stderr "$OCKAM" node create n2
+  run "$OCKAM" node create n2
   assert_success
 
   run $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias "test-inlet"
@@ -475,7 +475,7 @@ teardown() {
 
 @test "portals - show a tcp outlet" {
   port=6107
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
@@ -492,9 +492,9 @@ teardown() {
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it" {
   port=6000
-  run --separate-stderr "$OCKAM" node create n1
+  run "$OCKAM" node create n1
   assert_success
-  run --separate-stderr "$OCKAM" node create n2
+  run "$OCKAM" node create n2
   assert_success
 
   $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to 127.0.0.1:5000
@@ -506,15 +506,15 @@ teardown() {
 
 @test "portals - create an inlet/outlet pair with relay through a forwarder and move tcp traffic through it" {
   port=6001
-  run --separate-stderr "$OCKAM" node create relay
+  run "$OCKAM" node create relay
   assert_success
-  run --separate-stderr "$OCKAM" node create blue
+  run "$OCKAM" node create blue
   assert_success
 
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   $OCKAM forwarder create blue --at /node/relay --to /node/blue
 
-  run --separate-stderr "$OCKAM" node create green
+  run "$OCKAM" node create green
   assert_success
   $OCKAM secure-channel create --from /node/green --to /node/relay/service/hop/service/forward_to_blue/service/api |
     $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet

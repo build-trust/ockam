@@ -15,6 +15,8 @@ teardown() {
 # ===== TESTS
 
 @test "authority - standalone authority, enrollers, members" {
+  export PROJECT_JSON_PATH="$OCKAM_HOME/project.json"
+
   run "$OCKAM" identity create authority
   run "$OCKAM" identity create enroller
   # m1 will be pre-authenticated on authority.  m2 will be added directly, m3 will be added through enrollment token
@@ -40,10 +42,10 @@ teardown() {
   \"identity\" : \"P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94\",
   \"access_route\" : \"/dnsaddr/127.0.0.1/tcp/4000/service/api\",
   \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\",
-  \"authority_identity\" : \"$authority_identity_full\"}" >"$OCKAM_HOME/project.json"
+  \"authority_identity\" : \"$authority_identity_full\"}" >"$PROJECT_JSON_PATH"
 
   # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
-  run "$OCKAM" project authenticate --project-path "$OCKAM_HOME/project.json" --identity m1
+  run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity m1
   assert_success
   assert_output --partial "sample_val"
 
@@ -53,15 +55,15 @@ teardown() {
   run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:4200 --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
   assert_success
 
-  run "$OCKAM" project enroll --identity enroller --project-path "$OCKAM_HOME/project.json" --member $m2_identifier --attribute sample_attr=m2_member
+  run "$OCKAM" project enroll --identity enroller --project-path "$PROJECT_JSON_PATH" --member $m2_identifier --attribute sample_attr=m2_member
   assert_success
 
-  run "$OCKAM" project authenticate --project-path "$OCKAM_HOME/project.json" --identity m2
+  run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity m2
   assert_success
   assert_output --partial "m2_member"
 
-  token=$($OCKAM project enroll --identity enroller --project-path "$OCKAM_HOME/project.json" --attribute sample_attr=m3_member)
-  run "$OCKAM" project authenticate --project-path "$OCKAM_HOME/project.json" --identity m3 --token "$token"
+  token=$($OCKAM project enroll --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member)
+  run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity m3 --token "$token"
   assert_success
   assert_output --partial "m3_member"
 }

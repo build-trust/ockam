@@ -4,8 +4,6 @@
 
 setup_file() {
   load load/base.bash
-  load load/orchestrator.bash
-  load_orchestrator_data
 }
 
 setup() {
@@ -14,7 +12,7 @@ setup() {
   load_bats_ext
   setup_home_dir
   skip_if_orchestrator_tests_not_enabled
-  copy_orchestrator_data
+  load_orchestrator_data
 }
 
 teardown() {
@@ -26,14 +24,14 @@ teardown() {
 @test "portals - create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
   port=7100
 
-  run --separate-stderr "$OCKAM" node create blue
+  run "$OCKAM" node create blue
   assert_success
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
   fwd="$(random_str)"
   $OCKAM forwarder create "$fwd" --at /project/default --to /node/blue
 
-  run --separate-stderr "$OCKAM" node create green
+  run "$OCKAM" node create green
   assert_success
   $OCKAM secure-channel create --from /node/green --to "/project/default/service/forward_to_$fwd/service/api" |
     $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
@@ -45,14 +43,14 @@ teardown() {
 @test "portals - create an inlet (with implicit secure channel creation) / outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
   port=7101
 
-  run --separate-stderr "$OCKAM" node create blue
+  run "$OCKAM" node create blue
   assert_success
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
   fwd="$(random_str)"
   $OCKAM forwarder create "$fwd" --at /project/default --to /node/blue
 
-  run --separate-stderr "$OCKAM" node create green
+  run "$OCKAM" node create green
   assert_success
   $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
 
@@ -63,12 +61,14 @@ teardown() {
 @test "portals - inlet/outlet example with credential, not provided" {
   port=7102
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
+
+  # Setup nodes from a non-enrolled environment
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  run --separate-stderr "$OCKAM" identity create green
+  run "$OCKAM" identity create green
   assert_success
-  run --separate-stderr "$OCKAM" identity create blue
+  run "$OCKAM" identity create blue
   assert_success
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
@@ -107,9 +107,9 @@ teardown() {
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  run --separate-stderr "$OCKAM" identity create green
+  run "$OCKAM" identity create green
   assert_success
-  run --separate-stderr "$OCKAM" identity create blue
+  run "$OCKAM" identity create blue
   assert_success
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
@@ -145,9 +145,9 @@ teardown() {
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  run --separate-stderr "$OCKAM" identity create green
+  run "$OCKAM" identity create green
   assert_success
-  run --separate-stderr "$OCKAM" identity create blue
+  run "$OCKAM" identity create blue
   assert_success
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
@@ -190,9 +190,9 @@ teardown() {
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  run --separate-stderr "$OCKAM" identity create green
+  run "$OCKAM" identity create green
   assert_success
-  run --separate-stderr "$OCKAM" identity create blue
+  run "$OCKAM" identity create blue
   assert_success
 
   run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity green --token $green_token
