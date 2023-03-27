@@ -70,8 +70,9 @@ pub async fn start_embedded_node_with_vault_and_identity(
     // This listener gives exclusive access to our node, make sure this is intended
     // + make sure this tcp address is only reachable from the local loopback and/or intended
     // network
-    let (socket_addr, listened_worker_address) =
-        tcp.listen(&bind, TcpListenerTrustOptions::new()).await?;
+    let (socket_addr, listened_worker_address) = tcp
+        .listen(&bind, TcpListenerTrustOptions::insecure())
+        .await?;
 
     let projects = cfg.inner().lookup().projects().collect();
 

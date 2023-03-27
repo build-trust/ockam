@@ -4,14 +4,22 @@ use ockam_core::sessions::{SessionId, SessionOutgoingAccessControl, SessionPolic
 use ockam_core::{AllowAll, OutgoingAccessControl};
 
 /// Trust options for [`RemoteForwarder`]
-#[derive(Default)]
 pub struct RemoteForwarderTrustOptions {
     pub(super) session: Option<(Sessions, SessionId)>,
 }
 
 impl RemoteForwarderTrustOptions {
-    /// Constructor
-    pub fn new() -> Self {
+    /// This constructor is insecure, because outgoing messages from such forwarder will not be
+    /// restricted and can reach any [`Address`] on this node.
+    /// Should only be used for testing purposes
+    pub fn insecure() -> Self {
+        Self { session: None }
+    }
+
+    /// This constructor is insecure, because outgoing messages from such forwarder will not be
+    /// restricted and can reach any [`Address`] on this node.
+    /// Should only be used for testing purposes
+    pub fn insecure_test() -> Self {
         Self { session: None }
     }
 
@@ -21,9 +29,10 @@ impl RemoteForwarderTrustOptions {
     /// context, it's just a Message Routing helper. Therefore, workers that are allowed to receive
     /// messages from the corresponding Secure Channel should as well be allowed to receive messages
     /// through the [`RemoteForwarder`] through the same Secure Channel.
-    pub fn as_consumer_and_producer(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
-        self.session = Some((sessions.clone(), session_id.clone()));
-        self
+    pub fn as_consumer_and_producer(sessions: &Sessions, session_id: &SessionId) -> Self {
+        Self {
+            session: Some((sessions.clone(), session_id.clone())),
+        }
     }
 
     pub(super) fn setup_session(&self, addresses: &Addresses) {

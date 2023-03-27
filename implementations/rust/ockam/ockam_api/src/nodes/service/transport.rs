@@ -76,14 +76,14 @@ impl NodeManagerWorker {
                 .tcp_transport
                 // We don't use Sessions for listeners and connections created manually
                 // TODO: Add that functionality
-                .listen(&addr, TcpListenerTrustOptions::new())
+                .listen(&addr, TcpListenerTrustOptions::insecure())
                 .await
                 .map(|(socket, worker_address)| (socket.to_string(), worker_address)),
             (Tcp, Connect) => node_manager
                 .tcp_transport
                 // We don't use Sessions for listeners and connections created manually
                 // TODO: Add that functionality
-                .connect(&socket_addr, TcpConnectionTrustOptions::new())
+                .connect(&socket_addr, TcpConnectionTrustOptions::insecure())
                 .await
                 .map(|worker_address| (socket_addr, worker_address)),
             _ => unimplemented!(),

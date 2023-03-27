@@ -3,9 +3,7 @@ use ockam::workers::Echoer;
 use ockam::ForwardingService;
 use ockam_core::sessions::{SessionPolicy, Sessions};
 use ockam_core::{route, Address, AllowAll, Result};
-use ockam_identity::{
-    Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy,
-};
+use ockam_identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions};
 use ockam_node::{Context, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 use ockam_vault::Vault;
@@ -20,7 +18,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let remote_info =
-        RemoteForwarder::create(ctx, route![], RemoteForwarderTrustOptions::new()).await?;
+        RemoteForwarder::create(ctx, route![], RemoteForwarderTrustOptions::insecure_test())
+            .await?;
 
     let resp = ctx
         .send_and_receive::<String>(
@@ -42,7 +41,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     ForwardingService::create(ctx, "forwarding_service", AllowAll, AllowAll).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?;
 
     let server_sessions = Sessions::default();
@@ -60,15 +59,17 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let cloud_connection = server_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&server_sessions, &server_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&server_sessions, &server_tcp_session_id),
         )
         .await?;
 
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_connection.clone(),
-        RemoteForwarderTrustOptions::new()
-            .as_consumer_and_producer(&server_sessions, &server_tcp_session_id),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(
+            &server_sessions,
+            &server_tcp_session_id,
+        ),
     )
     .await?;
 
@@ -79,7 +80,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let cloud_connection = client_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&client_sessions, &client_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&client_sessions, &client_tcp_session_id),
         )
         .await?;
 
@@ -107,7 +108,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     ForwardingService::create(ctx, "forwarding_service", AllowAll, AllowAll).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?;
 
     let server_sessions = Sessions::default();
@@ -117,15 +118,17 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     let cloud_connection = server_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&server_sessions, &server_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&server_sessions, &server_tcp_session_id),
         )
         .await?;
 
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_connection.clone(),
-        RemoteForwarderTrustOptions::new()
-            .as_consumer_and_producer(&server_sessions, &server_tcp_session_id),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(
+            &server_sessions,
+            &server_tcp_session_id,
+        ),
     )
     .await?;
 
@@ -191,12 +194,15 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     let cloud_identity = Identity::create(ctx, Vault::create()).await?;
     cloud_identity
-        .create_secure_channel_listener("cloud_listener", TrustEveryonePolicy)
+        .create_secure_channel_listener(
+            "cloud_listener",
+            SecureChannelListenerTrustOptions::insecure_test(),
+        )
         .await?;
 
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
         .await?;
 
     // Server
@@ -217,36 +223,39 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_server_connection = server_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&server_sessions, &server_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&server_sessions, &server_tcp_session_id),
         )
         .await?;
     let server_identity = Identity::create(ctx, Vault::create()).await?;
     let cloud_server_channel = server_identity
         .create_secure_channel(
             route![cloud_server_connection, "cloud_listener"],
-            SecureChannelTrustOptions::new()
-                .as_consumer(&server_sessions, &server_tcp_session_id)
-                .as_producer(&server_sessions, &server_channel_session_id),
+            SecureChannelTrustOptions::as_producer(&server_sessions, &server_channel_session_id)
+                .as_consumer(&server_sessions, &server_tcp_session_id),
         )
         .await?;
     server_identity
         .create_secure_channel_listener(
             "server_listener",
-            SecureChannelListenerTrustOptions::new()
-                .as_consumer(
-                    &server_sessions,
-                    &server_channel_session_id,
-                    SessionPolicy::ProducerAllowMultiple,
-                )
-                .as_spawner(&server_sessions, &server_tunnel_session_id),
+            SecureChannelListenerTrustOptions::as_spawner(
+                &server_sessions,
+                &server_tunnel_session_id,
+            )
+            .as_consumer(
+                &server_sessions,
+                &server_channel_session_id,
+                SessionPolicy::ProducerAllowMultiple,
+            ),
         )
         .await?;
 
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_server_channel.clone(),
-        RemoteForwarderTrustOptions::new()
-            .as_consumer_and_producer(&server_sessions, &server_channel_session_id),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(
+            &server_sessions,
+            &server_channel_session_id,
+        ),
     )
     .await?;
 
@@ -260,16 +269,15 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_client_connection = client_tcp
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&client_sessions, &client_tcp_session_id),
+            TcpConnectionTrustOptions::as_producer(&client_sessions, &client_tcp_session_id),
         )
         .await?;
     let client_identity = Identity::create(ctx, Vault::create()).await?;
     let cloud_client_channel = client_identity
         .create_secure_channel(
             route![cloud_client_connection, "cloud_listener"],
-            SecureChannelTrustOptions::new()
-                .as_consumer(&client_sessions, &client_tcp_session_id)
-                .as_producer(&client_sessions, &client_channel_session_id),
+            SecureChannelTrustOptions::as_producer(&client_sessions, &client_channel_session_id)
+                .as_consumer(&client_sessions, &client_tcp_session_id),
         )
         .await?;
 
@@ -280,9 +288,8 @@ async fn test4(ctx: &mut Context) -> Result<()> {
                 remote_info.remote_address(),
                 "server_listener"
             ],
-            SecureChannelTrustOptions::new()
-                .as_consumer(&client_sessions, &client_channel_session_id)
-                .as_producer(&client_sessions, &client_tunnel_session_id),
+            SecureChannelTrustOptions::as_producer(&client_sessions, &client_tunnel_session_id)
+                .as_consumer(&client_sessions, &client_channel_session_id),
         )
         .await?;
 

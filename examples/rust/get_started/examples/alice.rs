@@ -1,4 +1,4 @@
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelTrustOptions};
 use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
 use std::io;
 
@@ -25,14 +25,14 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Combine the tcp address of the node and the forwarding_address to get a route
     // to Bob's secure channel listener.
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure_test())
         .await?;
     let route_to_bob_listener = route![node_in_hub, forwarding_address, "listener"];
 
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
     let channel = alice
-        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy)
+        .create_secure_channel(route_to_bob_listener, SecureChannelTrustOptions::insecure_test())
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

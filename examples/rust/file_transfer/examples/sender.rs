@@ -1,17 +1,13 @@
 // examples/sender.rs
 
 use file_transfer::{FileData, FileDescription};
-use ockam::{
-    identity::{Identity, TrustEveryonePolicy},
-    route,
-    vault::Vault,
-    Context,
-};
+use ockam::{identity::Identity, route, vault::Vault, Context};
 use ockam::{TcpConnectionTrustOptions, TcpTransport};
 
 use std::path::PathBuf;
 
 use anyhow::Result;
+use ockam::identity::SecureChannelTrustOptions;
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -53,7 +49,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Connect to the cloud node over TCP
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure_test())
         .await?;
 
     // Combine the tcp address of the cloud node and the forwarding_address to get a route
@@ -63,7 +59,7 @@ async fn main(ctx: Context) -> Result<()> {
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.
     let channel = sender
-        .create_secure_channel(route_to_receiver_listener, TrustEveryonePolicy)
+        .create_secure_channel(route_to_receiver_listener, SecureChannelTrustOptions::insecure_test())
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

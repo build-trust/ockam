@@ -19,7 +19,7 @@ async fn tcp_keepalive_test(ctx: &mut Context) -> Result<()> {
     let cloud = tcp
         .connect(
             "1.node.ockam.network:4000",
-            TcpConnectionTrustOptions::new(),
+            TcpConnectionTrustOptions::insecure_test(),
         )
         .await?;
 

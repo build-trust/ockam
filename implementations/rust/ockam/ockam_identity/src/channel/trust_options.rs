@@ -12,19 +12,26 @@ pub struct SecureChannelTrustOptions {
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
 }
 
-impl Default for SecureChannelTrustOptions {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub(crate) struct SecureChannelAccessControl {
     pub(crate) decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
 }
 
 impl SecureChannelTrustOptions {
-    /// Constructor without Consumer and Producer sessions, with [`TrustEveryonePolicy`]
-    pub fn new() -> Self {
+    /// This constructor is insecure, because outgoing messages from such channels will not be
+    /// restricted and can reach any [`Address`] on this node.
+    /// Should only be used for testing purposes
+    pub fn insecure() -> Self {
+        Self {
+            consumer_session: None,
+            producer_session: None,
+            trust_policy: Arc::new(TrustEveryonePolicy),
+        }
+    }
+
+    /// This constructor is insecure, because outgoing messages from such channels will not be
+    /// restricted and can reach any [`Address`] on this node.
+    /// Should only be used for testing purposes
+    pub fn insecure_test() -> Self {
         Self {
             consumer_session: None,
             producer_session: None,
@@ -39,9 +46,12 @@ impl SecureChannelTrustOptions {
     }
 
     /// Mark this Secure Channel Decryptor as a Producer for a given [`SessionId`]
-    pub fn as_producer(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
-        self.producer_session = Some((sessions.clone(), session_id.clone()));
-        self
+    pub fn as_producer(sessions: &Sessions, session_id: &SessionId) -> Self {
+        Self {
+            consumer_session: None,
+            producer_session: Some((sessions.clone(), session_id.clone())),
+            trust_policy: Arc::new(TrustEveryonePolicy),
+        }
     }
 
     /// Set Trust Policy
@@ -100,15 +110,22 @@ pub struct SecureChannelListenerTrustOptions {
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
 }
 
-impl Default for SecureChannelListenerTrustOptions {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SecureChannelListenerTrustOptions {
-    /// Constructor without Consumer and Producer sessions, with [`TrustEveryonePolicy`]
-    pub fn new() -> Self {
+    /// This constructor is insecure, because outgoing messages from such channels will not be
+    /// restricted and can reach any [`Address`] on this node.
+    /// Should only be used for testing purposes
+    pub fn insecure() -> Self {
+        Self {
+            consumer_session: None,
+            channels_producer_session: None,
+            trust_policy: Arc::new(TrustEveryonePolicy),
+        }
+    }
+
+    /// This constructor is insecure, because outgoing messages from such channels will not be
+    /// restricted and can reach any [`Address`] on this node.
+    /// Should only be used for testing purposes
+    pub fn insecure_test() -> Self {
         Self {
             consumer_session: None,
             channels_producer_session: None,
@@ -137,9 +154,12 @@ impl SecureChannelListenerTrustOptions {
     /// Mark spawned Secure Channel Decryptors as Producers for a given Spawner's [`SessionId`]
     /// NOTE: Spawned connections get fresh random [`SessionId`], however they are still marked
     /// with Spawner's [`SessionId`]
-    pub fn as_spawner(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
-        self.channels_producer_session = Some((sessions.clone(), session_id.clone()));
-        self
+    pub fn as_spawner(sessions: &Sessions, session_id: &SessionId) -> Self {
+        Self {
+            consumer_session: None,
+            channels_producer_session: Some((sessions.clone(), session_id.clone())),
+            trust_policy: Arc::new(TrustEveryonePolicy),
+        }
     }
 
     /// Set trust policy
@@ -208,27 +228,5 @@ impl SecureChannelListenerTrustOptions {
             }),
             _ => Err(IdentityError::SessionsInconsistency.into()),
         }
-    }
-}
-
-// Keeps backwards compatibility to allow creating secure channel by only specifying a TrustPolicy
-// TODO: remove in the future to make API safer
-impl<T> From<T> for SecureChannelTrustOptions
-where
-    T: TrustPolicy,
-{
-    fn from(trust_policy: T) -> Self {
-        Self::new().with_trust_policy(trust_policy)
-    }
-}
-
-// Keeps backwards compatibility to allow creating secure channel by only specifying a TrustPolicy
-// TODO: remove in the future to make API safer
-impl<T> From<T> for SecureChannelListenerTrustOptions
-where
-    T: TrustPolicy,
-{
-    fn from(trust_policy: T) -> Self {
-        Self::new().with_trust_policy(trust_policy)
     }
 }

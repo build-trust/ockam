@@ -135,14 +135,14 @@ async fn portal__tcp_connection_with_sessions__should_succeed(ctx: &mut Context)
     let (socket_address, _) = tcp
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::new().as_spawner(&sessions, &outlet_session_id),
+            TcpListenerTrustOptions::as_spawner(&sessions, &outlet_session_id),
         )
         .await?;
 
     let tcp_connection = tcp
         .connect(
             socket_address.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&sessions, &inlet_session_id),
+            TcpConnectionTrustOptions::as_producer(&sessions, &inlet_session_id),
         )
         .await?;
 
@@ -207,14 +207,14 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
     let (socket_address, _) = tcp
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::new().as_spawner(&sessions, &outlet_session_id),
+            TcpListenerTrustOptions::as_spawner(&sessions, &outlet_session_id),
         )
         .await?;
 
     let tcp_connection = tcp
         .connect(
             socket_address.to_string(),
-            TcpConnectionTrustOptions::new().as_producer(&sessions, &inlet_session_id),
+            TcpConnectionTrustOptions::as_producer(&sessions, &inlet_session_id),
         )
         .await?;
 

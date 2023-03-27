@@ -48,7 +48,7 @@ impl NodeManager {
 
         debug!(%sc_route, "Creating secure channel");
         let timeout = timeout.unwrap_or(Duration::from_secs(120));
-        let trust_options = SecureChannelTrustOptions::new();
+        let trust_options = SecureChannelTrustOptions::insecure();
 
         let trust_options = match session {
             Some((sessions, session_id)) => trust_options.as_consumer(&sessions, &session_id),
@@ -211,7 +211,7 @@ impl NodeManager {
             self.identity.clone()
         };
 
-        let trust_options = SecureChannelListenerTrustOptions::new(); // FIXME: add session_id
+        let trust_options = SecureChannelListenerTrustOptions::insecure();
         let trust_options = match authorized_identifiers {
             Some(ids) => trust_options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => trust_options.with_trust_policy(TrustEveryonePolicy),
