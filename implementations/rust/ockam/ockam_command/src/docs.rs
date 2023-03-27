@@ -50,22 +50,12 @@ pub(crate) fn hide() -> bool {
 }
 
 pub(crate) fn about(body: &str) -> &'static str {
-    if is_markdown() {
-        Box::leak(body.to_string().into_boxed_str())
-    } else {
-        let syntax_highlighted = highlight_syntax(body.to_string());
-        Box::leak(syntax_highlighted.into_boxed_str())
-    }
+    render(body)
 }
 
 #[allow(unused)]
 pub(crate) fn before_help(body: &str) -> &'static str {
-    if is_markdown() {
-        Box::leak(body.to_string().into_boxed_str())
-    } else {
-        let syntax_highlighted = highlight_syntax(body.to_string());
-        Box::leak(syntax_highlighted.into_boxed_str())
-    }
+    render(body)
 }
 
 pub(crate) fn after_help(body: &str) -> &'static str {
@@ -73,22 +63,27 @@ pub(crate) fn after_help(body: &str) -> &'static str {
     if is_markdown() {
         after_help.push_str("### Examples\n\n");
         after_help.push_str(body);
-        Box::leak(after_help.into_boxed_str())
     } else {
         after_help.push_str("Examples:\n\n");
         after_help.push_str(body);
         after_help.push_str(FOOTER);
+    }
+    render(after_help.as_str())
+}
 
-        let syntax_highlighted = highlight_syntax(after_help);
+/// Render the string if the document should be displayed in a terminal
+/// Otherwise, if it is a Mardown document just return a static string
+pub(crate) fn render(body: &str) -> &'static str {
+    if is_markdown() {
+        Box::leak(body.to_string().into_boxed_str())
+    } else {
+        let syntax_highlighted = highlight_syntax(body.to_string());
         Box::leak(syntax_highlighted.into_boxed_str())
     }
 }
 
+/// Use a shell syntax highlighter to render the code in terminals
 fn highlight_syntax(input: String) -> String {
-    if is_markdown() {
-        return input;
-    }
-
     let mut highlighted: Vec<String> = Vec::new();
     let mut in_fenced_block = false;
 
