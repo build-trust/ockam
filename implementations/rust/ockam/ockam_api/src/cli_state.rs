@@ -182,14 +182,21 @@ impl VaultsState {
 
     pub async fn delete(&self, name: &str) -> Result<()> {
         // Retrieve vault. If doesn't exist do nothing.
-        let vault_state = match self.get(name) {
+        let vault = match self.get(name) {
             Ok(v) => v,
             Err(CliStateError::NotFound(_)) => return Ok(()),
             Err(e) => return Err(e),
         };
 
+        // If it's the default, remove link
+        if let Ok(default) = self.default() {
+            if default.path == vault.path {
+                let _ = std::fs::remove_file(self.default_path()?);
+            }
+        }
+
         // Remove vault files
-        vault_state.delete()?;
+        vault.delete()?;
 
         Ok(())
     }
@@ -416,6 +423,13 @@ impl IdentitiesState {
 
         // Abort if identity is being used by some running node.
         identity.in_use()?;
+
+        // If it's the default, remove link
+        if let Ok(default) = self.default() {
+            if default.path == identity.path {
+                let _ = std::fs::remove_file(self.default_path()?);
+            }
+        }
 
         // Remove identity file
         std::fs::remove_file(identity.path)?;
@@ -1141,6 +1155,51 @@ impl ProjectsState {
         std::os::unix::fs::symlink(original, link)?;
         self.get(name)
     }
+
+    pub fn list(&self) -> Result<Vec<ProjectState>> {
+        let mut projects = vec![];
+        for entry in std::fs::read_dir(&self.dir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir() {
+                let name = entry.file_name().into_string().map_err(|_| {
+                    CliStateError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "project's directory has an invalid name",
+                    ))
+                })?;
+                projects.push(self.get(&name)?);
+            }
+        }
+        Ok(projects)
+    }
+
+    pub fn delete(&self, name: &str) -> Result<()> {
+        // Retrieve project. If doesn't exist do nothing.
+        let project = match self.get(name) {
+            Ok(project) => project,
+            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        // If it's the default, remove link
+        if let Ok(default) = self.default() {
+            if default.path == project.path {
+                let _ = std::fs::remove_file(self.default_path()?);
+            }
+        }
+
+        // Remove project data
+        project.delete()?;
+
+        Ok(())
+    }
+
+    pub fn delete_all(&self) -> Result<()> {
+        for project in self.list()? {
+            self.delete(&project.name()?)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -1159,6 +1218,11 @@ impl ProjectState {
                     "failed to parse the project name",
                 ))
             })
+    }
+
+    fn delete(&self) -> Result<()> {
+        std::fs::remove_dir_all(&self.path)?;
+        Ok(())
     }
 }
 

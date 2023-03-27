@@ -61,6 +61,8 @@ async fn run_impl(
 
     // Try to remove from config again, in case it was re-added after the refresh.
     let _ = config::remove_space(&opts.config, &cmd.name);
+    // Delete all projects data from the state.
+    opts.state.projects.delete_all()?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
 
