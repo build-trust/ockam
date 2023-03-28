@@ -82,7 +82,7 @@ sysinfo = { version = "0.28", default-features = false }
 syntect = "5"
 tempfile = "3.4"
 thiserror = "1"
-tokio = { version="1.25.0", features = ["full"] }
+tokio = { version="1.27.0", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1.31", features = ["attributes"] }
 tracing-error = "0.2"
