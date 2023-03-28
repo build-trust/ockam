@@ -32,7 +32,9 @@ pub async fn start_node(ctx: &Context, configuration: &Configuration) -> Result<
         .await?;
 
     // start the Okta service (if the optional configuration has been provided)
-    authority.start_okta(ctx, configuration).await?;
+    authority
+        .start_okta(ctx, &sessions, &secure_channel_session_id, configuration)
+        .await?;
 
     // start an echo service so that the node can be queried as healthy
     authority.start_echo_service(ctx).await?;
