@@ -53,7 +53,7 @@ tag = ["cddl-cat", "once_cell", "ockam_core/tag"]
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.77.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0" }
-tokio = { version = "1.25", default-features = false, optional = true, features = [
+tokio = { version = "1.27", default-features = false, optional = true, features = [
     "sync",
     "time",
     "rt",
