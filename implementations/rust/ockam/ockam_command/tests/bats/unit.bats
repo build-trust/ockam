@@ -207,8 +207,14 @@ teardown() {
   assert_success
   assert_output --partial "$id"
 
-  # Delete the connection
   id=$($OCKAM tcp-connection list --node n1 | grep -o "[0-9a-f]\{32\}" | head -1)
+
+  # Show the connection details
+  run "$OCKAM" tcp-connection show --node n1 "$id"
+  assert_success
+  assert_output --partial "$id"
+
+  # Delete the connection
   run "$OCKAM" tcp-connection delete --node n1 "$id"
   assert_success
 

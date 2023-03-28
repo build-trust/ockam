@@ -1,11 +1,13 @@
 mod create;
 mod delete;
 mod list;
+mod show;
 
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 
+use crate::tcp::connection::show::ShowCommand;
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
@@ -22,6 +24,7 @@ pub enum TcpConnectionSubCommand {
     Create(CreateCommand),
     Delete(DeleteCommand),
     List(ListCommand),
+    Show(ShowCommand),
 }
 
 impl TcpConnectionCommand {
@@ -30,6 +33,7 @@ impl TcpConnectionCommand {
             TcpConnectionSubCommand::Create(c) => c.run(options),
             TcpConnectionSubCommand::Delete(c) => c.run(options),
             TcpConnectionSubCommand::List(c) => c.run(options),
+            TcpConnectionSubCommand::Show(c) => c.run(options),
         }
     }
 }
