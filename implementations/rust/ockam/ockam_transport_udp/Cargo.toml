@@ -56,3 +56,6 @@ name = "client"
 
 [[example]]
 name = "echo_server"
+
+[[example]]
+name = "rendezvous_server"
