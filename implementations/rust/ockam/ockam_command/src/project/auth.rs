@@ -136,7 +136,9 @@ async fn authenticate_through_okta(
 
     // Return address to the "okta_authenticator" worker on the authority node through the secure channel
     let okta_authenticator_addr = {
-        let service = MultiAddr::try_from("/service/okta_authenticator")?;
+        let service = MultiAddr::try_from(
+            format!("/service/{}", DefaultAddress::OKTA_IDENTITY_PROVIDER).as_str(),
+        )?;
         let mut addr = secure_channel_addr.clone();
         for proto in service.iter() {
             addr.push_back_value(&proto)?;

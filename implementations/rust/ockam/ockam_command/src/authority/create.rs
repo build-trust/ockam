@@ -25,7 +25,6 @@ use tracing::error;
 /// Create a node
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = docs::after_help(HELP_DETAIL))]
-#[clap(group(ArgGroup::new("okta").args(&["tenant_base_url", "certificate", "attributes"])))]
 #[clap(group(ArgGroup::new("trusted").required(true).args(&["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {
     /// Name of the node
@@ -67,15 +66,15 @@ pub struct CreateCommand {
     reload_from_trusted_identities_file: Option<PathBuf>,
 
     /// Okta: URL used for accessing the Okta API (optional)
-    #[arg(long, group = "okta", value_name = "URL", default_value = None)]
+    #[arg(long, value_name = "URL", default_value = None)]
     tenant_base_url: Option<String>,
 
     /// Okta: pem certificate used to access the Okta server (optional)
-    #[arg(long, group = "okta", value_name = "STRING", default_value = None)]
+    #[arg(long, value_name = "STRING", default_value = None)]
     certificate: Option<String>,
 
     /// Okta: name of the attributes which can be retrieved from Okta (optional)
-    #[arg(long, group = "okta", value_name = "COMMA_SEPARATED_LIST", default_value = None)]
+    #[arg(long, value_name = "COMMA_SEPARATED_LIST", default_value = None)]
     attributes: Option<Vec<String>>,
 
     /// Run the node in foreground.

@@ -249,7 +249,13 @@ impl Authority {
     }
 
     /// Start the Okta service to retrieve attributes authenticated by Okta
-    pub async fn start_okta(&self, ctx: &Context, configuration: &Configuration) -> Result<()> {
+    pub async fn start_okta(
+        &self,
+        ctx: &Context,
+        sessions: &Sessions,
+        secure_channel_session_id: &SessionId,
+        configuration: &Configuration,
+    ) -> Result<()> {
         if let Some(okta) = configuration.clone().okta {
             let okta_worker = crate::okta::Server::new(
                 configuration.project_identifier(),
@@ -259,6 +265,12 @@ impl Authority {
                 okta.certificate(),
                 okta.attributes().as_slice(),
             )?;
+
+            sessions.add_consumer(
+                &Address::from_string(okta.address.clone()),
+                secure_channel_session_id,
+                SessionPolicy::SpawnerAllowMultipleMessages,
+            );
 
             ctx.start_worker(
                 okta.address,
