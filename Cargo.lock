@@ -3588,6 +3588,7 @@ dependencies = [
  "aws-sdk-kms",
  "cfg-if",
  "curve25519-dalek",
+ "data-encoding",
  "ed25519-dalek",
  "fs2",
  "hex",

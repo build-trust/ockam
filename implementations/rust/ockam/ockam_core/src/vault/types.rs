@@ -1,6 +1,6 @@
 use crate::{
     errcode::{Kind, Origin},
-    Error,
+    hex_encoding, Error,
 };
 use cfg_if::cfg_if;
 use core::fmt;
@@ -74,7 +74,11 @@ cfg_if! {
 #[derive(Serialize, Deserialize, Clone, Zeroize, Encode, Decode)]
 #[zeroize(drop)]
 #[cbor(transparent)]
-pub struct SecretKey(#[n(0)] SecretKeyVec);
+pub struct SecretKey(
+    #[serde(with = "hex_encoding")]
+    #[n(0)]
+    SecretKeyVec,
+);
 
 impl SecretKey {
     /// Create a new secret key.
@@ -83,8 +87,8 @@ impl SecretKey {
     }
 }
 
-impl core::fmt::Debug for SecretKey {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+impl fmt::Debug for SecretKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("<secret key omitted>")
     }
 }

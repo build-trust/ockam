@@ -52,10 +52,14 @@ extern crate futures_util;
 pub mod access_control;
 pub mod api;
 pub mod compat;
+
 /// Debugger
 pub mod debugger;
 pub mod sessions;
 pub mod vault;
+
+/// Encoding
+pub mod hex_encoding;
 
 mod cbor_utils;
 mod error;

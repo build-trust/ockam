@@ -267,9 +267,56 @@ mod tests {
     use crate::Vault;
     use ockam_core::compat::join;
     use ockam_core::compat::rand::RngCore;
-    use ockam_core::vault::{SecretType, SecretVault};
+    use ockam_core::vault::{SecretKey, SecretType, SecretVault};
     use rand::thread_rng;
     use std::sync::Arc;
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn parse_legacy_key() {
+        //it's easier to embed a json formatted as base64 rather than a literal string
+        let sample_key =
+            "eyJ2ZXJzaW9uIjoiVjEiLCJlbnRyaWVzIjpbWzAseyJrZXlfaWQiOiI1N2ZjOGI3OGNlMzg4OWM1\
+MWMwMzYyYzllZjk1NDU0ZjFiYjFkYjgwYmM3Y2I3ZDZlOGQzZGVjNTIxNGVkYzRkIiwia2V5X2F0\
+dHJpYnV0ZXMiOnsic3R5cGUiOiJFZDI1NTE5IiwicGVyc2lzdGVuY2UiOiJQZXJzaXN0ZW50Iiwi\
+bGVuZ3RoIjozMn0sImtleSI6eyJLZXkiOlsyMywyNTEsMzQsMTE2LDEyMSwxMjQsODUsMTEsMjUz\
+LDc1LDEyOSwxMDksODgsMjM1LDE4OSw4OCwyMjYsMTUwLDQzLDU1LDE4NywxNDksMjQ3LDEzNywx\
+NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
+
+        let text = String::from_utf8(data_encoding::BASE64.decode(sample_key.as_bytes()).unwrap())
+            .unwrap();
+
+        let vault: LegacySerializedVault = serde_json::from_str(&text).unwrap();
+
+        #[allow(irrefutable_let_patterns)] //can be removed when we'll have V2
+        let (entries, next_id) = if let LegacySerializedVault::V1 { entries, next_id } = vault {
+            (entries, next_id)
+        } else {
+            panic!("legacy deserialization is broken")
+        };
+
+        assert_eq!(0, next_id);
+        assert_eq!(1, entries.len());
+
+        let (id, entry) = entries.get(0).unwrap();
+        assert_eq!(&0, id);
+
+        assert_eq!(
+            "57fc8b78ce3889c51c0362c9ef95454f1bb1db80bc7cb7d6e8d3dec5214edc4d",
+            entry.key_id.as_ref().unwrap()
+        );
+        assert_eq!(SecretType::Ed25519, entry.key_attributes.stype());
+        assert_eq!(
+            SecretPersistence::Persistent,
+            entry.key_attributes.persistence()
+        );
+        assert_eq!(32, entry.key_attributes.length());
+        let secret_key = SecretKey::new(vec![
+            23, 251, 34, 116, 121, 124, 85, 11, 253, 75, 129, 109, 88, 235, 189, 88, 226, 150, 43,
+            55, 187, 149, 247, 137, 163, 166, 131, 44, 126, 133, 229, 139,
+        ]);
+        assert_eq!(&secret_key, entry.key.cast_as_key());
+    }
 
     #[tokio::test]
     #[allow(non_snake_case)]

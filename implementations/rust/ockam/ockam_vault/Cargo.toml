@@ -95,3 +95,5 @@ p256 = { version = "0.13.0", default_features = false }
 [dev-dependencies]
 tokio = { version = "1.27", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }
+data-encoding = { version = "2.3.3", features = ["alloc"] }
+
