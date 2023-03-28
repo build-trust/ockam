@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.83.0 - 2023-03-28
+
+### Added
+
+- Add shell abstraction to handle commands output streams
+- Add a command to create an authority node
+- Add examples and about sections to markdown generated docs
+- Add basic documentation for node, identity and space commands
+
+### Changed
+
+- Use tcp session on authenticated command
+- Refactor the calls to the syntax highlight function
+- Updated dependencies
+
+### Fixed
+
+- Improve markdown help renderer
+
+### Removed
+
+- Remove warnings
+- Removed type parameters exposing implementation details
+
 ## 0.82.0 - 2023-03-03
 
 ### Changed

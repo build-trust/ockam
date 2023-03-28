@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.26.0 - 2023-03-28
+
+### Added
+
+- Add `create_tcp_session` to `ockam_command`
+- Add missing serialize / deserialize instances
+
+### Changed
+
+- Create tcp_connection along with secure channels in the same function call
+- Use sessions in ockam_api
+- Make trust arguments mandatory
+- `Sessions` update
+- Create an authority node
+- Start the authority node with the node create command
+- Retrieve the identity authority before creating the authority node
+- Show the authority node as up
+- Retry the creation of the lmdb database in case of a failure
+- Refactor tuple to api-transport struct
+- Move `multiaddr_to_socket_addr` method into `MultiAddr`
+- Don't try to delete files or directories which are already deleted
+- Updated dependencies
+
+### Fixed
+
+- Fixed the compilation errors with the tag feature
+- Fix clippy warnings on test code
+- Node duplication error
+- Node duplication error
+- Use the same criteria for checking if a node exists
+- Make the authority_node field optional
+- Make `ockam reset` delete specific state files
+- When deleting the default vault/identity/project the data and the link are deleted
+
+### Removed
+
+- Remove warnings
+- Removed type parameters exposing implementation details
+- Remove the need for _arc functions
+- Remove the legacy storage migration code
+
 ## 0.25.0 - 2023-03-03
 
 ### Added

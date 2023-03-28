@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.71.0 - 2023-03-28
+
+### Added
+
+- Add `TrustOptions` to secure channel
+- Added unit tests for the credential / credential data display instances
+- Add missing serialize / deserialize instances
+
+### Changed
+
+- Use sessions in ockam_api
+- Updated credentials example
+- Make trust arguments mandatory
+- Initialize the credential example with a change history and the latest key
+- Modified according to review comments
+- Display the date and time for a credential
+- `Sessions` update
+- Clean `TrustOptions` processing
+- Create an authority node
+- Retrieve the identity authority before creating the authority node
+- Replace sessions-related `LocalInfo` with querying `Sessions`
+- Updated dependencies
+
+### Fixed
+
+- Fix clippy warnings on test code
+- Improve and extend `Sessions` tests
+
+### Removed
+
+- Removed type parameters exposing implementation details
+- Remove the need for _arc functions
+- Remove `Cancel`
+
 ## 0.70.0 - 2023-03-03
 
 ### Added

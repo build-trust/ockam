@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.83.0 - 2023-03-28
+
+### Added
+
+- Add `TrustOptions` to `ockam_transport_tcp`. refactor connection creation
+- Add `src_addr` to `Routed<M>`
+- Add `Sessions` support to receiving messages in `ockam_node`
+- Add `Sessions` support to portals
+
+### Changed
+
+- Update `RemoteForwarder`
+- Improve `RemoteForwarder` address handling
+- Updated dependencies
+
+### Removed
+
+- Removed the dependency on ockam_core in examples
+
 ## 0.82.0 - 2023-03-03
 
 ### Changed
