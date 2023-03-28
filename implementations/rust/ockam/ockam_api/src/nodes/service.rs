@@ -558,6 +558,10 @@ impl NodeManagerWorker {
                 self.get_tcp_con_or_list(req, &node_manager.transports, TransportMode::Connect)
                     .to_vec()?
             }
+            (Get, ["node", "tcp", "connection", id]) => {
+                self.get_transport(req, id, TransportType::Tcp, TransportMode::Connect)
+                    .await?
+            }
             (Post, ["node", "tcp", "connection"]) => {
                 self.add_transport(req, dec).await?.to_vec()?
             }
