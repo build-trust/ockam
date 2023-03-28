@@ -35,7 +35,6 @@ async fn run_impl(
     rpc.request(req).await?;
     rpc.is_ok()?;
 
-    // log the deletion
     opts.shell
         .stdout()
         .plain(format!(
