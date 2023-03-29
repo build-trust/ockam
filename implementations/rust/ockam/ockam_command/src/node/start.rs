@@ -4,7 +4,7 @@ use ockam::TcpTransport;
 
 use crate::node::default_node_name;
 use crate::node::show::print_query_status;
-use crate::node::util::spawn_node;
+use crate::node::util::{check_default, spawn_node};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 
@@ -72,10 +72,7 @@ async fn run_impl(
     // Print node status
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-    let mut is_default = false;
-    if let Ok(state) = opts.state.nodes.default() {
-        is_default = &state.config.name == node_name;
-    }
+    let is_default = check_default(&opts, node_name);
     print_query_status(&mut rpc, node_name, true, is_default).await?;
 
     Ok(())
