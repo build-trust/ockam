@@ -167,10 +167,7 @@ async fn default_project<'a>(
         check_project_readiness(ctx, opts, cloud_opts, node_name, None, default_project).await?;
     println!("{}", project.output()?);
 
-    opts.state
-        .projects
-        .create(&project.name, project.clone())
-        .await?;
+    opts.state.projects.create(&project.name, project.clone())?;
     Ok(project)
 }
 
