@@ -1,5 +1,6 @@
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
+use ockam_vault::Vault;
 
 use crate::{
     identity::default_identity_name,
@@ -7,10 +8,10 @@ use crate::{
     vault::default_vault_name,
     CommandGlobalOpts, EncodeFormat, Result,
 };
-use anyhow::Context as _;
+use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::Context;
-use ockam_identity::{credential::CredentialBuilder, IdentityIdentifier};
+use ockam_identity::{credential::CredentialBuilder, PublicIdentity};
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
@@ -18,7 +19,7 @@ pub struct IssueCommand {
     pub as_identity: String,
 
     #[arg(long = "for", value_name = "IDENTITY_ID")]
-    pub for_identity: IdentityIdentifier,
+    pub for_identity: String,
 
     /// Attributes in `key=value` format to be attached to the member
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
@@ -47,6 +48,16 @@ impl IssueCommand {
         }
         Ok(attributes)
     }
+
+    pub async fn public_identity(&self) -> Result<PublicIdentity> {
+        let identity_as_bytes = match hex::decode(&self.for_identity) {
+            Ok(b) => b,
+            Err(e) => return Err(anyhow!(e).into()),
+        };
+
+        let public_identity = PublicIdentity::import(&identity_as_bytes, Vault::create()).await?;
+        Ok(public_identity)
+    }
 }
 
 async fn run_impl(
@@ -54,7 +65,10 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
     let attrs = cmd.attributes()?;
-    let cred_builder = CredentialBuilder::from_attributes(cmd.for_identity.clone(), attrs);
+    let cred_builder = CredentialBuilder::from_attributes(
+        cmd.public_identity().await?.identifier().clone(),
+        attrs,
+    );
 
     let vault = opts.state.vaults.get(&cmd.vault)?.get().await?;
     let ident_state = opts.state.identities.get(&cmd.as_identity)?;

@@ -344,6 +344,7 @@ pub mod test {
     use crate::cli_state::{CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+        NodeManagerTrustOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
     use ockam::Result;
@@ -410,7 +411,7 @@ pub mod test {
         let node_manager = NodeManager::create(
             context,
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None),
-            NodeManagerProjectsOptions::new(None, None, Default::default(), None),
+            NodeManagerProjectsOptions::new(None, Default::default()),
             NodeManagerTransportOptions::new(
                 (
                     crate::nodes::models::transport::TransportType::Tcp,
@@ -420,6 +421,7 @@ pub mod test {
                 ),
                 tcp.async_try_clone().await?,
             ),
+            NodeManagerTrustOptions::new(None),
         )
         .await?;
 

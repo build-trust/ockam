@@ -12,7 +12,6 @@ use serde_json::json;
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::{config::lookup::ConfigLookup, nodes::models};
 use ockam_api::{nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr};
 use ockam_multiaddr::MultiAddr;
@@ -67,7 +66,6 @@ impl CreateCommand {
             cloud_addr,
             api_node,
             Some(tcp),
-            CredentialExchangeMode::Oneway,
         )
         .await?;
         crate::project::util::clean_projects_multiaddr(to, projects_sc)
@@ -166,7 +164,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         to,
         authorized_identifiers,
-        CredentialExchangeMode::Mutual,
+        false,
         cmd.cloud_opts.identity.clone(),
         cmd.credential.clone(),
     );

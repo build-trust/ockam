@@ -53,7 +53,6 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     cloud_addr: &MultiAddr,
     api_node: &str,
     tcp: Option<&TcpTransport>,
-    credential_exchange_mode: CredentialExchangeMode,
 ) -> Result<Vec<MultiAddr>> {
     let cfg_lookup = opts.config.lookup();
     let mut sc = Vec::with_capacity(meta.project.len());
@@ -89,7 +88,6 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 tcp,
                 project_access_route,
                 &project_identity_id,
-                credential_exchange_mode,
                 None,
             )
             .await?,
@@ -110,7 +108,6 @@ pub async fn create_secure_channel_to_project(
     tcp: Option<&TcpTransport>,
     project_access_route: &MultiAddr,
     project_identity: &str,
-    credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
@@ -119,7 +116,7 @@ pub async fn create_secure_channel_to_project(
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         project_access_route,
         Some(authorized_identifier),
-        credential_exchange_mode,
+        true,
         identity,
         None,
     );
@@ -130,7 +127,7 @@ pub async fn create_secure_channel_to_project(
     Ok(sc.addr()?)
 }
 
-pub async fn create_secure_channel_to_authority(
+pub async fn create_secure_channel_to_project_authority(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
@@ -144,7 +141,7 @@ pub async fn create_secure_channel_to_authority(
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         addr,
         Some(allowed),
-        CredentialExchangeMode::None,
+        true,
         identity,
         None,
     );
@@ -255,7 +252,6 @@ pub async fn check_project_readiness<'a>(
                 tcp,
                 &project_route,
                 &project_identity,
-                CredentialExchangeMode::None,
                 None,
             )
             .await
@@ -286,7 +282,7 @@ pub async fn check_project_readiness<'a>(
 
         Retry::spawn(retry_strategy.clone(), || async {
             std::io::stdout().flush()?;
-            if let Ok(sc_addr) = create_secure_channel_to_authority(
+            if let Ok(sc_addr) = create_secure_channel_to_project_authority(
                 ctx,
                 opts,
                 api_node,

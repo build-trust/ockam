@@ -1,11 +1,11 @@
 //! Configuration files used by the ockam CLI
 
+use crate::cli_state;
 use crate::config::{lookup::ConfigLookup, ConfigValues};
-use crate::{cli_state, HexByteVec};
-use ockam_core::compat::sync::Arc;
-use ockam_core::Result;
-use ockam_identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
-use ockam_multiaddr::MultiAddr;
+use crate::trust_context::TrustContext;
+
+use ockam_identity::IdentityIdentifier;
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -61,55 +61,21 @@ impl OckamConfig {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct AuthoritiesConfig {
-    authorities: BTreeMap<IdentityIdentifier, Authority>,
+    authorities: BTreeMap<IdentityIdentifier, TrustContext>,
 }
 
 impl AuthoritiesConfig {
-    pub fn add_authority(&mut self, i: IdentityIdentifier, a: Authority) {
+    pub fn add_authority(&mut self, i: IdentityIdentifier, a: TrustContext) {
         self.authorities.insert(i, a);
     }
 
-    pub fn authorities(&self) -> impl Iterator<Item = (&IdentityIdentifier, &Authority)> {
+    pub fn authorities(&self) -> impl Iterator<Item = (&IdentityIdentifier, &TrustContext)> {
         self.authorities.iter()
-    }
-
-    pub async fn to_public_identities(
-        &self,
-        vault: Arc<dyn IdentityVault>,
-    ) -> Result<Vec<PublicIdentity>> {
-        let mut v = Vec::new();
-        for a in self.authorities.values() {
-            v.push(PublicIdentity::import(a.identity.as_slice(), vault.clone()).await?)
-        }
-        Ok(v)
     }
 }
 
 impl ConfigValues for AuthoritiesConfig {
     fn default_values() -> Self {
         Self::default()
-    }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct Authority {
-    identity: HexByteVec,
-    access: MultiAddr,
-}
-
-impl Authority {
-    pub fn new(identity: Vec<u8>, addr: MultiAddr) -> Self {
-        Self {
-            identity: identity.into(),
-            access: addr,
-        }
-    }
-
-    pub fn identity(&self) -> &[u8] {
-        self.identity.as_slice()
-    }
-
-    pub fn access_route(&self) -> &MultiAddr {
-        &self.access
     }
 }

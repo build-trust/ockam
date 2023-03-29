@@ -3,6 +3,7 @@
 use std::{ops::Deref, path::PathBuf, sync::RwLockReadGuard};
 
 use crate::Result;
+use ockam_api::trust_context::TrustContext;
 use tracing::trace;
 
 use ockam::identity::IdentityIdentifier;
@@ -100,7 +101,7 @@ impl AuthoritiesConfig {
         Ok(Self { inner })
     }
 
-    pub fn add_authority(&self, i: IdentityIdentifier, a: cli::Authority) -> Result<()> {
+    pub fn add_authority(&self, i: IdentityIdentifier, a: TrustContext) -> Result<()> {
         let mut cfg = self.inner.write();
         cfg.add_authority(i, a);
         drop(cfg);

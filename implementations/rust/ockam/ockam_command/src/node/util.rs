@@ -1,6 +1,8 @@
 use anyhow::{anyhow, Context as _};
 
 use ockam_api::config::lookup::ProjectLookup;
+use ockam_api::trust_context::CredentialRetriever::FromCredentialIssuer;
+use ockam_api::trust_context::{AuthorityInfo, CredentialIssuerInfo, TrustContext};
 use rand::random;
 use std::env::current_exe;
 use std::fs::OpenOptions;
@@ -10,10 +12,11 @@ use std::process::Command;
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
 use ockam_api::cli_state;
-use ockam_api::config::cli::{self, Authority};
+
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+    NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_core::compat::sync::Arc;
@@ -49,7 +52,9 @@ pub async fn start_embedded_node_with_vault_and_identity(
         init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
     }
 
-    let project_id = if let Some(p) = project_opts {
+    // If a project path or name is provided
+    // add a trust context / authority with it.
+    if let Some(p) = project_opts {
         add_project_info_to_node_state(opts, &cmd.node_name, cfg, p).await?
     } else {
         match &cmd.project {
@@ -83,12 +88,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
             cmd.launch_config.is_some(),
             None,
         ),
-        NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
-            project_id,
-            projects,
-            None,
-        ),
+        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
             (
                 TransportType::Tcp,
@@ -98,6 +98,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
             ),
             tcp,
         ),
+        NodeManagerTrustOptions::new(Some(cfg.authorities(&cmd.node_name)?.snapshot())),
     )
     .await?;
 
@@ -140,8 +141,14 @@ pub async fn add_project_info_to_node_state(
             project::config::set_project(cfg, &(&proj_info).into()).await?;
 
             if let Some(a) = proj_lookup.authority {
-                add_project_authority(a.identity().to_vec(), a.address().clone(), node_name, cfg)
-                    .await?;
+                add_project_authority(
+                    a.identity().to_vec(),
+                    a.address().clone(),
+                    node_name,
+                    cfg,
+                    &proj_lookup.id,
+                )
+                .await?;
             }
             Ok(Some(proj_lookup.id))
         }
@@ -205,11 +212,20 @@ pub(super) async fn add_project_authority(
     authority_access_route: MultiAddr,
     node: &str,
     cfg: &OckamConfig,
+    project_id: &str,
 ) -> Result<()> {
     let i = PublicIdentity::import(&authority_identity, Vault::create()).await?;
-    let a = cli::Authority::new(authority_identity, authority_access_route);
-    cfg.authorities(node)?
-        .add_authority(i.identifier().clone(), a)
+    let identifier = i.identifier().clone();
+    let tc = TrustContext::new_with_id(
+        AuthorityInfo::new(
+            i,
+            Some(FromCredentialIssuer(CredentialIssuerInfo::new(
+                authority_access_route,
+            ))),
+        ),
+        project_id.to_string(),
+    );
+    cfg.authorities(node)?.add_authority(identifier, tc)
 }
 
 pub(super) async fn add_project_authority_from_project_info(
@@ -226,7 +242,7 @@ pub(super) async fn add_project_authority_from_project_info(
         .map(|a| hex::decode(a.as_bytes()))
         .transpose()?;
     if let Some((a, m)) = a.zip(m) {
-        add_project_authority(a, m, node, cfg).await
+        add_project_authority(a, m, node, cfg, &p.id).await
     } else {
         Err(anyhow!("missing authority in project info").into())
     }
@@ -279,8 +295,9 @@ pub fn spawn_node(
     trusted_identities_file: Option<&PathBuf>,
     reload_from_trusted_identities_file: Option<&PathBuf>,
     launch_config: Option<String>,
-    authority_identities: Option<&Vec<Authority>>,
+    authority: Option<&Vec<TrustContext>>,
     credential: Option<&String>,
+    authority_identities: Option<&Vec<String>>,
 ) -> crate::Result<()> {
     let mut args = vec![
         match verbose {
@@ -328,17 +345,23 @@ pub fn spawn_node(
         );
     }
 
-    if let Some(authority_identities) = authority_identities {
-        for authority in authority_identities.iter() {
-            let identity = hex::encode(authority.identity());
-            args.push("--authority-identity".to_string());
-            args.push(identity);
+    if let Some(trust_contexts) = authority {
+        for authority in trust_contexts.iter() {
+            args.push("--authority".to_string());
+            args.push(serde_json::to_string(authority)?);
         }
     }
 
     if let Some(credential) = credential {
         args.push("--credential".to_string());
         args.push(credential.to_string());
+    }
+
+    if let Some(identities) = authority_identities {
+        for identity in identities.iter() {
+            args.push("--authority-identity".to_string());
+            args.push(identity.to_string());
+        }
     }
 
     args.push(name.to_owned());

@@ -59,6 +59,7 @@ async fn run_impl(
         None,
         None, // No launch config available
         None,
+        None,
     )?;
 
     // Print node status

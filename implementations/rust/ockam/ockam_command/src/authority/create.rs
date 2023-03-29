@@ -32,9 +32,9 @@ pub struct CreateCommand {
     #[arg(default_value = "authority")]
     node_name: String,
 
-    /// Identifier of the project associated to this authority node on the Orchestrator
-    #[arg(long, value_name = "PROJECT_IDENTIFIER")]
-    project_identifier: String,
+    /// Identifier of the trust context associated to the project within this authority node on the Orchestrator
+    #[arg(long, value_name = "TRUST_CONTEXT_IDENTIFIER")]
+    trust_context_identifier: String,
 
     /// TCP listener address
     #[arg(
@@ -99,7 +99,7 @@ async fn spawn_background_node(
         "authority".to_string(),
         "create".to_string(),
         "--project-identifier".to_string(),
-        cmd.project_identifier.clone(),
+        cmd.trust_context_identifier.clone(),
         "--tcp-listener-address".to_string(),
         cmd.tcp_listener_address.clone(),
         "--foreground".to_string(),
@@ -167,7 +167,7 @@ impl CreateCommand {
     /// or an explicit list of identities passed on the command line
     pub(crate) fn trusted_identities(
         &self,
-        project_identifier: &str,
+        trust_context_identifier: &str,
         authority_identifier: &IdentityIdentifier,
     ) -> Result<PreTrustedIdentities> {
         match (
@@ -176,7 +176,7 @@ impl CreateCommand {
         ) {
             (Some(path), None) => Ok(PreTrustedIdentities::ReloadFrom(path.clone())),
             (None, Some(trusted)) => Ok(PreTrustedIdentities::Fixed(trusted.to_map(
-                project_identifier.to_string(),
+                trust_context_identifier.to_string(),
                 authority_identifier,
             ))),
             _ => Err(crate::Error::new(
@@ -255,7 +255,7 @@ async fn start_authority_node(
     )?;
 
     let trusted_identities = &command.trusted_identities(
-        &command.project_identifier.clone(),
+        &command.trust_context_identifier.clone(),
         public_identity.identifier(),
     )?;
 
@@ -263,7 +263,7 @@ async fn start_authority_node(
         identity: public_identity,
         storage_path: options.state.identities.authenticated_storage_path()?,
         vault_path: options.state.vaults.default()?.vault_file_path()?,
-        project_identifier: command.project_identifier,
+        trust_context_identifier: command.trust_context_identifier,
         tcp_listener_address: command.tcp_listener_address.clone(),
         secure_channel_listener_name: None,
         authenticator_name: None,
@@ -305,15 +305,15 @@ mod tests {
         )
         .unwrap();
 
-        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"project_id\": \"1\"}}, \"{identity2}\": {{\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
+        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
 
         let attributes1 = HashMap::from([
             ("name".into(), "value".into()),
-            ("project_id".into(), "1".into()),
+            ("trust_context_id".into(), "1".into()),
         ]);
         let attributes2 = HashMap::from([
-            ("project_id".into(), "1".into()),
+            ("trust_context_id".into(), "1".into()),
             ("ockam-role".into(), "enroller".into()),
         ]);
         let expected = vec![
@@ -340,13 +340,13 @@ impl TrustedIdentities {
     ///   - use the authority identifier an the attributes issuer
     pub(crate) fn to_map(
         &self,
-        project_identifier: String,
+        trust_context_identifier: String,
         authority_identifier: &IdentityIdentifier,
     ) -> HashMap<IdentityIdentifier, AttributesEntry> {
         HashMap::from_iter(self.trusted_identities().iter().map(|t| {
             (
                 t.identifier(),
-                t.attributes_entry(project_identifier.clone(), authority_identifier),
+                t.attributes_entry(trust_context_identifier.clone(), authority_identifier),
             )
         }))
     }

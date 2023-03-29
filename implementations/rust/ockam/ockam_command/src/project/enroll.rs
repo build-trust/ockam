@@ -13,7 +13,7 @@ use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
-use crate::project::util::create_secure_channel_to_authority;
+use crate::project::util::create_secure_channel_to_project_authority;
 use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::node_rpc;
 use crate::{CommandGlobalOpts, Result};
@@ -79,7 +79,7 @@ impl Runner {
 
         let map = self.opts.config.lookup();
         let base_addr = if let Some(a) = project_authority(&self.cmd.to, &map)? {
-            create_secure_channel_to_authority(
+            create_secure_channel_to_project_authority(
                 &self.ctx,
                 &self.opts,
                 &node_name,

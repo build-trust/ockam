@@ -1,8 +1,10 @@
 use crate::authority::create::CreateCommand;
+use crate::authority::serialize::SerializeCommand;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use clap::Subcommand;
 mod create;
+mod serialize;
 
 const HELP_DETAIL: &str = include_str!("../constants/authority/help_detail.txt");
 
@@ -22,6 +24,7 @@ impl AuthorityCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
             AuthoritySubcommand::Create(c) => c.run(options),
+            AuthoritySubcommand::Serialize(c) => c.run(options),
         }
     }
 }
@@ -30,4 +33,5 @@ impl AuthorityCommand {
 pub enum AuthoritySubcommand {
     #[command(display_order = 800)]
     Create(CreateCommand),
+    Serialize(SerializeCommand),
 }

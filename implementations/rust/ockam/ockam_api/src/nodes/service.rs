@@ -2,7 +2,7 @@
 
 use minicbor::Decoder;
 
-use ockam::identity::{Identity, IdentityIdentifier, PublicIdentity};
+use ockam::identity::{Identity, IdentityIdentifier};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
 use ockam_abac::PolicyStorage;
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
@@ -16,7 +16,7 @@ use ockam_core::{route, AllowAll, AsyncTryClone};
 use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
-use ockam_identity::credential::Credential;
+
 use ockam_identity::IdentityVault;
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -27,7 +27,6 @@ use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::path::PathBuf;
 
-use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
@@ -41,6 +40,7 @@ use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::session::util::{starts_with_host_tcp, starts_with_secure};
 use crate::session::{Medic, Sessions};
+use crate::trust_context::TrustContext;
 use crate::{
     create_tcp_session, local_multiaddr_to_route, multiaddr_to_route, route_to_multiaddr,
     try_address_to_multiaddr, DefaultAddress,
@@ -76,30 +76,6 @@ pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Err
     invalid_multiaddr_error()
 }
 
-pub(crate) struct Authorities(Vec<AuthorityInfo>);
-
-impl Authorities {
-    pub fn new(authorities: Vec<AuthorityInfo>) -> Self {
-        Self(authorities)
-    }
-
-    pub fn public_identities(&self) -> Vec<PublicIdentity> {
-        self.0.iter().map(|x| x.identity.clone()).collect()
-    }
-}
-
-impl AsRef<[AuthorityInfo]> for Authorities {
-    fn as_ref(&self) -> &[AuthorityInfo] {
-        self.0.as_ref()
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct AuthorityInfo {
-    identity: PublicIdentity,
-    addr: MultiAddr,
-}
-
 type Transports = BTreeMap<Alias, (TransportType, TransportMode, Address, String)>;
 
 /// Node manager provides a messaging API to interact with the current node
@@ -113,14 +89,13 @@ pub struct NodeManager {
     enable_credential_checks: bool,
     vault: Arc<dyn IdentityVault>,
     pub(crate) identity: Arc<Identity>,
-    project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
-    authorities: Option<Authorities>,
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: Arc<dyn PolicyStorage>,
     attributes_storage: Arc<dyn IdentityAttributeStorage>,
+    trust_context: Option<TrustContext>,
 }
 
 pub struct NodeManagerWorker {
@@ -149,17 +124,14 @@ impl NodeManager {
         Ok(self.vault.clone())
     }
 
-    pub(crate) fn authorities(&self) -> Result<&Authorities> {
-        self.authorities
+    pub(crate) fn trust_context(&self) -> Result<&TrustContext> {
+        self.trust_context
             .as_ref()
-            .ok_or_else(|| ApiError::generic("Authorities don't exist"))
+            .ok_or_else(|| ApiError::generic("Trust Context doesn't exist"))
     }
 
-    /// Available only for member nodes
-    pub(crate) fn project_id(&self) -> Result<&str> {
-        self.project_id
-            .as_deref()
-            .ok_or_else(|| ApiError::generic("Project id is not set"))
+    pub(crate) fn trust_context_id(&self) -> Result<&str> {
+        Ok(self.trust_context()?.id())
     }
 }
 
@@ -186,26 +158,13 @@ impl NodeManagerGeneralOptions {
     }
 }
 
-pub struct NodeManagerProjectsOptions<'a> {
-    ac: Option<&'a AuthoritiesConfig>,
-    project_id: Option<String>,
+pub struct NodeManagerProjectsOptions {
     projects: BTreeMap<String, ProjectLookup>,
-    credential: Option<Credential>,
 }
 
-impl<'a> NodeManagerProjectsOptions<'a> {
-    pub fn new(
-        ac: Option<&'a AuthoritiesConfig>,
-        project_id: Option<String>,
-        projects: BTreeMap<String, ProjectLookup>,
-        credential: Option<Credential>,
-    ) -> Self {
-        Self {
-            ac,
-            project_id,
-            projects,
-            credential,
-        }
+impl NodeManagerProjectsOptions {
+    pub fn new(projects: BTreeMap<String, ProjectLookup>) -> Self {
+        Self { projects }
     }
 }
 
@@ -226,13 +185,24 @@ impl NodeManagerTransportOptions {
     }
 }
 
+pub struct NodeManagerTrustOptions {
+    authority_config: Option<AuthoritiesConfig>,
+}
+
+impl NodeManagerTrustOptions {
+    pub fn new(authority_config: Option<AuthoritiesConfig>) -> Self {
+        Self { authority_config }
+    }
+}
+
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,
-        projects_options: NodeManagerProjectsOptions<'_>,
+        projects_options: NodeManagerProjectsOptions,
         transport_options: NodeManagerTransportOptions,
+        trust_options: NodeManagerTrustOptions,
     ) -> Result<Self> {
         let api_transport_id = random_alias();
         let mut transports = BTreeMap::new();
@@ -266,8 +236,15 @@ impl NodeManager {
 
         let vault: Arc<dyn IdentityVault> = Arc::new(node_state.config.vault().await?);
         let identity = Arc::new(node_state.config.identity(ctx).await?);
-        if let Some(cred) = projects_options.credential {
-            identity.set_credential(cred.to_owned()).await;
+
+        let mut trust_context: Option<TrustContext> = None;
+        if !general_options.skip_defaults {
+            if let Some(ref ac) = trust_options.authority_config {
+                if let Some((_id, tc)) = ac.authorities().into_iter().last() {
+                    trust_context = Some(tc.clone())
+                    // trust_context.id = projects_options.project_id
+                }
+            }
         }
 
         let medic = Medic::new();
@@ -280,13 +257,10 @@ impl NodeManager {
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults: general_options.skip_defaults,
-            enable_credential_checks: projects_options.ac.is_some()
-                && projects_options.project_id.is_some(),
+            enable_credential_checks: trust_options.authority_config.is_some(),
             vault,
             identity,
             projects: Arc::new(projects_options.projects),
-            project_id: projects_options.project_id,
-            authorities: None,
             registry: Default::default(),
             medic: {
                 let ctx = ctx.async_try_clone().await?;
@@ -295,13 +269,8 @@ impl NodeManager {
             sessions,
             policies,
             attributes_storage,
+            trust_context,
         };
-
-        if !general_options.skip_defaults {
-            if let Some(ac) = projects_options.ac {
-                s.configure_authorities(ac).await?;
-            }
-        }
 
         // Always start the echoer service as ockam_api::Medic assumes it will be
         // started unconditionally on every node. It's used for liveness checks.
@@ -309,23 +278,6 @@ impl NodeManager {
             .await?;
 
         Ok(s)
-    }
-
-    async fn configure_authorities(&mut self, ac: &AuthoritiesConfig) -> Result<()> {
-        let vault = self.vault()?;
-
-        let mut v = Vec::new();
-
-        for a in ac.authorities() {
-            v.push(AuthorityInfo {
-                identity: PublicIdentity::import(a.1.identity(), vault.clone()).await?,
-                addr: a.1.access_route().clone(),
-            })
-        }
-
-        self.authorities = Some(Authorities::new(v));
-
-        Ok(())
     }
 
     async fn initialize_defaults(&mut self, ctx: &Context) -> Result<()> {
@@ -358,8 +310,7 @@ impl NodeManager {
         )
         .await?;
 
-        // If we've been configured with authorities, we can start Credential Exchange service
-        if self.authorities().is_ok() {
+        if self.trust_context().is_ok() {
             self.start_credentials_service_impl(DefaultAddress::CREDENTIALS_SERVICE.into(), false)
                 .await?;
         }
@@ -397,17 +348,16 @@ impl NodeManager {
                     .await
                     .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
-                let m = CredentialExchangeMode::Oneway;
                 let w = self
                     .create_secure_channel_impl(
                         tcp_session.route,
                         i,
-                        m,
                         timeout,
                         identity_name,
                         ctx,
                         credential_name,
                         tcp_session.session,
+                        true,
                     )
                     .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
@@ -425,19 +375,18 @@ impl NodeManager {
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     debug!(%addr, "creating a secure channel");
                     let (a2, b2) = b1.split(pos2);
-                    let m = CredentialExchangeMode::Mutual;
                     let r2 = local_multiaddr_to_route(&a2)
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     let w = self
                         .create_secure_channel_impl(
                             route![tcp_session.route, r2],
                             authorized_identities.clone(),
-                            m,
                             timeout,
                             identity_name,
                             ctx,
                             credential_name,
                             tcp_session.session,
+                            false,
                         )
                         .await?;
 
@@ -461,17 +410,16 @@ impl NodeManager {
             debug!(%addr, "creating secure channel");
             let r = local_multiaddr_to_route(addr)
                 .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-            let m = CredentialExchangeMode::Mutual;
             let w = self
                 .create_secure_channel_impl(
                     r,
                     authorized_identities.clone(),
-                    m,
                     timeout,
                     None,
                     ctx,
                     None,
                     None,
+                    false,
                 )
                 .await?;
             return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));

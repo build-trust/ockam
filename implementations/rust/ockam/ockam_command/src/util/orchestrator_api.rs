@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::{
     node::util::{delete_node, start_embedded_node_with_vault_and_identity},
     project::{
-        util::{create_secure_channel_to_authority, create_secure_channel_to_project},
+        util::{create_secure_channel_to_project, create_secure_channel_to_project_authority},
         ProjectInfo,
     },
     util::Rpc,
@@ -16,7 +16,6 @@ use ockam::Context;
 use ockam_api::{
     authenticator::direct::{CredentialIssuerClient, RpcClient},
     config::lookup::ProjectLookup,
-    nodes::models::secure_channel::CredentialExchangeMode,
     DefaultAddress,
 };
 use ockam_core::api::RequestBuilder;
@@ -37,7 +36,6 @@ pub struct OrchestratorApiBuilder<'a> {
     node_name: Option<String>,
     destination: OrchestratorEndpoint,
     identity: Option<String>,
-    credential_exchange_mode: CredentialExchangeMode,
     project_lookup: Option<ProjectLookup>,
     one_time_code: Option<OneTimeCode>,
 }
@@ -63,7 +61,6 @@ impl<'a> OrchestratorApiBuilder<'a> {
             node_name: None,
             destination: OrchestratorEndpoint::Project,
             identity: None,
-            credential_exchange_mode: CredentialExchangeMode::Oneway,
             project_lookup: None,
             one_time_code: None,
         }
@@ -122,13 +119,6 @@ impl<'a> OrchestratorApiBuilder<'a> {
     #[allow(dead_code)]
     pub fn with_endpoint(&mut self, destination: OrchestratorEndpoint) -> &mut Self {
         self.destination = destination;
-        self
-    }
-
-    // TODO oa: will be used within enroll flow
-    #[allow(dead_code)]
-    pub fn with_credential_exchange(&mut self, cem: CredentialExchangeMode) -> &mut Self {
-        self.credential_exchange_mode = cem;
         self
     }
 
@@ -227,7 +217,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     .as_ref()
                     .context("Project Authority is required")?;
 
-                create_secure_channel_to_authority(
+                create_secure_channel_to_project_authority(
                     self.ctx,
                     self.opts,
                     node_name,
@@ -254,7 +244,6 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     None,
                     project_route,
                     &project_identity.to_string(),
-                    self.credential_exchange_mode,
                     self.identity.clone(),
                 )
                 .await?

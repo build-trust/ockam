@@ -104,11 +104,21 @@ impl NodeManager {
             ));
         }
 
-        let authorities = self.authorities()?;
+        let trust_context = self.trust_context()?;
+
+        let identity = trust_context.authority()?.identity();
+
+        if let Ok(cred) = trust_context
+            .authority()?
+            .credential(&self.identity, &self.tcp_transport)
+            .await
+        {
+            self.identity.set_credential(cred).await;
+        }
 
         self.identity
             .start_credential_exchange_worker(
-                authorities.public_identities(),
+                vec![identity.clone()],
                 addr.clone(),
                 !oneway,
                 self.attributes_storage.clone(),
@@ -228,14 +238,14 @@ impl NodeManager {
         &self,
         r: &Resource,
         a: &Action,
-        project_id: &str,
+        trust_context_id: &str,
         default: &Expr,
     ) -> Result<Arc<dyn IncomingAccessControl>> {
         // Populate environment with known attributes:
         let mut env = Env::new();
         env.put("resource.id", str(r.as_str()));
         env.put("action.id", str(a.as_str()));
-        env.put("resource.project_id", str(project_id));
+        env.put("resource.trust_context_id", str(trust_context_id));
         // Check if a policy exists for (resource, action) and if not, then
         // create a default entry:
         if self.policies.get_policy(r, a).await?.is_none() {
@@ -254,7 +264,7 @@ impl NodeManager {
         &mut self,
         ctx: &Context,
         addr: Address,
-        proj: &[u8],
+        trust_context_id: &[u8],
     ) -> Result<()> {
         if self.registry.authenticator_service.contains_key(&addr) {
             return Err(ApiError::generic(
@@ -263,13 +273,16 @@ impl NodeManager {
         }
         let action = actions::HANDLE_MESSAGE;
         let resource = Resource::new(&addr.to_string());
-        let project = std::str::from_utf8(proj).unwrap();
-        let rule = eq([ident("resource.project_id"), ident("subject.project_id")]);
+        let trust_context = std::str::from_utf8(trust_context_id).unwrap();
+        let rule = eq([
+            ident("resource.trust_context_id"),
+            ident("subject.trust_context_id"),
+        ]);
         let abac = self
-            .build_access_control(&resource, &action, project, &rule)
+            .build_access_control(&resource, &action, trust_context, &rule)
             .await?;
         let issuer = crate::authenticator::direct::CredentialIssuer::new(
-            proj.to_vec(),
+            trust_context_id.to_vec(),
             self.attributes_storage
                 .as_identity_attribute_storage_reader(),
             self.identity.clone(),
@@ -290,7 +303,7 @@ impl NodeManager {
         &mut self,
         ctx: &Context,
         addr: Address,
-        proj: &[u8],
+        trust_context_id: &[u8],
     ) -> Result<()> {
         if self.registry.authenticator_service.contains_key(&addr) {
             return Err(ApiError::generic(
@@ -299,18 +312,21 @@ impl NodeManager {
         }
         let action = actions::HANDLE_MESSAGE;
         let resource = Resource::new(&addr.to_string());
-        let project = std::str::from_utf8(proj).unwrap();
+        let trust_context = std::str::from_utf8(trust_context_id).unwrap();
         let rule = and([
-            eq([ident("resource.project_id"), ident("subject.project_id")]),
+            eq([
+                ident("resource.trust_context_id"),
+                ident("subject.trust_context_id"),
+            ]),
             eq([ident("subject.ockam-role"), str("enroller")]),
         ]);
 
         let abac = self
-            .build_access_control(&resource, &action, project, &rule)
+            .build_access_control(&resource, &action, trust_context, &rule)
             .await?;
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
-            proj.to_vec(),
+            trust_context_id.to_vec(),
             self.attributes_storage.clone(),
         )
         .await?;
@@ -337,7 +353,7 @@ impl NodeManager {
         ctx: &Context,
         issuer_addr: Address,
         acceptor_addr: Address,
-        proj: &[u8],
+        trust_context_id: &[u8],
     ) -> Result<()> {
         if self
             .registry
@@ -354,18 +370,21 @@ impl NodeManager {
         }
         let action = actions::HANDLE_MESSAGE;
         let resource = Resource::new(&issuer_addr.to_string());
-        let project = std::str::from_utf8(proj).unwrap();
+        let trust_context = std::str::from_utf8(trust_context_id).unwrap();
         let (issuer, acceptor) =
             crate::authenticator::direct::EnrollmentTokenAuthenticator::new_worker_pair(
-                proj.to_vec(),
+                trust_context_id.to_vec(),
                 self.attributes_storage.async_try_clone().await?,
             );
         let rule = and([
-            eq([ident("resource.project_id"), ident("subject.project_id")]),
+            eq([
+                ident("resource.trust_context_id"),
+                ident("subject.trust_context_id"),
+            ]),
             eq([ident("subject.ockam-role"), str("enroller")]),
         ]);
         let abac = self
-            .build_access_control(&resource, &action, project, &rule)
+            .build_access_control(&resource, &action, trust_context, &rule)
             .await?;
         let allow_all = Arc::new(AllowAll);
         WorkerBuilder::with_access_control(abac, allow_all.clone(), issuer_addr.clone(), issuer)

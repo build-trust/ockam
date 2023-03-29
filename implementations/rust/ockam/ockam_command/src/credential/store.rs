@@ -3,14 +3,15 @@ use std::path::PathBuf;
 use crate::{
     util::{node_rpc, random_name},
     vault::default_vault_name,
-    CommandGlobalOpts,
+    CommandGlobalOpts, Result,
 };
 use anyhow::anyhow;
 
 use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::CredentialConfig;
-use ockam_identity::IdentityIdentifier;
+use ockam_identity::PublicIdentity;
+use ockam_vault::Vault;
 
 #[derive(Clone, Debug, Args)]
 pub struct StoreCommand {
@@ -18,7 +19,7 @@ pub struct StoreCommand {
     pub credential_name: String,
 
     #[arg(long = "issuer")]
-    pub issuer: IdentityIdentifier,
+    pub issuer: String,
 
     #[arg(group = "credential_value", value_name = "CREDENTIAL_STRING", long)]
     pub credential: Option<String>,
@@ -34,15 +35,25 @@ impl StoreCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(run_impl, (opts, self));
     }
+
+    pub async fn public_identity(&self) -> Result<PublicIdentity> {
+        let identity_as_bytes = match hex::decode(&self.issuer) {
+            Ok(b) => b,
+            Err(e) => return Err(anyhow!(e).into()),
+        };
+
+        let public_identity = PublicIdentity::import(&identity_as_bytes, Vault::create()).await?;
+        Ok(public_identity)
+    }
 }
 
 async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, StoreCommand),
 ) -> crate::Result<()> {
-    let cred_as_str = match (cmd.credential, cmd.credential_path) {
+    let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
         (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
-        (Some(credential), _) => credential,
+        (Some(credential), _) => credential.to_string(),
         _ => return Err(anyhow!("Credential or Credential Path argument must be provided").into()),
     };
 
@@ -51,7 +62,7 @@ async fn run_impl(
         .credentials
         .create(
             &cmd.credential_name,
-            CredentialConfig::new(cmd.issuer.to_string(), cred_as_str)?,
+            CredentialConfig::new(cmd.public_identity().await?, cred_as_str)?,
         )
         .await?;
 

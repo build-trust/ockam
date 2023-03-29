@@ -17,7 +17,7 @@ use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
-use crate::project::util::create_secure_channel_to_authority;
+use crate::project::util::create_secure_channel_to_project_authority;
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::DefaultAddress;
@@ -72,7 +72,7 @@ async fn run_impl(
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
                 .ok_or_else(|| anyhow!("Authority details not configured"))?;
-        create_secure_channel_to_authority(
+        create_secure_channel_to_project_authority(
             &ctx,
             &opts,
             &node_name,
