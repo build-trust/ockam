@@ -15,7 +15,6 @@ use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::SystemTime;
-use std::{fmt, fs};
 use sysinfo::{Pid, System, SystemExt};
 
 use crate::lmdb::LmdbStorage;
@@ -111,19 +110,19 @@ impl CliState {
             &dir.join("defaults"),
         ] {
             if dir.exists() {
-                fs::remove_dir_all(dir)?
+                std::fs::remove_dir_all(dir)?
             };
         }
 
         let config_file = dir.join("config.json");
         if config_file.exists() {
-            fs::remove_file(config_file)?;
+            std::fs::remove_file(config_file)?;
         }
 
         // If the state directory is now empty, delete it.
-        let is_empty = fs::read_dir(dir)?.next().is_none();
+        let is_empty = std::fs::read_dir(dir)?.next().is_none();
         if is_empty {
-            fs::remove_dir(dir)?;
+            std::fs::remove_dir(dir)?;
         }
 
         Ok(())
@@ -315,7 +314,7 @@ impl VaultState {
 }
 
 impl Display for VaultState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
             "Name: {}",
@@ -596,7 +595,7 @@ impl TryFrom<&PathBuf> for IdentityState {
 }
 
 impl Display for IdentityState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
             "Name: {}",
@@ -666,7 +665,7 @@ impl EnrollmentStatus {
 }
 
 impl Display for EnrollmentStatus {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if self.is_enrolled {
             writeln!(f, "Enrolled: yes")?;
         } else {
@@ -1132,7 +1131,7 @@ impl ProjectsState {
         Ok(Self { dir })
     }
 
-    pub async fn create(&self, name: &str, config: Project<'_>) -> Result<ProjectState> {
+    pub fn create(&self, name: &str, config: Project<'_>) -> Result<ProjectState> {
         let path = {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
@@ -1185,15 +1184,8 @@ impl ProjectsState {
     pub fn list(&self) -> Result<Vec<ProjectState>> {
         let mut projects = vec![];
         for entry in std::fs::read_dir(&self.dir)? {
-            let entry = entry?;
-            if entry.file_type()?.is_dir() {
-                let name = entry.file_name().into_string().map_err(|_| {
-                    CliStateError::Io(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "project's directory has an invalid name",
-                    ))
-                })?;
-                projects.push(self.get(&name)?);
+            if let Ok(project) = self.get(&file_stem(&entry?.path())?) {
+                projects.push(project);
             }
         }
         Ok(projects)
@@ -1219,13 +1211,6 @@ impl ProjectsState {
 
         Ok(())
     }
-
-    pub fn delete_all(&self) -> Result<()> {
-        for project in self.list()? {
-            self.delete(&project.name()?)?;
-        }
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -1247,7 +1232,7 @@ impl ProjectState {
     }
 
     fn delete(&self) -> Result<()> {
-        std::fs::remove_dir_all(&self.path)?;
+        let _ = std::fs::remove_file(&self.path);
         Ok(())
     }
 }
@@ -1407,7 +1392,7 @@ mod tests {
 
         // Vaults
         let vault_name = {
-            let name = hex::encode(rand::random::<[u8; 4]>());
+            let name = hex::encode(random::<[u8; 4]>());
             let config = VaultConfig::default();
 
             let state = sut.vaults.create(&name, config).await.unwrap();
@@ -1422,7 +1407,7 @@ mod tests {
 
         // Identities
         let identity_name = {
-            let name = hex::encode(rand::random::<[u8; 4]>());
+            let name = hex::encode(random::<[u8; 4]>());
             let vault_state = sut.vaults.get(&vault_name).unwrap();
             let vault: Arc<dyn IdentityVault> = Arc::new(vault_state.get().await.unwrap());
             let identity =
@@ -1443,7 +1428,7 @@ mod tests {
 
         // Nodes
         let node_name = {
-            let name = hex::encode(rand::random::<[u8; 4]>());
+            let name = hex::encode(random::<[u8; 4]>());
             let config = NodeConfig::try_from(&sut).unwrap();
 
             let state = sut.nodes.create(&name, config).unwrap();
@@ -1451,6 +1436,18 @@ mod tests {
             assert_eq!(got, state);
 
             let got = sut.nodes.default().unwrap();
+            assert_eq!(got, state);
+
+            name
+        };
+
+        // Projects
+        let project_name = {
+            let name = hex::encode(random::<[u8; 4]>());
+            let config = Project::default();
+
+            let state = sut.projects.create(&name, config).unwrap();
+            let got = sut.projects.get(&name).unwrap();
             assert_eq!(got, state);
 
             name
@@ -1469,12 +1466,14 @@ mod tests {
             format!("nodes/{node_name}"),
             "projects".to_string(),
             "projects/data".to_string(),
+            format!("projects/{project_name}.json"),
             "credentials".to_string(),
             "credentials/data".to_string(),
             "defaults".to_string(),
             "defaults/vault".to_string(),
             "defaults/identity".to_string(),
             "defaults/node".to_string(),
+            "defaults/project".to_string(),
         ];
         expected_entries.sort();
         let mut found_entries = vec![];
@@ -1553,9 +1552,15 @@ mod tests {
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
-                        assert!(entry.path().is_dir());
-                        let file_name = entry.file_name().into_string().unwrap();
-                        found_entries.push(format!("{dir_name}/{file_name}"));
+                        let entry_name = entry.file_name().into_string().unwrap();
+                        if entry.path().is_dir() {
+                            assert_eq!(entry_name, "data");
+                            found_entries.push(format!("{dir_name}/{entry_name}"));
+                        } else {
+                            assert!(entry.path().is_file());
+                            let file_name = entry.file_name().into_string().unwrap();
+                            found_entries.push(format!("{dir_name}/{file_name}"));
+                        }
                     });
                 }
                 "credentials" => {
@@ -1573,6 +1578,12 @@ mod tests {
         });
         found_entries.sort();
         assert_eq!(expected_entries, found_entries);
+
+        sut.projects.delete(&project_name).unwrap();
+        sut.nodes.delete(&node_name, false).unwrap();
+        sut.identities.delete(&identity_name).await.unwrap();
+        sut.vaults.delete(&vault_name).await.unwrap();
+
         ctx.stop().await?;
         Ok(())
     }
