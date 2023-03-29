@@ -47,6 +47,8 @@ use ockam_api::{
 use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
 use ockam_core::{AllowAll, LOCAL};
 
+use super::util::check_default;
+
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -197,10 +199,7 @@ async fn run_impl(
     // Print node status
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-    let mut is_default = false;
-    if let Ok(state) = opts.state.nodes.default() {
-        is_default = &state.config.name == node_name;
-    }
+    let is_default = check_default(&opts, node_name);
     print_query_status(&mut rpc, node_name, true, is_default).await?;
 
     Ok(())
