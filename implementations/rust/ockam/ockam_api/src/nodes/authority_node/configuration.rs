@@ -23,7 +23,7 @@ pub struct Configuration {
     pub vault_path: PathBuf,
 
     /// Project identifier on the Orchestrator node
-    pub project_identifier: String,
+    pub trust_context_identifier: String,
 
     /// listener address for the TCP listener, for example "127.0.0.1:4000"
     pub tcp_listener_address: String,
@@ -52,8 +52,8 @@ pub struct Configuration {
 /// Local and private functions for the authority configuration
 impl Configuration {
     /// Return the project identifier as bytes
-    pub(crate) fn project_identifier(&self) -> Vec<u8> {
-        self.project_identifier.as_bytes().to_vec()
+    pub(crate) fn trust_context_identifier(&self) -> Vec<u8> {
+        self.trust_context_identifier.as_bytes().to_vec()
     }
 
     /// Return the address for the TCP listener
@@ -139,7 +139,7 @@ impl TrustedIdentity {
 
     pub fn attributes_entry(
         &self,
-        project_identifier: String,
+        trust_context_identifier: String,
         authority_identifier: &IdentityIdentifier,
     ) -> AttributesEntry {
         let mut map: BTreeMap<String, Vec<u8>> = BTreeMap::new();
@@ -151,8 +151,14 @@ impl TrustedIdentity {
         // add the project_id attribute to the trusted identities
         map.insert(
             "project_id".to_string(),
-            project_identifier.as_bytes().to_vec(),
+            trust_context_identifier.as_bytes().to_vec(),
         );
+
+        map.insert(
+            "trust_context_id".to_string(),
+            trust_context_identifier.as_bytes().to_vec(),
+        );
+
         AttributesEntry::new(
             map,
             Timestamp::now().unwrap(),

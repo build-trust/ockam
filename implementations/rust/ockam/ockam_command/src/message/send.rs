@@ -2,7 +2,6 @@ use anyhow::Context as _;
 use clap::Args;
 
 use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
@@ -82,7 +81,6 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             &cmd.cloud_opts.route(),
             &api_node,
             tcp.as_ref(),
-            CredentialExchangeMode::Oneway,
         )
         .await?;
         let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;

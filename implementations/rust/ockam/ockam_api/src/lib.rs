@@ -12,6 +12,7 @@ pub mod kafka;
 pub mod nodes;
 pub mod okta;
 pub mod port_range;
+pub mod trust_context;
 pub mod uppercase;
 pub mod vault;
 pub mod verifier;

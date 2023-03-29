@@ -28,19 +28,6 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 impl NodeManager {
-    async fn get_credential_if_needed(&mut self, identity: &Identity) -> Result<()> {
-        if identity.credential().await.is_some() {
-            debug!("Credential check: credential already exists...");
-            return Ok(());
-        }
-
-        debug!("Credential check: requesting...");
-        self.get_credential_impl(identity, false).await?;
-        debug!("Credential check: got new credential...");
-
-        Ok(())
-    }
-
     pub(crate) async fn create_secure_channel_internal(
         &mut self,
         identity: &Identity,
@@ -91,12 +78,12 @@ impl NodeManager {
         &mut self,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-        credential_exchange_mode: CredentialExchangeMode,
         timeout: Option<Duration>,
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
         credential_name: Option<CowStr<'_>>,
         session: Option<(Sessions, SessionId)>,
+        is_project_node: bool,
     ) -> Result<Address> {
         let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
@@ -111,18 +98,6 @@ impl NodeManager {
         } else {
             self.identity.clone()
         };
-        let provided_credential = if let Some(credential_name) = credential_name {
-            Some(
-                self.cli_state
-                    .credentials
-                    .get(&credential_name)?
-                    .config()
-                    .await?
-                    .credential()?,
-            )
-        } else {
-            None
-        };
 
         let sc_addr = self
             .create_secure_channel_internal(
@@ -134,47 +109,53 @@ impl NodeManager {
             )
             .await?;
 
-        // TODO: Determine when we can remove this? Or find a better way to determine
-        //       when to check credentials. Currently enable_credential_checks only if a PROJECT AC and PROJECT ID are set
-        //       -- Oakley
-        let actual_exchange_mode = if self.enable_credential_checks || provided_credential.is_some()
+        // Mutual credential exchange if there is a trust context set
+        // and the destination is not a project node
+        if self.trust_context.is_some()
+            && self
+                .trust_context()?
+                .authority()?
+                .own_credential()
+                .is_some()
         {
-            credential_exchange_mode
-        } else {
-            CredentialExchangeMode::None
-        };
+            // Retrieve a credential from the trust context or
+            let authorities = self.trust_context()?.authority()?.identity();
+            let credential = if let Some(credential_name) = credential_name {
+                self.cli_state
+                    .credentials
+                    .get(&credential_name)?
+                    .config()
+                    .await?
+                    .credential()?
+            } else {
+                self.trust_context()?
+                    .authority()?
+                    .credential(&identity, &self.tcp_transport)
+                    .await?
+            };
 
-        match actual_exchange_mode {
-            CredentialExchangeMode::None => {
-                debug!(%sc_addr, "No credential presentation");
-            }
-            CredentialExchangeMode::Oneway => {
-                debug!(%sc_addr, "One-way credential presentation");
-                if provided_credential.is_none() {
-                    self.get_credential_if_needed(&identity).await?;
-                }
+            // Currently project nodes do not have a credential to present back, so we currently
+            // only use a one way exchange for this case.
+            if is_project_node {
+                debug!(%sc_addr, "One-way credential presentation to project");
 
                 identity
                     .present_credential(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        provided_credential.as_ref(),
+                        &credential,
                     )
                     .await?;
-                debug!(%sc_addr, "One-way credential presentation success");
-            }
-            CredentialExchangeMode::Mutual => {
-                debug!(%sc_addr, "Mutual credential presentation");
-                if provided_credential.is_none() {
-                    self.get_credential_if_needed(&identity).await?;
-                }
 
-                let authorities = self.authorities()?;
+                debug!(%sc_addr, "One-way credential presentation success");
+            } else {
+                debug!(%sc_addr, "Mutual credential presentation");
+
                 identity
                     .present_credential_mutual(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        &authorities.public_identities(),
+                        vec![authorities],
                         self.attributes_storage.clone(),
-                        provided_credential.as_ref(),
+                        &credential,
                     )
                     .await?;
                 debug!(%sc_addr, "Mutual credential presentation success");
@@ -288,10 +269,10 @@ impl NodeManagerWorker {
         let CreateSecureChannelRequest {
             addr,
             authorized_identifiers,
-            credential_exchange_mode,
             timeout,
             identity_name: identity,
             credential_name,
+            is_project_node,
             ..
         } = dec.decode()?;
 
@@ -320,12 +301,12 @@ impl NodeManagerWorker {
             .create_secure_channel_impl(
                 tcp_session.route,
                 authorized_identifiers,
-                credential_exchange_mode,
                 timeout,
                 identity,
                 ctx,
                 credential_name,
                 tcp_session.session,
+                is_project_node,
             )
             .await?;
 

@@ -1240,12 +1240,12 @@ impl ProjectState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialConfig {
-    pub issuer: String,
+    pub issuer: PublicIdentity,
     pub encoded_credential: String,
 }
 
 impl CredentialConfig {
-    pub fn new(issuer: String, encoded_credential: String) -> Result<Self> {
+    pub fn new(issuer: PublicIdentity, encoded_credential: String) -> Result<Self> {
         Ok(Self {
             issuer,
             encoded_credential,
@@ -1346,7 +1346,7 @@ impl CredentialsState {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CredentialState {
     pub path: PathBuf,
 }

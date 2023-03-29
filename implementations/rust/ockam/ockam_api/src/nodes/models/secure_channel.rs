@@ -14,15 +14,6 @@ use serde::Serialize;
 use crate::error::ApiError;
 use crate::route_to_multiaddr;
 
-#[derive(Debug, Clone, Copy, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(index_only)]
-pub enum CredentialExchangeMode {
-    #[n(0)] None,
-    #[n(1)] Oneway,
-    #[n(2)] Mutual,
-}
-
 /// Request body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
@@ -32,7 +23,7 @@ pub struct CreateSecureChannelRequest<'a> {
     #[n(0)] tag: TypeTag<6300395>,
     #[b(1)] pub addr: CowStr<'a>,
     #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
-    #[n(3)] pub credential_exchange_mode: CredentialExchangeMode,
+    #[n(3)] pub is_project_node: bool,
     #[n(4)] pub timeout: Option<Duration>,
     #[b(5)] pub identity_name: Option<CowStr<'a>>,
     #[b(6)] pub credential_name: Option<CowStr<'a>>,
@@ -42,7 +33,7 @@ impl<'a> CreateSecureChannelRequest<'a> {
     pub fn new(
         addr: &MultiAddr,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-        credential_exchange_mode: CredentialExchangeMode,
+        is_project_node: bool,
         identity_name: Option<String>,
         credential_name: Option<String>,
     ) -> Self {
@@ -52,10 +43,10 @@ impl<'a> CreateSecureChannelRequest<'a> {
             addr: addr.to_string().into(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
-            credential_exchange_mode,
             timeout: None,
             identity_name: identity_name.map(|x| x.into()),
             credential_name: credential_name.map(|x| x.into()),
+            is_project_node,
         }
     }
 }

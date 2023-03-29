@@ -1,7 +1,9 @@
 use clap::Args;
 use colorful::Colorful;
+
+use ockam_api::nodes::service::NodeManagerTrustOptions;
+use ockam_api::trust_context::{AuthorityInfo, CredentialRetriever, TrustContext};
 use ockam_identity::PublicIdentity;
-use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 use rand::prelude::random;
 use tokio::time::{sleep, Duration};
@@ -32,20 +34,19 @@ use crate::{
 };
 use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
+
 use ockam_api::nodes::authority_node;
-use ockam_api::nodes::service::ApiTransport;
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
-    config::cli::Authority,
-    nodes::models::transport::{TransportMode, TransportType},
+    nodes::models::transport::{CreateTransportJson, TransportMode, TransportType},
     nodes::{
         service::{
-            NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+            ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
+            NodeManagerTransportOptions,
         },
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
-use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
 use ockam_core::{AllowAll, LOCAL};
 
 use super::util::check_default;
@@ -110,8 +111,11 @@ pub struct CreateCommand {
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
 
-    #[arg(long = "authority-identity", value_parser = parse_identity_authority)]
-    pub authority_identities: Option<Vec<Authority>>,
+    #[arg(long = "authority", value_parser = parse_trust_context)]
+    pub authorities: Option<Vec<TrustContext>>,
+
+    #[arg(long = "authority-identity")]
+    pub authority_identities: Option<Vec<String>>,
 
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
@@ -133,6 +137,7 @@ impl Default for CreateCommand {
             trusted_identities_file: None,
             reload_from_trusted_identities_file: None,
             authority_identities: None,
+            authorities: None,
             credential: None,
         }
     }
@@ -165,6 +170,27 @@ impl CreateCommand {
             tcp_listener_address: addr.to_string(),
             ..cmd
         })
+    }
+
+    async fn authority_identities(&self) -> Result<Vec<TrustContext>> {
+        let mut tcs = Vec::<TrustContext>::new();
+        if let Some(identities) = &self.authority_identities {
+            for identity in identities {
+                let identity_as_bytes = match hex::decode(identity) {
+                    Ok(b) => b,
+                    Err(e) => return Err(anyhow!(e).into()),
+                };
+
+                let public_identity =
+                    PublicIdentity::import(&identity_as_bytes, Vault::create()).await?;
+
+                tcs.push(TrustContext::new(AuthorityInfo::new_identity(
+                    public_identity,
+                )));
+            }
+        }
+
+        Ok(tcs)
     }
 }
 
@@ -239,16 +265,39 @@ async fn run_foreground_node(
         .await?;
     }
 
-    if let Some(authority_identities) = &cmd.authority_identities {
-        for auth in authority_identities.iter() {
-            let vault = Vault::create();
-            let i = PublicIdentity::import(auth.identity(), vault).await?;
-            cfg.authorities(&node_name)?
-                .add_authority(i.identifier().clone(), auth.clone())?;
+    let credential_state = match &cmd.credential {
+        Some(cred_name) => Some(opts.state.credentials.get(&cred_name)?),
+        None => None,
+    };
+
+    if let Some(cred_state) = credential_state {
+        let cred_config = cred_state.config().await?;
+        let public_identity = cred_config.issuer;
+
+        cfg.authorities(&node_name)?.add_authority(
+            public_identity.identifier().clone(),
+            TrustContext::new(AuthorityInfo::new(
+                public_identity,
+                Some(CredentialRetriever::FromState(cred_state)),
+            )),
+        )?;
+    }
+
+    for auth in cmd.authority_identities().await?.into_iter() {
+        cfg.authorities(&node_name)?
+            .add_authority(auth.authority()?.identity().identifier().clone(), auth)?;
+    }
+
+    if let Some(authorities) = &cmd.authorities {
+        for auth in authorities.into_iter() {
+            cfg.authorities(&node_name)?.add_authority(
+                auth.authority()?.identity().identifier().clone(),
+                auth.clone(),
+            )?;
         }
     }
 
-    let project_id = match &cmd.project {
+    match &cmd.project {
         Some(path) => {
             let s = tokio::fs::read_to_string(path).await?;
             let p: ProjectInfo = serde_json::from_str(&s)?;
@@ -282,18 +331,6 @@ async fn run_foreground_node(
 
     let projects = cfg.inner().lookup().projects().collect();
 
-    let credential = match &cmd.credential {
-        Some(cred_name) => Some(
-            opts.state
-                .credentials
-                .get(cred_name)?
-                .config()
-                .await?
-                .credential()?,
-        ),
-        None => None,
-    };
-
     let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
 
     let node_man = NodeManager::create(
@@ -304,12 +341,7 @@ async fn run_foreground_node(
             cmd.launch_config.is_some(),
             pre_trusted_identities,
         ),
-        NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&node_name)?.snapshot()),
-            project_id,
-            projects,
-            credential,
-        ),
+        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
             ApiTransport {
                 tt: TransportType::Tcp,
@@ -319,6 +351,7 @@ async fn run_foreground_node(
             },
             tcp.async_try_clone().await?,
         ),
+        NodeManagerTrustOptions::new(Some(cfg.authorities(&node_name)?.snapshot())),
     )
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
@@ -529,23 +562,17 @@ async fn spawn_background_node(
         cmd.launch_config
             .as_ref()
             .map(|config| serde_json::to_string(config).unwrap()),
-        cmd.authority_identities.as_ref(),
+        cmd.authorities.as_ref(),
         cmd.credential.as_ref(),
+        cmd.authority_identities.as_ref(),
     )?;
 
     Ok(())
 }
 
-pub fn parse_identity_authority(identity: &str) -> Result<Authority> {
-    let identity_as_bytes = match hex::decode(identity) {
-        Ok(b) => b,
-        Err(e) => return Err(anyhow!(e).into()),
-    };
-
-    // TODO: FIXME - Identity Authorities do not have an address `/secure` is being used as a placeholder
-    //        -  Oakley
-    let a = cli::Authority::new(identity_as_bytes, MultiAddr::from_str("/secure")?);
-    Ok(a)
+pub fn parse_trust_context(trust_context: &str) -> Result<TrustContext> {
+    let tc: TrustContext = serde_json::from_str(trust_context)?;
+    Ok(tc)
 }
 
 async fn start_authority_node(
@@ -584,7 +611,7 @@ async fn start_authority_node(
             identity: public_identity,
             storage_path: options.state.identities.authenticated_storage_path()?,
             vault_path: options.state.vaults.default()?.vault_file_path()?,
-            project_identifier: authenticator_config.project,
+            trust_context_identifier: authenticator_config.project,
             tcp_listener_address: command.tcp_listener_address.clone(),
             secure_channel_listener_name: Some(secure_channel_config.address),
             authenticator_name: Some(authenticator_config.address),
