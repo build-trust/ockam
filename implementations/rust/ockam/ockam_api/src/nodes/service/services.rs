@@ -417,9 +417,9 @@ impl NodeManager {
         let connection = Connection::new(context, &project_route_multiaddr)
             .with_authorized_identity(self.identity.clone().identifier().clone())
             .with_timeout(Duration::from_secs(60));
-        let (maybe_tunnel_multiaddr, suffix_address) = self.connect(connection).await?;
+        let connection = self.connect(connection).await?;
 
-        let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
+        let project_multiaddr = connection.secure_channel.try_with(&connection.suffix)?;
         let project_route = local_multiaddr_to_route(&project_multiaddr)
             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 

@@ -38,9 +38,12 @@ impl NodeManagerWorker {
         let connection =
             Connection::new(ctx, req.address()).with_authorized_identity(req.authorized());
 
-        let (sec_chan, suffix) = node_manager.connect(connection).await?;
+        let connection = node_manager.connect(connection).await?;
 
-        let full = sec_chan.clone().try_with(&suffix)?;
+        let full = connection
+            .secure_channel
+            .clone()
+            .try_with(&connection.suffix)?;
         let route = local_multiaddr_to_route(&full)
             .ok_or_else(|| ApiError::message("invalid address: {addr}"))?;
 
@@ -68,7 +71,7 @@ impl NodeManagerWorker {
             } else {
                 RemoteForwarder::create(ctx, route, RemoteForwarderTrustOptions::insecure()).await
             };
-            if f.is_ok() && !sec_chan.is_empty() {
+            if f.is_ok() && !connection.secure_channel.is_empty() {
                 let ctx = Arc::new(ctx.async_try_clone().await?);
                 let repl = replacer(
                     manager,
@@ -77,7 +80,7 @@ impl NodeManagerWorker {
                     req.alias().map(|a| a.to_string()),
                     req.authorized(),
                 );
-                let mut s = Session::new(sec_chan);
+                let mut s = Session::new(connection.secure_channel);
                 s.set_replacer(repl);
                 node_manager.sessions.lock().unwrap().add(s);
             }
@@ -172,8 +175,11 @@ fn replacer(
                 let connection = Connection::new(ctx.as_ref(), &addr)
                     .with_authorized_identity(auth)
                     .with_timeout(util::MAX_CONNECT_TIME);
-                let (sec, rest) = this.connect(connection).await?;
-                let a = sec.clone().try_with(&rest)?;
+                let connection = this.connect(connection).await?;
+                let a = connection
+                    .secure_channel
+                    .clone()
+                    .try_with(&connection.suffix)?;
                 let r = local_multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
                 if let Some(alias) = &alias {
@@ -188,7 +194,7 @@ fn replacer(
                     RemoteForwarder::create(&ctx, r, RemoteForwarderTrustOptions::insecure())
                         .await?;
                 }
-                Ok(sec)
+                Ok(connection.secure_channel)
             };
             match timeout(util::MAX_RECOVERY_TIME, f).await {
                 Err(_) => {

@@ -11,6 +11,7 @@ use ockam::identity::{Identity, IdentityIdentifier, IdentitySecureChannelLocalIn
 use ockam_core::api::{self, Error, Method, Request, RequestBuilder, Response, Status};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
 use ockam_core::{self, Address, CowStr, DenyAll, Result, Route, Routed, Worker};
 use ockam_node::{Context, MessageSendReceiveOptions};
 use std::collections::HashMap;
@@ -562,6 +563,7 @@ pub struct RpcClient {
     ctx: Context,
     route: Route,
     timeout: Duration,
+    session: Option<(Sessions, SessionId)>,
 }
 
 impl fmt::Debug for RpcClient {
@@ -580,12 +582,29 @@ impl RpcClient {
         Ok(RpcClient {
             ctx,
             route: r,
+            session: None,
             timeout: DEFAULT_CLIENT_TIMEOUT,
         })
     }
 
     pub fn with_timeout(self, timeout: Duration) -> Self {
         Self { timeout, ..self }
+    }
+
+    pub fn with_session(self, sessions: &Sessions, session_id: &SessionId) -> Self {
+        Self {
+            session: Some((sessions.clone(), session_id.clone())),
+            ..self
+        }
+    }
+
+    fn options(&self) -> MessageSendReceiveOptions {
+        let options = MessageSendReceiveOptions::new().with_timeout(self.timeout);
+        if let Some((sessions, session_id)) = &self.session {
+            options.with_session(sessions, session_id, SessionPolicy::ProducerAllowMultiple)
+        } else {
+            options
+        }
     }
 
     /// Encode request header and body (if any) and send the package to the server.
@@ -596,14 +615,12 @@ impl RpcClient {
     {
         let mut buf = Vec::new();
         req.encode(&mut buf)?;
-        let vec: Vec<u8> = self
+
+        let vec = self
             .ctx
-            .send_and_receive_extended(
-                self.route.clone(),
-                buf,
-                MessageSendReceiveOptions::new().with_timeout(self.timeout),
-            )
-            .await?;
+            .send_and_receive_extended::<Vec<u8>>(self.route.clone(), buf, self.options())
+            .await?
+            .body();
         let mut d = Decoder::new(&vec);
         let resp: Response = d.decode()?;
         if resp.status() == Some(Status::Ok) {
@@ -620,7 +637,11 @@ impl RpcClient {
     {
         let mut buf = Vec::new();
         req.encode(&mut buf)?;
-        let vec: Vec<u8> = self.ctx.send_and_receive(self.route.clone(), buf).await?;
+        let vec = self
+            .ctx
+            .send_and_receive_extended::<Vec<u8>>(self.route.clone(), buf, self.options())
+            .await?
+            .body();
         let mut d = Decoder::new(&vec);
         let resp: Response = d.decode()?;
         if resp.status() == Some(Status::Ok) {

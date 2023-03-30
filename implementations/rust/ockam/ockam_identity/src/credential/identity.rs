@@ -17,7 +17,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
 use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Mailboxes, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
-use ockam_node::WorkerBuilder;
+use ockam_node::{MessageSendReceiveOptions, WorkerBuilder};
 
 impl Identity {
     /// Create a signed credential based on the given values.
@@ -74,6 +74,7 @@ impl Identity {
         &self,
         route: impl Into<Route>,
         credential: &Credential,
+        options: MessageSendReceiveOptions,
     ) -> Result<()> {
         let buf = request(
             &self.ctx,
@@ -81,6 +82,7 @@ impl Identity {
             None,
             route.into(),
             Request::post("actions/present").body(credential),
+            options,
         )
         .await?;
 
@@ -103,6 +105,7 @@ impl Identity {
         authorities: impl IntoIterator<Item = &PublicIdentity>,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
         credential: &Credential,
+        options: MessageSendReceiveOptions,
     ) -> Result<()> {
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
@@ -111,6 +114,7 @@ impl Identity {
             None,
             route.into(),
             Request::post(path).body(credential),
+            options,
         )
         .await?;
 

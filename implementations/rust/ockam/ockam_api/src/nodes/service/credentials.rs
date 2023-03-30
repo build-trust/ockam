@@ -10,7 +10,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_identity::credential::Credential;
 use ockam_identity::IdentityVault;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 use std::str::FromStr;
 
 use super::NodeManagerWorker;
@@ -74,11 +74,13 @@ impl NodeManagerWorker {
             .await?;
 
         if request.oneway {
+            panic!();
             node_manager
                 .identity
-                .present_credential(route, &credential)
+                .present_credential(route, &credential, MessageSendReceiveOptions::new()) // FIXME: Add SessionId
                 .await?;
         } else {
+            panic!();
             node_manager
                 .identity
                 .present_credential_mutual(
@@ -86,6 +88,7 @@ impl NodeManagerWorker {
                     vec![node_manager.trust_context()?.authority()?.identity()],
                     node_manager.attributes_storage.clone(),
                     &credential,
+                    MessageSendReceiveOptions::new(), // FIXME: Add SessionId
                 )
                 .await?;
         }

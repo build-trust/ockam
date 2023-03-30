@@ -66,8 +66,8 @@ mod node {
 
             let mut node_manager = self.node_manager.write().await;
             let connection = Connection::new(ctx, &multiaddr);
-            let (sc, suffix) = node_manager.connect(connection).await?;
-            let full = sc.try_with(&suffix)?;
+            let connection = node_manager.connect(connection).await?;
+            let full = connection.secure_channel.try_with(&connection.suffix)?;
             let route =
                 local_multiaddr_to_route(&full).ok_or(ApiError::generic("Invalid route"))?;
 
