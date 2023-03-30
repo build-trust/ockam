@@ -679,6 +679,15 @@ impl NodeManagerWorker {
             }
 
             // ==*== Forwarder commands ==*==
+            (Get, ["node", "forwarder"]) => {
+                let forwarder_registry = {
+                    let node_manager = self.node_manager.read().await;
+                    &node_manager.registry.forwarders.clone()
+                };
+                self.get_forwarders(req, forwarder_registry)
+                    .await
+                    .to_vec()?
+            }
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
 
             // ==*== Inlets & Outlets ==*==
