@@ -1,7 +1,11 @@
-use aws_sdk_kms::error::{CreateKeyError, GetPublicKeyError, SignError, VerifyError};
-use aws_sdk_kms::error::{ScheduleKeyDeletionError, ScheduleKeyDeletionErrorKind};
-use aws_sdk_kms::model::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
-use aws_sdk_kms::types::{Blob, SdkError};
+use aws_sdk_kms::error::SdkError;
+use aws_sdk_kms::operation::create_key::CreateKeyError;
+use aws_sdk_kms::operation::get_public_key::GetPublicKeyError;
+use aws_sdk_kms::operation::schedule_key_deletion::ScheduleKeyDeletionError;
+use aws_sdk_kms::operation::sign::SignError;
+use aws_sdk_kms::operation::verify::VerifyError;
+use aws_sdk_kms::primitives::Blob;
+use aws_sdk_kms::types::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::Client;
 use ockam_core::vault::SecretType;
 use ockam_core::vault::{KeyId, PublicKey, Signature};
@@ -80,10 +84,7 @@ impl Kms {
             .pending_window_in_days(DAYS);
         match client.send().await {
             Err(SdkError::ServiceError(err))
-                if matches!(
-                    err.err().kind,
-                    ScheduleKeyDeletionErrorKind::NotFoundException(_)
-                ) =>
+                if matches!(err.err(), ScheduleKeyDeletionError::NotFoundException(_)) =>
             {
                 log::debug!(%kid, "key does not exist");
                 Ok(false)
