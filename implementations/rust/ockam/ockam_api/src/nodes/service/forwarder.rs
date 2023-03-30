@@ -88,11 +88,11 @@ impl NodeManagerWorker {
         match forwarder {
             Ok(info) => {
                 let registry_info = info.clone();
-                let registry_remote_address = registry_info.remote_address().clone().to_string();
+                let registry_remote_address = registry_info.remote_address().to_string();
 
-                let forwarding_route = registry_info.forwarding_route().clone().to_string();
-                let remote_address = registry_info.remote_address().clone().to_string();
-                let worker_address = registry_info.worker_address().clone().to_string();
+                let forwarding_route = registry_info.forwarding_route().to_string();
+                let remote_address = registry_info.remote_address().to_string();
+                let worker_address = registry_info.worker_address().to_string();
 
                 let b = ForwarderInfo::from(info);
                 let forwarder_registry_entry =
@@ -127,9 +127,7 @@ impl NodeManagerWorker {
         Response::ok(req.id()).body(ForwarderList::new(
             registry
                 .iter()
-                .map(|(_, registry_info)| {
-                    ForwarderInfo::from(registry_info)
-                })
+                .map(|(_, registry_info)| ForwarderInfo::from(registry_info))
                 .collect(),
         ))
     }

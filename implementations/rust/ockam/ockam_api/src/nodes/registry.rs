@@ -143,15 +143,15 @@ impl ForwarderRegistryInfo {
         }
     }
 
-    pub fn forwarding_route<'a>(&'a self) -> &'a str {
+    pub fn forwarding_route(&self) -> &str {
         &self.forwarding_route
     }
 
-    pub fn remote_address<'a>(&'a self) -> &'a str {
+    pub fn remote_address(&self) -> &str {
         &self.remote_address
     }
 
-    pub fn worker_address<'a>(&'a self) -> &'a str {
+    pub fn worker_address(&self) -> &str {
         &self.worker_address
     }
 }
