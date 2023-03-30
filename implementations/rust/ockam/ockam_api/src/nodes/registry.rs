@@ -1,6 +1,7 @@
 use crate::nodes::service::Alias;
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
+use ockam_core::sessions::SessionId;
 use ockam_core::{Address, Route};
 use ockam_identity::IdentityIdentifier;
 
@@ -22,10 +23,15 @@ impl SecureChannelRegistry {
         &mut self,
         addr: Address,
         route: Route,
+        sc_session_id: SessionId,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) {
-        self.channels
-            .push(SecureChannelInfo::new(route, addr, authorized_identifiers))
+        self.channels.push(SecureChannelInfo::new(
+            route,
+            addr,
+            sc_session_id,
+            authorized_identifiers,
+        ))
     }
 
     pub fn remove_by_addr(&mut self, addr: &Address) {
@@ -43,6 +49,7 @@ pub struct SecureChannelInfo {
     route: Route,
     // Local address of the created channel
     addr: Address,
+    session_id: SessionId,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 }
 
@@ -50,11 +57,13 @@ impl SecureChannelInfo {
     pub fn new(
         route: Route,
         addr: Address,
+        session_id: SessionId,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) -> Self {
         Self {
             addr,
             route,
+            session_id,
             authorized_identifiers,
         }
     }
@@ -65,6 +74,10 @@ impl SecureChannelInfo {
 
     pub fn addr(&self) -> &Address {
         &self.addr
+    }
+
+    pub fn session_id(&self) -> &SessionId {
+        &self.session_id
     }
 
     pub fn authorized_identifiers(&self) -> Option<&Vec<IdentityIdentifier>> {

@@ -78,8 +78,8 @@ impl Runner {
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.project_opts)).await?;
 
         let map = self.opts.config.lookup();
-        let base_addr = if let Some(a) = project_authority(&self.cmd.to, &map)? {
-            create_secure_channel_to_authority(
+        let (base_addr, session_id) = if let Some(a) = project_authority(&self.cmd.to, &map)? {
+            let (sc_addr, sc_session_id) = create_secure_channel_to_authority(
                 &self.ctx,
                 &self.opts,
                 &node_name,
@@ -87,9 +87,11 @@ impl Runner {
                 a.address(),
                 self.cmd.cloud_opts.identity.clone(),
             )
-            .await?
+            .await?;
+
+            (sc_addr, Some(sc_session_id))
         } else {
-            self.cmd.to.clone()
+            (self.cmd.to.clone(), None)
         };
         // If an identity identifier is given add it as a member, otherwise
         // request an enrollment token that a future member can use to get a

@@ -67,7 +67,9 @@ async fn run_impl(
     let proj: ProjectInfo = serde_json::from_str(&s)?;
 
     // Create secure channel to the project's authority node
-    let secure_channel_addr = {
+    // RPC is in embedded mode
+    // FIXME: How do we get access to SessionId?
+    let (secure_channel_addr, secure_channel_session_id) = {
         let authority =
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?

@@ -82,11 +82,12 @@ mod node {
 
     use ockam_core::api::RequestBuilder;
     use ockam_core::env::get_env;
+    use ockam_core::sessions::SessionPolicy;
     use ockam_core::{self, route, CowStr, Result};
     use ockam_identity::{IdentityIdentifier, SecureChannelTrustOptions, TrustIdentifierPolicy};
     use ockam_multiaddr::MultiAddr;
-    use ockam_node::api::request_with_timeout;
-    use ockam_node::{Context, DEFAULT_TIMEOUT};
+    use ockam_node::api::request;
+    use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
@@ -189,27 +190,50 @@ mod node {
                     None => node_manager.identity.clone(),
                 }
             };
-            let sc = {
+            let (sc_address, sessions, sc_session_id) = {
                 let node_manager = self.get().read().await;
-                let cloud_session =
-                    crate::create_tcp_session(cloud_multiaddr, &node_manager.tcp_transport)
-                        .await
-                        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
-                let trust_options = SecureChannelTrustOptions::insecure().with_trust_policy(
-                    TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
-                );
-                let trust_options = if let Some((sessions, session_id)) = cloud_session.session {
-                    trust_options.as_consumer(&sessions, &session_id)
-                } else {
-                    trust_options
-                };
-                identity
+                let cloud_session = crate::create_tcp_session(
+                    cloud_multiaddr,
+                    &node_manager.tcp_transport,
+                    &node_manager.message_flow_sessions,
+                )
+                .await
+                .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+
+                // Should always be Some
+                let session_id = cloud_session
+                    .session_id
+                    .ok_or_else(|| ApiError::generic("Invalid SessionId"))?;
+
+                let sc_session_id = node_manager.message_flow_sessions.generate_session_id();
+                let trust_options = SecureChannelTrustOptions::as_producer(
+                    &node_manager.message_flow_sessions,
+                    &sc_session_id,
+                )
+                .with_trust_policy(TrustIdentifierPolicy::new(
+                    node_manager.controller_identity_id(),
+                ))
+                .as_consumer(&node_manager.message_flow_sessions, &session_id);
+                let sc_address = identity
                     .create_secure_channel(cloud_session.route, trust_options)
-                    .await?
+                    .await?;
+
+                (
+                    sc_address,
+                    &node_manager.message_flow_sessions.clone(),
+                    sc_session_id,
+                )
             };
-            let route = route![&sc.to_string(), api_service];
-            let res = request_with_timeout(ctx, label, schema, route, req, timeout).await;
-            ctx.stop_worker(sc).await?;
+            let route = route![sc_address.clone(), api_service];
+            let options = MessageSendReceiveOptions::new()
+                .with_timeout(timeout)
+                .with_session(
+                    &sessions,
+                    &sc_session_id,
+                    SessionPolicy::ProducerAllowMultiple,
+                );
+            let res = request(ctx, label, schema, route, req, options).await;
+            ctx.stop_worker(sc_address).await?;
             res
         }
     }

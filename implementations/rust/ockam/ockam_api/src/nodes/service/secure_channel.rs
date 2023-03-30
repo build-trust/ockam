@@ -17,7 +17,7 @@ use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::{SessionId, Sessions};
+use ockam_core::sessions::{SessionId, SessionPolicy};
 use ockam_core::{route, CowStr};
 
 use ockam_identity::{
@@ -25,7 +25,7 @@ use ockam_identity::{
     SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
 };
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 
 impl NodeManager {
     async fn get_credential_if_needed(&mut self, identity: &Identity) -> Result<()> {
@@ -47,24 +47,26 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
-        session: Option<(Sessions, SessionId)>,
-    ) -> Result<Address> {
+        session_id: Option<SessionId>,
+    ) -> Result<(Address, SessionId)> {
         // If channel was already created, do nothing.
         if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
             // Actually should not happen, since every time a new TCP connection is created, so the
             // route is different
             let addr = channel.addr();
             debug!(%addr, "Using cached secure channel");
-            return Ok(addr.clone());
+            return Ok((addr.clone(), channel.session_id().clone()));
         }
         // Else, create it.
 
         debug!(%sc_route, "Creating secure channel");
         let timeout = timeout.unwrap_or(Duration::from_secs(120));
-        let trust_options = SecureChannelTrustOptions::insecure();
+        let sc_session_id = self.message_flow_sessions.generate_session_id();
+        let trust_options =
+            SecureChannelTrustOptions::as_producer(&self.message_flow_sessions, &sc_session_id);
 
-        let trust_options = match session {
-            Some((sessions, session_id)) => trust_options.as_consumer(&sessions, &session_id),
+        let trust_options = match session_id {
+            Some(session_id) => trust_options.as_consumer(&self.message_flow_sessions, &session_id),
             None => trust_options,
         };
 
@@ -79,11 +81,14 @@ impl NodeManager {
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
 
-        self.registry
-            .secure_channels
-            .insert(sc_addr.clone(), sc_route, authorized_identifiers);
+        self.registry.secure_channels.insert(
+            sc_addr.clone(),
+            sc_route,
+            sc_session_id.clone(),
+            authorized_identifiers,
+        );
 
-        Ok(sc_addr)
+        Ok((sc_addr, sc_session_id))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -96,8 +101,8 @@ impl NodeManager {
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
         credential_name: Option<CowStr<'_>>,
-        session: Option<(Sessions, SessionId)>,
-    ) -> Result<Address> {
+        session_id: Option<SessionId>,
+    ) -> Result<(Address, SessionId)> {
         let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
             match idt_state.get(ctx, self.vault()?).await {
@@ -124,13 +129,13 @@ impl NodeManager {
             None
         };
 
-        let sc_addr = self
+        let (sc_addr, sc_session_id) = self
             .create_secure_channel_internal(
                 &identity,
                 sc_route,
                 authorized_identifiers,
                 timeout,
-                session,
+                session_id,
             )
             .await?;
 
@@ -158,6 +163,11 @@ impl NodeManager {
                     .present_credential(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
                         provided_credential.as_ref(),
+                        MessageSendReceiveOptions::new().with_session(
+                            &self.message_flow_sessions,
+                            &sc_session_id,
+                            SessionPolicy::ProducerAllowMultiple,
+                        ),
                     )
                     .await?;
                 debug!(%sc_addr, "One-way credential presentation success");
@@ -175,6 +185,11 @@ impl NodeManager {
                         &authorities.public_identities(),
                         self.attributes_storage.clone(),
                         provided_credential.as_ref(),
+                        MessageSendReceiveOptions::new().with_session(
+                            &self.message_flow_sessions,
+                            &sc_session_id,
+                            SessionPolicy::ProducerAllowMultiple,
+                        ),
                     )
                     .await?;
                 debug!(%sc_addr, "Mutual credential presentation success");
@@ -182,7 +197,7 @@ impl NodeManager {
         }
 
         // Return secure channel address
-        Ok(sc_addr)
+        Ok((sc_addr, sc_session_id))
     }
 
     pub(super) async fn create_secure_channel_listener_impl(
@@ -283,7 +298,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_>>> {
+    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_, '_>>> {
         let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelRequest {
             addr,
@@ -312,11 +327,15 @@ impl NodeManagerWorker {
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
-        let tcp_session = create_tcp_session(&addr, &node_manager.tcp_transport)
-            .await
-            .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+        let tcp_session = create_tcp_session(
+            &addr,
+            &node_manager.tcp_transport,
+            &node_manager.message_flow_sessions,
+        )
+        .await
+        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-        let channel = node_manager
+        let (sc_address, sc_session_id) = node_manager
             .create_secure_channel_impl(
                 tcp_session.route,
                 authorized_identifiers,
@@ -325,11 +344,14 @@ impl NodeManagerWorker {
                 identity,
                 ctx,
                 credential_name,
-                tcp_session.session,
+                tcp_session.session_id,
             )
             .await?;
 
-        let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(&channel));
+        let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(
+            &sc_address,
+            &sc_session_id,
+        ));
 
         Ok(response)
     }
