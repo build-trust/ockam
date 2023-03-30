@@ -43,14 +43,17 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
 }
 
 pub struct TcpSession {
-    pub session: Option<(Sessions, SessionId)>,
+    pub session_id: Option<SessionId>,
     pub route: Route,
 }
 
-pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<TcpSession> {
+pub async fn create_tcp_session(
+    ma: &MultiAddr,
+    tcp: &TcpTransport,
+    sessions: &Sessions,
+) -> Option<TcpSession> {
     let mut rb = Route::new();
     let mut it = ma.iter().peekable();
-    let sessions = Sessions::default();
     let session_id = sessions.generate_session_id();
 
     let mut trust_options = Some(TcpConnectionTrustOptions::as_producer(
@@ -134,11 +137,11 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
 
     match trust_options {
         Some(_) => Some(TcpSession {
-            session: None,
+            session_id: None,
             route: rb.into(),
         }),
         None => Some(TcpSession {
-            session: Some((sessions, session_id)),
+            session_id: Some(session_id),
             route: rb.into(),
         }),
     }

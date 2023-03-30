@@ -4,6 +4,7 @@ use minicbor::{Decode, Encode};
 
 use crate::nodes::registry::SecureChannelInfo;
 use ockam_core::compat::borrow::Cow;
+use ockam_core::sessions::SessionId;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{route, Address, CowStr, Result};
@@ -64,27 +65,34 @@ impl<'a> CreateSecureChannelRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateSecureChannelResponse<'a> {
+pub struct CreateSecureChannelResponse<'a, 'b> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6056513>,
     #[b(1)] pub addr: CowStr<'a>,
+    #[b(2)] pub session_id: CowStr<'b>
 }
 
-impl<'a> CreateSecureChannelResponse<'a> {
-    pub fn new(addr: &Address) -> Self {
+impl<'a, 'b> CreateSecureChannelResponse<'a, 'b> {
+    pub fn new(addr: &Address, session_id: &SessionId) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.to_string().into(),
+            session_id: session_id.to_string().into(),
         }
     }
 
-    pub fn to_owned<'r>(&self) -> CreateSecureChannelResponse<'r> {
+    pub fn to_owned<'r>(&self) -> CreateSecureChannelResponse<'r, 'r> {
         CreateSecureChannelResponse {
             #[cfg(feature = "tag")]
             tag: self.tag.to_owned(),
             addr: self.addr.to_owned(),
+            session_id: self.session_id.to_owned(),
         }
+    }
+
+    pub fn session_id(&self) -> SessionId {
+        SessionId::new(self.session_id.as_ref())
     }
 
     pub fn addr(&self) -> Result<MultiAddr> {

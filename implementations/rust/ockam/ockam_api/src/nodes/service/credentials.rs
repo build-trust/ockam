@@ -14,7 +14,7 @@ use ockam_core::route;
 use ockam_identity::credential::Credential;
 use ockam_identity::{Identity, IdentityVault};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 use std::str::FromStr;
 
 use super::NodeManagerWorker;
@@ -44,23 +44,28 @@ impl NodeManager {
 
         let allowed = vec![authority.identity.identifier().clone()];
 
-        let authority_tcp_session =
-            match create_tcp_session(&authority.addr, &self.tcp_transport).await {
-                Some(authority_tcp_session) => authority_tcp_session,
-                None => {
-                    error!("INVALID ROUTE");
-                    return Err(ApiError::generic("invalid authority route"));
-                }
-            };
+        let authority_tcp_session = match create_tcp_session(
+            &authority.addr,
+            &self.tcp_transport,
+            &self.message_flow_sessions,
+        )
+        .await
+        {
+            Some(authority_tcp_session) => authority_tcp_session,
+            None => {
+                error!("INVALID ROUTE");
+                return Err(ApiError::generic("invalid authority route"));
+            }
+        };
 
         debug!("Create secure channel to project authority");
-        let sc = self
+        let (sc, sc_session_id) = self
             .create_secure_channel_internal(
                 identity,
                 authority_tcp_session.route,
                 Some(allowed),
                 None,
-                authority_tcp_session.session,
+                authority_tcp_session.session_id,
             )
             .await?;
         debug!("Created secure channel to project authority");
@@ -73,7 +78,8 @@ impl NodeManager {
                 route![sc, DefaultAddress::CREDENTIAL_ISSUER],
                 identity.ctx(),
             )
-            .await?,
+            .await?
+            .with_session(&self.message_flow_sessions, &sc_session_id),
         );
         let credential = client.credential().await?;
         debug!("Got credential");
@@ -141,11 +147,13 @@ impl NodeManagerWorker {
         };
 
         if request.oneway {
+            panic!();
             node_manager
                 .identity
-                .present_credential(route, None)
+                .present_credential(route, None, MessageSendReceiveOptions::new()) // FIXME: Add SessionId
                 .await?;
         } else {
+            panic!();
             node_manager
                 .identity
                 .present_credential_mutual(
@@ -153,6 +161,7 @@ impl NodeManagerWorker {
                     &node_manager.authorities()?.public_identities(),
                     node_manager.attributes_storage.clone(),
                     None,
+                    MessageSendReceiveOptions::new(), // FIXME: Add SessionId
                 )
                 .await?;
         }

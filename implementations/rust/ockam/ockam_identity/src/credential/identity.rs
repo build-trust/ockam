@@ -17,7 +17,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
 use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Mailboxes, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
-use ockam_node::WorkerBuilder;
+use ockam_node::{MessageSendReceiveOptions, WorkerBuilder};
 
 impl Identity {
     pub async fn set_credential(&self, credential: Credential) {
@@ -83,6 +83,7 @@ impl Identity {
         &self,
         route: impl Into<Route>,
         provided_credential: Option<&Credential>,
+        options: MessageSendReceiveOptions,
     ) -> Result<()> {
         let credential = self.get_credential_or_provided(provided_credential).await?;
 
@@ -92,6 +93,7 @@ impl Identity {
             None,
             route.into(),
             Request::post("actions/present").body(credential),
+            options,
         )
         .await?;
 
@@ -114,6 +116,7 @@ impl Identity {
         authorities: impl IntoIterator<Item = &PublicIdentity>,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
         provided_credential: Option<&Credential>,
+        options: MessageSendReceiveOptions,
     ) -> Result<()> {
         let credential = self.get_credential_or_provided(provided_credential).await?;
 
@@ -124,6 +127,7 @@ impl Identity {
             None,
             route.into(),
             Request::post(path).body(credential),
+            options,
         )
         .await?;
 

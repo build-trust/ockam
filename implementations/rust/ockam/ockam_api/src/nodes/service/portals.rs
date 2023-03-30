@@ -133,16 +133,31 @@ impl NodeManagerWorker {
         // possible that there is just a single secure channel used to go directly
         // to another node.
         let (outer, rest) = {
-            let connection =
+            let connection1 =
                 Connection::new(ctx, req.outlet_addr()).with_authorized_identity(req.authorized());
-            let (sec1, rest) = node_manager.connect(connection).await?;
-            if !sec1.is_empty() && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()]) {
-                let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                let connection = Connection::new(ctx, &addr);
-                let (sec2, _) = node_manager.connect(connection).await?;
-                (sec1, sec2.try_with(rest.iter().skip(2))?)
+            let connection1 = node_manager.connect(connection1).await?;
+            if !connection1.secure_channel.is_empty()
+                && connection1
+                    .suffix
+                    .matches(0, &[Service::CODE.into(), Secure::CODE.into()])
+            {
+                let addr = connection1
+                    .secure_channel
+                    .clone()
+                    .try_with(connection1.suffix.iter().take(2))?;
+                let connection2 = Connection::new(ctx, &addr);
+                let connection2 = node_manager.connect(connection2).await?;
+                (
+                    connection1.secure_channel,
+                    connection2
+                        .secure_channel
+                        .try_with(connection1.suffix.iter().skip(2))?,
+                )
             } else {
-                (MultiAddr::default(), sec1.try_with(&rest)?)
+                (
+                    MultiAddr::default(),
+                    connection1.secure_channel.try_with(&connection1.suffix)?,
+                )
             }
         };
 
@@ -507,24 +522,32 @@ fn replacer(
                 // Now a connection attempt is made:
 
                 let rest = {
-                    let connection = Connection::new(ctx.as_ref(), &addr)
+                    let connection1 = Connection::new(ctx.as_ref(), &addr)
                         .with_authorized_identity(auth)
                         .with_timeout(timeout);
-                    let (sec1, rest) = this.connect(connection).await?;
-                    if !sec1.is_empty()
-                        && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()])
+                    let connection1 = this.connect(connection1).await?;
+                    if !connection1.secure_channel.is_empty()
+                        && connection1
+                            .suffix
+                            .matches(0, &[Service::CODE.into(), Secure::CODE.into()])
                     {
                         // Another secure channel needs to be created. The first one
                         // needs to be remembered so it can be cleaned up if this recovery
                         // executes multiple times:
-                        data.put(OUTER_CHAN, sec1.clone());
+                        data.put(OUTER_CHAN, connection1.secure_channel.clone());
 
-                        let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                        let connection = Connection::new(ctx.as_ref(), &addr).with_timeout(timeout);
-                        let (sec2, _) = this.connect(connection).await?;
-                        sec2.try_with(rest.iter().skip(2))?
+                        let addr = connection1
+                            .secure_channel
+                            .clone()
+                            .try_with(connection1.suffix.iter().take(2))?;
+                        let connection2 =
+                            Connection::new(ctx.as_ref(), &addr).with_timeout(timeout);
+                        let connection2 = this.connect(connection2).await?;
+                        connection2
+                            .secure_channel
+                            .try_with(connection1.suffix.iter().skip(2))?
                     } else {
-                        sec1.try_with(&rest)?
+                        connection1.secure_channel.try_with(&connection1.suffix)?
                     }
                 };
 

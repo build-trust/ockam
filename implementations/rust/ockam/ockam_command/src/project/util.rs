@@ -14,6 +14,7 @@ use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
+use ockam_core::sessions::SessionId;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::api::CloudOpts;
@@ -81,19 +82,18 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 .context("Invalid project node route")?;
             (node_route, id.to_string())
         };
-        sc.push(
-            create_secure_channel_to_project(
-                ctx,
-                opts,
-                api_node,
-                tcp,
-                project_access_route,
-                &project_identity_id,
-                credential_exchange_mode,
-                None,
-            )
-            .await?,
-        );
+        let (sc_address, sc_session_id) = create_secure_channel_to_project(
+            ctx,
+            opts,
+            api_node,
+            tcp,
+            project_access_route,
+            &project_identity_id,
+            credential_exchange_mode,
+            None,
+        )
+        .await?;
+        sc.push(sc_address);
     }
 
     // There should be the same number of project occurrences in the
@@ -112,7 +112,7 @@ pub async fn create_secure_channel_to_project(
     project_identity: &str,
     credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
-) -> crate::Result<MultiAddr> {
+) -> crate::Result<(MultiAddr, SessionId)> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
 
@@ -127,7 +127,7 @@ pub async fn create_secure_channel_to_project(
     rpc.request(req).await?;
 
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
-    Ok(sc.addr()?)
+    Ok((sc.addr()?, sc.session_id()))
 }
 
 pub async fn create_secure_channel_to_authority(
@@ -137,7 +137,7 @@ pub async fn create_secure_channel_to_authority(
     authority: &ProjectAuthority,
     addr: &MultiAddr,
     identity: Option<String>,
-) -> crate::Result<MultiAddr> {
+) -> crate::Result<(MultiAddr, SessionId)> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
     let allowed = vec![authority.identity_id().clone()];
@@ -152,7 +152,7 @@ pub async fn create_secure_channel_to_authority(
     rpc.request(req).await?;
     let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
     let addr = res.addr()?;
-    Ok(addr)
+    Ok((addr, res.session_id()))
 }
 
 async fn delete_secure_channel<'a>(
@@ -248,7 +248,7 @@ pub async fn check_project_readiness<'a>(
 
         Retry::spawn(retry_strategy.clone(), || async {
             std::io::stdout().flush()?;
-            if let Ok(sc_addr) = create_secure_channel_to_project(
+            if let Ok((sc_addr, _sc_session_id)) = create_secure_channel_to_project(
                 ctx,
                 opts,
                 api_node,
@@ -286,7 +286,7 @@ pub async fn check_project_readiness<'a>(
 
         Retry::spawn(retry_strategy.clone(), || async {
             std::io::stdout().flush()?;
-            if let Ok(sc_addr) = create_secure_channel_to_authority(
+            if let Ok((sc_addr, _)) = create_secure_channel_to_authority(
                 ctx,
                 opts,
                 api_node,
