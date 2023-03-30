@@ -1,8 +1,8 @@
 use anyhow::Context as _;
 use clap::Args;
 
+use core::time::Duration;
 use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
@@ -33,8 +33,8 @@ pub struct SendCommand {
     pub to: MultiAddr,
 
     /// Override Default Timeout
-    #[arg(long, value_name = "TIMEOUT")]
-    pub timeout: Option<u64>,
+    #[arg(long, value_name = "TIMEOUT", default_value = "10")]
+    pub timeout: u64,
 
     pub message: String,
 
@@ -71,26 +71,15 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         };
 
         // Process `--to` Multiaddr
-        let (to, meta) =
+        let to =
             clean_nodes_multiaddr(&cmd.to, &opts.state).context("Argument '--to' is invalid")?;
 
-        // Replace `/project/<name>` occurrences with their respective secure channel addresses
-        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
-            ctx,
-            opts,
-            &meta,
-            &cmd.cloud_opts.route(),
-            &api_node,
-            tcp.as_ref(),
-            CredentialExchangeMode::Oneway,
-        )
-        .await?;
-        let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
         // Send request
         let mut rpc = RpcBuilder::new(ctx, opts, &api_node)
             .tcp(tcp.as_ref())?
             .build();
-        rpc.request(req(&to, &cmd.message)).await?;
+        rpc.request_with_timeout(req(&to, &cmd.message), Duration::from_secs(cmd.timeout))
+            .await?;
         let res = rpc.parse_response::<Vec<u8>>()?;
         println!(
             "{}",

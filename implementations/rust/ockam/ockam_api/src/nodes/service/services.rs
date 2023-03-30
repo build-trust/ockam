@@ -10,10 +10,10 @@ use crate::kafka::{
 use crate::nodes::connection::Connection;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
-    StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
-    StartIdentityServiceRequest, StartKafkaConsumerRequest, StartKafkaProducerRequest,
-    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
-    StartVaultServiceRequest, StartVerifierService,
+    StartEchoerServiceRequest, StartHopServiceRequest, StartIdentityServiceRequest,
+    StartKafkaConsumerRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
+    StartServiceRequest, StartUppercaseServiceRequest, StartVaultServiceRequest,
+    StartVerifierService,
 };
 use crate::nodes::registry::{
     AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
@@ -94,25 +94,27 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_credentials_service_impl<'a>(
-        &mut self,
-        addr: Address,
-        oneway: bool,
-    ) -> Result<()> {
+    pub(super) async fn start_credentials_service_impl<'a>(&mut self, addr: Address) -> Result<()> {
         if self.registry.credentials_services.contains_key(&addr) {
             return Err(ApiError::generic(
                 "Credentials service exists at this address",
             ));
         }
 
-        let authorities = self.authorities()?;
+        let authority_info = match self
+            .trust_context
+            .as_ref()
+            .and_then(|t| t.authority.clone())
+        {
+            Some(a) => a,
+            None => return Err(ApiError::generic("No trust context / authority info")),
+        };
 
         self.identity
             .start_credential_exchange_worker(
-                authorities.public_identities(),
                 addr.clone(),
-                !oneway,
                 self.attributes_storage.clone(),
+                authority_info,
             )
             .await?;
 
@@ -188,18 +190,23 @@ impl NodeManager {
             return Err(ApiError::generic("Echoer service exists at this address"));
         }
 
-        ctx.start_worker(
-            addr.clone(),
-            Echoer,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
-
+        let maybe_trust_context_id = self.trust_context.as_ref().map(|c| c.id.clone());
+        let resource = Resource::assert_inline(addr.address());
+        // TODO: this will likely need to be generalized, to ease same application to all
+        // services
+        match self
+            .access_control(&resource, &actions::HANDLE_MESSAGE, maybe_trust_context_id)
+            .await?
+        {
+            Some(ac) => ctx.start_worker(addr.clone(), Echoer, ac, AllowAll).await?,
+            None => {
+                ctx.start_worker(addr.clone(), Echoer, AllowAll, AllowAll)
+                    .await?
+            }
+        };
         self.registry
             .echoer_services
             .insert(addr, Default::default());
-
         Ok(())
     }
 
@@ -693,24 +700,6 @@ impl NodeManagerWorker {
             .registry
             .verifier_services
             .insert(addr, VerifierServiceInfo::default());
-
-        Ok(Response::ok(req.id()))
-    }
-
-    pub(super) async fn start_credentials_service<'a>(
-        &mut self,
-        _ctx: &Context,
-        req: &'a Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let mut node_manager = self.node_manager.write().await;
-        let body: StartCredentialsService = dec.decode()?;
-        let addr: Address = body.address().into();
-        let oneway = body.oneway();
-
-        node_manager
-            .start_credentials_service_impl(addr, oneway)
-            .await?;
 
         Ok(Response::ok(req.id()))
     }

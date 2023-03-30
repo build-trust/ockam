@@ -18,7 +18,7 @@ use ockam::{
     TcpTransport,
 };
 use ockam_api::cli_state::{CliState, NodeState};
-use ockam_api::config::lookup::{InternetAddress, LookupMeta};
+use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::DenyAll;
@@ -603,12 +603,8 @@ pub fn process_nodes_multiaddr(
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
-pub fn clean_nodes_multiaddr(
-    input: &MultiAddr,
-    cli_state: &CliState,
-) -> Result<(MultiAddr, LookupMeta)> {
+pub fn clean_nodes_multiaddr(input: &MultiAddr, cli_state: &CliState) -> Result<MultiAddr> {
     let mut new_ma = MultiAddr::default();
-    let mut lookup_meta = LookupMeta::default();
     let it = input.iter().peekable();
     for p in it {
         match p.code() {
@@ -623,21 +619,12 @@ pub fn clean_nodes_multiaddr(
                 }
                 new_ma.push_back(Tcp(addr.port()))?;
             }
-            Project::CODE => {
-                // Parse project name from the MultiAddr.
-                let alias = p.cast::<Project>().expect("Failed to parse project name");
-                // Store it in the lookup meta, so we can later
-                // retrieve it from either the config or the cloud.
-                lookup_meta.project.push_back(alias.to_string());
-                // No substitution done here. It will be done later by `clean_projects_multiaddr`.
-                new_ma.push_back_value(&p)?
-            }
             Space::CODE => panic!("/space/ substitutions are not supported yet!"),
             _ => new_ma.push_back_value(&p)?,
         }
     }
 
-    Ok((new_ma, lookup_meta))
+    Ok(new_ma)
 }
 
 pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {

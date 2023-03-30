@@ -4,6 +4,7 @@ pub mod bootstrapped_identities_store;
 pub mod cli_state;
 pub mod cloud;
 pub mod config;
+pub mod credential_retrievers;
 pub mod echoer;
 pub mod error;
 pub mod hop;

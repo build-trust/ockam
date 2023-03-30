@@ -1,6 +1,7 @@
 use crate::authenticated_storage::IdentityAttributeStorage;
 use crate::credential::Credential;
-use crate::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, PublicIdentity};
+use crate::trust_context::AuthorityInfo;
+use crate::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo};
 use minicbor::Decoder;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::async_trait;
@@ -13,24 +14,25 @@ const TARGET: &str = "ockam::credential_exchange_worker::service";
 
 /// Worker responsible for receiving and verifying other party's credential
 pub struct CredentialExchangeWorker {
-    authorities: Vec<PublicIdentity>,
-    present_back: bool,
     identity: Identity,
     attributes_storage: Arc<dyn IdentityAttributeStorage>,
+    authority_info: Arc<AuthorityInfo>,
 }
 
 impl CredentialExchangeWorker {
     pub fn new(
-        authorities: Vec<PublicIdentity>,
-        present_back: bool,
         identity: Identity,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
+        authority_info: Arc<AuthorityInfo>,
     ) -> Self {
+        debug!(
+            "Credential Worker :new(), authority {:?}....",
+            authority_info.identity
+        );
         Self {
-            authorities,
-            present_back,
             identity,
             attributes_storage,
+            authority_info,
         }
     }
 }
@@ -49,6 +51,7 @@ impl CredentialExchangeWorker {
         sender: IdentityIdentifier,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
+        debug!("Credential Worker received something?....");
         trace! {
             target: TARGET,
             id     = %req.id(),
@@ -83,7 +86,7 @@ impl CredentialExchangeWorker {
                     .receive_presented_credential(
                         sender.clone(),
                         credential,
-                        self.authorities.iter(),
+                        &self.authority_info.identity,
                         self.attributes_storage.clone(),
                     )
                     .await;
@@ -114,7 +117,7 @@ impl CredentialExchangeWorker {
                     .receive_presented_credential(
                         sender.clone(),
                         credential,
-                        self.authorities.iter(),
+                        &self.authority_info.identity,
                         self.attributes_storage.clone(),
                     )
                     .await;
@@ -130,16 +133,13 @@ impl CredentialExchangeWorker {
                         "Mutual credential presentation request processed successfully with {}",
                         sender
                     );
-                    let credential = self.identity.credential.read().await;
-                    match credential.as_ref() {
-                        Some(p) if self.present_back => {
-                            info!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
-                            Response::ok(req.id()).body(p).to_vec()?
-                        }
-                        _ => {
-                            info!("Mutual credential presentation request processed successfully with {}. No credential to respond!", sender);
-                            Response::ok(req.id()).to_vec()?
-                        }
+                    if let Some(retriever) = &self.authority_info.credential_retriever {
+                        let cred = retriever.credential(&self.identity).await?;
+                        info!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
+                        Response::ok(req.id()).body(cred).to_vec()?
+                    } else {
+                        info!("Mutual credential presentation request processed successfully with {}. No credential to respond!", sender);
+                        Response::ok(req.id()).to_vec()?
                     }
                 }
             }
@@ -166,6 +166,7 @@ impl Worker for CredentialExchangeWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
+        debug!("Credential Worker received something, parent?....");
         let mut dec = Decoder::new(msg.as_body());
         let req: Request = match dec.decode() {
             Ok(r) => r,

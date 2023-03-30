@@ -45,13 +45,6 @@ pub enum StartSubCommand {
         #[arg(long, default_value_t = verifier_default_addr())]
         addr: String,
     },
-    Credentials {
-        #[arg(long, default_value_t = credentials_default_addr())]
-        addr: String,
-
-        #[arg(long)]
-        oneway: bool,
-    },
     Authenticator {
         #[arg(long, default_value_t = authenticator_default_addr())]
         addr: String,
@@ -113,10 +106,6 @@ fn verifier_default_addr() -> String {
     DefaultAddress::VERIFIER.to_string()
 }
 
-fn credentials_default_addr() -> String {
-    DefaultAddress::CREDENTIALS_SERVICE.to_string()
-}
-
 fn authenticator_default_addr() -> String {
     DefaultAddress::DIRECT_AUTHENTICATOR.to_string()
 }
@@ -171,10 +160,6 @@ async fn run_impl(
         }
         StartSubCommand::Verifier { addr, .. } => {
             start_verifier_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?
-        }
-        StartSubCommand::Credentials { addr, oneway, .. } => {
-            let req = api::start_credentials_service(&addr, oneway);
-            start_service_impl(ctx, &opts, node_name, &addr, "Credentials", req, Some(&tcp)).await?
         }
         StartSubCommand::Authenticator { addr, project, .. } => {
             start_authenticator_service(ctx, &opts, node_name, &addr, &project, Some(&tcp)).await?

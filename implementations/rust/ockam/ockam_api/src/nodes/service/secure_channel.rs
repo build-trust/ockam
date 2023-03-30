@@ -4,8 +4,8 @@ use super::{map_multiaddr_err, NodeManagerWorker};
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
-    CredentialExchangeMode, DeleteSecureChannelListenerRequest,
-    DeleteSecureChannelListenerResponse, DeleteSecureChannelRequest, DeleteSecureChannelResponse,
+    DeleteSecureChannelListenerRequest, DeleteSecureChannelListenerResponse,
+    DeleteSecureChannelRequest, DeleteSecureChannelResponse, PeerNodeType,
     ShowSecureChannelListenerRequest, ShowSecureChannelListenerResponse, ShowSecureChannelRequest,
     ShowSecureChannelResponse,
 };
@@ -20,6 +20,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{route, CowStr};
 
+use crate::nodes::service::Connection;
 use ockam_identity::{
     Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerTrustOptions,
     SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
@@ -28,19 +29,6 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 impl NodeManager {
-    async fn get_credential_if_needed(&mut self, identity: &Identity) -> Result<()> {
-        if identity.credential().await.is_some() {
-            debug!("Credential check: credential already exists...");
-            return Ok(());
-        }
-
-        debug!("Credential check: requesting...");
-        self.get_credential_impl(identity, false).await?;
-        debug!("Credential check: got new credential...");
-
-        Ok(())
-    }
-
     pub(crate) async fn create_secure_channel_internal(
         &mut self,
         identity: &Identity,
@@ -91,12 +79,12 @@ impl NodeManager {
         &mut self,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-        credential_exchange_mode: CredentialExchangeMode,
         timeout: Option<Duration>,
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
         credential_name: Option<CowStr<'_>>,
         session: Option<(Sessions, SessionId)>,
+        peer_node_type: PeerNodeType,
     ) -> Result<Address> {
         let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
@@ -111,18 +99,6 @@ impl NodeManager {
         } else {
             self.identity.clone()
         };
-        let provided_credential = if let Some(credential_name) = credential_name {
-            Some(
-                self.cli_state
-                    .credentials
-                    .get(&credential_name)?
-                    .config()
-                    .await?
-                    .credential()?,
-            )
-        } else {
-            None
-        };
 
         let sc_addr = self
             .create_secure_channel_internal(
@@ -134,50 +110,54 @@ impl NodeManager {
             )
             .await?;
 
-        // TODO: Determine when we can remove this? Or find a better way to determine
-        //       when to check credentials. Currently enable_credential_checks only if a PROJECT AC and PROJECT ID are set
-        //       -- Oakley
-        let actual_exchange_mode = if self.enable_credential_checks || provided_credential.is_some()
-        {
-            credential_exchange_mode
-        } else {
-            CredentialExchangeMode::None
-        };
-
-        match actual_exchange_mode {
-            CredentialExchangeMode::None => {
-                debug!(%sc_addr, "No credential presentation");
-            }
-            CredentialExchangeMode::Oneway => {
-                debug!(%sc_addr, "One-way credential presentation");
-                if provided_credential.is_none() {
-                    self.get_credential_if_needed(&identity).await?;
+        debug!("Deciding if presenting credential");
+        // We need to present credential if connecting to anything but an authority, and having
+        // a trust_context configured.
+        if peer_node_type != PeerNodeType::Authority {
+            if let Some(authority) = self
+                .trust_context
+                .as_ref()
+                .and_then(|c| c.authority.as_ref())
+            {
+                debug!("Had authority");
+                if let Some(cred_retriever) = &authority.credential_retriever {
+                    debug!(
+                        "Had credential retriever, presenting cred for {:?}",
+                        identity.identifier()
+                    );
+                    let credential = if let Some(credential_name) = credential_name {
+                        self.cli_state
+                            .credentials
+                            .get(&credential_name)?
+                            .config()
+                            .await?
+                            .credential()?
+                    } else {
+                        cred_retriever.credential(&identity).await?
+                    };
+                    debug!("Credential: {:?}", credential);
+                    if peer_node_type == PeerNodeType::Project {
+                        debug!(%sc_addr, "One-way credential presentation");
+                        identity
+                            .present_credential(
+                                route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
+                                &credential,
+                            )
+                            .await?;
+                        debug!(%sc_addr, "One-way credential presentation success");
+                    } else {
+                        debug!(%sc_addr, "Mutual credential presentation");
+                        identity
+                            .present_credential_mutual(
+                                route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
+                                &authority.identity,
+                                self.attributes_storage.clone(),
+                                &credential,
+                            )
+                            .await?;
+                        debug!(%sc_addr, "Mutual credential presentation success");
+                    }
                 }
-
-                identity
-                    .present_credential(
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        provided_credential.as_ref(),
-                    )
-                    .await?;
-                debug!(%sc_addr, "One-way credential presentation success");
-            }
-            CredentialExchangeMode::Mutual => {
-                debug!(%sc_addr, "Mutual credential presentation");
-                if provided_credential.is_none() {
-                    self.get_credential_if_needed(&identity).await?;
-                }
-
-                let authorities = self.authorities()?;
-                identity
-                    .present_credential_mutual(
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        &authorities.public_identities(),
-                        self.attributes_storage.clone(),
-                        provided_credential.as_ref(),
-                    )
-                    .await?;
-                debug!(%sc_addr, "Mutual credential presentation success");
             }
         }
 
@@ -288,10 +268,10 @@ impl NodeManagerWorker {
         let CreateSecureChannelRequest {
             addr,
             authorized_identifiers,
-            credential_exchange_mode,
             timeout,
             identity_name: identity,
             credential_name,
+            peer_node_type,
             ..
         } = dec.decode()?;
 
@@ -312,25 +292,35 @@ impl NodeManagerWorker {
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
-        let tcp_session = create_tcp_session(&addr, &node_manager.tcp_transport)
-            .await
-            .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-        let channel = node_manager
-            .create_secure_channel_impl(
-                tcp_session.route,
-                authorized_identifiers,
-                credential_exchange_mode,
-                timeout,
-                identity,
-                ctx,
-                credential_name,
-                tcp_session.session,
-            )
-            .await?;
+        // Resolve /project multiaddr
+        let connection = Connection::new(ctx, &addr);
+        let (sc, suffix) = node_manager.connect(connection).await?;
 
+        let channel = if !suffix.is_empty() {
+            let full = sc.try_with(&suffix)?;
+            debug!("full: {} ", full);
+            let tcp_session = create_tcp_session(&full, &node_manager.tcp_transport)
+                .await
+                .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+
+            node_manager
+                .create_secure_channel_impl(
+                    tcp_session.route,
+                    authorized_identifiers,
+                    timeout,
+                    identity,
+                    ctx,
+                    credential_name,
+                    tcp_session.session,
+                    peer_node_type,
+                )
+                .await?
+        } else {
+            Address::from(sc.first().unwrap().data().to_vec())
+        };
+        debug!("channel: {:?} ", channel);
         let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(&channel));
-
         Ok(response)
     }
 

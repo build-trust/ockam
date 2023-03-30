@@ -12,7 +12,6 @@ use serde_json::json;
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::{config::lookup::ConfigLookup, nodes::models};
 use ockam_api::{nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr};
 use ockam_multiaddr::MultiAddr;
@@ -45,32 +44,6 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
-    }
-
-    // Read the `to` argument and return a MultiAddr
-    // or exit with and error if `to` can't be parsed.
-    async fn parse_to_route(
-        &self,
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        cloud_addr: &MultiAddr,
-        api_node: &str,
-        tcp: &TcpTransport,
-    ) -> Result<MultiAddr> {
-        let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
-            .context(format!("Could not convert {} into route", &self.to))?;
-
-        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
-            ctx,
-            opts,
-            &meta,
-            cloud_addr,
-            api_node,
-            Some(tcp),
-            CredentialExchangeMode::Oneway,
-        )
-        .await?;
-        crate::project::util::clean_projects_multiaddr(to, projects_sc)
     }
 
     // Read the `from` argument and return node name
@@ -154,9 +127,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 
     let config = &opts.config.lookup();
     let from = &cmd.parse_from_node(config);
-    let to = &cmd
-        .parse_to_route(&ctx, &opts, &cmd.cloud_opts.route(), from, &tcp)
-        .await?;
+
+    let to = clean_nodes_multiaddr(&cmd.to, &opts.state)
+        .context(format!("Could not convert {} into route", cmd.to))?;
 
     let authorized_identifiers = cmd.authorized.clone();
 
@@ -164,9 +137,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     let mut rpc = RpcBuilder::new(&ctx, &opts, from).tcp(&tcp)?.build();
 
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
-        to,
+        &to,
         authorized_identifiers,
-        CredentialExchangeMode::Mutual,
+        models::secure_channel::PeerNodeType::Normal,
         cmd.cloud_opts.identity.clone(),
         cmd.credential.clone(),
     );
@@ -175,7 +148,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     rpc.request(request).await?;
     let response = rpc.parse_response::<CreateSecureChannelResponse>()?;
 
-    cmd.print_output(from, to, &opts, response);
+    cmd.print_output(from, &to, &opts, response);
 
     Ok(())
 }

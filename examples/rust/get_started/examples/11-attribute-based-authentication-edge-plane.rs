@@ -5,6 +5,7 @@ use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
+use ockam::identity::trust_context::{AuthorityInfo, FromMemoryCredentialRetriever};
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpInletTrustOptions, TcpTransport};
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
@@ -88,18 +89,14 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     println!("{credential}");
 
-    // store the credential and start a credential exchange worker which will be
-    // later on to exchange credentials with the control node
-    edge_plane.set_credential(credential.to_owned()).await;
-
+    // start a credential exchange worker which will be used later on to exchange credentials with the control node
     let storage = AuthenticatedAttributeStorage::new(edge_plane.authenticated_storage().clone());
+    let auth_info = AuthorityInfo::new(
+        project.authority_public_identity(),
+        Some(Box::new(FromMemoryCredentialRetriever::new(credential.clone()))),
+    );
     edge_plane
-        .start_credential_exchange_worker(
-            vec![project.authority_public_identity()],
-            "credential_exchange",
-            true,
-            Arc::new(storage),
-        )
+        .start_credential_exchange_worker("credential_exchange", Arc::new(storage), Arc::new(auth_info))
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
@@ -130,7 +127,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     edge_plane
         .present_credential(
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-            None,
+            &credential,
         )
         .await?;
 
@@ -151,9 +148,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     edge_plane
         .present_credential_mutual(
             route![secure_channel_to_control.clone(), "credential_exchange"],
-            vec![&project.authority_public_identity()],
+            &project.authority_public_identity(),
             Arc::new(storage),
-            None,
+            &credential,
         )
         .await?;
     println!("credential exchange done");

@@ -37,6 +37,9 @@ pub mod credential;
 /// Authority test support
 pub mod credential_issuer;
 
+/// TrustContext structs and traits definitions
+pub mod trust_context;
+
 /// Errors
 pub mod error;
 

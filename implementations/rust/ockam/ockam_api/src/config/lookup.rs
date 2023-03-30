@@ -2,7 +2,6 @@ use crate::cloud::project::{OktaAuth0, Project};
 use crate::error::ApiError;
 use anyhow::Context as _;
 use bytes::Bytes;
-use ockam_core::compat::collections::VecDeque;
 use ockam_core::{CowStr, Result};
 use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
@@ -14,12 +13,6 @@ use std::{
     net::{SocketAddr, SocketAddrV4, SocketAddrV6},
     str::FromStr,
 };
-
-#[derive(Debug, Default)]
-pub struct LookupMeta {
-    /// Append any project name that is encountered during look-up
-    pub project: VecDeque<Name>,
-}
 
 pub type Name = String;
 
@@ -88,12 +81,6 @@ impl ConfigLookup {
 
     pub fn remove_projects(&mut self) {
         self.map.retain(|k, _| !k.starts_with("/project/"));
-    }
-
-    pub fn has_unresolved_projects(&self, meta: &LookupMeta) -> bool {
-        meta.project
-            .iter()
-            .any(|name| self.get_project(name).is_none())
     }
 
     pub fn projects(&self) -> impl Iterator<Item = (String, ProjectLookup)> + '_ {

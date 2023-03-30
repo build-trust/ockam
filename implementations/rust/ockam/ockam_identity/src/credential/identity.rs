@@ -1,9 +1,8 @@
 use crate::alloc::string::ToString;
 use crate::authenticated_storage::{AttributesEntry, IdentityAttributeStorage};
 use crate::credential::worker::CredentialExchangeWorker;
-use crate::credential::{
-    Credential, CredentialBuilder, CredentialData, Timestamp, Unverified, Verified,
-};
+use crate::credential::{Credential, CredentialBuilder, CredentialData, Timestamp, Verified};
+use crate::trust_context::AuthorityInfo;
 use crate::{
     Identity, IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo,
     IdentityStateConst, IdentityVault, PublicIdentity,
@@ -12,7 +11,6 @@ use core::marker::PhantomData;
 use minicbor::Decoder;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
 use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Mailboxes, Result, Route};
@@ -20,15 +18,6 @@ use ockam_node::api::{request, request_with_local_info};
 use ockam_node::WorkerBuilder;
 
 impl Identity {
-    pub async fn set_credential(&self, credential: Credential) {
-        // TODO: May also verify received credential calling self.verify_self_credential
-        *self.credential.write().await = Some(credential);
-    }
-
-    pub async fn credential(&self) -> Option<Credential> {
-        self.credential.read().await.clone()
-    }
-
     /// Create a signed credential based on the given values.
     pub async fn issue_credential(&self, builder: CredentialBuilder) -> Result<Credential> {
         let key_label = IdentityStateConst::ROOT_LABEL;
@@ -55,14 +44,12 @@ impl Identity {
     /// after successful verification
     pub async fn start_credential_exchange_worker(
         &self,
-        authorities: Vec<PublicIdentity>,
         address: impl Into<Address>,
-        present_back: bool,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
+        authority_info: Arc<AuthorityInfo>,
     ) -> Result<()> {
         let s = self.async_try_clone().await?;
-        let worker =
-            CredentialExchangeWorker::new(authorities, present_back, s, attributes_storage);
+        let worker = CredentialExchangeWorker::new(s, attributes_storage, authority_info);
 
         WorkerBuilder::with_mailboxes(
             Mailboxes::main(
@@ -82,10 +69,8 @@ impl Identity {
     pub async fn present_credential(
         &self,
         route: impl Into<Route>,
-        provided_credential: Option<&Credential>,
+        credential: &Credential,
     ) -> Result<()> {
-        let credential = self.get_credential_or_provided(provided_credential).await?;
-
         let buf = request(
             &self.ctx,
             "credential",
@@ -111,12 +96,10 @@ impl Identity {
     pub async fn present_credential_mutual(
         &self,
         route: impl Into<Route>,
-        authorities: impl IntoIterator<Item = &PublicIdentity>,
+        authority: &PublicIdentity,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
-        provided_credential: Option<&Credential>,
+        credential: &Credential,
     ) -> Result<()> {
-        let credential = self.get_credential_or_provided(provided_credential).await?;
-
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
             &self.ctx,
@@ -153,7 +136,7 @@ impl Identity {
 
         let credential: Credential = dec.decode()?;
 
-        self.receive_presented_credential(their_id, credential, authorities, attributes_storage)
+        self.receive_presented_credential(their_id, credential, authority, attributes_storage)
             .await?;
 
         Ok(())
@@ -164,23 +147,10 @@ impl Identity {
     async fn verify_credential(
         sender: &IdentityIdentifier,
         credential: &Credential,
-        authorities: impl IntoIterator<Item = &PublicIdentity>,
+        authority: &PublicIdentity,
         vault: Arc<dyn IdentityVault>,
     ) -> Result<CredentialData<Verified>> {
-        let credential_data: CredentialData<Unverified> = match minicbor::decode(&credential.data) {
-            Ok(c) => c,
-            Err(_) => return Err(IdentityError::InvalidCredentialFormat.into()),
-        };
-
-        let issuer = authorities
-            .into_iter()
-            .find(|&x| x.identifier() == &credential_data.issuer);
-        let issuer = match issuer {
-            Some(i) => i,
-            None => return Err(IdentityError::UnknownAuthority.into()),
-        };
-
-        let credential_data = match issuer
+        let credential_data = match authority
             .verify_credential(credential, sender, vault.clone())
             .await
         {
@@ -194,15 +164,11 @@ impl Identity {
     pub async fn verify_self_credential(
         &self,
         credential: &Credential,
-        authorities: impl IntoIterator<Item = &PublicIdentity>,
+        authority: &PublicIdentity,
     ) -> Result<()> {
-        let _ = Self::verify_credential(
-            self.identifier(),
-            credential,
-            authorities,
-            self.vault.clone(),
-        )
-        .await?;
+        let _ =
+            Self::verify_credential(self.identifier(), credential, authority, self.vault.clone())
+                .await?;
         Ok(())
     }
 
@@ -210,11 +176,11 @@ impl Identity {
         &self,
         sender: IdentityIdentifier,
         credential: Credential,
-        authorities: impl IntoIterator<Item = &PublicIdentity>,
+        authority: &PublicIdentity,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
     ) -> Result<()> {
         let credential_data =
-            Self::verify_credential(&sender, &credential, authorities, self.vault.clone()).await?;
+            Self::verify_credential(&sender, &credential, authority, self.vault.clone()).await?;
 
         //TODO: review the credential' attributes types.   They are references and has lifetimes,
         //etc,  but in reality this is always just deserizalided (either from wire or from
@@ -238,26 +204,5 @@ impl Identity {
             .await?;
 
         Ok(())
-    }
-
-    /// Gets a clone of the identities current credential
-    /// or uses the provided credential if one exists
-    async fn get_credential_or_provided(
-        &self,
-        provided_cred: Option<&Credential>,
-    ) -> Result<Credential> {
-        let rw_credential = self.credential.read().await;
-        let credential = match provided_cred {
-            Some(c) => c,
-            None => rw_credential.as_ref().ok_or_else(|| {
-                Error::new(
-                    Origin::Application,
-                    Kind::Invalid,
-                    "no credential to present",
-                )
-            })?,
-        };
-
-        Ok(credential.clone())
     }
 }

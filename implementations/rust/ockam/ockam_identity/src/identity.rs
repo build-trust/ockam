@@ -3,7 +3,6 @@ use crate::authenticated_storage::mem::InMemoryStorage;
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::IdentitySignedChange;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use crate::credential::Credential;
 use crate::{
     to_hasher, ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, KeyAttributes,
     PublicIdentity, SecureChannelRegistry,
@@ -25,7 +24,6 @@ use ockam_vault::{KeyId, SecretAttributes};
 #[async_try_clone(crate = "ockam_core")]
 pub struct Identity {
     id: IdentityIdentifier,
-    pub(crate) credential: Arc<RwLock<Option<Credential>>>,
     pub(crate) change_history: Arc<RwLock<IdentityChangeHistory>>,
     pub(crate) ctx: Context,
     pub(crate) authenticated_storage: Arc<dyn AuthenticatedStorage>,
@@ -60,7 +58,6 @@ impl Identity {
     ) -> Self {
         Self {
             id,
-            credential: Arc::new(RwLock::new(None)),
             change_history: Arc::new(RwLock::new(change_history)),
             ctx,
             authenticated_storage,

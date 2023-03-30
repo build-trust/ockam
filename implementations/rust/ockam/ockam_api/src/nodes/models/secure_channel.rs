@@ -14,13 +14,20 @@ use serde::Serialize;
 use crate::error::ApiError;
 use crate::route_to_multiaddr;
 
-#[derive(Debug, Clone, Copy, Decode, Encode)]
+// TODO: this is ugly.  But since we decide if to present/not present
+// credentials, and on which way (one-way/mutual) when we establish a secure
+// channel, we need a way to differentiate between these.  The Project one
+// can be eliminated once project nodes gets their own credential (so credential
+// presentation can be always mutual).  For authority, we need the special case,
+// that's where we are retrieving the credential for, we don't have it to present,
+// plus there is no credentialexchange worker on the authority.
+#[derive(Debug, Clone, Decode, Encode, PartialEq)]
 #[rustfmt::skip]
 #[cbor(index_only)]
-pub enum CredentialExchangeMode {
-    #[n(0)] None,
-    #[n(1)] Oneway,
-    #[n(2)] Mutual,
+pub enum PeerNodeType {
+    #[n(0)] Normal,
+    #[n(1)] Project,
+    #[n(2)] Authority,
 }
 
 /// Request body when instructing a node to create a Secure Channel
@@ -32,7 +39,7 @@ pub struct CreateSecureChannelRequest<'a> {
     #[n(0)] tag: TypeTag<6300395>,
     #[b(1)] pub addr: CowStr<'a>,
     #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
-    #[n(3)] pub credential_exchange_mode: CredentialExchangeMode,
+    #[n(3)] pub peer_node_type: PeerNodeType,
     #[n(4)] pub timeout: Option<Duration>,
     #[b(5)] pub identity_name: Option<CowStr<'a>>,
     #[b(6)] pub credential_name: Option<CowStr<'a>>,
@@ -42,7 +49,7 @@ impl<'a> CreateSecureChannelRequest<'a> {
     pub fn new(
         addr: &MultiAddr,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-        credential_exchange_mode: CredentialExchangeMode,
+        peer_node_type: PeerNodeType,
         identity_name: Option<String>,
         credential_name: Option<String>,
     ) -> Self {
@@ -52,7 +59,7 @@ impl<'a> CreateSecureChannelRequest<'a> {
             addr: addr.to_string().into(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
-            credential_exchange_mode,
+            peer_node_type,
             timeout: None,
             identity_name: identity_name.map(|x| x.into()),
             credential_name: credential_name.map(|x| x.into()),

@@ -29,7 +29,7 @@ teardown() {
 }
 
 @test "message - send a message to a project node from a background node" {
-  run "$OCKAM" node create blue
+  run "$OCKAM" node create blue --project default
   assert_success
 
   msg=$(random_str)

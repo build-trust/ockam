@@ -9,8 +9,8 @@ use clap::Args;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
 use ockam_api::nodes::models::services::{
-    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartIdentityServiceRequest, StartVaultServiceRequest, StartVerifierService,
+    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartIdentityServiceRequest,
+    StartVaultServiceRequest, StartVerifierService,
 };
 use tracing::trace;
 
@@ -23,8 +23,20 @@ use ockam_core::api::{Request, Response};
 use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
+use crate::project::ProjectInfo;
 use crate::util::DEFAULT_CONTROLLER_ADDRESS;
+use crate::OckamConfig;
 use crate::Result;
+use ockam::TcpTransport;
+use ockam_api::config::lookup::ProjectLookup;
+use ockam_api::credential_retrievers::FromCredentialIssuer;
+use ockam_identity::credential::Credential;
+use ockam_identity::trust_context::{
+    AuthorityInfo, CredentialRetriever, FromMemoryCredentialRetriever, TrustContext,
+};
+use ockam_identity::PublicIdentity;
+use ockam_vault::Vault;
+use serde::{Deserialize, Serialize};
 
 ////////////// !== generators
 
@@ -157,15 +169,6 @@ pub(crate) fn start_authenticated_service(
 pub(crate) fn start_verifier_service(addr: &str) -> RequestBuilder<'static, StartVerifierService> {
     let payload = StartVerifierService::new(addr);
     Request::post(node_service(DefaultAddress::VERIFIER)).body(payload)
-}
-
-/// Construct a request to start a Credential Service
-pub(crate) fn start_credentials_service(
-    addr: &str,
-    oneway: bool,
-) -> RequestBuilder<'static, StartCredentialsService> {
-    let payload = StartCredentialsService::new(addr, oneway);
-    Request::post(node_service(DefaultAddress::CREDENTIALS_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Authenticator Service
@@ -318,12 +321,183 @@ pub struct CloudOpts {
     #[arg(global = true, value_name = "IDENTITY", long)]
     pub identity: Option<String>,
 }
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum CredentialRetrieverConfig {
+    File(PathBuf),
+    Online(MultiAddr),
+}
 
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct TrustContextAuthorityConfig {
+    pub identity: String,
+    pub credential_retriever: Option<CredentialRetrieverConfig>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct TrustContextConfig {
+    pub id: String,
+    pub authority: Option<TrustContextAuthorityConfig>,
+
+    // This is for backwards compatibility
+    project_addr: Option<(MultiAddr, IdentityIdentifier)>,
+    // This is ugly.. we coud store the OktaConfig at least.. until we have a better way
+    // to carry that info.  But that will mean dealing with lifecycles here and elsewhere.
+    // I'd rather not.
+    okta_config: Option<String>,
+}
+
+pub fn parse_trust_context(trust_context: &str) -> Result<TrustContextConfig> {
+    let tc: TrustContextConfig = serde_json::from_str(trust_context)?;
+    Ok(tc)
+}
+
+// TODO: these three are mutually exclusive
+#[derive(Clone, Debug, Args, Default)]
 pub struct ProjectOpts {
     /// Project config file
-    #[arg(global = true, long = "project-path", value_name = "PROJECT_JSON_PATH")]
+    #[arg(
+        global = true,
+        long = "project-path",
+        value_name = "Project json (deprecated)"
+    )]
     pub project_path: Option<PathBuf>,
+
+    #[arg(global = true, long = "trust-context", value_parser = parse_trust_context)]
+    pub trust_context: Option<TrustContextConfig>,
+
+    #[arg(global = true, long = "project")]
+    pub project: Option<String>,
+}
+
+impl<'a> From<ProjectInfo<'a>> for TrustContextConfig {
+    fn from(p: ProjectInfo) -> Self {
+        TrustContextConfig {
+            id: p.id.to_string(),
+            authority: Some(TrustContextAuthorityConfig {
+                identity: p.authority_identity.unwrap().to_string(),
+                credential_retriever: Some(CredentialRetrieverConfig::Online(
+                    MultiAddr::from_str(&p.authority_access_route.unwrap()).unwrap(),
+                )),
+            }),
+            project_addr: Some((
+                MultiAddr::from_str(&p.access_route).unwrap(),
+                p.identity.unwrap(),
+            )),
+            okta_config: p
+                .okta_config
+                .as_ref()
+                .map(|c| serde_json::to_string(c).unwrap()),
+        }
+    }
+}
+
+impl From<&ProjectLookup> for TrustContextConfig {
+    fn from(p: &ProjectLookup) -> Self {
+        let authority = p.authority.as_ref().unwrap();
+        TrustContextConfig {
+            id: p.id.to_string(),
+            authority: Some(TrustContextAuthorityConfig {
+                identity: hex::encode(authority.identity()),
+                credential_retriever: Some(CredentialRetrieverConfig::Online(
+                    authority.address().clone(),
+                )),
+            }),
+            project_addr: Some((
+                p.node_route.clone().unwrap(),
+                p.identity_id.clone().unwrap(),
+            )),
+            okta_config: p.okta.as_ref().map(|c| serde_json::to_string(c).unwrap()),
+        }
+    }
+}
+
+impl TrustContextConfig {
+    pub async fn build(&self, tcp_transport: TcpTransport) -> TrustContext {
+        let auth = match self.authority.as_ref() {
+            None => None,
+            Some(a) => Some(a.build(tcp_transport).await),
+        };
+        TrustContext::new(self.id.clone(), auth)
+    }
+
+    pub fn project_addr(&self) -> Option<(MultiAddr, IdentityIdentifier)> {
+        self.project_addr.clone()
+    }
+    pub fn okta_config(&self) -> Option<String> {
+        self.okta_config.clone()
+    }
+}
+
+impl TrustContextAuthorityConfig {
+    pub async fn identity(&self) -> PublicIdentity {
+        let data = hex::decode(&self.identity).unwrap();
+        PublicIdentity::import(&data, Vault::create())
+            .await
+            .unwrap()
+    }
+
+    pub async fn build(&self, tcp_transport: TcpTransport) -> AuthorityInfo {
+        let identity = self.identity().await;
+        let identifier = identity.identifier().clone();
+        AuthorityInfo::new(
+            identity,
+            self.credential_retriever
+                .as_ref()
+                .map(|cr| cr.build(&identifier, tcp_transport)),
+        )
+    }
+}
+impl CredentialRetrieverConfig {
+    pub fn build(
+        &self,
+        identity: &IdentityIdentifier,
+        tcp_transport: TcpTransport,
+    ) -> Box<dyn CredentialRetriever> {
+        match self {
+            CredentialRetrieverConfig::Online(addr) => Box::new(FromCredentialIssuer::new(
+                identity.clone(),
+                addr.clone(),
+                tcp_transport,
+            )),
+            CredentialRetrieverConfig::File(path) => {
+                let encoded_cred = std::fs::read_to_string(path).unwrap();
+                let bytes = hex::decode(encoded_cred).unwrap();
+                let cred: Credential = minicbor::decode(&bytes).unwrap();
+                Box::new(FromMemoryCredentialRetriever::new(cred))
+            }
+        }
+    }
+}
+
+impl ProjectOpts {
+    pub fn trust_context(&self, default_proj: Option<PathBuf>) -> Option<TrustContextConfig> {
+        self.trust_context
+            .clone()
+            .or_else(|| {
+                self.project_path.as_ref().map(|path| {
+                    let s = std::fs::read_to_string(path).unwrap();
+                    let proj_info: ProjectInfo = serde_json::from_str(&s).unwrap();
+                    TrustContextConfig::from(proj_info)
+                })
+            })
+            .or_else(|| {
+                let config = OckamConfig::load().expect("Failed to load config");
+                let lookup = config.lookup();
+                self.project
+                    .as_ref()
+                    .map(|name| {
+                        let project_lookup = lookup.get_project(name).unwrap();
+                        TrustContextConfig::from(project_lookup)
+                    })
+                    .or_else(|| {
+                        default_proj.map(|path| {
+                            let s = std::fs::read_to_string(path).unwrap();
+                            let proj_info: ProjectInfo = serde_json::from_str(&s).unwrap();
+                            TrustContextConfig::from(proj_info)
+                        })
+                    })
+            })
+    }
 }
 
 impl CloudOpts {

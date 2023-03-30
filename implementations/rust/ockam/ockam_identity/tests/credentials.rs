@@ -7,6 +7,7 @@ use ockam_identity::authenticated_storage::{
 };
 use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::credential::Credential;
+use ockam_identity::trust_context::{AuthorityInfo, FromMemoryCredentialRetriever};
 use ockam_identity::{Identity, TrustEveryonePolicy, TrustIdentifierPolicy};
 
 use ockam_node::{Context, WorkerBuilder};
@@ -28,13 +29,13 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
 
-    let authorities = vec![authority.to_public().await?];
+    let authority_pub = authority.to_public().await?;
+    let authority_info = AuthorityInfo::new(authority_pub, None);
     server
         .start_credential_exchange_worker(
-            authorities,
             "credential_exchange",
-            false,
             Arc::new(authenticated_attribute_storage.clone()),
+            Arc::new(authority_info),
         )
         .await?;
 
@@ -51,10 +52,8 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
     let credential = authority.issue_credential(credential).await?;
 
-    client.set_credential(credential).await;
-
     client
-        .present_credential(route![channel, "credential_exchange"], None)
+        .present_credential(route![channel, "credential_exchange"], &credential)
         .await?;
 
     let attrs = authenticated_attribute_storage
@@ -85,19 +84,21 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         Credential::builder(client2.identifier().clone()).with_attribute("is_admin", b"true");
 
     let credential2 = authority.issue_credential(credential2).await?;
-    client2.set_credential(credential2).await;
 
     client2
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
 
-    let authorities = vec![authority.to_public().await?];
+    let authority_pub = authority.to_public().await?;
+    let authority_info = AuthorityInfo::new(
+        authority_pub.clone(),
+        Some(Box::new(FromMemoryCredentialRetriever::new(credential2))),
+    );
     client2
         .start_credential_exchange_worker(
-            authorities.clone(),
             "credential_exchange",
-            true,
             Arc::new(authenticated_attribute_storage_client_2),
+            Arc::new(authority_info),
         )
         .await?;
 
@@ -107,7 +108,6 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         Credential::builder(client1.identifier().clone()).with_attribute("is_user", b"true");
 
     let credential1 = authority.issue_credential(credential1).await?;
-    client1.set_credential(credential1).await;
 
     let channel = client1
         .create_secure_channel(route!["listener"], TrustEveryonePolicy)
@@ -118,9 +118,9 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     client1
         .present_credential_mutual(
             route![channel, "credential_exchange"],
-            &authorities,
+            &authority_pub,
             storage,
-            None,
+            &credential1,
         )
         .await?;
 
@@ -171,15 +171,14 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     server
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
-
-    let authorities = vec![authority.to_public().await?];
+    let authority_pub = authority.to_public().await?;
+    let authority_info = AuthorityInfo::new(authority_pub, None);
 
     server
         .start_credential_exchange_worker(
-            authorities,
             "credential_exchange",
-            false,
             Arc::new(AuthenticatedAttributeStorage::new(storage.clone())),
+            Arc::new(authority_info),
         )
         .await?;
 
@@ -195,8 +194,6 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let credential = credential_builder.with_attribute("is_superuser", b"true");
 
     let credential = authority.issue_credential(credential).await?;
-
-    client.set_credential(credential).await;
 
     let counter = Arc::new(AtomicI8::new(0));
 
@@ -236,7 +233,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 
     client
-        .present_credential(route![channel.clone(), "credential_exchange"], None)
+        .present_credential(route![channel.clone(), "credential_exchange"], &credential)
         .await?;
 
     child_ctx

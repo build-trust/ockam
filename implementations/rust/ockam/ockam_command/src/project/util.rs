@@ -11,96 +11,14 @@ use tracing::debug;
 use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
 use ockam_api::cloud::project::Project;
-use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
+use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
-use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
 use crate::{CommandGlobalOpts, OckamConfig, Result};
-
-pub fn clean_projects_multiaddr(
-    input: MultiAddr,
-    projects_secure_channels: Vec<MultiAddr>,
-) -> Result<MultiAddr> {
-    let mut new_ma = MultiAddr::default();
-    let mut sc_iter = projects_secure_channels.iter().peekable();
-    for p in input.iter().peekable() {
-        match p.code() {
-            ockam_multiaddr::proto::Project::CODE => {
-                let alias = p
-                    .cast::<ockam_multiaddr::proto::Project>()
-                    .ok_or_else(|| anyhow!("Invalid project value"))?;
-                let sc = sc_iter
-                    .next()
-                    .ok_or_else(|| anyhow!("Missing secure channel for project {}", &*alias))?;
-                for v in sc.iter().peekable() {
-                    new_ma.push_back_value(&v)?;
-                }
-            }
-            _ => new_ma.push_back_value(&p)?,
-        }
-    }
-    debug!(%input, %new_ma, "Projects names replaced with secure channels");
-    Ok(new_ma)
-}
-
-pub async fn get_projects_secure_channels_from_config_lookup(
-    ctx: &ockam::Context,
-    opts: &CommandGlobalOpts,
-    meta: &LookupMeta,
-    cloud_addr: &MultiAddr,
-    api_node: &str,
-    tcp: Option<&TcpTransport>,
-    credential_exchange_mode: CredentialExchangeMode,
-) -> Result<Vec<MultiAddr>> {
-    let cfg_lookup = opts.config.lookup();
-    let mut sc = Vec::with_capacity(meta.project.len());
-
-    // In case a project is missing from the config file, we fetch them all from the cloud.
-    if cfg_lookup.has_unresolved_projects(meta) {
-        config::refresh_projects(ctx, opts, api_node, cloud_addr, tcp).await?;
-    }
-
-    // Create a secure channel for each project.
-    for name in meta.project.iter() {
-        // Get the project node's access route + identity id from the config
-        let (project_access_route, project_identity_id) = {
-            // This shouldn't fail, as we did a refresh above if we found any missing project.
-            let p = cfg_lookup
-                .get_project(name)
-                .context(format!("Failed to get project {name} from config lookup"))?;
-            let id = p
-                .identity_id
-                .as_ref()
-                .context("Project should have identity set")?;
-            let node_route = p
-                .node_route
-                .as_ref()
-                .context("Invalid project node route")?;
-            (node_route, id.to_string())
-        };
-        sc.push(
-            create_secure_channel_to_project(
-                ctx,
-                opts,
-                api_node,
-                tcp,
-                project_access_route,
-                &project_identity_id,
-                credential_exchange_mode,
-                None,
-            )
-            .await?,
-        );
-    }
-
-    // There should be the same number of project occurrences in the
-    // input MultiAddr than there are in the secure channels vector.
-    assert_eq!(meta.project.len(), sc.len());
-    Ok(sc)
-}
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_secure_channel_to_project(
@@ -110,7 +28,6 @@ pub async fn create_secure_channel_to_project(
     tcp: Option<&TcpTransport>,
     project_access_route: &MultiAddr,
     project_identity: &str,
-    credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
@@ -119,7 +36,7 @@ pub async fn create_secure_channel_to_project(
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         project_access_route,
         Some(authorized_identifier),
-        credential_exchange_mode,
+        PeerNodeType::Project,
         identity,
         None,
     );
@@ -134,17 +51,17 @@ pub async fn create_secure_channel_to_authority(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
-    authority: &ProjectAuthority,
+    authority_identity_id: &IdentityIdentifier,
     addr: &MultiAddr,
     identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
-    let allowed = vec![authority.identity_id().clone()];
+    let allowed = vec![authority_identity_id.clone()];
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         addr,
         Some(allowed),
-        CredentialExchangeMode::None,
+        PeerNodeType::Authority,
         identity,
         None,
     );
@@ -255,7 +172,6 @@ pub async fn check_project_readiness<'a>(
                 tcp,
                 &project_route,
                 &project_identity,
-                CredentialExchangeMode::None,
                 None,
             )
             .await
@@ -290,7 +206,7 @@ pub async fn check_project_readiness<'a>(
                 ctx,
                 opts,
                 api_node,
-                &authority,
+                authority.identity_id(),
                 authority.address(),
                 None,
             )

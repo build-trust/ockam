@@ -46,7 +46,6 @@ async fn main(mut ctx: Context) -> Result<()> {
     let issuer_client = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
     let credential = issuer_client.get_credential(client.identifier()).await?.unwrap();
     println!("Credential:\n{credential}");
-    client.set_credential(credential).await;
 
     // Create a secure channel to the node that is running the Echoer service.
     let server_session_id = sessions.generate_session_id();
@@ -63,7 +62,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     let storage = Arc::new(AuthenticatedAttributeStorage::new(store.clone()));
     let issuer = issuer_client.public_identity().await?;
     let r = route![channel.clone(), "credentials"];
-    client.present_credential_mutual(r, &[issuer], storage, None).await?;
+    client
+        .present_credential_mutual(r, &issuer, storage, &credential)
+        .await?;
 
     // Send a message to the worker at address "echoer".
     ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;

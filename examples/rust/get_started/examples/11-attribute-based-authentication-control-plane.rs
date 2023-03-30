@@ -4,6 +4,7 @@ use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 
 use ockam::abac::AbacAccessControl;
+use ockam::identity::trust_context::{AuthorityInfo, FromMemoryCredentialRetriever};
 use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
 use ockam::{route, vault::Vault, Context, Result, TcpOutletTrustOptions, TcpTransport};
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
@@ -88,17 +89,16 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     println!("{credential}");
 
-    // store the credential and start a credential exchange worker which will be
-    // later on to exchange credentials with the edge node
-    control_plane.set_credential(credential).await;
+    // start a credential exchange worker which will be later on exchange credentials with the edge node.
+    // Note instead of setting a fixed credential explicity, one can use a different implementation
+    // of the credential retriever to retrieve a fresh one each time or when expired.
     let storage = AuthenticatedAttributeStorage::new(control_plane.authenticated_storage().clone());
+    let auth_info = AuthorityInfo::new(
+        project.authority_public_identity(),
+        Some(Box::new(FromMemoryCredentialRetriever::new(credential.clone()))),
+    );
     control_plane
-        .start_credential_exchange_worker(
-            vec![project.authority_public_identity()],
-            "credential_exchange",
-            true,
-            Arc::new(storage),
-        )
+        .start_credential_exchange_worker("credential_exchange", Arc::new(storage), Arc::new(auth_info))
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
@@ -138,7 +138,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     control_plane
         .present_credential(
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-            None,
+            &credential,
         )
         .await?;
 

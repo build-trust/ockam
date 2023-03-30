@@ -84,9 +84,9 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
 
   # Create nodes for the non-enrolled identities using the exported project information
-  run "$OCKAM" node create green --project "$ENROLLED_OCKAM_HOME/${project_name}_project.json" --identity green
+  run "$OCKAM" node create green --project-path "$ENROLLED_OCKAM_HOME/${project_name}_project.json" --identity green
   assert_success
-  run "$OCKAM" node create blue --project "$ENROLLED_OCKAM_HOME/${project_name}_project.json" --identity blue
+  run "$OCKAM" node create blue --project-path "$ENROLLED_OCKAM_HOME/${project_name}_project.json" --identity blue
   assert_success
 
   # Blue can't create forwarder as it isn't a member
@@ -96,7 +96,7 @@ teardown() {
 
   # Add green as a member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project enroll --member "$green_identifier" --to "/project/${project_name}/service/authenticator" --attribute role=member
+  run "$OCKAM" project enroll --member "$green_identifier" --project ${project_name} --attribute role=member
   assert_success
 
   # Now green can access project' services

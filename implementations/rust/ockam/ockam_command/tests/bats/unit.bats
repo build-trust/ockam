@@ -21,6 +21,8 @@ teardown() {
 
 @test "node - create with name" {
   n="$(random_str)"
+  echo "$n"
+  echo "$OCKAM_HOME"
   run "$OCKAM" node create "$n"
   assert_success
 
@@ -59,11 +61,6 @@ teardown() {
   run "$OCKAM" service start verifier --addr my_verifier --node n1
   assert_failure
 
-  # Check we can start service, but only once with the same name
-  run "$OCKAM" service start credentials --addr my_credentials --node n1
-  assert_success
-  run "$OCKAM" service start credentials --addr my_credentials --node n1
-  assert_failure
 }
 
 @test "node - is restarted with default services" {

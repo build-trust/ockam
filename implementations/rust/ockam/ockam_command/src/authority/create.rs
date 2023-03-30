@@ -4,7 +4,7 @@ use crate::node::util::run_ockam;
 use crate::util::node_rpc;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::{docs, identity, CommandGlobalOpts, Result};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context as _};
 use clap::{ArgGroup, Args};
 use ockam::AsyncTryClone;
 use ockam::Context;
@@ -80,6 +80,14 @@ pub struct CreateCommand {
     /// Run the node in foreground.
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
     foreground: bool,
+
+    /// Vault that authority will use
+    #[arg(long = "vault", value_name = "VAULT")]
+    vault: Option<String>,
+
+    /// Authority Identity
+    #[arg(long = "identity", value_name = "IDENTITY")]
+    identity: Option<String>,
 }
 
 /// Start an authority node by calling the `ockam` executable with the current command-line
@@ -90,7 +98,14 @@ async fn spawn_background_node(
     cmd: &CreateCommand,
 ) -> crate::Result<()> {
     // Create node state, including the vault and identity if they don't exist
-    init_node_state(ctx, opts, &cmd.node_name, None, None).await?;
+    init_node_state(
+        ctx,
+        opts,
+        &cmd.node_name,
+        cmd.vault.as_ref(),
+        cmd.identity.as_ref(),
+    )
+    .await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
@@ -140,6 +155,17 @@ async fn spawn_background_node(
         args.push("--attributes".to_string());
         args.push(attributes.join(","));
     }
+
+    if let Some(vault) = &cmd.vault {
+        args.push("--vault".to_string());
+        args.push(vault.clone());
+    }
+
+    if let Some(identity) = &cmd.identity {
+        args.push("--identity".to_string());
+        args.push(identity.clone());
+    }
+
     args.push(cmd.node_name.to_string());
 
     run_ockam(opts, &cmd.node_name, args)
@@ -213,18 +239,35 @@ async fn start_authority_node(
         .get_node_path(&command.node_name)
         .exists()
     {
-        init_node_state(&ctx, &options, &command.node_name, None, None).await?;
+        init_node_state(
+            &ctx,
+            &options,
+            &command.node_name,
+            cmd.vault.as_ref(),
+            cmd.identity.as_ref(),
+        )
+        .await?;
     };
 
     // retrieve the authority identity if it has been created before
     // otherwise create a new one
-    let public_identity = match options.state.identities.default().ok() {
-        Some(state) => state.config.public_identity(),
-        None => {
-            let cmd = identity::CreateCommand::new("authority".into(), None);
-            cmd.create_identity(ctx.async_try_clone().await?, options.clone())
-                .await?
-        }
+    let public_identity = match cmd.identity {
+        Some(identity_name) => options
+            .state
+            .identities
+            .get(&identity_name)
+            .context("Identity not found")
+            .unwrap()
+            .config
+            .public_identity(),
+        None => match options.state.identities.default().ok() {
+            Some(state) => state.config.public_identity(),
+            None => {
+                let cmd = identity::CreateCommand::new("authority".into(), None);
+                cmd.create_identity(ctx.async_try_clone().await?, options.clone())
+                    .await?
+            }
+        },
     };
 
     let okta_configuration = match (
