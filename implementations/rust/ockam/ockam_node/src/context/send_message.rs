@@ -8,7 +8,7 @@ use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
-    RelayMessage, Result, Route, TransportMessage,
+    RelayMessage, Result, Route, Routed, TransportMessage,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
@@ -76,8 +76,10 @@ impl Context {
     where
         M: Message,
     {
-        self.send_and_receive_extended(route, msg, MessageSendReceiveOptions::new())
-            .await
+        Ok(self
+            .send_and_receive_extended::<M>(route, msg, MessageSendReceiveOptions::new())
+            .await?
+            .body())
     }
 
     /// Using a temporary new context, send a message and then receive a message
@@ -94,7 +96,7 @@ impl Context {
         route: impl Into<Route>,
         msg: impl Message,
         options: MessageSendReceiveOptions,
-    ) -> Result<M>
+    ) -> Result<Routed<M>>
     where
         M: Message,
     {
@@ -119,12 +121,11 @@ impl Context {
         let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
 
         child_ctx.send(route, msg).await?;
-        Ok(child_ctx
+        child_ctx
             .receive_extended::<M>(
                 MessageReceiveOptions::new().with_message_wait(options.message_wait),
             )
-            .await?
-            .body())
+            .await
     }
 
     /// Send a message to another address associated with this worker
