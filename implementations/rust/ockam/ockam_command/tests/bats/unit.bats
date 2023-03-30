@@ -365,6 +365,32 @@ teardown() {
   assert [ "$output" == "$(to_uppercase "$msg")" ]
 }
 
+@test "forwarder - create two forwarders and list them on a node" {
+  run --separate-stderr "$OCKAM" node create n1
+  assert_success
+  run --separate-stderr "$OCKAM" node create n2
+  assert_success
+
+  run $OCKAM forwarder create blue --at /node/n1 --to /node/n2
+  assert_success
+  run $OCKAM forwarder create red --at /node/n1 --to /node/n2
+  assert_success
+
+  run $OCKAM forwarder list --at /node/n2
+  assert_output --regexp "Forwarding Route:.* => 0#forward_to_blue"
+  assert_output --partial "Remote Address: forward_to_blue"
+  assert_output --regexp "Worker Address: 0#.*"
+  assert_output --regexp "Forwarding Route:.* => 0#forward_to_red"
+  assert_output --partial "Remote Address: forward_to_red"
+  assert_output --regexp "Worker Address: 0#.*"
+  assert_success
+
+  # Test listing node with no forwarders
+  run $OCKAM forwarder list --at /node/n1
+  assert_output --partial "No Forwarders found on node n1"
+  assert_failure
+}
+
 # ===== PORTALS (INLET/OUTLET)
 
 @test "portals - tcp inlet CRUD" {

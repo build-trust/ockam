@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use minicbor::Decoder;
@@ -5,7 +6,7 @@ use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
 use ockam::Result;
-use ockam_core::api::{Id, Response, Status};
+use ockam_core::api::{Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::AsyncTryClone;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
@@ -14,7 +15,8 @@ use ockam_node::Context;
 
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
-use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo, ForwarderList};
+use crate::nodes::registry::ForwarderRegistryInfo;
 use crate::session::util;
 use crate::session::{Replacer, Session};
 use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
@@ -85,7 +87,21 @@ impl NodeManagerWorker {
 
         match forwarder {
             Ok(info) => {
+                let registry_info = info.clone();
+                let registry_remote_address = registry_info.remote_address().clone().to_string();
+
+                let forwarding_route = registry_info.forwarding_route().clone().to_string();
+                let remote_address = registry_info.remote_address().clone().to_string();
+                let worker_address = registry_info.worker_address().clone().to_string();
+
                 let b = ForwarderInfo::from(info);
+                let forwarder_registry_entry =
+                    ForwarderRegistryInfo::new(forwarding_route, remote_address, worker_address);
+                node_manager
+                    .registry
+                    .forwarders
+                    .insert(registry_remote_address, forwarder_registry_entry);
+
                 debug!(
                     forwarding_route = %b.forwarding_route(),
                     remote_address = %b.remote_address(),
@@ -100,6 +116,22 @@ impl NodeManagerWorker {
                     .to_vec()?)
             }
         }
+    }
+
+    pub(super) async fn get_forwarders<'a>(
+        &mut self,
+        req: &Request<'a>,
+        registry: &'a BTreeMap<String, ForwarderRegistryInfo>,
+    ) -> ResponseBuilder<ForwarderList<'a>> {
+        debug!("Handling ListForwarders request");
+        Response::ok(req.id()).body(ForwarderList::new(
+            registry
+                .iter()
+                .map(|(_, registry_info)| {
+                    ForwarderInfo::from(registry_info)
+                })
+                .collect(),
+        ))
     }
 }
 

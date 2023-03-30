@@ -8,6 +8,8 @@ use ockam_multiaddr::MultiAddr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
+use crate::nodes::registry::ForwarderRegistryInfo;
+
 /// Request body when instructing a node to create a forwarder
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
@@ -93,6 +95,10 @@ impl<'a> ForwarderInfo<'a> {
     pub fn remote_address(&'a self) -> &'a str {
         &self.remote_address
     }
+
+    pub fn worker_address(&'a self) -> &'a str {
+        &self.worker_address
+    }
 }
 
 impl<'a> From<RemoteForwarderInfo> for ForwarderInfo<'a> {
@@ -103,6 +109,36 @@ impl<'a> From<RemoteForwarderInfo> for ForwarderInfo<'a> {
             forwarding_route: inner.forwarding_route().to_string().into(),
             remote_address: inner.remote_address().to_string().into(),
             worker_address: inner.worker_address().to_string().into(),
+        }
+    }
+}
+
+impl<'a> From<&ForwarderRegistryInfo> for ForwarderInfo<'a> {
+    fn from(inner: &ForwarderRegistryInfo) -> Self {
+        Self {
+            forwarding_route: inner.forwarding_route().to_string().into(),
+            remote_address: inner.remote_address().to_string().into(),
+            worker_address: inner.worker_address().to_string().into(),
+        }
+    }
+}
+
+/// Response body when returning a list of Forwarders
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ForwarderList<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<8772555>,
+    #[b(1)] pub list: Vec<ForwarderInfo<'a>>
+}
+
+impl<'a> ForwarderList<'a> {
+    pub fn new(list: Vec<ForwarderInfo<'a>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            list,
         }
     }
 }
