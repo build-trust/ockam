@@ -9,7 +9,7 @@ use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageReader};
 use ockam_identity::IdentityIdentifier;
 use ockam_node::api::request;
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 use tracing::trace;
 
 /// Auth API server.
@@ -106,13 +106,29 @@ impl Client {
     pub async fn get(&mut self, id: &str) -> ockam_core::Result<Option<AttributesEntry>> {
         let label = "get attribute";
         let req = Request::get(format!("/{id}"));
-        self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
+        self.buf = request(
+            &self.ctx,
+            label,
+            None,
+            self.route.clone(),
+            req,
+            MessageSendReceiveOptions::new(),
+        )
+        .await?;
         decode_option(label, "attribute", &self.buf)
     }
     pub async fn list(&mut self) -> ockam_core::Result<Vec<(IdentityIdentifier, AttributesEntry)>> {
         let label = "list known identities";
         let req = Request::get("/");
-        self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
+        self.buf = request(
+            &self.ctx,
+            label,
+            None,
+            self.route.clone(),
+            req,
+            MessageSendReceiveOptions::new(),
+        )
+        .await?;
         let a: Option<Vec<(IdentityIdentifier, AttributesEntry)>> =
             decode_option(label, "attribute", &self.buf)?;
         Ok(a.unwrap())

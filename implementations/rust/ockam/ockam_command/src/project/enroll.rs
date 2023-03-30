@@ -78,7 +78,7 @@ impl Runner {
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let map = self.opts.config.lookup();
-        let base_addr = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
+        let (base_addr, session_id) = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
             let cred_retr = tc.authority()?.own_credential()?;
             let addr = match cred_retr {
                 ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => {
@@ -109,9 +109,11 @@ impl Runner {
                 a.address(),
                 self.cmd.cloud_opts.identity.clone(),
             )
-            .await?
+            .await?;
+
+            (sc_addr, Some(sc_session_id))
         } else {
-            self.cmd.to.clone()
+            (self.cmd.to.clone(), None)
         };
         // If an identity identifier is given add it as a member, otherwise
         // request an enrollment token that a future member can use to get a

@@ -67,7 +67,11 @@ async fn run_impl(
     let proj: ProjectInfo = serde_json::from_str(&s)?;
 
     // Create secure channel to the project's authority node
-    let secure_channel_addr = if let Some(tc) = cmd.trust_opts.trust_context.as_ref() {
+    // RPC is in embedded mode
+    // FIXME: How do we get access to SessionId?
+    let (secure_channel_addr, secure_channel_session_id) = if let Some(tc) =
+        cmd.trust_opts.trust_context.as_ref()
+    {
         let cred_retr = tc.authority()?.own_credential()?;
         let addr = match cred_retr {
             ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => &c.maddr,
