@@ -60,7 +60,7 @@ tokio = { version = "1.27", default-features = false, optional = true, features 
     "rt-multi-thread",
     "macros",
 ] }
-futures = { version = "0.3.26", default-features = false }
+futures = { version = "0.3.28", default-features = false }
 tracing = { version = "0.1", default_features = false }
 tracing-error = { version = "0.2", optional = true }
 tracing-subscriber = { version = "0.3", features = [
