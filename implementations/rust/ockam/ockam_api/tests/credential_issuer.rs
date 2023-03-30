@@ -38,7 +38,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     auth_identity
         .create_secure_channel_listener(
             &api_worker_addr,
-            SecureChannelListenerTrustOptions::insecure(),
+            SecureChannelListenerTrustOptions::insecure_test(),
         )
         .await?;
     let auth =
@@ -53,7 +53,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Connect to the API channel from the member:
     let e2a = member_identity
-        .create_secure_channel(&api_worker_addr, SecureChannelTrustOptions::insecure())
+        .create_secure_channel(&api_worker_addr, SecureChannelTrustOptions::insecure_test())
         .await?;
     // Add the member via the enroller's connection:
     let c = direct::CredentialIssuerClient::new(

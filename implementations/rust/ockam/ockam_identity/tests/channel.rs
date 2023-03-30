@@ -25,14 +25,14 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
 
     bob.create_secure_channel_listener(
         "bob_listener",
-        SecureChannelListenerTrustOptions::insecure().with_trust_policy(bob_trust_policy),
+        SecureChannelListenerTrustOptions::insecure_test().with_trust_policy(bob_trust_policy),
     )
     .await?;
 
     let alice_channel = alice
         .create_secure_channel(
             route!["bob_listener"],
-            SecureChannelTrustOptions::insecure().with_trust_policy(alice_trust_policy),
+            SecureChannelTrustOptions::insecure_test().with_trust_policy(alice_trust_policy),
         )
         .await?;
 
@@ -83,14 +83,14 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
 
     bob.create_secure_channel_listener(
         "bob_listener",
-        SecureChannelListenerTrustOptions::insecure(),
+        SecureChannelListenerTrustOptions::insecure_test(),
     )
     .await?;
 
     let alice_channel = alice
         .create_secure_channel(
             route!["bob_listener"],
-            SecureChannelTrustOptions::insecure(),
+            SecureChannelTrustOptions::insecure_test(),
         )
         .await?;
 
@@ -146,14 +146,14 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
 
     bob.create_secure_channel_listener(
         "bob_listener",
-        SecureChannelListenerTrustOptions::insecure(),
+        SecureChannelListenerTrustOptions::insecure_test(),
     )
     .await?;
 
     let alice_channel = alice
         .create_secure_channel(
             route!["bob_listener"],
-            SecureChannelTrustOptions::insecure(),
+            SecureChannelTrustOptions::insecure_test(),
         )
         .await?;
 
@@ -250,27 +250,29 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
 
     bob.create_secure_channel_listener(
         "bob_listener",
-        SecureChannelListenerTrustOptions::insecure().with_trust_policy(bob_trust_policy.clone()),
+        SecureChannelListenerTrustOptions::insecure_test()
+            .with_trust_policy(bob_trust_policy.clone()),
     )
     .await?;
 
     let alice_channel = alice
         .create_secure_channel(
             route!["bob_listener"],
-            SecureChannelTrustOptions::insecure().with_trust_policy(alice_trust_policy.clone()),
+            SecureChannelTrustOptions::insecure_test()
+                .with_trust_policy(alice_trust_policy.clone()),
         )
         .await?;
 
     bob.create_secure_channel_listener(
         "bob_another_listener",
-        SecureChannelListenerTrustOptions::insecure().with_trust_policy(bob_trust_policy),
+        SecureChannelListenerTrustOptions::insecure_test().with_trust_policy(bob_trust_policy),
     )
     .await?;
 
     let alice_another_channel = alice
         .create_secure_channel(
             route![alice_channel, "bob_another_listener"],
-            SecureChannelTrustOptions::insecure().with_trust_policy(alice_trust_policy),
+            SecureChannelTrustOptions::insecure_test().with_trust_policy(alice_trust_policy),
         )
         .await?;
 
@@ -312,40 +314,44 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
 
     bob.create_secure_channel_listener(
         "bob_listener",
-        SecureChannelListenerTrustOptions::insecure().with_trust_policy(bob_trust_policy.clone()),
+        SecureChannelListenerTrustOptions::insecure_test()
+            .with_trust_policy(bob_trust_policy.clone()),
     )
     .await?;
 
     let alice_channel = alice
         .create_secure_channel(
             route!["bob_listener"],
-            SecureChannelTrustOptions::insecure().with_trust_policy(alice_trust_policy.clone()),
+            SecureChannelTrustOptions::insecure_test()
+                .with_trust_policy(alice_trust_policy.clone()),
         )
         .await?;
 
     bob.create_secure_channel_listener(
         "bob_another_listener",
-        SecureChannelListenerTrustOptions::insecure().with_trust_policy(bob_trust_policy.clone()),
+        SecureChannelListenerTrustOptions::insecure_test()
+            .with_trust_policy(bob_trust_policy.clone()),
     )
     .await?;
 
     let alice_another_channel = alice
         .create_secure_channel(
             route![alice_channel, "bob_another_listener"],
-            SecureChannelTrustOptions::insecure().with_trust_policy(alice_trust_policy.clone()),
+            SecureChannelTrustOptions::insecure_test()
+                .with_trust_policy(alice_trust_policy.clone()),
         )
         .await?;
 
     bob.create_secure_channel_listener(
         "bob_yet_another_listener",
-        SecureChannelListenerTrustOptions::insecure().with_trust_policy(bob_trust_policy),
+        SecureChannelListenerTrustOptions::insecure_test().with_trust_policy(bob_trust_policy),
     )
     .await?;
 
     let alice_yet_another_channel = alice
         .create_secure_channel(
             route![alice_another_channel, "bob_yet_another_listener"],
-            SecureChannelTrustOptions::insecure().with_trust_policy(alice_trust_policy),
+            SecureChannelTrustOptions::insecure_test().with_trust_policy(alice_trust_policy),
         )
         .await?;
 
@@ -390,7 +396,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
     for i in 0..n {
         bob.create_secure_channel_listener(
             i.to_string(),
-            SecureChannelListenerTrustOptions::insecure()
+            SecureChannelListenerTrustOptions::insecure_test()
                 .with_trust_policy(bob_trust_policy.clone()),
         )
         .await?;
@@ -402,7 +408,8 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         let alice_channel = alice
             .create_secure_channel(
                 channel_route,
-                SecureChannelTrustOptions::insecure().with_trust_policy(alice_trust_policy.clone()),
+                SecureChannelTrustOptions::insecure_test()
+                    .with_trust_policy(alice_trust_policy.clone()),
             )
             .await?;
         channels.push(alice_channel);
@@ -477,13 +484,16 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
     .start(ctx)
     .await?;
 
-    bob.create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure())
-        .await?;
+    bob.create_secure_channel_listener(
+        "listener",
+        SecureChannelListenerTrustOptions::insecure_test(),
+    )
+    .await?;
 
     let alice_channel = alice
         .create_secure_channel(
             "listener",
-            SecureChannelTrustOptions::insecure().with_trust_policy(TrustEveryonePolicy),
+            SecureChannelTrustOptions::insecure_test().with_trust_policy(TrustEveryonePolicy),
         )
         .await?;
 
@@ -531,13 +541,16 @@ async fn access_control__unknown_participant__should_not_pass_messages(
     .start(ctx)
     .await?;
 
-    bob.create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure())
-        .await?;
+    bob.create_secure_channel_listener(
+        "listener",
+        SecureChannelListenerTrustOptions::insecure_test(),
+    )
+    .await?;
 
     let alice_channel = alice
         .create_secure_channel(
             "listener",
-            SecureChannelTrustOptions::insecure().with_trust_policy(TrustEveryonePolicy),
+            SecureChannelTrustOptions::insecure_test().with_trust_policy(TrustEveryonePolicy),
         )
         .await?;
 

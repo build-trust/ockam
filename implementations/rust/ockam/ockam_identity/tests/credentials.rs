@@ -27,7 +27,10 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let server = Identity::create(ctx, vault.clone()).await?;
 
     server
-        .create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure())
+        .create_secure_channel_listener(
+            "listener",
+            SecureChannelListenerTrustOptions::insecure_test(),
+        )
         .await?;
 
     let authorities = vec![authority.to_public().await?];
@@ -44,7 +47,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let channel = client
         .create_secure_channel(
             route!["listener"],
-            SecureChannelTrustOptions::insecure()
+            SecureChannelTrustOptions::insecure_test()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
         )
         .await?;
@@ -91,7 +94,10 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     client2.set_credential(credential2).await;
 
     client2
-        .create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure())
+        .create_secure_channel_listener(
+            "listener",
+            SecureChannelListenerTrustOptions::insecure_test(),
+        )
         .await?;
 
     let authorities = vec![authority.to_public().await?];
@@ -113,7 +119,10 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     client1.set_credential(credential1).await;
 
     let channel = client1
-        .create_secure_channel(route!["listener"], SecureChannelTrustOptions::insecure())
+        .create_secure_channel(
+            route!["listener"],
+            SecureChannelTrustOptions::insecure_test(),
+        )
         .await?;
 
     let storage: Arc<dyn IdentityAttributeStorage> =
@@ -172,7 +181,10 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let server = Identity::create(ctx, vault.clone()).await?;
 
     server
-        .create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure())
+        .create_secure_channel_listener(
+            "listener",
+            SecureChannelListenerTrustOptions::insecure_test(),
+        )
         .await?;
 
     let authorities = vec![authority.to_public().await?];
@@ -190,7 +202,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let channel = client
         .create_secure_channel(
             route!["listener"],
-            SecureChannelTrustOptions::insecure()
+            SecureChannelTrustOptions::insecure_test()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
         )
         .await?;

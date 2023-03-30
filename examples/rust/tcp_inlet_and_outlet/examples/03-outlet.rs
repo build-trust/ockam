@@ -14,8 +14,11 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", SecureChannelListenerTrustOptions::insecure())
-        .await?;
+    e.create_secure_channel_listener(
+        "secure_channel_listener",
+        SecureChannelListenerTrustOptions::insecure_test(),
+    )
+    .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:4002
@@ -42,7 +45,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Use port 4000, unless otherwise specified by second command line argument.
 
     let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    tcp.listen(format!("127.0.0.1:{port}"), TcpListenerTrustOptions::insecure())
+    tcp.listen(format!("127.0.0.1:{port}"), TcpListenerTrustOptions::insecure_test())
         .await?;
 
     // We won't call ctx.stop() here,

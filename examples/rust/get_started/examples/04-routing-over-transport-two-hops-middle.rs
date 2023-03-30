@@ -14,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a TCP connection to the responder node.
     let connection_to_responder = tcp
-        .connect("127.0.0.1:4000", TcpConnectionTrustOptions::insecure())
+        .connect("127.0.0.1:4000", TcpConnectionTrustOptions::insecure_test())
         .await?;
 
     // Create a Forwarder worker
@@ -27,7 +27,7 @@ async fn main(ctx: Context) -> Result<()> {
     .await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:3000", TcpListenerTrustOptions::insecure())
+    tcp.listen("127.0.0.1:3000", TcpListenerTrustOptions::insecure_test())
         .await?;
 
     // Don't call ctx.stop() here so this node runs forever.

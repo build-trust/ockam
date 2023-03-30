@@ -21,11 +21,11 @@ async fn main(ctx: Context) -> Result<()> {
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure())
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure_test())
         .await?;
     let r = route![node_in_hub, forwarding_address, "secure_channel_listener"];
     let channel = e
-        .create_secure_channel(r, SecureChannelTrustOptions::insecure())
+        .create_secure_channel(r, SecureChannelTrustOptions::insecure_test())
         .await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,

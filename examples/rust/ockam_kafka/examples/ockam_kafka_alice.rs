@@ -40,7 +40,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // for the `bob_to_alice` stream to get two-way communication.
 
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure())
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure_test())
         .await?;
     let (sender, _receiver) = Stream::new(&ctx)
         .await?
@@ -55,7 +55,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
     let channel = alice
-        .create_secure_channel(r, SecureChannelTrustOptions::insecure())
+        .create_secure_channel(r, SecureChannelTrustOptions::insecure_test())
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

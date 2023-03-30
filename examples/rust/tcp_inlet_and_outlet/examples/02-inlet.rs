@@ -15,7 +15,7 @@ async fn main(ctx: Context) -> Result<()> {
     let outlet_connection = tcp
         .connect(
             &format!("127.0.0.1:{outlet_port}"),
-            TcpConnectionTrustOptions::insecure(),
+            TcpConnectionTrustOptions::insecure_test(),
         )
         .await?;
     let route_to_outlet = route![outlet_connection, "outlet"];

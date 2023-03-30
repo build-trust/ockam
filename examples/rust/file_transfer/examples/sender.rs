@@ -49,7 +49,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Connect to the cloud node over TCP
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure())
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure_test())
         .await?;
 
     // Combine the tcp address of the cloud node and the forwarding_address to get a route
@@ -59,7 +59,7 @@ async fn main(ctx: Context) -> Result<()> {
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.
     let channel = sender
-        .create_secure_channel(route_to_receiver_listener, SecureChannelTrustOptions::insecure())
+        .create_secure_channel(route_to_receiver_listener, SecureChannelTrustOptions::insecure_test())
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

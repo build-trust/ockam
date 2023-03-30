@@ -58,7 +58,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     let tcp_authority_session = create_tcp_session(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
     let authority_trust_options =
-        SecureChannelTrustOptions::insecure().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
+        SecureChannelTrustOptions::insecure_test().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
             project.authority_public_identifier()
         ]));
     let trust_options = if let Some((sessions, session_id)) = tcp_authority_session.session {
@@ -108,7 +108,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4. create a tcp inlet with the above policy
 
     let tcp_project_session = create_tcp_session(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
-    let project_trust_options = SecureChannelTrustOptions::insecure()
+    let project_trust_options = SecureChannelTrustOptions::insecure_test()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
     let project_trust_options = if let Some((sessions, session_id)) = tcp_project_session.session {
         project_trust_options.as_consumer(&sessions, &session_id)
@@ -139,7 +139,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let secure_channel_to_control = edge_plane
         .create_secure_channel_extended(
             secure_channel_listener_route.clone(),
-            SecureChannelTrustOptions::insecure(),
+            SecureChannelTrustOptions::insecure_test(),
             Duration::from_secs(120),
         )
         .await?;

@@ -9,7 +9,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a TCP connection to the middle node.
     let connection_to_middle_node = tcp
-        .connect("localhost:3000", TcpConnectionTrustOptions::insecure())
+        .connect("localhost:3000", TcpConnectionTrustOptions::insecure_test())
         .await?;
 
     // Send a message to the "echoer" worker, on a different node, over two tcp hops.

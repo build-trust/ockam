@@ -62,7 +62,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     let tcp_session = create_tcp_session(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
     let trust_options =
-        SecureChannelTrustOptions::insecure().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
+        SecureChannelTrustOptions::insecure_test().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
             project.authority_public_identifier()
         ]));
     let trust_options = if let Some((sessions, session_id)) = tcp_session.session {
@@ -118,7 +118,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 5. create a forwarder on the Ockam orchestrator
 
     let tcp_project_session = create_tcp_session(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
-    let project_trust_options = SecureChannelTrustOptions::insecure()
+    let project_trust_options = SecureChannelTrustOptions::insecure_test()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
     let project_trust_options = if let Some((sessions, session_id)) = tcp_project_session.session {
         project_trust_options.as_consumer(&sessions, &session_id)
@@ -150,7 +150,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         &ctx,
         secure_channel_address,
         "control_plane1",
-        RemoteForwarderTrustOptions::insecure(),
+        RemoteForwarderTrustOptions::insecure_test(),
     )
     .await?;
     println!("forwarder is {forwarder:?}");
@@ -158,7 +158,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 6. create a secure channel listener which will allow the edge node to
     //    start a secure channel when it is ready
     control_plane
-        .create_secure_channel_listener("untrusted", SecureChannelListenerTrustOptions::insecure())
+        .create_secure_channel_listener("untrusted", SecureChannelListenerTrustOptions::insecure_test())
         .await?;
     println!("created a secure channel listener");
 

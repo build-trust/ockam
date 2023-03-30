@@ -22,12 +22,12 @@ async fn main(ctx: Context) -> Result<()> {
     let outlet_connection = tcp
         .connect(
             &format!("127.0.0.1:{outlet_port}"),
-            TcpConnectionTrustOptions::insecure(),
+            TcpConnectionTrustOptions::insecure_test(),
         )
         .await?;
     let r = route![outlet_connection, "secure_channel_listener"];
     let channel = e
-        .create_secure_channel(r, SecureChannelTrustOptions::insecure())
+        .create_secure_channel(r, SecureChannelTrustOptions::insecure_test())
         .await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
