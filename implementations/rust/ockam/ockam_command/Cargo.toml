@@ -91,7 +91,7 @@ strip-ansi-escapes = "0.1.1"
 validator = "0.16"
 colorful = "0.2"
 regex = "1.7.1"
-rustls = "0.20.8"
+rustls = "0.21.0"
 rustls-native-certs = "0.6.2"
 pem-rfc7468 = { version = "0.7.0", features = ["std"]}
 termimad = "0.23"
