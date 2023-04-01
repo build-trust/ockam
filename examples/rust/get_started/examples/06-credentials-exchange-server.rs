@@ -5,7 +5,10 @@ use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
-use ockam::identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy};
+use ockam::identity::{
+    AuthorityInfo, CredentialMemoryRetriever, Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions,
+    TrustContext, TrustEveryonePolicy,
+};
 use ockam::sessions::Sessions;
 use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 use std::sync::Arc;
@@ -46,7 +49,15 @@ async fn main(ctx: Context) -> Result<()> {
     let issuer = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
     let credential = issuer.get_credential(server.identifier()).await?.unwrap();
     println!("Credential:\n{credential}");
-    server.set_credential(credential).await;
+
+    // Create a trust context that will be used to authenticate credential exchanges
+    let trust_context = TrustContext::new(
+        "trust_context_id".to_string(),
+        Some(AuthorityInfo::new(
+            server.to_public().await?,
+            Some(Arc::new(CredentialMemoryRetriever::new(credential))),
+        )),
+    );
 
     // Start an echoer worker that will only accept incoming requests from
     // identities that have authenticated credentials issued by the above credential
@@ -56,10 +67,9 @@ async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker("echoer", Echoer, allow_production, AllowAll).await?;
 
     // Start a worker which will receive credentials sent by the client and issued by the issuer node
-    let issuer_identity = issuer.public_identity().await?;
     let storage = Arc::new(AuthenticatedAttributeStorage::new(store.clone()));
     server
-        .start_credential_exchange_worker(vec![issuer_identity], "credentials", true, storage)
+        .start_credential_exchange_worker(trust_context, "credentials", true, storage)
         .await?;
 
     // Start a secure channel listener that only allows channels with

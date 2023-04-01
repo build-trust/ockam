@@ -1,6 +1,9 @@
 use crate::authenticated_storage::IdentityAttributeStorage;
 use crate::credential::Credential;
-use crate::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, PublicIdentity};
+use crate::{
+    trust_context, Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, PublicIdentity,
+    TrustContext,
+};
 use minicbor::Decoder;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::async_trait;
@@ -13,7 +16,7 @@ const TARGET: &str = "ockam::credential_exchange_worker::service";
 
 /// Worker responsible for receiving and verifying other party's credential
 pub struct CredentialExchangeWorker {
-    authorities: Vec<PublicIdentity>,
+    trust_context: TrustContext,
     present_back: bool,
     identity: Identity,
     attributes_storage: Arc<dyn IdentityAttributeStorage>,
@@ -21,13 +24,13 @@ pub struct CredentialExchangeWorker {
 
 impl CredentialExchangeWorker {
     pub fn new(
-        authorities: Vec<PublicIdentity>,
+        trust_context: TrustContext,
         present_back: bool,
         identity: Identity,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
     ) -> Self {
         Self {
-            authorities,
+            trust_context,
             present_back,
             identity,
             attributes_storage,
@@ -83,7 +86,7 @@ impl CredentialExchangeWorker {
                     .receive_presented_credential(
                         sender.clone(),
                         credential,
-                        self.authorities.iter(),
+                        vec![self.trust_context.authority()?.identity()],
                         self.attributes_storage.clone(),
                     )
                     .await;
@@ -114,7 +117,7 @@ impl CredentialExchangeWorker {
                     .receive_presented_credential(
                         sender.clone(),
                         credential,
-                        self.authorities.iter(),
+                        vec![self.trust_context.authority()?.identity()],
                         self.attributes_storage.clone(),
                     )
                     .await;
@@ -130,9 +133,13 @@ impl CredentialExchangeWorker {
                         "Mutual credential presentation request processed successfully with {}",
                         sender
                     );
-                    let credential = self.identity.credential.read().await;
+                    let credential = self
+                        .trust_context
+                        .authority()?
+                        .credential(&self.identity)
+                        .await;
                     match credential.as_ref() {
-                        Some(p) if self.present_back => {
+                        Ok(p) if self.present_back => {
                             info!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
                             Response::ok(req.id()).body(p).to_vec()?
                         }

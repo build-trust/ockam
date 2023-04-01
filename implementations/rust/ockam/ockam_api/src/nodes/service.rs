@@ -157,6 +157,12 @@ impl NodeManager {
             .ok_or_else(|| ApiError::generic("Authorities don't exist"))
     }
 
+    pub(crate) fn trust_context(&self) -> Result<&TrustContext> {
+        self.trust_context
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Trust context doesn't exist"))
+    }
+
     /// Available only for member nodes
     pub(crate) fn project_id(&self) -> Result<&str> {
         self.project_id
@@ -397,10 +403,14 @@ impl NodeManager {
         )
         .await?;
 
-        // If we've been configured with authorities, we can start Credential Exchange service
-        if self.authorities().is_ok() {
-            self.start_credentials_service_impl(DefaultAddress::CREDENTIALS_SERVICE.into(), false)
-                .await?;
+        // If we've been configured with a trust context, we can start Credential Exchange service
+        if let Ok(tc) = self.trust_context() {
+            self.start_credentials_service_impl(
+                tc.clone(),
+                DefaultAddress::CREDENTIALS_SERVICE.into(),
+                false,
+            )
+            .await?;
         }
 
         Ok(())

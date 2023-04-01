@@ -69,8 +69,10 @@ impl AuthorityInfo {
     pub async fn credential(
         &self,
         for_identity: &Identity,
-        retriever: &impl CredentialRetriever,
     ) -> Result<Credential, ockam_core::Error> {
+        let retriever = self
+            .own_credential()
+            .ok_or_else(|| IdentityError::UnknownAuthority)?;
         let credential = retriever.retrieve(self.identity(), for_identity).await?;
 
         for_identity

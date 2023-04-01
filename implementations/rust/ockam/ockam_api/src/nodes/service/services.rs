@@ -34,10 +34,12 @@ use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, AllowAll, IncomingAccessControl};
 use ockam_identity::authenticated_storage::IdentityAttributeStorageReader;
+use ockam_identity::{AuthorityInfo, PublicIdentity, TrustContext};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
 use ockam_transport_tcp::TcpInletTrustOptions;
+use ockam_vault::Vault;
 
 use super::NodeManagerWorker;
 
@@ -96,6 +98,7 @@ impl NodeManager {
 
     pub(super) async fn start_credentials_service_impl<'a>(
         &mut self,
+        trust_context: TrustContext,
         addr: Address,
         oneway: bool,
     ) -> Result<()> {
@@ -105,11 +108,9 @@ impl NodeManager {
             ));
         }
 
-        let authorities = self.authorities()?;
-
         self.identity
             .start_credential_exchange_worker(
-                authorities.public_identities(),
+                trust_context,
                 addr.clone(),
                 !oneway,
                 self.attributes_storage.clone(),
@@ -707,9 +708,20 @@ impl NodeManagerWorker {
         let body: StartCredentialsService = dec.decode()?;
         let addr: Address = body.address().into();
         let oneway = body.oneway();
+        let encoded_identity = body.public_identity();
+
+        let vault = Vault::create();
+        let decoded_identity =
+            &hex::decode(encoded_identity.to_string()).map_err(|_| ApiError::generic("Unable to decode trust context's public identity when starting credential service."))?;
+        let i = PublicIdentity::import(decoded_identity, vault).await?;
+
+        let trust_context = TrustContext::new(
+            encoded_identity.to_string(),
+            Some(AuthorityInfo::new(i, None)),
+        );
 
         node_manager
-            .start_credentials_service_impl(addr, oneway)
+            .start_credentials_service_impl(trust_context, addr, oneway)
             .await?;
 
         Ok(Response::ok(req.id()))

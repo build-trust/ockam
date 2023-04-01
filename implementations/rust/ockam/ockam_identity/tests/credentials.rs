@@ -7,7 +7,10 @@ use ockam_identity::authenticated_storage::{
 };
 use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::credential::Credential;
-use ockam_identity::{Identity, TrustEveryonePolicy, TrustIdentifierPolicy};
+use ockam_identity::{
+    AuthorityInfo, CredentialMemoryRetriever, Identity, TrustContext, TrustEveryonePolicy,
+    TrustIdentifierPolicy,
+};
 
 use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::Vault;
@@ -28,10 +31,14 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
 
-    let authorities = vec![authority.to_public().await?];
+    let trust_context = TrustContext::new(
+        "test_trust_context_id".to_string(),
+        Some(AuthorityInfo::new(authority.to_public().await?, None)),
+    );
+
     server
         .start_credential_exchange_worker(
-            authorities,
+            trust_context,
             "credential_exchange",
             false,
             Arc::new(authenticated_attribute_storage.clone()),
@@ -85,16 +92,22 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         Credential::builder(client2.identifier().clone()).with_attribute("is_admin", b"true");
 
     let credential2 = authority.issue_credential(credential2).await?;
-    client2.set_credential(credential2).await;
 
     client2
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
+    let trust_context = TrustContext::new(
+        "test_trust_context_id".to_string(),
+        Some(AuthorityInfo::new(
+            authority.to_public().await?,
+            Some(Arc::new(CredentialMemoryRetriever::new(credential2))),
+        )),
+    );
+    let authorities = vec![trust_context.authority()?.identity().clone()];
 
-    let authorities = vec![authority.to_public().await?];
     client2
         .start_credential_exchange_worker(
-            authorities.clone(),
+            trust_context,
             "credential_exchange",
             true,
             Arc::new(authenticated_attribute_storage_client_2),
@@ -172,11 +185,14 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
 
-    let authorities = vec![authority.to_public().await?];
+    let trust_context = TrustContext::new(
+        "test_trust_context_id".to_string(),
+        Some(AuthorityInfo::new(authority.to_public().await?, None)),
+    );
 
     server
         .start_credential_exchange_worker(
-            authorities,
+            trust_context,
             "credential_exchange",
             false,
             Arc::new(AuthenticatedAttributeStorage::new(storage.clone())),
