@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 
-use ockam_transport_tcp::TcpTransport;
 use serde::{Deserialize, Serialize};
 
 use crate::{credential::Credential, error::IdentityError, Identity, PublicIdentity};
+use ockam_core::compat::{boxed::Box, string::String};
 
 /// Trust Context is a set of information about a trusted authority
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,12 +71,9 @@ impl AuthorityInfo {
     pub async fn credential(
         &self,
         for_identity: &Identity,
-        transport: &TcpTransport,
         retriever: &impl CredentialRetriever,
     ) -> Result<Credential, ockam_core::Error> {
-        let credential = retriever
-            .retrieve(self.identity(), for_identity, transport)
-            .await?;
+        let credential = retriever.retrieve(self.identity(), for_identity).await?;
 
         for_identity
             .verify_self_credential(&credential, vec![&self.identity].into_iter())
@@ -94,7 +91,6 @@ pub trait CredentialRetriever {
         &self,
         identity: &PublicIdentity,
         for_identity: &Identity,
-        transport: &TcpTransport,
     ) -> Result<Credential, ockam_core::Error>;
 }
 
@@ -121,7 +117,6 @@ impl CredentialRetriever for CredentialMemoryRetriever {
         &self,
         _identity: &PublicIdentity,
         _for_identity: &Identity,
-        _transport: &TcpTransport,
     ) -> Result<Credential, ockam_core::Error> {
         Ok(self.credential.clone())
     }
