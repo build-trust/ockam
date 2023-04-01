@@ -1,5 +1,6 @@
 use crate::terminal::TerminalBackground;
 use colorful::Colorful;
+use ockam_core::env::get_env_with_default;
 use once_cell::sync::Lazy;
 use std::io::{Read, Write};
 use syntect::highlighting::Theme;
@@ -38,17 +39,11 @@ static THEME: Lazy<Option<Theme>> = Lazy::new(|| {
 });
 
 fn is_markdown() -> bool {
-    match std::env::var("OCKAM_HELP_RENDER_MARKDOWN") {
-        Ok(v) => v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("1"),
-        Err(_e) => false,
-    }
+    get_env_with_default("OCKAM_HELP_RENDER_MARKDOWN", false).unwrap_or(false)
 }
 
 pub(crate) fn hide() -> bool {
-    match std::env::var("OCKAM_HELP_SHOW_HIDDEN") {
-        Ok(v) => !v.eq_ignore_ascii_case("true") || !v.eq_ignore_ascii_case("1"),
-        Err(_e) => true,
-    }
+    get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", false).unwrap_or(false)
 }
 
 pub(crate) fn about(body: &str) -> &'static str {

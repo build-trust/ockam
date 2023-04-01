@@ -73,7 +73,6 @@ impl<'a> BareCloudRequestWrapper<'a> {
 }
 
 mod node {
-    use std::env;
     use std::str::FromStr;
     use std::sync::Arc;
     use std::time::Duration;
@@ -82,6 +81,7 @@ mod node {
     use rust_embed::EmbeddedFile;
 
     use ockam_core::api::RequestBuilder;
+    use ockam_core::env::get_env;
     use ockam_core::{self, route, CowStr, Result};
     use ockam_identity::{IdentityIdentifier, SecureChannelTrustOptions, TrustIdentifierPolicy};
     use ockam_multiaddr::MultiAddr;
@@ -99,9 +99,9 @@ mod node {
         /// If the env var `OCKAM_CONTROLLER_IDENTITY_ID` is set, that will be used to
         /// load the identity instead of the file.
         pub(crate) fn load_controller_identity_id() -> Result<IdentityIdentifier> {
-            if let Ok(s) = env::var(OCKAM_CONTROLLER_IDENTITY_ID) {
-                trace!(idt = %s, "Read controller identity id from env");
-                return IdentityIdentifier::from_str(&s);
+            if let Ok(Some(idt)) = get_env::<IdentityIdentifier>(OCKAM_CONTROLLER_IDENTITY_ID) {
+                trace!(idt = %idt, "Read controller identity id from env");
+                return Ok(idt);
             }
             match StaticFiles::get("controller.id") {
                 Some(EmbeddedFile { data, .. }) => {

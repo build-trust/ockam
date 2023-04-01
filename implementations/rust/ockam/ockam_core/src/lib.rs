@@ -61,6 +61,9 @@ pub mod vault;
 /// Encoding
 pub mod hex_encoding;
 
+/// Environmental variables
+pub mod env;
+
 mod cbor_utils;
 mod error;
 mod key_exchanger;

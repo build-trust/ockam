@@ -1,5 +1,6 @@
 use clap::crate_version;
 use colorful::Colorful;
+use ockam_core::env::get_env_with_default;
 use serde::Deserialize;
 use std::env;
 use tokio::runtime::Builder;
@@ -46,11 +47,5 @@ async fn check() {
 }
 
 fn upgrade_check_is_disabled() -> bool {
-    match env::var("OCKAM_DISABLE_UPGRADE_CHECK") {
-        Ok(v) => {
-            let disable = v.trim().to_lowercase();
-            disable == "1" || disable == "true" || disable == "yes"
-        }
-        Err(_e) => false,
-    }
+    get_env_with_default("OCKAM_DISABLE_UPGRADE_CHECK", false).unwrap_or(false)
 }
