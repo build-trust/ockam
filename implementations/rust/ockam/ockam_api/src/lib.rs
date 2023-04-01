@@ -4,6 +4,7 @@ pub mod bootstrapped_identities_store;
 pub mod cli_state;
 pub mod cloud;
 pub mod config;
+pub mod credential_retriever;
 pub mod echoer;
 pub mod error;
 pub mod hop;
@@ -19,6 +20,7 @@ pub mod verifier;
 mod schema;
 mod session;
 mod util;
+pub use credential_retriever::*;
 pub use util::*;
 
 #[cfg(feature = "lmdb")]
