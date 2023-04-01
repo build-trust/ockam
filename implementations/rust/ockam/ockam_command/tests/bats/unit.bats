@@ -60,9 +60,9 @@ teardown() {
   assert_failure
 
   # Check we can start service, but only once with the same name
-  run "$OCKAM" service start credentials --addr my_credentials --node n1
+  run "$OCKAM" service start credentials --addr my_credentials --node n1 --identity 0134dabe4f886af3bd5d2b3ab50891a6dfe90c99099668ce8cb680888cac7d67db000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e1acf2670f5bfc34c466910949618c68a53183976e8e57d5fc07b6a3d02d22a3030101407e6332d0deeccf8d12de9972e31b54200f1597db2a195d08b15b251d6293c180611c66acc26913a16d5ea5536227c8baefb4fa95bd709212fdc1ca4fc3370e02
   assert_success
-  run "$OCKAM" service start credentials --addr my_credentials --node n1
+  run "$OCKAM" service start credentials --addr my_credentials --node n1 --identity 0134dabe4f886af3bd5d2b3ab50891a6dfe90c99099668ce8cb680888cac7d67db000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e1acf2670f5bfc34c466910949618c68a53183976e8e57d5fc07b6a3d02d22a3030101407e6332d0deeccf8d12de9972e31b54200f1597db2a195d08b15b251d6293c180611c66acc26913a16d5ea5536227c8baefb4fa95bd709212fdc1ca4fc3370e02
   assert_failure
 }
 

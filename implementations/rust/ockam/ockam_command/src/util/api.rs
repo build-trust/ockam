@@ -160,11 +160,12 @@ pub(crate) fn start_verifier_service(addr: &str) -> RequestBuilder<'static, Star
 }
 
 /// Construct a request to start a Credential Service
-pub(crate) fn start_credentials_service(
-    addr: &str,
+pub(crate) fn start_credentials_service<'a>(
+    public_identity: &'a str,
+    addr: &'a str,
     oneway: bool,
-) -> RequestBuilder<'static, StartCredentialsService> {
-    let payload = StartCredentialsService::new(addr, oneway);
+) -> RequestBuilder<'static, StartCredentialsService<'a>> {
+    let payload = StartCredentialsService::new(public_identity, addr, oneway);
     Request::post(node_service(DefaultAddress::CREDENTIALS_SERVICE)).body(payload)
 }
 

@@ -6,13 +6,13 @@ use crate::credential::{
 };
 use crate::{
     Identity, IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo,
-    IdentityStateConst, IdentityVault, PublicIdentity,
+    IdentityStateConst, IdentityVault, PublicIdentity, TrustContext,
 };
 use core::marker::PhantomData;
 use minicbor::Decoder;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
+
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
 use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Mailboxes, Result, Route};
@@ -55,14 +55,14 @@ impl Identity {
     /// after successful verification
     pub async fn start_credential_exchange_worker(
         &self,
-        authorities: Vec<PublicIdentity>,
+        trust_context: TrustContext,
         address: impl Into<Address>,
         present_back: bool,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
     ) -> Result<()> {
         let s = self.async_try_clone().await?;
         let worker =
-            CredentialExchangeWorker::new(authorities, present_back, s, attributes_storage);
+            CredentialExchangeWorker::new(trust_context, present_back, s, attributes_storage);
 
         WorkerBuilder::with_mailboxes(
             Mailboxes::main(

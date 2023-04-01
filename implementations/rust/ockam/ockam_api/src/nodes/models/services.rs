@@ -294,15 +294,21 @@ impl<'a> StartVerifierService<'a> {
 pub struct StartCredentialsService<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6467937>,
-    #[b(1)] addr: CowStr<'a>,
-    #[n(2)] oneway: bool,
+    #[b(1)] public_identity: CowStr<'a>,
+    #[b(2)] addr: CowStr<'a>,
+    #[n(3)] oneway: bool,
 }
 
 impl<'a> StartCredentialsService<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>, oneway: bool) -> Self {
+    pub fn new(
+        public_identity: impl Into<CowStr<'a>>,
+        addr: impl Into<CowStr<'a>>,
+        oneway: bool,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
+            public_identity: public_identity.into(),
             addr: addr.into(),
             oneway,
         }
@@ -314,6 +320,10 @@ impl<'a> StartCredentialsService<'a> {
 
     pub fn oneway(&self) -> bool {
         self.oneway
+    }
+
+    pub fn public_identity(&'a self) -> &'a str {
+        &self.public_identity
     }
 }
 

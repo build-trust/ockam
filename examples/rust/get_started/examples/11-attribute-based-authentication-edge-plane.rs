@@ -1,3 +1,4 @@
+use ockam::AsyncTryClone;
 use ockam_core::compat::sync::Arc;
 use std::time::Duration;
 
@@ -5,10 +6,12 @@ use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
-use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
+use ockam::identity::{
+    AuthorityInfo, Identity, SecureChannelTrustOptions, TrustContext, TrustEveryonePolicy, TrustMultiIdentifiersPolicy,
+};
 use ockam::{route, vault::Vault, Context, Result, TcpInletTrustOptions, TcpTransport};
-use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
-use ockam_api::{create_tcp_session, DefaultAddress};
+use ockam_api::authenticator::direct::{RpcClient, TokenAcceptorClient};
+use ockam_api::{create_tcp_session, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress};
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
@@ -81,25 +84,28 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .await?,
     );
     token_acceptor.present_token(&token).await?;
-    let cred_client = CredentialIssuerClient::new(
-        RpcClient::new(route![secure_channel, DefaultAddress::CREDENTIAL_ISSUER], &ctx).await?,
+
+    // Create a trust context that will be used to authenticate credential exchanges
+    let trust_context = TrustContext::new(
+        "trust_context_id".to_string(),
+        Some(AuthorityInfo::new(
+            project.authority_public_identity(),
+            Some(Arc::new(CredentialIssuerRetriever::new(
+                CredentialIssuerInfo::new(project.authority_route()),
+                tcp.async_try_clone().await?,
+            ))),
+        )),
     );
-    let credential = cred_client.credential().await?;
+
+    let credential = trust_context.authority()?.credential(&edge_plane).await?;
 
     println!("{credential}");
 
-    // store the credential and start a credential exchange worker which will be
+    // start a credential exchange worker which will be
     // later on to exchange credentials with the control node
-    edge_plane.set_credential(credential.to_owned()).await;
-
     let storage = AuthenticatedAttributeStorage::new(edge_plane.authenticated_storage().clone());
     edge_plane
-        .start_credential_exchange_worker(
-            vec![project.authority_public_identity()],
-            "credential_exchange",
-            true,
-            Arc::new(storage),
-        )
+        .start_credential_exchange_worker(trust_context, "credential_exchange", true, Arc::new(storage))
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
