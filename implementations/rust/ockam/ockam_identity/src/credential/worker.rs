@@ -1,7 +1,7 @@
 use crate::authenticated_storage::IdentityAttributeStorage;
 use crate::credential::Credential;
 use crate::{
-    trust_context, Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, PublicIdentity,
+    Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo,
     TrustContext,
 };
 use minicbor::Decoder;

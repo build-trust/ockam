@@ -712,7 +712,7 @@ impl NodeManagerWorker {
 
         let vault = Vault::create();
         let decoded_identity =
-            &hex::decode(encoded_identity.to_string()).map_err(|_| ApiError::generic("Unable to decode trust context's public identity when starting credential service."))?;
+            &hex::decode(encoded_identity).map_err(|_| ApiError::generic("Unable to decode trust context's public identity when starting credential service."))?;
         let i = PublicIdentity::import(decoded_identity, vault).await?;
 
         let trust_context = TrustContext::new(
