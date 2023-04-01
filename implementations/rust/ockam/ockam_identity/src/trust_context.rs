@@ -72,7 +72,7 @@ impl AuthorityInfo {
     ) -> Result<Credential, ockam_core::Error> {
         let retriever = self
             .own_credential()
-            .ok_or_else(|| IdentityError::UnknownAuthority)?;
+            .ok_or(IdentityError::UnknownAuthority)?;
         let credential = retriever.retrieve(self.identity(), for_identity).await?;
 
         for_identity
