@@ -90,18 +90,14 @@ impl TrustContextConfig {
         self.authority.as_ref()
     }
 
-    pub async fn into_trust_context(
+    pub async fn to_trust_context(
         &self,
         tcp_transport: Option<TcpTransport>,
     ) -> Result<TrustContext> {
         let authority = if let Some(authority_config) = self.authority.as_ref() {
             let identity = authority_config.identity.clone();
             let own_cred = if let Some(retriever_type) = &authority_config.own_credential {
-                Some(
-                    retriever_type
-                        .into_credential_retriever(tcp_transport)
-                        .await?,
-                )
+                Some(retriever_type.to_credential_retriever(tcp_transport)?)
             } else {
                 None
             };
@@ -142,7 +138,7 @@ pub enum CredentialRetrieverType {
 }
 
 impl CredentialRetrieverType {
-    async fn into_credential_retriever(
+    fn to_credential_retriever(
         &self,
         tcp_transport: Option<TcpTransport>,
     ) -> Result<Arc<dyn CredentialRetriever>> {
