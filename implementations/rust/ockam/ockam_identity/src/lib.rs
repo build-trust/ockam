@@ -48,6 +48,7 @@ mod identity;
 mod identity_builder;
 mod key_attributes;
 mod public_identity;
+mod trust_context;
 
 pub use channel::*;
 pub use identifiers::*;
@@ -55,6 +56,7 @@ pub use identity::*;
 pub use identity_builder::*;
 pub use key_attributes::*;
 pub use public_identity::*;
+pub use trust_context::*;
 
 mod signature;
 

@@ -1346,7 +1346,7 @@ impl CredentialsState {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct CredentialState {
     pub path: PathBuf,
 }
