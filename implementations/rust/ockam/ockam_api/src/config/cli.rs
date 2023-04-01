@@ -1,10 +1,20 @@
 //! Configuration files used by the ockam CLI
 
+use crate::cli_state::CredentialState;
 use crate::config::{lookup::ConfigLookup, ConfigValues};
-use crate::{cli_state, HexByteVec};
+use crate::error::ApiError;
+use crate::{
+    cli_state, CredentialIssuerInfo, CredentialIssuerRetriever, CredentialStateRetriever,
+    HexByteVec,
+};
+use ockam::TcpTransport;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
+use ockam_identity::credential::Credential;
+use ockam_identity::{
+    AuthorityInfo, CredentialMemoryRetriever, CredentialRetriever, IdentityIdentifier,
+    IdentityVault, PublicIdentity, TrustContext,
+};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -56,6 +66,101 @@ impl OckamConfig {
     /// This may be optimised in the future!
     pub fn lookup(&self) -> &ConfigLookup {
         &self.lookup
+    }
+}
+
+/// A configuration struct to serialize and deserialize a trust context
+/// used within the ockam CLI and ockam node
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrustContextConfig {
+    id: String,
+    authority: Option<TrustAuthorityConfig>,
+}
+
+impl TrustContextConfig {
+    pub fn new(id: String, authority: Option<TrustAuthorityConfig>) -> Self {
+        Self { id, authority }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn authority(&self) -> Option<&TrustAuthorityConfig> {
+        self.authority.as_ref()
+    }
+
+    pub async fn into_trust_context(
+        &self,
+        tcp_transport: Option<TcpTransport>,
+    ) -> Result<TrustContext> {
+        let authority = if let Some(authority_config) = self.authority.as_ref() {
+            let identity = authority_config.identity.clone();
+            let own_cred = if let Some(retriever_type) = &authority_config.own_credential {
+                Some(
+                    retriever_type
+                        .into_credential_retriever(tcp_transport)
+                        .await?,
+                )
+            } else {
+                None
+            };
+
+            Some(AuthorityInfo::new(identity, own_cred))
+        } else {
+            None
+        };
+
+        Ok(TrustContext::new(self.id.clone(), authority))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrustAuthorityConfig {
+    identity: PublicIdentity,
+    own_credential: Option<CredentialRetrieverType>,
+}
+
+impl TrustAuthorityConfig {
+    pub fn new(identity: PublicIdentity, own_credential: Option<CredentialRetrieverType>) -> Self {
+        Self {
+            identity,
+            own_credential,
+        }
+    }
+}
+
+/// Type of credential retriever
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CredentialRetrieverType {
+    /// Credential is stored in memory
+    FromMemory(Credential),
+    /// Path to credential file
+    FromPath(CredentialState),
+    /// MultiAddr to Credential Issuer
+    FromCredentialIssuer(CredentialIssuerInfo),
+}
+
+impl CredentialRetrieverType {
+    async fn into_credential_retriever(
+        &self,
+        tcp_transport: Option<TcpTransport>,
+    ) -> Result<Arc<dyn CredentialRetriever>> {
+        match self {
+            CredentialRetrieverType::FromMemory(credential) => {
+                Ok(Arc::new(CredentialMemoryRetriever::new(credential.clone())))
+            }
+            CredentialRetrieverType::FromPath(credential_state) => Ok(Arc::new(
+                CredentialStateRetriever::new(credential_state.clone()),
+            )),
+            CredentialRetrieverType::FromCredentialIssuer(credential_issuer_info) => {
+                let tcp_transport = tcp_transport.ok_or_else(|| ApiError::generic("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
+                Ok(Arc::new(CredentialIssuerRetriever::new(
+                    credential_issuer_info.clone(),
+                    tcp_transport,
+                )))
+            }
+        }
     }
 }
 

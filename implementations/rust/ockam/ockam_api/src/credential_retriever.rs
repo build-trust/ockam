@@ -22,6 +22,12 @@ pub struct CredentialStateRetriever {
     state: CredentialState,
 }
 
+impl CredentialStateRetriever {
+    pub fn new(state: CredentialState) -> Self {
+        Self { state }
+    }
+}
+
 #[async_trait]
 impl CredentialRetriever for CredentialStateRetriever {
     async fn retrieve(
@@ -36,6 +42,12 @@ impl CredentialRetriever for CredentialStateRetriever {
 pub struct CredentialIssuerRetriever {
     issuer: CredentialIssuerInfo,
     transport: TcpTransport,
+}
+
+impl CredentialIssuerRetriever {
+    pub fn new(issuer: CredentialIssuerInfo, transport: TcpTransport) -> Self {
+        Self { issuer, transport }
+    }
 }
 
 #[async_trait]

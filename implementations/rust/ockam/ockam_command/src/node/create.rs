@@ -1,5 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::config::cli::{CredentialRetrieverType, TrustAuthorityConfig, TrustContextConfig};
+use ockam_api::CredentialIssuerInfo;
 use ockam_identity::PublicIdentity;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
@@ -33,7 +35,7 @@ use crate::{
 use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::authority_node;
-use ockam_api::nodes::service::ApiTransport;
+use ockam_api::nodes::service::{ApiTransport, NodeManagerTrustOptions};
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     config::cli::Authority,
@@ -260,6 +262,40 @@ async fn run_foreground_node(
         None => None,
     };
 
+    let proj_path = match &cmd.project {
+        Some(path) => Some(path.clone()),
+        None => match opts.state.projects.default() {
+            Ok(p) => Some(p.path),
+            Err(_) => None,
+        },
+    };
+
+    let trust_context_config = match proj_path {
+        Some(path) => {
+            let s = tokio::fs::read_to_string(path).await?;
+            let p: ProjectInfo = serde_json::from_str(&s)?;
+
+            match (p.authority_identity, p.authority_access_route) {
+                (Some(identity), Some(route)) => {
+                    let vault = Vault::create();
+                    let authority_public_identity =
+                        PublicIdentity::import(&hex::decode(identity.to_string())?, vault).await?;
+                    let authority_maddr = MultiAddr::from_str(&route)?;
+
+                    let retriever = CredentialRetrieverType::FromCredentialIssuer(
+                        CredentialIssuerInfo::new(authority_maddr),
+                    );
+                    let authority =
+                        TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
+                    let tcc = TrustContextConfig::new(p.id.to_string(), Some(authority));
+                    Some(tcc)
+                }
+                _ => None,
+            }
+        }
+        None => None,
+    };
+
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = &cmd.tcp_listener_address;
 
@@ -319,6 +355,7 @@ async fn run_foreground_node(
             },
             tcp.async_try_clone().await?,
         ),
+        NodeManagerTrustOptions::new(trust_context_config),
     )
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);

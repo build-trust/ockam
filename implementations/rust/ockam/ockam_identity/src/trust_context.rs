@@ -1,12 +1,10 @@
 use async_trait::async_trait;
 
-use serde::{Deserialize, Serialize};
-
 use crate::{credential::Credential, error::IdentityError, Identity, PublicIdentity};
-use ockam_core::compat::{boxed::Box, string::String};
+use ockam_core::compat::{boxed::Box, string::String, sync::Arc};
 
 /// Trust Context is a set of information about a trusted authority
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct TrustContext {
     id: String,
     authority: Option<AuthorityInfo>,
@@ -14,11 +12,8 @@ pub struct TrustContext {
 
 impl TrustContext {
     /// Create a new Trust Context
-    pub fn new(authority: AuthorityInfo, id: String) -> Self {
-        Self {
-            id,
-            authority: Some(authority),
-        }
+    pub fn new(id: String, authority: Option<AuthorityInfo>) -> Self {
+        Self { id, authority }
     }
     /// Return the ID of the Trust Context
     pub fn id(&self) -> &str {
@@ -34,15 +29,18 @@ impl TrustContext {
 }
 
 /// Authority Info is a set of information defining an authority
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct AuthorityInfo {
     identity: PublicIdentity,
-    own_credential: Option<CredentialRetrieverType>,
+    own_credential: Option<Arc<dyn CredentialRetriever>>,
 }
 
 impl AuthorityInfo {
     /// Create a new Authority Info
-    pub fn new(identity: PublicIdentity, own_credential: Option<CredentialRetrieverType>) -> Self {
+    pub fn new(
+        identity: PublicIdentity,
+        own_credential: Option<Arc<dyn CredentialRetriever>>,
+    ) -> Self {
         Self {
             identity,
             own_credential,
@@ -63,7 +61,7 @@ impl AuthorityInfo {
     }
 
     /// Return the type of credential retriever for the Authority
-    pub fn own_credential(&self) -> Option<&CredentialRetrieverType> {
+    pub fn own_credential(&self) -> Option<&Arc<dyn CredentialRetriever>> {
         self.own_credential.as_ref()
     }
 
@@ -85,7 +83,7 @@ impl AuthorityInfo {
 
 /// Trait for retrieving a credential
 #[async_trait]
-pub trait CredentialRetriever {
+pub trait CredentialRetriever: Send + Sync + 'static {
     /// Retrieve a credential for an identity
     async fn retrieve(
         &self,
@@ -94,20 +92,16 @@ pub trait CredentialRetriever {
     ) -> Result<Credential, ockam_core::Error>;
 }
 
-/// Type of credential retriever
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CredentialRetrieverType {
-    /// Credential is stored in memory
-    FromMemory(Credential),
-    /// Path to credential file
-    FromPath(String),
-    /// MultiAddr to Credential Issuer
-    FromCredentialIssuer(String),
-}
-
 /// Credential retriever that retrieves a credential from memory
 pub struct CredentialMemoryRetriever {
     credential: Credential,
+}
+
+impl CredentialMemoryRetriever {
+    /// Create a new CredentialMemoryRetriever
+    pub fn new(credential: Credential) -> Self {
+        Self { credential }
+    }
 }
 
 #[async_trait]
