@@ -1,9 +1,6 @@
 use crate::authenticated_storage::IdentityAttributeStorage;
 use crate::credential::Credential;
-use crate::{
-    Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo,
-    TrustContext,
-};
+use crate::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, TrustContext};
 use minicbor::Decoder;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::async_trait;
