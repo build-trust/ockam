@@ -360,7 +360,7 @@ impl NodeManager {
 
     async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
         self.trust_context = Some(
-            tc.into_trust_context(Some(self.tcp_transport.async_try_clone().await?))
+            tc.to_trust_context(Some(self.tcp_transport.async_try_clone().await?))
                 .await?,
         );
 
