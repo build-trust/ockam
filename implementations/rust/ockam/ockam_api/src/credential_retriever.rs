@@ -17,7 +17,7 @@ use crate::{
     DefaultAddress,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct CredentialStateRetriever {
     state: CredentialState,
 }
@@ -28,15 +28,14 @@ impl CredentialRetriever for CredentialStateRetriever {
         &self,
         _identity: &PublicIdentity,
         _for_identity: &Identity,
-        _transport: &TcpTransport,
     ) -> Result<Credential, ockam_core::Error> {
         Ok(self.state.config().await?.credential()?)
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialIssuerRetriever {
     issuer: CredentialIssuerInfo,
+    transport: TcpTransport,
 }
 
 #[async_trait]
@@ -45,13 +44,14 @@ impl CredentialRetriever for CredentialIssuerRetriever {
         &self,
         identity: &PublicIdentity,
         for_identity: &Identity,
-        transport: &TcpTransport,
     ) -> Result<Credential, ockam_core::Error> {
         debug!("Getting credential from : {}", &self.issuer.addr);
 
         let allowed = vec![identity.identifier().clone()];
 
-        let authority_tcp_session = match create_tcp_session(&self.issuer.addr, transport).await {
+        let authority_tcp_session = match create_tcp_session(&self.issuer.addr, &self.transport)
+            .await
+        {
             Some(authority_tcp_session) => authority_tcp_session,
             None => {
                 let err_msg = format!("Invalid route within trust context: {}", &self.issuer.addr);
