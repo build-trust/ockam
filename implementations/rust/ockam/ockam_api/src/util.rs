@@ -310,7 +310,7 @@ pub mod test {
     use crate::cli_state::{CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::nodes::service::{
         ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
-        NodeManagerTransportOptions,
+        NodeManagerTransportOptions, NodeManagerTrustOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
     use ockam::Result;
@@ -387,6 +387,7 @@ pub mod test {
                 },
                 tcp.async_try_clone().await?,
             ),
+            NodeManagerTrustOptions::new(None),
         )
         .await?;
 

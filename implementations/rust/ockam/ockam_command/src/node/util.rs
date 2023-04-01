@@ -6,17 +6,20 @@ use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
-use ockam_api::cli_state;
-use ockam_api::config::cli::{self, Authority};
+use ockam_api::config::cli::{
+    self, Authority, CredentialRetrieverType, TrustAuthorityConfig, TrustContextConfig,
+};
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
-    NodeManagerTransportOptions,
+    NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_api::{cli_state, CredentialIssuerInfo};
 use ockam_core::compat::sync::Arc;
 use ockam_core::AllowAll;
 use ockam_multiaddr::MultiAddr;
@@ -66,6 +69,40 @@ pub async fn start_embedded_node_with_vault_and_identity(
         }
     };
 
+    let proj_path = match &cmd.project {
+        Some(path) => Some(path.clone()),
+        None => match opts.state.projects.default() {
+            Ok(p) => Some(p.path),
+            Err(_) => None,
+        },
+    };
+
+    let trust_context_config = match proj_path {
+        Some(path) => {
+            let s = tokio::fs::read_to_string(path).await?;
+            let p: ProjectInfo = serde_json::from_str(&s)?;
+
+            match (p.authority_identity, p.authority_access_route) {
+                (Some(identity), Some(route)) => {
+                    let vault = Vault::create();
+                    let authority_public_identity =
+                        PublicIdentity::import(&hex::decode(identity.to_string())?, vault).await?;
+                    let authority_maddr = MultiAddr::from_str(&route)?;
+
+                    let retriever = CredentialRetrieverType::FromCredentialIssuer(
+                        CredentialIssuerInfo::new(authority_maddr),
+                    );
+                    let authority =
+                        TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
+                    let tcc = TrustContextConfig::new(p.id.to_string(), Some(authority));
+                    Some(tcc)
+                }
+                _ => None,
+            }
+        }
+        None => None,
+    };
+
     let tcp = TcpTransport::create(ctx).await?;
     let bind = cmd.tcp_listener_address;
     // This listener gives exclusive access to our node, make sure this is intended
@@ -99,6 +136,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
             },
             tcp,
         ),
+        NodeManagerTrustOptions::new(trust_context_config),
     )
     .await?;
 

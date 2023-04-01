@@ -17,7 +17,7 @@ use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
 use ockam_identity::credential::Credential;
-use ockam_identity::IdentityVault;
+use ockam_identity::{IdentityVault, TrustContext};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
@@ -33,7 +33,7 @@ use super::registry::Registry;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::CliState;
-use crate::config::cli::AuthoritiesConfig;
+use crate::config::cli::{AuthoritiesConfig, TrustContextConfig};
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
@@ -117,6 +117,7 @@ pub struct NodeManager {
     project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
+    trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
@@ -237,6 +238,18 @@ impl NodeManagerTransportOptions {
     }
 }
 
+pub struct NodeManagerTrustOptions {
+    trust_context_config: Option<TrustContextConfig>,
+}
+
+impl NodeManagerTrustOptions {
+    pub fn new(trust_context_config: Option<TrustContextConfig>) -> Self {
+        Self {
+            trust_context_config,
+        }
+    }
+}
+
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
@@ -244,6 +257,7 @@ impl NodeManager {
         general_options: NodeManagerGeneralOptions,
         projects_options: NodeManagerProjectsOptions<'_>,
         transport_options: NodeManagerTransportOptions,
+        trust_options: NodeManagerTrustOptions,
     ) -> Result<Self> {
         let api_transport_id = random_alias();
         let mut transports = BTreeMap::new();
@@ -298,6 +312,7 @@ impl NodeManager {
             projects: Arc::new(projects_options.projects),
             project_id: projects_options.project_id,
             authorities: None,
+            trust_context: None,
             registry: Default::default(),
             medic: {
                 let ctx = ctx.async_try_clone().await?;
@@ -311,6 +326,10 @@ impl NodeManager {
         if !general_options.skip_defaults {
             if let Some(ac) = projects_options.ac {
                 s.configure_authorities(ac).await?;
+            }
+
+            if let Some(tc) = trust_options.trust_context_config {
+                s.configure_trust_context(&tc).await?;
             }
         }
 
@@ -335,6 +354,15 @@ impl NodeManager {
         }
 
         self.authorities = Some(Authorities::new(v));
+
+        Ok(())
+    }
+
+    async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
+        self.trust_context = Some(
+            tc.into_trust_context(Some(self.tcp_transport.async_try_clone().await?))
+                .await?,
+        );
 
         Ok(())
     }
