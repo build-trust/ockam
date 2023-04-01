@@ -4,6 +4,7 @@ use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
 };
+use ockam_core::env::get_env;
 use ockam_core::{compat::sync::Arc, Address, Result};
 
 /// Execute a `StartWorker` command
@@ -52,8 +53,10 @@ async fn start(
     router.map.internal.insert(addr.clone(), record);
 
     #[cfg(feature = "std")]
-    if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
-        trace!("{:#?}", router.map.internal);
+    if let Ok(Some(dump_internals)) = get_env::<bool>("OCKAM_DUMP_INTERNALS") {
+        if dump_internals {
+            trace!("{:#?}", router.map.internal);
+        }
     }
     #[cfg(all(not(feature = "std"), feature = "dump_internals"))]
     trace!("{:#?}", router.map.internal);

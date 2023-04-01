@@ -4,6 +4,7 @@ use core::{
     time::Duration,
 };
 use ockam_core::compat::{collections::BTreeMap, sync::Arc};
+use ockam_core::env::get_env;
 use std::{fs::OpenOptions, io::Write};
 
 pub struct Metrics {
@@ -25,9 +26,9 @@ impl Metrics {
 
     /// Spawned by the Executor to periodically collect metrics
     pub(crate) async fn run(self: Arc<Self>, alive: Arc<AtomicBool>) {
-        let path = match std::env::var("OCKAM_METRICS_PATH") {
-            Ok(path) => path,
-            Err(_) => {
+        let path = match get_env::<String>("OCKAM_METRICS_PATH") {
+            Ok(Some(path)) => path,
+            _ => {
                 debug!("Metrics collection disabled, set `OCKAM_METRICS_PATH` to collect metrics");
                 return;
             }

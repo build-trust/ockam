@@ -29,6 +29,7 @@ use tinyvec::{Array, ArrayVec, TinyVec};
 
 use crate::proto::{DnsAddr, Ip4, Ip6, Tcp};
 pub use error::Error;
+use ockam_core::env::FromString;
 pub use registry::{Registry, RegistryBuilder};
 
 /// Global default registry of known protocols.
@@ -284,6 +285,18 @@ impl Clone for MultiAddr {
                 reg: self.reg.clone(),
             }
         }
+    }
+}
+
+impl FromString for MultiAddr {
+    fn from_string(s: &str) -> ockam_core::Result<Self> {
+        Self::from_str(s).map_err(|_| {
+            ockam_core::Error::new(
+                ockam_core::errcode::Origin::Core,
+                ockam_core::errcode::Kind::Internal,
+                "MultiAddr parse error",
+            )
+        })
     }
 }
 

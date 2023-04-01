@@ -1,6 +1,5 @@
 use core::time::Duration;
 use std::{
-    env,
     net::{SocketAddr, TcpListener},
     path::Path,
     str::FromStr,
@@ -21,6 +20,7 @@ use ockam_api::cli_state::{CliState, NodeState};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
+use ockam_core::env::get_env;
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
 use ockam_multiaddr::{
@@ -467,8 +467,8 @@ pub fn setup_logging(verbose: u8, no_color: bool) {
     // If both `verbose` and OCKAM_LOG are not set, logging will not be enabled.
     // Otherwise, use `verbose` to define the log level.
     let filter = match verbose {
-        0 => match env::var("OCKAM_LOG") {
-            Ok(s) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
+        0 => match get_env::<String>("OCKAM_LOG") {
+            Ok(Some(s)) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
             _ => return,
         },
         1 => builder

@@ -6,6 +6,8 @@ use anyhow::{anyhow, Context as _};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 
 use mode::*;
+use ockam_core::env::{get_env, get_env_with_default, FromString};
+use ockam_core::errcode::Kind;
 
 use crate::{OutputFormat, Result};
 
@@ -28,6 +30,46 @@ pub enum TerminalBackground {
     Unknown,
 }
 
+struct Color(u8);
+
+impl FromString for Color {
+    fn from_string(s: &str) -> ockam_core::Result<Self> {
+        Ok(Color(s.to_string().parse::<u8>().map_err(|_| {
+            ockam_core::Error::new(
+                ockam_core::errcode::Origin::Core,
+                Kind::Internal,
+                "u8 parse error",
+            )
+        })?))
+    }
+}
+
+struct TerminalColors {
+    #[allow(dead_code)]
+    foreground: Color,
+    background: Color,
+}
+
+impl TerminalColors {
+    pub fn terminal_background(&self) -> TerminalBackground {
+        if (0..8).contains(&self.background.0) {
+            TerminalBackground::Dark
+        } else {
+            TerminalBackground::Light
+        }
+    }
+}
+
+impl FromString for TerminalColors {
+    fn from_string(s: &str) -> ockam_core::Result<Self> {
+        let parts: Vec<&str> = s.split(';').collect();
+        Ok(TerminalColors {
+            foreground: Color::from_string(parts[0])?,
+            background: Color::from_string(parts[1])?,
+        })
+    }
+}
+
 impl TerminalBackground {
     /// Detect if terminal background is "light", "dark" or "unknown".
     ///
@@ -41,25 +83,12 @@ impl TerminalBackground {
     ///
     /// Reference: https://stackoverflow.com/a/54652367
     pub fn detect_background_color() -> TerminalBackground {
-        match std::env::var("COLORFGBG") {
-            Ok(v) => {
-                let parts: Vec<&str> = v.split(';').collect();
-                match parts.get(1) {
-                    Some(p) => match p.to_string().parse::<i32>() {
-                        Ok(i) => {
-                            if (0..8).contains(&i) {
-                                TerminalBackground::Dark
-                            } else {
-                                TerminalBackground::Light
-                            }
-                        }
-                        Err(_e) => TerminalBackground::Unknown,
-                    },
-                    None => TerminalBackground::Unknown,
-                }
-            }
-            Err(_e) => TerminalBackground::Unknown,
+        let terminal_colors = get_env::<TerminalColors>("COLORFGBG");
+        if let Ok(Some(terminal_colors)) = terminal_colors {
+            return terminal_colors.terminal_background();
         }
+
+        TerminalBackground::Unknown
     }
 }
 
@@ -151,13 +180,13 @@ impl<W: TerminalWriter> Terminal<W> {
     fn should_disable_color(no_color: bool) -> bool {
         // If global argument `--no-color` is passed or the `NO_COLOR` env var is set, colors
         // will be stripped out from output messages. Otherwise, let the terminal decide.
-        no_color || std::env::var("NO_COLOR").is_ok()
+        no_color || get_env_with_default("NO_COLOR", false).unwrap_or(false)
     }
 
     fn should_disable_user_input(no_input: bool) -> bool {
         // If global argument `--no-input` is passed or the `NO_INPUT` env var is set we won't be able
         // to ask the user for input.  Otherwise, let the terminal decide based on the `is_tty` value
-        no_input || std::env::var("NO_INPUT").is_ok()
+        no_input || get_env_with_default("NO_INPUT", false).unwrap_or(false)
     }
 }
 

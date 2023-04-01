@@ -18,6 +18,7 @@ use std::time::SystemTime;
 use sysinfo::{Pid, System, SystemExt};
 
 use crate::lmdb::LmdbStorage;
+use ockam_core::env::get_env_with_default;
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::credential::Credential;
 use thiserror::Error;
@@ -130,12 +131,12 @@ impl CliState {
 
     /// Returns the default directory for the CLI state.
     pub fn default_dir() -> Result<PathBuf> {
-        Ok(match std::env::var("OCKAM_HOME") {
-            Ok(dir) => PathBuf::from(&dir),
-            Err(_) => dirs::home_dir()
+        Ok(get_env_with_default::<PathBuf>(
+            "OCKAM_HOME",
+            dirs::home_dir()
                 .ok_or_else(|| CliStateError::NotFound("home dir".to_string()))?
                 .join(".ockam"),
-        })
+        )?)
     }
 
     /// Returns the directory where the default objects are stored.

@@ -6,6 +6,7 @@ use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::compat::sync::Arc;
+use ockam_core::env::FromString;
 use ockam_core::vault::{Hasher, KeyId};
 use ockam_core::{Error, Result};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -105,6 +106,12 @@ impl FromStr for IdentityIdentifier {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.try_into()
+    }
+}
+
+impl FromString for IdentityIdentifier {
+    fn from_string(s: &str) -> Result<Self> {
         s.try_into()
     }
 }

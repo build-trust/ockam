@@ -7,6 +7,7 @@ use crate::{
 use core::sync::atomic::AtomicUsize;
 use ockam_core::{
     compat::{sync::Arc, vec::Vec},
+    env::get_env,
     Address, Result,
 };
 
@@ -65,7 +66,7 @@ async fn start(
         .insert(primary_addr.clone(), address_record);
 
     #[cfg(feature = "std")]
-    if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
+    if let Ok(Some(_)) = get_env::<String>("OCKAM_DUMP_INTERNALS") {
         trace!("{:#?}", router.map.internal);
     }
     #[cfg(all(not(feature = "std"), feature = "dump_internals"))]

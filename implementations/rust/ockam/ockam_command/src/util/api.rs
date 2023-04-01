@@ -2,7 +2,6 @@
 
 use regex::Regex;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
 use clap::Args;
@@ -20,6 +19,7 @@ use ockam_api::nodes::*;
 use ockam_api::DefaultAddress;
 use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
+use ockam_core::env::{get_env_with_default, FromString};
 use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
@@ -328,15 +328,16 @@ pub struct ProjectOpts {
 
 impl CloudOpts {
     pub fn route(&self) -> MultiAddr {
-        let route = if let Ok(s) = std::env::var(OCKAM_CONTROLLER_ADDR) {
-            s
-        } else {
-            DEFAULT_CONTROLLER_ADDRESS.to_string()
-        };
+        let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)
+            .context(format!(
+                "invalid Controller route: {DEFAULT_CONTROLLER_ADDRESS}"
+            ))
+            .unwrap();
+
+        let route = get_env_with_default::<MultiAddr>(OCKAM_CONTROLLER_ADDR, default_addr).unwrap();
         trace!(%route, "Controller route");
-        MultiAddr::from_str(&route)
-            .context(format!("invalid Controller route: {route}"))
-            .unwrap()
+
+        route
     }
 }
 
