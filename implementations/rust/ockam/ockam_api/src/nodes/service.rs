@@ -16,7 +16,7 @@ use ockam_core::{route, AllowAll, AsyncTryClone};
 use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
-use ockam_identity::credential::Credential;
+
 use ockam_identity::{IdentityVault, TrustContext};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -197,7 +197,6 @@ pub struct NodeManagerProjectsOptions<'a> {
     ac: Option<&'a AuthoritiesConfig>,
     project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
-    credential: Option<Credential>,
 }
 
 impl<'a> NodeManagerProjectsOptions<'a> {
@@ -205,13 +204,11 @@ impl<'a> NodeManagerProjectsOptions<'a> {
         ac: Option<&'a AuthoritiesConfig>,
         project_id: Option<String>,
         projects: BTreeMap<String, ProjectLookup>,
-        credential: Option<Credential>,
     ) -> Self {
         Self {
             ac,
             project_id,
             projects,
-            credential,
         }
     }
 }
@@ -296,12 +293,6 @@ impl NodeManager {
 
         let vault: Arc<dyn IdentityVault> = Arc::new(node_state.config.vault().await?);
         let identity = Arc::new(node_state.config.identity(ctx).await?);
-
-        if let Some(_cred) = projects_options.credential {
-            // TODO: Update project_options to no longer user credential
-            // all use cases should take the credential, issuer and identity and create a trust context for it.
-            todo!();
-        }
 
         let medic = Medic::new();
         let sessions = medic.sessions();

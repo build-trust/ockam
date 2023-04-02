@@ -1,7 +1,6 @@
 use clap::{arg, Args};
 use colorful::Colorful;
 use ockam::Context;
-use ockam_identity::IdentityIdentifier;
 
 use crate::{
     credential::validate_encoded_cred, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
@@ -39,10 +38,10 @@ pub(crate) async fn display_credential(
 ) -> crate::Result<()> {
     let cred_config = opts.state.credentials.get(cred_name)?.config().await?;
 
-    let issuer = IdentityIdentifier::try_from(cred_config.issuer.to_string())?;
+    let issuer = &cred_config.issuer;
     let is_verified = match validate_encoded_cred(
         &cred_config.encoded_credential,
-        &issuer,
+        issuer.identifier(),
         vault_name,
         opts,
         ctx,
