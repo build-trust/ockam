@@ -200,7 +200,7 @@ pub enum OckamSubcommand {
     #[command(display_order = 810)]
     Authority(AuthorityCommand),
     #[command(display_order = 811)]
-    Node(NodeCommand),
+    Node(Box<NodeCommand>),
     #[command(display_order = 812)]
     Identity(IdentityCommand),
     #[command(display_order = 813)]
