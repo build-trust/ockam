@@ -20,6 +20,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{route, CowStr};
 
+use ockam_identity::credential::Credential;
 use ockam_identity::{
     Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerTrustOptions,
     SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
@@ -28,17 +29,22 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 impl NodeManager {
-    async fn get_credential_if_needed(&mut self, identity: &Identity) -> Result<()> {
-        if identity.credential().await.is_some() {
-            debug!("Credential check: credential already exists...");
-            return Ok(());
-        }
+    async fn get_credential_if_needed(&mut self, identity: &Identity) -> Result<Credential> {
+        let credential = self
+            .trust_context()?
+            .authority()?
+            .credential(identity)
+            .await?;
+        // if identity.credential().await.is_some() {
+        //     debug!("Credential check: credential already exists...");
+        //     return Ok(());
+        // }
 
-        debug!("Credential check: requesting...");
-        self.get_credential_impl(identity, false).await?;
-        debug!("Credential check: got new credential...");
+        // debug!("Credential check: requesting...");
+        // self.get_credential_impl(identity, false).await?;
+        // debug!("Credential check: got new credential...");
 
-        Ok(())
+        Ok(credential)
     }
 
     pub(crate) async fn create_secure_channel_internal(
@@ -111,7 +117,7 @@ impl NodeManager {
         } else {
             self.identity.clone()
         };
-        let provided_credential = if let Some(credential_name) = credential_name {
+        let mut provided_credential = if let Some(credential_name) = credential_name {
             Some(
                 self.cli_state
                     .credentials
@@ -151,7 +157,7 @@ impl NodeManager {
             CredentialExchangeMode::Oneway => {
                 debug!(%sc_addr, "One-way credential presentation");
                 if provided_credential.is_none() {
-                    self.get_credential_if_needed(&identity).await?;
+                    provided_credential = Some(self.get_credential_if_needed(&identity).await?);
                 }
 
                 identity
@@ -165,7 +171,7 @@ impl NodeManager {
             CredentialExchangeMode::Mutual => {
                 debug!(%sc_addr, "Mutual credential presentation");
                 if provided_credential.is_none() {
-                    self.get_credential_if_needed(&identity).await?;
+                    provided_credential = Some(self.get_credential_if_needed(&identity).await?);
                 }
 
                 let authorities = self.authorities()?;

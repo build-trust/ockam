@@ -140,10 +140,16 @@ impl NodeManagerWorker {
             None => return Err(ApiError::generic("invalid credentials service route")),
         };
 
+        let credential = node_manager
+            .trust_context()?
+            .authority()?
+            .credential(&node_manager.identity)
+            .await?;
+
         if request.oneway {
             node_manager
                 .identity
-                .present_credential(route, None)
+                .present_credential(route, Some(&credential))
                 .await?;
         } else {
             node_manager
@@ -152,7 +158,7 @@ impl NodeManagerWorker {
                     route,
                     &node_manager.authorities()?.public_identities(),
                     node_manager.attributes_storage.clone(),
-                    None,
+                    Some(&credential),
                 )
                 .await?;
         }
