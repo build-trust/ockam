@@ -10,7 +10,7 @@ use std::process::Command;
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
 use ockam_api::config::cli::{
-    self, Authority, CredentialRetrieverType, TrustAuthorityConfig, TrustContextConfig,
+    self, CredentialRetrieverType, TrustAuthorityConfig, TrustContextConfig,
 };
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
@@ -132,7 +132,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
             projects,
-            None,
         ),
         NodeManagerTransportOptions::new(
             ApiTransport {
@@ -325,7 +324,7 @@ pub fn spawn_node(
     trusted_identities_file: Option<&PathBuf>,
     reload_from_trusted_identities_file: Option<&PathBuf>,
     launch_config: Option<String>,
-    authority_identities: Option<&Vec<Authority>>,
+    authority_identity: Option<&String>,
     credential: Option<&String>,
 ) -> crate::Result<()> {
     let mut args = vec![
@@ -374,12 +373,9 @@ pub fn spawn_node(
         );
     }
 
-    if let Some(authority_identities) = authority_identities {
-        for authority in authority_identities.iter() {
-            let identity = hex::encode(authority.identity());
-            args.push("--authority-identity".to_string());
-            args.push(identity);
-        }
+    if let Some(ai) = authority_identity {
+        args.push("--authority-identity".to_string());
+        args.push(ai.to_string());
     }
 
     if let Some(credential) = credential {
