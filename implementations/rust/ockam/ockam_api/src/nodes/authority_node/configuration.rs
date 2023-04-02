@@ -25,6 +25,9 @@ pub struct Configuration {
     /// Project identifier on the Orchestrator node
     pub project_identifier: String,
 
+    /// Trust context identifier on the Orchestrator node
+    pub trust_context_identifier: String,
+
     /// listener address for the TCP listener, for example "127.0.0.1:4000"
     pub tcp_listener_address: String,
 
@@ -54,6 +57,11 @@ impl Configuration {
     /// Return the project identifier as bytes
     pub(crate) fn project_identifier(&self) -> Vec<u8> {
         self.project_identifier.as_bytes().to_vec()
+    }
+
+    /// Return the trust context identifier as bytes
+    pub(crate) fn trust_context_identifier(&self) -> Vec<u8> {
+        self.trust_context_identifier.as_bytes().to_vec()
     }
 
     /// Return the address for the TCP listener

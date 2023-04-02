@@ -32,7 +32,7 @@ teardown() {
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   # For the first test we start the node with no direct authentication service nor token enrollment
-  trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\": {\"project_id\": \"1\", \"ockam-role\": \"enroller\"}}"
+  trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\", \"trust_context_id\" : \"1\"}, \"$enroller_identifier\": {\"project_id\": \"1\", \"trust_context_id\": \"1\", \"ockam-role\": \"enroller\"}}"
   run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:4200 --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --no-token-enrollment
 
   assert_success
