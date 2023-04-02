@@ -8,7 +8,7 @@ use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
-use crate::util::api::{CloudOpts, ProjectOpts};
+use crate::util::api::{CloudOpts, ProjectOpts, TrustContextOpts};
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
 use crate::Result;
 use crate::{docs, CommandGlobalOpts};
@@ -43,6 +43,9 @@ pub struct SendCommand {
 
     #[command(flatten)]
     project_opts: ProjectOpts,
+
+    #[command(flatten)]
+    pub trust_context_opts: TrustContextOpts,
 }
 
 impl SendCommand {
@@ -65,6 +68,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
                 None,
                 cmd.cloud_opts.identity.as_ref(),
                 Some(&cmd.project_opts),
+                Some(&cmd.trust_context_opts),
             )
             .await?;
             (api_node, None)

@@ -43,7 +43,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ShowCommand,
 ) -> crate::Result<()> {
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
+    let node_name = start_embedded_node(ctx, &opts, None, None).await?;
     let controller_route = &cmd.cloud_opts.route();
 
     // Lookup space

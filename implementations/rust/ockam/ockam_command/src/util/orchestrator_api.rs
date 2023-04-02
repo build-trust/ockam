@@ -23,7 +23,10 @@ use ockam_core::api::RequestBuilder;
 use ockam_multiaddr::MultiAddr;
 use tracing::info;
 
-use super::{api::ProjectOpts, RpcBuilder};
+use super::{
+    api::{ProjectOpts, TrustContextOpts},
+    RpcBuilder,
+};
 
 pub enum OrchestratorEndpoint {
     Authenticator,
@@ -34,6 +37,7 @@ pub struct OrchestratorApiBuilder<'a> {
     ctx: &'a Context,
     opts: &'a CommandGlobalOpts,
     project_opts: &'a ProjectOpts,
+    trust_context_opts: &'a TrustContextOpts,
     node_name: Option<String>,
     destination: OrchestratorEndpoint,
     identity: Option<String>,
@@ -55,11 +59,13 @@ impl<'a> OrchestratorApiBuilder<'a> {
         ctx: &'a Context,
         opts: &'a CommandGlobalOpts,
         project_opts: &'a ProjectOpts,
+        trust_context_opts: &'a TrustContextOpts,
     ) -> Self {
         OrchestratorApiBuilder {
             ctx,
             opts,
             project_opts,
+            trust_context_opts,
             node_name: None,
             destination: OrchestratorEndpoint::Project,
             identity: None,
@@ -81,6 +87,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             None,
             self.identity.as_ref(),
             Some(self.project_opts),
+            Some(self.trust_context_opts),
         )
         .await?;
         self.node_name = Some(node_name);

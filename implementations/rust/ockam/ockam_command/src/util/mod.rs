@@ -113,7 +113,7 @@ pub struct Rpc<'a> {
 impl<'a> Rpc<'a> {
     /// Creates a new RPC to send a request to an embedded node.
     pub async fn embedded(ctx: &'a Context, opts: &'a CommandGlobalOpts) -> Result<Rpc<'a>> {
-        let node_name = start_embedded_node(ctx, opts, None).await?;
+        let node_name = start_embedded_node(ctx, opts, None, None).await?;
         Ok(Rpc {
             ctx,
             buf: Vec::new(),

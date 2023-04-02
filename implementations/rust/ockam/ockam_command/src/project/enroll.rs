@@ -14,7 +14,7 @@ use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
 use crate::project::util::create_secure_channel_to_authority;
-use crate::util::api::{CloudOpts, ProjectOpts};
+use crate::util::api::{CloudOpts, ProjectOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{CommandGlobalOpts, Result};
 
@@ -27,6 +27,9 @@ pub struct EnrollCommand {
 
     #[command(flatten)]
     project_opts: ProjectOpts,
+
+    #[command(flatten)]
+    trust_opts: TrustContextOpts,
 
     #[command(flatten)]
     node_opts: NodeOpts,
@@ -74,8 +77,13 @@ impl Runner {
     }
 
     async fn run(self) -> Result<()> {
-        let node_name =
-            start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.project_opts)).await?;
+        let node_name = start_embedded_node(
+            &self.ctx,
+            &self.opts,
+            Some(&self.cmd.project_opts),
+            Some(&self.cmd.trust_opts),
+        )
+        .await?;
 
         let map = self.opts.config.lookup();
         let base_addr = if let Some(a) = project_authority(&self.cmd.to, &map)? {

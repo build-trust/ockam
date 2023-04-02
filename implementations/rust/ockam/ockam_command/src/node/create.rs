@@ -21,6 +21,7 @@ use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
+use crate::util::api::TrustContextOpts;
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
@@ -114,8 +115,8 @@ pub struct CreateCommand {
     #[arg(long)]
     pub authority_identity: Option<String>,
 
-    #[arg(long, value_name = "TRUST_CONTEXT_PATH", value_parser = parse_trust_context)]
-    pub trust_context: Option<TrustContextConfig>,
+    #[command(flatten)]
+    pub trust_context_opts: TrustContextOpts,
 
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
@@ -138,7 +139,7 @@ impl Default for CreateCommand {
             reload_from_trusted_identities_file: None,
             authority_identity: None,
             credential: None,
-            trust_context: None,
+            trust_context_opts: TrustContextOpts::new(),
         }
     }
 }
@@ -181,13 +182,6 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
             Config::read(path)
         }
     }
-}
-
-pub fn parse_trust_context(trust_context_path: &str) -> Result<TrustContextConfig> {
-    let trust_context = std::fs::read_to_string(trust_context_path)?;
-    let tc: TrustContextConfig =
-        serde_json::from_str(&trust_context).context(anyhow!("Not a valid trust context"))?;
-    Ok(tc)
 }
 
 async fn run_impl(
@@ -334,7 +328,7 @@ async fn run_foreground_node(
         None => trust_context_config,
     };
 
-    trust_context_config = match cmd.trust_context.as_ref() {
+    trust_context_config = match cmd.trust_context_opts.trust_context.as_ref() {
         Some(tc) => Some(tc.clone()),
         None => trust_context_config,
     };

@@ -8,7 +8,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::{
     docs,
     util::{
-        api::{CloudOpts, ProjectOpts},
+        api::{CloudOpts, ProjectOpts, TrustContextOpts},
         node_rpc,
         orchestrator_api::OrchestratorApiBuilder,
     },
@@ -27,26 +27,37 @@ pub struct RevokeCommand {
 }
 
 impl RevokeCommand {
-    pub fn run(self, options: CommandGlobalOpts, cloud_opts: CloudOpts, project_opts: ProjectOpts) {
-        node_rpc(run_impl, (options, cloud_opts, self, project_opts));
+    pub fn run(
+        self,
+        options: CommandGlobalOpts,
+        cloud_opts: CloudOpts,
+        project_opts: ProjectOpts,
+        trust_opts: TrustContextOpts,
+    ) {
+        node_rpc(
+            run_impl,
+            (options, cloud_opts, self, project_opts, trust_opts),
+        );
     }
 }
 
 async fn run_impl(
     ctx: Context,
-    (opts, cloud_opts, cmd, prjoect_opts): (
+    (opts, cloud_opts, cmd, prjoect_opts, trust_opts): (
         CommandGlobalOpts,
         CloudOpts,
         RevokeCommand,
         ProjectOpts,
+        TrustContextOpts,
     ),
 ) -> crate::Result<()> {
-    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &prjoect_opts)
-        .as_identity(cloud_opts.identity.clone())
-        .with_new_embbeded_node()
-        .await?
-        .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
-        .await?;
+    let mut orchestrator_client =
+        OrchestratorApiBuilder::new(&ctx, &opts, &prjoect_opts, &trust_opts)
+            .as_identity(cloud_opts.identity.clone())
+            .with_new_embbeded_node()
+            .await?
+            .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
+            .await?;
 
     let req = Request::delete(format!("/{}", cmd.token_id));
 
