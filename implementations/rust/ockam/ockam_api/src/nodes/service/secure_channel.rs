@@ -167,11 +167,10 @@ impl NodeManager {
                     }
                 };
 
-                let authorities = self.authorities()?;
                 identity
                     .present_credential_mutual(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        &authorities.public_identities(),
+                        vec![self.trust_context()?.authority()?.identity()],
                         self.attributes_storage.clone(),
                         &credential,
                     )
