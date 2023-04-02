@@ -83,7 +83,7 @@ impl NodeManagerWorker {
                 .identity
                 .present_credential_mutual(
                     route,
-                    &node_manager.authorities()?.public_identities(),
+                    vec![node_manager.trust_context()?.authority()?.identity()],
                     node_manager.attributes_storage.clone(),
                     &credential,
                 )

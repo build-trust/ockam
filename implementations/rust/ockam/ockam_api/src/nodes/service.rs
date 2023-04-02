@@ -2,7 +2,7 @@
 
 use minicbor::Decoder;
 
-use ockam::identity::{Identity, IdentityIdentifier, PublicIdentity};
+use ockam::identity::{Identity, IdentityIdentifier};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
 use ockam_abac::PolicyStorage;
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
@@ -77,29 +77,6 @@ pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Err
     invalid_multiaddr_error()
 }
 
-pub(crate) struct Authorities(Vec<AuthorityInfo>);
-
-impl Authorities {
-    pub fn new(authorities: Vec<AuthorityInfo>) -> Self {
-        Self(authorities)
-    }
-
-    pub fn public_identities(&self) -> Vec<PublicIdentity> {
-        self.0.iter().map(|x| x.identity.clone()).collect()
-    }
-}
-
-impl AsRef<[AuthorityInfo]> for Authorities {
-    fn as_ref(&self) -> &[AuthorityInfo] {
-        self.0.as_ref()
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct AuthorityInfo {
-    identity: PublicIdentity,
-}
-
 type Transports = BTreeMap<Alias, ApiTransport>;
 
 /// Node manager provides a messaging API to interact with the current node
@@ -115,7 +92,6 @@ pub struct NodeManager {
     pub(crate) identity: Arc<Identity>,
     project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
-    authorities: Option<Authorities>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
@@ -148,12 +124,6 @@ pub struct IdentityOverride {
 impl NodeManager {
     pub(crate) fn vault(&self) -> Result<Arc<dyn IdentityVault>> {
         Ok(self.vault.clone())
-    }
-
-    pub(crate) fn authorities(&self) -> Result<&Authorities> {
-        self.authorities
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Authorities don't exist"))
     }
 
     pub(crate) fn trust_context(&self) -> Result<&TrustContext> {
@@ -310,7 +280,6 @@ impl NodeManager {
             identity,
             projects: Arc::new(projects_options.projects),
             project_id: projects_options.project_id,
-            authorities: None,
             trust_context: None,
             registry: Default::default(),
             medic: {
@@ -323,10 +292,6 @@ impl NodeManager {
         };
 
         if !general_options.skip_defaults {
-            if let Some(ac) = projects_options.ac {
-                s.configure_authorities(ac).await?;
-            }
-
             if let Some(tc) = trust_options.trust_context_config {
                 s.configure_trust_context(&tc).await?;
             }
@@ -338,22 +303,6 @@ impl NodeManager {
             .await?;
 
         Ok(s)
-    }
-
-    async fn configure_authorities(&mut self, ac: &AuthoritiesConfig) -> Result<()> {
-        let vault = self.vault()?;
-
-        let mut v = Vec::new();
-
-        for a in ac.authorities() {
-            v.push(AuthorityInfo {
-                identity: PublicIdentity::import(a.1.identity(), vault.clone()).await?,
-            })
-        }
-
-        self.authorities = Some(Authorities::new(v));
-
-        Ok(())
     }
 
     async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
