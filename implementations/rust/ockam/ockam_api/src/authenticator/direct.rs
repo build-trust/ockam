@@ -32,6 +32,7 @@ const DEFAULT_CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 /// - `role`: b"member"
 pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
 pub const PROJECT_ID: &str = "project_id";
+pub const TRUST_CONTEXT_ID: &str = "trust_context_id";
 pub const LEGACY_MEMBER: &str = "member";
 
 // This acts as a facade, modifying and forwarding incoming messages from legacy clients
@@ -151,19 +152,19 @@ impl Worker for LegacyApiConverter {
 }
 
 pub struct CredentialIssuer {
-    project: Vec<u8>,
+    trust_context: Vec<u8>,
     store: Arc<dyn IdentityAttributeStorageReader>,
     ident: Arc<Identity>,
 }
 
 impl CredentialIssuer {
     pub async fn new(
-        project: Vec<u8>,
+        trust_context: Vec<u8>,
         store: Arc<dyn IdentityAttributeStorageReader>,
         identity: Arc<Identity>,
     ) -> Result<Self> {
         Ok(Self {
-            project,
+            trust_context,
             store,
             ident: identity,
         })
@@ -179,7 +180,8 @@ impl CredentialIssuer {
                         Credential::builder(from.clone()).with_schema(PROJECT_MEMBER_SCHEMA),
                         |crd, (a, v)| crd.with_attribute(a, v),
                     )
-                    .with_attribute(PROJECT_ID, &self.project);
+                    .with_attribute(PROJECT_ID, &self.trust_context)
+                    .with_attribute(TRUST_CONTEXT_ID, &self.trust_context);
                 Ok(Some(self.ident.issue_credential(crd).await?))
             }
             None => Ok(None),
@@ -228,13 +230,19 @@ impl Worker for CredentialIssuer {
 }
 
 pub struct DirectAuthenticator {
-    project: Vec<u8>,
+    trust_context: Vec<u8>,
     store: Arc<dyn IdentityAttributeStorage>,
 }
 
 impl DirectAuthenticator {
-    pub async fn new(project: Vec<u8>, store: Arc<dyn IdentityAttributeStorage>) -> Result<Self> {
-        Ok(Self { project, store })
+    pub async fn new(
+        trust_context: Vec<u8>,
+        store: Arc<dyn IdentityAttributeStorage>,
+    ) -> Result<Self> {
+        Ok(Self {
+            trust_context,
+            store,
+        })
     }
 
     async fn add_member<'a>(
@@ -246,7 +254,8 @@ impl DirectAuthenticator {
         let auth_attrs = attrs
             .iter()
             .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
-            .chain([(PROJECT_ID.to_owned(), self.project.clone())].into_iter())
+            .chain([(PROJECT_ID.to_owned(), self.trust_context.clone())].into_iter())
+            .chain([(TRUST_CONTEXT_ID.to_owned(), self.trust_context.clone())].into_iter())
             .collect();
         let entry = AttributesEntry::new(
             auth_attrs,
@@ -295,7 +304,7 @@ impl Worker for DirectAuthenticator {
 
 #[derive(Clone)]
 pub struct EnrollmentTokenAuthenticator {
-    project: Vec<u8>,
+    trust_context: Vec<u8>,
     tokens: Arc<RwLock<LruCache<[u8; 32], Token>>>,
 }
 
@@ -307,11 +316,11 @@ pub struct EnrollmentTokenAcceptor(
 
 impl EnrollmentTokenAuthenticator {
     pub fn new_worker_pair(
-        project: Vec<u8>,
+        trust_context: Vec<u8>,
         storage: Arc<dyn IdentityAttributeStorage>,
     ) -> (EnrollmentTokenIssuer, EnrollmentTokenAcceptor) {
         let base = Self {
-            project,
+            trust_context,
             tokens: Arc::new(RwLock::new(LruCache::new(
                 NonZeroUsize::new(128).expect("0 < 128"),
             ))),
@@ -436,7 +445,12 @@ impl Worker for EnrollmentTokenAcceptor {
                                 .iter()
                                 .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
                                 .chain(
-                                    [(PROJECT_ID.to_owned(), self.0.project.clone())].into_iter(),
+                                    [(PROJECT_ID.to_owned(), self.0.trust_context.clone())]
+                                        .into_iter(),
+                                )
+                                .chain(
+                                    [(TRUST_CONTEXT_ID.to_owned(), self.0.trust_context.clone())]
+                                        .into_iter(),
                                 )
                                 .collect();
                             let entry = AttributesEntry::new(
