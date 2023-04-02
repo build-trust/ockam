@@ -6,7 +6,6 @@ use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::str::FromStr;
 
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
@@ -69,8 +68,16 @@ pub async fn start_embedded_node_with_vault_and_identity(
         }
     };
 
-    let proj_path = match &cmd.project {
+    let mut proj_path = match &cmd.project {
         Some(path) => Some(path.clone()),
+        None => match project_opts {
+            Some(p) => p.project_path.clone(),
+            None => None,
+        },
+    };
+
+    proj_path = match proj_path {
+        Some(path) => Some(path),
         None => match opts.state.projects.default() {
             Ok(p) => Some(p.path),
             Err(_) => None,
@@ -87,14 +94,14 @@ pub async fn start_embedded_node_with_vault_and_identity(
                     let vault = Vault::create();
                     let authority_public_identity =
                         PublicIdentity::import(&hex::decode(identity.to_string())?, vault).await?;
-                    let authority_maddr = MultiAddr::from_str(&route)?;
 
                     let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                        CredentialIssuerInfo::new(authority_maddr),
+                        CredentialIssuerInfo::new(&route),
                     );
                     let authority =
                         TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
                     let tcc = TrustContextConfig::new(p.id.to_string(), Some(authority));
+
                     Some(tcc)
                 }
                 _ => None,
