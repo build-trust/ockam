@@ -304,6 +304,10 @@ impl NodeManager {
         let project = std::str::from_utf8(proj).unwrap();
         let rule = and([
             eq([ident("resource.project_id"), ident("subject.project_id")]),
+            eq([
+                ident("resource.trust_context_id"),
+                ident("subject.trust_context_id"),
+            ]),
             eq([ident("subject.ockam-role"), str("enroller")]),
         ]);
 
@@ -364,6 +368,10 @@ impl NodeManager {
             );
         let rule = and([
             eq([ident("resource.project_id"), ident("subject.project_id")]),
+            eq([
+                ident("resource.trust_context_id"),
+                ident("subject.trust_context_id"),
+            ]),
             eq([ident("subject.ockam-role"), str("enroller")]),
         ]);
         let abac = self

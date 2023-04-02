@@ -310,15 +310,17 @@ mod tests {
         )
         .unwrap();
 
-        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"project_id\": \"1\"}}, \"{identity2}\": {{\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
+        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"project_id\": \"1\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"project_id\" : \"1\", \"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
 
         let attributes1 = HashMap::from([
             ("name".into(), "value".into()),
             ("project_id".into(), "1".into()),
+            ("trust_context_id".into(), "1".into()),
         ]);
         let attributes2 = HashMap::from([
             ("project_id".into(), "1".into()),
+            ("trust_context_id".into(), "1".into()),
             ("ockam-role".into(), "enroller".into()),
         ]);
         let expected = vec![
