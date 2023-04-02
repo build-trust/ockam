@@ -11,7 +11,7 @@ use termimad::{minimad::TextTemplate, MadSkin};
 use crate::{
     docs,
     util::{
-        api::{CloudOpts, ProjectOpts},
+        api::{CloudOpts, ProjectOpts, TrustContextOpts},
         node_rpc,
         orchestrator_api::OrchestratorApiBuilder,
     },
@@ -28,21 +28,33 @@ const HELP_DETAIL: &str = "";
 pub struct CreateCommand {}
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts, cloud_opts: CloudOpts, project_opts: ProjectOpts) {
-        node_rpc(run_impl, (options, cloud_opts, project_opts));
+    pub fn run(
+        self,
+        options: CommandGlobalOpts,
+        cloud_opts: CloudOpts,
+        project_opts: ProjectOpts,
+        trust_opts: TrustContextOpts,
+    ) {
+        node_rpc(run_impl, (options, cloud_opts, project_opts, trust_opts));
     }
 }
 
 async fn run_impl(
     ctx: Context,
-    (opts, cloud_opts, project_opts): (CommandGlobalOpts, CloudOpts, ProjectOpts),
+    (opts, cloud_opts, project_opts, trust_opts): (
+        CommandGlobalOpts,
+        CloudOpts,
+        ProjectOpts,
+        TrustContextOpts,
+    ),
 ) -> crate::Result<()> {
-    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &project_opts)
-        .as_identity(cloud_opts.identity.clone())
-        .with_new_embbeded_node()
-        .await?
-        .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
-        .await?;
+    let mut orchestrator_client =
+        OrchestratorApiBuilder::new(&ctx, &opts, &project_opts, &trust_opts)
+            .as_identity(cloud_opts.identity.clone())
+            .with_new_embbeded_node()
+            .await?
+            .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
+            .await?;
 
     let req = Request::post("/");
 

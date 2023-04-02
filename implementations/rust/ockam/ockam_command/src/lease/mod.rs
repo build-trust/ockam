@@ -10,7 +10,7 @@ pub use show::ShowCommand;
 use clap::{Args, Subcommand};
 
 use crate::{
-    util::api::{CloudOpts, ProjectOpts},
+    util::api::{CloudOpts, ProjectOpts, TrustContextOpts},
     CommandGlobalOpts,
 };
 
@@ -27,6 +27,9 @@ pub struct LeaseCommand {
 
     #[command(flatten)]
     project_opts: ProjectOpts,
+
+    #[command(flatten)]
+    trust_context_opts: TrustContextOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -50,10 +53,30 @@ const TOKEN_VIEW: &str = r#"
 impl LeaseCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(options, self.cloud_opts, self.project_opts),
-            LeaseSubcommand::List(c) => c.run(options, self.cloud_opts, self.project_opts),
-            LeaseSubcommand::Show(c) => c.run(options, self.cloud_opts, self.project_opts),
-            LeaseSubcommand::Revoke(c) => c.run(options, self.cloud_opts, self.project_opts),
+            LeaseSubcommand::Create(c) => c.run(
+                options,
+                self.cloud_opts,
+                self.project_opts,
+                self.trust_context_opts,
+            ),
+            LeaseSubcommand::List(c) => c.run(
+                options,
+                self.cloud_opts,
+                self.project_opts,
+                self.trust_context_opts,
+            ),
+            LeaseSubcommand::Show(c) => c.run(
+                options,
+                self.cloud_opts,
+                self.project_opts,
+                self.trust_context_opts,
+            ),
+            LeaseSubcommand::Revoke(c) => c.run(
+                options,
+                self.cloud_opts,
+                self.project_opts,
+                self.trust_context_opts,
+            ),
         }
     }
 }

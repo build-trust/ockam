@@ -1,5 +1,6 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
+use ockam_api::config::cli::TrustContextConfig;
 use regex::Regex;
 use std::path::PathBuf;
 
@@ -325,6 +326,28 @@ pub struct ProjectOpts {
     /// Project config file
     #[arg(global = true, long = "project-path", value_name = "PROJECT_JSON_PATH")]
     pub project_path: Option<PathBuf>,
+}
+
+#[derive(Clone, Debug, Args)]
+pub struct TrustContextOpts {
+    /// Trust Context config file
+    #[arg(global = true, long, value_name = "TRUST_CONTEXT_JSON_PATH", value_parser = parse_trust_context)]
+    pub trust_context: Option<TrustContextConfig>,
+}
+
+impl TrustContextOpts {
+    pub fn new() -> Self {
+        Self {
+            trust_context: None,
+        }
+    }
+}
+
+pub fn parse_trust_context(trust_context_path: &str) -> Result<TrustContextConfig> {
+    let trust_context = std::fs::read_to_string(trust_context_path)?;
+    let tc: TrustContextConfig =
+        serde_json::from_str(&trust_context).context(anyhow!("Not a valid trust context"))?;
+    Ok(tc)
 }
 
 impl CloudOpts {

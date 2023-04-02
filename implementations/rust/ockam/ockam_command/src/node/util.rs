@@ -26,15 +26,17 @@ use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
-use crate::util::api::ProjectOpts;
+use crate::util::api::{ProjectOpts, TrustContextOpts};
 use crate::{project, CommandGlobalOpts, OckamConfig, Result};
 
 pub async fn start_embedded_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     project_opts: Option<&ProjectOpts>,
+    trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
-    start_embedded_node_with_vault_and_identity(ctx, opts, None, None, project_opts).await
+    start_embedded_node_with_vault_and_identity(ctx, opts, None, None, project_opts, trust_opts)
+        .await
 }
 
 pub async fn start_embedded_node_with_vault_and_identity(
@@ -43,6 +45,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     vault: Option<&String>,
     identity: Option<&String>,
     project_opts: Option<&ProjectOpts>,
+    trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
     let cfg = &opts.config;
     let cmd = CreateCommand::default();
@@ -68,46 +71,59 @@ pub async fn start_embedded_node_with_vault_and_identity(
         }
     };
 
-    let mut proj_path = match &cmd.project {
-        Some(path) => Some(path.clone()),
-        None => match project_opts {
-            Some(p) => p.project_path.clone(),
-            None => None,
-        },
+    // retrieve trust context config from options if provided
+    // otherwise try to retrieve from project file
+    let mut trust_context_config = if let Some(trust_opts) = trust_opts {
+        trust_opts.trust_context.as_ref().cloned()
+    } else {
+        None
     };
 
-    proj_path = match proj_path {
-        Some(path) => Some(path),
-        None => match opts.state.projects.default() {
-            Ok(p) => Some(p.path),
-            Err(_) => None,
-        },
-    };
+    trust_context_config = if trust_context_config.is_none() {
+        let mut proj_path = match &cmd.project {
+            Some(path) => Some(path.clone()),
+            None => match project_opts {
+                Some(p) => p.project_path.clone(),
+                None => None,
+            },
+        };
 
-    let trust_context_config = match proj_path {
-        Some(path) => {
-            let s = tokio::fs::read_to_string(path).await?;
-            let p: ProjectInfo = serde_json::from_str(&s)?;
+        proj_path = match proj_path {
+            Some(path) => Some(path),
+            None => match opts.state.projects.default() {
+                Ok(p) => Some(p.path),
+                Err(_) => None,
+            },
+        };
 
-            match (p.authority_identity, p.authority_access_route) {
-                (Some(identity), Some(route)) => {
-                    let vault = Vault::create();
-                    let authority_public_identity =
-                        PublicIdentity::import(&hex::decode(identity.to_string())?, vault).await?;
+        match proj_path {
+            Some(path) => {
+                let s = tokio::fs::read_to_string(path).await?;
+                let p: ProjectInfo = serde_json::from_str(&s)?;
 
-                    let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                        CredentialIssuerInfo::new(&route),
-                    );
-                    let authority =
-                        TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
-                    let tcc = TrustContextConfig::new(p.id.to_string(), Some(authority));
+                match (p.authority_identity, p.authority_access_route) {
+                    (Some(identity), Some(route)) => {
+                        let vault = Vault::create();
+                        let authority_public_identity =
+                            PublicIdentity::import(&hex::decode(identity.to_string())?, vault)
+                                .await?;
 
-                    Some(tcc)
+                        let retriever = CredentialRetrieverType::FromCredentialIssuer(
+                            CredentialIssuerInfo::new(&route),
+                        );
+                        let authority =
+                            TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
+                        let tcc = TrustContextConfig::new(p.id.to_string(), Some(authority));
+
+                        Some(tcc)
+                    }
+                    _ => None,
                 }
-                _ => None,
             }
+            None => None,
         }
-        None => None,
+    } else {
+        trust_context_config
     };
 
     let tcp = TcpTransport::create(ctx).await?;

@@ -13,7 +13,7 @@ use tracing::debug;
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::ProjectInfo;
-use crate::util::api::{CloudOpts, ProjectOpts};
+use crate::util::api::{CloudOpts, ProjectOpts, TrustContextOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
@@ -36,6 +36,9 @@ pub struct AuthCommand {
 
     #[command(flatten)]
     project_opts: ProjectOpts,
+
+    #[command(flatten)]
+    trust_opts: TrustContextOpts,
 }
 
 impl AuthCommand {
@@ -48,7 +51,8 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AuthCommand),
 ) -> crate::Result<()> {
-    let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.project_opts)).await?;
+    let node_name =
+        start_embedded_node(&ctx, &opts, Some(&cmd.project_opts), Some(&cmd.trust_opts)).await?;
 
     let path = match cmd.project_opts.project_path {
         Some(p) => p,

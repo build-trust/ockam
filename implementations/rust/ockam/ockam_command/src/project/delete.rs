@@ -44,7 +44,7 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)?;
 
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
+    let node_name = start_embedded_node(ctx, &opts, None, None).await?;
     let controller_route = &cmd.cloud_opts.route();
 
     // Try to remove from config, in case the project was removed from the cloud but not from the config file.
