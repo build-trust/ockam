@@ -98,7 +98,6 @@ impl AsRef<[AuthorityInfo]> for Authorities {
 #[derive(Clone)]
 pub(crate) struct AuthorityInfo {
     identity: PublicIdentity,
-    addr: MultiAddr,
 }
 
 type Transports = BTreeMap<Alias, ApiTransport>;
@@ -297,8 +296,11 @@ impl NodeManager {
 
         let vault: Arc<dyn IdentityVault> = Arc::new(node_state.config.vault().await?);
         let identity = Arc::new(node_state.config.identity(ctx).await?);
-        if let Some(cred) = projects_options.credential {
-            identity.set_credential(cred.to_owned()).await;
+
+        if let Some(_cred) = projects_options.credential {
+            // TODO: Update project_options to no longer user credential
+            // all use cases should take the credential, issuer and identity and create a trust context for it.
+            todo!();
         }
 
         let medic = Medic::new();
@@ -355,7 +357,6 @@ impl NodeManager {
         for a in ac.authorities() {
             v.push(AuthorityInfo {
                 identity: PublicIdentity::import(a.1.identity(), vault.clone()).await?,
-                addr: a.1.access_route().clone(),
             })
         }
 

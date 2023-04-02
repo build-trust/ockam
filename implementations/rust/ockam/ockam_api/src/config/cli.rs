@@ -111,6 +111,14 @@ impl TrustContextConfig {
     }
 }
 
+impl ConfigValues for TrustContextConfig {
+    fn default_values() -> Self {
+        Self {
+            id: "default".to_string(),
+            authority: None,
+        }
+    }
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrustAuthorityConfig {
     identity: PublicIdentity,

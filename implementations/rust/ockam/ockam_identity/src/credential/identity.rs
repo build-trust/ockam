@@ -20,15 +20,6 @@ use ockam_node::api::{request, request_with_local_info};
 use ockam_node::WorkerBuilder;
 
 impl Identity {
-    pub async fn set_credential(&self, credential: Credential) {
-        // TODO: May also verify received credential calling self.verify_self_credential
-        *self.credential.write().await = Some(credential);
-    }
-
-    pub async fn credential(&self) -> Option<Credential> {
-        self.credential.read().await.clone()
-    }
-
     /// Create a signed credential based on the given values.
     pub async fn issue_credential(&self, builder: CredentialBuilder) -> Result<Credential> {
         let key_label = IdentityStateConst::ROOT_LABEL;
@@ -82,10 +73,8 @@ impl Identity {
     pub async fn present_credential(
         &self,
         route: impl Into<Route>,
-        provided_credential: Option<&Credential>,
+        credential: &Credential,
     ) -> Result<()> {
-        let credential = self.get_credential_or_provided(provided_credential).await?;
-
         let buf = request(
             &self.ctx,
             "credential",
@@ -113,10 +102,8 @@ impl Identity {
         route: impl Into<Route>,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
         attributes_storage: Arc<dyn IdentityAttributeStorage>,
-        provided_credential: Option<&Credential>,
+        credential: &Credential,
     ) -> Result<()> {
-        let credential = self.get_credential_or_provided(provided_credential).await?;
-
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
             &self.ctx,
@@ -238,26 +225,5 @@ impl Identity {
             .await?;
 
         Ok(())
-    }
-
-    /// Gets a clone of the identities current credential
-    /// or uses the provided credential if one exists
-    async fn get_credential_or_provided(
-        &self,
-        provided_cred: Option<&Credential>,
-    ) -> Result<Credential> {
-        let rw_credential = self.credential.read().await;
-        let credential = match provided_cred {
-            Some(c) => c,
-            None => rw_credential.as_ref().ok_or_else(|| {
-                Error::new(
-                    Origin::Application,
-                    Kind::Invalid,
-                    "no credential to present",
-                )
-            })?,
-        };
-
-        Ok(credential.clone())
     }
 }

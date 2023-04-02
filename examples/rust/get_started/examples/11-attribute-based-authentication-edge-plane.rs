@@ -91,7 +91,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         Some(AuthorityInfo::new(
             project.authority_public_identity(),
             Some(Arc::new(CredentialIssuerRetriever::new(
-                CredentialIssuerInfo::new(project.authority_route()),
+                CredentialIssuerInfo::new(&project.authority_route().to_string()),
                 tcp.async_try_clone().await?,
             ))),
         )),
@@ -136,7 +136,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     edge_plane
         .present_credential(
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-            None,
+            &credential,
         )
         .await?;
 
@@ -159,7 +159,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
             route![secure_channel_to_control.clone(), "credential_exchange"],
             vec![&project.authority_public_identity()],
             Arc::new(storage),
-            None,
+            &credential,
         )
         .await?;
     println!("credential exchange done");

@@ -280,10 +280,9 @@ async fn run_foreground_node(
                     let vault = Vault::create();
                     let authority_public_identity =
                         PublicIdentity::import(&hex::decode(identity.to_string())?, vault).await?;
-                    let authority_maddr = MultiAddr::from_str(&route)?;
 
                     let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                        CredentialIssuerInfo::new(authority_maddr),
+                        CredentialIssuerInfo::new(&route),
                     );
                     let authority =
                         TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
