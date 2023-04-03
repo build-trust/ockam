@@ -124,7 +124,7 @@ pub trait TerminalWriter: Clone {
 
     fn write(&mut self, s: &str) -> Result<()>;
     fn rewrite(&mut self, s: &str) -> Result<()>;
-    fn write_line(&mut self, s: &str) -> Result<()>;
+    fn write_line(&self, s: &str) -> Result<()>;
 }
 
 // Core functions
@@ -163,21 +163,21 @@ impl<W: TerminalWriter> Terminal<W> {
 
 // Logging mode
 impl<W: TerminalWriter> Terminal<W, Logging> {
-    pub fn write(&mut self, msg: &str) -> Result<()> {
+    pub fn write(&self, msg: &str) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
-        self.stderr.write(msg)
+        self.stderr.clone().write(msg)
     }
 
-    pub fn rewrite(&mut self, msg: &str) -> Result<()> {
+    pub fn rewrite(&self, msg: &str) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
-        self.stderr.rewrite(msg)
+        self.stderr.clone().rewrite(msg)
     }
 
-    pub fn write_line(&mut self, msg: &str) -> Result<()> {
+    pub fn write_line(&self, msg: &str) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
@@ -215,7 +215,7 @@ impl<W: TerminalWriter> Terminal<W, Finished> {
         self
     }
 
-    pub fn write_line(mut self) -> Result<()> {
+    pub fn write_line(self) -> Result<()> {
         if self.quiet {
             return Ok(());
         }

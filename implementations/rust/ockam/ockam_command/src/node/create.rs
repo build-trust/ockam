@@ -215,7 +215,7 @@ fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crat
 
 async fn run_foreground_node(
     mut ctx: Context,
-    (mut opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
+    (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
 ) -> crate::Result<()> {
     let cfg = &opts.config;
     let node_name = parse_node_name(&cmd.node_name)?;
@@ -357,7 +357,7 @@ async fn run_foreground_node(
 
     // Register a handler for SIGINT, SIGTERM, SIGHUP
     let tx_clone = tx.clone();
-    let mut opts_clone = opts.clone();
+    let opts_clone = opts.clone();
     ctrlc::set_handler(move || {
         let _ = tx_clone.blocking_send(());
         let _ = opts_clone
@@ -369,7 +369,7 @@ async fn run_foreground_node(
     // Spawn a thread to monitor STDIN for EOF
     if cmd.exit_on_eof {
         let tx_clone = tx.clone();
-        let mut opts_clone = opts.clone();
+        let opts_clone = opts.clone();
         std::thread::spawn(move || {
             let mut buffer = Vec::new();
             let mut handle = io::stdin().lock();
