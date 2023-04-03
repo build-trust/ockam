@@ -4,17 +4,26 @@ use crate::compat::sync::RwLock;
 use crate::sessions::{SessionId, SessionPolicy, Sessions};
 use crate::{Address, Result};
 use crate::{OutgoingAccessControl, RelayMessage};
+use core::fmt::{Debug, Formatter};
 
 /// Session Outgoing Access Control
 ///
 /// Allows to send messages only to members of the given [`SessionId`] or message listener
 /// with given [`SessionId`]. Optionally, only 1 message can be passed to the listener.
-#[derive(Debug)]
 pub struct SessionOutgoingAccessControl {
     sessions: Sessions,
     session_id: SessionId,
     spawner_session_id: Option<SessionId>,
     sent_single_message_to_addresses: RwLock<BTreeSet<Address>>,
+}
+
+impl Debug for SessionOutgoingAccessControl {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SessionOutgoingAccessControl")
+            .field("session_id", &self.session_id)
+            .field("spawner_session_id", &self.spawner_session_id)
+            .finish()
+    }
 }
 
 impl SessionOutgoingAccessControl {
