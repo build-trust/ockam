@@ -40,6 +40,11 @@ impl NodeManagerWorker {
 
         let connection = node_manager.connect(connection).await?;
 
+        let trust_options = RemoteForwarderTrustOptions::as_consumer_and_producer(
+            &node_manager.message_flow_sessions,
+            connection.sc_session_id.as_ref().unwrap(), // Should always be present?
+        );
+
         let full = connection
             .secure_channel
             .clone()
@@ -49,49 +54,16 @@ impl NodeManagerWorker {
 
         let forwarder = if req.at_rust_node() {
             if let Some(alias) = req.alias() {
-                RemoteForwarder::create_static_without_heartbeats(
-                    ctx,
-                    route,
-                    alias,
-                    RemoteForwarderTrustOptions::as_consumer_and_producer(
-                        &node_manager.message_flow_sessions,
-                        &connection.sc_session_id.unwrap(), // Should always be present?
-                    ),
-                )
-                .await
+                RemoteForwarder::create_static_without_heartbeats(ctx, route, alias, trust_options)
+                    .await
             } else {
-                RemoteForwarder::create(
-                    ctx,
-                    route,
-                    RemoteForwarderTrustOptions::as_consumer_and_producer(
-                        &node_manager.message_flow_sessions,
-                        &connection.sc_session_id.unwrap(), // Should always be present?
-                    ),
-                )
-                .await
+                RemoteForwarder::create(ctx, route, trust_options).await
             }
         } else {
             let f = if let Some(alias) = req.alias() {
-                RemoteForwarder::create_static(
-                    ctx,
-                    route,
-                    alias,
-                    RemoteForwarderTrustOptions::as_consumer_and_producer(
-                        &node_manager.message_flow_sessions,
-                        &connection.sc_session_id.unwrap(), // Should always be present?
-                    ),
-                )
-                .await
+                RemoteForwarder::create_static(ctx, route, alias, trust_options).await
             } else {
-                RemoteForwarder::create(
-                    ctx,
-                    route,
-                    RemoteForwarderTrustOptions::as_consumer_and_producer(
-                        &node_manager.message_flow_sessions,
-                        &connection.sc_session_id.unwrap(), // Should always be present?
-                    ),
-                )
-                .await
+                RemoteForwarder::create(ctx, route, trust_options).await
             };
             if f.is_ok() && !connection.secure_channel.is_empty() {
                 let ctx = Arc::new(ctx.async_try_clone().await?);
@@ -204,28 +176,18 @@ fn replacer(
                     .try_with(&connection.suffix)?;
                 let r = local_multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
+
+                let trust_options = RemoteForwarderTrustOptions::as_consumer_and_producer(
+                    &this.message_flow_sessions,
+                    &connection.sc_session_id.clone().unwrap(), // Should always be present?
+                );
+
                 if let Some(alias) = &alias {
-                    RemoteForwarder::create_static(
-                        &ctx,
-                        r,
-                        alias,
-                        RemoteForwarderTrustOptions::as_consumer_and_producer(
-                            &this.message_flow_sessions,
-                            &connection.sc_session_id.unwrap(), // Should always be present?
-                        ),
-                    )
-                    .await?;
+                    RemoteForwarder::create_static(&ctx, r, alias, trust_options).await?;
                 } else {
-                    RemoteForwarder::create(
-                        &ctx,
-                        r,
-                        RemoteForwarderTrustOptions::as_consumer_and_producer(
-                            &this.message_flow_sessions,
-                            &connection.sc_session_id.unwrap(), // Should always be present?
-                        ),
-                    )
-                    .await?;
+                    RemoteForwarder::create(&ctx, r, trust_options).await?;
                 }
+
                 Ok(connection.secure_channel)
             };
             match timeout(util::MAX_RECOVERY_TIME, f).await {
