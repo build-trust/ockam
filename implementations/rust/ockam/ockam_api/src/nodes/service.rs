@@ -305,7 +305,8 @@ impl NodeManager {
         let vault: Arc<dyn IdentityVault> = Arc::new(node_state.config.vault().await?);
         let identity = Arc::new(node_state.config.identity(ctx).await?);
 
-        let medic = Medic::new();
+        let message_flow_sessions = ockam_core::sessions::Sessions::default();
+        let medic = Medic::new(message_flow_sessions.clone());
         let sessions = medic.sessions();
 
         let mut s = Self {
@@ -334,7 +335,7 @@ impl NodeManager {
             sessions,
             policies,
             attributes_storage,
-            message_flow_sessions: Default::default(),
+            message_flow_sessions,
         };
 
         info!("NodeManager::create: {}", s.node_name);

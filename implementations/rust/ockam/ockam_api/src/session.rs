@@ -5,6 +5,7 @@ use crate::{local_multiaddr_to_route, DefaultAddress};
 use minicbor::{Decode, Encode};
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
+use ockam_core::sessions::SessionPolicy;
 use ockam_core::{Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
@@ -26,6 +27,7 @@ pub struct Medic {
     sessions: Arc<Mutex<Sessions>>,
     pings: JoinSet<(Key, Result<(), Error>)>,
     replacements: JoinSet<(Key, Result<MultiAddr, Error>)>,
+    message_flow_sessions: ockam_core::sessions::Sessions,
 }
 
 #[derive(Debug, Copy, Clone, Encode, Decode)]
@@ -36,12 +38,13 @@ pub struct Message {
 }
 
 impl Medic {
-    pub fn new() -> Self {
+    pub fn new(message_flow_sessions: ockam_core::sessions::Sessions) -> Self {
         Self {
             delay: DELAY,
             sessions: Arc::new(Mutex::new(Sessions::new())),
             pings: JoinSet::new(),
             replacements: JoinSet::new(),
+            message_flow_sessions,
         }
     }
 
@@ -51,20 +54,11 @@ impl Medic {
 
     pub async fn start(self, ctx: Context) -> Result<(), Error> {
         let ctx = ctx
-            .new_detached(
-                Address::random_tagged("Medic.ctx"),
-                DenyAll,
-                AllowAll, // FIXME: @ac
-            )
+            .new_detached(Address::random_tagged("Medic.ctx"), DenyAll, AllowAll)
             .await?;
         let (tx, rx) = mpsc::channel(32);
-        ctx.start_worker(
-            Collector::address(),
-            Collector(tx),
-            AllowAll, // FIXME: @ac
-            DenyAll,
-        )
-        .await?;
+        ctx.start_worker(Collector::address(), Collector(tx), AllowAll, DenyAll)
+            .await?;
         self.go(ctx, rx).await
     }
 
@@ -103,6 +97,17 @@ impl Medic {
                                 addr = %session.ping_address(),
                                 ping = %m.ping,
                                 "send ping"
+                            }
+                            if let Some(session_id) = self
+                                .message_flow_sessions
+                                .find_session_with_producer_address(r.next().unwrap())
+                                .map(|x| x.session_id().clone())
+                            {
+                                self.message_flow_sessions.add_consumer(
+                                    &Collector::address(),
+                                    &session_id,
+                                    SessionPolicy::ProducerAllowMultiple,
+                                );
                             }
                             let t = TransportMessage::v1(r, Collector::address(), v);
                             LocalMessage::new(t, Vec::new())
