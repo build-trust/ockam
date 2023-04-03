@@ -289,7 +289,8 @@ impl NodeManager {
             identity.set_credential(cred.to_owned()).await;
         }
 
-        let medic = Medic::new();
+        let message_flow_sessions = ockam_core::sessions::Sessions::default();
+        let medic = Medic::new(message_flow_sessions.clone());
         let sessions = medic.sessions();
 
         let mut s = Self {
@@ -314,7 +315,7 @@ impl NodeManager {
             sessions,
             policies,
             attributes_storage,
-            message_flow_sessions: Default::default(),
+            message_flow_sessions,
         };
 
         if !general_options.skip_defaults {
