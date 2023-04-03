@@ -1,4 +1,5 @@
 use crate::nodes::service::Alias;
+use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
 use ockam_identity::IdentityIdentifier;
@@ -123,38 +124,6 @@ impl KafkaServiceInfo {
     }
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct ForwarderRegistryInfo {
-    pub(crate) forwarding_route: String,
-    pub(crate) remote_address: String,
-    pub(crate) worker_address: String,
-}
-
-impl ForwarderRegistryInfo {
-    pub(crate) fn new(
-        forwarding_route: String,
-        remote_address: String,
-        worker_address: String,
-    ) -> Self {
-        Self {
-            forwarding_route,
-            remote_address,
-            worker_address,
-        }
-    }
-
-    pub fn forwarding_route(&self) -> &str {
-        &self.forwarding_route
-    }
-
-    pub fn remote_address(&self) -> &str {
-        &self.remote_address
-    }
-
-    pub fn worker_address(&self) -> &str {
-        &self.worker_address
-    }
-}
 #[derive(Clone)]
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
@@ -217,7 +186,7 @@ pub(crate) struct Registry {
     pub(crate) authenticator_service: BTreeMap<Address, AuthenticatorServiceInfo>,
 
     // FIXME: wow this is a terrible way to store data
-    pub(crate) forwarders: BTreeMap<String, ForwarderRegistryInfo>,
+    pub(crate) forwarders: BTreeMap<String, RemoteForwarderInfo>,
     pub(crate) inlets: BTreeMap<Alias, InletInfo>,
     pub(crate) outlets: BTreeMap<Alias, OutletInfo>,
 }

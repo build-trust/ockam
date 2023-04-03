@@ -4,7 +4,7 @@ use std::sync::Arc;
 use minicbor::Decoder;
 
 use ockam::compat::asynchronous::RwLock;
-use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
+use ockam::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderTrustOptions};
 use ockam::Result;
 use ockam_core::api::{Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::AsyncTryClone;
@@ -15,8 +15,7 @@ use ockam_node::Context;
 
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
-use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo, ForwarderList};
-use crate::nodes::registry::ForwarderRegistryInfo;
+use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::session::util;
 use crate::session::{Replacer, Session};
 use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
@@ -89,25 +88,18 @@ impl NodeManagerWorker {
             Ok(info) => {
                 let registry_info = info.clone();
                 let registry_remote_address = registry_info.remote_address().to_string();
-
-                let forwarding_route = registry_info.forwarding_route().to_string();
-                let remote_address = registry_info.remote_address().to_string();
-                let worker_address = registry_info.worker_address().to_string();
-
-                let b = ForwarderInfo::from(info);
-                let forwarder_registry_entry =
-                    ForwarderRegistryInfo::new(forwarding_route, remote_address, worker_address);
+                let res_body = ForwarderInfo::from(info);
                 node_manager
                     .registry
                     .forwarders
-                    .insert(registry_remote_address, forwarder_registry_entry);
+                    .insert(registry_remote_address, registry_info);
 
                 debug!(
-                    forwarding_route = %b.forwarding_route(),
-                    remote_address = %b.remote_address(),
+                    forwarding_route = %res_body.forwarding_route(),
+                    remote_address = %res_body.remote_address(),
                     "CreateForwarder request processed, sending back response"
                 );
-                Ok(Response::ok(rid).body(b).to_vec()?)
+                Ok(Response::ok(rid).body(res_body).to_vec()?)
             }
             Err(err) => {
                 error!(?err, "Failed to create forwarder");
@@ -121,15 +113,15 @@ impl NodeManagerWorker {
     pub(super) async fn get_forwarders<'a>(
         &mut self,
         req: &Request<'a>,
-        registry: &'a BTreeMap<String, ForwarderRegistryInfo>,
-    ) -> ResponseBuilder<ForwarderList<'a>> {
+        registry: &'a BTreeMap<String, RemoteForwarderInfo>,
+    ) -> ResponseBuilder<Vec<ForwarderInfo<'a>>> {
         debug!("Handling ListForwarders request");
-        Response::ok(req.id()).body(ForwarderList::new(
+        Response::ok(req.id()).body(
             registry
                 .iter()
-                .map(|(_, registry_info)| ForwarderInfo::from(registry_info))
+                .map(|(_, registry_info)| ForwarderInfo::from(registry_info.to_owned()))
                 .collect(),
-        ))
+        )
     }
 }
 
