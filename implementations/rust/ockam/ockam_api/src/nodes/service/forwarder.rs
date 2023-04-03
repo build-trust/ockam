@@ -53,11 +53,22 @@ impl NodeManagerWorker {
                     ctx,
                     route,
                     alias,
-                    RemoteForwarderTrustOptions::insecure(),
+                    RemoteForwarderTrustOptions::as_consumer_and_producer(
+                        &node_manager.message_flow_sessions,
+                        &connection.sc_session_id.unwrap(), // Should always be present?
+                    ),
                 )
                 .await
             } else {
-                RemoteForwarder::create(ctx, route, RemoteForwarderTrustOptions::insecure()).await
+                RemoteForwarder::create(
+                    ctx,
+                    route,
+                    RemoteForwarderTrustOptions::as_consumer_and_producer(
+                        &node_manager.message_flow_sessions,
+                        &connection.sc_session_id.unwrap(), // Should always be present?
+                    ),
+                )
+                .await
             }
         } else {
             let f = if let Some(alias) = req.alias() {
@@ -65,11 +76,22 @@ impl NodeManagerWorker {
                     ctx,
                     route,
                     alias,
-                    RemoteForwarderTrustOptions::insecure(),
+                    RemoteForwarderTrustOptions::as_consumer_and_producer(
+                        &node_manager.message_flow_sessions,
+                        &connection.sc_session_id.unwrap(), // Should always be present?
+                    ),
                 )
                 .await
             } else {
-                RemoteForwarder::create(ctx, route, RemoteForwarderTrustOptions::insecure()).await
+                RemoteForwarder::create(
+                    ctx,
+                    route,
+                    RemoteForwarderTrustOptions::as_consumer_and_producer(
+                        &node_manager.message_flow_sessions,
+                        &connection.sc_session_id.unwrap(), // Should always be present?
+                    ),
+                )
+                .await
             };
             if f.is_ok() && !connection.secure_channel.is_empty() {
                 let ctx = Arc::new(ctx.async_try_clone().await?);
@@ -187,12 +209,22 @@ fn replacer(
                         &ctx,
                         r,
                         alias,
-                        RemoteForwarderTrustOptions::insecure(),
+                        RemoteForwarderTrustOptions::as_consumer_and_producer(
+                            &this.message_flow_sessions,
+                            &connection.sc_session_id.unwrap(), // Should always be present?
+                        ),
                     )
                     .await?;
                 } else {
-                    RemoteForwarder::create(&ctx, r, RemoteForwarderTrustOptions::insecure())
-                        .await?;
+                    RemoteForwarder::create(
+                        &ctx,
+                        r,
+                        RemoteForwarderTrustOptions::as_consumer_and_producer(
+                            &this.message_flow_sessions,
+                            &connection.sc_session_id.unwrap(), // Should always be present?
+                        ),
+                    )
+                    .await?;
                 }
                 Ok(connection.secure_channel)
             };
