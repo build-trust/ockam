@@ -23,6 +23,29 @@ Feedback:
 
 If you have any questions or feedback, please start a discussion
 on Github https://github.com/build-trust/ockam/discussions/new
+
+Environment Variables:
+
+System
+- COLORFGBG: a `string` that defines the foreground and background colors of the terminal.
+ If it's not set it has no effect in the Ockam CLI.
+
+CLI Behavior
+- NO_COLOR: a `boolean` that, if set, the colors will be stripped out from output messages.
+ Otherwise, let the terminal decide.
+- NO_INPUT: a `boolean` that, if set, the CLI won't ask the user for input.
+ Otherwise, let the terminal decide based the terminal features (tty).
+- OCKAM_DISABLE_UPGRADE_CHECK: a `boolean` that, if set, the CLI won't check for ockam upgrades.
+- OCKAM_HOME: a `string` that sets the home directory. Defaults to `~/.ockam`.
+- OCKAM_LOG: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed.
+
+Devs Usage
+- OCKAM_HELP_SHOW_HIDDEN: a `boolean` to control the visibility of hidden commands.
+- OCKAM_CONTROLLER_ADDR: a `string` that overrides the default address of the controller.
+- OCKAM_CONTROLLER_IDENTITY_ID: a `string` that overrides the default identifier of the controller.
+
+Internal (to enable some special behavior in the logic)
+- OCKAM_HELP_RENDER_MARKDOWN: a `boolean` to control the markdown rendering of the commands documentation.
 ";
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
