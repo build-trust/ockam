@@ -1097,9 +1097,9 @@ checksum = "520fbf3c07483f94e3e3ca9d0cfd913d7718ef2483d2cfd91c0d9e91474ab913"
 
 [[package]]
 name = "const-str"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5bc011a04793b8ce7bca0efd59e3697c2061760df6efbb8c895e8a81548db67"
+checksum = "2b62c6d3ea43cbe0bc5a081f276fd477e4291d168aacc9f9d98073325333c0d4"
 
 [[package]]
 name = "coolor"
