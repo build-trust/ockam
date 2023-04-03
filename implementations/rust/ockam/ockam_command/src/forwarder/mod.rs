@@ -2,11 +2,13 @@ use clap::{Args, Subcommand};
 
 pub(crate) use create::CreateCommand;
 pub(crate) use list::ListCommand;
+pub(crate) use show::ShowCommand;
 
 use crate::CommandGlobalOpts;
 
 mod create;
 mod list;
+mod show;
 
 /// Manage Forwarders
 #[derive(Clone, Debug, Args)]
@@ -20,6 +22,7 @@ pub struct ForwarderCommand {
 pub enum ForwarderSubCommand {
     Create(CreateCommand),
     List(ListCommand),
+    Show(ShowCommand),
 }
 
 impl ForwarderCommand {
@@ -27,6 +30,7 @@ impl ForwarderCommand {
         match self.subcommand {
             ForwarderSubCommand::Create(c) => c.run(opts),
             ForwarderSubCommand::List(c) => c.run(opts),
+            ForwarderSubCommand::Show(c) => c.run(opts),
         }
     }
 }
