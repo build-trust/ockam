@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::nodes::models::forwarder::ForwarderList;
+use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
 
 use crate::node::default_node_name;
@@ -28,16 +28,16 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -
     let node_name = extract_address_value(&cmd.at)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(Request::get("/node/forwarder")).await?;
-    let response = rpc.parse_response::<ForwarderList>()?;
+    let response = rpc.parse_response::<Vec<ForwarderInfo>>()?;
 
-    if response.list.is_empty() {
+    if response.is_empty() {
         return Err(crate::Error::new(
             exitcode::IOERR,
             anyhow!("No Forwarders found on node {node_name}"),
         ));
     }
 
-    for forwarder_info in response.list.iter() {
+    for forwarder_info in response.iter() {
         println!("Forwarder:");
         println!("  Forwarding Route: {}", forwarder_info.forwarding_route());
         println!("  Remote Address: {}", forwarder_info.remote_address());
