@@ -38,7 +38,7 @@ impl TerminalWriter for TerminalStream<Term> {
         Ok(())
     }
 
-    fn write_line(&mut self, s: &str) -> Result<()> {
+    fn write_line(&self, s: &str) -> Result<()> {
         let s = self.prepare_msg(s)?;
         self.writer.write_line(&s)?;
         Ok(())
@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let mut sut: Terminal<TerminalStream<Term>> =
+        let sut: Terminal<TerminalStream<Term>> =
             Terminal::new(false, false, false, OutputFormat::Plain);
         sut.write("1").unwrap();
         sut.rewrite("1-r\n").unwrap();
