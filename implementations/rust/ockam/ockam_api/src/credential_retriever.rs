@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 use ockam::{route, TcpTransport};
 use ockam_core::async_trait;
@@ -57,22 +57,20 @@ impl CredentialRetriever for CredentialIssuerRetriever {
         identity: &PublicIdentity,
         for_identity: &Identity,
     ) -> Result<Credential, ockam_core::Error> {
-        debug!("Getting credential from : {}", &self.issuer.maddr()?);
+        debug!("Getting credential from : {}", &self.issuer.maddr);
 
         let allowed = vec![identity.identifier().clone()];
 
-        let authority_tcp_session =
-            match create_tcp_session(&self.issuer.maddr()?, &self.transport).await {
-                Some(authority_tcp_session) => authority_tcp_session,
-                None => {
-                    let err_msg = format!(
-                        "Invalid route within trust context: {}",
-                        &self.issuer.maddr()?
-                    );
-                    error!("{err_msg}");
-                    return Err(ApiError::generic(&err_msg));
-                }
-            };
+        let authority_tcp_session = match create_tcp_session(&self.issuer.maddr, &self.transport)
+            .await
+        {
+            Some(authority_tcp_session) => authority_tcp_session,
+            None => {
+                let err_msg = format!("Invalid route within trust context: {}", &self.issuer.maddr);
+                error!("{err_msg}");
+                return Err(ApiError::generic(&err_msg));
+            }
+        };
 
         debug!("Create secure channel to authority");
 
@@ -112,17 +110,11 @@ impl CredentialRetriever for CredentialIssuerRetriever {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialIssuerInfo {
-    maddr: String,
+    pub maddr: MultiAddr,
 }
 
 impl CredentialIssuerInfo {
-    pub fn new(maddr: &str) -> Self {
-        Self {
-            maddr: maddr.to_string(),
-        }
-    }
-    pub fn maddr(&self) -> Result<MultiAddr, ockam_core::Error> {
-        let maddr = MultiAddr::from_str(&self.maddr)?;
-        Ok(maddr)
+    pub fn new(maddr: MultiAddr) -> Self {
+        Self { maddr }
     }
 }

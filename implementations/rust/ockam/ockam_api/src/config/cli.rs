@@ -86,8 +86,10 @@ impl TrustContextConfig {
         &self.id
     }
 
-    pub fn authority(&self) -> Option<&TrustAuthorityConfig> {
-        self.authority.as_ref()
+    pub fn authority(&self) -> Result<&TrustAuthorityConfig> {
+        self.authority
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Missing authority on trust context config"))
     }
 
     pub async fn to_trust_context(
@@ -131,6 +133,15 @@ impl TrustAuthorityConfig {
             identity,
             own_credential,
         }
+    }
+    pub fn identity(&self) -> &PublicIdentity {
+        &self.identity
+    }
+
+    pub fn own_credential(&self) -> Result<&CredentialRetrieverType> {
+        self.own_credential
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Missing own credential on trust authority config"))
     }
 }
 
