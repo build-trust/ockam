@@ -110,6 +110,26 @@ impl NodeManagerWorker {
         }
     }
 
+    pub(super) async fn show_forwarder<'a>(
+        &mut self,
+        req: &Request<'_>,
+        remote_address: &'a str,
+    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>> {
+        debug!("Handling ShowForwarder request");
+        let node_manager = self.node_manager.read().await;
+        if let Some(forwarder_to_show) = node_manager.registry.forwarders.get(remote_address) {
+            debug!(%remote_address, "Forwarder not found in node registry");
+            Ok(
+                Response::ok(req.id())
+                    .body(Some(ForwarderInfo::from(forwarder_to_show.to_owned()))),
+            )
+        } else {
+            error!(%remote_address, "Forwarder not found in the node registry");
+
+            Ok(Response::not_found(req.id()).body(None))
+        }
+    }
+
     pub(super) async fn get_forwarders<'a>(
         &mut self,
         req: &Request<'a>,

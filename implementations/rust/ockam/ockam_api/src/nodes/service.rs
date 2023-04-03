@@ -679,6 +679,9 @@ impl NodeManagerWorker {
             }
 
             // ==*== Forwarder commands ==*==
+            (Get, ["node", "forwarder", remote_address]) => {
+                self.show_forwarder(req, remote_address).await?.to_vec()?
+            }
             (Get, ["node", "forwarder"]) => {
                 let forwarder_registry = {
                     let node_manager = self.node_manager.read().await;

@@ -391,6 +391,27 @@ teardown() {
   assert_failure
 }
 
+@test "forwarder - show a forwarder on a node" {
+  run --separate-stderr "$OCKAM" node create n1
+  assert_success
+  run --separate-stderr "$OCKAM" node create n2
+  assert_success
+
+  run $OCKAM forwarder create blue --at /node/n1 --to /node/n2
+  assert_success
+
+  run $OCKAM forwarder show forward_to_blue --at /node/n2
+  assert_output --regexp "Forwarding Route:.* => 0#forward_to_blue"
+  assert_output --partial "Remote Address: forward_to_blue"
+  assert_output --regexp "Worker Address: 0#.*"
+  assert_success
+
+  # Test showing non-existing with no forwarder
+  run $OCKAM forwarder show forwarder_blank --at /node/n2
+  assert_output --partial "NotFound"
+  assert_failure
+}
+
 # ===== PORTALS (INLET/OUTLET)
 
 @test "portals - tcp inlet CRUD" {
