@@ -24,14 +24,14 @@ teardown() {
 @test "portals - create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
   port=7100
 
-  run "$OCKAM" node create blue
+  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
   fwd="$(random_str)"
   $OCKAM forwarder create "$fwd" --at /project/default --to /node/blue
 
-  run "$OCKAM" node create green
+  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
   assert_success
   $OCKAM secure-channel create --from /node/green --to "/project/default/service/forward_to_$fwd/service/api" |
     $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
@@ -43,14 +43,14 @@ teardown() {
 @test "portals - create an inlet (with implicit secure channel creation) / outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
   port=7101
 
-  run "$OCKAM" node create blue
+  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
   fwd="$(random_str)"
   $OCKAM forwarder create "$fwd" --at /project/default --to /node/blue
 
-  run "$OCKAM" node create green
+  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
   assert_success
   $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
 
