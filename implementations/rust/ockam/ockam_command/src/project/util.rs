@@ -134,13 +134,13 @@ pub async fn create_secure_channel_to_authority(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
-    authority: &ProjectAuthority,
+    authority: IdentityIdentifier,
     addr: &MultiAddr,
     identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
-    let allowed = vec![authority.identity_id().clone()];
+    let allowed = vec![authority];
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         addr,
         Some(allowed),
@@ -290,7 +290,7 @@ pub async fn check_project_readiness<'a>(
                 ctx,
                 opts,
                 api_node,
-                &authority,
+                authority.identity_id().clone(),
                 authority.address(),
                 None,
             )

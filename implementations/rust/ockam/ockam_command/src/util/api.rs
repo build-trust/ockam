@@ -335,14 +335,6 @@ pub struct TrustContextOpts {
     pub trust_context: Option<TrustContextConfig>,
 }
 
-impl TrustContextOpts {
-    pub fn new() -> Self {
-        Self {
-            trust_context: None,
-        }
-    }
-}
-
 pub fn parse_trust_context(trust_context_path: &str) -> Result<TrustContextConfig> {
     let trust_context = std::fs::read_to_string(trust_context_path)?;
     let tc: TrustContextConfig =

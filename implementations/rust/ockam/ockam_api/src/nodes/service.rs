@@ -33,7 +33,7 @@ use super::registry::Registry;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::CliState;
-use crate::config::cli::{AuthoritiesConfig, TrustContextConfig};
+use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
@@ -163,20 +163,14 @@ impl NodeManagerGeneralOptions {
     }
 }
 
-pub struct NodeManagerProjectsOptions<'a> {
-    ac: Option<&'a AuthoritiesConfig>,
+pub struct NodeManagerProjectsOptions {
     project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
 }
 
-impl<'a> NodeManagerProjectsOptions<'a> {
-    pub fn new(
-        ac: Option<&'a AuthoritiesConfig>,
-        project_id: Option<String>,
-        projects: BTreeMap<String, ProjectLookup>,
-    ) -> Self {
+impl NodeManagerProjectsOptions {
+    pub fn new(project_id: Option<String>, projects: BTreeMap<String, ProjectLookup>) -> Self {
         Self {
-            ac,
             project_id,
             projects,
         }
@@ -227,7 +221,7 @@ impl NodeManager {
     pub async fn create(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,
-        projects_options: NodeManagerProjectsOptions<'_>,
+        projects_options: NodeManagerProjectsOptions,
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,
     ) -> Result<Self> {
@@ -274,8 +268,7 @@ impl NodeManager {
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults: general_options.skip_defaults,
-            enable_credential_checks: projects_options.ac.is_some()
-                && projects_options.project_id.is_some(),
+            enable_credential_checks: trust_options.trust_context_config.is_some(),
             vault,
             identity,
             projects: Arc::new(projects_options.projects),
@@ -291,8 +284,11 @@ impl NodeManager {
             attributes_storage,
         };
 
+        info!("NodeManager::create: {}", s.node_name);
         if !general_options.skip_defaults {
+            info!("NodeManager::create: starting default services");
             if let Some(tc) = trust_options.trust_context_config {
+                info!("NodeManager::create: configuring trust context");
                 s.configure_trust_context(&tc).await?;
             }
         }
@@ -310,6 +306,8 @@ impl NodeManager {
             tc.to_trust_context(Some(self.tcp_transport.async_try_clone().await?))
                 .await?,
         );
+
+        info!("NodeManager::configure_trust_context: trust context configured");
 
         Ok(())
     }

@@ -86,12 +86,34 @@ impl Runner {
         .await?;
 
         let map = self.opts.config.lookup();
-        let base_addr = if let Some(a) = project_authority(&self.cmd.to, &map)? {
+        let base_addr = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
+            let cred_retr = tc.authority()?.own_credential()?;
+            let addr = match cred_retr {
+                ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => {
+                    &c.maddr
+                }
+                _ => {
+                    return Err(anyhow!(
+                        "Trust context must be configured with a credential issuer"
+                    )
+                    .into())
+                }
+            };
             create_secure_channel_to_authority(
                 &self.ctx,
                 &self.opts,
                 &node_name,
-                a,
+                tc.authority()?.identity().identifier().clone(),
+                addr,
+                self.cmd.cloud_opts.identity.clone(),
+            )
+            .await?
+        } else if let Some(a) = project_authority(&self.cmd.to, &map)? {
+            create_secure_channel_to_authority(
+                &self.ctx,
+                &self.opts,
+                &node_name,
+                a.identity_id().clone(),
                 a.address(),
                 self.cmd.cloud_opts.identity.clone(),
             )

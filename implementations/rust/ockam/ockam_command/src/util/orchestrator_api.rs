@@ -233,12 +233,13 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     .authority
                     .as_ref()
                     .context("Project Authority is required")?;
-
+                // TODO: When we --project-path is fully deprecated
+                // use the trust context authority here
                 create_secure_channel_to_authority(
                     self.ctx,
                     self.opts,
                     node_name,
-                    authority,
+                    authority.identity_id().clone(),
                     authority.address(),
                     self.identity.clone(),
                 )

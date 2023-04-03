@@ -71,7 +71,26 @@ async fn run_impl(
     let proj: ProjectInfo = serde_json::from_str(&s)?;
 
     // Create secure channel to the project's authority node
-    let secure_channel_addr = {
+    let secure_channel_addr = if let Some(tc) = cmd.trust_opts.trust_context.as_ref() {
+        let cred_retr = tc.authority()?.own_credential()?;
+        let addr = match cred_retr {
+            ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => &c.maddr,
+            _ => {
+                return Err(
+                    anyhow!("Trust context must be configured with a credential issuer").into(),
+                )
+            }
+        };
+        create_secure_channel_to_authority(
+            &ctx,
+            &opts,
+            &node_name,
+            tc.authority()?.identity().identifier().clone(),
+            addr,
+            cmd.cloud_opts.identity,
+        )
+        .await?
+    } else {
         let authority =
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
@@ -80,7 +99,7 @@ async fn run_impl(
             &ctx,
             &opts,
             &node_name,
-            &authority,
+            authority.identity_id().clone(),
             authority.address(),
             cmd.cloud_opts.identity,
         )

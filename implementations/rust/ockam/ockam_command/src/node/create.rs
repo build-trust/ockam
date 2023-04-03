@@ -4,6 +4,7 @@ use ockam_api::config::cli::{CredentialRetrieverType, TrustAuthorityConfig, Trus
 use ockam_api::CredentialIssuerInfo;
 use ockam_identity::PublicIdentity;
 
+use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 use rand::prelude::random;
 use tokio::time::{sleep, Duration};
@@ -21,18 +22,15 @@ use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
-use crate::util::api::TrustContextOpts;
+use crate::util::api::parse_trust_context;
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
     docs, identity, node::show::print_query_status, project, util::find_available_port,
     CommandGlobalOpts, Result,
 };
+use crate::{node::util::init_node_state, util::RpcBuilder};
 use crate::{node::util::spawn_node, util::parse_node_name};
-use crate::{
-    node::util::{add_project_authority_from_project_info, init_node_state},
-    util::RpcBuilder,
-};
 use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::authority_node;
@@ -115,8 +113,9 @@ pub struct CreateCommand {
     #[arg(long)]
     pub authority_identity: Option<String>,
 
-    #[command(flatten)]
-    pub trust_context_opts: TrustContextOpts,
+    /// Trust Context config file
+    #[arg(global = true, long, value_name = "TRUST_CONTEXT_JSON_PATH")]
+    pub trust_context: Option<PathBuf>,
 
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
@@ -139,7 +138,7 @@ impl Default for CreateCommand {
             reload_from_trusted_identities_file: None,
             authority_identity: None,
             credential: None,
-            trust_context_opts: TrustContextOpts::new(),
+            trust_context: None,
         }
     }
 }
@@ -251,7 +250,6 @@ async fn run_foreground_node(
             let p: ProjectInfo = serde_json::from_str(&s)?;
             let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority_from_project_info(p, &node_name, cfg).await?;
             Some(project_id)
         }
         None => None,
@@ -314,8 +312,10 @@ async fn run_foreground_node(
                     let authority_public_identity =
                         PublicIdentity::import(&hex::decode(identity.to_string())?, vault).await?;
 
+                    let authority_route = MultiAddr::from_str(&route)
+                        .map_err(|_| anyhow!("incorrect multi address"))?;
                     let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                        CredentialIssuerInfo::new(&route),
+                        CredentialIssuerInfo::new(authority_route),
                     );
                     let authority =
                         TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
@@ -328,8 +328,15 @@ async fn run_foreground_node(
         None => trust_context_config,
     };
 
-    trust_context_config = match cmd.trust_context_opts.trust_context.as_ref() {
-        Some(tc) => Some(tc.clone()),
+    trust_context_config = match cmd.trust_context.as_ref() {
+        Some(path_buf) => {
+            let tc = match path_buf.to_str() {
+                Some(path) => parse_trust_context(path)?,
+                None => return Err(anyhow!("Invalid trust context path").into()),
+            };
+
+            Some(tc)
+        }
         None => trust_context_config,
     };
 
@@ -364,11 +371,7 @@ async fn run_foreground_node(
             cmd.launch_config.is_some(),
             pre_trusted_identities,
         ),
-        NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&node_name)?.snapshot()),
-            project_id,
-            projects,
-        ),
+        NodeManagerProjectsOptions::new(project_id, projects),
         NodeManagerTransportOptions::new(
             ApiTransport {
                 tt: TransportType::Tcp,
@@ -591,6 +594,7 @@ async fn spawn_background_node(
             .map(|config| serde_json::to_string(config).unwrap()),
         cmd.authority_identity.as_ref(),
         cmd.credential.as_ref(),
+        cmd.trust_context.as_ref(),
     )?;
 
     Ok(())

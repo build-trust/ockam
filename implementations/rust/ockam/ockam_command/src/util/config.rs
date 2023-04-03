@@ -1,12 +1,10 @@
 //! Handle local node configuration
 
-use std::{ops::Deref, path::PathBuf, sync::RwLockReadGuard};
+use std::{ops::Deref, sync::RwLockReadGuard};
 
 use crate::Result;
 use tracing::trace;
 
-use ockam::identity::IdentityIdentifier;
-use ockam_api::cli_state;
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::config::{cli, lookup::ConfigLookup, Config};
 
@@ -41,11 +39,6 @@ impl OckamConfig {
     /// Get a lookup table
     pub fn lookup(&self) -> ConfigLookup {
         self.inner().lookup().clone()
-    }
-
-    pub fn authorities(&self, node: &str) -> Result<AuthoritiesConfig> {
-        let path = cli_state::CliState::try_default()?.nodes.dir.join(node);
-        AuthoritiesConfig::load(path)
     }
 
     ///////////////////// WRITE ACCESSORS //////////////////////////////
@@ -86,28 +79,5 @@ impl OckamConfig {
     pub fn remove_projects_alias(&self) {
         let mut inner = self.inner.write();
         inner.lookup.remove_projects();
-    }
-}
-
-#[derive(Debug)]
-pub struct AuthoritiesConfig {
-    inner: Config<cli::AuthoritiesConfig>,
-}
-
-impl AuthoritiesConfig {
-    pub fn load(dir: PathBuf) -> Result<Self> {
-        let inner = Config::<cli::AuthoritiesConfig>::load(&dir, "authorities")?;
-        Ok(Self { inner })
-    }
-
-    pub fn add_authority(&self, i: IdentityIdentifier, a: cli::Authority) -> Result<()> {
-        let mut cfg = self.inner.write();
-        cfg.add_authority(i, a);
-        drop(cfg);
-        Ok(self.inner.persist_config_updates()?)
-    }
-
-    pub fn snapshot(&self) -> cli::AuthoritiesConfig {
-        self.inner.read().clone()
     }
 }
