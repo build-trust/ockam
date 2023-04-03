@@ -65,7 +65,14 @@ setup_home_dir() {
   export OCKAM_HOME="$dir"
 }
 
+mkdir -p "$HOME/.bats-tests"
 teardown_home_dir() {
+  # If BATS_TEST_COMPLETED is not set, the test failed.
+  if [[ -z "$BATS_TEST_COMPLETED" ]]; then
+    # Copy the CLI directory to $HOME/.bats-tests so it can be inspected.
+    # For some reason, if the directory is moved, the teardown function gets stuck.
+    cp -a "$OCKAM_HOME" "$HOME/.bats-tests"
+  fi
   $OCKAM node delete --all --force
   $OCKAM reset -y
 }

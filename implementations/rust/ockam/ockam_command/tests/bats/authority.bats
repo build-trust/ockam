@@ -49,7 +49,7 @@ teardown() {
   assert_success
   assert_output --partial "sample_val"
 
-  echo "$trusted" > "$OCKAM_HOME/trusted-anchors.json"
+  echo "$trusted" >"$OCKAM_HOME/trusted-anchors.json"
   # Restart the authority node with a trusted identities file and check that m1 can still authenticate
   run "$OCKAM" node delete authority
   run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:4200 --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
