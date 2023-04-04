@@ -1,10 +1,11 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
 use minicbor::Decoder;
+use ockam_abac::expr::{and, eq, ident, str};
 
 use ockam::identity::{Identity, IdentityIdentifier};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
-use ockam_abac::PolicyStorage;
+use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{
     boxed::Box,
@@ -12,7 +13,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, AllowAll, AsyncTryClone};
+use ockam_core::{route, AllowAll, AsyncTryClone, IncomingAccessControl};
 use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
@@ -124,6 +125,51 @@ pub struct IdentityOverride {
 impl NodeManager {
     pub(crate) fn vault(&self) -> Result<Arc<dyn IdentityVault>> {
         Ok(self.vault.clone())
+    }
+
+    async fn access_control(
+        &self,
+        r: &Resource,
+        a: &Action,
+        trust_context_id: Option<&str>,
+        custom_default: Option<&Expr>,
+    ) -> Result<Arc<dyn IncomingAccessControl>> {
+        if let Some(tcid) = trust_context_id {
+            // Populate environment with known attributes:
+            let mut env = Env::new();
+            env.put("resource.id", str(r.as_str()));
+            env.put("action.id", str(a.as_str()));
+            env.put("resource.project_id", str(tcid.to_string()));
+            env.put("resource.trust_context_id", str(tcid));
+
+            // Check if a policy exists for (resource, action) and if not, then
+            // create or use a default entry:
+            if self.policies.get_policy(r, a).await?.is_none() {
+                let fallback = match custom_default {
+                    Some(e) => e.clone(),
+                    None => and([
+                        eq([ident("resource.project_id"), ident("subject.project_id")]),
+                        eq([
+                            ident("resource.trust_context_id"),
+                            ident("subject.trust_context_id"),
+                        ]),
+                    ]),
+                };
+                self.policies.set_policy(r, a, &fallback).await?
+            }
+            let store = self.attributes_storage.async_try_clone().await?;
+            let policies = self.policies.clone();
+            Ok(Arc::new(PolicyAccessControl::new(
+                policies,
+                store,
+                r.clone(),
+                a.clone(),
+                env,
+            )))
+        } else {
+            // TODO: @ac allow passing this as a cli argument
+            Ok(Arc::new(AllowAll))
+        }
     }
 
     pub(crate) fn trust_context(&self) -> Result<&TrustContext> {
@@ -268,7 +314,13 @@ impl NodeManager {
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults: general_options.skip_defaults,
-            enable_credential_checks: trust_options.trust_context_config.is_some(),
+            enable_credential_checks: trust_options.trust_context_config.is_some()
+                && trust_options
+                    .trust_context_config
+                    .as_ref()
+                    .unwrap()
+                    .authority()
+                    .is_ok(),
             vault,
             identity,
             projects: Arc::new(projects_options.projects),

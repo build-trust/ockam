@@ -28,8 +28,8 @@ use crate::{local_multiaddr_to_route, DefaultAddress};
 use core::time::Duration;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
-use ockam_abac::expr::{and, eq, ident, str};
-use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
+use ockam_abac::expr::{eq, ident, str};
+use ockam_abac::Resource;
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, AllowAll, IncomingAccessControl};
@@ -189,13 +189,21 @@ impl NodeManager {
             return Err(ApiError::generic("Echoer service exists at this address"));
         }
 
-        ctx.start_worker(
-            addr.clone(),
-            Echoer,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+        let maybe_trust_context_id = self.trust_context.as_ref().map(|c| c.id());
+        let resource = Resource::assert_inline(addr.address());
+        let ac = self
+            .access_control(
+                &resource,
+                &actions::HANDLE_MESSAGE,
+                maybe_trust_context_id,
+                None,
+            )
+            .await?;
+
+        WorkerBuilder::with_access_control(ac, Arc::new(AllowAll), addr.clone(), Echoer)
+            .start(ctx)
+            .await
+            .map(|_| ())?;
 
         self.registry
             .echoer_services
@@ -226,32 +234,6 @@ impl NodeManager {
         Ok(())
     }
 
-    async fn build_access_control(
-        &self,
-        r: &Resource,
-        a: &Action,
-        project_id: &str,
-        default: &Expr,
-    ) -> Result<Arc<dyn IncomingAccessControl>> {
-        // Populate environment with known attributes:
-        let mut env = Env::new();
-        env.put("resource.id", str(r.as_str()));
-        env.put("action.id", str(a.as_str()));
-        env.put("resource.project_id", str(project_id));
-        // Check if a policy exists for (resource, action) and if not, then
-        // create a default entry:
-        if self.policies.get_policy(r, a).await?.is_none() {
-            self.policies.set_policy(r, a, default).await?
-        }
-        Ok(Arc::new(PolicyAccessControl::new(
-            self.policies.clone(),
-            self.attributes_storage.clone(),
-            r.clone(),
-            a.clone(),
-            env,
-        )))
-    }
-
     pub(super) async fn start_credential_issuer_service_impl(
         &mut self,
         ctx: &Context,
@@ -266,9 +248,8 @@ impl NodeManager {
         let action = actions::HANDLE_MESSAGE;
         let resource = Resource::new(&addr.to_string());
         let project = std::str::from_utf8(proj).unwrap();
-        let rule = eq([ident("resource.project_id"), ident("subject.project_id")]);
         let abac = self
-            .build_access_control(&resource, &action, project, &rule)
+            .access_control(&resource, &action, Some(project), None)
             .await?;
         let issuer = crate::authenticator::direct::CredentialIssuer::new(
             proj.to_vec(),
@@ -302,17 +283,9 @@ impl NodeManager {
         let action = actions::HANDLE_MESSAGE;
         let resource = Resource::new(&addr.to_string());
         let project = std::str::from_utf8(proj).unwrap();
-        let rule = and([
-            eq([ident("resource.project_id"), ident("subject.project_id")]),
-            eq([
-                ident("resource.trust_context_id"),
-                ident("subject.trust_context_id"),
-            ]),
-            eq([ident("subject.ockam-role"), str("enroller")]),
-        ]);
 
         let abac = self
-            .build_access_control(&resource, &action, project, &rule)
+            .access_control(&resource, &action, Some(project), None)
             .await?;
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
@@ -366,16 +339,8 @@ impl NodeManager {
                 proj.to_vec(),
                 self.attributes_storage.async_try_clone().await?,
             );
-        let rule = and([
-            eq([ident("resource.project_id"), ident("subject.project_id")]),
-            eq([
-                ident("resource.trust_context_id"),
-                ident("subject.trust_context_id"),
-            ]),
-            eq([ident("subject.ockam-role"), str("enroller")]),
-        ]);
         let abac = self
-            .build_access_control(&resource, &action, project, &rule)
+            .access_control(&resource, &action, Some(project), None)
             .await?;
         let allow_all = Arc::new(AllowAll);
         WorkerBuilder::with_access_control(abac, allow_all.clone(), issuer_addr.clone(), issuer)

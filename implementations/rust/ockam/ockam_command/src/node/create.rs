@@ -1,10 +1,9 @@
 use clap::Args;
 use colorful::Colorful;
 use ockam_api::config::cli::{CredentialRetrieverType, TrustAuthorityConfig, TrustContextConfig};
-use ockam_api::CredentialIssuerInfo;
+
 use ockam_identity::PublicIdentity;
 
-use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 use rand::prelude::random;
 use tokio::time::{sleep, Duration};
@@ -306,24 +305,8 @@ async fn run_foreground_node(
             let s = tokio::fs::read_to_string(path).await?;
             let p: ProjectInfo = serde_json::from_str(&s)?;
 
-            match (p.authority_identity, p.authority_access_route) {
-                (Some(identity), Some(route)) => {
-                    let vault = Vault::create();
-                    let authority_public_identity =
-                        PublicIdentity::import(&hex::decode(identity.to_string())?, vault).await?;
-
-                    let authority_route = MultiAddr::from_str(&route)
-                        .map_err(|_| anyhow!("incorrect multi address"))?;
-                    let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                        CredentialIssuerInfo::new(authority_route),
-                    );
-                    let authority =
-                        TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
-                    let tcc = TrustContextConfig::new(p.id.to_string(), Some(authority));
-                    Some(tcc)
-                }
-                _ => trust_context_config,
-            }
+            let tcc = TrustContextConfig::from_project(&(&p).into()).await?;
+            Some(tcc)
         }
         None => trust_context_config,
     };
