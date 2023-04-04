@@ -202,11 +202,9 @@ defmodule Ockam.Services.API do
         API.handle_message(__MODULE__, message, state)
       end
 
-      def setup_handler(_options, state), do: {:ok, state}
-
       def path_group(_path), do: "all"
 
-      defoverridable setup_handler: 2, path_group: 1
+      defoverridable path_group: 1
     end
   end
 

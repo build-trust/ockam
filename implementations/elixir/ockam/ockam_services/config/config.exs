@@ -19,6 +19,7 @@ config :ockam_services,
     Ockam.Services.Provider.SecureChannel,
     # discovery service
     Ockam.Services.Provider.Discovery,
+    Ockam.Services.Provider.NodeInfo,
     # Rust sidecar services
     Ockam.Services.Provider.Sidecar
   ]
