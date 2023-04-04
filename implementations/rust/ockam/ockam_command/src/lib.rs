@@ -20,6 +20,7 @@ mod node;
 mod policy;
 mod project;
 mod reset;
+mod run;
 mod secure_channel;
 mod service;
 mod space;
@@ -64,6 +65,7 @@ use worker::WorkerCommand;
 
 use crate::admin::AdminCommand;
 use crate::authority::AuthorityCommand;
+use crate::run::RunCommand;
 use crate::subscription::SubscriptionCommand;
 use crate::terminal::{Terminal, TerminalStream};
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
@@ -227,6 +229,9 @@ pub enum OckamSubcommand {
     #[command(display_order = 900)]
     Completion(CompletionCommand),
 
+    #[command(display_order = 901)]
+    Run(RunCommand),
+
     Authenticated(AuthenticatedCommand),
     Configuration(ConfigurationCommand),
     Credential(CredentialCommand),
@@ -292,6 +297,7 @@ impl OckamCommand {
             OckamSubcommand::Worker(c) => c.run(options),
 
             OckamSubcommand::Completion(c) => c.run(),
+            OckamSubcommand::Run(c) => c.run(options),
 
             OckamSubcommand::Authenticated(c) => c.run(),
             OckamSubcommand::Configuration(c) => c.run(options),

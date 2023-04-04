@@ -265,13 +265,20 @@ impl<W: TerminalWriter> Terminal<W, Finished> {
             OutputFormat::Plain => {
                 if self.stdout.is_tty() {
                     // If not set, fallback with the following priority: Machine -> JSON
-                    plain.unwrap_or(
-                        machine.unwrap_or(json.context("JSON output should be defined")?),
-                    )
+                    match (plain, machine, json) {
+                        (Some(plain), _, _) => plain,
+                        (None, Some(machine), _) => machine,
+                        (None, None, Some(json)) => json,
+                        _ => unreachable!(),
+                    }
                 } else {
                     // If not set, fallback with the following priority: JSON -> Plain
-                    machine
-                        .unwrap_or(json.unwrap_or(plain.context("Plain output should be defined")?))
+                    match (machine, json, plain) {
+                        (Some(machine), _, _) => machine,
+                        (None, Some(json), _) => json,
+                        (None, None, Some(plain)) => plain,
+                        _ => unreachable!(),
+                    }
                 }
             }
             // If not set, no fallback is provided and returns an error
