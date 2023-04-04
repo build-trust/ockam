@@ -62,3 +62,12 @@ ignore = [
     # (https://rustsec.org/advisories/RUSTSEC-2022-0048.html)
     "RUSTSEC-2022-0048",
 ]
+# Users who require or prefer Git to use SSH cloning instead of HTTPS,
+# such as implemented via "insteadOf" rules in Git config, can still
+# successfully fetch advisories with this enabled.
+#
+# See also:
+# https://doc.rust-lang.org/cargo/reference/config.html#netgit-fetch-with-cli
+# https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html#the-git-fetch-with-cli-field-optional
+# https://github.com/EmbarkStudios/cargo-deny/pull/420
+git-fetch-with-cli = true
