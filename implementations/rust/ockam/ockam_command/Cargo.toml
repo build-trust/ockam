@@ -67,6 +67,7 @@ ctrlc = { version = "3.2.5", features = ["termination"] }
 dialoguer = "0.10"
 directories = "5"
 dirs = "5.0.0"
+duct = "0.13"
 flate2 = "1.0.25"
 hex = "0.4"
 indicatif = "0.17.3"
@@ -93,6 +94,7 @@ rustls-native-certs = "0.6.2"
 serde = { version = "1", features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 serde_json = "1"
+serde_yaml = "0.9"
 strip-ansi-escapes = "0.1.1"
 syntect = "5"
 sysinfo = { version = "0.28", default-features = false }

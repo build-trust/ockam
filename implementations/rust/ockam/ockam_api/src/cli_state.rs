@@ -778,6 +778,14 @@ impl NodesState {
         Ok(nodes)
     }
 
+    pub fn exists(&self, name: &str) -> Result<bool> {
+        match self.get(name) {
+            Ok(_) => Ok(true),
+            Err(CliStateError::NotFound(_)) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn get(&self, name: &str) -> Result<NodeState> {
         let path = self.get_node_path(name);
         if !path.exists() {

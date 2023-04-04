@@ -63,6 +63,7 @@ gen_from_impl!(std::net::AddrParseError, DATAERR);
 gen_from_impl!(hex::FromHexError, DATAERR);
 gen_from_impl!(serde_bare::error::Error, DATAERR);
 gen_from_impl!(serde_json::Error, DATAERR);
+gen_from_impl!(serde_yaml::Error, DATAERR);
 gen_from_impl!(minicbor::encode::Error<std::convert::Infallible>, DATAERR);
 gen_from_impl!(minicbor::decode::Error, DATAERR);
 gen_from_impl!(ockam::Error, SOFTWARE);
