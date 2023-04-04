@@ -10,6 +10,13 @@ ext {
   // Are we running as part of Continuous Integration?
   ci = System.getenv('CI') == 'true'
 
+  // Upgrade checks are not necessary during CLI development
+  // Ockam will also receive anonymized statistics from GitHub based on these checks
+  upgradeCheckEnvVar = 'OCKAM_DISABLE_UPGRADE_CHECK'
+  upgradeCheckDisabledValues = ['1', 'true', 'yes']
+  upgradeCheckValue = System.getenv(upgradeCheckEnvVar)
+  upgradeCheckDisabled = upgradeCheckDisabledValues.contains(upgradeCheckValue)
+
   // Environment variables for CI tasks
   // See...
   //  https://github.com/build-trust/ockam/issues/2822
@@ -65,11 +72,28 @@ task lint_cargo_deny {
   }
 }
 
+task lint_environment_variables {
+  doFirst {
+    logger.warn("""
+    Contributors: Please set the environment variable {} to one of: {}
+    Current value is: {}
+    This will prevent the CLI from fetching a list of GitHub releases during normal use or while running automated tests.
+    Ockam also receives anonymized metrics about how often `ockam` commands are being run based on these requests.
+    For more information: see `ockam_command/src/upgrade.rs`
+    https://github.com/build-trust/ockam/blob/a9bf6fe65f8d473affe75fc978758ebd50d5c5b8/implementations/rust/ockam/ockam_command/src/upgrade.rs#L14-L51
+    """, upgradeCheckEnvVar,  upgradeCheckDisabledValues, upgradeCheckValue, upgradeCheckDisabled)
+  }
+
+  onlyIf {
+    !upgradeCheckDisabled
+  }
+}
+
 task lint {
   group project.name
   description 'Lint the project.'
 
-  dependsOn lint_cargo_fmt_check, lint_cargo_clippy, lint_cargo_deny
+  dependsOn lint_cargo_fmt_check, lint_cargo_clippy, lint_cargo_deny, lint_environment_variables
 }
 
 task build_docs {
@@ -82,6 +106,7 @@ task build_docs {
 }
 
 task build {
+  dependsOn lint_environment_variables
   doLast {
     exec {
       environment environmentVars()
