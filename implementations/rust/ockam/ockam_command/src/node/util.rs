@@ -1,28 +1,26 @@
 use anyhow::{anyhow, Context as _};
 
 use ockam_api::config::lookup::ProjectLookup;
-use ockam_multiaddr::MultiAddr;
+
 use rand::random;
 use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::str::FromStr;
 
-use ockam::identity::{Identity, PublicIdentity};
+use ockam::identity::Identity;
 use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
-use ockam_api::config::cli::{CredentialRetrieverType, TrustAuthorityConfig, TrustContextConfig};
+use ockam_api::cli_state;
+use ockam_api::config::cli::TrustContextConfig;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
     NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-use ockam_api::{cli_state, CredentialIssuerInfo};
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::AllowAll;
-
-use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
@@ -100,26 +98,8 @@ pub async fn start_embedded_node_with_vault_and_identity(
                 let s = tokio::fs::read_to_string(path).await?;
                 let p: ProjectInfo = serde_json::from_str(&s)?;
 
-                match (p.authority_identity, p.authority_access_route) {
-                    (Some(identity), Some(route)) => {
-                        let vault = Vault::create();
-                        let authority_public_identity =
-                            PublicIdentity::import(&hex::decode(identity.to_string())?, vault)
-                                .await?;
-
-                        let authority_route = MultiAddr::from_str(&route)
-                            .map_err(|_| anyhow!("incorrect multi address"))?;
-                        let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                            CredentialIssuerInfo::new(authority_route),
-                        );
-                        let authority =
-                            TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
-                        let tcc = TrustContextConfig::new(p.id.to_string(), Some(authority));
-
-                        Some(tcc)
-                    }
-                    _ => None,
-                }
+                let tcc = TrustContextConfig::from_project(&(&p).into()).await?;
+                Some(tcc)
             }
             None => None,
         }

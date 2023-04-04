@@ -1,6 +1,7 @@
 //! Configuration files used by the ockam CLI
 
 use crate::cli_state::CredentialState;
+use crate::cloud::project::Project;
 use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::error::ApiError;
 use crate::{
@@ -16,9 +17,11 @@ use ockam_identity::{
     IdentityVault, PublicIdentity, TrustContext,
 };
 use ockam_multiaddr::MultiAddr;
+use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 /// The main ockam CLI configuration
 ///
@@ -111,16 +114,41 @@ impl TrustContextConfig {
 
         Ok(TrustContext::new(self.id.clone(), authority))
     }
-}
 
-impl ConfigValues for TrustContextConfig {
-    fn default_values() -> Self {
-        Self {
-            id: "default".to_string(),
-            authority: None,
-        }
+    pub async fn from_project(project_info: &Project<'_>) -> Result<Self> {
+        let authority = match (
+            &project_info.authority_access_route,
+            &project_info.authority_identity,
+        ) {
+            (Some(route), Some(identity)) => {
+                let vault = Vault::create();
+                let authority_public_identity = PublicIdentity::import(
+                    &hex::decode(identity.to_string()).map_err(|_| {
+                        ApiError::generic("unable to decode authority public identity")
+                    })?,
+                    vault,
+                )
+                .await?;
+
+                let authority_route = MultiAddr::from_str(&route)
+                    .map_err(|_| ApiError::generic("incorrect multi address"))?;
+                let retriever = CredentialRetrieverType::FromCredentialIssuer(
+                    CredentialIssuerInfo::new(authority_route),
+                );
+                let authority =
+                    TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
+                Some(authority)
+            }
+            _ => None,
+        };
+
+        Ok(TrustContextConfig::new(
+            project_info.id.to_string(),
+            authority,
+        ))
     }
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrustAuthorityConfig {
     identity: PublicIdentity,

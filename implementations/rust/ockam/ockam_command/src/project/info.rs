@@ -5,6 +5,8 @@ use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::project::Project;
+
+use ockam_api::config::cli::TrustContextConfig;
 use ockam_core::CowStr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
@@ -22,6 +24,9 @@ pub struct InfoCommand {
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
+
+    #[arg(long, default_value = "false")]
+    pub as_trust_context: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,7 +110,14 @@ async fn run_impl(
     rpc.request(api::project::show(&id, controller_route))
         .await?;
     let info: ProjectInfo = rpc.parse_response::<Project>()?.into();
-    rpc.print_response(&info)?;
+
+    if cmd.as_trust_context {
+        let tcc = TrustContextConfig::from_project(&(&info).into()).await?;
+        println!("{}", serde_json::to_string_pretty(&tcc)?);
+    } else {
+        rpc.print_response(&info)?;
+    }
+
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

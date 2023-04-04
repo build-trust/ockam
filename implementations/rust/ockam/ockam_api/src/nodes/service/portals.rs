@@ -11,11 +11,11 @@ use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::tokio::time::timeout;
 use ockam::{Address, AsyncTryClone, Result};
-use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::{Action, Env, PolicyAccessControl, Resource};
+
+use ockam_abac::Resource;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{AllowAll, IncomingAccessControl};
+use ockam_core::IncomingAccessControl;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -28,41 +28,6 @@ use super::{NodeManager, NodeManagerWorker};
 
 const INLET_WORKER: &str = "inlet-worker";
 const OUTER_CHAN: &str = "outer-chan";
-
-impl NodeManager {
-    async fn access_control(
-        &self,
-        r: &Resource,
-        a: &Action,
-        project_id: Option<String>,
-    ) -> Result<Arc<dyn IncomingAccessControl>> {
-        if let Some(pid) = project_id {
-            // Populate environment with known attributes:
-            let mut env = Env::new();
-            env.put("resource.id", str(r.as_str()));
-            env.put("action.id", str(a.as_str()));
-            env.put("resource.project_id", str(pid));
-            // Check if a policy exists for (resource, action) and if not, then
-            // create a default entry:
-            if self.policies.get_policy(r, a).await?.is_none() {
-                let fallback = eq([ident("resource.project_id"), ident("subject.project_id")]);
-                self.policies.set_policy(r, a, &fallback).await?
-            }
-            let store = self.attributes_storage.async_try_clone().await?;
-            let policies = self.policies.clone();
-            Ok(Arc::new(PolicyAccessControl::new(
-                policies,
-                store,
-                r.clone(),
-                a.clone(),
-                env,
-            )))
-        } else {
-            // TODO: @ac allow passing this as a cli argument
-            Ok(Arc::new(AllowAll))
-        }
-    }
-}
 
 impl NodeManagerWorker {
     pub(super) fn get_inlets<'a>(
@@ -163,15 +128,12 @@ impl NodeManagerWorker {
                 .first()
                 .and_then(|p| {
                     if let Some(p) = p.cast::<Project>() {
-                        node_manager
-                            .projects
-                            .get(&*p)
-                            .map(|info| info.id.to_string())
+                        node_manager.projects.get(&*p).map(|info| &*info.id)
                     } else {
                         None
                     }
                 })
-                .or_else(|| node_manager.project_id.clone());
+                .or_else(|| Some(node_manager.trust_context().map_or(None, |x| Some(x))?.id()));
             if pid.is_none() {
                 return Err(ApiError::generic("credential check requires project"));
             }
@@ -181,7 +143,7 @@ impl NodeManagerWorker {
         };
 
         let access_control = node_manager
-            .access_control(&resource, &actions::HANDLE_MESSAGE, project_id)
+            .access_control(&resource, &actions::HANDLE_MESSAGE, project_id, None)
             .await?;
 
         let res = node_manager
@@ -343,14 +305,14 @@ impl NodeManagerWorker {
         let worker_addr = Address::from(worker_addr.as_ref());
 
         let check_credential = node_manager.enable_credential_checks;
-        let project_id = if check_credential {
-            Some(node_manager.project_id()?.to_string())
+        let trust_context_id = if check_credential {
+            Some(node_manager.trust_context()?.id())
         } else {
             None
         };
 
         let access_control = node_manager
-            .access_control(&resource, &actions::HANDLE_MESSAGE, project_id)
+            .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
             .await?;
 
         let res = node_manager
