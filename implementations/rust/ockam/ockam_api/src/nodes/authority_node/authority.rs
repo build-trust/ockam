@@ -97,7 +97,7 @@ impl Authority {
             &secure_channel_listener_session_id,
         )
         .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(
+        .as_consumer_for_session(
             sessions,
             &tcp_listener_session_id,
             SessionPolicy::SpawnerAllowOnlyOneMessage,

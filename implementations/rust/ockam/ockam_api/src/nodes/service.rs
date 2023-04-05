@@ -370,7 +370,7 @@ impl NodeManager {
         )
         .await?;
 
-        self.create_secure_channel_listener_impl(
+        self.create_secure_channel_listener_impl_with_session(
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
             None, // Not checking identifiers here in favor of credential check
             None,
