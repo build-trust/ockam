@@ -1,5 +1,6 @@
 use ockam::{Any, Context, Result, Routed, Worker};
 
+// TODO: Split into two workers to avoid cycles + there are many implementations of Hop worker, fix all of them
 pub struct Hop;
 
 #[ockam::worker]
