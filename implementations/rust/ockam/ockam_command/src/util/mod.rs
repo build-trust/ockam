@@ -21,7 +21,7 @@ use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::env::get_env;
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
+use ockam_core::sessions::Sessions;
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
 use ockam_multiaddr::{
@@ -57,7 +57,7 @@ pub struct RpcBuilder<'a> {
     node_name: String,
     to: Route,
     mode: RpcMode<'a>,
-    session: Option<(Sessions, SessionId)>,
+    sessions: Option<Sessions>,
 }
 
 impl<'a> RpcBuilder<'a> {
@@ -68,12 +68,12 @@ impl<'a> RpcBuilder<'a> {
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
             mode: RpcMode::Embedded,
-            session: None,
+            sessions: None,
         }
     }
 
-    pub fn session(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
-        self.session = Some((sessions.clone(), session_id.clone()));
+    pub fn session(mut self, sessions: &Sessions) -> Self {
+        self.sessions = Some(sessions.clone());
         self
     }
 
@@ -104,7 +104,7 @@ impl<'a> RpcBuilder<'a> {
             node_name: self.node_name,
             to: self.to,
             mode: self.mode,
-            session: self.session,
+            sessions: self.sessions,
         }
     }
 }
@@ -117,7 +117,7 @@ pub struct Rpc<'a> {
     node_name: String,
     to: Route,
     mode: RpcMode<'a>,
-    session: Option<(Sessions, SessionId)>,
+    sessions: Option<Sessions>,
 }
 
 impl<'a> Rpc<'a> {
@@ -131,7 +131,7 @@ impl<'a> Rpc<'a> {
             node_name,
             to: NODEMANAGER_ADDR.into(),
             mode: RpcMode::Embedded,
-            session: None,
+            sessions: None,
         })
     }
 
@@ -152,7 +152,7 @@ impl<'a> Rpc<'a> {
                 node_state: cfg,
                 tcp: None,
             },
-            session: None,
+            sessions: None,
         })
     }
 
@@ -166,8 +166,8 @@ impl<'a> Rpc<'a> {
     {
         let route = self.route_impl(self.ctx).await?;
         let options = MessageSendReceiveOptions::new();
-        let options = if let Some((sessions, session_id)) = &self.session {
-            options.with_session(sessions, session_id, SessionPolicy::ProducerAllowMultiple)
+        let options = if let Some(sessions) = &self.sessions {
+            options.with_session(sessions)
         } else {
             options
         };
@@ -192,8 +192,8 @@ impl<'a> Rpc<'a> {
     {
         let route = self.route_impl(self.ctx).await?;
         let options = MessageSendReceiveOptions::new().with_timeout(timeout);
-        let options = if let Some((sessions, session_id)) = &self.session {
-            options.with_session(sessions, session_id, SessionPolicy::ProducerAllowMultiple)
+        let options = if let Some(sessions) = &self.sessions {
+            options.with_session(sessions)
         } else {
             options
         };

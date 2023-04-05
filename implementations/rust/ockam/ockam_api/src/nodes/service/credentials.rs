@@ -78,7 +78,7 @@ impl NodeManager {
                 identity.ctx(),
             )
             .await?
-            .with_session(&self.message_flow_sessions, &sc_session_id),
+            .with_sessions(&self.message_flow_sessions),
         );
         let credential = client.credential().await?;
         debug!("Got credential");
