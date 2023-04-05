@@ -50,7 +50,7 @@ teardown() {
 }
 
 @test "trust context - trust context with an identity authority; Credential Exchange is performed" {
-    run "$OCKAM" identity create i1 
+    run "$OCKAM" identity create i1
     run "$OCKAM" identity show i1 --full --encoding hex > i1.id
 
     run "$OCKAM" identity create i2
@@ -75,7 +75,7 @@ teardown() {
 
     # Create another node that trust and has a preset credential
     run "$OCKAM" node create n2 --identity i2 --trust-context i2-trust-context.json
-    
+
     run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
         | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
 
