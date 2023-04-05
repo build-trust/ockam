@@ -64,14 +64,25 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
-    let attrs = cmd.attributes()?;
+    let ident_state = opts.state.identities.get(&cmd.as_identity)?;
+    let auth_identity_identifier = ident_state.config.identifier.clone();
+
+    let mut attrs = cmd.attributes()?;
+    attrs.insert(
+        "project_id".to_string(),
+        auth_identity_identifier.to_string(),
+    );
+    attrs.insert(
+        "trust_context_id".to_string(),
+        auth_identity_identifier.to_string(),
+    );
+
     let cred_builder = CredentialBuilder::from_attributes(
         cmd.public_identity().await?.identifier().clone(),
         attrs,
     );
 
     let vault = opts.state.vaults.get(&cmd.vault)?.get().await?;
-    let ident_state = opts.state.identities.get(&cmd.as_identity)?;
 
     let ident = ident_state.get(&ctx, Arc::new(vault)).await?;
 
