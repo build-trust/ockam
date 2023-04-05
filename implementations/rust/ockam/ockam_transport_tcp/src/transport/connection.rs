@@ -28,7 +28,7 @@ impl TcpTransport {
 
         let addresses = Addresses::generate(ConnectionRole::Initiator);
 
-        trust_options.setup_session(addresses.receiver_address());
+        trust_options.setup_session(&addresses);
         let access_control = trust_options.create_access_control();
 
         TcpSendWorker::start(

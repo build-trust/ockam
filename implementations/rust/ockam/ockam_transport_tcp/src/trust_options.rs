@@ -1,3 +1,4 @@
+use crate::workers::Addresses;
 use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, SessionOutgoingAccessControl, Sessions};
 use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl, Result};
@@ -40,9 +41,14 @@ impl TcpConnectionTrustOptions {
         }
     }
 
-    pub(crate) fn setup_session(&self, address: &Address) {
+    pub(crate) fn setup_session(&self, addresses: &Addresses) {
         if let Some((sessions, session_id)) = &self.producer_session {
-            sessions.add_producer(address, session_id, None);
+            sessions.add_producer(
+                addresses.receiver_address(),
+                session_id,
+                None,
+                vec![addresses.sender_address().clone()],
+            );
         }
     }
 
@@ -100,7 +106,7 @@ impl TcpListenerTrustOptions {
         if let Some((sessions, listener_session_id)) = &self.spawner_session {
             let session_id = sessions.generate_session_id();
 
-            sessions.add_producer(address, &session_id, Some(listener_session_id));
+            sessions.add_producer(address, &session_id, Some(listener_session_id), vec![]);
 
             Some(session_id)
         } else {
