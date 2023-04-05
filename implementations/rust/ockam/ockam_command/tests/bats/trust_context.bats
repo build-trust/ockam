@@ -28,37 +28,58 @@ teardown() {
 }
 
 @test "trust context - trust context with an id only; ABAC rules are applied" {
-    #  run "$OCKAM" node create n1 --identity m1 --trust-context { "id": "trust_context_id", "authority": null }
+    echo "{
+        \"id\": \"1\"
+    }" > ./trust_context.json
 
-    #  run "$OCKAM" node create n2 --identity m2 --trust-context { "id": "trust_context_id", "authority": null }
+    run "$OCKAM" identity create m1
 
-    #  run "$OCKAM" node create n3 --identity m2 --trust-context { "id": "wrong_trust_context_id", "authority": null }
+    m1_identifier=$($OCKAM  identity show m1)
+    trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\", \"trust_context_id\" : \"1\"}}"
 
-    #  run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-    #     |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+    run "$OCKAM" node create n1 --identity m1
 
-    # # assert success
+    run "$OCKAM" node create n2  --trust-context ./trust_context.json --trusted-identities "$trusted"
 
-    # pr secure-channel create --from /node/n1 --to /node/n3/service/api \
-    #     |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
-    # # assert failure
+    run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
+    |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+    assert_success
+
+    run "$OCKAM" message send hello --from /node/n1 --to /node/n2/service/echo
+    assert_failure
 }
 
 @test "trust context - trust context with an identity authority; Credential Exchange is performed" {
-    #  run "$OCKAM" node create n1 --identity m1 --trust-context { "id": "trust_context_id", "authority": "trust_context_authority" }
+    run "$OCKAM" identity create i1 
+    run "$OCKAM" identity show i1 --full --encoding hex > i1.id
 
-    #  run "$OCKAM" node create n2 --identity m2 --trust-context { "id": "trust_context_id", "authority": "trust_context_authority" }
+    run "$OCKAM" identity create i2
+    run "$OCKAM" identity show --full --encoding hex > i2.id
 
-    #  run "$OCKAM" node create n3 --identity m2 --trust-context { "id": "trust_context_id", "authority": "wrong_trust_context_authority" }
+    # Create an identity that both i1, and i2 can trust
+    run "$OCKAM" identity create identity_authority
+    run "$OCKAM" identity show identity_authority --full --encoding hex > authority.id
 
-    #  run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-    #     |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+    # issue and store credentials for i1
+    run "$OCKAM" credential issue --as identity_authority --for $(cat i1.id) --attribute city="New York" --encoding hex > i1.cred
+    run "$OCKAM" credential store i1-cred --issuer $(cat authority.id) --credential-path i1.cred
+    run "$OCKAM" credential show i1-cred --as-trust-context > i1-trust-context.json
 
-    # # assert success
+    # issue credential for i2
+    run "$OCKAM" credential issue --as identity_authority --for $(cat i2.id) --attribute city="Dallas" --encoding hex > i2.cred
+    run "$OCKAM" credential store i2-cred --issuer $(cat authority.id) --credential-path i2.cred
+    run "$OCKAM" credential show i2-cred --as-trust-context > i2-trust-context.json
 
-    #  run "$OCKAM" secure-channel create --from /node/n1 --to /node/n3/service/api \
-    #     |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
-    # # assert failure
+    # Create a node that trust identity_authority as a credential authority
+    run "$OCKAM" node create n1 --identity i1 --trust-context i1-trust-context.json
+
+    # Create another node that trust and has a preset credential
+    run "$OCKAM" node create n2 --identity i2 --trust-context i2-trust-context.json
+    
+     run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
+        |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+
+    assert_success
 }
 
 @test "trust context - trust context with an id and authority using orchestrator; orchestrator enrollment and connection is performed, orchestrator" {
