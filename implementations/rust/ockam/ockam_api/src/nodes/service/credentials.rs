@@ -65,7 +65,6 @@ impl NodeManager {
                 authority_tcp_session.route,
                 Some(allowed),
                 None,
-                authority_tcp_session.session_id,
             )
             .await?;
         debug!("Created secure channel to project authority");
