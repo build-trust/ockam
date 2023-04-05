@@ -82,7 +82,6 @@ mod node {
 
     use ockam_core::api::RequestBuilder;
     use ockam_core::env::get_env;
-    use ockam_core::sessions::SessionPolicy;
     use ockam_core::{self, route, CowStr, Result};
     use ockam_identity::{IdentityIdentifier, SecureChannelTrustOptions, TrustIdentifierPolicy};
     use ockam_multiaddr::MultiAddr;
@@ -227,11 +226,7 @@ mod node {
             let route = route![sc_address.clone(), api_service];
             let options = MessageSendReceiveOptions::new()
                 .with_timeout(timeout)
-                .with_session(
-                    &sessions,
-                    &sc_session_id,
-                    SessionPolicy::ProducerAllowMultiple,
-                );
+                .with_session(&sessions);
             let res = request(ctx, label, schema, route, req, options).await;
             ctx.stop_worker(sc_address).await?;
             res

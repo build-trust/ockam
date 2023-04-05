@@ -4,7 +4,7 @@ use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
 use crate::{error::*, NodeMessage};
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
+use ockam_core::sessions::{SessionPolicy, Sessions};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
@@ -14,7 +14,7 @@ use ockam_core::{LocalInfo, Mailbox};
 
 /// Full set of options to `send_and_receive_extended` function
 pub struct MessageSendReceiveOptions {
-    session: Option<(Sessions, SessionId, SessionPolicy)>,
+    sessions: Option<Sessions>,
     message_wait: MessageWait,
 }
 
@@ -28,7 +28,7 @@ impl MessageSendReceiveOptions {
     /// Default options with [`DEFAULT_TIMEOUT`] and no session
     pub fn new() -> Self {
         Self {
-            session: None,
+            sessions: None,
             message_wait: MessageWait::Timeout(Duration::from_secs(DEFAULT_TIMEOUT)),
         }
     }
@@ -45,14 +45,9 @@ impl MessageSendReceiveOptions {
         self
     }
 
-    /// Set session to be able to receive a resposne
-    pub fn with_session(
-        mut self,
-        sessions: &Sessions,
-        session_id: &SessionId,
-        policy: SessionPolicy,
-    ) -> Self {
-        self.session = Some((sessions.clone(), session_id.clone(), policy));
+    /// Set session to be able to receive a response
+    pub fn with_session(mut self, sessions: &Sessions) -> Self {
+        self.sessions = Some(sessions.clone());
         self
     }
 }
@@ -108,14 +103,19 @@ impl Context {
             Mailbox::new(
                 address.clone(),
                 Arc::new(AllowAll),
-                Arc::new(AllowOnwardAddress(next)),
+                Arc::new(AllowOnwardAddress(next.clone())),
             ),
             vec![],
         );
 
-        if let Some((sessions, session_id, policy)) = options.session {
-            // To be able to receive the response
-            sessions.add_consumer(&address, &session_id, policy);
+        if let Some(sessions) = options.sessions {
+            if let Some(session_id) = sessions
+                .find_session_with_producer_address(&next)
+                .map(|x| x.session_id().clone())
+            {
+                // To be able to receive the response
+                sessions.add_consumer(&address, &session_id, SessionPolicy::ProducerAllowMultiple);
+            }
         }
 
         let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;

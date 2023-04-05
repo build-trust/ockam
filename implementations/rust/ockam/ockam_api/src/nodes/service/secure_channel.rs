@@ -17,7 +17,7 @@ use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::{SessionId, SessionPolicy};
+use ockam_core::sessions::SessionId;
 use ockam_core::{route, CowStr};
 
 use ockam_identity::{
@@ -160,11 +160,7 @@ impl NodeManager {
                     .present_credential(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
                         provided_credential.as_ref(),
-                        MessageSendReceiveOptions::new().with_session(
-                            &self.message_flow_sessions,
-                            &sc_session_id,
-                            SessionPolicy::ProducerAllowMultiple,
-                        ),
+                        MessageSendReceiveOptions::new().with_session(&self.message_flow_sessions),
                     )
                     .await?;
                 debug!(%sc_addr, "One-way credential presentation success");
@@ -182,11 +178,7 @@ impl NodeManager {
                         &authorities.public_identities(),
                         self.attributes_storage.clone(),
                         provided_credential.as_ref(),
-                        MessageSendReceiveOptions::new().with_session(
-                            &self.message_flow_sessions,
-                            &sc_session_id,
-                            SessionPolicy::ProducerAllowMultiple,
-                        ),
+                        MessageSendReceiveOptions::new().with_session(&self.message_flow_sessions),
                     )
                     .await?;
                 debug!(%sc_addr, "Mutual credential presentation success");
