@@ -11,7 +11,7 @@ use ockam_identity::{
     Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustIdentifierPolicy,
 };
 
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, MessageSendReceiveOptions, WorkerBuilder};
 use ockam_vault::Vault;
 use std::sync::atomic::{AtomicI8, Ordering};
 use std::time::Duration;
@@ -60,7 +60,11 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     client.set_credential(credential).await;
 
     client
-        .present_credential(route![channel, "credential_exchange"], None)
+        .present_credential(
+            route![channel, "credential_exchange"],
+            None,
+            MessageSendReceiveOptions::new(),
+        )
         .await?;
 
     let attrs = authenticated_attribute_storage
@@ -133,6 +137,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             &authorities,
             storage,
             None,
+            MessageSendReceiveOptions::new(),
         )
         .await?;
 
@@ -252,7 +257,11 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 
     client
-        .present_credential(route![channel.clone(), "credential_exchange"], None)
+        .present_credential(
+            route![channel.clone(), "credential_exchange"],
+            None,
+            MessageSendReceiveOptions::new(),
+        )
         .await?;
 
     child_ctx
