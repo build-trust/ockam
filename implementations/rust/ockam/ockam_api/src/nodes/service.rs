@@ -324,11 +324,6 @@ impl NodeManager {
             }
         }
 
-        // Always start the echoer service as ockam_api::Medic assumes it will be
-        // started unconditionally on every node. It's used for liveness checks.
-        s.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
-            .await?;
-
         Ok(s)
     }
 
@@ -866,6 +861,12 @@ impl Worker for NodeManagerWorker {
         if !node_manager.skip_defaults {
             node_manager.initialize_defaults(ctx).await?;
         }
+
+        // Always start the echoer service as ockam_api::Medic assumes it will be
+        // started unconditionally on every node. It's used for liveness checks.
+        node_manager
+            .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
+            .await?;
 
         Ok(())
     }
