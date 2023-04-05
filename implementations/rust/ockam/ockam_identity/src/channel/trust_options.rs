@@ -97,10 +97,14 @@ impl SecureChannelTrustOptions {
     }
 }
 
-pub(crate) struct CiphertextSession {
-    pub(crate) sessions: Sessions,
+pub(crate) struct CiphertextSessionInfo {
     pub(crate) session_id: SessionId,
     pub(crate) session_policy: SessionPolicy,
+}
+
+pub(crate) struct CiphertextSession {
+    pub(crate) sessions: Sessions,
+    pub(crate) info: Option<CiphertextSessionInfo>,
 }
 
 /// Trust options for a Secure Channel Listener
@@ -136,7 +140,7 @@ impl SecureChannelListenerTrustOptions {
     /// Mark that this Secure Channel Listener is a Consumer for to the given [`SessionId`]
     /// Also, in this case spawned Secure Channels will be marked as Consumers with [`SessionId`]
     /// of the message that was used to create the Secure Channel
-    pub fn as_consumer(
+    pub fn as_consumer_for_session(
         mut self,
         sessions: &Sessions,
         session_id: &SessionId,
@@ -144,8 +148,23 @@ impl SecureChannelListenerTrustOptions {
     ) -> Self {
         self.consumer_session = Some(CiphertextSession {
             sessions: sessions.clone(),
-            session_id: session_id.clone(),
-            session_policy,
+            info: Some(CiphertextSessionInfo {
+                session_id: session_id.clone(),
+                session_policy,
+            }),
+        });
+
+        self
+    }
+
+    /// Mark that this Secure Channel Listener is a Consumer without a known [`SessionId`]
+    /// It's expected that this Listener is added as a consumer with a known [`SessionId`] manually
+    /// later. Also, spawned Secure Channels will be marked as Consumers with [`SessionId`]
+    /// of the message that was used to create the Secure Channel
+    pub fn as_consumer(mut self, sessions: &Sessions) -> Self {
+        self.consumer_session = Some(CiphertextSession {
+            sessions: sessions.clone(),
+            info: None,
         });
 
         self
