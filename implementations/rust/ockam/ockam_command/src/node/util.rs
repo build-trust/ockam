@@ -53,18 +53,13 @@ pub async fn start_embedded_node_with_vault_and_identity(
         init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
     }
 
-    let project_id = if let Some(p) = project_opts {
-        add_project_info_to_node_state(opts, cfg, p).await?
+    if let Some(p) = project_opts {
+        add_project_info_to_node_state(opts, cfg, p).await?;
     } else {
-        match &cmd.project {
-            Some(path) => {
-                let s = tokio::fs::read_to_string(path).await?;
-                let p: ProjectInfo = serde_json::from_str(&s)?;
-                let project_id = p.id.to_string();
-                project::config::set_project(cfg, &(&p).into()).await?;
-                Some(project_id)
-            }
-            None => None,
+        if let Some(path) = &cmd.project {
+            let s = tokio::fs::read_to_string(path).await?;
+            let p: ProjectInfo = serde_json::from_str(&s)?;
+            project::config::set_project(cfg, &(&p).into()).await?;
         }
     };
 
@@ -125,7 +120,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
             cmd.launch_config.is_some(),
             None,
         ),
-        NodeManagerProjectsOptions::new(project_id, projects),
+        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
             ApiTransport {
                 tt: TransportType::Tcp,
