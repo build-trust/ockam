@@ -21,7 +21,8 @@ use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::DefaultAddress;
-use ockam_core::sessions::Sessions;
+use ockam_core::route;
+use ockam_multiaddr::proto::Service;
 
 /// Authenticate with a project node
 #[derive(Clone, Debug, Args)]
@@ -107,15 +108,8 @@ async fn run_impl(
     };
 
     if cmd.okta {
-        authenticate_through_okta(
-            &ctx,
-            &opts,
-            &node_name,
-            proj,
-            secure_channel_addr.clone(),
-            &Default::default(), // FIXME: Replace with the NodeManager's Sessions object
-        )
-        .await?
+        authenticate_through_okta(&ctx, &opts, &node_name, proj, secure_channel_addr.clone())
+            .await?
     } else if let Some(tkn) = cmd.token {
         // Return address to the authenticator in the authority node
         let token_issuer_route = {
@@ -129,7 +123,9 @@ async fn run_impl(
             ockam_api::local_multiaddr_to_route(&addr)
                 .context(format!("Invalid MultiAddr {addr}"))?
         };
-        let client = TokenAcceptorClient::new(RpcClient::new(token_issuer_route, &ctx).await?);
+        let client = TokenAcceptorClient::new(
+            RpcClient::new(route!["rpc_proxy_service", token_issuer_route], &ctx).await?,
+        );
         client.present_token(&tkn).await?
     }
 
@@ -142,7 +138,9 @@ async fn run_impl(
         ockam_api::local_multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {addr}"))?
     };
 
-    let client2 = CredentialIssuerClient::new(RpcClient::new(credential_issuer_route, &ctx).await?);
+    let client2 = CredentialIssuerClient::new(
+        RpcClient::new(route!["rpc_proxy_service", credential_issuer_route], &ctx).await?,
+    );
 
     let credential = client2.credential().await?;
     println!("---");
@@ -158,7 +156,6 @@ async fn authenticate_through_okta(
     node_name: &str,
     p: ProjectInfo<'_>,
     secure_channel_addr: MultiAddr,
-    sessions: &Sessions,
 ) -> crate::Result<()> {
     // Get auth0 token
     let okta_config: OktaAuth0 = p.okta_config.context("Okta addon not configured")?.into();
@@ -174,6 +171,7 @@ async fn authenticate_through_okta(
         for proto in service.iter() {
             addr.push_back_value(&proto)?;
         }
+        addr.push_front(Service::new("rpc_proxy_service"))?;
         addr
     };
 
@@ -182,7 +180,6 @@ async fn authenticate_through_okta(
     let req = Request::post("v0/enroll").body(token);
     let mut rpc = RpcBuilder::new(ctx, opts, node_name)
         .to(&okta_authenticator_addr)?
-        .sessions(sessions)
         .build();
     debug!(addr = %okta_authenticator_addr, "enrolling");
     rpc.request(req).await?;
