@@ -133,7 +133,7 @@ impl NodeManagerWorker {
                         None
                     }
                 })
-                .or_else(|| Some(node_manager.trust_context().map_or(None, Some)?.id()));
+                .or_else(|| Some(node_manager.trust_context().ok()?.id()));
             if pid.is_none() {
                 return Err(ApiError::generic("credential check requires project"));
             }

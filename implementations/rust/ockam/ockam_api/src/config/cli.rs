@@ -147,6 +147,12 @@ impl TrustContextConfig {
             authority,
         ))
     }
+
+    pub fn from_credential_state(issuer: &PublicIdentity, state: CredentialState) -> Self {
+        let retriever = CredentialRetrieverType::FromPath(state);
+        let authority = TrustAuthorityConfig::new(issuer.clone(), Some(retriever));
+        TrustContextConfig::new(issuer.to_string(), Some(authority))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
