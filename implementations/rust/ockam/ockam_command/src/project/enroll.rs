@@ -78,7 +78,8 @@ impl Runner {
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let map = self.opts.config.lookup();
-        let (base_addr, session_id) = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
+        let (base_addr, _session_id) = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref()
+        {
             let cred_retr = tc.authority()?.own_credential()?;
             let addr = match cred_retr {
                 ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => {

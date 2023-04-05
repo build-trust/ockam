@@ -74,13 +74,16 @@ impl NodeManagerWorker {
             .await?;
 
         if request.oneway {
-            panic!();
             node_manager
                 .identity
-                .present_credential(route, &credential, MessageSendReceiveOptions::new()) // FIXME: Add SessionId
+                .present_credential(
+                    route,
+                    &credential,
+                    MessageSendReceiveOptions::new()
+                        .with_session(&node_manager.message_flow_sessions),
+                )
                 .await?;
         } else {
-            panic!();
             node_manager
                 .identity
                 .present_credential_mutual(
@@ -88,7 +91,8 @@ impl NodeManagerWorker {
                     vec![node_manager.trust_context()?.authority()?.identity()],
                     node_manager.attributes_storage.clone(),
                     &credential,
-                    MessageSendReceiveOptions::new(), // FIXME: Add SessionId
+                    MessageSendReceiveOptions::new()
+                        .with_session(&node_manager.message_flow_sessions),
                 )
                 .await?;
         }
