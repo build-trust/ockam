@@ -41,6 +41,9 @@ pub struct Sessions {
     consumers: Arc<RwLock<BTreeMap<SessionId, ConsumersInfo>>>,
     // All known producers
     producers: Arc<RwLock<BTreeMap<Address, ProducerInfo>>>,
+    // Allows to find producer by having its additional Address,
+    // e.g. Decryptor by its Encryptor Address or TCP Receiver by its TCP Sender Address
+    producers_additional_addresses: Arc<RwLock<BTreeMap<Address, Address>>>,
     // All known spawners
     spawners: Arc<RwLock<BTreeMap<Address, SessionId>>>,
 }
@@ -71,6 +74,7 @@ impl Sessions {
         address: &Address,
         session_id: &SessionId,
         spawner_session_id: Option<&SessionId>,
+        additional_addresses: Vec<Address>,
     ) {
         let mut producers = self.producers.write().unwrap();
         producers.insert(
@@ -80,6 +84,14 @@ impl Sessions {
                 spawner_session_id: spawner_session_id.cloned(),
             },
         );
+        drop(producers);
+
+        let mut producers_additional_addresses =
+            self.producers_additional_addresses.write().unwrap();
+        producers_additional_addresses.insert(address.clone(), address.clone());
+        for additional_address in additional_addresses {
+            producers_additional_addresses.insert(additional_address, address.clone());
+        }
     }
 
     /// Mark that given [`Address`] is a Spawner for to the given [`SessionId`]
@@ -105,6 +117,19 @@ impl Sessions {
     pub fn get_session_with_producer(&self, address: &Address) -> Option<ProducerInfo> {
         let producers = self.producers.read().unwrap();
         producers.get(address).cloned()
+    }
+
+    /// Get [`SessionId`] for which given [`Address`] is a Producer or is an additional [`Address`]
+    /// fot that Producer (e.g. Encryptor address for its Decryptor, or TCP Sender for its TCP Receiver)
+    pub fn find_session_with_producer_address(&self, address: &Address) -> Option<ProducerInfo> {
+        let producers_additional_addresses = self.producers_additional_addresses.read().unwrap();
+        let producer_address = match producers_additional_addresses.get(address) {
+            Some(address) => address.clone(),
+            None => return None,
+        };
+        drop(producers_additional_addresses);
+        let producers = self.producers.read().unwrap();
+        producers.get(&producer_address).cloned()
     }
 
     /// Get all [`SessionId`]s for which given [`Address`] is a Consumer
