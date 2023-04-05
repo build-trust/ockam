@@ -32,7 +32,8 @@ use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::Resource;
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, AllowAll};
+use ockam_core::sessions::SessionPolicy;
+use ockam_core::{route, AllowAll, IncomingAccessControl};
 use ockam_identity::authenticated_storage::IdentityAttributeStorageReader;
 use ockam_identity::{AuthorityInfo, PublicIdentity, TrustContext};
 use ockam_multiaddr::proto::Project;
@@ -119,7 +120,21 @@ impl NodeManager {
 
         self.registry
             .credentials_services
-            .insert(addr, CredentialsServiceInfo::default());
+            .insert(addr.clone(), CredentialsServiceInfo::default());
+
+        // Accept messages from all started secure channel listeners
+        for session_id in self
+            .registry
+            .secure_channel_listeners
+            .values()
+            .map(|x| x.session_id())
+        {
+            self.message_flow_sessions.add_consumer(
+                &addr,
+                session_id,
+                SessionPolicy::SpawnerAllowMultipleMessages,
+            )
+        }
 
         Ok(())
     }
@@ -469,7 +484,8 @@ impl NodeManager {
                 .create_consumer_listener(context)
                 .await?;
 
-            self.create_secure_channel_listener_impl(
+            // FIXME
+            self.create_secure_channel_listener_impl_with_session(
                 Address::from_string(KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS),
                 None,
                 None,
