@@ -85,8 +85,20 @@ impl SecureChannelInfo {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct SecureChannelListenerInfo {}
+#[derive(Clone)]
+pub(crate) struct SecureChannelListenerInfo {
+    session_id: SessionId,
+}
+
+impl SecureChannelListenerInfo {
+    pub fn new(session_id: SessionId) -> Self {
+        Self { session_id }
+    }
+
+    pub fn session_id(&self) -> &SessionId {
+        &self.session_id
+    }
+}
 
 #[derive(Default)]
 pub(crate) struct VaultServiceInfo {}

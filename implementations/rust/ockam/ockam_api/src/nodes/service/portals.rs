@@ -15,7 +15,8 @@ use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::IncomingAccessControl;
+use ockam_core::sessions::{SessionId, SessionPolicy};
+use ockam_core::{AllowAll, IncomingAccessControl};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -161,13 +162,24 @@ impl NodeManagerWorker {
             .access_control(&resource, &actions::HANDLE_MESSAGE, project_id, None)
             .await?;
 
+        let trust_options =
+            TcpInletTrustOptions::new().with_incoming_access_control(access_control.clone());
+
+        let next = outlet_route.next().unwrap();
+
+        let trust_options = match node_manager
+            .message_flow_sessions
+            .find_session_with_producer_address(next)
+        {
+            Some(info) => {
+                trust_options.as_consumer(&node_manager.message_flow_sessions, info.session_id())
+            }
+            None => trust_options,
+        };
+
         let res = node_manager
             .tcp_transport
-            .create_inlet(
-                listen_addr.clone(),
-                outlet_route.clone(),
-                TcpInletTrustOptions::new().with_incoming_access_control(access_control.clone()),
-            )
+            .create_inlet(listen_addr.clone(), outlet_route.clone(), trust_options)
             .await;
 
         Ok(match res {
@@ -329,14 +341,28 @@ impl NodeManagerWorker {
         let access_control = node_manager
             .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
             .await?;
+        let trust_options =
+            TcpOutletTrustOptions::new().with_incoming_access_control(access_control);
+
+        // Accept messages from first started secure channel listener
+        let listeners: Vec<SessionId> = node_manager
+            .registry
+            .secure_channel_listeners
+            .values()
+            .map(|x| x.session_id().clone())
+            .collect();
+        if listeners.len() != 1 {
+            panic!();
+        }
+        let trust_options = trust_options.as_consumer(
+            &node_manager.message_flow_sessions,
+            &listeners[0],
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
 
         let res = node_manager
             .tcp_transport
-            .create_outlet(
-                worker_addr.clone(),
-                tcp_addr.clone(),
-                TcpOutletTrustOptions::new().with_incoming_access_control(access_control),
-            )
+            .create_outlet(worker_addr.clone(), tcp_addr.clone(), trust_options)
             .await;
 
         Ok(match res {

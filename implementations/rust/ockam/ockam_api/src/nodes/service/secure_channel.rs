@@ -9,7 +9,7 @@ use crate::nodes::models::secure_channel::{
     ShowSecureChannelListenerRequest, ShowSecureChannelListenerResponse, ShowSecureChannelRequest,
     ShowSecureChannelResponse,
 };
-use crate::nodes::registry::Registry;
+use crate::nodes::registry::{Registry, SecureChannelListenerInfo};
 use crate::nodes::NodeManager;
 use crate::{create_tcp_session, DefaultAddress};
 use minicbor::Decoder;
@@ -197,12 +197,36 @@ impl NodeManager {
         Ok((sc_addr, sc_session_id))
     }
 
-    pub(super) async fn create_secure_channel_listener_impl(
+    pub(super) async fn create_secure_channel_listener_impl_with_session(
         &mut self,
         addr: Address,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         vault_name: Option<CowStr<'_>>,
         identity_name: Option<CowStr<'_>>,
+        ctx: &Context,
+    ) -> Result<SessionId> {
+        let session_id = self.message_flow_sessions.generate_session_id();
+
+        self.create_secure_channel_listener_impl(
+            addr,
+            authorized_identifiers,
+            vault_name,
+            identity_name,
+            session_id.clone(),
+            ctx,
+        )
+        .await?;
+
+        Ok(session_id)
+    }
+
+    async fn create_secure_channel_listener_impl(
+        &mut self,
+        addr: Address,
+        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        vault_name: Option<CowStr<'_>>,
+        identity_name: Option<CowStr<'_>>,
+        session_id: SessionId,
         ctx: &Context,
     ) -> Result<()> {
         info!(
@@ -226,7 +250,9 @@ impl NodeManager {
             self.identity.clone()
         };
 
-        let trust_options = SecureChannelListenerTrustOptions::insecure();
+        let trust_options =
+            SecureChannelListenerTrustOptions::as_spawner(&self.message_flow_sessions, &session_id)
+                .as_consumer(&self.message_flow_sessions);
         let trust_options = match authorized_identifiers {
             Some(ids) => trust_options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => trust_options.with_trust_policy(TrustEveryonePolicy),
@@ -238,7 +264,7 @@ impl NodeManager {
 
         self.registry
             .secure_channel_listeners
-            .insert(addr, Default::default());
+            .insert(addr, SecureChannelListenerInfo::new(session_id));
 
         Ok(())
     }
@@ -324,6 +350,7 @@ impl NodeManagerWorker {
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
+        // FIXME: Figure out what is the session id if there are 2 secure channels created here and outer doesn't have a tcp hop
         let tcp_session = create_tcp_session(
             &addr,
             &node_manager.tcp_transport,
@@ -331,6 +358,18 @@ impl NodeManagerWorker {
         )
         .await
         .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+
+        let session_id = match tcp_session.session_id.as_ref() {
+            None => {
+                let next = tcp_session.route.next().unwrap().clone();
+                let info = node_manager
+                    .message_flow_sessions
+                    .find_session_with_producer_address(&next);
+
+                info.map(|x| x.session_id().clone())
+            }
+            Some(session_id) => Some(session_id.clone()),
+        };
 
         let (sc_address, sc_session_id) = node_manager
             .create_secure_channel_impl(
@@ -341,7 +380,7 @@ impl NodeManagerWorker {
                 identity,
                 ctx,
                 credential_name,
-                tcp_session.session_id,
+                session_id,
             )
             .await?;
 
@@ -427,8 +466,15 @@ impl NodeManagerWorker {
             return Ok(Response::bad_request(req.id()));
         }
 
+        // FIXME
         node_manager
-            .create_secure_channel_listener_impl(addr, authorized_identifiers, vault, identity, ctx)
+            .create_secure_channel_listener_impl_with_session(
+                addr,
+                authorized_identifiers,
+                vault,
+                identity,
+                ctx,
+            )
             .await?;
 
         let response = Response::ok(req.id());
