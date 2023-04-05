@@ -57,7 +57,7 @@ pub async fn create_tcp_session(
     let session_id = sessions.generate_session_id();
 
     let mut trust_options = Some(TcpConnectionTrustOptions::as_producer(
-        &sessions,
+        sessions,
         &session_id,
     ));
 
