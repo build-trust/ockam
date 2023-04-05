@@ -2,7 +2,7 @@ use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy};
 use ockam::sessions::Sessions;
-use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
+use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpConnectionTrustOptions, TcpTransport};
 use std::sync::Arc;
 
 #[ockam::node]
@@ -63,7 +63,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     let issuer = issuer_client.public_identity().await?;
     let r = route![channel.clone(), "credentials"];
     client
-        .present_credential_mutual(r, &[issuer], storage, &credential)
+        .present_credential_mutual(
+            r,
+            &[issuer],
+            storage,
+            &credential,
+            MessageSendReceiveOptions::new().with_session(&sessions),
+        )
         .await?;
 
     // Send a message to the worker at address "echoer".
