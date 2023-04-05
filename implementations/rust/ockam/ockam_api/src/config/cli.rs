@@ -130,7 +130,7 @@ impl TrustContextConfig {
                 )
                 .await?;
 
-                let authority_route = MultiAddr::from_str(&route)
+                let authority_route = MultiAddr::from_str(route)
                     .map_err(|_| ApiError::generic("incorrect multi address"))?;
                 let retriever = CredentialRetrieverType::FromCredentialIssuer(
                     CredentialIssuerInfo::new(authority_route),

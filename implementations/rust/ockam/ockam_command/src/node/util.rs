@@ -55,12 +55,10 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     if let Some(p) = project_opts {
         add_project_info_to_node_state(opts, cfg, p).await?;
-    } else {
-        if let Some(path) = &cmd.project {
-            let s = tokio::fs::read_to_string(path).await?;
-            let p: ProjectInfo = serde_json::from_str(&s)?;
-            project::config::set_project(cfg, &(&p).into()).await?;
-        }
+    } else if let Some(path) = &cmd.project {
+        let s = tokio::fs::read_to_string(path).await?;
+        let p: ProjectInfo = serde_json::from_str(&s)?;
+        project::config::set_project(cfg, &(&p).into()).await?;
     };
 
     // retrieve trust context config from options if provided
