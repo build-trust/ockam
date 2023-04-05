@@ -88,13 +88,10 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .send_and_receive_extended::<String>(
             route![cloud_connection, remote_info.remote_address(), "echoer"],
             "Hello".to_string(),
-            MessageSendReceiveOptions::new().with_session(
-                &client_sessions,
-                &client_tcp_session_id,
-                SessionPolicy::ProducerAllowMultiple,
-            ),
+            MessageSendReceiveOptions::new().with_session(&client_sessions),
         )
-        .await?;
+        .await?
+        .body();
 
     assert_eq!(resp, "Hello");
 
@@ -297,13 +294,10 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .send_and_receive_extended::<String>(
             route![tunnel_channel, "echoer"],
             "Hello".to_string(),
-            MessageSendReceiveOptions::new().with_session(
-                &client_sessions,
-                &client_tunnel_session_id,
-                SessionPolicy::ProducerAllowMultiple,
-            ),
+            MessageSendReceiveOptions::new().with_session(&client_sessions),
         )
-        .await?;
+        .await?
+        .body();
 
     assert_eq!(resp, "Hello");
 
