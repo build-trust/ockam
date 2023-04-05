@@ -42,6 +42,7 @@ use crate::nodes::connection::Connection;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
+use crate::rpc_proxy::RpcProxyService;
 use crate::session::util::{starts_with_host_tcp, starts_with_secure};
 use crate::session::{Medic, Sessions};
 use crate::{
@@ -885,6 +886,14 @@ impl Worker for NodeManagerWorker {
         node_manager
             .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
+
+        ctx.start_worker(
+            "rpc_proxy_service",
+            RpcProxyService::new(node_manager.message_flow_sessions.clone()),
+            AllowAll,
+            AllowAll,
+        )
+        .await?;
 
         Ok(())
     }
