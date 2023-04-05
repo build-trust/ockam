@@ -78,7 +78,8 @@ impl Runner {
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.project_opts)).await?;
 
         let map = self.opts.config.lookup();
-        let (base_addr, session_id) = if let Some(a) = project_authority(&self.cmd.to, &map)? {
+        // FIXME: Why is this working? UPD: well, it doesn't...
+        let (base_addr, _session_id) = if let Some(a) = project_authority(&self.cmd.to, &map)? {
             let (sc_addr, sc_session_id) = create_secure_channel_to_authority(
                 &self.ctx,
                 &self.opts,

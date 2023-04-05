@@ -72,7 +72,7 @@ impl<'a> RpcBuilder<'a> {
         }
     }
 
-    pub fn session(mut self, sessions: &Sessions) -> Self {
+    pub fn sessions(mut self, sessions: &Sessions) -> Self {
         self.sessions = Some(sessions.clone());
         self
     }

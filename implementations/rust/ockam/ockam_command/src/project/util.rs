@@ -82,7 +82,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 .context("Invalid project node route")?;
             (node_route, id.to_string())
         };
-        let (sc_address, sc_session_id) = create_secure_channel_to_project(
+        let (sc_address, _sc_session_id) = create_secure_channel_to_project(
             ctx,
             opts,
             api_node,
