@@ -25,8 +25,8 @@ use crate::util::api::parse_trust_context;
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
-    docs, identity, node::show::print_query_status, project, util::find_available_port,
-    CommandGlobalOpts, Result,
+    docs, identity, node::show::print_query_status, util::find_available_port, CommandGlobalOpts,
+    Result,
 };
 use crate::{node::util::init_node_state, util::RpcBuilder};
 use crate::{node::util::spawn_node, util::parse_node_name};
@@ -243,17 +243,6 @@ async fn run_foreground_node(
         .await?;
     }
 
-    let project_id = match &cmd.project {
-        Some(path) => {
-            let s = tokio::fs::read_to_string(path).await?;
-            let p: ProjectInfo = serde_json::from_str(&s)?;
-            let project_id = p.id.to_string();
-            project::config::set_project(cfg, &(&p).into()).await?;
-            Some(project_id)
-        }
-        None => None,
-    };
-
     let mut trust_context_config = if let Some(authority_identity) = &cmd.authority_identity {
         let vault = Vault::create();
         let authority_public_identity =
@@ -354,7 +343,7 @@ async fn run_foreground_node(
             cmd.launch_config.is_some(),
             pre_trusted_identities,
         ),
-        NodeManagerProjectsOptions::new(project_id, projects),
+        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
             ApiTransport {
                 tt: TransportType::Tcp,

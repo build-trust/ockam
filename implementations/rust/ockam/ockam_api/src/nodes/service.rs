@@ -91,7 +91,6 @@ pub struct NodeManager {
     enable_credential_checks: bool,
     vault: Arc<dyn IdentityVault>,
     pub(crate) identity: Arc<Identity>,
-    project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
@@ -177,13 +176,6 @@ impl NodeManager {
             .as_ref()
             .ok_or_else(|| ApiError::generic("Trust context doesn't exist"))
     }
-
-    /// Available only for member nodes
-    pub(crate) fn project_id(&self) -> Result<&str> {
-        self.project_id
-            .as_deref()
-            .ok_or_else(|| ApiError::generic("Project id is not set"))
-    }
 }
 
 pub struct NodeManagerGeneralOptions {
@@ -210,16 +202,12 @@ impl NodeManagerGeneralOptions {
 }
 
 pub struct NodeManagerProjectsOptions {
-    project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
 }
 
 impl NodeManagerProjectsOptions {
-    pub fn new(project_id: Option<String>, projects: BTreeMap<String, ProjectLookup>) -> Self {
-        Self {
-            project_id,
-            projects,
-        }
+    pub fn new(projects: BTreeMap<String, ProjectLookup>) -> Self {
+        Self { projects }
     }
 }
 
@@ -324,7 +312,6 @@ impl NodeManager {
             vault,
             identity,
             projects: Arc::new(projects_options.projects),
-            project_id: projects_options.project_id,
             trust_context: None,
             registry: Default::default(),
             medic: {
