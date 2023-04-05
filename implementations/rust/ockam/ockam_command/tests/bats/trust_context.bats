@@ -23,7 +23,7 @@ teardown() {
     run "$OCKAM" node create n2 --identity m2
 
     run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-        |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+        | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
     assert_success
 }
 
@@ -42,7 +42,7 @@ teardown() {
     run "$OCKAM" node create n2  --trust-context ./trust_context.json --trusted-identities "$trusted"
 
     run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-    |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+        | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
     assert_success
 
     run "$OCKAM" message send hello --from /node/n1 --to /node/n2/service/echo
@@ -76,8 +76,8 @@ teardown() {
     # Create another node that trust and has a preset credential
     run "$OCKAM" node create n2 --identity i2 --trust-context i2-trust-context.json
     
-     run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-        |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+    run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
+        | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
 
     assert_success
 }
@@ -100,6 +100,6 @@ teardown() {
     run "$OCKAM" node create n2 --identity m2 --trust-context ./trust_context.json
 
     run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-    |  run "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+        | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
     assert_success
 }
