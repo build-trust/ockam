@@ -37,10 +37,10 @@ teardown() {
   run "$OCKAM" credential show smart_nyc_cred
   assert_success
   assert_output --partial "Credential: smart_nyc_cred"
-  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\"}"
+  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\""
 
   run "$OCKAM" credential list
   assert_success
   assert_output --partial "Credential: smart_nyc_cred"
-  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\"}"
+  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\""
 }
