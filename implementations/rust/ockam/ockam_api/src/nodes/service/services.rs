@@ -203,13 +203,22 @@ impl NodeManager {
             return Err(ApiError::generic("Echoer service exists at this address"));
         }
 
-        ctx.start_worker(
-            addr.clone(),
-            Echoer,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(addr.clone(), Echoer, AllowAll, AllowAll)
+            .await?;
+
+        // Accept messages from all started secure channel listeners
+        for session_id in self
+            .registry
+            .secure_channel_listeners
+            .values()
+            .map(|x| x.session_id())
+        {
+            self.message_flow_sessions.add_consumer(
+                &addr,
+                session_id,
+                SessionPolicy::SpawnerAllowMultipleMessages,
+            )
+        }
 
         self.registry
             .echoer_services
