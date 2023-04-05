@@ -9,9 +9,10 @@ use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{
     AuthorityInfo, Identity, SecureChannelTrustOptions, TrustContext, TrustEveryonePolicy, TrustMultiIdentifiersPolicy,
 };
-use ockam::{route, vault::Vault, Context, Result, TcpInletTrustOptions, TcpTransport};
-use ockam_api::authenticator::direct::{RpcClient, TokenAcceptorClient};
+use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpInletTrustOptions, TcpTransport};
+use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
 use ockam_api::{create_tcp_session, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress};
+use ockam_core::sessions::Sessions;
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
@@ -59,12 +60,15 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Import the authority identity and route from the information file
     let project = import_project(project_information_path, vault).await?;
 
-    let tcp_authority_session = create_tcp_session(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
+    let sessions = Sessions::default();
+    let tcp_authority_session = create_tcp_session(&project.authority_route(), &tcp, &sessions)
+        .await
+        .unwrap(); // FIXME: Handle error
     let authority_trust_options =
         SecureChannelTrustOptions::insecure_test().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
             project.authority_public_identifier()
         ]));
-    let trust_options = if let Some((sessions, session_id)) = tcp_authority_session.session {
+    let trust_options = if let Some(session_id) = tcp_authority_session.session_id {
         authority_trust_options.as_consumer(&sessions, &session_id)
     } else {
         authority_trust_options
@@ -116,10 +120,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 4. create a tcp inlet with the above policy
 
-    let tcp_project_session = create_tcp_session(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
+    let tcp_project_session = create_tcp_session(&project.route(), &tcp, &sessions).await.unwrap(); // FIXME: Handle error
     let project_trust_options = SecureChannelTrustOptions::insecure_test()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
-    let project_trust_options = if let Some((sessions, session_id)) = tcp_project_session.session {
+    let project_trust_options = if let Some(session_id) = tcp_project_session.session_id {
         project_trust_options.as_consumer(&sessions, &session_id)
     } else {
         project_trust_options
@@ -140,6 +144,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .present_credential(
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
             &credential,
+            MessageSendReceiveOptions::new().with_session(&sessions),
         )
         .await?;
 
@@ -163,6 +168,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
             vec![&project.authority_public_identity()],
             Arc::new(storage),
             &credential,
+            MessageSendReceiveOptions::new().with_session(&sessions),
         )
         .await?;
     println!("credential exchange done");

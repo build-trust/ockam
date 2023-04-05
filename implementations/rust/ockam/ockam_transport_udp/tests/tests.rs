@@ -86,7 +86,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
 
     // Send message to try and cause a socket send error
     let r = route![(UDP, addr_nok), "echoer"];
-    let res: Result<String> = ctx
+    let res: Result<Routed<String>> = ctx
         .send_and_receive_extended(
             r,
             String::from("Hola"),
@@ -97,7 +97,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
 
     // Send message to working peer
     let r = route![(UDP, addr_ok), "echoer"];
-    let res: Result<String> = ctx
+    let res: Result<Routed<String>> = ctx
         .send_and_receive_extended(
             r,
             String::from("Hola"),
@@ -135,13 +135,14 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
     for addr in &bind_addrs {
         let msg = String::from("Ockam. Testing. 1, 2, 3...");
         let r = route![(UDP, addr.to_string()), "echoer"];
-        let reply: String = ctx
-            .send_and_receive_extended(
+        let reply = ctx
+            .send_and_receive_extended::<String>(
                 r,
                 msg.clone(),
                 MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
             )
-            .await?;
+            .await?
+            .body();
         assert_eq!(reply, msg, "Should receive the same message");
     }
 
@@ -178,13 +179,14 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
                 .map(char::from)
                 .collect();
             let r = route![(UDP, bind_addr.clone()), "echoer"];
-            let reply: String = ctx
-                .send_and_receive_extended(
+            let reply = ctx
+                .send_and_receive_extended::<String>(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
                 )
-                .await?;
+                .await?
+                .body();
 
             assert_eq!(reply, msg, "Should receive the same message");
         }
