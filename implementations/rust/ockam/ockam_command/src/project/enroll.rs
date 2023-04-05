@@ -9,6 +9,7 @@ use ockam::Context;
 use ockam_api::authenticator::direct::{DirectAuthenticatorClient, RpcClient, TokenIssuerClient};
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
 use ockam_api::DefaultAddress;
+use ockam_core::route;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
@@ -132,9 +133,12 @@ impl Runner {
                     .context(format!("Invalid MultiAddr {addr}"))?
             };
             let client = DirectAuthenticatorClient::new(
-                RpcClient::new(direct_authenticator_route, &self.ctx)
-                    .await?
-                    .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
+                RpcClient::new(
+                    route!["rpc_proxy_service", direct_authenticator_route],
+                    &self.ctx,
+                )
+                .await?
+                .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
             );
             client
                 .add_member(id.clone(), self.cmd.attributes()?)
@@ -152,7 +156,8 @@ impl Runner {
                     .context(format!("Invalid MultiAddr {addr}"))?
             };
             let client = TokenIssuerClient::new(
-                RpcClient::new(token_issuer_route, &self.ctx)
+                // FIXME: move "rpc_proxy_service" to a const
+                RpcClient::new(route!["rpc_proxy_service", token_issuer_route], &self.ctx)
                     .await?
                     .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
             );
