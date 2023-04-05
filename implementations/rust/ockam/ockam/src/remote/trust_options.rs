@@ -35,7 +35,7 @@ impl RemoteForwarderTrustOptions {
                 SessionPolicy::ProducerAllowMultiple,
             );
 
-            sessions.add_producer(&addresses.main_internal, session_id, None);
+            sessions.add_producer(&addresses.main_internal, session_id, None, vec![]);
         }
     }
 

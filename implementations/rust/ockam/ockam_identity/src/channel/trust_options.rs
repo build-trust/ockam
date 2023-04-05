@@ -61,7 +61,12 @@ impl SecureChannelTrustOptions {
         }
 
         if let Some((sessions, session_id)) = &self.producer_session {
-            sessions.add_producer(&addresses.decryptor_internal, session_id, None);
+            sessions.add_producer(
+                &addresses.decryptor_internal,
+                session_id,
+                None,
+                vec![addresses.encryptor.clone()],
+            );
         }
     }
 
@@ -170,6 +175,7 @@ impl SecureChannelListenerTrustOptions {
                     &addresses.decryptor_internal,
                     &session_id,
                     Some(listener_session_id),
+                    vec![addresses.encryptor.clone()],
                 );
 
                 Ok(Some(session_id))
