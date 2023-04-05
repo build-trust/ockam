@@ -27,11 +27,13 @@ impl IdentityChannelListener {
         identity: Identity,
     ) -> Result<()> {
         if let Some(ciphertext_session) = &trust_options.consumer_session {
-            ciphertext_session.sessions.add_consumer(
-                &address,
-                &ciphertext_session.session_id,
-                ciphertext_session.session_policy,
-            );
+            if let Some(info) = &ciphertext_session.info {
+                ciphertext_session.sessions.add_consumer(
+                    &address,
+                    &info.session_id,
+                    info.session_policy,
+                );
+            }
         }
 
         let listener = Self::new(trust_options, identity);

@@ -238,7 +238,7 @@ pub async fn create_secure_channel_listener(
             SessionPolicy::ProducerAllowMultiple
         };
 
-        trust_options.as_consumer(sessions, session_id, policy)
+        trust_options.as_consumer_for_session(sessions, session_id, policy)
     } else {
         trust_options
     };
