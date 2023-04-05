@@ -111,7 +111,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     bob.create_secure_channel_listener(
         "listener",
         SecureChannelListenerTrustOptions::as_spawner(&sessions_bob, &session_id_bob_plaintext)
-            .as_consumer(
+            .as_consumer_for_session(
                 &sessions_bob,
                 &session_id_bob_tcp,
                 SessionPolicy::SpawnerAllowOnlyOneMessage,

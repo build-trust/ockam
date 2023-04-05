@@ -241,7 +241,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
                 &server_sessions,
                 &server_tunnel_session_id,
             )
-            .as_consumer(
+            .as_consumer_for_session(
                 &server_sessions,
                 &server_channel_session_id,
                 SessionPolicy::ProducerAllowMultiple,
