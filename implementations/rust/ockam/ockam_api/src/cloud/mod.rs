@@ -226,7 +226,7 @@ mod node {
             let route = route![sc_address.clone(), api_service];
             let options = MessageSendReceiveOptions::new()
                 .with_timeout(timeout)
-                .with_session(&sessions);
+                .with_session(sessions);
             let res = request(ctx, label, schema, route, req, options).await;
             ctx.stop_worker(sc_address).await?;
             res
