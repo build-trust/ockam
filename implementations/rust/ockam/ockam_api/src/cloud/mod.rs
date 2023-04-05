@@ -189,7 +189,7 @@ mod node {
                     None => node_manager.identity.clone(),
                 }
             };
-            let (sc_address, sessions, sc_session_id) = {
+            let (sc_address, sessions, _sc_session_id) = {
                 let node_manager = self.get().read().await;
                 let cloud_session = crate::create_tcp_session(
                     cloud_multiaddr,

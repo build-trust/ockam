@@ -59,7 +59,7 @@ impl NodeManager {
         };
 
         debug!("Create secure channel to project authority");
-        let (sc, sc_session_id) = self
+        let (sc, _sc_session_id) = self
             .create_secure_channel_internal(
                 identity,
                 authority_tcp_session.route,
@@ -146,13 +146,16 @@ impl NodeManagerWorker {
         };
 
         if request.oneway {
-            panic!();
             node_manager
                 .identity
-                .present_credential(route, None, MessageSendReceiveOptions::new()) // FIXME: Add SessionId
+                .present_credential(
+                    route,
+                    None,
+                    MessageSendReceiveOptions::new()
+                        .with_session(&node_manager.message_flow_sessions),
+                )
                 .await?;
         } else {
-            panic!();
             node_manager
                 .identity
                 .present_credential_mutual(
@@ -160,7 +163,8 @@ impl NodeManagerWorker {
                     &node_manager.authorities()?.public_identities(),
                     node_manager.attributes_storage.clone(),
                     None,
-                    MessageSendReceiveOptions::new(), // FIXME: Add SessionId
+                    MessageSendReceiveOptions::new()
+                        .with_session(&node_manager.message_flow_sessions),
                 )
                 .await?;
         }
