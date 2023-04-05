@@ -50,11 +50,12 @@ teardown() {
 }
 
 @test "trust context - trust context with an identity authority; Credential Exchange is performed" {
+    # Create two identities
     run "$OCKAM" identity create i1
     run "$OCKAM" identity show i1 --full --encoding hex > i1.id
 
     run "$OCKAM" identity create i2
-    run "$OCKAM" identity show --full --encoding hex > i2.id
+    run "$OCKAM" identity show i2 --full --encoding hex > i2.id
 
     # Create an identity that both i1, and i2 can trust
     run "$OCKAM" identity create identity_authority
@@ -65,20 +66,19 @@ teardown() {
     run "$OCKAM" credential store i1-cred --issuer $(cat authority.id) --credential-path i1.cred
     run "$OCKAM" credential show i1-cred --as-trust-context > i1-trust-context.json
 
-    # issue credential for i2
-    run "$OCKAM" credential issue --as identity_authority --for $(cat i2.id) --attribute city="Dallas" --encoding hex > i2.cred
+    # issue and store credential for i2
+    run "$OCKAM" credential issue --as identity_authority --for $(cat i2.id) --attribute city="Boston" --encoding hex > i2.cred
     run "$OCKAM" credential store i2-cred --issuer $(cat authority.id) --credential-path i2.cred
     run "$OCKAM" credential show i2-cred --as-trust-context > i2-trust-context.json
 
-    # Create a node that trust identity_authority as a credential authority
-    run "$OCKAM" node create n1 --identity i1 --trust-context i1-trust-context.json
+    # Create a node for i1 that trust identity_authority as a credential authority
+    run "$OCKAM" node create n3 --identity i1 --trust-context ./i1-trust-context.json
 
-    # Create another node that trust and has a preset credential
-    run "$OCKAM" node create n2 --identity i2 --trust-context i2-trust-context.json
+    # Create a node for i2 that trust identity_authority as a credential authority
+    run "$OCKAM" node create n4 --identity i2 --trust-context ./i2-trust-context.json
 
-    run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-        | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
-
+    run "$OCKAM" secure-channel create --from /node/n3 --to /node/n4/service/api \
+        | "$OCKAM" message send hello --from /node/n3 --to -/service/echo
     assert_success
 }
 
