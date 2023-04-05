@@ -47,7 +47,6 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
-        session_id: Option<SessionId>,
     ) -> Result<(Address, SessionId)> {
         // If channel was already created, do nothing.
         if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
@@ -65,7 +64,12 @@ impl NodeManager {
         let trust_options =
             SecureChannelTrustOptions::as_producer(&self.message_flow_sessions, &sc_session_id);
 
-        let trust_options = match session_id {
+        // Just add ourself as consumer for the next hop if it's a producer
+        let trust_options = match self
+            .message_flow_sessions
+            .find_session_with_producer_address(sc_route.next().unwrap())
+            .map(|x| x.session_id().clone())
+        {
             Some(session_id) => trust_options.as_consumer(&self.message_flow_sessions, &session_id),
             None => trust_options,
         };
@@ -101,7 +105,6 @@ impl NodeManager {
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
         credential_name: Option<CowStr<'_>>,
-        session_id: Option<SessionId>,
     ) -> Result<(Address, SessionId)> {
         let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
@@ -130,13 +133,7 @@ impl NodeManager {
         };
 
         let (sc_addr, sc_session_id) = self
-            .create_secure_channel_internal(
-                &identity,
-                sc_route,
-                authorized_identifiers,
-                timeout,
-                session_id,
-            )
+            .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
             .await?;
 
         // TODO: Determine when we can remove this? Or find a better way to determine
@@ -362,18 +359,6 @@ impl NodeManagerWorker {
         .await
         .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-        let session_id = match tcp_session.session_id.as_ref() {
-            None => {
-                let next = tcp_session.route.next().unwrap().clone();
-                let info = node_manager
-                    .message_flow_sessions
-                    .find_session_with_producer_address(&next);
-
-                info.map(|x| x.session_id().clone())
-            }
-            Some(session_id) => Some(session_id.clone()),
-        };
-
         let (sc_address, sc_session_id) = node_manager
             .create_secure_channel_impl(
                 tcp_session.route,
@@ -383,7 +368,6 @@ impl NodeManagerWorker {
                 identity,
                 ctx,
                 credential_name,
-                session_id,
             )
             .await?;
 
