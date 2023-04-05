@@ -441,7 +441,6 @@ impl NodeManager {
                         identity_name,
                         ctx,
                         credential_name,
-                        tcp_session.session_id,
                     )
                     .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
@@ -479,7 +478,6 @@ impl NodeManager {
                             identity_name,
                             ctx,
                             credential_name,
-                            tcp_session.session_id,
                         )
                         .await?;
 
@@ -522,7 +520,6 @@ impl NodeManager {
                     timeout,
                     None,
                     ctx,
-                    None,
                     None,
                 )
                 .await?;

@@ -11,7 +11,7 @@ use ockam::identity::{Identity, IdentityIdentifier, IdentitySecureChannelLocalIn
 use ockam_core::api::{self, Error, Method, Request, RequestBuilder, Response, Status};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
+use ockam_core::sessions::Sessions;
 use ockam_core::{self, Address, CowStr, DenyAll, Result, Route, Routed, Worker};
 use ockam_node::{Context, MessageSendReceiveOptions};
 use std::collections::HashMap;
@@ -563,7 +563,7 @@ pub struct RpcClient {
     ctx: Context,
     route: Route,
     timeout: Duration,
-    session: Option<(Sessions, SessionId)>,
+    sessions: Option<Sessions>,
 }
 
 impl fmt::Debug for RpcClient {
@@ -582,7 +582,7 @@ impl RpcClient {
         Ok(RpcClient {
             ctx,
             route: r,
-            session: None,
+            sessions: None,
             timeout: DEFAULT_CLIENT_TIMEOUT,
         })
     }
@@ -591,17 +591,17 @@ impl RpcClient {
         Self { timeout, ..self }
     }
 
-    pub fn with_session(self, sessions: &Sessions, session_id: &SessionId) -> Self {
+    pub fn with_sessions(self, sessions: &Sessions) -> Self {
         Self {
-            session: Some((sessions.clone(), session_id.clone())),
+            sessions: Some(sessions.clone()),
             ..self
         }
     }
 
     fn options(&self) -> MessageSendReceiveOptions {
         let options = MessageSendReceiveOptions::new().with_timeout(self.timeout);
-        if let Some((sessions, session_id)) = &self.session {
-            options.with_session(sessions, session_id, SessionPolicy::ProducerAllowMultiple)
+        if let Some(sessions) = &self.sessions {
+            options.with_session(sessions)
         } else {
             options
         }
