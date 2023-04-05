@@ -1,19 +1,29 @@
+use crate::alloc::borrow::ToOwned;
+use crate::alloc::string::ToString;
+use crate::compat::fmt::Vec;
+use crate::compat::string::String;
 use crate::errcode::{Kind, Origin};
 use crate::{Error, Result};
+#[cfg(feature = "std")]
 use std::env;
+#[cfg(feature = "std")]
 use std::env::VarError;
+#[cfg(feature = "std")]
 use std::path::PathBuf;
 
 /// Get environmental value [var_name]. If value is not found returns Ok(None)
+#[cfg(feature = "std")]
 pub fn get_env<T: FromString>(var_name: &str) -> Result<Option<T>> {
     get_env_impl::<Option<T>>(var_name, None)
 }
 
 /// Get environmental value [var_name]. If value is not found returns [default_value]
+#[cfg(feature = "std")]
 pub fn get_env_with_default<T: FromString>(var_name: &str, default_value: T) -> Result<T> {
     get_env_impl::<T>(var_name, default_value)
 }
 
+#[cfg(feature = "std")]
 fn get_env_impl<T: FromString>(var_name: &str, default_value: T) -> Result<T> {
     match env::var(var_name) {
         Ok(val) => Ok(T::from_string(&val)?),
@@ -102,6 +112,7 @@ impl FromString for u64 {
     }
 }
 
+#[cfg(feature = "std")]
 impl FromString for PathBuf {
     fn from_string(s: &str) -> Result<Self> {
         Ok(PathBuf::from(&s))

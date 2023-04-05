@@ -4,6 +4,7 @@ use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
 };
+#[cfg(feature = "std")]
 use ockam_core::env::get_env;
 use ockam_core::{compat::sync::Arc, Address, Result};
 

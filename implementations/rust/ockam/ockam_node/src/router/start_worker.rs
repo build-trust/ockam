@@ -5,9 +5,10 @@ use crate::{
     NodeReplyResult, RouterReason, RouterReply,
 };
 use core::sync::atomic::AtomicUsize;
+#[cfg(feature = "std")]
+use ockam_core::env::get_env;
 use ockam_core::{
     compat::{sync::Arc, vec::Vec},
-    env::get_env,
     Address, Result,
 };
 
