@@ -32,6 +32,7 @@ mod reset;
 mod run;
 mod secure_channel;
 mod service;
+mod show;
 mod space;
 mod status;
 mod subscription;
@@ -81,6 +82,7 @@ use relay::RelayCommand;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
+use show::ShowCommand;
 use space::SpaceCommand;
 use status::StatusCommand;
 use std::{path::PathBuf, sync::Mutex};
@@ -270,6 +272,9 @@ pub enum OckamSubcommand {
     Message(MessageCommand),
     Relay(RelayCommand),
 
+    #[command(hide = docs::hide())]
+    Show(ShowCommand),
+
     TcpListener(TcpListenerCommand),
     TcpConnection(TcpConnectionCommand),
     TcpOutlet(TcpOutletCommand),
@@ -408,6 +413,7 @@ impl OckamCommand {
             OckamSubcommand::Authority(c) => c.run(options),
             OckamSubcommand::Policy(c) => c.run(options),
             OckamSubcommand::Lease(c) => c.run(options),
+            OckamSubcommand::Show(c) => c.run(options),
 
             OckamSubcommand::Run(c) => c.run(options),
             OckamSubcommand::Status(c) => c.run(options),
