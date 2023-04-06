@@ -224,6 +224,8 @@ pub struct ApiTransport {
     pub socket_address: SocketAddr,
     /// Worker address
     pub worker_address: Address,
+    /// SessionId
+    pub session_id: SessionId,
 }
 
 pub struct NodeManagerTransportOptions {
