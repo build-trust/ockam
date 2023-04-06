@@ -11,6 +11,7 @@ pub struct Connection<'a> {
     pub credential_name: Option<CowStr<'a>>,
     pub authorized_identities: Option<Vec<IdentityIdentifier>>,
     pub timeout: Option<Duration>,
+    pub add_default_consumers: bool,
 }
 
 impl<'a> Connection<'a> {
@@ -22,6 +23,7 @@ impl<'a> Connection<'a> {
             credential_name: None,
             authorized_identities: None,
             timeout: None,
+            add_default_consumers: false,
         }
     }
 
@@ -41,6 +43,11 @@ impl<'a> Connection<'a> {
 
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
+        self
+    }
+
+    pub fn add_default_consumers(mut self) -> Self {
+        self.add_default_consumers = true;
         self
     }
 }

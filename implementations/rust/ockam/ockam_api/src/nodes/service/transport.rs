@@ -71,19 +71,29 @@ impl NodeManagerWorker {
         );
         let socket_addr = addr.to_string();
 
+        // TODO: Support Sessions from ockam_command CLI
+        let session_id = node_manager.message_flow_sessions.generate_session_id();
         let res = match (tt, tm) {
             (Tcp, Listen) => node_manager
                 .tcp_transport
-                // We don't use Sessions for listeners and connections created manually
-                // TODO: Add that functionality
-                .listen(&addr, TcpListenerTrustOptions::insecure())
+                .listen(
+                    &addr,
+                    TcpListenerTrustOptions::as_spawner(
+                        &node_manager.message_flow_sessions,
+                        &session_id,
+                    ),
+                )
                 .await
                 .map(|(socket, worker_address)| (socket.to_string(), worker_address)),
             (Tcp, Connect) => node_manager
                 .tcp_transport
-                // We don't use Sessions for listeners and connections created manually
-                // TODO: Add that functionality
-                .connect(&socket_addr, TcpConnectionTrustOptions::insecure())
+                .connect(
+                    &socket_addr,
+                    TcpConnectionTrustOptions::as_producer(
+                        &node_manager.message_flow_sessions,
+                        &session_id,
+                    ),
+                )
                 .await
                 .map(|worker_address| (socket_addr, worker_address)),
             _ => unimplemented!(),
@@ -95,24 +105,17 @@ impl NodeManagerWorker {
                 let socket_address: SocketAddr = socket_address
                     .parse()
                     .map_err(|err: AddrParseError| ApiError::generic(&err.to_string()))?;
-                node_manager.transports.insert(
-                    tid.clone(),
-                    ApiTransport {
-                        tt,
-                        tm,
-                        socket_address,
-                        worker_address: worker_address.address().into(),
-                    },
-                );
-                Response::ok(req.id()).body(TransportStatus::new(
-                    ApiTransport {
-                        tt,
-                        tm,
-                        socket_address,
-                        worker_address: worker_address.address().into(),
-                    },
-                    tid,
-                ))
+                let api_transport = ApiTransport {
+                    tt,
+                    tm,
+                    socket_address,
+                    worker_address: worker_address.address().into(),
+                    session_id,
+                };
+                node_manager
+                    .transports
+                    .insert(tid.clone(), api_transport.clone());
+                Response::ok(req.id()).body(TransportStatus::new(api_transport, tid))
             }
             Err(msg) => {
                 error!("{}", msg.to_string());
@@ -122,6 +125,7 @@ impl NodeManagerWorker {
                         tm,
                         socket_address: "0.0.0.0:0000".parse().unwrap(),
                         worker_address: "<none>".into(),
+                        session_id: "<none>".into(),
                     },
                     "<none>".to_string(),
                 ))
