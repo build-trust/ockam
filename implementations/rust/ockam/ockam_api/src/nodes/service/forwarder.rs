@@ -53,8 +53,7 @@ impl NodeManagerWorker {
                 session_id,
             )
         } else {
-            // Should always be present?
-            panic!()
+            RemoteForwarderTrustOptions::insecure()
         };
 
         let full = connection

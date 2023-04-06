@@ -46,7 +46,7 @@ mod node {
     use crate::nodes::connection::Connection;
     use ockam_core::api::{Request, Response, Status};
     use ockam_core::{self, Result};
-    use ockam_node::Context;
+    use ockam_node::{Context, MessageSendReceiveOptions};
 
     use crate::nodes::NodeManagerWorker;
 
@@ -73,9 +73,18 @@ mod node {
 
             trace!(target: TARGET, route = %req_body.route, msg_l = %msg_length, "sending message");
 
-            let res: Result<Vec<u8>> = ctx.send_and_receive(route, msg).await;
+            let res = ctx
+                .send_and_receive_extended::<Vec<u8>>(
+                    route,
+                    msg,
+                    MessageSendReceiveOptions::new()
+                        .with_session(&node_manager.message_flow_sessions),
+                )
+                .await;
             match res {
-                Ok(r) => Ok(Response::builder(req.id(), Status::Ok).body(r).to_vec()?),
+                Ok(r) => Ok(Response::builder(req.id(), Status::Ok)
+                    .body(r.body())
+                    .to_vec()?),
                 Err(err) => {
                     error!(target: TARGET, ?err, "Failed to send message");
                     Ok(Response::builder(req.id(), Status::InternalServerError)
