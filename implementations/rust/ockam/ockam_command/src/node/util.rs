@@ -196,7 +196,11 @@ pub(crate) async fn init_node_state(
         .vault(vault_state.path)
         .identity(identity_state.path)
         .build(&opts.state)?;
-    opts.state.nodes.create(node_name, node_config)?;
+    let node_state = opts.state.nodes.create(node_name, node_config)?;
+
+    // Set PID using the current process. If this node is then spawned in a subprocess
+    // the PID will be updated to the new process ID.
+    node_state.set_pid(std::process::id() as i32)?;
 
     Ok(())
 }
