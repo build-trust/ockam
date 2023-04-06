@@ -72,11 +72,6 @@ impl<'a> RpcBuilder<'a> {
         }
     }
 
-    pub fn sessions(mut self, sessions: &Sessions) -> Self {
-        self.sessions = Some(sessions.clone());
-        self
-    }
-
     pub fn to(mut self, to: &MultiAddr) -> Result<Self> {
         self.to = ockam_api::local_multiaddr_to_route(to)
             .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
