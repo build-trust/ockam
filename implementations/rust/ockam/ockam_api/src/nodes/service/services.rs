@@ -433,6 +433,7 @@ impl NodeManager {
         let connection = Connection::new(context, &project_route_multiaddr)
             .with_authorized_identity(self.identity.clone().identifier().clone())
             .with_timeout(Duration::from_secs(60));
+        // TODO: .add_default_consumers()?
         let connection = self.connect(connection).await?;
 
         let project_multiaddr = connection.secure_channel.try_with(&connection.suffix)?;
