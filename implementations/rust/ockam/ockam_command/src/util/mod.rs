@@ -216,17 +216,15 @@ impl<'a> Rpc<'a> {
                 let addr = match tcp {
                     None => {
                         let tcp = TcpTransport::create(ctx).await?;
-                        // Connection without a Session gives exclusive access to the node
-                        // that runs that connection, make sure it's intended
+                        // FIXME
                         tcp.connect(addr_str, TcpConnectionTrustOptions::insecure())
                             .await?
                     }
                     Some(tcp) => {
                         // Create a new connection anyway
+                        // FIXME
                         tcp.connect(addr_str, TcpConnectionTrustOptions::insecure())
                             .await?
-                        // Connection without a Session gives exclusive access to the node
-                        // that runs that connection, make sure it's intended
                     }
                 };
                 to.modify().prepend(addr);
