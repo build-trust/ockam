@@ -27,6 +27,7 @@ use crate::{
 };
 use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
+use ockam_api::config::cli;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::{ApiTransport, NodeManagerTrustOptions};
@@ -40,6 +41,7 @@ use ockam_api::{
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
+use ockam_core::sessions::Sessions;
 use ockam_core::{AllowAll, LOCAL};
 
 use super::util::check_default;
@@ -244,9 +246,7 @@ async fn run_foreground_node(
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = &cmd.tcp_listener_address;
 
-    // This listener gives exclusive access to our node, make sure this is intended
-    // + make sure this tcp address is only reachable from the local loopback and/or intended
-    // network
+    // TODO: This is only listening on loopback address, but should use Sessions anyways
     let (socket_addr, listener_addr) = tcp
         .listen(&bind, TcpListenerTrustOptions::insecure())
         .await?;
@@ -281,27 +281,24 @@ async fn run_foreground_node(
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listener_addr,
+                session_id: "<none>".into(), // TODO: Replace with proper value when loopbck TCP listener starts using Sessions
             },
             tcp.async_try_clone().await?,
         ),
         NodeManagerTrustOptions::new(trust_context_config),
     )
     .await?;
+    let sessions = node_man.message_flow_sessions().clone();
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.start_worker(
-        NODEMANAGER_ADDR,
-        node_manager_worker,
-        AllowAll, // FIXME: @ac
-        AllowAll, // FIXME: @ac
-    )
-    .await?;
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
+        .await?;
 
     if let Some(path) = &cmd.launch_config {
         let node_opts = super::NodeOpts {
             api_node: node_name.clone(),
         };
-        if start_services(&ctx, &tcp, path, addr, node_opts, &opts)
+        if start_services(&ctx, &tcp, path, addr, node_opts, &opts, &sessions)
             .await
             .is_err()
         {
@@ -383,6 +380,8 @@ async fn start_services(
     addr: SocketAddr,
     node_opts: super::NodeOpts,
     opts: &CommandGlobalOpts,
+    // FIXME
+    _sessions: &Sessions,
 ) -> Result<()> {
     let config = {
         if let Some(sc) = &cfg.startup_services {
@@ -395,6 +394,7 @@ async fn start_services(
     // Checking if node accepts connections
     // Connection without a Session gives exclusive access to the node
     // that runs that connection, make sure it's intended
+    // FIXME
     let addr = tcp
         .connect(addr.to_string(), TcpConnectionTrustOptions::insecure())
         .await?;

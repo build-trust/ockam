@@ -13,7 +13,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::{SessionId, Sessions as MessageFlowSessions};
+use ockam_core::sessions::{SessionId, SessionPolicy, Sessions as MessageFlowSessions};
 use ockam_core::{route, AllowAll, AsyncTryClone, IncomingAccessControl};
 use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
@@ -46,8 +46,8 @@ use crate::rpc_proxy::RpcProxyService;
 use crate::session::util::{starts_with_host_tcp, starts_with_secure};
 use crate::session::{Medic, Sessions};
 use crate::{
-    create_tcp_session, local_multiaddr_to_route, multiaddr_to_route, route_to_multiaddr,
-    try_address_to_multiaddr, DefaultAddress,
+    create_tcp_session, local_multiaddr_to_route, route_to_multiaddr, try_address_to_multiaddr,
+    DefaultAddress,
 };
 
 pub mod message;
@@ -184,6 +184,9 @@ impl NodeManager {
             .as_ref()
             .ok_or_else(|| ApiError::generic("Trust context doesn't exist"))
     }
+    pub fn message_flow_sessions(&self) -> &MessageFlowSessions {
+        &self.message_flow_sessions
+    }
 }
 
 pub struct NodeManagerGeneralOptions {
@@ -230,6 +233,8 @@ pub struct ApiTransport {
     pub socket_address: SocketAddr,
     /// Worker address
     pub worker_address: Address,
+    /// SessionId
+    pub session_id: SessionId,
 }
 
 pub struct NodeManagerTransportOptions {
@@ -261,7 +266,7 @@ impl NodeManagerTrustOptions {
 pub(crate) struct ConnectResult {
     pub(crate) secure_channel: MultiAddr,
     pub(crate) suffix: MultiAddr,
-    pub(crate) sc_session_id: Option<SessionId>,
+    pub(crate) session_id: Option<SessionId>,
 }
 
 impl NodeManager {
@@ -410,6 +415,36 @@ impl NodeManager {
     /// Returns the secure channel worker address (if any) and the remainder
     /// of the address argument.
     pub(crate) async fn connect(&mut self, connection: Connection<'_>) -> Result<ConnectResult> {
+        let add_default_consumers = connection.add_default_consumers;
+
+        let res = self.connect_impl(connection).await?;
+
+        if add_default_consumers {
+            if let Some(session_id) = &res.session_id {
+                self.message_flow_sessions.add_consumer(
+                    &DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
+                    session_id,
+                    SessionPolicy::ProducerAllowMultiple,
+                );
+                self.message_flow_sessions.add_consumer(
+                    &DefaultAddress::UPPERCASE_SERVICE.into(),
+                    session_id,
+                    SessionPolicy::ProducerAllowMultiple,
+                );
+                self.message_flow_sessions.add_consumer(
+                    &DefaultAddress::ECHO_SERVICE.into(),
+                    session_id,
+                    SessionPolicy::ProducerAllowMultiple,
+                );
+            }
+        }
+
+        Ok(res)
+    }
+    pub(crate) async fn connect_impl(
+        &mut self,
+        connection: Connection<'_>,
+    ) -> Result<ConnectResult> {
         let Connection {
             ctx,
             addr,
@@ -417,6 +452,7 @@ impl NodeManager {
             credential_name,
             authorized_identities,
             timeout,
+            ..
         } = connection;
 
         let transport = &self.tcp_transport;
@@ -449,7 +485,7 @@ impl NodeManager {
                 let res = ConnectResult {
                     secure_channel: try_address_to_multiaddr(&sc_address)?,
                     suffix: a,
-                    sc_session_id: Some(sc_session_id),
+                    session_id: Some(sc_session_id),
                 };
 
                 return Ok(res);
@@ -485,22 +521,22 @@ impl NodeManager {
                     let res = ConnectResult {
                         secure_channel: try_address_to_multiaddr(&sc_address)?,
                         suffix: b2,
-                        sc_session_id: Some(sc_session_id),
+                        session_id: Some(sc_session_id),
                     };
 
                     Ok(res)
                 }
                 None => {
-                    // We don't use a secure channel here, should be safe without sessions
-                    let route = multiaddr_to_route(addr, transport)
-                        .await
-                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                    let tcp_session =
+                        create_tcp_session(addr, transport, &self.message_flow_sessions)
+                            .await
+                            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
                     let res = ConnectResult {
-                        secure_channel: route_to_multiaddr(&route)
+                        secure_channel: route_to_multiaddr(&tcp_session.route)
                             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?,
                         suffix: Default::default(),
-                        sc_session_id: None,
+                        session_id: tcp_session.session_id,
                     };
 
                     Ok(res)
@@ -528,7 +564,7 @@ impl NodeManager {
             let res = ConnectResult {
                 secure_channel: try_address_to_multiaddr(&sc_address)?,
                 suffix: Default::default(),
-                sc_session_id: Some(sc_session_id),
+                session_id: Some(sc_session_id),
             };
 
             return Ok(res);
@@ -537,7 +573,7 @@ impl NodeManager {
         let res = ConnectResult {
             secure_channel: Default::default(),
             suffix: addr.clone(),
-            sc_session_id: None,
+            session_id: None,
         };
 
         Ok(res)

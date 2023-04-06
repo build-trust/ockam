@@ -7,7 +7,6 @@ use ockam::compat::asynchronous::RwLock;
 use ockam::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderTrustOptions};
 use ockam::Result;
 use ockam_core::api::{Id, Request, Response, ResponseBuilder, Status};
-use ockam_core::sessions::SessionPolicy;
 use ockam_core::AsyncTryClone;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
@@ -19,7 +18,7 @@ use crate::nodes::connection::Connection;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::session::util;
 use crate::session::{Replacer, Session};
-use crate::{local_multiaddr_to_route, try_multiaddr_to_addr, DefaultAddress};
+use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
 
 use super::{NodeManager, NodeManagerWorker};
 
@@ -36,23 +35,19 @@ impl NodeManagerWorker {
 
         debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
-        let connection =
-            Connection::new(ctx, req.address()).with_authorized_identity(req.authorized());
+        let connection = Connection::new(ctx, req.address())
+            .with_authorized_identity(req.authorized())
+            .add_default_consumers();
 
         let connection = node_manager.connect(connection).await?;
 
-        let trust_options = if let Some(session_id) = connection.sc_session_id.as_ref() {
-            node_manager.message_flow_sessions.add_consumer(
-                &DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
-                session_id,
-                SessionPolicy::ProducerAllowMultiple,
-            );
-
+        let trust_options = if let Some(session_id) = connection.session_id.as_ref() {
             RemoteForwarderTrustOptions::as_consumer_and_producer(
                 &node_manager.message_flow_sessions,
                 session_id,
             )
         } else {
+            // TODO: Remove after loopback tcp listener uses Sessions
             RemoteForwarderTrustOptions::insecure()
         };
 
@@ -179,7 +174,8 @@ fn replacer(
                 let _ = this.delete_secure_channel(&prev).await;
                 let connection = Connection::new(ctx.as_ref(), &addr)
                     .with_authorized_identity(auth)
-                    .with_timeout(util::MAX_CONNECT_TIME);
+                    .with_timeout(util::MAX_CONNECT_TIME)
+                    .add_default_consumers();
                 let connection = this.connect(connection).await?;
                 let a = connection
                     .secure_channel
@@ -190,7 +186,7 @@ fn replacer(
 
                 let trust_options = RemoteForwarderTrustOptions::as_consumer_and_producer(
                     &this.message_flow_sessions,
-                    &connection.sc_session_id.clone().unwrap(), // Should always be present?
+                    &connection.session_id.clone().unwrap(), // Should always be present?
                 );
 
                 if let Some(alias) = &alias {

@@ -389,6 +389,7 @@ pub mod test {
                     tm: crate::nodes::models::transport::TransportMode::Listen,
                     socket_address: "127.0.0.1:123".parse().unwrap(),
                     worker_address: "".into(),
+                    session_id: "".into(),
                 },
                 tcp.async_try_clone().await?,
             ),
