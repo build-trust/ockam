@@ -17,7 +17,7 @@ use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::SessionId;
+use ockam_core::sessions::{SessionId, SessionPolicy};
 use ockam_core::{route, CowStr};
 
 use ockam_identity::{
@@ -186,7 +186,7 @@ impl NodeManager {
         Ok((sc_addr, sc_session_id))
     }
 
-    pub(super) async fn create_secure_channel_listener_impl_with_session(
+    pub(super) async fn create_secure_channel_listener_impl(
         &mut self,
         addr: Address,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
@@ -194,34 +194,12 @@ impl NodeManager {
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
     ) -> Result<SessionId> {
-        let session_id = self.message_flow_sessions.generate_session_id();
-
-        self.create_secure_channel_listener_impl(
-            addr,
-            authorized_identifiers,
-            vault_name,
-            identity_name,
-            session_id.clone(),
-            ctx,
-        )
-        .await?;
-
-        Ok(session_id)
-    }
-
-    async fn create_secure_channel_listener_impl(
-        &mut self,
-        addr: Address,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-        vault_name: Option<CowStr<'_>>,
-        identity_name: Option<CowStr<'_>>,
-        session_id: SessionId,
-        ctx: &Context,
-    ) -> Result<()> {
         info!(
             "Handling request to create a new secure channel listener: {}",
             addr
         );
+
+        let session_id = self.message_flow_sessions.generate_session_id();
 
         let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
@@ -253,9 +231,29 @@ impl NodeManager {
 
         self.registry
             .secure_channel_listeners
-            .insert(addr, SecureChannelListenerInfo::new(session_id));
+            .insert(addr, SecureChannelListenerInfo::new(session_id.clone()));
 
-        Ok(())
+        // TODO: Clean
+        // Add Echoer, Uppercase and Cred Exch as a consumer by default
+        self.message_flow_sessions.add_consumer(
+            &DefaultAddress::ECHO_SERVICE.into(),
+            &session_id,
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
+
+        self.message_flow_sessions.add_consumer(
+            &DefaultAddress::UPPERCASE_SERVICE.into(),
+            &session_id,
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
+
+        self.message_flow_sessions.add_consumer(
+            &DefaultAddress::CREDENTIALS_SERVICE.into(),
+            &session_id,
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
+
+        Ok(session_id)
     }
 
     pub(super) async fn delete_secure_channel(&mut self, addr: &Address) -> Result<()> {
@@ -444,13 +442,7 @@ impl NodeManagerWorker {
 
         // FIXME
         node_manager
-            .create_secure_channel_listener_impl_with_session(
-                addr,
-                authorized_identifiers,
-                vault,
-                identity,
-                ctx,
-            )
+            .create_secure_channel_listener_impl(addr, authorized_identifiers, vault, identity, ctx)
             .await?;
 
         let response = Response::ok(req.id());
