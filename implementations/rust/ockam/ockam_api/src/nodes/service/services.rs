@@ -32,7 +32,6 @@ use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::SessionPolicy;
 use ockam_core::{route, AllowAll, IncomingAccessControl};
 use ockam_identity::authenticated_storage::IdentityAttributeStorageReader;
 use ockam_multiaddr::proto::Project;
@@ -121,20 +120,6 @@ impl NodeManager {
             .credentials_services
             .insert(addr.clone(), CredentialsServiceInfo::default());
 
-        // Accept messages from all started secure channel listeners
-        for session_id in self
-            .registry
-            .secure_channel_listeners
-            .values()
-            .map(|x| x.session_id())
-        {
-            self.message_flow_sessions.add_consumer(
-                &addr,
-                session_id,
-                SessionPolicy::SpawnerAllowMultipleMessages,
-            )
-        }
-
         Ok(())
     }
 
@@ -179,17 +164,12 @@ impl NodeManager {
             ));
         }
 
-        ctx.start_worker(
-            addr.clone(),
-            Uppercase,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(addr.clone(), Uppercase, AllowAll, AllowAll)
+            .await?;
 
         self.registry
             .uppercase_services
-            .insert(addr, Default::default());
+            .insert(addr.clone(), Default::default());
 
         Ok(())
     }
@@ -205,20 +185,6 @@ impl NodeManager {
 
         ctx.start_worker(addr.clone(), Echoer, AllowAll, AllowAll)
             .await?;
-
-        // Accept messages from all started secure channel listeners
-        for session_id in self
-            .registry
-            .secure_channel_listeners
-            .values()
-            .map(|x| x.session_id())
-        {
-            self.message_flow_sessions.add_consumer(
-                &addr,
-                session_id,
-                SessionPolicy::SpawnerAllowMultipleMessages,
-            )
-        }
 
         self.registry
             .echoer_services
@@ -520,7 +486,7 @@ impl NodeManager {
                 .await?;
 
             // FIXME
-            self.create_secure_channel_listener_impl_with_session(
+            self.create_secure_channel_listener_impl(
                 Address::from_string(KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS),
                 None,
                 None,
