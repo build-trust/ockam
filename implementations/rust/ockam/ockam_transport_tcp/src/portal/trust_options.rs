@@ -139,6 +139,9 @@ impl TcpOutletTrustOptions {
                 );
             }
             (None, None) => {}
+            // We act as a consumer in some cases,
+            // but we were reached without a session, which is fine
+            (Some(_), None) => {}
             _ => {
                 return Err(TransportError::SessionInconsistency.into());
             }
