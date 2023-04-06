@@ -53,6 +53,7 @@ impl NodeManagerWorker {
                 session_id,
             )
         } else {
+            // TODO: Remove after loopback tcp listener uses Sessions
             RemoteForwarderTrustOptions::insecure()
         };
 
