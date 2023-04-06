@@ -20,6 +20,12 @@ impl ToString for SessionId {
     }
 }
 
+impl From<&str> for SessionId {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
+    }
+}
+
 impl Distribution<SessionId> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> SessionId {
         let address: [u8; 16] = rng.gen();
