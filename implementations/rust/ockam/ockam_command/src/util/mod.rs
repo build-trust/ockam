@@ -57,7 +57,7 @@ pub struct RpcBuilder<'a> {
     node_name: String,
     to: Route,
     mode: RpcMode<'a>,
-    sessions: Option<Sessions>,
+    sessions: Sessions,
 }
 
 impl<'a> RpcBuilder<'a> {
@@ -68,7 +68,7 @@ impl<'a> RpcBuilder<'a> {
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
             mode: RpcMode::Embedded,
-            sessions: None,
+            sessions: Default::default(),
         }
     }
 
@@ -99,7 +99,7 @@ impl<'a> RpcBuilder<'a> {
             node_name: self.node_name,
             to: self.to,
             mode: self.mode,
-            sessions: self.sessions,
+            sessions: self.sessions.clone(),
         }
     }
 }
@@ -112,7 +112,7 @@ pub struct Rpc<'a> {
     node_name: String,
     to: Route,
     mode: RpcMode<'a>,
-    sessions: Option<Sessions>,
+    sessions: Sessions,
 }
 
 impl<'a> Rpc<'a> {
@@ -126,7 +126,7 @@ impl<'a> Rpc<'a> {
             node_name,
             to: NODEMANAGER_ADDR.into(),
             mode: RpcMode::Embedded,
-            sessions: None,
+            sessions: Default::default(),
         })
     }
 
@@ -147,7 +147,7 @@ impl<'a> Rpc<'a> {
                 node_state: cfg,
                 tcp: None,
             },
-            sessions: None,
+            sessions: Default::default(),
         })
     }
 
@@ -159,13 +159,8 @@ impl<'a> Rpc<'a> {
     where
         T: Encode<()>,
     {
-        let route = self.route_impl(self.ctx).await?;
-        let options = MessageSendReceiveOptions::new();
-        let options = if let Some(sessions) = &self.sessions {
-            options.with_session(sessions)
-        } else {
-            options
-        };
+        let route = self.route_impl(self.ctx, &self.sessions).await?;
+        let options = MessageSendReceiveOptions::new().with_session(&self.sessions);
         self.buf = self
             .ctx
             .send_and_receive_extended::<Vec<u8>>(route.clone(), req.to_vec()?, options)
@@ -185,13 +180,10 @@ impl<'a> Rpc<'a> {
     where
         T: Encode<()>,
     {
-        let route = self.route_impl(self.ctx).await?;
-        let options = MessageSendReceiveOptions::new().with_timeout(timeout);
-        let options = if let Some(sessions) = &self.sessions {
-            options.with_session(sessions)
-        } else {
-            options
-        };
+        let route = self.route_impl(self.ctx, &self.sessions).await?;
+        let options = MessageSendReceiveOptions::new()
+            .with_timeout(timeout)
+            .with_session(&self.sessions);
         self.buf = self
             .ctx
             .send_and_receive_extended::<Vec<u8>>(route.clone(), req.to_vec()?, options)
@@ -203,7 +195,7 @@ impl<'a> Rpc<'a> {
         Ok(())
     }
 
-    async fn route_impl(&self, ctx: &Context) -> Result<Route> {
+    async fn route_impl(&self, ctx: &Context, sessions: &Sessions) -> Result<Route> {
         let mut to = self.to.clone();
         let route = match self.mode {
             RpcMode::Embedded => to,
@@ -216,15 +208,21 @@ impl<'a> Rpc<'a> {
                 let addr = match tcp {
                     None => {
                         let tcp = TcpTransport::create(ctx).await?;
-                        // FIXME
-                        tcp.connect(addr_str, TcpConnectionTrustOptions::insecure())
-                            .await?
+                        let session_id = sessions.generate_session_id();
+                        tcp.connect(
+                            addr_str,
+                            TcpConnectionTrustOptions::as_producer(sessions, &session_id),
+                        )
+                        .await?
                     }
                     Some(tcp) => {
                         // Create a new connection anyway
-                        // FIXME
-                        tcp.connect(addr_str, TcpConnectionTrustOptions::insecure())
-                            .await?
+                        let session_id = sessions.generate_session_id();
+                        tcp.connect(
+                            addr_str,
+                            TcpConnectionTrustOptions::as_producer(sessions, &session_id),
+                        )
+                        .await?
                     }
                 };
                 to.modify().prepend(addr);
