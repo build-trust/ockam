@@ -158,7 +158,12 @@ impl TrustedIdentity {
         // Since the authority node is started for a given project
         // add the project_id attribute to the trusted identities
         map.insert(
-            "project_id".to_string(),
+            "project_id".to_string(), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
+            project_identifier.as_bytes().to_vec(),
+        );
+
+        map.insert(
+            "trust_context_id".to_string(),
             project_identifier.as_bytes().to_vec(),
         );
         AttributesEntry::new(

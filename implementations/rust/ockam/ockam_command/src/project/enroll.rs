@@ -14,7 +14,7 @@ use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
 use crate::project::util::create_secure_channel_to_authority;
-use crate::util::api::{CloudOpts, ProjectOpts, TrustContextOpts};
+use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{CommandGlobalOpts, Result};
 
@@ -24,9 +24,6 @@ pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
     cloud_opts: CloudOpts,
-
-    #[command(flatten)]
-    project_opts: ProjectOpts,
 
     #[command(flatten)]
     trust_opts: TrustContextOpts,
@@ -77,13 +74,8 @@ impl Runner {
     }
 
     async fn run(self) -> Result<()> {
-        let node_name = start_embedded_node(
-            &self.ctx,
-            &self.opts,
-            Some(&self.cmd.project_opts),
-            Some(&self.cmd.trust_opts),
-        )
-        .await?;
+        let node_name =
+            start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let map = self.opts.config.lookup();
         let base_addr = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
@@ -103,7 +95,7 @@ impl Runner {
                 &self.ctx,
                 &self.opts,
                 &node_name,
-                tc.authority()?.identity().identifier().clone(),
+                tc.authority()?.identity().await?.identifier().clone(),
                 addr,
                 self.cmd.cloud_opts.identity.clone(),
             )

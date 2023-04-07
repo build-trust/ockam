@@ -91,7 +91,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         Some(AuthorityInfo::new(
             project.authority_public_identity(),
             Some(Arc::new(CredentialIssuerRetriever::new(
-                CredentialIssuerInfo::new(project.authority_route()),
+                CredentialIssuerInfo::new(
+                    hex::encode(project.authority_public_identity().export()?),
+                    project.authority_route(),
+                ),
                 tcp.async_try_clone().await?,
             ))),
         )),

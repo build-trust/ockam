@@ -64,10 +64,11 @@ async fn run_impl(
         None,               // No trusted identities
         None,               // "
         None,               // "
-        None,
-        None, // No launch config available
-        None,
-        None,
+        None,               // Launch config
+        None,               // Authoritiy Identity
+        None,               // Credential
+        None,               // Trust Context
+        None,               // Project Name
     )?;
 
     // Print node status

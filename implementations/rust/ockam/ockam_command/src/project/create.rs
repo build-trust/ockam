@@ -52,7 +52,7 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> crate::Result<()> {
     let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)?;
-    let node_name = start_embedded_node(ctx, &opts, None, None).await?;
+    let node_name = start_embedded_node(ctx, &opts, None).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request_with_timeout(
         api::project::create(&cmd.project_name, &space_id, &cmd.cloud_opts.route()),

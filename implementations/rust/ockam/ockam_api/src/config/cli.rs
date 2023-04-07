@@ -23,6 +23,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use super::lookup::ProjectLookup;
+
 /// The main ockam CLI configuration
 ///
 /// Used to determine CLI runtime behaviour and index existing nodes
@@ -78,15 +80,28 @@ impl OckamConfig {
 pub struct TrustContextConfig {
     id: String,
     authority: Option<TrustAuthorityConfig>,
+    path: Option<PathBuf>,
 }
 
 impl TrustContextConfig {
     pub fn new(id: String, authority: Option<TrustAuthorityConfig>) -> Self {
-        Self { id, authority }
+        Self {
+            id,
+            authority,
+            path: None,
+        }
     }
 
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    pub fn path(&self) -> Option<&PathBuf> {
+        self.path.as_ref()
+    }
+
+    pub fn set_path(&mut self, path: PathBuf) {
+        self.path = Some(path);
     }
 
     pub fn authority(&self) -> Result<&TrustAuthorityConfig> {
@@ -106,8 +121,11 @@ impl TrustContextConfig {
             } else {
                 None
             };
+            let decoded_ident = hex::decode(&identity)
+                .map_err(|_| ApiError::generic("Invalid project authority"))?;
+            let public_identity = PublicIdentity::import(&decoded_ident, Vault::create()).await?;
 
-            Some(AuthorityInfo::new(identity, own_cred))
+            Some(AuthorityInfo::new(public_identity, own_cred))
         } else {
             None
         };
@@ -115,28 +133,18 @@ impl TrustContextConfig {
         Ok(TrustContext::new(self.id.clone(), authority))
     }
 
-    pub async fn from_project(project_info: &Project<'_>) -> Result<Self> {
+    pub fn from_project(project_info: &Project<'_>) -> Result<Self> {
         let authority = match (
             &project_info.authority_access_route,
             &project_info.authority_identity,
         ) {
             (Some(route), Some(identity)) => {
-                let vault = Vault::create();
-                let authority_public_identity = PublicIdentity::import(
-                    &hex::decode(identity.to_string()).map_err(|_| {
-                        ApiError::generic("unable to decode authority public identity")
-                    })?,
-                    vault,
-                )
-                .await?;
-
                 let authority_route = MultiAddr::from_str(route)
                     .map_err(|_| ApiError::generic("incorrect multi address"))?;
                 let retriever = CredentialRetrieverType::FromCredentialIssuer(
-                    CredentialIssuerInfo::new(authority_route),
+                    CredentialIssuerInfo::new(identity.to_string(), authority_route),
                 );
-                let authority =
-                    TrustAuthorityConfig::new(authority_public_identity, Some(retriever));
+                let authority = TrustAuthorityConfig::new(identity.to_string(), Some(retriever));
                 Some(authority)
             }
             _ => None,
@@ -148,28 +156,77 @@ impl TrustContextConfig {
         ))
     }
 
-    pub fn from_credential_state(issuer: &PublicIdentity, state: CredentialState) -> Self {
+    pub fn from_project_loookup(project_lookup: &ProjectLookup) -> Result<Self> {
+        let proj_auth = project_lookup
+            .authority
+            .as_ref()
+            .expect("Project lookup is missing authority");
+        let public_identity = hex::encode(proj_auth.identity());
+        let authority = {
+            let retriever = CredentialRetrieverType::FromCredentialIssuer(
+                CredentialIssuerInfo::new(public_identity.clone(), proj_auth.address().clone()),
+            );
+            let authority = TrustAuthorityConfig::new(public_identity, Some(retriever));
+            Some(authority)
+        };
+
+        Ok(TrustContextConfig::new(
+            project_lookup.id.clone(),
+            authority,
+        ))
+    }
+
+    pub fn from_authority_identity(
+        authority_identity: &str,
+        credential: Option<CredentialState>,
+    ) -> Result<Self> {
+        let own_cred = credential.map(CredentialRetrieverType::FromPath);
+        let trust_context = TrustContextConfig::new(
+            authority_identity.to_string(),
+            Some(TrustAuthorityConfig::new(
+                authority_identity.to_string(),
+                own_cred,
+            )),
+        );
+
+        Ok(trust_context)
+    }
+
+    pub fn from_credential_state(state: CredentialState) -> Result<Self> {
+        let issuer = state.config()?.issuer;
+        let bytes = issuer.export()?;
+        let public_identity = hex::encode(bytes);
         let retriever = CredentialRetrieverType::FromPath(state);
-        let authority = TrustAuthorityConfig::new(issuer.clone(), Some(retriever));
-        TrustContextConfig::new(issuer.identifier().to_string(), Some(authority))
+        let authority = TrustAuthorityConfig::new(public_identity, Some(retriever));
+        Ok(TrustContextConfig::new(
+            issuer.identifier().to_string(),
+            Some(authority),
+        ))
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrustAuthorityConfig {
-    identity: PublicIdentity,
+    identity: String,
     own_credential: Option<CredentialRetrieverType>,
 }
 
 impl TrustAuthorityConfig {
-    pub fn new(identity: PublicIdentity, own_credential: Option<CredentialRetrieverType>) -> Self {
+    pub fn new(identity: String, own_credential: Option<CredentialRetrieverType>) -> Self {
         Self {
             identity,
             own_credential,
         }
     }
-    pub fn identity(&self) -> &PublicIdentity {
-        &self.identity
+    pub async fn identity(&self) -> Result<PublicIdentity> {
+        let vault = Vault::create();
+        let ident = PublicIdentity::import(
+            &hex::decode(&self.identity)
+                .map_err(|_| ApiError::generic("unable to decode authority public identity"))?,
+            vault,
+        )
+        .await?;
+        Ok(ident)
     }
 
     pub fn own_credential(&self) -> Result<&CredentialRetrieverType> {

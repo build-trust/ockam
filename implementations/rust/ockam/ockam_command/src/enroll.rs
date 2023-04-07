@@ -47,7 +47,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> R
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
-    let node_name = start_embedded_node(ctx, &opts, None, None).await?;
+    let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     enroll(ctx, &opts, &cmd, &node_name).await?;
 

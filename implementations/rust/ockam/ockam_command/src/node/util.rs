@@ -5,13 +5,13 @@ use ockam_api::config::lookup::ProjectLookup;
 use rand::random;
 use std::env::current_exe;
 use std::fs::OpenOptions;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use ockam::identity::Identity;
 use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
 use ockam_api::cli_state;
-use ockam_api::config::cli::TrustContextConfig;
+
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
@@ -24,17 +24,15 @@ use ockam_core::AllowAll;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
-use crate::util::api::{ProjectOpts, TrustContextOpts};
+use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use crate::{project, CommandGlobalOpts, OckamConfig, Result};
 
 pub async fn start_embedded_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    project_opts: Option<&ProjectOpts>,
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
-    start_embedded_node_with_vault_and_identity(ctx, opts, None, None, project_opts, trust_opts)
-        .await
+    start_embedded_node_with_vault_and_identity(ctx, opts, None, None, trust_opts).await
 }
 
 pub async fn start_embedded_node_with_vault_and_identity(
@@ -42,7 +40,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
     opts: &CommandGlobalOpts,
     vault: Option<&String>,
     identity: Option<&String>,
-    project_opts: Option<&ProjectOpts>,
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
     let cfg = &opts.config;
@@ -53,51 +50,19 @@ pub async fn start_embedded_node_with_vault_and_identity(
         init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
     }
 
-    if let Some(p) = project_opts {
+    if let Some(p) = trust_opts {
         add_project_info_to_node_state(opts, cfg, p).await?;
-    } else if let Some(path) = &cmd.project {
+    } else if let Some(path) = &cmd.trust_context_opts.project_path {
         let s = tokio::fs::read_to_string(path).await?;
         let p: ProjectInfo = serde_json::from_str(&s)?;
         project::config::set_project(cfg, &(&p).into()).await?;
     };
 
-    // retrieve trust context config from options if provided
-    // otherwise try to retrieve from project file
-    let mut trust_context_config = if let Some(trust_opts) = trust_opts {
-        trust_opts.trust_context.as_ref().cloned()
-    } else {
-        None
-    };
-
-    trust_context_config = if trust_context_config.is_none() {
-        let mut proj_path = match &cmd.project {
-            Some(path) => Some(path.clone()),
-            None => match project_opts {
-                Some(p) => p.project_path.clone(),
-                None => None,
-            },
-        };
-
-        proj_path = match proj_path {
-            Some(path) => Some(path),
-            None => match opts.state.projects.default() {
-                Ok(p) => Some(p.path),
-                Err(_) => None,
-            },
-        };
-
-        match proj_path {
-            Some(path) => {
-                let s = tokio::fs::read_to_string(path).await?;
-                let p: ProjectInfo = serde_json::from_str(&s)?;
-
-                let tcc = TrustContextConfig::from_project(&(&p).into()).await?;
-                Some(tcc)
-            }
-            None => None,
-        }
-    } else {
-        trust_context_config
+    let trust_context_config = match trust_opts {
+        Some(t) => TrustContextConfigBuilder::new(t)
+            .with_default_proj(opts.state.projects.default().ok())
+            .build(),
+        None => None,
     };
 
     let tcp = TcpTransport::create(ctx).await?;
@@ -148,7 +113,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
 pub async fn add_project_info_to_node_state(
     opts: &CommandGlobalOpts,
     cfg: &OckamConfig,
-    project_opts: &ProjectOpts,
+    project_opts: &TrustContextOpts,
 ) -> Result<Option<String>> {
     let proj_path = if let Some(path) = project_opts.project_path.clone() {
         Some(path)
@@ -267,7 +232,7 @@ pub fn spawn_node(
     verbose: u8,
     name: &str,
     address: &str,
-    project: Option<&Path>,
+    project: Option<&PathBuf>,
     trusted_identities: Option<&String>,
     trusted_identities_file: Option<&PathBuf>,
     reload_from_trusted_identities_file: Option<&PathBuf>,
@@ -275,6 +240,7 @@ pub fn spawn_node(
     authority_identity: Option<&String>,
     credential: Option<&String>,
     trust_context: Option<&PathBuf>,
+    project_name: Option<&String>,
 ) -> crate::Result<()> {
     let mut args = vec![
         match verbose {
@@ -291,7 +257,7 @@ pub fn spawn_node(
     ];
 
     if let Some(path) = project {
-        args.push("--project".to_string());
+        args.push("--project-path".to_string());
         let p = path
             .to_str()
             .unwrap_or_else(|| panic!("unsupported path {path:?}"));
@@ -340,6 +306,11 @@ pub fn spawn_node(
                 .unwrap_or_else(|| panic!("unsupported path {trust_context:?}"))
                 .to_string(),
         );
+    }
+
+    if let Some(project_name) = project_name {
+        args.push("--project".to_string());
+        args.push(project_name.to_string());
     }
 
     args.push(name.to_owned());

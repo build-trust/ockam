@@ -69,7 +69,7 @@ async fn run_impl(
 
     let mut attrs = cmd.attributes()?;
     attrs.insert(
-        "project_id".to_string(),
+        "project_id".to_string(), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
         auth_identity_identifier.to_string(),
     );
     attrs.insert(
