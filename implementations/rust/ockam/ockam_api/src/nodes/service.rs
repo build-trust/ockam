@@ -148,10 +148,15 @@ impl NodeManager {
                     Some(e) => e.clone(),
                     None => and([
                         eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                        eq([
-                            ident("resource.trust_context_id"),
-                            ident("subject.trust_context_id"),
-                        ]),
+                                                                                         /*
+                                                                                         * TODO: replace the project_id check for trust_context_id.  For now the
+                                                                                         * existing authority deployed doesn't know about trust_context so this is to
+                                                                                         * be done after updating deployed authorities.
+                                                                                         eq([
+                                                                                             ident("resource.trust_context_id"),
+                                                                                             ident("subject.trust_context_id"),
+                                                                                         ]),
+                                                                                         */
                     ]),
                 };
                 self.policies.set_policy(r, a, &fallback).await?
