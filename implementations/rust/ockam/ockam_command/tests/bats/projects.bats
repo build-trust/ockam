@@ -136,12 +136,12 @@ teardown() {
   run $OCKAM project authenticate --identity m1 --project-path "$PROJECT_JSON_PATH"
 
   # m1 is a member,  must be able to contact the project' service
-  run $OCKAM message send --identity m1 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo hello
+  run $OCKAM message send --timeout 5 --identity m1 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo hello
   assert_success
   assert_output "hello"
 
   # m2 is not a member,  must not be able to contact the project' service
-  run $OCKAM message send --identity m2 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo hello
+  run $OCKAM message send --timeout 5 --identity m2 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo hello
   assert_failure
 }
 
