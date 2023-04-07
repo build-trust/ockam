@@ -381,14 +381,18 @@ impl TrustContextConfigBuilder {
     pub fn build(&self) -> Option<TrustContextConfig> {
         self.trust_context
             .clone()
-            .or_else(|| self.get_from_project_path())
+            .or_else(|| self.get_from_project_path(self.project_path.as_ref()?))
             .or_else(|| self.get_from_project_name())
             .or_else(|| self.get_from_authority_identity())
             .or_else(|| self.get_from_credential())
+            .or_else(|| {
+                self.default_proj
+                    .as_ref()
+                    .and_then(|path| self.get_from_project_path(path))
+            })
     }
 
-    fn get_from_project_path(&self) -> Option<TrustContextConfig> {
-        let path = self.project_path.as_ref()?;
+    fn get_from_project_path(&self, path: &PathBuf) -> Option<TrustContextConfig> {
         let s = std::fs::read_to_string(path).unwrap();
         let proj_info: ProjectInfo = serde_json::from_str(&s).unwrap();
         TrustContextConfig::from_project(&(&proj_info).into()).ok()
