@@ -63,12 +63,14 @@ impl Identity {
         let addresses = Addresses::generate(Role::Initiator);
         let trust_options = trust_options.into();
 
-        trust_options.setup_session(&addresses);
+        let route = route.into();
+        let next = route.next()?;
+        trust_options.setup_session(&addresses, next)?;
         let access_control = trust_options.create_access_control();
 
         DecryptorWorker::create_initiator(
             &self.ctx,
-            route.into(),
+            route,
             identity_clone,
             addresses,
             trust_options.trust_policy,
@@ -89,13 +91,15 @@ impl Identity {
 
         let addresses = Addresses::generate(Role::Initiator);
 
+        let route = route.into();
+        let next = route.next()?;
         let trust_options = trust_options.into();
-        trust_options.setup_session(&addresses);
+        trust_options.setup_session(&addresses, next)?;
         let access_control = trust_options.create_access_control();
 
         DecryptorWorker::create_initiator(
             &self.ctx,
-            route.into(),
+            route,
             identity_clone,
             addresses,
             trust_options.trust_policy,

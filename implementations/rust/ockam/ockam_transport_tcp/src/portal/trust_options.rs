@@ -1,12 +1,12 @@
 use crate::portal::addresses::Addresses;
 use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
-use ockam_core::{AllowAll, IncomingAccessControl, Result};
+use ockam_core::{Address, AllowAll, IncomingAccessControl, Result};
 use ockam_transport_core::TransportError;
 
 /// Trust Options for an Inlet
 pub struct TcpInletTrustOptions {
-    pub(super) consumer_session: Option<(Sessions, SessionId)>,
+    pub(super) consumer_session: Option<Sessions>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
 
@@ -38,21 +38,26 @@ impl TcpInletTrustOptions {
     }
 
     /// Mark that created Inlets are Consumer for to the given [`SessionId`]
-    pub fn as_consumer(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
-        self.consumer_session = Some((sessions.clone(), session_id.clone()));
+    pub fn as_consumer(mut self, sessions: &Sessions) -> Self {
+        self.consumer_session = Some(sessions.clone());
 
         self
     }
 
-    pub(super) fn setup_session(&self, addresses: &Addresses) -> Result<()> {
+    pub(super) fn setup_session(&self, addresses: &Addresses, next: &Address) -> Result<()> {
         match &self.consumer_session {
-            Some((sessions, session_id)) => {
-                // Allow a sender with corresponding session_id send messages to this address
-                sessions.add_consumer(
-                    &addresses.remote,
-                    session_id,
-                    SessionPolicy::ProducerAllowMultiple,
-                );
+            Some(sessions) => {
+                if let Some(session_id) = sessions
+                    .find_session_with_producer_address(next)
+                    .map(|x| x.session_id().clone())
+                {
+                    // Allow a sender with corresponding session_id send messages to this address
+                    sessions.add_consumer(
+                        &addresses.remote,
+                        &session_id,
+                        SessionPolicy::ProducerAllowMultiple,
+                    );
+                }
             }
             None => {}
         }

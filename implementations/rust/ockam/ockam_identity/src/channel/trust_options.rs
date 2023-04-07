@@ -3,11 +3,11 @@ use crate::error::IdentityError;
 use crate::{TrustEveryonePolicy, TrustPolicy};
 use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, SessionOutgoingAccessControl, SessionPolicy, Sessions};
-use ockam_core::{AllowAll, OutgoingAccessControl, Result};
+use ockam_core::{Address, AllowAll, OutgoingAccessControl, Result};
 
 /// Trust options for a Secure Channel
 pub struct SecureChannelTrustOptions {
-    pub(crate) consumer_session: Option<(Sessions, SessionId)>,
+    pub(crate) consumer_session: Option<Sessions>,
     pub(crate) producer_session: Option<(Sessions, SessionId)>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
 }
@@ -20,17 +20,6 @@ impl SecureChannelTrustOptions {
     /// This constructor is insecure, because outgoing messages from such channels will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
-    pub fn insecure() -> Self {
-        Self {
-            consumer_session: None,
-            producer_session: None,
-            trust_policy: Arc::new(TrustEveryonePolicy),
-        }
-    }
-
-    /// This constructor is insecure, because outgoing messages from such channels will not be
-    /// restricted and can reach any [`Address`] on this node.
-    /// Should only be used for testing purposes
     pub fn insecure_test() -> Self {
         Self {
             consumer_session: None,
@@ -39,9 +28,10 @@ impl SecureChannelTrustOptions {
         }
     }
 
-    /// Mark this Secure Channel Decryptor as a Consumer for a given [`SessionId`]
-    pub fn as_consumer(mut self, sessions: &Sessions, session_id: &SessionId) -> Self {
-        self.consumer_session = Some((sessions.clone(), session_id.clone()));
+    /// Mark this Secure Channel Decryptor as a Consumer. [`SessionId`] will be deducted from
+    /// next hop of onward_route automatically
+    pub fn as_consumer(mut self, sessions: &Sessions) -> Self {
+        self.consumer_session = Some(sessions.clone());
         self
     }
 
@@ -60,14 +50,22 @@ impl SecureChannelTrustOptions {
         self
     }
 
-    pub(crate) fn setup_session(&self, addresses: &Addresses) {
-        if let Some((sessions, session_id)) = &self.consumer_session {
-            // Allow a sender with corresponding session_id send messages to this address
-            sessions.add_consumer(
-                &addresses.decryptor_remote,
-                session_id,
-                SessionPolicy::ProducerAllowMultiple,
-            );
+    pub(crate) fn setup_session(&self, addresses: &Addresses, next: &Address) -> Result<()> {
+        match &self.consumer_session {
+            Some(sessions) => {
+                if let Some(session_id) = sessions
+                    .find_session_with_producer_address(next)
+                    .map(|x| x.session_id().clone())
+                {
+                    // Allow a sender with corresponding session_id send messages to this address
+                    sessions.add_consumer(
+                        &addresses.decryptor_remote,
+                        &session_id,
+                        SessionPolicy::ProducerAllowMultiple,
+                    );
+                }
+            }
+            None => {}
         }
 
         if let Some((sessions, session_id)) = &self.producer_session {
@@ -78,6 +76,8 @@ impl SecureChannelTrustOptions {
                 vec![addresses.encryptor.clone()],
             );
         }
+
+        Ok(())
     }
 
     pub(crate) fn create_access_control(&self) -> SecureChannelAccessControl {
@@ -115,17 +115,6 @@ pub struct SecureChannelListenerTrustOptions {
 }
 
 impl SecureChannelListenerTrustOptions {
-    /// This constructor is insecure, because outgoing messages from such channels will not be
-    /// restricted and can reach any [`Address`] on this node.
-    /// Should only be used for testing purposes
-    pub fn insecure() -> Self {
-        Self {
-            consumer_session: None,
-            channels_producer_session: None,
-            trust_policy: Arc::new(TrustEveryonePolicy),
-        }
-    }
-
     /// This constructor is insecure, because outgoing messages from such channels will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes

@@ -66,10 +66,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_connection.clone(),
-        RemoteForwarderTrustOptions::as_consumer_and_producer(
-            &server_sessions,
-            &server_tcp_session_id,
-        ),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(&server_sessions),
     )
     .await?;
 
@@ -122,10 +119,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_connection.clone(),
-        RemoteForwarderTrustOptions::as_consumer_and_producer(
-            &server_sessions,
-            &server_tcp_session_id,
-        ),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(&server_sessions),
     )
     .await?;
 
@@ -228,7 +222,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             route![cloud_server_connection, "cloud_listener"],
             SecureChannelTrustOptions::as_producer(&server_sessions, &server_channel_session_id)
-                .as_consumer(&server_sessions, &server_tcp_session_id),
+                .as_consumer(&server_sessions),
         )
         .await?;
     server_identity
@@ -249,10 +243,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let remote_info = RemoteForwarder::create(
         ctx,
         cloud_server_channel.clone(),
-        RemoteForwarderTrustOptions::as_consumer_and_producer(
-            &server_sessions,
-            &server_channel_session_id,
-        ),
+        RemoteForwarderTrustOptions::as_consumer_and_producer(&server_sessions),
     )
     .await?;
 
@@ -274,7 +265,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             route![cloud_client_connection, "cloud_listener"],
             SecureChannelTrustOptions::as_producer(&client_sessions, &client_channel_session_id)
-                .as_consumer(&client_sessions, &client_tcp_session_id),
+                .as_consumer(&client_sessions),
         )
         .await?;
 
@@ -286,7 +277,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
                 "server_listener"
             ],
             SecureChannelTrustOptions::as_producer(&client_sessions, &client_tunnel_session_id)
-                .as_consumer(&client_sessions, &client_channel_session_id),
+                .as_consumer(&client_sessions),
         )
         .await?;
 

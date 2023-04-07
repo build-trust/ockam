@@ -1,7 +1,7 @@
 use crate::workers::Addresses;
 use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, SessionOutgoingAccessControl, Sessions};
-use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl, Result};
+use ockam_core::{AllowAll, IncomingAccessControl, OutgoingAccessControl, Result};
 use ockam_transport_core::TransportError;
 
 pub(crate) struct TcpConnectionAccessControl {
@@ -102,11 +102,16 @@ impl TcpListenerTrustOptions {
         }
     }
 
-    pub(crate) fn setup_session(&self, address: &Address) -> Option<SessionId> {
+    pub(crate) fn setup_session(&self, addresses: &Addresses) -> Option<SessionId> {
         if let Some((sessions, listener_session_id)) = &self.spawner_session {
             let session_id = sessions.generate_session_id();
 
-            sessions.add_producer(address, &session_id, Some(listener_session_id), vec![]);
+            sessions.add_producer(
+                addresses.receiver_address(),
+                &session_id,
+                Some(listener_session_id),
+                vec![addresses.sender_address().clone()],
+            );
 
             Some(session_id)
         } else {

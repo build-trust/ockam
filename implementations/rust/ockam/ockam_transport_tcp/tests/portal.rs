@@ -163,7 +163,7 @@ async fn portal__tcp_connection_with_sessions__should_succeed(ctx: &mut Context)
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection.clone(), "outlet"],
-            TcpInletTrustOptions::new().as_consumer(&sessions, &inlet_session_id),
+            TcpInletTrustOptions::new().as_consumer(&sessions),
         )
         .await?;
 
@@ -250,7 +250,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection, "outlet_invalid"],
-            TcpInletTrustOptions::new().as_consumer(&sessions, &inlet_session_id),
+            TcpInletTrustOptions::new().as_consumer(&sessions),
         )
         .await?;
 

@@ -266,8 +266,8 @@ pub async fn create_secure_channel(
     let identity = Identity::create(ctx, Vault::create()).await?;
 
     let trust_options = SecureChannelTrustOptions::insecure_test();
-    let trust_options = if let Some((sessions, session_id)) = &connection.session {
-        trust_options.as_consumer(sessions, session_id)
+    let trust_options = if let Some((sessions, _session_id)) = &connection.session {
+        trust_options.as_consumer(sessions)
     } else {
         trust_options
     };
