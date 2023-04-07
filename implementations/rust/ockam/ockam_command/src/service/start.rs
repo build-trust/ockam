@@ -16,6 +16,7 @@ use ockam_api::DefaultAddress;
 use ockam_core::api::{Request, RequestBuilder, Status};
 use ockam_core::compat::net::Ipv4Addr;
 use ockam_multiaddr::MultiAddr;
+use std::str::FromStr;
 
 /// Start a specified service
 #[derive(Clone, Debug, Args)]
@@ -98,7 +99,7 @@ pub enum StartSubCommand {
 }
 
 fn kafka_consumer_default_project_route() -> MultiAddr {
-    DefaultAddress::KAFKA_CONSUMER_PROJECT_ROUTE.parse().unwrap()
+    MultiAddr::from_str(DefaultAddress::KAFKA_CONSUMER_PROJECT_ROUTE).unwrap()
 }
 
 fn vault_default_addr() -> String {
