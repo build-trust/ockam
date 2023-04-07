@@ -4,7 +4,7 @@ use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
 use crate::nodes::service::map_multiaddr_err;
 use crate::nodes::NodeManager;
-use crate::{create_tcp_session, DefaultAddress};
+use crate::{multiaddr_to_route, DefaultAddress};
 use either::Either;
 use minicbor::Decoder;
 use ockam::Result;
@@ -44,7 +44,7 @@ impl NodeManager {
 
         let allowed = vec![authority.identity.identifier().clone()];
 
-        let authority_tcp_session = match create_tcp_session(
+        let authority_tcp_session = match multiaddr_to_route(
             &authority.addr,
             &self.tcp_transport,
             &self.message_flow_sessions,

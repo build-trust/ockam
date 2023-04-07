@@ -8,7 +8,7 @@ use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustMultiIdentifiersPolicy};
 use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpInletTrustOptions, TcpTransport};
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
-use ockam_api::{create_tcp_session, DefaultAddress};
+use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_core::sessions::Sessions;
 
 /// This node supports an "edge" server which can connect to a "control" node
@@ -58,7 +58,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let project = import_project(project_information_path, vault).await?;
 
     let sessions = Sessions::default();
-    let tcp_authority_session = create_tcp_session(&project.authority_route(), &tcp, &sessions)
+    let tcp_authority_session = multiaddr_to_route(&project.authority_route(), &tcp, &sessions)
         .await
         .unwrap(); // FIXME: Handle error
     let authority_trust_options =
@@ -111,7 +111,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 4. create a tcp inlet with the above policy
 
-    let tcp_project_session = create_tcp_session(&project.route(), &tcp, &sessions).await.unwrap(); // FIXME: Handle error
+    let tcp_project_session = multiaddr_to_route(&project.route(), &tcp, &sessions).await.unwrap(); // FIXME: Handle error
     let project_trust_options = SecureChannelTrustOptions::insecure_test()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
     let project_trust_options = if let Some(session_id) = tcp_project_session.session_id {

@@ -47,7 +47,7 @@ pub struct TcpSession {
     pub route: Route,
 }
 
-pub async fn create_tcp_session(
+pub async fn multiaddr_to_route(
     ma: &MultiAddr,
     tcp: &TcpTransport,
     sessions: &Sessions,
@@ -145,70 +145,6 @@ pub async fn create_tcp_session(
             route: rb.into(),
         }),
     }
-}
-
-/// Try to convert a multi-address to an Ockam route.
-pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Route> {
-    // Guaranteed to be called when we use Tcp connection without a secure channel
-    let trust_options = TcpConnectionTrustOptions::insecure();
-    let mut rb = Route::new();
-    let mut it = ma.iter().peekable();
-    while let Some(p) = it.next() {
-        match p.code() {
-            Ip4::CODE => {
-                let ip4 = p.cast::<Ip4>()?;
-                let port = it.next()?.cast::<Tcp>()?;
-                let socket_addr = SocketAddrV4::new(*ip4, *port);
-                let addr = tcp
-                    .connect(socket_addr.to_string(), trust_options.clone())
-                    .await
-                    .ok()?;
-                rb = rb.append(addr)
-            }
-            Ip6::CODE => {
-                let ip6 = p.cast::<Ip6>()?;
-                let port = it.next()?.cast::<Tcp>()?;
-                let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
-                let addr = tcp
-                    .connect(socket_addr.to_string(), trust_options.clone())
-                    .await
-                    .ok()?;
-                rb = rb.append(addr)
-            }
-            DnsAddr::CODE => {
-                let host = p.cast::<DnsAddr>()?;
-                if let Some(p) = it.peek() {
-                    if p.code() == Tcp::CODE {
-                        let port = p.cast::<Tcp>()?;
-                        let addr = tcp
-                            .connect(format!("{}:{}", &*host, *port), trust_options.clone())
-                            .await
-                            .ok()?;
-                        rb = rb.append(addr);
-                        let _ = it.next();
-                        continue;
-                    }
-                }
-            }
-            Worker::CODE => {
-                let local = p.cast::<Worker>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
-            }
-            Service::CODE => {
-                let local = p.cast::<Service>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
-            }
-            Secure::CODE => {
-                let local = p.cast::<Secure>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
-            }
-            other => {
-                error!(target: "ockam_api", code = %other, "unsupported protocol");
-                return None;
-            }
-        }
-    }
-    Some(rb.into())
 }
 
 /// Try to convert a multiaddr to an Ockam Address

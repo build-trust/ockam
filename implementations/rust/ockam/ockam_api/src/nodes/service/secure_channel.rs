@@ -11,7 +11,7 @@ use crate::nodes::models::secure_channel::{
 };
 use crate::nodes::registry::{Registry, SecureChannelListenerInfo};
 use crate::nodes::NodeManager;
-use crate::{create_tcp_session, DefaultAddress};
+use crate::{multiaddr_to_route, DefaultAddress};
 use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
@@ -341,7 +341,7 @@ impl NodeManagerWorker {
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
         // FIXME: Figure out what is the session id if there are 2 secure channels created here and outer doesn't have a tcp hop
-        let tcp_session = create_tcp_session(
+        let tcp_session = multiaddr_to_route(
             &addr,
             &node_manager.tcp_transport,
             &node_manager.message_flow_sessions,
