@@ -4,8 +4,8 @@ use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::identity::IdentityService;
 use crate::kafka::{
-    KafkaPortalListener, KafkaSecureChannelControllerImpl, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
-    ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS, ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+    KafkaPortalListener, KafkaSecureChannelControllerImpl, ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS,
+    ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
 };
 use crate::nodes::connection::Connection;
 use crate::nodes::models::services::{
@@ -432,9 +432,12 @@ impl NodeManager {
     ) -> Result<()> {
         let connection = Connection::new(context, &project_route_multiaddr)
             .with_authorized_identity(self.identity.clone().identifier().clone())
-            .with_timeout(Duration::from_secs(60));
-        // TODO: .add_default_consumers()?
+            .with_timeout(Duration::from_secs(60))
+            .add_default_consumers();
+
         let connection = self.connect(connection).await?;
+
+        let session_id = connection.session_id.unwrap();
 
         let project_multiaddr = connection.secure_channel.try_with(&connection.suffix)?;
         let project_route = local_multiaddr_to_route(&project_multiaddr)
@@ -478,23 +481,16 @@ impl NodeManager {
             )
             .await?;
 
-        let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(self.identity.clone(), project_route);
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            self.identity.clone(),
+            project_route,
+            &self.message_flow_sessions,
+        );
 
         if let KafkaServiceKind::Consumer = kind {
             secure_channel_controller
                 .create_consumer_listener(context)
                 .await?;
-
-            // FIXME
-            self.create_secure_channel_listener_impl(
-                Address::from_string(KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS),
-                None,
-                None,
-                None,
-                context,
-            )
-            .await?;
         }
 
         KafkaPortalListener::create(
@@ -505,6 +501,7 @@ impl NodeManager {
             bind_ip,
             PortRange::try_from(brokers_port_range)
                 .map_err(|_| ApiError::message("invalid port range"))?,
+            Some((self.message_flow_sessions.clone(), session_id)),
         )
         .await?;
 

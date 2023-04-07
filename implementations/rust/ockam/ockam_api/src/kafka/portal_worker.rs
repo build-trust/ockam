@@ -2,6 +2,7 @@ use bytes::{Bytes, BytesMut};
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
+use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AllowAll, AsyncTryClone, Encodable, Error, LocalInfo, LocalMessage, Route, Routed,
@@ -247,6 +248,7 @@ impl KafkaPortalWorker {
         secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletMap,
+        session: Option<&(Sessions, SessionId)>,
     ) -> ockam_core::Result<Address> {
         let shared_protocol_state = Interceptor::new(secure_channel_controller, uuid_to_name);
 
@@ -275,6 +277,13 @@ impl KafkaPortalWorker {
             .start_worker(inlet_address.clone(), inlet_worker, AllowAll, AllowAll)
             .await?;
 
+        if let Some((sessions, session_id)) = session {
+            sessions.add_consumer(
+                &outlet_address,
+                session_id,
+                SessionPolicy::ProducerAllowMultiple,
+            );
+        }
         context
             .start_worker(outlet_address, outlet_worker, AllowAll, AllowAll)
             .await?;
@@ -296,6 +305,7 @@ mod test {
     use kafka_protocol::protocol::Encodable as KafkaEncodable;
     use kafka_protocol::protocol::StrBytes;
     use ockam_core::compat::sync::{Arc, Mutex};
+    use ockam_core::sessions::Sessions;
     use ockam_core::{route, Address, AllowAll, Routed, Worker};
     use ockam_identity::Identity;
     use ockam_node::{Context, MessageReceiveOptions};
@@ -582,14 +592,17 @@ mod test {
 
         let vault = Vault::create();
         let identity = Identity::create(context, vault).await.unwrap();
+        let sessions = Sessions::default();
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![]).into_trait();
+            KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![], &sessions)
+                .into_trait();
 
         KafkaPortalWorker::start_kafka_portal(
             context,
             secure_channel_controller,
             Default::default(),
             inlet_map,
+            None,
         )
         .await
         .unwrap()
@@ -632,9 +645,10 @@ mod test {
 
         let vault = Vault::create();
         let identity = Identity::create(context, vault).await?;
-
+        let sessions = Sessions::default();
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![]).into_trait();
+            KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![], &sessions)
+                .into_trait();
 
         let inlet_map = KafkaInletMap::new(
             route![],
@@ -646,6 +660,7 @@ mod test {
             secure_channel_controller,
             Default::default(),
             inlet_map.clone(),
+            None,
         )
         .await?;
 

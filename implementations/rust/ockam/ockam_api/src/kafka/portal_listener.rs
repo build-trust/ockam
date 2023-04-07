@@ -1,6 +1,7 @@
 use ockam_core::compat::sync::Arc;
 use tracing::trace;
 
+use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{Address, AllowAll, Any, Route, Routed, Worker};
 
 use ockam_node::Context;
@@ -17,6 +18,7 @@ pub(crate) struct KafkaPortalListener {
     inlet_map: KafkaInletMap,
     secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
     uuid_to_name: TopicUuidMap,
+    session: Option<(Sessions, SessionId)>,
 }
 
 #[ockam::worker]
@@ -35,6 +37,7 @@ impl Worker for KafkaPortalListener {
             self.secure_channel_controller.clone(),
             self.uuid_to_name.clone(),
             self.inlet_map.clone(),
+            self.session.as_ref(),
         )
         .await?;
 
@@ -68,6 +71,7 @@ impl KafkaPortalListener {
         listener_address: Address,
         bind_host: String,
         port_range: PortRange,
+        session: Option<(Sessions, SessionId)>,
     ) -> ockam_core::Result<()> {
         context
             .start_worker(
@@ -76,6 +80,7 @@ impl KafkaPortalListener {
                     inlet_map: KafkaInletMap::new(interceptor_route, bind_host, port_range),
                     secure_channel_controller,
                     uuid_to_name: Default::default(),
+                    session,
                 },
                 AllowAll,
                 AllowAll,
