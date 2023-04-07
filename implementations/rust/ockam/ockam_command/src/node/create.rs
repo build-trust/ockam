@@ -13,18 +13,18 @@ use std::{
 };
 use tracing::error;
 
+use crate::node::util::{add_project_info_to_node_state, init_node_state, spawn_node};
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
 use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
+use crate::util::{parse_node_name, RpcBuilder};
 use crate::{
     docs, identity, node::show::print_query_status, util::find_available_port, CommandGlobalOpts,
     Result,
 };
-use crate::{node::util::init_node_state, util::RpcBuilder};
-use crate::{node::util::spawn_node, util::parse_node_name};
 use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::authority_node;
@@ -232,6 +232,8 @@ async fn run_foreground_node(
         )
         .await?;
     }
+
+    add_project_info_to_node_state(&opts, cfg, &cmd.trust_context_opts).await?;
 
     let trust_context_config = TrustContextConfigBuilder::new(&cmd.trust_context_opts)
         .with_authority_identity(cmd.authority_identity.as_ref())
