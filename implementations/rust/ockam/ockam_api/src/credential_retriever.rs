@@ -54,15 +54,10 @@ impl CredentialRetriever for CredentialIssuerRetriever {
 
         let allowed = vec![self.issuer.public_identity().await?.identifier().clone()];
 
-        let authority_tcp_session = match create_tcp_session(&self.issuer.maddr, &self.transport)
-            .await
-        {
-            Some(authority_tcp_session) => authority_tcp_session,
-            None => {
-                let err_msg = format!("Invalid route within trust context: {}", &self.issuer.maddr);
-                error!("{err_msg}");
-                return Err(ApiError::generic(&err_msg));
-            }
+        let Some(authority_tcp_session) = create_tcp_session(&self.issuer.maddr, &self.transport).await else {
+            let err_msg = format!("Invalid route within trust context: {}", &self.issuer.maddr);
+            error!("{err_msg}");
+            return Err(ApiError::generic(&err_msg));
         };
 
         debug!("Create secure channel to authority");
