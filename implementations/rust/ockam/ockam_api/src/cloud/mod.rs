@@ -191,7 +191,7 @@ mod node {
             };
             let (sc_address, sessions, _sc_session_id) = {
                 let node_manager = self.get().read().await;
-                let cloud_session = crate::create_tcp_session(
+                let cloud_session = crate::multiaddr_to_route(
                     cloud_multiaddr,
                     &node_manager.tcp_transport,
                     &node_manager.message_flow_sessions,
