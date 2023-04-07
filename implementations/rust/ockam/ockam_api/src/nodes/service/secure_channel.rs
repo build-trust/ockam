@@ -103,8 +103,7 @@ impl NodeManager {
                 self.cli_state
                     .credentials
                     .get(&credential_name)?
-                    .config()
-                    .await?
+                    .config()?
                     .credential()?,
             )
         } else {

@@ -1,10 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
-use ockam_api::config::cli::{CredentialRetrieverType, TrustAuthorityConfig, TrustContextConfig};
 
-use ockam_identity::PublicIdentity;
-
-use ockam_vault::Vault;
 use rand::prelude::random;
 use tokio::time::{sleep, Duration};
 
@@ -17,11 +13,10 @@ use std::{
 };
 use tracing::error;
 
-use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
-use crate::util::api::parse_trust_context;
+use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
@@ -100,9 +95,6 @@ pub struct CreateCommand {
     #[arg(long, group = "trusted")]
     pub reload_from_trusted_identities_file: Option<PathBuf>,
 
-    #[arg(long, hide = true)]
-    pub project: Option<PathBuf>,
-
     #[arg(long = "vault", value_name = "VAULT")]
     vault: Option<String>,
 
@@ -112,12 +104,11 @@ pub struct CreateCommand {
     #[arg(long)]
     pub authority_identity: Option<String>,
 
-    /// Trust Context config file
-    #[arg(global = true, long, value_name = "TRUST_CONTEXT_JSON_PATH")]
-    pub trust_context: Option<PathBuf>,
-
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
+
+    #[command(flatten)]
+    pub trust_context_opts: TrustContextOpts,
 }
 
 impl Default for CreateCommand {
@@ -129,7 +120,6 @@ impl Default for CreateCommand {
             foreground: false,
             child_process: false,
             launch_config: None,
-            project: None,
             vault: None,
             identity: None,
             trusted_identities: None,
@@ -137,7 +127,7 @@ impl Default for CreateCommand {
             reload_from_trusted_identities_file: None,
             authority_identity: None,
             credential: None,
-            trust_context: None,
+            trust_context_opts: TrustContextOpts::default(),
         }
     }
 }
@@ -243,74 +233,11 @@ async fn run_foreground_node(
         .await?;
     }
 
-    let mut trust_context_config = if let Some(authority_identity) = &cmd.authority_identity {
-        let vault = Vault::create();
-        let authority_public_identity =
-            PublicIdentity::import(&hex::decode(authority_identity)?, vault).await?;
-
-        let own_cred = match &cmd.credential {
-            Some(cred_name) => {
-                let state = opts.state.credentials.get(cred_name)?;
-                Some(CredentialRetrieverType::FromPath(state))
-            }
-            None => None,
-        };
-
-        let trust_context = TrustContextConfig::new(
-            authority_identity.to_string(),
-            Some(TrustAuthorityConfig::new(
-                authority_public_identity,
-                own_cred,
-            )),
-        );
-
-        Some(trust_context)
-    } else if let Some(cred_name) = &cmd.credential {
-        let state = opts.state.credentials.get(cred_name)?;
-        let issuer = state.config().await?.issuer;
-        let trust_context = TrustContextConfig::new(
-            issuer.identifier().to_string(),
-            Some(TrustAuthorityConfig::new(
-                issuer,
-                Some(CredentialRetrieverType::FromPath(state)),
-            )),
-        );
-
-        Some(trust_context)
-    } else {
-        None
-    };
-
-    let proj_path = match &cmd.project {
-        Some(path) => Some(path.clone()),
-        None => match opts.state.projects.default() {
-            Ok(p) => Some(p.path),
-            Err(_) => None,
-        },
-    };
-
-    trust_context_config = match proj_path {
-        Some(path) => {
-            let s = tokio::fs::read_to_string(path).await?;
-            let p: ProjectInfo = serde_json::from_str(&s)?;
-
-            let tcc = TrustContextConfig::from_project(&(&p).into()).await?;
-            Some(tcc)
-        }
-        None => trust_context_config,
-    };
-
-    trust_context_config = match cmd.trust_context.as_ref() {
-        Some(path_buf) => {
-            let tc = match path_buf.to_str() {
-                Some(path) => parse_trust_context(path)?,
-                None => return Err(anyhow!("Invalid trust context path").into()),
-            };
-
-            Some(tc)
-        }
-        None => trust_context_config,
-    };
+    let trust_context_config = TrustContextConfigBuilder::new(&cmd.trust_context_opts)
+        .with_authority_identity(cmd.authority_identity.as_ref())
+        .with_credential_name(cmd.credential.as_ref())
+        .with_default_proj(opts.state.projects.default().ok())
+        .build();
 
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = &cmd.tcp_listener_address;
@@ -557,7 +484,7 @@ async fn spawn_background_node(
         opts.global_args.verbose,
         &node_name,
         &cmd.tcp_listener_address,
-        cmd.project.as_deref(),
+        cmd.trust_context_opts.project_path.as_ref(),
         cmd.trusted_identities.as_ref(),
         cmd.trusted_identities_file.as_ref(),
         cmd.reload_from_trusted_identities_file.as_ref(),
@@ -566,7 +493,11 @@ async fn spawn_background_node(
             .map(|config| serde_json::to_string(config).unwrap()),
         cmd.authority_identity.as_ref(),
         cmd.credential.as_ref(),
-        cmd.trust_context.as_ref(),
+        cmd.trust_context_opts
+            .trust_context
+            .as_ref()
+            .map(|tc| tc.path().unwrap()),
+        cmd.trust_context_opts.project.as_ref(),
     )?;
 
     Ok(())

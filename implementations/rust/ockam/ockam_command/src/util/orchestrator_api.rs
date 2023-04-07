@@ -23,10 +23,7 @@ use ockam_core::api::RequestBuilder;
 use ockam_multiaddr::MultiAddr;
 use tracing::info;
 
-use super::{
-    api::{ProjectOpts, TrustContextOpts},
-    RpcBuilder,
-};
+use super::{api::TrustContextOpts, RpcBuilder};
 
 pub enum OrchestratorEndpoint {
     Authenticator,
@@ -36,7 +33,6 @@ pub enum OrchestratorEndpoint {
 pub struct OrchestratorApiBuilder<'a> {
     ctx: &'a Context,
     opts: &'a CommandGlobalOpts,
-    project_opts: &'a ProjectOpts,
     trust_context_opts: &'a TrustContextOpts,
     node_name: Option<String>,
     destination: OrchestratorEndpoint,
@@ -58,13 +54,11 @@ impl<'a> OrchestratorApiBuilder<'a> {
     pub fn new(
         ctx: &'a Context,
         opts: &'a CommandGlobalOpts,
-        project_opts: &'a ProjectOpts,
         trust_context_opts: &'a TrustContextOpts,
     ) -> Self {
         OrchestratorApiBuilder {
             ctx,
             opts,
-            project_opts,
             trust_context_opts,
             node_name: None,
             destination: OrchestratorEndpoint::Project,
@@ -86,7 +80,6 @@ impl<'a> OrchestratorApiBuilder<'a> {
             self.opts,
             None,
             self.identity.as_ref(),
-            Some(self.project_opts),
             Some(self.trust_context_opts),
         )
         .await?;
@@ -201,7 +194,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             return Ok(());
         }
 
-        let project_path = match &self.project_opts.project_path {
+        let project_path = match &self.trust_context_opts.project_path {
             Some(p) => p.clone(),
             None => {
                 let default_project = self

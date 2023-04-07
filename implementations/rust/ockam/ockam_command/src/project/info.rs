@@ -93,7 +93,7 @@ async fn run_impl(
     cmd: InfoCommand,
 ) -> crate::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
-    let node_name = start_embedded_node(ctx, &opts, None, None).await?;
+    let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     // Lookup project
     let id = match config::get_project(&opts.config, &cmd.name) {
@@ -112,7 +112,7 @@ async fn run_impl(
     let info: ProjectInfo = rpc.parse_response::<Project>()?.into();
 
     if cmd.as_trust_context {
-        let tcc = TrustContextConfig::from_project(&(&info).into()).await?;
+        let tcc = TrustContextConfig::from_project(&(&info).into())?;
         println!("{}", serde_json::to_string_pretty(&tcc)?);
     } else {
         rpc.print_response(&info)?;

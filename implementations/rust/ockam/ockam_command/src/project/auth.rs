@@ -13,7 +13,7 @@ use tracing::debug;
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::ProjectInfo;
-use crate::util::api::{CloudOpts, ProjectOpts, TrustContextOpts};
+use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
@@ -35,9 +35,6 @@ pub struct AuthCommand {
     cloud_opts: CloudOpts,
 
     #[command(flatten)]
-    project_opts: ProjectOpts,
-
-    #[command(flatten)]
     trust_opts: TrustContextOpts,
 }
 
@@ -51,10 +48,9 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AuthCommand),
 ) -> crate::Result<()> {
-    let node_name =
-        start_embedded_node(&ctx, &opts, Some(&cmd.project_opts), Some(&cmd.trust_opts)).await?;
+    let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.trust_opts)).await?;
 
-    let path = match cmd.project_opts.project_path {
+    let path = match cmd.trust_opts.project_path {
         Some(p) => p,
         None => {
             let default_project = opts
@@ -85,7 +81,7 @@ async fn run_impl(
             &ctx,
             &opts,
             &node_name,
-            tc.authority()?.identity().identifier().clone(),
+            tc.authority()?.identity().await?.identifier().clone(),
             addr,
             cmd.cloud_opts.identity,
         )

@@ -3,10 +3,11 @@ use async_trait::async_trait;
 use crate::{credential::Credential, error::IdentityError, Identity, PublicIdentity};
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc};
 
-/// Trust Context is a set of information about a trusted authority
+/// A trust context defines which authorities are trusted to attest to which attributes, within a context.
+/// Our first implementation assumes that there is only one authority and it is trusted to attest to all attributes within this context.
 #[derive(Clone)]
 pub struct TrustContext {
-    id: String,
+    id: String, // This is the ID of the trust context; which is primarily used for ABAC policies
     authority: Option<AuthorityInfo>,
 }
 
@@ -73,7 +74,7 @@ impl AuthorityInfo {
         let retriever = self
             .own_credential()
             .ok_or(IdentityError::UnknownAuthority)?;
-        let credential = retriever.retrieve(self.identity(), for_identity).await?;
+        let credential = retriever.retrieve(for_identity).await?;
 
         for_identity
             .verify_self_credential(&credential, vec![&self.identity].into_iter())
@@ -87,11 +88,7 @@ impl AuthorityInfo {
 #[async_trait]
 pub trait CredentialRetriever: Send + Sync + 'static {
     /// Retrieve a credential for an identity
-    async fn retrieve(
-        &self,
-        identity: &PublicIdentity,
-        for_identity: &Identity,
-    ) -> Result<Credential, ockam_core::Error>;
+    async fn retrieve(&self, for_identity: &Identity) -> Result<Credential, ockam_core::Error>;
 }
 
 /// Credential retriever that retrieves a credential from memory
@@ -109,11 +106,7 @@ impl CredentialMemoryRetriever {
 #[async_trait]
 impl CredentialRetriever for CredentialMemoryRetriever {
     /// Retrieve a credential stored in memory
-    async fn retrieve(
-        &self,
-        _identity: &PublicIdentity,
-        _for_identity: &Identity,
-    ) -> Result<Credential, ockam_core::Error> {
+    async fn retrieve(&self, _for_identity: &Identity) -> Result<Credential, ockam_core::Error> {
         Ok(self.credential.clone())
     }
 }

@@ -48,7 +48,7 @@ pub(crate) async fn display_credential(
     vault_name: &str,
     as_trust_context: bool,
 ) -> crate::Result<()> {
-    let cred_config = opts.state.credentials.get(cred_name)?.config().await?;
+    let cred_config = opts.state.credentials.get(cred_name)?.config()?;
 
     let issuer = &cred_config.issuer;
     let is_verified = match validate_encoded_cred(
@@ -66,10 +66,8 @@ pub(crate) async fn display_credential(
 
     let cred = cred_config.credential()?;
     if as_trust_context {
-        let tcc = TrustContextConfig::from_credential_state(
-            issuer,
-            opts.state.credentials.get(cred_name)?,
-        );
+        let tcc =
+            TrustContextConfig::from_credential_state(opts.state.credentials.get(cred_name)?)?;
 
         println!("{}", serde_json::to_string_pretty(&tcc)?);
     } else {

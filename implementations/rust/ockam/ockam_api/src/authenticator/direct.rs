@@ -31,7 +31,7 @@ const DEFAULT_CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 /// - `project_id` : bytes
 /// - `role`: b"member"
 pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
-pub const PROJECT_ID: &str = "project_id";
+pub const LEGACY_ID: &str = "project_id"; // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
 pub const TRUST_CONTEXT_ID: &str = "trust_context_id";
 pub const LEGACY_MEMBER: &str = "member";
 
@@ -180,7 +180,7 @@ impl CredentialIssuer {
                         Credential::builder(from.clone()).with_schema(PROJECT_MEMBER_SCHEMA),
                         |crd, (a, v)| crd.with_attribute(a, v),
                     )
-                    .with_attribute(PROJECT_ID, &self.trust_context)
+                    .with_attribute(LEGACY_ID, &self.trust_context) // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
                     .with_attribute(TRUST_CONTEXT_ID, &self.trust_context);
                 Ok(Some(self.ident.issue_credential(crd).await?))
             }
@@ -254,7 +254,7 @@ impl DirectAuthenticator {
         let auth_attrs = attrs
             .iter()
             .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
-            .chain([(PROJECT_ID.to_owned(), self.trust_context.clone())].into_iter())
+            .chain([(LEGACY_ID.to_owned(), self.trust_context.clone())].into_iter())
             .chain([(TRUST_CONTEXT_ID.to_owned(), self.trust_context.clone())].into_iter())
             .collect();
         let entry = AttributesEntry::new(
@@ -445,7 +445,7 @@ impl Worker for EnrollmentTokenAcceptor {
                                 .iter()
                                 .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
                                 .chain(
-                                    [(PROJECT_ID.to_owned(), self.0.trust_context.clone())]
+                                    [(LEGACY_ID.to_owned(), self.0.trust_context.clone())]
                                         .into_iter(),
                                 )
                                 .chain(

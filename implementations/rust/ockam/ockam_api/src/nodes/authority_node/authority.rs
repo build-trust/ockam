@@ -381,7 +381,7 @@ impl Authority {
         // the same project id as the authority
         let rule = if enroller_check == EnrollerOnly {
             and([
-                eq([ident("resource.project_id"), ident("subject.project_id")]),
+                eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
                 eq([
                     ident("resource.trust_context_id"),
                     ident("subject.trust_context_id"),
@@ -390,7 +390,7 @@ impl Authority {
             ])
         } else {
             and([
-                eq([ident("resource.project_id"), ident("subject.project_id")]),
+                eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
                 eq([
                     ident("resource.trust_context_id"),
                     ident("subject.trust_context_id"),

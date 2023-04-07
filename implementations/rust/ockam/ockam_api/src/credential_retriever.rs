@@ -7,6 +7,7 @@ use ockam_identity::{
     SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
 };
 use ockam_multiaddr::MultiAddr;
+use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -30,12 +31,8 @@ impl CredentialStateRetriever {
 
 #[async_trait]
 impl CredentialRetriever for CredentialStateRetriever {
-    async fn retrieve(
-        &self,
-        _identity: &PublicIdentity,
-        _for_identity: &Identity,
-    ) -> Result<Credential, ockam_core::Error> {
-        Ok(self.state.config().await?.credential()?)
+    async fn retrieve(&self, _for_identity: &Identity) -> Result<Credential, ockam_core::Error> {
+        Ok(self.state.config()?.credential()?)
     }
 }
 
@@ -52,14 +49,10 @@ impl CredentialIssuerRetriever {
 
 #[async_trait]
 impl CredentialRetriever for CredentialIssuerRetriever {
-    async fn retrieve(
-        &self,
-        identity: &PublicIdentity,
-        for_identity: &Identity,
-    ) -> Result<Credential, ockam_core::Error> {
+    async fn retrieve(&self, for_identity: &Identity) -> Result<Credential, ockam_core::Error> {
         debug!("Getting credential from : {}", &self.issuer.maddr);
 
-        let allowed = vec![identity.identifier().clone()];
+        let allowed = vec![self.issuer.public_identity().await?.identifier().clone()];
 
         let authority_tcp_session = match create_tcp_session(&self.issuer.maddr, &self.transport)
             .await
@@ -110,11 +103,19 @@ impl CredentialRetriever for CredentialIssuerRetriever {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialIssuerInfo {
+    pub identity: String,
     pub maddr: MultiAddr,
 }
 
 impl CredentialIssuerInfo {
-    pub fn new(maddr: MultiAddr) -> Self {
-        Self { maddr }
+    pub fn new(identity: String, maddr: MultiAddr) -> Self {
+        Self { identity, maddr }
+    }
+
+    pub async fn public_identity(&self) -> Result<PublicIdentity, ockam_core::Error> {
+        let a = hex::decode(&self.identity)
+            .map_err(|_| ApiError::generic("Invalid project authority"))?;
+        let p = PublicIdentity::import(&a, Vault::create()).await?;
+        Ok(p)
     }
 }

@@ -73,9 +73,9 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH" --identity green
+  run "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
   assert_success
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --identity blue
+  run "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
   assert_success
 
   # Green isn't enrolled as project member
@@ -114,10 +114,10 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH" --identity green
+  run "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
   assert_success
 
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --identity blue
+  run "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
   assert_success
 
   # Green isn't enrolled as project member
@@ -152,9 +152,9 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH" --identity green
+  run "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
   assert_success
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --identity blue
+  run "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
   assert_success
 
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
@@ -197,14 +197,14 @@ teardown() {
 
   run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity green --token $green_token
   assert_success
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH" --identity green
+  run "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
   assert_success
   run "$OCKAM" policy create --at green --resource tcp-inlet --expression '(= subject.app "app1")'
   assert_success
 
   run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity blue --token $blue_token
   assert_success
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --identity blue
+  run "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
   assert_success
   run "$OCKAM" policy create --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
   assert_success

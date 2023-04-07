@@ -147,7 +147,7 @@ impl NodeManager {
                 let fallback = match custom_default {
                     Some(e) => e.clone(),
                     None => and([
-                        eq([ident("resource.project_id"), ident("subject.project_id")]),
+                        eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
                         eq([
                             ident("resource.trust_context_id"),
                             ident("subject.trust_context_id"),

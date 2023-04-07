@@ -1352,7 +1352,7 @@ pub struct CredentialState {
 }
 
 impl CredentialState {
-    pub async fn config(&self) -> Result<CredentialConfig> {
+    pub fn config(&self) -> Result<CredentialConfig> {
         let string_config = std::fs::read_to_string(&self.path)?;
         Ok(serde_json::from_str(&string_config)?)
     }
