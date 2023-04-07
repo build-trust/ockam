@@ -50,13 +50,13 @@ teardown() {
 
   # m1 is a member,  must be able to contact the project' service
   msg=$(random_str)
-  run "$OCKAM" message send --identity m1 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo "$msg"
+  run "$OCKAM" message send --timeout 5 --identity m1 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo "$msg"
   assert_success
   assert_output "$msg"
 
   # m2 is not a member, must not be able to contact the project' service
   run "$OCKAM" identity create m2
   assert_success
-  run "$OCKAM" message send --identity m2 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo "$msg"
+  run "$OCKAM" message send --timeout 5 --identity m2 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo "$msg"
   assert_failure
 }

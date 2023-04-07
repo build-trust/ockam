@@ -269,7 +269,7 @@ teardown() {
   run "$OCKAM" node create n1
   assert_success
   msg=$(random_str)
-  run "$OCKAM" message send "$msg" --to /node/n1/service/uppercase
+  run "$OCKAM" message send "$msg" --timeout 5 --to /node/n1/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 
@@ -277,13 +277,13 @@ teardown() {
   run "$OCKAM" node create n2
   assert_success
   msg=$(random_str)
-  run "$OCKAM" message send "$msg" --from n1 --to /node/n2/service/uppercase
+  run "$OCKAM" message send "$msg" --timeout 5 --from n1 --to /node/n2/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 
   # Same, but using the `/node/` prefix in the `--from` argument
   msg=$(random_str)
-  run "$OCKAM" message send "$msg" --from /node/n1 --to /node/n2/service/uppercase
+  run "$OCKAM" message send "$msg" --timeout 5 --from /node/n1 --to /node/n2/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 }
@@ -325,7 +325,7 @@ teardown() {
   # In two separate commands
   msg=$(random_str)
   output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api)
-  run "$OCKAM" message send "$msg" --from /node/n1 --to "$output/service/uppercase"
+  run "$OCKAM" message send "$msg" --timeout 5 --from /node/n1 --to "$output/service/uppercase"
   assert_success
   assert_output "$(to_uppercase "$msg")"
 
@@ -354,7 +354,7 @@ teardown() {
   # In two separate commands
   $OCKAM forwarder create n2 --at /node/n1 --to /node/n2
   msg=$(random_str)
-  run "$OCKAM" message send "$msg" --to /node/n1/service/hop/service/forward_to_n2/service/uppercase
+  run "$OCKAM" message send --timeout 5 "$msg" --to /node/n1/service/hop/service/forward_to_n2/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 

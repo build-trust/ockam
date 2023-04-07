@@ -1,6 +1,7 @@
 use anyhow::Context as _;
 use clap::Args;
 
+use core::time::Duration;
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::service::message::SendMessage;
@@ -33,8 +34,8 @@ pub struct SendCommand {
     pub to: MultiAddr,
 
     /// Override Default Timeout
-    #[arg(long, value_name = "TIMEOUT")]
-    pub timeout: Option<u64>,
+    #[arg(long, value_name = "TIMEOUT", default_value = "10")]
+    pub timeout: u64,
 
     pub message: String,
 
@@ -90,7 +91,8 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         let mut rpc = RpcBuilder::new(ctx, opts, &api_node)
             .tcp(tcp.as_ref())?
             .build();
-        rpc.request(req(&to, &cmd.message)).await?;
+        rpc.request_with_timeout(req(&to, &cmd.message), Duration::from_secs(cmd.timeout))
+            .await?;
         let res = rpc.parse_response::<Vec<u8>>()?;
         println!(
             "{}",
