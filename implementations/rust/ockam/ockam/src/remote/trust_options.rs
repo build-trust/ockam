@@ -60,11 +60,8 @@ impl RemoteForwarderTrustOptions {
     ) -> Arc<dyn OutgoingAccessControl> {
         match &self.sessions {
             Some(sessions) => {
-                let ac = SessionOutgoingAccessControl::new(
-                    sessions.clone(),
-                    session_id.unwrap().clone(),
-                    None,
-                );
+                let ac =
+                    SessionOutgoingAccessControl::new(sessions.clone(), session_id.unwrap(), None);
 
                 Arc::new(ac)
             }

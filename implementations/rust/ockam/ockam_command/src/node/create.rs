@@ -7,6 +7,7 @@ use rand::prelude::random;
 use tokio::time::{sleep, Duration};
 
 use anyhow::{anyhow, Context as _};
+use minicbor::{Decoder, Encode};
 use std::io::{self, Read};
 use std::{
     net::{IpAddr, SocketAddr},
@@ -18,8 +19,7 @@ use tracing::error;
 use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
-use crate::service::start;
-use crate::util::node_rpc;
+use crate::util::{api, node_rpc};
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
     docs, identity, node::show::print_query_status, project, util::find_available_port,
@@ -46,7 +46,7 @@ use ockam_api::{
     },
 };
 use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
-use ockam_core::sessions::Sessions;
+use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::{AllowAll, LOCAL};
 
 use super::util::check_default;
@@ -323,30 +323,30 @@ async fn run_foreground_node(
         ),
     )
     .await?;
-    let sessions = node_man.message_flow_sessions().clone();
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
         .await?;
 
-    if let Some(path) = &cmd.launch_config {
-        let node_opts = super::NodeOpts {
-            api_node: node_name.clone(),
-        };
-        if start_services(&ctx, &tcp, path, addr, node_opts, &opts, &sessions)
+    if let Some(config) = &cmd.launch_config {
+        let tcp_connect_addr = tcp
+            .connect(addr.to_string(), TcpConnectionTrustOptions::insecure())
+            .await?;
+        if start_services(&ctx, config, tcp_connect_addr)
             .await
             .is_err()
         {
             //TODO: Process should terminate on any error during its setup phase,
             //      not just during the start_services.
             //TODO: This sleep here is a workaround on some orchestrated environment,
-            //      the lmdb db, that is used for policy storage, failes to be re-opened
+            //      the lmdb db, that is used for policy storage, fails to be re-opened
             //      if it's still opened from another docker container, where they share
             //      the same pid. By sleeping for a while we let this container be promoted
             //      and the other being terminated, so when restarted it works.  This is
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
-            std::process::exit(exitcode::SOFTWARE);
+            ctx.stop().await?;
+            return Err(anyhow!("Failed to start services".to_string()).into());
         }
     }
 
@@ -408,16 +408,7 @@ pub fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrus
     Ok(pre_trusted_identities)
 }
 
-async fn start_services(
-    ctx: &Context,
-    tcp: &TcpTransport,
-    cfg: &Config,
-    addr: SocketAddr,
-    node_opts: super::NodeOpts,
-    opts: &CommandGlobalOpts,
-    // FIXME
-    _sessions: &Sessions,
-) -> Result<()> {
+async fn start_services(ctx: &Context, cfg: &Config, addr: Address) -> Result<()> {
     let config = {
         if let Some(sc) = &cfg.startup_services {
             sc.clone()
@@ -426,26 +417,18 @@ async fn start_services(
         }
     };
 
-    // Checking if node accepts connections
-    // Connection without a Session gives exclusive access to the node
-    // that runs that connection, make sure it's intended
-    // FIXME
-    let addr = tcp
-        .connect(addr.to_string(), TcpConnectionTrustOptions::insecure())
-        .await?;
-
     if let Some(cfg) = config.vault {
         if !cfg.disabled {
             println!("starting vault service ...");
-            start::start_vault_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
-                .await?
+            let req = api::start_vault_service(&cfg.address);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
     if let Some(cfg) = config.identity {
         if !cfg.disabled {
             println!("starting identity service ...");
-            start::start_identity_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
-                .await?
+            let req = api::start_identity_service(&cfg.address);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
     if let Some(cfg) = config.secure_channel_listener {
@@ -461,32 +444,40 @@ async fn start_services(
     if let Some(cfg) = config.verifier {
         if !cfg.disabled {
             println!("starting verifier service ...");
-            start::start_verifier_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
-                .await?
+            let req = api::start_verifier_service(&cfg.address);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
     if let Some(cfg) = config.authenticator {
         if !cfg.disabled {
             println!("starting authenticator service ...");
-            start::start_authenticator_service(
-                ctx,
-                opts,
-                &node_opts.api_node,
-                &cfg.address,
-                &cfg.project,
-                Some(tcp),
-            )
-            .await?
+            let req = api::start_authenticator_service(&cfg.address, &cfg.project);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
     if let Some(cfg) = config.okta_identity_provider {
         if !cfg.disabled {
             println!("starting okta identity provider service ...");
-            start::start_okta_identity_provider(ctx, opts, &node_opts.api_node, &cfg, Some(tcp))
-                .await?
+            let req = api::start_okta_service(&cfg);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
 
+    Ok(())
+}
+
+async fn send_req_to_node_manager<T>(ctx: &Context, req: RequestBuilder<'_, T>) -> Result<()>
+where
+    T: Encode<()>,
+{
+    let buf: Vec<u8> = ctx
+        .send_and_receive(NODEMANAGER_ADDR, req.to_vec()?)
+        .await?;
+    let mut dec = Decoder::new(&buf);
+    let hdr = dec.decode::<Response>()?;
+    if hdr.status() != Some(Status::Ok) {
+        return Err(anyhow!("Request failed with status: {:?}", hdr.status()).into());
+    }
     Ok(())
 }
 
