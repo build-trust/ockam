@@ -46,7 +46,7 @@ use crate::rpc_proxy::RpcProxyService;
 use crate::session::util::{starts_with_host_tcp, starts_with_secure};
 use crate::session::{Medic, Sessions};
 use crate::{
-    create_tcp_session, local_multiaddr_to_route, route_to_multiaddr, try_address_to_multiaddr,
+    local_multiaddr_to_route, multiaddr_to_route, route_to_multiaddr, try_address_to_multiaddr,
     DefaultAddress,
 };
 
@@ -464,7 +464,7 @@ impl NodeManager {
                     .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
                 let (a, i) = self.resolve_project(&p)?;
                 debug!(addr = %a, "creating secure channel");
-                let tcp_session = create_tcp_session(&a, transport, &self.message_flow_sessions)
+                let tcp_session = multiaddr_to_route(&a, transport, &self.message_flow_sessions)
                     .await
                     .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
@@ -498,7 +498,7 @@ impl NodeManager {
             return match starts_with_secure(&b1) {
                 Some(pos2) => {
                     let tcp_session =
-                        create_tcp_session(&a1, transport, &self.message_flow_sessions)
+                        multiaddr_to_route(&a1, transport, &self.message_flow_sessions)
                             .await
                             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     debug!(%addr, "creating a secure channel");
@@ -528,7 +528,7 @@ impl NodeManager {
                 }
                 None => {
                     let tcp_session =
-                        create_tcp_session(addr, transport, &self.message_flow_sessions)
+                        multiaddr_to_route(addr, transport, &self.message_flow_sessions)
                             .await
                             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
