@@ -76,14 +76,14 @@ teardown() {
 
     # Create a node for alice that trust authority as a credential authority
     run "$OCKAM" node create alice --tcp-listener-address 127.0.0.1:$port  --identity alice --trust-context alice-trust-context.json
-    
+
     msg=$(random_str)
 
     # Fail, attacker won't present any credential
     run $OCKAM message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  $msg
     assert_failure
 
-    # Fail, attacker will present an invalid credential (self signed rather than signed by authority) 
+    # Fail, attacker will present an invalid credential (self signed rather than signed by authority)
     $OCKAM credential issue --as attacker --for $($OCKAM identity show attacker --full --encoding hex) --encoding hex > "$OCKAM_HOME/attacker.cred"
     $OCKAM credential store att-cred --issuer $authority_identity --credential-path $OCKAM_HOME/attacker.cred
     $OCKAM credential show att-cred --as-trust-context > ./att-trust-context.json
@@ -117,15 +117,15 @@ teardown() {
   authority_identity=$($OCKAM identity show --full --encoding hex  authority)
 
   trusted="{\"$bob_id\": {}, \"$alice_id\": {}}"
-  $OCKAM authority create --identity authority --tcp-listener-address=127.0.0.1:4200 --project-identifier "test-context" --trusted-identities "$trusted" 
+  $OCKAM authority create --identity authority --tcp-listener-address=127.0.0.1:4200 --project-identifier "test-context" --trusted-identities "$trusted"
 
   echo "{\"id\": \"test-context\",
-  		  \"authority\" : {
-		  	\"identity\" : \"$authority_identity\",
-			\"own_credential\" :{
-				\"FromCredentialIssuer\" : {
-					\"identity\": \"$authority_identity\",
-					\"maddr\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\" }}}}" > ./trust_context.json
+        \"authority\" : {
+            \"identity\" : \"$authority_identity\",
+            \"own_credential\" :{
+                \"FromCredentialIssuer\" : {
+                    \"identity\": \"$authority_identity\",
+                    \"maddr\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\" }}}}" > ./trust_context.json
 
   $OCKAM node create --identity alice --tcp-listener-address 127.0.0.1:$port --trust-context ./trust_context.json
 
