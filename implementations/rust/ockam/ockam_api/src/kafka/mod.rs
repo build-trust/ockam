@@ -18,7 +18,7 @@ pub const ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS: &str = "kafka_interceptor";
 pub const ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS: &str = "kafka_bootstrap";
 
 pub const KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS: &str = "kafka_secure_channel_controller";
-pub const KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS: &str = "kafka_consumer_secure_channel";
+pub const KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS: &str = "api";
 
 pub fn kafka_outlet_address(broker_id: i32) -> Address {
     Address::from_string(format!("kafka_outlet_{}", broker_id))

@@ -22,6 +22,7 @@ mod test {
     use ockam::Context;
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
+    use ockam_core::sessions::Sessions;
     use ockam_core::{route, Address, AllowAll, Route};
     use ockam_identity::SecureChannelListenerTrustOptions;
     use ockam_node::compat::tokio;
@@ -74,10 +75,12 @@ mod test {
         outlet_route: Route,
         kind: KafkaServiceKind,
     ) -> ockam::Result<u16> {
+        let sessions = Sessions::default();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handle.identity.clone(),
             route![],
             HopForwarderCreator {},
+            &sessions,
         );
 
         //the possibility to accept secure channels is the only real
@@ -90,7 +93,7 @@ mod test {
                 .identity
                 .create_secure_channel_listener(
                     KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
-                    SecureChannelListenerTrustOptions::insecure(),
+                    SecureChannelListenerTrustOptions::insecure_test(),
                 )
                 .await?;
         }
@@ -111,6 +114,7 @@ mod test {
             listener_address,
             "127.0.0.1".parse().unwrap(),
             (0, 0).try_into().unwrap(),
+            None,
         )
         .await?;
 

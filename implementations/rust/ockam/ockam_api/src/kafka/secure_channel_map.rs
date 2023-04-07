@@ -6,8 +6,9 @@ use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Message;
+use ockam_core::sessions::Sessions;
 use ockam_core::{async_trait, route, Address, AllowAll, Error, Result, Route, Routed, Worker};
+use ockam_core::{Any, Message};
 use ockam_identity::api::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
 };
@@ -15,7 +16,7 @@ use ockam_identity::{
     Identity, SecureChannelRegistryEntry, SecureChannelTrustOptions, TrustEveryonePolicy,
 };
 use ockam_node::compat::tokio::sync::Mutex;
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 use serde::{Deserialize, Serialize};
 
 pub(crate) struct KafkaEncryptedContent {
@@ -75,6 +76,7 @@ pub(crate) trait ForwarderCreator: Send + Sync + 'static {
 
 pub(crate) struct RemoteForwarderCreator {
     hub_route: Route,
+    sessions: Sessions,
 }
 
 #[async_trait]
@@ -85,7 +87,7 @@ impl ForwarderCreator for RemoteForwarderCreator {
             context,
             self.hub_route.clone(),
             alias.clone(),
-            RemoteForwarderTrustOptions::insecure(),
+            RemoteForwarderTrustOptions::as_consumer_and_producer(&self.sessions),
         )
         .await?;
         trace!("remote forwarder created: {remote_forwarder_information:?}");
@@ -103,6 +105,7 @@ struct SecureChannelIdentifierMessage {
 
 pub(crate) struct KafkaSecureChannelControllerImpl<F: ForwarderCreator> {
     inner: Arc<Mutex<InnerSecureChannelControllerImpl<F>>>,
+    sessions: Sessions,
 }
 
 //had to manually implement since #[derive(Clone)] doesn't work well in this situation
@@ -110,6 +113,7 @@ impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
+            sessions: self.sessions.clone(),
         }
     }
 }
@@ -132,13 +136,16 @@ impl KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
     pub(crate) fn new(
         identity: Arc<Identity>,
         project_route: Route,
+        sessions: &Sessions,
     ) -> KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
         Self::new_extended(
             identity,
             project_route.clone(),
             RemoteForwarderCreator {
                 hub_route: route![project_route, ORCHESTRATOR_KAFKA_CONSUMERS],
+                sessions: sessions.clone(),
             },
+            sessions,
         )
     }
 }
@@ -149,6 +156,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         identity: Arc<Identity>,
         project_route: Route,
         forwarder_creator: F,
+        sessions: &Sessions,
     ) -> KafkaSecureChannelControllerImpl<F> {
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
@@ -159,6 +167,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 forwarder_creator,
                 project_route,
             })),
+            sessions: sessions.clone(),
         }
     }
 
@@ -239,8 +248,11 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
 
                 // This route should not use Sessions because we are using tunnel over existing
                 // secure channel
+                let session_id = self.sessions.generate_session_id();
                 let trust_options =
-                    SecureChannelTrustOptions::insecure().with_trust_policy(TrustEveryonePolicy);
+                    SecureChannelTrustOptions::as_producer(&self.sessions, &session_id)
+                        .as_consumer(&self.sessions)
+                        .with_trust_policy(TrustEveryonePolicy);
                 let encryptor_address = inner
                     .identity
                     .create_secure_channel(
@@ -269,12 +281,13 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 //secure channel, and wait to an empty reply to avoid race conditions
                 //on the order of encryption/decryption of messages
                 context
-                    .send_and_receive(
+                    .send_and_receive_extended::<Any>(
                         route![
                             encryptor_address.clone(),
                             KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS
                         ],
                         message,
+                        MessageSendReceiveOptions::new().with_session(&self.sessions),
                     )
                     .await?;
 
