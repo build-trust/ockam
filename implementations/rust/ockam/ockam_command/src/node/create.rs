@@ -30,7 +30,7 @@ use crate::{
     node::util::{add_project_authority_from_project_info, init_node_state},
     util::RpcBuilder,
 };
-use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
+use ockam::{Address, AsyncTryClone, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::service::ApiTransport;
@@ -47,7 +47,7 @@ use ockam_api::{
 };
 use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_core::{AllowAll, LOCAL};
+use ockam_core::{route, AllowAll, LOCAL};
 
 use super::util::check_default;
 
@@ -209,14 +209,13 @@ async fn run_impl(
 
 fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crate::Result<()> {
     let cmd = cmd.overwrite_addr()?;
-    let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
-    embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd, addr))?;
+    embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd))?;
     Ok(())
 }
 
 async fn run_foreground_node(
     mut ctx: Context,
-    (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     let cfg = &opts.config;
     let node_name = parse_node_name(&cmd.node_name)?;
@@ -329,13 +328,7 @@ async fn run_foreground_node(
         .await?;
 
     if let Some(config) = &cmd.launch_config {
-        let tcp_connect_addr = tcp
-            .connect(addr.to_string(), TcpConnectionTrustOptions::insecure())
-            .await?;
-        if start_services(&ctx, config, tcp_connect_addr)
-            .await
-            .is_err()
-        {
+        if start_services(&ctx, config).await.is_err() {
             //TODO: Process should terminate on any error during its setup phase,
             //      not just during the start_services.
             //TODO: This sleep here is a workaround on some orchestrated environment,
@@ -408,7 +401,7 @@ pub fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrus
     Ok(pre_trusted_identities)
 }
 
-async fn start_services(ctx: &Context, cfg: &Config, addr: Address) -> Result<()> {
+async fn start_services(ctx: &Context, cfg: &Config) -> Result<()> {
     let config = {
         if let Some(sc) = &cfg.startup_services {
             sc.clone()
@@ -436,9 +429,8 @@ async fn start_services(ctx: &Context, cfg: &Config, addr: Address) -> Result<()
             let adr = Address::from((LOCAL, cfg.address));
             let ids = cfg.authorized_identifiers;
             let identity = cfg.identity;
-            let rte = addr.clone().into();
             println!("starting secure-channel listener ...");
-            secure_channel_listener::create_listener(ctx, adr, ids, identity, rte).await?;
+            secure_channel_listener::create_listener(ctx, adr, ids, identity, route![]).await?;
         }
     }
     if let Some(cfg) = config.verifier {
