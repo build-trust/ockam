@@ -75,7 +75,7 @@ pub enum StartSubCommand {
         #[arg(long)]
         brokers_port_range: PortRange,
         /// The route to the project in ockam orchestrator, expected something like /project/<name>
-        #[arg(long, default_value_t = kafka_consumer_default_project_route())]
+        #[arg(long, default_value_t = kafka_default_project_route())]
         project_route: MultiAddr,
     },
     KafkaProducer {
@@ -93,13 +93,13 @@ pub enum StartSubCommand {
         #[arg(long)]
         brokers_port_range: PortRange,
         /// The route to the project in ockam orchestrator, expected something like /project/<name>
-        #[arg(long)]
+        #[arg(long, default_value_t = kafka_default_project_route())]
         project_route: MultiAddr,
     },
 }
 
-fn kafka_consumer_default_project_route() -> MultiAddr {
-    MultiAddr::from_str(DefaultAddress::KAFKA_CONSUMER_PROJECT_ROUTE).unwrap()
+fn kafka_default_project_route() -> MultiAddr {
+    MultiAddr::from_str(DefaultAddress::KAFKA_DEFAULT_PROJECT_ROUTE).unwrap()
 }
 
 fn vault_default_addr() -> String {

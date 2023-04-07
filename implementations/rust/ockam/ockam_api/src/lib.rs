@@ -47,7 +47,7 @@ impl DefaultAddress {
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
     pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
-    pub const KAFKA_CONSUMER_PROJECT_ROUTE: &'static str = "/project/default";
+    pub const KAFKA_DEFAULT_PROJECT_ROUTE: &'static str = "/project/default";
 }
 
 pub mod actions {
