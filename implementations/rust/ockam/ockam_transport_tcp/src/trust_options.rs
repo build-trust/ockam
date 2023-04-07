@@ -19,15 +19,6 @@ impl TcpConnectionTrustOptions {
     /// This constructor is insecure, because outgoing messages from such connection will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
-    pub fn insecure() -> Self {
-        Self {
-            producer_session: None,
-        }
-    }
-
-    /// This constructor is insecure, because outgoing messages from such connection will not be
-    /// restricted and can reach any [`Address`] on this node.
-    /// Should only be used for testing purposes
     pub fn insecure_test() -> Self {
         Self {
             producer_session: None,
