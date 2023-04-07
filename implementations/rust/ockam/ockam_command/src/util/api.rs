@@ -11,7 +11,8 @@ use clap::Args;
 use minicbor::Decoder;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartIdentityServiceRequest, StartVaultServiceRequest, StartVerifierService,
+    StartIdentityServiceRequest, StartOktaIdentityProviderRequest, StartVaultServiceRequest,
+    StartVerifierService,
 };
 use tracing::trace;
 
@@ -26,6 +27,7 @@ use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
 use crate::project::ProjectInfo;
+use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::DEFAULT_CONTROLLER_ADDRESS;
 use crate::Result;
 
@@ -181,6 +183,23 @@ pub(crate) fn start_authenticator_service<'a>(
 ) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
     let payload = StartAuthenticatorRequest::new(addr, project.as_bytes());
     Request::post(node_service(DefaultAddress::DIRECT_AUTHENTICATOR)).body(payload)
+}
+
+pub(crate) fn start_okta_service(
+    cfg: &'_ OktaIdentityProviderConfig,
+) -> RequestBuilder<'static, StartOktaIdentityProviderRequest<'_>> {
+    let payload = StartOktaIdentityProviderRequest::new(
+        &cfg.address,
+        &cfg.tenant_base_url,
+        &cfg.certificate,
+        cfg.attributes.iter().map(|s| s as &str).collect(),
+        cfg.project.as_bytes(),
+    );
+    Request::post(format!(
+        "/node/services/{}",
+        DefaultAddress::OKTA_IDENTITY_PROVIDER
+    ))
+    .body(payload)
 }
 
 pub(crate) mod credentials {
