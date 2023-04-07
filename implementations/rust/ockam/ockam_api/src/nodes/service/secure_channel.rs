@@ -20,6 +20,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, SessionPolicy};
 use ockam_core::{route, CowStr};
 
+use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use ockam_identity::{
     Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerTrustOptions,
     SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
@@ -249,6 +250,12 @@ impl NodeManager {
 
         self.message_flow_sessions.add_consumer(
             &DefaultAddress::CREDENTIALS_SERVICE.into(),
+            &session_id,
+            SessionPolicy::SpawnerAllowMultipleMessages,
+        );
+
+        self.message_flow_sessions.add_consumer(
+            &KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS.into(),
             &session_id,
             SessionPolicy::SpawnerAllowMultipleMessages,
         );
