@@ -22,8 +22,8 @@ teardown() {
     run "$OCKAM" identity create m2
     run "$OCKAM" node create n2 --identity m2
 
-    run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-        | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+    run bash -c "$OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api \
+        | $OCKAM message send hello --from /node/n1 --to -/service/echo"
     assert_success
 }
 
@@ -41,8 +41,8 @@ teardown() {
 
     run "$OCKAM" node create n2  --trust-context ./trust_context.json --trusted-identities "$trusted"
 
-    run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-        | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+    run bash -c "$OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api \
+        | $OCKAM message send hello --from /node/n1 --to -/service/echo"
     assert_success
 
     run "$OCKAM" message send hello --from /node/n1 --to /node/n2/service/echo
@@ -77,28 +77,32 @@ teardown() {
     # Create a node for i2 that trust identity_authority as a credential authority
     run "$OCKAM" node create n2 --identity i2 --trust-context i2-trust-context.json
 
-    run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api
+    run bash -c "$OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api \
+        | $OCKAM message send hello --from /node/n1 --to -/service/echo"
     assert_success
 }
 
 @test "trust context - trust context with an id and authority using orchestrator; orchestrator enrollment and connection is performed, orchestrator" {
     skip_if_orchestrator_tests_not_enabled
     load_orchestrator_data
-    $OCKAM project information --as-trust-context > trust_context.json
+
+    $OCKAM project information --as-trust-context > ./project_trust_context.json
 
     run "$OCKAM" identity create m1
     $OCKAM project enroll > m1.token
-    run "$OCKAM" project authenticate --identity m1 --trust-context ./trust_context.json --token $(cat m1.token)
+    run "$OCKAM" project authenticate --identity m1 --trust-context ./project_trust_context.json --token $(cat m1.token)
 
     run "$OCKAM" identity create m2
     $OCKAM project enroll > m2.token
-    run "$OCKAM" project authenticate --identity m2 --trust-context ./trust_context.json --token $(cat m2.token)
+    run "$OCKAM" project authenticate --identity m2 --trust-context ./project_trust_context.json --token $(cat m2.token)
 
-    run "$OCKAM" node create n1 --identity m1 --trust-context ./trust_context.json
+    run "$OCKAM" node create n1 --identity m1 --trust-context ./project_trust_context.json
+    assert_success
 
-    run "$OCKAM" node create n2 --identity m2 --trust-context ./trust_context.json
+    run "$OCKAM" node create n2 --identity m2 --trust-context ./project_trust_context.json
+    assert_success
 
-    run "$OCKAM" secure-channel create --from /node/n1 --to /node/n2/service/api \
-        | "$OCKAM" message send hello --from /node/n1 --to -/service/echo
+    run bash -c "$OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api \
+        | $OCKAM message send hello --from /node/n1 --to -/service/echo"
     assert_success
 }
