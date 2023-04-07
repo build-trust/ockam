@@ -5,6 +5,7 @@ use minicbor::Decoder;
 use ockam_core::api::decode_option;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
+use ockam_core::sessions::Sessions;
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageReader};
 use ockam_identity::IdentityIdentifier;
@@ -77,6 +78,7 @@ pub struct Client {
     ctx: Context,
     route: Route,
     buf: Vec<u8>,
+    sessions: Option<Sessions>,
 }
 
 impl fmt::Debug for Client {
@@ -100,7 +102,22 @@ impl Client {
             ctx,
             route: r,
             buf: Vec::new(),
+            sessions: None,
         })
+    }
+
+    pub fn with_session(mut self, sessions: &Sessions) -> Self {
+        self.sessions = Some(sessions.clone());
+        self
+    }
+
+    fn options(&self) -> MessageSendReceiveOptions {
+        let options = MessageSendReceiveOptions::new();
+
+        match &self.sessions {
+            None => options,
+            Some(sessions) => options.with_session(sessions),
+        }
     }
 
     pub async fn get(&mut self, id: &str) -> ockam_core::Result<Option<AttributesEntry>> {
@@ -112,7 +129,7 @@ impl Client {
             None,
             self.route.clone(),
             req,
-            MessageSendReceiveOptions::new(),
+            self.options(),
         )
         .await?;
         decode_option(label, "attribute", &self.buf)
@@ -126,7 +143,7 @@ impl Client {
             None,
             self.route.clone(),
             req,
-            MessageSendReceiveOptions::new(),
+            self.options(),
         )
         .await?;
         let a: Option<Vec<(IdentityIdentifier, AttributesEntry)>> =
