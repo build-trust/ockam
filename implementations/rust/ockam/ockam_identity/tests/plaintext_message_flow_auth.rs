@@ -123,7 +123,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             route![connection_to_bob, "listener"],
             SecureChannelTrustOptions::as_producer(&sessions_alice, &session_id_alice_plaintext)
-                .as_consumer(&sessions_alice, &session_id_alice_tcp),
+                .as_consumer(&sessions_alice),
         )
         .await?;
 

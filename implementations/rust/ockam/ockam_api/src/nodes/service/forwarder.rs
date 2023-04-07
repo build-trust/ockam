@@ -41,15 +41,9 @@ impl NodeManagerWorker {
 
         let connection = node_manager.connect(connection).await?;
 
-        let trust_options = if let Some(session_id) = connection.session_id.as_ref() {
-            RemoteForwarderTrustOptions::as_consumer_and_producer(
-                &node_manager.message_flow_sessions,
-                session_id,
-            )
-        } else {
-            // TODO: Remove after loopback tcp listener uses Sessions
-            RemoteForwarderTrustOptions::insecure()
-        };
+        let trust_options = RemoteForwarderTrustOptions::as_consumer_and_producer(
+            &node_manager.message_flow_sessions,
+        );
 
         let full = connection
             .secure_channel
@@ -186,7 +180,6 @@ fn replacer(
 
                 let trust_options = RemoteForwarderTrustOptions::as_consumer_and_producer(
                     &this.message_flow_sessions,
-                    &connection.session_id.clone().unwrap(), // Should always be present?
                 );
 
                 if let Some(alias) = &alias {

@@ -199,11 +199,6 @@ mod node {
                 .await
                 .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-                // Should always be Some
-                let session_id = cloud_session
-                    .session_id
-                    .ok_or_else(|| ApiError::generic("Invalid SessionId"))?;
-
                 let sc_session_id = node_manager.message_flow_sessions.generate_session_id();
                 let trust_options = SecureChannelTrustOptions::as_producer(
                     &node_manager.message_flow_sessions,
@@ -212,7 +207,7 @@ mod node {
                 .with_trust_policy(TrustIdentifierPolicy::new(
                     node_manager.controller_identity_id(),
                 ))
-                .as_consumer(&node_manager.message_flow_sessions, &session_id);
+                .as_consumer(&node_manager.message_flow_sessions);
                 let sc_address = identity
                     .create_secure_channel(cloud_session.route, trust_options)
                     .await?;

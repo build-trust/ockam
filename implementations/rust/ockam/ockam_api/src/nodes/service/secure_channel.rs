@@ -70,7 +70,7 @@ impl NodeManager {
             .find_session_with_producer_address(sc_route.next().unwrap())
             .map(|x| x.session_id().clone())
         {
-            Some(session_id) => trust_options.as_consumer(&self.message_flow_sessions, &session_id),
+            Some(_session_id) => trust_options.as_consumer(&self.message_flow_sessions),
             None => trust_options,
         };
 

@@ -63,11 +63,7 @@ impl Context {
     /// [`new_detached`]: Self::new_detached
     /// [`send`]: Self::send
     /// [`receive`]: Self::receive
-    pub async fn send_and_receive<M>(
-        &self,
-        route: impl Into<Route>,
-        msg: impl Message + Send + 'static,
-    ) -> Result<M>
+    pub async fn send_and_receive<M>(&self, route: impl Into<Route>, msg: impl Message) -> Result<M>
     where
         M: Message,
     {
