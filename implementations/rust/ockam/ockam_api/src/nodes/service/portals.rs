@@ -162,20 +162,9 @@ impl NodeManagerWorker {
             .access_control(&resource, &actions::HANDLE_MESSAGE, project_id, None)
             .await?;
 
-        let trust_options =
-            TcpInletTrustOptions::new().with_incoming_access_control(access_control.clone());
-
-        let next = outlet_route.next().unwrap();
-
-        let trust_options = match node_manager
-            .message_flow_sessions
-            .find_session_with_producer_address(next)
-        {
-            Some(info) => {
-                trust_options.as_consumer(&node_manager.message_flow_sessions, info.session_id())
-            }
-            None => trust_options,
-        };
+        let trust_options = TcpInletTrustOptions::new()
+            .with_incoming_access_control(access_control.clone())
+            .as_consumer(&node_manager.message_flow_sessions);
 
         let res = node_manager
             .tcp_transport

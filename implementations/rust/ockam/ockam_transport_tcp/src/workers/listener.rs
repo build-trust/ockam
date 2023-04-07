@@ -71,9 +71,7 @@ impl Processor for TcpListenProcessor {
 
         let addresses = Addresses::generate(ConnectionRole::Responder);
 
-        let session_id = self
-            .trust_options
-            .setup_session(addresses.receiver_address());
+        let session_id = self.trust_options.setup_session(&addresses);
         let access_control = self
             .trust_options
             .create_access_control(session_id.clone())?;

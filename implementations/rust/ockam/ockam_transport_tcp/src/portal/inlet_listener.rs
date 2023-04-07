@@ -82,8 +82,10 @@ impl Processor for TcpInletListenProcessor {
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let addresses = Addresses::generate(PortalType::Inlet);
+        let outlet_listener_route = self.outlet_listener_route.clone();
 
-        self.trust_options.setup_session(&addresses)?;
+        self.trust_options
+            .setup_session(&addresses, outlet_listener_route.next()?)?;
 
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
         TcpPortalWorker::start_new_inlet(
@@ -91,7 +93,7 @@ impl Processor for TcpInletListenProcessor {
             self.registry.clone(),
             stream,
             peer,
-            self.outlet_listener_route.clone(),
+            outlet_listener_route,
             addresses,
             self.trust_options.incoming_access_control.clone(),
         )

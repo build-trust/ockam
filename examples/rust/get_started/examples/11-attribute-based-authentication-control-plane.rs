@@ -73,8 +73,8 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         SecureChannelTrustOptions::insecure_test().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
             project.authority_public_identifier()
         ]));
-    let trust_options = if let Some(session_id) = tcp_session.session_id {
-        trust_options.as_consumer(&sessions, &session_id)
+    let trust_options = if let Some(_session_id) = tcp_session.session_id {
+        trust_options.as_consumer(&sessions)
     } else {
         trust_options
     };
@@ -133,8 +133,8 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let tcp_project_session = multiaddr_to_route(&project.route(), &tcp, &sessions).await.unwrap(); // FIXME: Handle error
     let project_trust_options = SecureChannelTrustOptions::insecure_test()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
-    let project_trust_options = if let Some(session_id) = tcp_project_session.session_id {
-        project_trust_options.as_consumer(&sessions, &session_id)
+    let project_trust_options = if let Some(_session_id) = tcp_project_session.session_id {
+        project_trust_options.as_consumer(&sessions)
     } else {
         project_trust_options
     };

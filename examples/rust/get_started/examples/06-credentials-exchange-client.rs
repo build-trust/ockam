@@ -39,7 +39,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
     let issuer_trust_options = SecureChannelTrustOptions::insecure_test()
         .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(&sessions, &session_id);
+        .as_consumer(&sessions);
     let issuer_channel = client
         .create_secure_channel(route![issuer_connection, "secure"], issuer_trust_options)
         .await?;
@@ -53,7 +53,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_trust_options).await?;
     let channel_trust_options = SecureChannelTrustOptions::insecure_test()
         .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(&sessions, &server_session_id);
+        .as_consumer(&sessions);
     let channel = client
         .create_secure_channel(route![server_connection, "secure"], channel_trust_options)
         .await?;
