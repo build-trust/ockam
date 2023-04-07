@@ -45,41 +45,99 @@ teardown() {
         | $OCKAM message send hello --from /node/n1 --to -/service/echo"
     assert_success
 
-    run "$OCKAM" message send hello --from /node/n1 --to /node/n2/service/echo
+    run "$OCKAM" message send hello --timeout 2 --from /node/n1 --to /node/n2/service/echo
     assert_failure
 }
 
-@test "trust context - trust context with an identity authority; Credential Exchange is performed" {
+@test "trust context - trust context with an offline authority; Credential Exchange is performed" {
+    port=8005
     # Create two identities
-    run "$OCKAM" identity create i1
-    i1_id=$($OCKAM identity show i1 --full --encoding hex)
+    run "$OCKAM" identity create alice
+    alice_identity=$($OCKAM identity show alice --full --encoding hex)
 
-    run "$OCKAM" identity create i2
-    i2_id=$($OCKAM identity show i2 --full --encoding hex)
+    run "$OCKAM" identity create bob
+    bob_identity=$($OCKAM identity show bob --full --encoding hex)
 
-    # Create an identity that both i1, and i2 can trust
-    run "$OCKAM" identity create identity_authority
-    authority_id=$($OCKAM identity show identity_authority --full --encoding hex)
+    $OCKAM identity create attacker
 
-    # issue and store credentials for i1
-    $OCKAM credential issue --as identity_authority --for $i1_id --attribute city="New York" --encoding hex > i1.cred
-    run "$OCKAM" credential store i1-cred --issuer $authority_id --credential-path i1.cred
-    $OCKAM credential show i1-cred --as-trust-context > ./i1-trust-context.json
+    # Create an identity that both alice and bob will trust
+    run "$OCKAM" identity create authority
+    authority_identity=$($OCKAM identity show authority --full --encoding hex)
 
-    # issue and store credential for i2
-    $OCKAM credential issue --as identity_authority --for $i2_id --attribute city="Boston" --encoding hex > i2.cred
-    run "$OCKAM" credential store i2-cred --issuer $authority_id --credential-path i2.cred
-    $OCKAM credential show i2-cred --as-trust-context > i2-trust-context.json
+    # issue and store credentials for alice
+    $OCKAM credential issue --as authority --for $alice_identity --attribute city="New York" --encoding hex > alice.cred
+    run "$OCKAM" credential store alice-cred --issuer $authority_identity --credential-path alice.cred
+    $OCKAM credential show alice-cred --as-trust-context > ./alice-trust-context.json
 
-    # Create a node for i1 that trust identity_authority as a credential authority
-    run "$OCKAM" node create n1 --identity i1 --trust-context i1-trust-context.json
+    # issue and store credential for bob
+    $OCKAM credential issue --as authority --for $bob_identity --attribute city="New York" --encoding hex > bob.cred
+    run "$OCKAM" credential store bob-cred --issuer $authority_identity --credential-path bob.cred
+    $OCKAM credential show bob-cred --as-trust-context > ./bob-trust-context.json
 
-    # Create a node for i2 that trust identity_authority as a credential authority
-    run "$OCKAM" node create n2 --identity i2 --trust-context i2-trust-context.json
+    # Create a node for alice that trust authority as a credential authority
+    run "$OCKAM" node create alice --tcp-listener-address 127.0.0.1:$port  --identity alice --trust-context alice-trust-context.json
+    
+    msg=$(random_str)
 
-    run bash -c "$OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api \
-        | $OCKAM message send hello --from /node/n1 --to -/service/echo"
+    # Fail, attacker won't present any credential
+    run $OCKAM message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  $msg
+    assert_failure
+
+    # Fail, attacker will present an invalid credential (self signed rather than signed by authority) 
+    $OCKAM credential issue --as attacker --for $($OCKAM identity show attacker --full --encoding hex) --encoding hex > "$OCKAM_HOME/attacker.cred"
+    $OCKAM credential store att-cred --issuer $authority_identity --credential-path $OCKAM_HOME/attacker.cred
+    $OCKAM credential show att-cred --as-trust-context > ./att-trust-context.json
+    run $OCKAM message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  --trust-context ./att-trust-context.json  $msg
+    assert_failure
+
+    # Fail, attacker will present an invalid credential (bob' credential, not own)
+    run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  --trust-context ./bob-trust-context.json $msg
+    assert_failure
+
+    run "$OCKAM" message send --timeout 2 --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  --trust-context ./bob-trust-context.json $msg
     assert_success
+    assert_output $msg
+
+    $OCKAM node delete alice
+    echo "{\"id\": \"$authority_id\"}" > alice-trust-context.json
+    $OCKAM node create alice --tcp-listener-address 127.0.0.1:$port  --identity alice --trust-context ./alice-trust-context.json
+
+    run "$OCKAM" message send --timeout 2 --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  --trust-context ./bob-trust-context.json $msg
+    assert_failure
+}
+
+@test "trust context - trust context with an online authority; Credential Exchange is performed" {
+  port=8007
+  $OCKAM identity create alice
+  $OCKAM identity create bob
+  $OCKAM identity create attacker
+  $OCKAM identity create authority
+  bob_id=$($OCKAM identity show bob)
+  alice_id=$($OCKAM identity show alice)
+  authority_identity=$($OCKAM identity show --full --encoding hex  authority)
+
+  trusted="{\"$bob_id\": {}, \"$alice_id\": {}}"
+  $OCKAM authority create --identity authority --tcp-listener-address=127.0.0.1:4200 --project-identifier "test-context" --trusted-identities "$trusted" 
+
+  echo "{\"id\": \"test-context\",
+  		  \"authority\" : {
+		  	\"identity\" : \"$authority_identity\",
+			\"own_credential\" :{
+				\"FromCredentialIssuer\" : {
+					\"identity\": \"$authority_identity\",
+					\"maddr\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\" }}}}" > ./trust_context.json
+
+  $OCKAM node create --identity alice --tcp-listener-address 127.0.0.1:$port --trust-context ./trust_context.json
+
+  msg=$(random_str)
+  run "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  --trust-context ./trust_context.json $msg
+  assert_success
+  assert_output "$msg"
+
+  run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  --trust-context ./trust_context.json $msg
+  assert_failure
+  run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  --trust-context $msg
+  assert_failure
 }
 
 @test "trust context - trust context with an id and authority using orchestrator; orchestrator enrollment and connection is performed, orchestrator" {
