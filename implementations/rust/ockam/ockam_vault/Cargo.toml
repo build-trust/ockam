@@ -87,7 +87,7 @@ serde_json = { version = "1", optional = true }
 fs2 = { version = "0.4.3", optional = true }
 # AWS KMS specific:
 aws-config  = { version = "0.55.0", default-features = false, features = ["native-tls"], optional = true }
-aws-sdk-kms = { version = "0.25.0", default-features = false, features = ["native-tls"], optional = true }
+aws-sdk-kms = { version = "0.25.1", default-features = false, features = ["native-tls"], optional = true }
 thiserror   = { version = "1.0.38", optional = true }
 # ECDSA providers:
 p256 = { version = "0.13.0", default_features = false }
