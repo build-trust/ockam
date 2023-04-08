@@ -1,8 +1,8 @@
 use crate::node::default_node_name;
 use crate::tcp::util::alias_parser;
 use crate::util::{
-    bind_to_port_check, exitcode, extract_address_value, node_rpc, process_nodes_multiaddr,
-    RpcBuilder,
+    bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
+    process_nodes_multiaddr, RpcBuilder,
 };
 use crate::{CommandGlobalOpts, Result};
 
@@ -15,7 +15,8 @@ use ockam_api::nodes::models::portal::InletStatus;
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::str::FromStr;
 
 /// Create TCP Inlets
 #[derive(Clone, Debug, Args)]
@@ -25,11 +26,11 @@ pub struct CreateCommand {
     at: String,
 
     /// Address on which to accept tcp connections.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS")]
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", default_value_t = default_from_addr())]
     from: SocketAddr,
 
     /// Route to a tcp outlet.
-    #[arg(long, display_order = 900, id = "ROUTE")]
+    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = default_to_addr())]
     to: MultiAddr,
 
     /// Authorized identity for secure channel connection
@@ -39,6 +40,16 @@ pub struct CreateCommand {
     /// Assign a name to this inlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
     alias: Option<String>,
+}
+
+fn default_from_addr() -> SocketAddr {
+    let port = find_available_port().expect("Failed to find available port");
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port)
+}
+
+fn default_to_addr() -> MultiAddr {
+    MultiAddr::from_str("/project/default/service/forward_to_default/secure/api/service/outlet")
+        .expect("Failed to parse default multiaddr")
 }
 
 impl CreateCommand {
@@ -78,7 +89,29 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
 
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();
     rpc.request(req).await?;
-    rpc.parse_response::<InletStatus>()?;
+    let inlet = rpc.parse_response::<InletStatus>()?;
+
+    let output = format!(
+        r#"
+    Inlet
+        ID: {}
+        Address: {}
+        Worker: {}
+        Outlet: {}
+    "#,
+        inlet.alias, inlet.bind_addr, inlet.worker_addr, inlet.outlet_route
+    );
+
+    let machine_output = inlet.bind_addr.to_string();
+
+    let json_output = serde_json::to_string_pretty(&inlet)?;
+
+    opts.shell
+        .stdout()
+        .plain(output)
+        .machine(machine_output)
+        .json(json_output)
+        .write_line()?;
 
     Ok(())
 }
