@@ -4,6 +4,7 @@
 
 setup() {
   load load/base.bash
+  load load/orchestrator.bash
   load_bats_ext
   setup_home_dir
 }
@@ -344,6 +345,29 @@ teardown() {
 }
 
 # ===== FORWARDER
+
+@test "forwarder - create forwarder with default parameters" {
+  skip_if_orchestrator_tests_not_enabled
+  load_orchestrator_data
+
+    port=7100
+
+  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
+  assert_success
+  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+
+  fwd="$(random_str)"
+  run "$OCKAM" forwarder create $fwd
+  assert_success
+
+  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
+  assert_success
+  $OCKAM secure-channel create --from /node/green --to "/project/default/service/forward_to_$fwd/service/api" |
+    $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
+
+  run curl --fail --head --max-time 10 "127.0.0.1:$port"
+  assert_success
+}
 
 @test "forwarder - create forwarder and send message through it" {
   run "$OCKAM" node create n1
