@@ -10,6 +10,7 @@ use ockam_core::CowStr;
 use ockam_core::TypeTag;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
+use serde::Serialize;
 
 /// Request body to create an inlet
 #[derive(Clone, Debug, Decode, Encode)]
@@ -108,7 +109,7 @@ impl<'a> CreateOutlet<'a> {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Decode, Encode)]
+#[derive(Clone, Debug, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletStatus<'a> {

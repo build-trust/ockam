@@ -2,7 +2,6 @@ use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Project;
-use rand::prelude::random;
 
 use ockam::{Context, TcpTransport};
 use ockam_api::is_local_node;
@@ -27,7 +26,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 )]
 pub struct CreateCommand {
     /// Name of the forwarder (optional)
-    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value = "default")]
     forwarder_name: String,
 
     /// Node for which to create the forwarder
