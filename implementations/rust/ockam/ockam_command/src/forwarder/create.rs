@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
@@ -10,6 +12,7 @@ use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
+use crate::node::default_node_name;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::Result;
@@ -21,7 +24,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create Forwarders
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
+    arg_required_else_help = false,
     long_about = docs::about(LONG_ABOUT),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
@@ -31,11 +34,11 @@ pub struct CreateCommand {
     forwarder_name: String,
 
     /// Node for which to create the forwarder
-    #[arg(long, id = "NODE", display_order = 900)]
+    #[arg(long, id = "NODE", display_order = 900, default_value_t = default_node_name())]
     to: String,
 
     /// Route to the node at which to create the forwarder (optional)
-    #[arg(long, id = "ROUTE", display_order = 900)]
+    #[arg(long, id = "ROUTE", display_order = 900, default_value_t = default_forwarder_at())]
     at: MultiAddr,
 
     /// Authorized identity for secure channel connection (optional)
@@ -47,6 +50,10 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
     }
+}
+
+pub fn default_forwarder_at() -> MultiAddr {
+    MultiAddr::from_str("/project/default").expect("Default forwarder address is invalid")
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
