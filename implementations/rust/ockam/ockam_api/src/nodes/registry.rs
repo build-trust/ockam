@@ -87,16 +87,19 @@ impl SecureChannelInfo {
 
 #[derive(Clone)]
 pub(crate) struct SecureChannelListenerInfo {
-    session_id: SessionId,
+    _session_id: SessionId,
 }
 
 impl SecureChannelListenerInfo {
     pub fn new(session_id: SessionId) -> Self {
-        Self { session_id }
+        Self {
+            _session_id: session_id,
+        }
     }
 
+    #[allow(unused)]
     pub fn session_id(&self) -> &SessionId {
-        &self.session_id
+        &self._session_id
     }
 }
 

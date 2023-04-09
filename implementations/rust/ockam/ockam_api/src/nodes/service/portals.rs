@@ -6,7 +6,7 @@ use crate::nodes::models::portal::{
 use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::random_alias;
 use crate::session::{util, Data, Replacer, Session};
-use crate::{actions, resources};
+use crate::{actions, resources, DefaultAddress};
 use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::tokio::time::timeout;
@@ -15,7 +15,7 @@ use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::{SessionId, SessionPolicy};
+use ockam_core::sessions::SessionPolicy;
 use ockam_core::IncomingAccessControl;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
@@ -333,21 +333,19 @@ impl NodeManagerWorker {
         let trust_options =
             TcpOutletTrustOptions::new().with_incoming_access_control(access_control);
 
-        // Accept messages from first started secure channel listener
-        let listeners: Vec<SessionId> = node_manager
-            .registry
-            .secure_channel_listeners
-            .values()
-            .map(|x| x.session_id().clone())
-            .collect();
-        if listeners.len() != 1 {
-            panic!();
-        }
-        let trust_options = trust_options.as_consumer(
-            &node_manager.message_flow_sessions,
-            &listeners[0],
-            SessionPolicy::SpawnerAllowMultipleMessages,
-        );
+        // Accept messages from the default secure channel listener
+        let trust_options = if let Some(session_id) = node_manager
+            .message_flow_sessions
+            .get_session_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+        {
+            trust_options.as_consumer(
+                &node_manager.message_flow_sessions,
+                &session_id,
+                SessionPolicy::SpawnerAllowMultipleMessages,
+            )
+        } else {
+            trust_options
+        };
 
         let res = node_manager
             .tcp_transport
