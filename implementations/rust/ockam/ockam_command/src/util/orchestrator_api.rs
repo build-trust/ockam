@@ -146,7 +146,6 @@ impl<'a> OrchestratorApiBuilder<'a> {
     }
 
     pub async fn authenticate(&self) -> Result<Credential> {
-        // FIXME
         let (sc_addr, _sc_session_id) = self
             .secure_channel_to(&OrchestratorEndpoint::Authenticator)
             .await?;
@@ -175,7 +174,6 @@ impl<'a> OrchestratorApiBuilder<'a> {
         let _ = self.authenticate().await?;
 
         //  Establish a secure channel
-        // FIXME
         let (sc_addr, _sc_session_id) = self.secure_channel_to(&self.destination).await?;
 
         let to = sc_addr.concat(service_address)?;
