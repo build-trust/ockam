@@ -16,7 +16,7 @@ use ockam_abac::Resource;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, SessionPolicy};
-use ockam_core::{AllowAll, IncomingAccessControl};
+use ockam_core::IncomingAccessControl;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};

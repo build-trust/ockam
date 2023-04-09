@@ -3,17 +3,15 @@ use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{
     AuthorityInfo, Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustContext,
-    TrustEveryonePolicy, TrustMultiIdentifiersPolicy,
+    TrustMultiIdentifiersPolicy,
 };
 use ockam::AsyncTryClone;
 
 use ockam::abac::AbacAccessControl;
 use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
 use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpOutletTrustOptions, TcpTransport};
-use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
-use ockam_api::{
-    create_tcp_session, multiaddr_to_route, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress,
-};
+use ockam_api::authenticator::direct::{RpcClient, TokenAcceptorClient};
+use ockam_api::{multiaddr_to_route, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress};
 use ockam_core::sessions::Sessions;
 use std::sync::Arc;
 use std::time::Duration;

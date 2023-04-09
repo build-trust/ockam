@@ -17,7 +17,6 @@ use tracing::error;
 use crate::node::util::{add_project_info_to_node_state, init_node_state, spawn_node};
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
-use crate::service::start;
 use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::util::{api, parse_node_name, RpcBuilder};
@@ -28,7 +27,6 @@ use crate::{
 };
 use ockam::{Address, AsyncTryClone, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
-use ockam_api::config::cli;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::{ApiTransport, NodeManagerTrustOptions};
@@ -43,7 +41,6 @@ use ockam_api::{
     },
 };
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_core::sessions::Sessions;
 use ockam_core::{route, AllowAll, LOCAL};
 
 use super::util::check_default;

@@ -9,7 +9,7 @@ use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::credential::Credential;
 use ockam_identity::{
     AuthorityInfo, CredentialMemoryRetriever, Identity, SecureChannelListenerTrustOptions,
-    SecureChannelTrustOptions, TrustContext, TrustEveryonePolicy, TrustIdentifierPolicy,
+    SecureChannelTrustOptions, TrustContext, TrustIdentifierPolicy,
 };
 
 use ockam_node::{Context, MessageSendReceiveOptions, WorkerBuilder};

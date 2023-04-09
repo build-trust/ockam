@@ -2,8 +2,6 @@ use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
 use crate::nodes::service::map_multiaddr_err;
-use crate::nodes::NodeManager;
-use crate::{multiaddr_to_route, DefaultAddress};
 use either::Either;
 use minicbor::Decoder;
 use ockam::Result;

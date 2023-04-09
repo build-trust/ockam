@@ -32,7 +32,7 @@ use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::Resource;
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, AllowAll, IncomingAccessControl};
+use ockam_core::{route, AllowAll};
 use ockam_identity::authenticated_storage::IdentityAttributeStorageReader;
 use ockam_identity::{AuthorityInfo, PublicIdentity, TrustContext};
 use ockam_multiaddr::proto::Project;
