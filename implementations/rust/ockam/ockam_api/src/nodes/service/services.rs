@@ -416,7 +416,9 @@ impl NodeManager {
 
         let connection = self.connect(connection).await?;
 
-        let session_id = connection.session_id.unwrap();
+        let session_id = connection
+            .session_id
+            .ok_or_else(|| ApiError::generic("empty connect session_id"))?;
 
         let project_multiaddr = connection.secure_channel.try_with(&connection.suffix)?;
         let project_route = local_multiaddr_to_route(&project_multiaddr)

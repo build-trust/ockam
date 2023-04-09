@@ -55,7 +55,7 @@ impl NodeManager {
         // Just add ourself as consumer for the next hop if it's a producer
         let trust_options = match self
             .message_flow_sessions
-            .find_session_with_producer_address(sc_route.next().unwrap())
+            .find_session_with_producer_address(sc_route.next()?)
             .map(|x| x.session_id().clone())
         {
             Some(_session_id) => trust_options.as_consumer(&self.message_flow_sessions),

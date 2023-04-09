@@ -98,9 +98,20 @@ impl Medic {
                                 ping = %m.ping,
                                 "send ping"
                             }
+                            let next = match r.next() {
+                                Ok(n) => n,
+                                Err(_) => {
+                                    log::error! {
+                                        key  = %key,
+                                        addr = %session.ping_address(),
+                                        "empty route"
+                                    }
+                                    continue;
+                                }
+                            };
                             if let Some(session_id) = self
                                 .message_flow_sessions
-                                .find_session_with_producer_address(r.next().unwrap())
+                                .find_session_with_producer_address(next)
                                 .map(|x| x.session_id().clone())
                             {
                                 self.message_flow_sessions.add_consumer(
