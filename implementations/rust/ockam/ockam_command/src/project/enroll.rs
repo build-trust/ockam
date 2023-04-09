@@ -136,7 +136,7 @@ impl Runner {
             };
             let client = DirectAuthenticatorClient::new(
                 RpcClient::new(
-                    route!["rpc_proxy_service", direct_authenticator_route],
+                    route![DefaultAddress::RPC_PROXY, direct_authenticator_route],
                     &self.ctx,
                 )
                 .await?
@@ -158,10 +158,12 @@ impl Runner {
                     .context(format!("Invalid MultiAddr {addr}"))?
             };
             let client = TokenIssuerClient::new(
-                // FIXME: move "rpc_proxy_service" to a const
-                RpcClient::new(route!["rpc_proxy_service", token_issuer_route], &self.ctx)
-                    .await?
-                    .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
+                RpcClient::new(
+                    route![DefaultAddress::RPC_PROXY, token_issuer_route],
+                    &self.ctx,
+                )
+                .await?
+                .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
             );
             let token = client.create_token(self.cmd.attributes()?).await?;
             println!("{}", token.to_string())

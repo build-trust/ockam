@@ -50,6 +50,7 @@ impl DefaultAddress {
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
     pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
+    pub const RPC_PROXY: &'static str = "rpc_proxy_service";
 }
 
 pub mod actions {
