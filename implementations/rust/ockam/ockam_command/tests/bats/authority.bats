@@ -15,7 +15,7 @@ teardown() {
 # ===== TESTS
 
 @test "authority - standalone authority, enrollers, members" {
-  export PROJECT_JSON_PATH="$OCKAM_HOME/project.json"
+  export PROJECT_JSON_PATH="$OCKAM_HOME/project-authority.json"
 
   run "$OCKAM" identity create authority
   run "$OCKAM" identity create enroller
