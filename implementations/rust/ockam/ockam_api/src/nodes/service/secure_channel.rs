@@ -344,7 +344,6 @@ impl NodeManagerWorker {
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
-        // FIXME: Figure out what is the session id if there are 2 secure channels created here and outer doesn't have a tcp hop
         let tcp_session = multiaddr_to_route(
             &addr,
             &node_manager.tcp_transport,
@@ -447,7 +446,7 @@ impl NodeManagerWorker {
             return Ok(Response::bad_request(req.id()));
         }
 
-        // FIXME
+        // TODO: Return to the client side session_id
         node_manager
             .create_secure_channel_listener_impl(addr, authorized_identifiers, vault, identity, ctx)
             .await?;
