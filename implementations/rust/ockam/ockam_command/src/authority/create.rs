@@ -117,6 +117,10 @@ async fn spawn_background_node(
         "--tcp-listener-address".to_string(),
         cmd.tcp_listener_address.clone(),
         "--foreground".to_string(),
+        match opts.global_args.verbose {
+            0 => "-vv".to_string(),
+            v => format!("-{}", "v".repeat(v as usize)),
+        },
     ];
 
     if cmd.no_direct_authentication {
