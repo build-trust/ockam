@@ -13,7 +13,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
     let node_in_hub = tcp
-        .connect(hub_node_tcp_address, TcpConnectionTrustOptions::insecure_test())
+        .connect(hub_node_tcp_address, TcpConnectionTrustOptions::new())
         .await?;
 
     // Create a vault
@@ -23,11 +23,8 @@ async fn main(ctx: Context) -> Result<()> {
     let bob = Identity::create(&ctx, vault).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener(
-        "secure_channel_listener",
-        SecureChannelListenerTrustOptions::insecure_test(),
-    )
-    .await?;
+    bob.create_secure_channel_listener("secure_channel_listener", SecureChannelListenerTrustOptions::new())
+        .await?;
 
     // Create a stream client
     Stream::new(&ctx)

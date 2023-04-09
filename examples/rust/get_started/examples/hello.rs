@@ -11,7 +11,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob", SecureChannelListenerTrustOptions::insecure_test())
+    bob.create_secure_channel_listener("bob", SecureChannelListenerTrustOptions::new())
         .await?;
 
     // Create an entity to represent Alice.
@@ -20,7 +20,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
     let channel = alice
-        .create_secure_channel("bob", SecureChannelTrustOptions::insecure_test())
+        .create_secure_channel("bob", SecureChannelTrustOptions::new())
         .await?;
 
     // Send a message, ** THROUGH ** the secure channel,

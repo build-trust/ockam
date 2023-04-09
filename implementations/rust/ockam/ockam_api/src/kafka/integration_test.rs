@@ -93,7 +93,7 @@ mod test {
                 .identity
                 .create_secure_channel_listener(
                     KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
-                    SecureChannelListenerTrustOptions::insecure_test(),
+                    SecureChannelListenerTrustOptions::new(),
                 )
                 .await?;
         }

@@ -20,7 +20,7 @@ impl SecureChannelTrustOptions {
     /// This constructor is insecure, because outgoing messages from such channels will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
-    pub fn insecure_test() -> Self {
+    pub fn new() -> Self {
         Self {
             consumer_session: None,
             producer_session: None,
@@ -118,7 +118,7 @@ impl SecureChannelListenerTrustOptions {
     /// This constructor is insecure, because outgoing messages from such channels will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
-    pub fn insecure_test() -> Self {
+    pub fn new() -> Self {
         Self {
             consumer_session: None,
             channels_producer_session: None,

@@ -12,8 +12,8 @@ impl TcpTransport {
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::insecure_test()).await?; // Listen on port 8000
-    /// let addr = tcp.connect("127.0.0.1:5000", TcpConnectionTrustOptions::insecure_test()).await?; // and connect to port 5000
+    /// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::new()).await?; // Listen on port 8000
+    /// let addr = tcp.connect("127.0.0.1:5000", TcpConnectionTrustOptions::new()).await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
     pub async fn connect(

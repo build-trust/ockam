@@ -16,15 +16,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     let alice = Identity::create(&ctx, vault).await?;
 
     // Create a TCP connection to the middle node.
-    let connection_to_middle_node = tcp
-        .connect("localhost:3000", TcpConnectionTrustOptions::insecure_test())
-        .await?;
+    let connection_to_middle_node = tcp.connect("localhost:3000", TcpConnectionTrustOptions::new()).await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let r = route![connection_to_middle_node, "forward_to_bob", "bob_listener"];
-    let channel = alice
-        .create_secure_channel(r, SecureChannelTrustOptions::insecure_test())
-        .await?;
+    let channel = alice.create_secure_channel(r, SecureChannelTrustOptions::new()).await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;

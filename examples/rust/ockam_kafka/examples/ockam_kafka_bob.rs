@@ -35,7 +35,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::insecure_test())
+    bob.create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::new())
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and
@@ -47,7 +47,7 @@ async fn main(ctx: Context) -> Result<()> {
     // - a sender (producer) for the `bob_to_alice` stream.
 
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::insecure_test())
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
         .await?;
     let b_to_a_stream_address = ockam::unique_with_prefix("bob_to_alice");
     let a_to_b_stream_address = ockam::unique_with_prefix("alice_to_bob");

@@ -12,7 +12,7 @@ impl RemoteForwarderTrustOptions {
     /// This constructor is insecure, because outgoing messages from such forwarder will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
-    pub fn insecure_test() -> Self {
+    pub fn new() -> Self {
         Self { sessions: None }
     }
 
