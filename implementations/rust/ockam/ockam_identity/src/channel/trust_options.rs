@@ -20,6 +20,7 @@ impl SecureChannelTrustOptions {
     /// This constructor is insecure, because outgoing messages from such channels will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             consumer_session: None,
@@ -118,6 +119,7 @@ impl SecureChannelListenerTrustOptions {
     /// This constructor is insecure, because outgoing messages from such channels will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             consumer_session: None,
