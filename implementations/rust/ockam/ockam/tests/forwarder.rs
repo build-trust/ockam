@@ -18,8 +18,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let remote_info =
-        RemoteForwarder::create(ctx, route![], RemoteForwarderTrustOptions::insecure_test())
-            .await?;
+        RemoteForwarder::create(ctx, route![], RemoteForwarderTrustOptions::new()).await?;
 
     let resp = ctx
         .send_and_receive::<String>(
@@ -41,7 +40,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     ForwardingService::create(ctx, "forwarding_service", AllowAll, AllowAll).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
         .await?;
 
     let server_sessions = Sessions::default();
@@ -102,7 +101,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     ForwardingService::create(ctx, "forwarding_service", AllowAll, AllowAll).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
         .await?;
 
     let server_sessions = Sessions::default();
@@ -185,15 +184,12 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     let cloud_identity = Identity::create(ctx, Vault::create()).await?;
     cloud_identity
-        .create_secure_channel_listener(
-            "cloud_listener",
-            SecureChannelListenerTrustOptions::insecure_test(),
-        )
+        .create_secure_channel_listener("cloud_listener", SecureChannelListenerTrustOptions::new())
         .await?;
 
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, _) = cloud_tcp
-        .listen("127.0.0.1:0", TcpListenerTrustOptions::insecure_test())
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
         .await?;
 
     // Server

@@ -38,7 +38,7 @@ async fn main(ctx: Context) -> Result<()> {
     // corresponding to one of the above known public identifiers.
     issuer
         .identity()
-        .create_secure_channel_listener("secure", SecureChannelListenerTrustOptions::insecure_test())
+        .create_secure_channel_listener("secure", SecureChannelListenerTrustOptions::new())
         .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from
@@ -48,8 +48,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Initialize TCP Transport, create a TCP listener, and wait for connections.
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.listen("127.0.0.1:5000", TcpListenerTrustOptions::insecure_test())
-        .await?;
+    tcp.listen("127.0.0.1:5000", TcpListenerTrustOptions::new()).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

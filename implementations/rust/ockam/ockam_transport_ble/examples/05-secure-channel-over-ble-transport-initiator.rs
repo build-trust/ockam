@@ -38,7 +38,7 @@ async fn async_main(mut ctx: Context) -> Result<()> {
     // Connect to a secure channel listener and perform a handshake.
     let r = route![(BLE, "ockam_ble_1"), "bob_listener"];
     let channel = alice
-        .create_secure_channel(r, SecureChannelTrustOptions::insecure_test())
+        .create_secure_channel(r, SecureChannelTrustOptions::new())
         .await?;
 
     // Send a message to the "echoer" worker, on a different node, via secure channel.

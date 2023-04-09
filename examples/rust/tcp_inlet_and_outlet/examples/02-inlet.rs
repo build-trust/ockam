@@ -13,10 +13,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let outlet_connection = tcp
-        .connect(
-            &format!("127.0.0.1:{outlet_port}"),
-            TcpConnectionTrustOptions::insecure_test(),
-        )
+        .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionTrustOptions::new())
         .await?;
     let route_to_outlet = route![outlet_connection, "outlet"];
 

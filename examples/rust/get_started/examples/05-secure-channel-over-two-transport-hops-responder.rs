@@ -21,12 +21,11 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob_listener", SecureChannelListenerTrustOptions::insecure_test())
+    bob.create_secure_channel_listener("bob_listener", SecureChannelListenerTrustOptions::new())
         .await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:4000", TcpListenerTrustOptions::insecure_test())
-        .await?;
+    tcp.listen("127.0.0.1:4000", TcpListenerTrustOptions::new()).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

@@ -37,7 +37,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let session_id = sessions.generate_session_id();
     let issuer_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &session_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
-    let issuer_trust_options = SecureChannelTrustOptions::insecure_test()
+    let issuer_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
         .as_consumer(&sessions);
     let issuer_channel = client
@@ -51,7 +51,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let server_session_id = sessions.generate_session_id();
     let server_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &server_session_id);
     let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_trust_options).await?;
-    let channel_trust_options = SecureChannelTrustOptions::insecure_test()
+    let channel_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
         .as_consumer(&sessions);
     let channel = client
