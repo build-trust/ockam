@@ -124,7 +124,7 @@ async fn run_impl(
                 .context(format!("Invalid MultiAddr {addr}"))?
         };
         let client = TokenAcceptorClient::new(
-            RpcClient::new(route!["rpc_proxy_service", token_issuer_route], &ctx).await?,
+            RpcClient::new(route![DefaultAddress::RPC_PROXY, token_issuer_route], &ctx).await?,
         );
         client.present_token(&tkn).await?
     }
@@ -139,7 +139,11 @@ async fn run_impl(
     };
 
     let client2 = CredentialIssuerClient::new(
-        RpcClient::new(route!["rpc_proxy_service", credential_issuer_route], &ctx).await?,
+        RpcClient::new(
+            route![DefaultAddress::RPC_PROXY, credential_issuer_route],
+            &ctx,
+        )
+        .await?,
     );
 
     let credential = client2.credential().await?;
@@ -171,7 +175,7 @@ async fn authenticate_through_okta(
         for proto in service.iter() {
             addr.push_back_value(&proto)?;
         }
-        addr.push_front(Service::new("rpc_proxy_service"))?;
+        addr.push_front(Service::new(DefaultAddress::RPC_PROXY))?;
         addr
     };
 

@@ -924,7 +924,7 @@ impl Worker for NodeManagerWorker {
             .await?;
 
         ctx.start_worker(
-            "rpc_proxy_service",
+            DefaultAddress::RPC_PROXY,
             RpcProxyService::new(node_manager.message_flow_sessions.clone()),
             AllowAll,
             AllowAll,
