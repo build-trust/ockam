@@ -6,14 +6,10 @@ use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
-use ockam::identity::{
-    AuthorityInfo, Identity, SecureChannelTrustOptions, TrustContext, TrustEveryonePolicy, TrustMultiIdentifiersPolicy,
-};
+use ockam::identity::{AuthorityInfo, Identity, SecureChannelTrustOptions, TrustContext, TrustMultiIdentifiersPolicy};
 use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpInletTrustOptions, TcpTransport};
-use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
-use ockam_api::{
-    create_tcp_session, multiaddr_to_route, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress,
-};
+use ockam_api::authenticator::direct::{RpcClient, TokenAcceptorClient};
+use ockam_api::{multiaddr_to_route, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress};
 use ockam_core::sessions::Sessions;
 
 /// This node supports an "edge" server which can connect to a "control" node

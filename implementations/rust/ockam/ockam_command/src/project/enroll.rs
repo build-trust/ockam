@@ -93,7 +93,7 @@ impl Runner {
                     .into())
                 }
             };
-            create_secure_channel_to_authority(
+            let (sc_addr, sc_session_id) = create_secure_channel_to_authority(
                 &self.ctx,
                 &self.opts,
                 &node_name,
@@ -101,9 +101,11 @@ impl Runner {
                 addr,
                 self.cmd.cloud_opts.identity.clone(),
             )
-            .await?
+            .await?;
+
+            (sc_addr, Some(sc_session_id))
         } else if let Some(a) = project_authority(&self.cmd.to, &map)? {
-            create_secure_channel_to_authority(
+            let (sc_addr, sc_session_id) = create_secure_channel_to_authority(
                 &self.ctx,
                 &self.opts,
                 &node_name,

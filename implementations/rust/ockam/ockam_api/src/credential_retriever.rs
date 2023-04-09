@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use ockam::{route, TcpTransport};
 use ockam_core::async_trait;
+use ockam_core::sessions::Sessions;
 use ockam_identity::{
     credential::Credential, CredentialRetriever, Identity, PublicIdentity,
     SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
@@ -13,9 +14,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     authenticator::direct::{CredentialIssuerClient, RpcClient},
     cli_state::CredentialState,
-    create_tcp_session,
     error::ApiError,
-    DefaultAddress,
+    multiaddr_to_route, DefaultAddress,
 };
 
 #[derive(Debug, Clone)]
@@ -39,11 +39,16 @@ impl CredentialRetriever for CredentialStateRetriever {
 pub struct CredentialIssuerRetriever {
     issuer: CredentialIssuerInfo,
     transport: TcpTransport,
+    sessions: Sessions,
 }
 
 impl CredentialIssuerRetriever {
     pub fn new(issuer: CredentialIssuerInfo, transport: TcpTransport) -> Self {
-        Self { issuer, transport }
+        Self {
+            issuer,
+            transport,
+            sessions: Default::default(), /* FIXME: Replace with proper shared instance */
+        }
     }
 }
 
@@ -54,7 +59,7 @@ impl CredentialRetriever for CredentialIssuerRetriever {
 
         let allowed = vec![self.issuer.public_identity().await?.identifier().clone()];
 
-        let Some(authority_tcp_session) = create_tcp_session(&self.issuer.maddr, &self.transport).await else {
+        let Some(authority_tcp_session) = multiaddr_to_route(&self.issuer.maddr, &self.transport, &self.sessions).await else {
             let err_msg = format!("Invalid route within trust context: {}", &self.issuer.maddr);
             error!("{err_msg}");
             return Err(ApiError::generic(&err_msg));
@@ -62,15 +67,10 @@ impl CredentialRetriever for CredentialIssuerRetriever {
 
         debug!("Create secure channel to authority");
 
-        let trust_options = SecureChannelTrustOptions::new();
-
-        let trust_options = match authority_tcp_session.session {
-            Some((sessions, session_id)) => trust_options.as_consumer(&sessions, &session_id),
-            None => trust_options,
-        };
-
-        let trust_options =
-            trust_options.with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed));
+        let session_id = self.sessions.generate_session_id();
+        let trust_options = SecureChannelTrustOptions::as_producer(&self.sessions, &session_id)
+            .as_consumer(&self.sessions)
+            .with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed));
 
         let sc = for_identity
             .create_secure_channel_extended(
@@ -87,7 +87,8 @@ impl CredentialRetriever for CredentialIssuerRetriever {
                 route![sc, DefaultAddress::CREDENTIAL_ISSUER],
                 for_identity.ctx(),
             )
-            .await?,
+            .await?
+            .with_sessions(&self.sessions),
         );
 
         let credential = client.credential().await?;
