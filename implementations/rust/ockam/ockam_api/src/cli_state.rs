@@ -114,6 +114,7 @@ impl CliState {
             &self.vaults.dir,
             &self.projects.dir,
             &self.credentials.dir,
+            &self.trust_contexts.dir,
             &dir.join("defaults"),
         ] {
             if dir.exists() {
