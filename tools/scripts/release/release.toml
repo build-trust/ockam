@@ -8,6 +8,6 @@ consolidate-pushes = true
 sign-commit = true
 pre-release-commit-message = "chore(rust): crate release {{crate_name}} version {{version}}"
 pre-release-replacements = [
-  {file="README.md", min=0, search="= \".*\"", replace="= \"{{version}}\""},
-  {file="CHANGELOG.md", min=0, search="## unreleased", replace="## {{version}} - {{date}}"},
+  { file = "README.md", min = 0, search = "= \".*\"", replace = "= \"{{version}}\"" },
+  { file = "CHANGELOG.md", min = 0, search = "## unreleased", replace = "## {{version}} - {{date}}" },
 ]

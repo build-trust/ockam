@@ -8,9 +8,9 @@ publish = false
 [workspace]
 
 [dependencies]
+chrono = { version = "0.4", features = ["serde"] }
 ockam = { path = "../../../ockam" }
 ockam_node = { path = "../../../ockam_node" }
 serde = { version = "1.0", features = ["derive"] }
-chrono = { version = "0.4", features = ["serde"] }
-tracing = { version = "0.1", default-features = false }
 tokio = { version = "1.27.0", features = ["full"] }
+tracing = { version = "0.1", default-features = false }

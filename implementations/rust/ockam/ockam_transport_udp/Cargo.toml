@@ -2,25 +2,25 @@
 name = "ockam_transport_udp"
 version = "0.19.0"
 authors = ["Ockam Developers"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_tcp"
-readme = "README.md"
-keywords = ["ockam", "crypto", "network", "networking", "tcp"]
+autoexamples = false
 categories = [
-    "cryptography",
-    "asynchronous",
-    "authentication",
-    "network-programming",
-    "embedded",
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "network-programming",
+  "embedded",
 ]
+edition = "2021"
+homepage = "https://github.com/ockam-network/ockam"
+keywords = ["ockam", "crypto", "network", "networking", "tcp"]
+license = "Apache-2.0"
+publish = false
+readme = "README.md"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_tcp"
+rust-version = "1.56.0"
 description = """
 TCP Transport for the Ockam Routing Protocol.
 """
-autoexamples = false
-publish = false
-rust-version = "1.56.0"
 
 [features]
 default = ["std"]
@@ -30,26 +30,19 @@ alloc = []
 [dependencies]
 bytes = "1.4.0"
 futures-util = "0.3"
+hashbrown = { version = "0.13" }
 ockam_core = { path = "../ockam_core", version = "^0.77.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.80.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.50.0" }
 rand = "0.8"
-hashbrown = { version = "0.13" }
-tracing = { version = "0.1", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-tokio = { version = "1.27.0", features = [
-    "rt-multi-thread",
-    "sync",
-    "net",
-    "macros",
-    "time",
-    "io-util",
-] }
+tokio = { version = "1.27.0", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
 tokio-util = { version = "0.7.7", features = ["net", "codec"] }
+tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam_macros = { path = "../ockam_macros", version = "^0.27.0" }
 ockam = { path = "../ockam", version = "^0.83.0" }
+ockam_macros = { path = "../ockam_macros", version = "^0.27.0" }
 
 [[example]]
 name = "client"

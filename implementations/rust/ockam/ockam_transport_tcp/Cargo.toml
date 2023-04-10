@@ -2,25 +2,25 @@
 name = "ockam_transport_tcp"
 version = "0.78.0"
 authors = ["Ockam Developers"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://github.com/build-trust/ockam"
-repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_transport_tcp"
-readme = "README.md"
-keywords = ["ockam", "crypto", "network", "networking", "tcp"]
+autoexamples = false
 categories = [
-    "cryptography",
-    "asynchronous",
-    "authentication",
-    "network-programming",
-    "embedded",
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "network-programming",
+  "embedded",
 ]
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
+keywords = ["ockam", "crypto", "network", "networking", "tcp"]
+license = "Apache-2.0"
+publish = true
+readme = "README.md"
+repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_transport_tcp"
+rust-version = "1.56.0"
 description = """
 TCP Transport for the Ockam Routing Protocol.
 """
-autoexamples = false
-publish = true
-rust-version = "1.56.0"
 
 [features]
 default = ["std"]
@@ -28,24 +28,17 @@ std = ["ockam_macros/std"]
 alloc = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.77.0" }
-ockam_node = { path = "../ockam_node", version = "^0.80.0" }
-ockam_macros = { path = "../ockam_macros", version = "^0.27.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.50.0" }
-serde = { version = "1.0", default-features = false, features = ["derive"] }
-tokio = { version = "1.27", features = [
-    "rt-multi-thread",
-    "sync",
-    "net",
-    "macros",
-    "time",
-    "io-util",
-] }
-rand = "0.8"
-hashbrown = { version = "0.13", default-features = false }
-tracing = { version = "0.1", default-features = false }
-socket2 = { version = "0.5.1", features = ["all"] }
 cfg-if = "1.0.0"
+hashbrown = { version = "0.13", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.77.0" }
+ockam_macros = { path = "../ockam_macros", version = "^0.27.0" }
+ockam_node = { path = "../ockam_node", version = "^0.80.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.50.0" }
+rand = "0.8"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+socket2 = { version = "0.5.1", features = ["all"] }
+tokio = { version = "1.27", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
+tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 trybuild = { version = "1.0", features = ["diff"] }

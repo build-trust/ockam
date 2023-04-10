@@ -1,11 +1,11 @@
 [package]
-authors = ["Ockam Developers"]
-edition = "2021"
-resolver = "2"
-readme = "README.md"
 name = "hello_ockam_no_std"
 version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2021"
 publish = false
+readme = "README.md"
+resolver = "2"
 
 [workspace]
 
@@ -15,19 +15,19 @@ default = ["std"]
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
-    "ockam/default",
+  "ockam/default",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = [
-    "ockam/no_std",
+  "ockam/no_std",
 ]
 
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc = [
-    "ockam/alloc",
+  "ockam/alloc",
 ]
 
 # Feature: "debugger" enables functionality to trace addresses and
@@ -35,12 +35,12 @@ alloc = [
 debugger = ["ockam/debugger"]
 
 cortexm = [
-    "alloc-cortex-m",
-    "cortex-m",
-    "cortex-m-rt",
-    "cortex-m-semihosting",
-    "panic-semihosting",
-    "log-semihosting",
+  "alloc-cortex-m",
+  "cortex-m",
+  "cortex-m-rt",
+  "cortex-m-semihosting",
+  "panic-semihosting",
+  "log-semihosting",
 ]
 
 qemu = ["no_std", "alloc", "cortexm"]

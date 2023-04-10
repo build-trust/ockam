@@ -2,92 +2,92 @@
 name = "ockam_identity"
 version = "0.71.0"
 authors = ["Ockam Developers"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://github.com/build-trust/ockam"
-repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_identity"
-readme = "README.md"
 categories = ["cryptography", "authentication"]
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
 keywords = ["ockam", "crypto", "encryption", "authentication"]
+license = "Apache-2.0"
+publish = true
+readme = "README.md"
+repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_identity"
+rust-version = "1.56.0"
 description = """Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 """
-publish = true
-rust-version = "1.56.0"
 
 [features]
 default = ["std", "software_vault", "noise_xx"]
 noise_xx = ["ockam_key_exchange_xx"]
 software_vault = [
-    "ockam_vault",
-    "ockam_vault/rustcrypto"
+  "ockam_vault",
+  "ockam_vault/rustcrypto",
 ]
 lease_proto_json = ["serde_json"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
-    "alloc",
-    "ockam_core/std",
-    "ockam_macros/std",
-    "ockam_key_exchange_xx/std",
-    "ockam_node/std",
-    "ockam_vault/std",
-    "hex/std",
-    "serde_bare/std",
-    "minicbor/std",
-    "time/std",
+  "alloc",
+  "ockam_core/std",
+  "ockam_macros/std",
+  "ockam_key_exchange_xx/std",
+  "ockam_node/std",
+  "ockam_vault/std",
+  "hex/std",
+  "serde_bare/std",
+  "minicbor/std",
+  "time/std",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = [
-    "ockam_core/no_std",
-    "ockam_macros/no_std",
-    "ockam_key_exchange_xx/no_std",
-    "ockam_node/no_std",
-    "ockam_vault/no_std",
+  "ockam_core/no_std",
+  "ockam_macros/no_std",
+  "ockam_key_exchange_xx/no_std",
+  "ockam_node/no_std",
+  "ockam_vault/no_std",
 ]
 
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc = [
-    "ockam_core/alloc",
-    "ockam_key_exchange_xx/alloc",
-    "ockam_node/alloc",
-    "ockam_vault/alloc",
-    "hex/alloc",
-    "serde_bare/alloc",
+  "ockam_core/alloc",
+  "ockam_key_exchange_xx/alloc",
+  "ockam_node/alloc",
+  "ockam_vault/alloc",
+  "hex/alloc",
+  "serde_bare/alloc",
 ]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.77.0", default-features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.80.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.73.0", default-features = false, optional = true }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.73.0", default-features = false, optional = true }
-serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
-minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
+async-trait = "0.1.64"
 cfg-if = "1.0.0"
 group = { version = "0.13.0", default-features = false }
 heapless = "0.7"
+hex = { version = "0.4", default-features = false }
+minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
+ockam_core = { path = "../ockam_core", version = "^0.77.0", default-features = false }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.73.0", default-features = false, optional = true }
+ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.80.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.73.0", default-features = false, optional = true }
+rand = { version = "0.8", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde-big-array = "0.5"
+serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 serde_json = { version = "1.0", optional = true }
 sha2 = { version = "0.10", default-features = false }
-serde-big-array = "0.5"
 subtle = { version = "2.4.1", default-features = false }
-rand = { version = "0.8", default-features = false }
+time = { version = "0.3.20", features = ["macros", "formatting", "std"], optional = true }
 tracing = { version = "0.1", default_features = false }
-hex = { version = "0.4", default-features = false }
-async-trait = "0.1.64"
-time = { version = "0.3.20", features = ["macros", "formatting", "std"], optional = true}
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 ockam_vault = { path = "../ockam_vault", version = "^0.73.0" }
-zeroize = { version = "1.4.2" }
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 rand_xorshift = "0"
 serde_json = "1.0"
 tokio = { version = "1.27.0", features = ["full"] }
+zeroize = { version = "1.4.2" }

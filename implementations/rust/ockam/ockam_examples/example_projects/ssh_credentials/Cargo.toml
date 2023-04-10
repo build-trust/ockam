@@ -2,9 +2,9 @@
 name = "credential_example"
 version = "0.1.0"
 authors = ["Ockam Developers"]
+autobins = false
 edition = "2021"
 publish = false
-autobins = false
 description = """
 An example of issuing, holding, and verifying a credential
 """

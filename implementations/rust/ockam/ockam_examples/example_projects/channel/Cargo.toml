@@ -2,8 +2,8 @@
 name = "channel_examples"
 version = "0.0.0"
 authors = ["Ockam Developers"]
-edition = "2021"
 autobins = false
+edition = "2021"
 publish = false
 
 [workspace]
@@ -11,12 +11,12 @@ publish = false
 [dependencies]
 ockam = { path = "../../../ockam" }
 ockam_node = { path = "../../../ockam_node" }
-ockam_vault_sync_core = { path = "../../../ockam_vault_sync_core" }
-ockam_vault = { path = "../../../ockam_vault" }
-tracing = { version = "0.1", default-features = false }
 ockam_transport_tcp = { path = "../../../ockam_transport_tcp" }
-tokio = { version = "1.27.0", features = ["rt-multi-thread","sync","net","macros","time"]}
+ockam_vault = { path = "../../../ockam_vault" }
+ockam_vault_sync_core = { path = "../../../ockam_vault_sync_core" }
 rand = "0.8.3"
+tokio = { version = "1.27.0", features = ["rt-multi-thread", "sync", "net", "macros", "time"] }
+tracing = { version = "0.1", default-features = false }
 
 [[bin]]
 path = "src/bin/client.rs"

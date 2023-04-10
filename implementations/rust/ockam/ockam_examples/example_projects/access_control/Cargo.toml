@@ -29,13 +29,11 @@ alloc = ["ockam/alloc"]
 debugger = ["ockam/debugger"]
 
 [dependencies]
-ockam = { path = "../../../ockam", default_features = false, features = [
-    "software_vault",
-] }
+ockam = { path = "../../../ockam", default_features = false, features = ["software_vault"] }
 ockam_core = { path = "../../../ockam_core" } # for transport examples
 serde = { version = "1", default_features = false, features = ["derive"] }
-tracing = { version = "0.1", default_features = false }
 tokio = { version = "1.27.0", default_features = false } # for tokio::time::sleep
+tracing = { version = "0.1", default_features = false }
 
 [dev-dependencies]
 example_test_helper = { path = "../../../../../../tools/docs/example_test_helper" }

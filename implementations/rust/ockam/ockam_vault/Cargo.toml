@@ -2,23 +2,23 @@
 name = "ockam_vault"
 version = "0.73.0"
 authors = ["Ockam Developers"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://github.com/build-trust/ockam"
-repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
-readme = "README.md"
 categories = [
-    "cryptography",
-    "asynchronous",
-    "authentication",
-    "no-std",
-    "algorithms",
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "no-std",
+  "algorithms",
 ]
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
 keywords = ["ockam", "crypto", "cryptography", "authentication", "no-std"]
+license = "Apache-2.0"
+publish = true
+readme = "README.md"
+repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
+rust-version = "1.56.0"
 description = """A software-only Ockam Vault implementation.
 """
-publish = true
-rust-version = "1.56.0"
 
 [lib]
 crate-type = ["rlib"]
@@ -29,32 +29,32 @@ default = ["std", "storage", "rustcrypto"]
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
-    "ockam_core/std",
-    "ockam_macros/std",
-    "ockam_node/std",
-    "aes-gcm/alloc",
-    "aes-gcm/std",
-    "rand/std",
-    "rand/std_rng",
-    "tracing/std",
-    "x25519-dalek/std",
-    "x25519-dalek/u64_backend",
-    "alloc",
-    "p256/std",
-    "fs2"
+  "ockam_core/std",
+  "ockam_macros/std",
+  "ockam_node/std",
+  "aes-gcm/alloc",
+  "aes-gcm/std",
+  "rand/std",
+  "rand/std_rng",
+  "tracing/std",
+  "x25519-dalek/std",
+  "x25519-dalek/u64_backend",
+  "alloc",
+  "p256/std",
+  "fs2",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
 no_std = [
-    "ockam_core/no_std",
-    "ockam_macros/no_std",
-    "ockam_node/no_std",
-    "rand_pcg",
-    "x25519-dalek/u32_backend",
-    "aes-gcm/heapless",
-    "aes-gcm/force-soft",
-    "aes-gcm/stream",
+  "ockam_core/no_std",
+  "ockam_macros/no_std",
+  "ockam_node/no_std",
+  "rand_pcg",
+  "x25519-dalek/u32_backend",
+  "aes-gcm/heapless",
+  "aes-gcm/force-soft",
+  "aes-gcm/stream",
 ]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
@@ -62,37 +62,37 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc", "p256/ecdsa", 
 
 storage = ["std", "serde", "serde_json"]
 
-aws        = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
+aws = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
 # FIXME: Either remove that feature, or avoid unneccessary dependencies when it's disabled
 rustcrypto = []
 
 [dependencies]
+aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
+arrayref = "0.3"
+# AWS KMS specific:
+aws-config = { version = "0.55.0", default-features = false, features = ["native-tls"], optional = true }
+aws-sdk-kms = { version = "0.25.1", default-features = false, features = ["native-tls"], optional = true }
+cfg-if = "1.0.0"
+curve25519-dalek = { version = "3.1", default-features = false }
+ed25519-dalek = { version = "1.0", default-features = false }
+fs2 = { version = "0.4.3", optional = true }
+hex = { version = "0.4", default-features = false }
+hkdf = { version = "0.12", default-features = false }
 ockam_core = { path = "../ockam_core", version = "^0.77.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.80.0", default_features = false }
-arrayref = "0.3"
-aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
-cfg-if  = "1.0.0"
-curve25519-dalek = { version = "3.1", default-features = false }
-ed25519-dalek = { version = "1.0", default-features = false }
-hkdf = { version = "0.12", default-features = false }
-rand = { version = "0.8", default-features = false }
-rand_pcg = { version = "0.3.1", default-features = false, optional = true }
-sha2 = { version = "0.10", default-features = false }
-x25519-dalek = { version = "1.0", default_features = false }
-hex = { version = "0.4", default-features = false }
-tracing = { version = "0.1", default-features = false, features = ["attributes"] }
-serde = { version = "1", features = ["derive"], optional = true }
-serde_json = { version = "1", optional = true }
-fs2 = { version = "0.4.3", optional = true }
-# AWS KMS specific:
-aws-config  = { version = "0.55.0", default-features = false, features = ["native-tls"], optional = true }
-aws-sdk-kms = { version = "0.25.1", default-features = false, features = ["native-tls"], optional = true }
-thiserror   = { version = "1.0.38", optional = true }
 # ECDSA providers:
 p256 = { version = "0.13.0", default_features = false }
+rand = { version = "0.8", default-features = false }
+rand_pcg = { version = "0.3.1", default-features = false, optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+sha2 = { version = "0.10", default-features = false }
+thiserror = { version = "1.0.38", optional = true }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
+x25519-dalek = { version = "1.0", default_features = false }
 
 [dev-dependencies]
+data-encoding = { version = "2.3.3", features = ["alloc"] }
 tokio = { version = "1.27", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }
-data-encoding = { version = "2.3.3", features = ["alloc"] }

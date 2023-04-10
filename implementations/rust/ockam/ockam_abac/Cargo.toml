@@ -1,23 +1,23 @@
 [package]
-name        = "ockam_abac"
-version     = "0.17.0"
-authors     = ["Ockam Developers"]
-edition     = "2021"
-license     = "Apache-2.0"
-homepage    = "https://github.com/build-trust/ockam"
-repository  = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_abac"
-readme      = "README.md"
-categories  = ["cryptography", "authorization"]
-keywords    = ["ockam", "crypto", "encryption", "authorization"]
+name = "ockam_abac"
+version = "0.17.0"
+authors = ["Ockam Developers"]
+categories = ["cryptography", "authorization"]
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
+keywords = ["ockam", "crypto", "encryption", "authorization"]
+license = "Apache-2.0"
+publish = true
+readme = "README.md"
+repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_abac"
 description = "Attribute based authorization control"
-publish     = true
 
 [features]
 default = ["std"]
-no_std  = ["ockam_core/no_std", "ockam_identity/no_std"]
-alloc   = ["ockam_core/alloc", "ockam_identity/alloc"]
-repl    = ["rustyline", "rustyline-derive", "std"]
-std     = [
+no_std = ["ockam_core/no_std", "ockam_identity/no_std"]
+alloc = ["ockam_core/alloc", "ockam_identity/alloc"]
+repl = ["rustyline", "rustyline-derive", "std"]
+std = [
   "ockam_core/std",
   "ockam_identity/std",
   "minicbor/std",
@@ -29,22 +29,22 @@ std     = [
 ]
 
 [dependencies]
-either           = { version = "1.8.1", default-features = false }
-minicbor         = { version = "0.19.0", features = ["derive", "alloc"] }
-ockam_core       = { version = "0.77.0", path = "../ockam_core", default-features = false }
-ockam_identity   = { version = "0.71.0", path = "../ockam_identity", default-features = false }
-once_cell        = { version = "1.17.1", default-features = false, features = ["alloc"] }
-str-buf          = "3.0.1"
-tracing          = { version = "0.1.34", default-features = false }
+either = { version = "1.8.1", default-features = false }
+minicbor = { version = "0.19.0", features = ["derive", "alloc"] }
+ockam_core = { version = "0.77.0", path = "../ockam_core", default-features = false }
+ockam_identity = { version = "0.71.0", path = "../ockam_identity", default-features = false }
+once_cell = { version = "1.17.1", default-features = false, features = ["alloc"] }
 # optional:
-regex            = { version = "1.7.1", default-features = false, optional = true }
-wast             = { version = "55.0.0", default-features = false, optional = true }
-rustyline        = { version = "11.0.0", optional = true }
+regex = { version = "1.7.1", default-features = false, optional = true }
+rustyline = { version = "11.0.0", optional = true }
 rustyline-derive = { version = "0.8.0", optional = true }
+str-buf = "3.0.1"
+tracing = { version = "0.1.34", default-features = false }
+wast = { version = "55.0.0", default-features = false, optional = true }
 
 [dev-dependencies]
 quickcheck = "1.0.3"
-rand       = "0.8.5"
+rand = "0.8.5"
 
 [[bin]]
 name = "repl"
