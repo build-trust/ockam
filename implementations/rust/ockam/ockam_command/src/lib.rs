@@ -28,6 +28,7 @@ mod status;
 mod subscription;
 mod tcp;
 mod terminal;
+mod trust_context;
 mod upgrade;
 mod util;
 mod vault;
@@ -58,6 +59,7 @@ use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
 };
+use trust_context::TrustContextCommand;
 use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
 use vault::VaultCommand;
 use version::Version;
@@ -225,6 +227,7 @@ pub enum OckamSubcommand {
     Completion(CompletionCommand),
     Markdown(MarkdownCommand),
     Manpages(ManpagesCommand),
+    TrustContext(TrustContextCommand),
 }
 
 pub fn run() {
@@ -295,6 +298,7 @@ impl OckamCommand {
             OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Markdown(c) => c.run(),
             OckamSubcommand::Manpages(c) => c.run(),
+            OckamSubcommand::TrustContext(c) => c.run(options),
         }
     }
 }

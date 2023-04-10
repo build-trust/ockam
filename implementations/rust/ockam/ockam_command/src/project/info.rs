@@ -6,7 +6,6 @@ use ockam::Context;
 use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::project::Project;
 
-use ockam_api::config::cli::TrustContextConfig;
 use ockam_core::CowStr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
@@ -111,12 +110,7 @@ async fn run_impl(
         .await?;
     let info: ProjectInfo = rpc.parse_response::<Project>()?.into();
 
-    if cmd.as_trust_context {
-        let tcc = TrustContextConfig::from_project(&(&info).into())?;
-        println!("{}", serde_json::to_string_pretty(&tcc)?);
-    } else {
-        rpc.print_response(&info)?;
-    }
+    rpc.print_response(&info)?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

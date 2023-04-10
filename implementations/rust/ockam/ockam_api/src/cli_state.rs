@@ -1,5 +1,6 @@
 use crate::cloud::project::Project;
 
+use crate::config::cli::TrustContextConfig;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
 use nix::errno::Errno;
@@ -60,11 +61,15 @@ impl From<CliStateError> for ockam_core::Error {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CliState {
+    // TODO: Many of the states share very similarities;
+    // the main difference is the type of the state.
+    // We should refactor and abstract this.
     pub vaults: VaultsState,
     pub identities: IdentitiesState,
     pub nodes: NodesState,
     pub projects: ProjectsState,
     pub credentials: CredentialsState,
+    pub trust_contexts: TrustContextsState,
     pub dir: PathBuf,
 }
 
@@ -82,6 +87,7 @@ impl CliState {
             nodes: NodesState::new(dir)?,
             projects: ProjectsState::new(dir)?,
             credentials: CredentialsState::new(dir)?,
+            trust_contexts: TrustContextsState::new(dir)?,
             dir: dir.to_path_buf(),
         })
     }
@@ -1246,6 +1252,97 @@ impl ProjectState {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TrustContextsState {
+    dir: PathBuf,
+}
+
+impl TrustContextsState {
+    fn new(cli_path: &Path) -> Result<Self> {
+        let dir = cli_path.join("trust_contexts");
+        std::fs::create_dir_all(dir.join("data"))?;
+        Ok(Self { dir })
+    }
+
+    pub fn create(&self, name: &str, config: TrustContextConfig) -> Result<TrustContextState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            path
+        };
+        let contents = serde_json::to_string(&config)?;
+        std::fs::write(&path, contents)?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+
+        Ok(TrustContextState { path })
+    }
+
+    pub fn get(&self, name: &str) -> Result<TrustContextState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("trust context `{name}`")));
+            }
+            path
+        };
+        Ok(TrustContextState { path })
+    }
+
+    pub fn default_path(&self) -> Result<PathBuf> {
+        Ok(
+            CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?
+                .join("trust_context"),
+        )
+    }
+
+    pub fn default(&self) -> Result<TrustContextState> {
+        let path = std::fs::canonicalize(self.default_path()?)?;
+        Ok(TrustContextState { path })
+    }
+
+    pub fn set_default(&self, name: &str) -> Result<TrustContextState> {
+        let original = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("trust context `{name}`")));
+            }
+            path
+        };
+
+        let link = self.default_path()?;
+        std::os::unix::fs::symlink(original, link)?;
+        self.get(name)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TrustContextState {
+    pub path: PathBuf,
+}
+
+impl TrustContextState {
+    pub fn config(&self) -> Result<TrustContextConfig> {
+        let contents = std::fs::read_to_string(&self.path)?;
+        Ok(serde_json::from_str(&contents)?)
+    }
+
+    pub fn name(&self) -> Result<String> {
+        self.path
+            .file_stem()
+            .and_then(|s| s.to_os_string().into_string().ok())
+            .ok_or_else(|| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "failed to parse the trust context name",
+                ))
+            })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialConfig {
     pub issuer: PublicIdentity,
@@ -1462,6 +1559,18 @@ mod tests {
             name
         };
 
+        // Trust
+        let trust_context_name = {
+            let name = hex::encode(random::<[u8; 4]>());
+            let config = TrustContextConfig::new(name.to_string(), None);
+
+            let state = sut.trust_contexts.create(&name, config).unwrap();
+            let got = sut.trust_contexts.get(&name).unwrap();
+            assert_eq!(got, state);
+
+            name
+        };
+
         // Check structure
         let mut expected_entries = vec![
             "vaults".to_string(),
@@ -1476,6 +1585,9 @@ mod tests {
             "projects".to_string(),
             "projects/data".to_string(),
             format!("projects/{project_name}.json"),
+            "trust_contexts".to_string(),
+            "trust_contexts/data".to_string(),
+            format!("trust_contexts/{trust_context_name}.json"),
             "credentials".to_string(),
             "credentials/data".to_string(),
             "defaults".to_string(),
@@ -1483,6 +1595,7 @@ mod tests {
             "defaults/identity".to_string(),
             "defaults/node".to_string(),
             "defaults/project".to_string(),
+            "defaults/trust_context".to_string(),
         ];
         expected_entries.sort();
         let mut found_entries = vec![];
@@ -1580,6 +1693,22 @@ mod tests {
                         assert!(entry.path().is_dir());
                         let file_name = entry.file_name().into_string().unwrap();
                         found_entries.push(format!("{dir_name}/{file_name}"));
+                    });
+                }
+                "trust_contexts" => {
+                    assert!(entry.path().is_dir());
+                    found_entries.push(dir_name.clone());
+                    entry.path().read_dir().unwrap().for_each(|entry| {
+                        let entry = entry.unwrap();
+                        let entry_name = entry.file_name().into_string().unwrap();
+                        if entry.path().is_dir() {
+                            assert_eq!(entry_name, "data");
+                            found_entries.push(format!("{dir_name}/{entry_name}"));
+                        } else {
+                            assert!(entry.path().is_file());
+                            let file_name = entry.file_name().into_string().unwrap();
+                            found_entries.push(format!("{dir_name}/{file_name}"));
+                        }
                     });
                 }
                 _ => panic!("unexpected file"),

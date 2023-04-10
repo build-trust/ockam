@@ -2,6 +2,7 @@ use clap::Args;
 
 use anyhow::anyhow;
 use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
+
 use std::borrow::Borrow;
 use std::io::stdin;
 
@@ -168,6 +169,9 @@ async fn default_project<'a>(
     println!("{}", project.output()?);
 
     opts.state.projects.create(&project.name, project.clone())?;
+    opts.state
+        .trust_contexts
+        .create(&project.name, project.clone().try_into()?)?;
     Ok(project)
 }
 

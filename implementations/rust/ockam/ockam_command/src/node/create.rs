@@ -238,7 +238,6 @@ async fn run_foreground_node(
     let trust_context_config = TrustContextConfigBuilder::new(&cmd.trust_context_opts)
         .with_authority_identity(cmd.authority_identity.as_ref())
         .with_credential_name(cmd.credential.as_ref())
-        .with_default_proj(opts.state.projects.default().ok())
         .build();
 
     let tcp = TcpTransport::create(&ctx).await?;

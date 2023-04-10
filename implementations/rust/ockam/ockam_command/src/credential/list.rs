@@ -26,7 +26,7 @@ async fn run_impl(
     let cred_states = opts.state.credentials.list()?;
 
     for cred_state in cred_states {
-        display_credential(&opts, &ctx, &cred_state.name()?, &cmd.vault, false).await?;
+        display_credential(&opts, &ctx, &cred_state.name()?, &cmd.vault).await?;
     }
 
     Ok(())

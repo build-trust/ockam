@@ -1,9 +1,10 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
-use ockam_api::cli_state::{CliState, ProjectState};
+use ockam_api::cli_state::CliState;
+use ockam_api::cloud::project::Project;
 use ockam_api::config::cli::TrustContextConfig;
 use regex::Regex;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context};
 use clap::Args;
@@ -351,7 +352,7 @@ pub struct TrustContextOpts {
     pub project_path: Option<PathBuf>,
 
     /// Trust Context config file
-    #[arg(global = true, long, value_name = "TRUST_CONTEXT_JSON_PATH", value_parser = parse_trust_context)]
+    #[arg(global = true, long, value_name = "TRUST_CONTEXT_NAME | TRUST_CONTEXT_JSON_PATH", value_parser = parse_trust_context)]
     pub trust_context: Option<TrustContextConfig>,
 
     #[arg(global = true, long = "project")]
@@ -364,7 +365,6 @@ pub struct TrustContextConfigBuilder {
     project: Option<String>,
     authority_identity: Option<String>,
     credential_name: Option<String>,
-    default_proj: Option<PathBuf>,
 }
 
 impl TrustContextConfigBuilder {
@@ -375,7 +375,6 @@ impl TrustContextConfigBuilder {
             project: tco.project.clone(),
             authority_identity: None,
             credential_name: None,
-            default_proj: None,
         }
     }
 
@@ -391,12 +390,6 @@ impl TrustContextConfigBuilder {
         self
     }
 
-    // with_default_proj
-    pub fn with_default_proj(&mut self, default_proj: Option<ProjectState>) -> &mut Self {
-        self.default_proj = default_proj.map(|s| s.path);
-        self
-    }
-
     pub fn build(&self) -> Option<TrustContextConfig> {
         self.trust_context
             .clone()
@@ -404,17 +397,20 @@ impl TrustContextConfigBuilder {
             .or_else(|| self.get_from_project_name())
             .or_else(|| self.get_from_authority_identity())
             .or_else(|| self.get_from_credential())
-            .or_else(|| {
-                self.default_proj
-                    .as_ref()
-                    .and_then(|path| self.get_from_project_path(path))
-            })
+            .or_else(|| self.get_from_default_trust_context())
+            .or_else(|| self.get_from_default_project())
     }
 
     fn get_from_project_path(&self, path: &PathBuf) -> Option<TrustContextConfig> {
-        let s = std::fs::read_to_string(path).unwrap();
-        let proj_info: ProjectInfo = serde_json::from_str(&s).unwrap();
-        TrustContextConfig::from_project(&(&proj_info).into()).ok()
+        let s = std::fs::read_to_string(path)
+            .context("Failed to read project file")
+            .ok()?;
+        let proj_info = serde_json::from_str::<ProjectInfo>(&s)
+            .context("Failed to parse project info")
+            .ok()?;
+        let proj: Project = (&proj_info).into();
+
+        proj.try_into().ok()
     }
 
     fn get_from_project_name(&self) -> Option<TrustContextConfig> {
@@ -422,7 +418,8 @@ impl TrustContextConfigBuilder {
         let lookup = config.lookup();
         let name = self.project.as_ref()?;
         let project_lookup = lookup.get_project(name)?;
-        TrustContextConfig::from_project_loookup(project_lookup).ok()
+
+        project_lookup.clone().try_into().ok()
     }
 
     fn get_from_authority_identity(&self) -> Option<TrustContextConfig> {
@@ -441,14 +438,47 @@ impl TrustContextConfigBuilder {
         let cred_name = self.credential_name.clone()?;
         let cred_state = state.credentials.get(&cred_name).ok()?;
 
-        TrustContextConfig::from_credential_state(cred_state).ok()
+        cred_state.try_into().ok()
+    }
+
+    fn get_from_default_trust_context(&self) -> Option<TrustContextConfig> {
+        let state = CliState::try_default().ok()?;
+        let tc = state.trust_contexts.default().ok()?.config().ok()?;
+        Some(tc)
+    }
+
+    fn get_from_default_project(&self) -> Option<TrustContextConfig> {
+        let state = CliState::try_default().ok()?;
+        let proj = state.projects.default().ok()?;
+
+        self.get_from_project_path(&proj.path)
     }
 }
 
-pub fn parse_trust_context(trust_context_path: &str) -> Result<TrustContextConfig> {
-    let trust_context = std::fs::read_to_string(trust_context_path)?;
-    let mut tc: TrustContextConfig =
-        serde_json::from_str(&trust_context).context(anyhow!("Not a valid trust context"))?;
+pub fn parse_trust_context(trust_context_input: &str) -> Result<TrustContextConfig> {
+    let trust_context_path = match Path::new(trust_context_input).exists() {
+        true => Some(trust_context_input.to_string()),
+        false => {
+            let tc = CliState::try_default()
+                .ok()
+                .and_then(|state| state.trust_contexts.get(trust_context_input).ok());
+            Some(
+                tc.context("Invalid Trust Context name or path")?
+                    .path
+                    .to_str()
+                    .context("Unable to obtain path to trust context")?
+                    .to_string(),
+            )
+        }
+    }
+    .context(format!(
+        "Unable to retrieve trust context from input {}",
+        trust_context_input
+    ))?;
+
+    let serialized_trust_context = std::fs::read_to_string(&trust_context_path)?;
+    let mut tc: TrustContextConfig = serde_json::from_str(&serialized_trust_context)
+        .context(anyhow!("Not a valid trust context"))?;
     tc.set_path(PathBuf::from(trust_context_path));
 
     Ok(tc)

@@ -59,9 +59,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     };
 
     let trust_context_config = match trust_opts {
-        Some(t) => TrustContextConfigBuilder::new(t)
-            .with_default_proj(opts.state.projects.default().ok())
-            .build(),
+        Some(t) => TrustContextConfigBuilder::new(t).build(),
         None => None,
     };
 

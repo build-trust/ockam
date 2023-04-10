@@ -1,6 +1,6 @@
 //! Configuration files used by the ockam CLI
 
-use crate::cli_state::CredentialState;
+use crate::cli_state::{CliStateError, CredentialState};
 use crate::cloud::project::Project;
 use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::error::ApiError;
@@ -133,7 +133,43 @@ impl TrustContextConfig {
         Ok(TrustContext::new(self.id.clone(), authority))
     }
 
-    pub fn from_project(project_info: &Project<'_>) -> Result<Self> {
+    pub fn from_authority_identity(
+        authority_identity: &str,
+        credential: Option<CredentialState>,
+    ) -> Result<Self> {
+        let own_cred = credential.map(CredentialRetrieverType::FromPath);
+        let trust_context = TrustContextConfig::new(
+            authority_identity.to_string(),
+            Some(TrustAuthorityConfig::new(
+                authority_identity.to_string(),
+                own_cred,
+            )),
+        );
+
+        Ok(trust_context)
+    }
+}
+
+impl TryFrom<CredentialState> for TrustContextConfig {
+    type Error = CliStateError;
+
+    fn try_from(state: CredentialState) -> std::result::Result<Self, Self::Error> {
+        let issuer = state.config()?.issuer;
+        let bytes = issuer.export()?;
+        let public_identity = hex::encode(bytes);
+        let retriever = CredentialRetrieverType::FromPath(state);
+        let authority = TrustAuthorityConfig::new(public_identity, Some(retriever));
+        Ok(TrustContextConfig::new(
+            issuer.identifier().to_string(),
+            Some(authority),
+        ))
+    }
+}
+
+impl TryFrom<Project<'_>> for TrustContextConfig {
+    type Error = CliStateError;
+
+    fn try_from(project_info: Project<'_>) -> std::result::Result<TrustContextConfig, Self::Error> {
         let authority = match (
             &project_info.authority_access_route,
             &project_info.authority_identity,
@@ -155,8 +191,14 @@ impl TrustContextConfig {
             authority,
         ))
     }
+}
 
-    pub fn from_project_loookup(project_lookup: &ProjectLookup) -> Result<Self> {
+impl TryFrom<ProjectLookup> for TrustContextConfig {
+    type Error = ApiError;
+
+    fn try_from(
+        project_lookup: ProjectLookup,
+    ) -> std::result::Result<TrustContextConfig, ApiError> {
         let proj_auth = project_lookup
             .authority
             .as_ref()
@@ -173,34 +215,6 @@ impl TrustContextConfig {
         Ok(TrustContextConfig::new(
             project_lookup.id.clone(),
             authority,
-        ))
-    }
-
-    pub fn from_authority_identity(
-        authority_identity: &str,
-        credential: Option<CredentialState>,
-    ) -> Result<Self> {
-        let own_cred = credential.map(CredentialRetrieverType::FromPath);
-        let trust_context = TrustContextConfig::new(
-            authority_identity.to_string(),
-            Some(TrustAuthorityConfig::new(
-                authority_identity.to_string(),
-                own_cred,
-            )),
-        );
-
-        Ok(trust_context)
-    }
-
-    pub fn from_credential_state(state: CredentialState) -> Result<Self> {
-        let issuer = state.config()?.issuer;
-        let bytes = issuer.export()?;
-        let public_identity = hex::encode(bytes);
-        let retriever = CredentialRetrieverType::FromPath(state);
-        let authority = TrustAuthorityConfig::new(public_identity, Some(retriever));
-        Ok(TrustContextConfig::new(
-            issuer.identifier().to_string(),
-            Some(authority),
         ))
     }
 }
