@@ -12,7 +12,7 @@ use ockam_api::nodes::models::services::{
 use ockam_api::port_range::PortRange;
 use ockam_api::DefaultAddress;
 use ockam_core::api::{Request, RequestBuilder, Status};
-use ockam_core::compat::net::Ipv4Addr;
+use ockam_core::compat::net::{Ipv4Addr, SocketAddr};
 use ockam_multiaddr::MultiAddr;
 
 /// Start a specified service
@@ -64,13 +64,11 @@ pub enum StartSubCommand {
         /// The local address of the service
         #[arg(long, default_value_t = kafka_consumer_default_addr())]
         addr: String,
-        /// The address where to bind and where the client will connect to
-        #[arg(long, default_value_t = [127, 0, 0, 1].into())]
-        bootstrap_server_ip: Ipv4Addr,
-        /// The port to bind to and where the client will connect to
-        #[arg(long)]
-        bootstrap_server_port: u16,
-        /// Local port range dynamically allocated to kafka brokers, mut not overlap with the
+        /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
+        /// In case just a port is specified, the default loopback address (127.0.0.1) will be used
+        #[arg(long, value_parser = parse_bootstrap_server)]
+        bootstrap_server: SocketAddr,
+        /// Local port range dynamically allocated to kafka brokers, must not overlap with the
         /// bootstrap port
         #[arg(long)]
         brokers_port_range: PortRange,
@@ -82,13 +80,11 @@ pub enum StartSubCommand {
         /// The local address of the service
         #[arg(long, default_value_t = kafka_producer_default_addr())]
         addr: String,
-        /// The address where to bind and where the client will connect to
-        #[arg(long, default_value_t = [127, 0, 0, 1].into())]
-        bootstrap_server_ip: Ipv4Addr,
-        /// The port to bind to and where the client will connect to
-        #[arg(long)]
-        bootstrap_server_port: u16,
-        /// Local port range dynamically allocated to kafka brokers, mut not overlap with the
+        /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
+        /// In case just a port is specified, the default loopback address (127.0.0.1) will be used
+        #[arg(long, value_parser = parse_bootstrap_server)]
+        bootstrap_server: SocketAddr,
+        /// Local port range dynamically allocated to kafka brokers, must not overlap with the
         /// bootstrap port
         #[arg(long)]
         brokers_port_range: PortRange,
@@ -187,17 +183,12 @@ async fn run_impl(
         }
         StartSubCommand::KafkaConsumer {
             addr,
-            bootstrap_server_ip,
-            bootstrap_server_port,
+            bootstrap_server,
             brokers_port_range,
             project_route,
         } => {
-            let payload = StartKafkaConsumerRequest::new(
-                bootstrap_server_ip,
-                bootstrap_server_port,
-                brokers_port_range,
-                project_route,
-            );
+            let payload =
+                StartKafkaConsumerRequest::new(bootstrap_server, brokers_port_range, project_route);
             let payload = StartServiceRequest::new(payload, &addr);
             let req = Request::post("/node/services/kafka_consumer").body(payload);
             start_service_impl(
@@ -213,17 +204,12 @@ async fn run_impl(
         }
         StartSubCommand::KafkaProducer {
             addr,
-            bootstrap_server_ip,
-            bootstrap_server_port,
+            bootstrap_server,
             brokers_port_range,
             project_route,
         } => {
-            let payload = StartKafkaProducerRequest::new(
-                bootstrap_server_ip,
-                bootstrap_server_port,
-                brokers_port_range,
-                project_route,
-            );
+            let payload =
+                StartKafkaProducerRequest::new(bootstrap_server, brokers_port_range, project_route);
             let payload = StartServiceRequest::new(payload, &addr);
             let req = Request::post("/node/services/kafka_producer").body(payload);
             start_service_impl(
@@ -268,6 +254,34 @@ where
             eprintln!("{}", rpc.parse_err_msg(res, dec));
             Err(anyhow!("Failed to start {serv_name} service").into())
         }
+    }
+}
+
+/// Helper routine for parsing bootstrap server ip and port from user input
+/// It can parse a string containing either an `ip:port` pair or just a `port`
+/// into a valid SocketAddr instance.
+fn parse_bootstrap_server(bootstrap_server: &str) -> Result<SocketAddr> {
+    let addr: Vec<&str> = bootstrap_server.split(':').collect();
+    match addr.len() {
+        // Only the port is available
+        1 => {
+            let port: u16 = addr[0]
+                .parse()
+                .map_err(|_| anyhow!("Invalid port number"))?;
+            let ip: Ipv4Addr = [127, 0, 0, 1].into();
+            Ok(SocketAddr::new(ip.into(), port))
+        }
+        // Both the ip and port are available
+        2 => {
+            let port: u16 = addr[1]
+                .parse()
+                .map_err(|_| anyhow!("Invalid port number"))?;
+            let ip = addr[0]
+                .parse::<Ipv4Addr>()
+                .map_err(|_| anyhow!("Invalid IP address"))?;
+            Ok(SocketAddr::new(ip.into(), port))
+        }
+        _ => Err(anyhow!("Failed to parse bootstrap server").into()),
     }
 }
 
@@ -319,4 +333,48 @@ pub async fn start_authenticator_service(
 ) -> Result<()> {
     let req = api::start_authenticator_service(serv_addr, project);
     start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req, tcp).await
+}
+
+#[cfg(test)]
+mod tests {
+    use ockam_core::compat::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+    use crate::service::start::parse_bootstrap_server;
+
+    #[test]
+    fn test_parse_bootstrap_server() {
+        // Test case 1: only a port is provided
+        let input = "9000";
+        let result = parse_bootstrap_server(input);
+        assert!(result.is_ok());
+        if let Ok(bootstrap_server) = result {
+            assert_eq!(
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9000),
+                bootstrap_server
+            );
+        }
+
+        // Test case 2: Any 4 octet combination (IPv4) followed by ":" like in "192.168.0.1:9999"
+        let input = "192.168.0.1:9999";
+        let result = parse_bootstrap_server(input);
+        assert!(result.is_ok());
+        if let Ok(bootstrap_server) = result {
+            assert_eq!(
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 0, 1)), 9999),
+                bootstrap_server
+            );
+        }
+
+        // Test case 3: Any other format will throw an error
+        let invalid_input = "invalid";
+        assert!(parse_bootstrap_server(invalid_input).is_err());
+
+        let invalid_input = "192.168.0.1:invalid";
+        assert!(parse_bootstrap_server(invalid_input).is_err());
+
+        let invalid_input = "192.168.0.1:9999:extra";
+        assert!(parse_bootstrap_server(invalid_input).is_err());
+        let invalid_input = "192,166,0.1:9999";
+        assert!(parse_bootstrap_server(invalid_input).is_err());
+    }
 }

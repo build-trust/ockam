@@ -1,5 +1,5 @@
 use minicbor::{Decode, Encode};
-use ockam_core::compat::net::Ipv4Addr;
+use ockam_core::compat::net::SocketAddr;
 use ockam_core::{CowBytes, CowStr};
 
 use serde::Serialize;
@@ -41,32 +41,26 @@ impl<'a, T> StartServiceRequest<'a, T> {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaConsumerRequest<'a> {
-    #[b(1)] bootstrap_server_ip: CowStr<'a>,
-    #[n(2)] bootstrap_server_port: u16,
-    #[n(3)] brokers_port_range: (u16, u16),
-    #[b(4)] project_route: CowStr<'a>,
+    #[b(1)] pub bootstrap_server_addr: SocketAddr,
+    #[n(2)] brokers_port_range: (u16, u16),
+    #[b(3)] project_route: CowStr<'a>,
 }
 
 impl<'a> StartKafkaConsumerRequest<'a> {
     pub fn new(
-        bootstrap_server_ip: Ipv4Addr,
-        bootstrap_server_port: u16,
+        bootstrap_server_addr: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
         project_route: MultiAddr,
     ) -> Self {
         Self {
-            bootstrap_server_ip: bootstrap_server_ip.to_string().into(),
-            bootstrap_server_port,
+            bootstrap_server_addr,
             brokers_port_range: brokers_port_range.into(),
             project_route: project_route.to_string().into(),
         }
     }
 
-    pub fn bootstrap_server_ip(&self) -> &CowStr<'a> {
-        &self.bootstrap_server_ip
-    }
-    pub fn bootstrap_server_port(&self) -> u16 {
-        self.bootstrap_server_port
+    pub fn bootstrap_server_addr(&self) -> SocketAddr {
+        self.bootstrap_server_addr
     }
     pub fn brokers_port_range(&self) -> (u16, u16) {
         self.brokers_port_range
@@ -80,32 +74,26 @@ impl<'a> StartKafkaConsumerRequest<'a> {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaProducerRequest<'a> {
-    #[b(1)] bootstrap_server_ip: CowStr<'a>,
-    #[n(2)] bootstrap_server_port: u16,
-    #[n(3)] brokers_port_range: (u16, u16),
-    #[b(4)] project_route: CowStr<'a>,
+    #[b(1)] pub bootstrap_server_addr: SocketAddr,
+    #[n(2)] brokers_port_range: (u16, u16),
+    #[b(3)] project_route: CowStr<'a>,
 }
 
 impl<'a> StartKafkaProducerRequest<'a> {
     pub fn new(
-        bootstrap_server_ip: Ipv4Addr,
-        bootstrap_server_port: u16,
+        bootstrap_server_addr: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
         project_route: MultiAddr,
     ) -> Self {
         Self {
-            bootstrap_server_ip: bootstrap_server_ip.to_string().into(),
-            bootstrap_server_port,
+            bootstrap_server_addr,
             brokers_port_range: brokers_port_range.into(),
             project_route: project_route.to_string().into(),
         }
     }
 
-    pub fn bootstrap_server_ip(&self) -> &CowStr<'a> {
-        &self.bootstrap_server_ip
-    }
-    pub fn bootstrap_server_port(&self) -> u16 {
-        self.bootstrap_server_port
+    pub fn bootstrap_server_addr(&self) -> SocketAddr {
+        self.bootstrap_server_addr
     }
     pub fn brokers_port_range(&self) -> (u16, u16) {
         self.brokers_port_range
