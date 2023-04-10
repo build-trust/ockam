@@ -62,57 +62,37 @@ teardown() {
 }
 
 @test "projects - access requiring credential" {
-  skip_if_long_tests_not_enabled
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
-
-  # Create new project and export it
-  space_name=$(random_str)
-  project_name=$(random_str)
-  run "$OCKAM" space create "${space_name}"
-  assert_success
-  run "$OCKAM" project create "${space_name}" "${project_name}"
-  assert_success
-  $OCKAM project information "${project_name}" --output json >"$ENROLLED_OCKAM_HOME/${project_name}_project.json"
 
   # Change to a new home directory where there are no enrolled identities
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  # Create identities
+  # Create a named default identity
   run "$OCKAM" identity create green
-  run "$OCKAM" identity create blue
   green_identifier=$($OCKAM identity show green)
 
-  # Create nodes for the non-enrolled identities using the exported project information
-  run "$OCKAM" node create green --project-path "$ENROLLED_OCKAM_HOME/${project_name}_project.json" --identity green
-  assert_success
-  run "$OCKAM" node create blue --project-path "$ENROLLED_OCKAM_HOME/${project_name}_project.json" --identity blue
-  assert_success
+  # Create node for the non-enrolled identity using the exported project information
+  run "$OCKAM" node create green --project-path "$ENROLLED_OCKAM_HOME/project.json"
 
-  # Blue can't create forwarder as it isn't a member
+  # Node can't create forwarder as it isn't a member
   fwd=$(random_str)
-  run "$OCKAM" forwarder create "$fwd" --at "/project/${project_name}" --to /node/blue
+  run "$OCKAM" forwarder create "$fwd"
   assert_failure
 
-  # Add green as a member
+  # Add node as a member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project enroll --member "$green_identifier" --to "/project/${project_name}/service/authenticator" --attribute role=member
+  run "$OCKAM" project enroll --member "$green_identifier" --attribute role=member
   assert_success
 
-  # Now green can access project' services
+  # The node can now access the project's services
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   fwd=$(random_str)
-  run "$OCKAM" forwarder create "$fwd" --at "/project/${project_name}" --to /node/green
+  run "$OCKAM" forwarder create "$fwd"
   assert_success
 
-  # Remove project and space
+  teardown_home_dir
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project delete "${space_name}" "${project_name}"
-  assert_success
-  run "$OCKAM" space delete "${space_name}"
-  assert_success
-
-  OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   teardown_home_dir
 }
 
