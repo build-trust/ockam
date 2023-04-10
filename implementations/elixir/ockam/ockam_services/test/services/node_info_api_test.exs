@@ -13,12 +13,12 @@ defmodule Test.Services.API.NodeInfoTest do
   end
 
   test "node info without version crashes" do
-    assert {:error, _reason} = NodeInfo.create()
-    assert {:error, _reason} = NodeInfo.create(info: %{})
-    assert {:error, _reason} = NodeInfo.create(info: %NodeInfo.Info{})
+    assert {:error, _reason} = NodeInfo.create(restart_type: :temporary)
+    assert {:error, _reason} = NodeInfo.create(info: %{}, restart_type: :temporary)
+    assert {:error, _reason} = NodeInfo.create(info: %NodeInfo.Info{}, restart_type: :temporary)
 
     Process.flag(:trap_exit, true)
     {:ok, pid, _info} = NodeInfo.start_link([])
-    assert_receive {:EXIT, pid, _reason}, 5_000
+    assert_receive {:EXIT, ^pid, _reason}, 5_000
   end
 end

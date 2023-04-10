@@ -79,7 +79,7 @@ defmodule Ockam.Healthcheck.MixProject do
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",
       lint: ["lint.format", "lint.credo"],
-      "test.cover": "test --no-start --cover"
+      "test.cover": "test --cover"
     ]
   end
 end
