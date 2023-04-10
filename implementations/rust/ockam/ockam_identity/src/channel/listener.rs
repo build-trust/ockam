@@ -36,6 +36,10 @@ impl IdentityChannelListener {
             }
         }
 
+        if let Some((sessions, session_id)) = &trust_options.channels_producer_session {
+            sessions.add_spawner(&address, session_id);
+        }
+
         let listener = Self::new(trust_options, identity);
 
         ctx.start_worker(

@@ -30,13 +30,18 @@ impl TcpListenProcessor {
             .await
             .map_err(TransportError::from)?;
         let saddr = inner.local_addr().map_err(TransportError::from)?;
+
+        let address = Address::random_tagged("TcpListenProcessor");
+        if let Some((sessions, session_id)) = &trust_options.spawner_session {
+            sessions.add_spawner(&address, session_id);
+        }
+
         let processor = Self {
             registry,
             inner,
             trust_options,
         };
 
-        let address = Address::random_tagged("TcpListenProcessor");
         ctx.start_processor(address.clone(), processor, DenyAll, DenyAll)
             .await?;
 
