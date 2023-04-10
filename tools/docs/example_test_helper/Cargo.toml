@@ -1,18 +1,18 @@
 [package]
 name = "example_test_helper"
-license = "Apache-2.0"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
 publish = false
 rust-version = "1.56.0"
 
 [dependencies]
+cfg-if = "1.0.0"
 duct = "0.13"
-shellwords = "1.1"
-regex = "1.7"
 libc = "0.2"
+regex = "1.7"
+shellwords = "1.1"
+tempfile = "3"
 thiserror = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tempfile = "3"
-cfg-if = "1.0.0"

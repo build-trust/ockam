@@ -2,9 +2,9 @@
 name = "node_examples"
 version = "0.0.0"
 authors = ["Ockam Developers"]
+autobins = false
 edition = "2021"
 publish = false
-autobins = false
 
 [workspace]
 

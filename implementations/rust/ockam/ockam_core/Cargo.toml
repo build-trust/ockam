@@ -2,24 +2,24 @@
 name = "ockam_core"
 version = "0.77.0"
 authors = ["Ockam Developers"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://github.com/build-trust/ockam"
-repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_core"
-readme = "README.md"
 categories = [
-    "cryptography",
-    "asynchronous",
-    "authentication",
-    "network-programming",
-    "embedded",
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "network-programming",
+  "embedded",
 ]
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
 keywords = ["ockam", "crypto", "p2p", "cryptography", "encryption"]
+license = "Apache-2.0"
+publish = true
+readme = "README.md"
+repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_core"
+rust-version = "1.56.0"
 description = """
 Core types of the Ockam library.
 """
-publish = true
-rust-version = "1.56.0"
 
 [features]
 default = ["std", "error-traces"]
@@ -27,15 +27,15 @@ default = ["std", "error-traces"]
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
-    "alloc",
-    "hex/std",
-    "minicbor/std",
-    "rand/std",
-    "rand/std_rng",
-    "serde_bare/std",
-    "ockam_macros/std",
-    "once_cell/std",
-    "tinyvec/std"
+  "alloc",
+  "hex/std",
+  "minicbor/std",
+  "rand/std",
+  "rand/std_rng",
+  "serde_bare/std",
+  "ockam_macros/std",
+  "once_cell/std",
+  "tinyvec/std",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -44,12 +44,12 @@ no_std = ["core2", "hex", "rand_pcg", "spin", "ockam_macros/no_std"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = [
-    "core2/alloc",
-    "heapless",
-    "hex/alloc",
-    "minicbor/alloc",
-    "serde/alloc",
-    "serde_bare/alloc",
+  "core2/alloc",
+  "heapless",
+  "hex/alloc",
+  "minicbor/alloc",
+  "serde/alloc",
+  "serde_bare/alloc",
 ]
 
 # Feature: "error-traces" cover whether not our errors capture
@@ -66,37 +66,26 @@ tag = ["cddl-cat", "serde_cbor"]
 quickcheck = "1.0.1"
 
 [dependencies]
-ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default_features = false }
 async-trait = "0.1.64"
-hashbrown = { version = "0.13", default-features = false, features = [
-    "ahash",
-    "serde",
-] }
+backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
+cddl-cat = { version = "0.6.1", optional = true }
+cfg-if = "1.0"
+core2 = { version = "0.4.0", default-features = false, optional = true }
+futures-util = { version = "0.3.17", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
+hashbrown = { version = "0.13", default-features = false, features = ["ahash", "serde"] }
 heapless = { version = "0.7.1", optional = true }
 hex = { version = "0.4", default-features = false, optional = true }
 minicbor = { version = "0.19.0", features = ["derive"] }
-serde = { version = "1.0", default-features = false, features = ["derive"] }
-serde_bare = { version = "0.5.0", default-features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default_features = false }
+once_cell = { version = "1", optional = true, default-features = false }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
-core2 = { version = "0.4.0", default-features = false, optional = true }
-spin = { version = "0.9.8", default-features = false, features = [
-    "mutex",
-    "rwlock",
-    "spin_mutex",
-], optional = true }
-futures-util = { version = "0.3.17", default-features = false, features = [
-    "alloc",
-    "async-await-macro",
-    "sink",
-] }
-tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
-zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
-cfg-if = "1.0"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde_bare = { version = "0.5.0", default-features = false }
+serde_cbor = { version = "0.11.2", optional = true }
+spin = { version = "0.9.8", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
 subtle = { version = "2", default-features = false }
+tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-error = { version = "0.2", default-features = false, optional = true }
-backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
-once_cell = { version = "1", optional = true, default-features = false }
-cddl-cat = { version = "0.6.1", optional = true }
-serde_cbor = { version = "0.11.2", optional = true }
+zeroize = { version = "1.4.2", features = ["zeroize_derive"] }

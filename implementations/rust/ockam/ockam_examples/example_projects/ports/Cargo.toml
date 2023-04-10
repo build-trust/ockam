@@ -2,18 +2,17 @@
 name = "ports_example"
 version = "0.1.0"
 authors = ["Ockam Developers"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://github.com/build-trust/ockam"
-publish = false
 autobins = false
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
+license = "Apache-2.0"
+publish = false
 
 [workspace]
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ockam = {  path = "../../../ockam" }
+ockam = { path = "../../../ockam" }
 
 [[bin]]
 name = "ports_example_inlet"

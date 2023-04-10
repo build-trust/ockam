@@ -1,15 +1,15 @@
 [package]
-authors = ["Ockam Developers"]
-description = """Example projects using the Ockam APIs"""
+name = "ockam_examples"
 version = "0.44.0"
+authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/build-trust/ockam"
 keywords = ["ockam", "crypto", "cryptography"]
 license = "Apache-2.0"
-name = "ockam_examples"
+publish = false
 readme = "README.md"
 repository = "https://github.com/build-trust/ockam"
-publish = false
 rust-version = "1.56.0"
+description = """Example projects using the Ockam APIs"""
 
 [dependencies]

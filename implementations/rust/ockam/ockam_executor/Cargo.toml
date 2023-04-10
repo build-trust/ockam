@@ -1,22 +1,22 @@
 [package]
-authors = ["Ockam Developers"]
-categories = [
-    "cryptography",
-    "asynchronous",
-    "authentication",
-    "no-std",
-    "algorithms",
-]
-description = "Ockam async executor crate"
-edition = "2021"
-homepage = "https://github.com/build-trust/ockam"
-repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_executor"
-keywords = ["ockam", "crypto", "encryption", "authentication"]
-license = "Apache-2.0"
 name = "ockam_executor"
 version = "0.45.0"
+authors = ["Ockam Developers"]
+categories = [
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "no-std",
+  "algorithms",
+]
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
+keywords = ["ockam", "crypto", "encryption", "authentication"]
+license = "Apache-2.0"
 publish = true
+repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_executor"
 rust-version = "1.56.0"
+description = "Ockam async executor crate"
 
 [features]
 default = ["std"]
@@ -33,12 +33,8 @@ alloc = ["futures/alloc", "ockam_core/alloc"]
 no_std = ["ockam_core/no_std"]
 
 [dependencies]
-crossbeam-queue = { version = "0.3.2", default_features = false, features = [
-    "alloc",
-] }
-futures = { version = "0.3.28", default-features = false, features = [
-    "async-await",
-] }
+crossbeam-queue = { version = "0.3.2", default_features = false, features = ["alloc"] }
+futures = { version = "0.3.28", default-features = false, features = ["async-await"] }
 heapless = { version = "0.7", features = ["mpmc_large"] }
 ockam_core = { path = "../ockam_core", version = "^0.77.0", default_features = false }
 pin-project-lite = "0.2"

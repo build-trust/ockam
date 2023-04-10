@@ -1,29 +1,29 @@
 [package]
 name = "ockam_macros"
 version = "0.27.0"
-edition = "2021"
-license = "Apache-2.0"
 authors = ["Ockam Developers"]
 categories = [
-    "cryptography",
-    "asynchronous",
-    "authentication",
-    "network-programming",
-    "embedded",
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "network-programming",
+  "embedded",
 ]
-description = "End-to-end encryption and mutual authentication for distributed applications."
+edition = "2021"
 homepage = "https://github.com/build-trust/ockam"
 keywords = [
-    "ockam",
-    "crypto",
-    "cryptography",
-    "network-programming",
-    "encryption",
+  "ockam",
+  "crypto",
+  "cryptography",
+  "network-programming",
+  "encryption",
 ]
+license = "Apache-2.0"
+publish = true
 readme = "README.md"
 repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_macros"
-publish = true
 rust-version = "1.56.0"
+description = "End-to-end encryption and mutual authentication for distributed applications."
 
 [lib]
 proc-macro = true
