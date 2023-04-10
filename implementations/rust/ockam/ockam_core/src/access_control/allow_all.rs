@@ -1,6 +1,6 @@
 use crate::access_control::IncomingAccessControl;
 use crate::compat::boxed::Box;
-use crate::{OutgoingAccessControl, RelayMessage, Result};
+use crate::{async_trait, OutgoingAccessControl, RelayMessage, Result};
 
 /// An Access Control type that allows all messages to pass through.
 #[derive(Debug)]

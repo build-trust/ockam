@@ -110,7 +110,7 @@ impl WebSocketRouter {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Worker for WebSocketRouter {
     type Message = Any;
     type Context = Context;

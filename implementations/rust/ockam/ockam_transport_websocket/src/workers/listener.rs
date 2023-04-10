@@ -44,7 +44,7 @@ impl WebSocketListenProcessor {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Processor for WebSocketListenProcessor {
     type Context = Context;
 

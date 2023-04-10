@@ -1,5 +1,7 @@
 use crate::compat::boxed::Box;
-use crate::{IncomingAccessControl, OutgoingAccessControl, RelayMessage, Result, LOCAL};
+use crate::{
+    async_trait, IncomingAccessControl, OutgoingAccessControl, RelayMessage, Result, LOCAL,
+};
 
 /// Allows only messages to local workers
 #[derive(Debug)]
