@@ -56,6 +56,15 @@ pub struct Credential {
     #[b(2)] signature: Vec<u8>,
 }
 
+#[derive(Debug, Clone, Copy, Decode, Encode, PartialEq, Eq)]
+#[rustfmt::skip]
+#[cbor(index_only)]
+pub enum CredentialExchangeMode {
+    #[n(0)] None,
+    #[n(1)] Oneway,
+    #[n(2)] Mutual,
+}
+
 impl fmt::Display for Credential {
     #[cfg(feature = "std")]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

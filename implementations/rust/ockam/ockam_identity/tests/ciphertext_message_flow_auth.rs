@@ -5,6 +5,7 @@ use crate::common::{
 };
 use core::time::Duration;
 use ockam_core::{route, Result};
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_identity::SecureChannelOptions;
 use ockam_node::Context;
 
@@ -67,6 +68,9 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_extended(
             route![connection_to_bob.address.clone(), "listener"],
             SecureChannelOptions::new(),
+            CredentialExchangeMode::None,
+            None,
+            vec![],
             Duration::from_secs(1),
         )
         .await;
@@ -147,6 +151,9 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_extended(
             route![connection_to_bob.address.clone(), "listener"],
             SecureChannelOptions::new(),
+            CredentialExchangeMode::None,
+            None,
+            vec![],
             Duration::from_secs(1),
         )
         .await;
@@ -187,6 +194,9 @@ async fn test5(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_extended(
             route![connection_to_alice.address.clone(), "listener"],
             SecureChannelOptions::new(),
+            CredentialExchangeMode::None,
+            None,
+            vec![],
             Duration::from_secs(1),
         )
         .await;

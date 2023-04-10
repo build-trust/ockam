@@ -1,13 +1,13 @@
 use std::time::Duration;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
+use crate::create_tcp_session;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
-    CredentialExchangeMode, DeleteSecureChannelListenerRequest,
-    DeleteSecureChannelListenerResponse, DeleteSecureChannelRequest, DeleteSecureChannelResponse,
-    ShowSecureChannelListenerRequest, ShowSecureChannelListenerResponse, ShowSecureChannelRequest,
-    ShowSecureChannelResponse,
+    DeleteSecureChannelListenerRequest, DeleteSecureChannelListenerResponse,
+    DeleteSecureChannelRequest, DeleteSecureChannelResponse, ShowSecureChannelListenerRequest,
+    ShowSecureChannelListenerResponse, ShowSecureChannelRequest, ShowSecureChannelResponse,
 };
 use crate::nodes::registry::{Registry, SecureChannelListenerInfo};
 use crate::nodes::NodeManager;
@@ -18,7 +18,9 @@ use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{route, CowStr};
+use ockam_identity::credential::{Credential, CredentialExchangeMode};
 
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use ockam_identity::{
@@ -34,6 +36,8 @@ impl NodeManager {
         identity: &Identity,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        exchange_mode: CredentialExchangeMode,
+        credential: Option<Credential>,
         timeout: Option<Duration>,
     ) -> Result<(Address, FlowControlId)> {
         // If channel was already created, do nothing.
@@ -67,7 +71,14 @@ impl NodeManager {
         };
 
         let sc_addr = identity
-            .create_secure_channel_extended(sc_route.clone(), options, timeout)
+            .create_secure_channel_extended(
+                sc_route.clone(),
+                options,
+                exchange_mode,
+                credential,
+                vec![],
+                timeout,
+            )
             .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
@@ -118,10 +129,6 @@ impl NodeManager {
             None
         };
 
-        let (sc_addr, sc_flow_control_id) = self
-            .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
-            .await?;
-
         // TODO: Determine when we can remove this? Or find a better way to determine
         //       when to check credentials. Currently enable_credential_checks only if a PROJECT AC and PROJECT ID are set
         //       -- Oakley
@@ -132,55 +139,67 @@ impl NodeManager {
             CredentialExchangeMode::None
         };
 
-        match actual_exchange_mode {
-            CredentialExchangeMode::None => {
-                debug!(%sc_addr, "No credential presentation");
-            }
-            CredentialExchangeMode::Oneway => {
-                debug!(%sc_addr, "One-way credential presentation");
-                let credential = match provided_credential {
-                    Some(c) => c,
-                    None => {
-                        self.trust_context()?
-                            .authority()?
-                            .credential(&identity)
-                            .await?
-                    }
-                };
-
-                identity
-                    .present_credential(
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        &credential,
-                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
-                    )
-                    .await?;
-                debug!(%sc_addr, "One-way credential presentation success");
-            }
-            CredentialExchangeMode::Mutual => {
-                debug!(%sc_addr, "Mutual credential presentation");
-                let credential = match provided_credential {
-                    Some(c) => c,
-                    None => {
-                        self.trust_context()?
-                            .authority()?
-                            .credential(&identity)
-                            .await?
-                    }
-                };
-
-                identity
-                    .present_credential_mutual(
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        vec![self.trust_context()?.authority()?.identity()],
-                        self.attributes_storage.clone(),
-                        &credential,
-                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
-                    )
-                    .await?;
-                debug!(%sc_addr, "Mutual credential presentation success");
+        if credential_exchange_mode != CredentialExchangeMode::None && provided_credential.is_none()
+        {
+            //if we don't have any authority there is no point in trying to get a credential
+            if self
+                .authorities
+                .as_ref()
+                .map(|x| !x.0.is_empty())
+                .unwrap_or(false)
+            {
+                self.get_credential_if_needed(&identity).await?;
             }
         }
+
+        let sc_addr = self
+            .create_secure_channel_internal(
+                &identity,
+                sc_route,
+                authorized_identifiers,
+                timeout,
+                session,
+                actual_exchange_mode,
+                provided_credential,
+            )
+            .await?;
+        //
+        // match actual_exchange_mode {
+        //     CredentialExchangeMode::None => {
+        //         debug!(%sc_addr, "No credential presentation");
+        //     }
+        //     CredentialExchangeMode::Oneway => {
+        //         debug!(%sc_addr, "One-way credential presentation");
+        //         if provided_credential.is_none() {
+        //             self.get_credential_if_needed(&identity).await?;
+        //         }
+        //
+        //         identity
+        //             .present_credential(
+        //                 route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
+        //                 provided_credential.as_ref(),
+        //             )
+        //             .await?;
+        //         debug!(%sc_addr, "One-way credential presentation success");
+        //     }
+        //     CredentialExchangeMode::Mutual => {
+        //         debug!(%sc_addr, "Mutual credential presentation");
+        //         if provided_credential.is_none() {
+        //             self.get_credential_if_needed(&identity).await?;
+        //         }
+        //
+        //         let authorities = self.authorities()?;
+        //         identity
+        //             .present_credential_mutual(
+        //                 route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
+        //                 &authorities.public_identities(),
+        //                 self.attributes_storage.clone(),
+        //                 provided_credential.as_ref(),
+        //             )
+        //             .await?;
+        //         debug!(%sc_addr, "Mutual credential presentation success");
+        //     }
+        // }
 
         // Return secure channel address
         Ok((sc_addr, sc_flow_control_id))

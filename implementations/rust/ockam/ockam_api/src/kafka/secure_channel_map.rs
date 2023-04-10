@@ -12,6 +12,7 @@ use ockam_core::{Any, Message};
 use ockam_identity::api::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
 };
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_identity::{
     Identity, SecureChannelOptions, SecureChannelRegistryEntry, TrustEveryonePolicy,
 };

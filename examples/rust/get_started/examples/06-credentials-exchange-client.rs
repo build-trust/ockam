@@ -1,4 +1,5 @@
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
+use ockam::identity::credential::CredentialExchangeMode;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{Identity, SecureChannelOptions, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpConnectionOptions, TcpTransport};
@@ -59,36 +60,19 @@ async fn main(mut ctx: Context) -> Result<()> {
     let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_options).await?;
     let channel_options = SecureChannelOptions::as_producer(&flow_controls, &flow_controls.generate_id())
         .as_consumer(&flow_controls)
-        .with_trust_policy(TrustEveryonePolicy);
+        .with_trust_policy(TrustEveryonePolicy)
+        .with_credential(credential)
+        .with_credential_exchange_mode(CredentialExchangeMode::Mutual);
+
     let channel = client
         .create_secure_channel(route![server_connection, "secure"], channel_options)
         .await?;
 
-    // Present credentials over the secure channel
-    let storage = Arc::new(AuthenticatedAttributeStorage::new(store.clone()));
-    let issuer = issuer_client
-        .public_identity(MessageSendReceiveOptions::new().with_flow_control(&flow_controls))
-        .await?;
-    let r = route![channel.clone(), "credentials"];
-    client
-        .present_credential_mutual(
-            r,
-            &[issuer],
-            storage,
-            &credential,
-            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
-        )
-        .await?;
-
     // Send a message to the worker at address "echoer".
+    ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;
+
     // Wait to receive a reply and print it.
-    let reply = ctx
-        .send_and_receive_extended::<String>(
-            route![channel, "echoer"],
-            "Hello Ockam!".to_string(),
-            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
-        )
-        .await?;
+    let reply = ctx.receive::<String>().await?;
     println!("Received: {}", reply); // should print "Hello Ockam!"
 
     ctx.stop().await

@@ -1,6 +1,6 @@
 use hello_ockam::{create_token, import_project};
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
-use ockam::identity::credential::OneTimeCode;
+use ockam::identity::credential::{CredentialExchangeMode, OneTimeCode};
 use ockam::identity::{
     AuthorityInfo, Identity, SecureChannelListenerOptions, SecureChannelOptions, TrustContext,
     TrustMultiIdentifiersPolicy,
@@ -71,10 +71,11 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         project.authority_public_identifier()
     ]));
     let options = if let Some(_flow_control_id) = tcp_route.flow_control_id {
-        options.as_consumer(&flow_controls)
+        options.as_consumer(&flow_controls).with_trust_policy(project)
     } else {
-        options
+        options.with_trust_policy(project)
     };
+
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = control_plane
@@ -109,11 +110,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     println!("{credential}");
 
-    let storage = AuthenticatedAttributeStorage::new(control_plane.authenticated_storage().clone());
-    control_plane
-        .start_credential_exchange_worker(trust_context, "credential_exchange", true, Arc::new(storage))
-        .await?;
-
     // 3. create an access control policy checking the value of the "component" attribute of the caller
     let access_control = AbacAccessControl::create(control_plane.authenticated_storage().clone(), "component", "edge");
 
@@ -133,9 +129,14 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let project_options =
         SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
     let project_options = if let Some(_flow_control_id) = tcp_project_route.flow_control_id {
-        project_options.as_consumer(&flow_controls)
+        project_options
+            .as_consumer(&flow_controls)
+            .with_credential(credential)
+            .with_credential_exchange_mode(CredentialExchangeMode::Oneway);
     } else {
         project_options
+            .with_credential(credential)
+            .with_credential_exchange_mode(CredentialExchangeMode::Oneway);
     };
 
     // create a secure channel to the project first
@@ -144,15 +145,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .create_secure_channel_extended(tcp_project_route.route, project_options, Duration::from_secs(120))
         .await?;
     println!("secure channel to project: {secure_channel_address:?}");
-
-    // present this node credential to the project
-    control_plane
-        .present_credential(
-            route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-            &credential,
-            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
-        )
-        .await?;
 
     // finally create a forwarder using the secure channel to the project
     let forwarder = RemoteForwarder::create_static(

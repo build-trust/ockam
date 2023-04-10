@@ -4,6 +4,7 @@ use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
+use ockam::identity::credential::CredentialExchangeMode;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{
     AuthorityInfo, CredentialMemoryRetriever, Identity, SecureChannelListenerOptions, SecureChannelOptions,
@@ -33,7 +34,6 @@ async fn main(ctx: Context) -> Result<()> {
     let change_history = "01ed8a5b1303f975c1296c990d1bd3c1946cfef328de20531e3511ec5604ce0dd9000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e8c328bc0cc07a374762091d037e69c36fdd4d2e1a651abd4d43a1362d3f800503010140a349968063d7337d0c965969fa9c640824c01a6d37fe130d4ab963b0271b9d5bbf0923faa5e27f15359554f94f08676df01b99d997944e4feaf0caaa1189480e";
     let secret = "5b2b3f2abbd1787704d8f8b363529f8e2d8f423b6dd4b96a2c462e4f0e04ee18";
     let server = Identity::create_identity_with_change_history(&ctx, vault, change_history, secret).await?;
-    let store = server.authenticated_storage();
 
     // Connect with the credential issuer and authenticate using the latest private
     // key of this program's hardcoded identity.
@@ -76,7 +76,7 @@ async fn main(ctx: Context) -> Result<()> {
     // identities that have authenticated credentials issued by the above credential
     // issuer. These credentials must also attest that requesting identity is
     // a member of the production cluster.
-    let allow_production = AbacAccessControl::create(store.clone(), "cluster", "production");
+    let allow_production = AbacAccessControl::create(server.authenticated_storage(), "cluster", "production");
     let secure_channel_listener_flow_control_id = flow_controls.generate_id();
     flow_controls.add_consumer(
         &"echoer".into(),
@@ -85,16 +85,11 @@ async fn main(ctx: Context) -> Result<()> {
     );
     ctx.start_worker("echoer", Echoer, allow_production, AllowAll).await?;
 
-    // Start a worker which will receive credentials sent by the client and issued by the issuer node
-    let storage = Arc::new(AuthenticatedAttributeStorage::new(store.clone()));
     flow_controls.add_consumer(
         &"credentials".into(),
         &secure_channel_listener_flow_control_id,
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-    server
-        .start_credential_exchange_worker(trust_context, "credentials", true, storage)
-        .await?;
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
@@ -105,7 +100,8 @@ async fn main(ctx: Context) -> Result<()> {
             &tcp_listener_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         )
-        .with_trust_policy(TrustEveryonePolicy);
+        .with_trust_policy(TrustEveryonePolicy)
+        .with_trust_context(trust_context);
 
     server.create_secure_channel_listener("secure", options).await?;
 

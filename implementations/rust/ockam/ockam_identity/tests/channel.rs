@@ -4,6 +4,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_identity::access_control::IdentityAccessControlBuilder;
 use ockam_identity::api::{DecryptionResponse, EncryptionRequest, EncryptionResponse};
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_identity::{
     Identity, IdentitySecureChannelLocalInfo, SecureChannelListenerOptions, SecureChannelOptions,
     TrustEveryonePolicy, TrustIdentifierPolicy,

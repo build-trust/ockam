@@ -27,8 +27,9 @@ pub mod api;
 use crate::channel::addresses::Addresses;
 use crate::channel::decryptor_worker::DecryptorWorker;
 use crate::channel::listener::IdentityChannelListener;
+use crate::credential::{Credential, CredentialExchangeMode};
 use crate::error::IdentityError;
-use crate::Identity;
+use crate::{Identity, PublicIdentity};
 use core::time::Duration;
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 
@@ -47,7 +48,14 @@ impl Identity {
         Ok(())
     }
 
-    /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
+    /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`].
+    ///
+    /// # Arguments
+    /// * `route` - `Route` to the SecureChannel listener
+    /// * `trust_options` - [`SecureChannelTrustOptions`] to use
+    /// * `credential_exchange_mode` - [`CredentialExchangeMode`] to use
+    /// * `provided_credential` - [`Credential`] to use, when `None` the set credential will be used
+    /// * `authorities` - list of authorities to verify the other party credential
     pub async fn create_secure_channel(
         &self,
         route: impl Into<Route>,
@@ -71,6 +79,9 @@ impl Identity {
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
             Duration::from_secs(120),
+            credential_exchange_mode != CredentialExchangeMode::None,
+            provided_credential.or(self.credential().await),
+            authorities,
         )
         .await
     }
@@ -100,6 +111,9 @@ impl Identity {
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
             timeout,
+            credential_exchange_mode != CredentialExchangeMode::None,
+            provided_credential,
+            authorities,
         )
         .await
     }

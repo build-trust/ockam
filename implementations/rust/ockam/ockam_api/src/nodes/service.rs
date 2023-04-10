@@ -18,7 +18,7 @@ use ockam_core::{route, AllowAll, AsyncTryClone, IncomingAccessControl};
 use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
-
+use ockam_identity::credential::{Credential, CredentialExchangeMode};
 use ockam_identity::{IdentityVault, TrustContext};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -30,7 +30,6 @@ use std::error::Error as _;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
@@ -398,15 +397,13 @@ impl NodeManager {
         )
         .await?;
 
-        // If we've been configured with a trust context, we can start Credential Exchange service
-        if let Ok(tc) = self.trust_context() {
-            self.start_credentials_service_impl(
-                tc.clone(),
+        // // If we've been configured with a trust context, we can start Credential Exchange service
+        // if let Ok(tc) = self.trust_context() {
+        //     self.start_credentials_service_impl(tc.clone(),
                 DefaultAddress::CREDENTIALS_SERVICE.into(),
-                false,
-            )
-            .await?;
-        }
+                false,)
+        //         .await?;
+        // }
 
         Ok(())
     }
@@ -680,9 +677,9 @@ impl NodeManagerWorker {
                 .get_credential(req, dec, ctx)
                 .await?
                 .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
-            (Post, ["node", "credentials", "actions", "present"]) => {
-                self.present_credential(req, dec).await?.to_vec()?
-            }
+            // (Post, ["node", "credentials", "actions", "present"]) => {
+            //     self.present_credential(req, dec).await?.to_vec()?
+            // }
 
             // ==*== Secure channels ==*==
             // TODO: Change to RequestBuilder format
@@ -746,10 +743,10 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::VERIFIER]) => {
                 self.start_verifier_service(ctx, req, dec).await?.to_vec()?
             }
-            (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => self
-                .start_credentials_service(ctx, req, dec)
-                .await?
-                .to_vec()?,
+            // (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => self
+            //     .start_credentials_service(ctx, req, dec)
+            //     .await?
+            //     .to_vec()?,
             (Post, ["node", "services", DefaultAddress::OKTA_IDENTITY_PROVIDER]) => self
                 .start_okta_identity_provider_service(ctx, req, dec)
                 .await?

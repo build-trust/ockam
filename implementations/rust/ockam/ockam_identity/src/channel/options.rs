@@ -1,6 +1,7 @@
 use crate::channel::addresses::Addresses;
+use crate::credential::{Credential, CredentialExchangeMode};
 use crate::error::IdentityError;
-use crate::{TrustEveryonePolicy, TrustPolicy};
+use crate::{TrustContext, TrustEveryonePolicy, TrustPolicy};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{
     FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
@@ -12,6 +13,9 @@ pub struct SecureChannelOptions {
     pub(crate) consumer_flow_control: Option<FlowControls>,
     pub(crate) producer_flow_control: Option<(FlowControls, FlowControlId)>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+    pub(crate) trust_context: Option<TrustContext>,
+    pub(crate) credential_exchange_mode: CredentialExchangeMode,
+    pub(crate) credential: Option<Credential>,
 }
 
 pub(crate) struct SecureChannelAccessControl {
@@ -28,6 +32,9 @@ impl SecureChannelOptions {
             consumer_flow_control: None,
             producer_flow_control: None,
             trust_policy: Arc::new(TrustEveryonePolicy),
+            trust_context: None,
+            credential_exchange_mode: CredentialExchangeMode::None,
+            credential: None,
         }
     }
 
@@ -44,12 +51,33 @@ impl SecureChannelOptions {
             consumer_flow_control: None,
             producer_flow_control: Some((flow_controls.clone(), flow_control_id.clone())),
             trust_policy: Arc::new(TrustEveryonePolicy),
+            trust_context: None,
+            credential_exchange_mode: CredentialExchangeMode::None,
+            credential: None,
         }
     }
 
     /// Set Trust Policy
     pub fn with_trust_policy(mut self, trust_policy: impl TrustPolicy) -> Self {
         self.trust_policy = Arc::new(trust_policy);
+        self
+    }
+
+    /// Set Credential
+    pub fn with_credential(mut self, credential: Credential) -> Self {
+        self.credential = Some(credential);
+        self
+    }
+
+    /// Set Credential Exchange Mode. Default is [`CredentialExchangeMode::None`]
+    pub fn with_credential_exchange_mode(mut self, mode: CredentialExchangeMode) -> Self {
+        self.credential_exchange_mode = mode;
+        self
+    }
+
+    /// Set Trust Context.
+    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
+        self.trust_context = Some(trust_context);
         self
     }
 
@@ -118,6 +146,8 @@ pub struct SecureChannelListenerOptions {
     pub(crate) consumer_flow_control: Option<CiphertextFlowControl>,
     pub(crate) channels_producer_flow_control: Option<(FlowControls, FlowControlId)>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+    pub(crate) trust_context: Option<TrustContext>,
+    pub(crate) credential: Option<Credential>,
 }
 
 impl SecureChannelListenerOptions {
@@ -130,6 +160,8 @@ impl SecureChannelListenerOptions {
             consumer_flow_control: None,
             channels_producer_flow_control: None,
             trust_policy: Arc::new(TrustEveryonePolicy),
+            trust_context: None,
+            credential: None,
         }
     }
 
@@ -174,12 +206,26 @@ impl SecureChannelListenerOptions {
             consumer_flow_control: None,
             channels_producer_flow_control: Some((flow_controls.clone(), flow_control_id.clone())),
             trust_policy: Arc::new(TrustEveryonePolicy),
+            trust_context: None,
+            credential: None,
         }
     }
 
     /// Set trust policy
     pub fn with_trust_policy(mut self, trust_policy: impl TrustPolicy) -> Self {
         self.trust_policy = Arc::new(trust_policy);
+        self
+    }
+
+    /// Set credential. Will be presented to every secure channel exchange.
+    pub fn with_credential(mut self, credential: Credential) -> Self {
+        self.credential = Some(credential);
+        self
+    }
+
+    /// Set Trust Context.
+    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
+        self.trust_context = Some(trust_context);
         self
     }
 

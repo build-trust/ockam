@@ -89,6 +89,9 @@ impl Worker for IdentityChannelListener {
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             msg,
+            self.options.credential.is_some(),
+            self.options.credential.clone(),
+            self.authorities.clone(),
         )
         .await
     }

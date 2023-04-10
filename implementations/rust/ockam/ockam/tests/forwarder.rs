@@ -3,6 +3,7 @@ use ockam::workers::Echoer;
 use ockam::ForwardingService;
 use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result};
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::{Context, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
@@ -221,6 +222,9 @@ async fn test4(ctx: &mut Context) -> Result<()> {
                 &server_channel_flow_control_id,
             )
             .as_consumer(&server_flow_controls),
+            CredentialExchangeMode::None,
+            None,
+            vec![],
         )
         .await?;
     server_identity
@@ -235,6 +239,8 @@ async fn test4(ctx: &mut Context) -> Result<()> {
                 &server_channel_flow_control_id,
                 FlowControlPolicy::ProducerAllowMultiple,
             ),
+            true,
+            vec![],
         )
         .await?;
 

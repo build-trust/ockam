@@ -1,13 +1,15 @@
 use crate::api::{DecryptionRequest, DecryptionResponse};
+use crate::authenticated_storage::{AuthenticatedAttributeStorage, IdentityAttributeStorage};
 use crate::channel::addresses::Addresses;
 use crate::channel::common::{AuthenticationConfirmation, CreateResponderChannelMessage, Role};
 use crate::channel::decryptor::Decryptor;
 use crate::channel::decryptor_state::{
-    IdentityExchangeState, InitializedState, KeyExchangeState, State,
+    CredentialExchangeState, IdentityExchangeState, InitializedState, KeyExchangeState, State,
 };
 use crate::channel::encryptor::Encryptor;
 use crate::channel::encryptor_worker::EncryptorWorker;
-use crate::channel::messages::IdentityChannelMessage;
+use crate::channel::messages::{IdentityChannelMessage, TmpCredentialPacket};
+use crate::credential::{Credential, CredentialExchangeMode};
 use crate::{
     to_symmetric_vault, to_xx_vault, Identity, IdentityError, IdentityIdentifier,
     IdentitySecureChannelLocalInfo, PublicIdentity, SecureChannelRegistryEntry,
@@ -44,6 +46,9 @@ impl DecryptorWorker {
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         timeout: Duration,
+        send_credential: bool,
+        provided_credential: Option<Credential>,
+        authorities: Vec<PublicIdentity>,
     ) -> Result<Address> {
         let mut completion_callback_ctx = ctx
             .new_detached(
@@ -69,6 +74,9 @@ impl DecryptorWorker {
                 trust_policy,
                 None,
                 None,
+                send_credential,
+                provided_credential,
+                authorities,
             )),
         };
 
@@ -99,6 +107,9 @@ impl DecryptorWorker {
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         msg: Routed<CreateResponderChannelMessage>,
+        send_credential: bool,
+        provided_credential: Option<Credential>,
+        authorities: Vec<PublicIdentity>,
     ) -> Result<()> {
         // Route to the decryptor on the other side
         let remote_route = msg.return_route();
@@ -127,6 +138,9 @@ impl DecryptorWorker {
                 trust_policy,
                 Some(remote_backwards_compatibility_address),
                 Some(body.payload().to_vec()),
+                send_credential,
+                provided_credential,
+                authorities,
             )),
         };
 
@@ -302,80 +316,48 @@ impl IdentityExchangeState {
             self.send_identity(ctx, false).await?;
         }
 
-        // We received and sent Identity - channel is initialized
-        self.complete_channel_initialization(ctx, their_identity_id)
-            .await
+        self.send_credential(ctx).await?;
+
+        Ok(State::CredentialExchange(
+            self.into_credential_exchange(their_identity_id),
+        ))
     }
 
-    async fn complete_channel_initialization(
-        mut self,
-        ctx: &mut Context,
-        their_identity_id: IdentityIdentifier,
-    ) -> Result<State> {
-        let encryptor = self
-            .encryptor
-            .take()
-            .ok_or(IdentityError::InvalidSecureChannelInternalState)?;
+    // temporary method, just to go back to a working state
+    async fn send_credential(&mut self, ctx: &mut Context) -> Result<()> {
+        let credential = if self.send_credential {
+            if let Some(credential) = self.provided_credential.as_ref() {
+                Some(credential.clone())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
-        let next_hop = self.remote_route.next()?.clone();
-        let encryptor = EncryptorWorker::new(
-            self.role.str(),
-            self.addresses.clone(),
-            self.remote_route.clone(),
+        let credential_message = TmpCredentialPacket { credential };
+        let data = TransportMessage::v1(
             self.remote_backwards_compatibility_address
                 .clone()
                 .ok_or(IdentityError::InvalidSecureChannelInternalState)?,
-            encryptor,
-        );
+            route![self.addresses.decryptor_backwards_compatibility.clone()],
+            credential_message.encode()?,
+        )
+        .encode()?;
 
-        let main_mailbox = Mailbox::new(
-            self.addresses.encryptor.clone(),
-            Arc::new(AllowAll),
-            Arc::new(AllowOnwardAddress(next_hop)),
-        );
-        let api_mailbox = Mailbox::new(
-            self.addresses.encryptor_api.clone(),
-            Arc::new(LocalSourceOnly),
-            Arc::new(LocalOnwardOnly),
-        );
-
-        WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]), encryptor)
-            .start(ctx)
+        let encrypted = self
+            .encryptor
+            .as_mut()
+            .ok_or(IdentityError::InvalidSecureChannelInternalState)?
+            .encrypt(&data)
             .await?;
 
-        info!(
-            "Initialized SecureChannel {} at local: {}, remote: {}",
-            self.role.str(),
-            &self.addresses.encryptor,
-            &self.addresses.decryptor_remote
-        );
-
-        let info = SecureChannelRegistryEntry::new(
-            self.addresses.encryptor.clone(),
-            self.addresses.encryptor_api.clone(),
+        ctx.send_from_address(
+            self.remote_route.clone(),
+            encrypted,
             self.addresses.decryptor_remote.clone(),
-            self.addresses.decryptor_api.clone(),
-            self.role.is_initiator(),
-            self.identity.identifier().clone(),
-            their_identity_id.clone(),
-        );
-        self.identity
-            .secure_channel_registry
-            .register_channel(info)?;
-
-        if self.role.is_initiator() {
-            // Notify interested worker about finished init
-            ctx.send_from_address(
-                route![self.addresses.completion_callback.clone()],
-                AuthenticationConfirmation,
-                self.addresses.decryptor_callback.clone(),
-            )
-            .await?;
-        }
-
-        Ok(State::Initialized(
-            self.into_initialized(their_identity_id.clone()),
-        ))
+        )
+        .await
     }
 
     async fn handle_incoming_identity(&mut self, msg: Routed<Any>) -> Result<IdentityIdentifier> {
@@ -487,6 +469,114 @@ impl IdentityExchangeState {
 
         self.identity_sent = true;
         Ok(())
+    }
+}
+
+impl CredentialExchangeState {
+    pub(crate) async fn handle_exchange_credential(
+        self,
+        ctx: &mut Context,
+        msg: Routed<Any>,
+    ) -> Result<State> {
+        let body = Vec::<u8>::decode(msg.payload())?;
+        let body = self.decryptor.decrypt(&body).await?;
+        let body = TransportMessage::decode(&body)?;
+        if body.onward_route.next()? != &self.addresses.decryptor_backwards_compatibility {
+            return Err(IdentityError::UnknownChannelMsgDestination.into());
+        }
+
+        let mut message = TmpCredentialPacket::decode(&body.payload)?;
+
+        //we can't validate credential without authorities
+        if !self.authorities.is_empty() {
+            if let Some(credential) = message.credential.take() {
+                self.identity
+                    .receive_presented_credential(
+                        self.their_identity_id.clone(),
+                        credential,
+                        self.authorities.iter(),
+                        Arc::new(AuthenticatedAttributeStorage::new(
+                            self.identity.authenticated_storage(),
+                        )),
+                    )
+                    .await?;
+            }
+        }
+
+        let their_identity_id = self.their_identity_id.clone();
+
+        // We received and sent Identity - channel is initialized
+        self.complete_channel_initialization(ctx, their_identity_id)
+            .await
+    }
+
+    async fn complete_channel_initialization(
+        mut self,
+        ctx: &mut Context,
+        their_identity_id: IdentityIdentifier,
+    ) -> Result<State> {
+        let encryptor = self
+            .encryptor
+            .take()
+            .ok_or(IdentityError::InvalidSecureChannelInternalState)?;
+
+        let next_hop = self.remote_route.next()?.clone();
+        let encryptor = EncryptorWorker::new(
+            self.role.str(),
+            self.addresses.clone(),
+            self.remote_route.clone(),
+            self.remote_backwards_compatibility_address
+                .clone()
+                .ok_or(IdentityError::InvalidSecureChannelInternalState)?,
+            encryptor,
+        );
+
+        let main_mailbox = Mailbox::new(
+            self.addresses.encryptor.clone(),
+            Arc::new(AllowAll),
+            Arc::new(AllowOnwardAddress(next_hop)),
+        );
+        let api_mailbox = Mailbox::new(
+            self.addresses.encryptor_api.clone(),
+            Arc::new(LocalSourceOnly),
+            Arc::new(LocalOnwardOnly),
+        );
+
+        WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]), encryptor)
+            .start(ctx)
+            .await?;
+
+        info!(
+            "Initialized SecureChannel {} at local: {}, remote: {}",
+            self.role.str(),
+            &self.addresses.encryptor,
+            &self.addresses.decryptor_remote
+        );
+
+        let info = SecureChannelRegistryEntry::new(
+            self.addresses.encryptor.clone(),
+            self.addresses.encryptor_api.clone(),
+            self.addresses.decryptor_remote.clone(),
+            self.addresses.decryptor_api.clone(),
+            self.role.is_initiator(),
+            self.identity.identifier().clone(),
+            their_identity_id.clone(),
+        );
+        self.identity
+            .secure_channel_registry
+            .register_channel(info)?;
+
+        if self.role.is_initiator() {
+            // Notify interested worker about finished init
+            ctx.send_from_address(
+                route![self.addresses.completion_callback.clone()],
+                AuthenticationConfirmation,
+                self.addresses.decryptor_callback.clone(),
+            )
+            .await?;
+        }
+
+        Ok(State::Initialized(self.into_initialized()))
     }
 }
 
@@ -660,6 +750,7 @@ impl Worker for DecryptorWorker {
                     return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
+
             State::IdentityExchange(state) => {
                 if msg_addr == state.addresses.decryptor_remote {
                     let result = state.handle_exchange_identity(ctx, msg).await;
@@ -675,6 +766,23 @@ impl Worker for DecryptorWorker {
                     return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
+
+            State::CredentialExchange(state) => {
+                if msg_addr == state.addresses.decryptor_remote {
+                    let result = state.handle_exchange_credential(ctx, msg).await;
+                    if result.is_err() {
+                        if let Err(err) = ctx.stop_worker(msg_addr.clone()).await {
+                            warn!("cannot stop decryptor: {err} using address {msg_addr}");
+                        }
+                    }
+                    result?
+                } else {
+                    // let's ignore invalid address messages errors
+                    self.state = Some(State::CredentialExchange(state));
+                    return Err(IdentityError::UnknownChannelMsgDestination.into());
+                }
+            }
+
             State::Initialized(_) => {
                 unreachable!()
             }

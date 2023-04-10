@@ -96,33 +96,34 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_credentials_service_impl<'a>(
-        &mut self,
-        trust_context: TrustContext,
-        addr: Address,
-        oneway: bool,
-    ) -> Result<()> {
-        if self.registry.credentials_services.contains_key(&addr) {
-            return Err(ApiError::generic(
-                "Credentials service exists at this address",
-            ));
-        }
-
-        self.identity
-            .start_credential_exchange_worker(
-                trust_context,
-                addr.clone(),
-                !oneway,
-                self.attributes_storage.clone(),
-            )
-            .await?;
-
-        self.registry
-            .credentials_services
-            .insert(addr.clone(), CredentialsServiceInfo::default());
-
-        Ok(())
-    }
+    // pub(super) async fn start_credentials_service_impl<'a>(
+    //     &mut self,
+    //     addr: Address,
+    //     oneway: bool,
+    // ) -> Result<()> {
+    //     if self.registry.credentials_services.contains_key(&addr) {
+    //         return Err(ApiError::generic(
+    //             "Credentials service exists at this address",
+    //         ));
+    //     }
+    //
+    //     let authorities = self.authorities()?;
+    //
+    //     self.identity
+    //         .start_credential_exchange_worker(
+    //             authorities.public_identities(),
+    //             addr.clone(),
+    //             !oneway,
+    //             self.attributes_storage.clone(),
+    //         )
+    //         .await?;
+    //
+    //     self.registry
+    //         .credentials_services
+    //         .insert(addr, CredentialsServiceInfo::default());
+    //
+    //     Ok(())
+    // }
 
     pub(super) async fn start_authenticated_service_impl(
         &mut self,
@@ -667,34 +668,23 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
-    pub(super) async fn start_credentials_service<'a>(
-        &mut self,
-        _ctx: &Context,
-        req: &'a Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let mut node_manager = self.node_manager.write().await;
-        let body: StartCredentialsService = dec.decode()?;
-        let addr: Address = body.address().into();
-        let oneway = body.oneway();
-        let encoded_identity = body.public_identity();
-
-        let vault = Vault::create();
-        let decoded_identity =
-            &hex::decode(encoded_identity).map_err(|_| ApiError::generic("Unable to decode trust context's public identity when starting credential service."))?;
-        let i = PublicIdentity::import(decoded_identity, vault).await?;
-
-        let trust_context = TrustContext::new(
-            encoded_identity.to_string(),
-            Some(AuthorityInfo::new(i, None)),
-        );
-
-        node_manager
-            .start_credentials_service_impl(trust_context, addr, oneway)
-            .await?;
-
-        Ok(Response::ok(req.id()))
-    }
+    // pub(super) async fn start_credentials_service<'a>(
+    //     &mut self,
+    //     _ctx: &Context,
+    //     req: &'a Request<'_>,
+    //     dec: &mut Decoder<'_>,
+    // ) -> Result<ResponseBuilder> {
+    //     let mut node_manager = self.node_manager.write().await;
+    //     let body: StartCredentialsService = dec.decode()?;
+    //     let addr: Address = body.address().into();
+    //     let oneway = body.oneway();
+    //
+    //     node_manager
+    //         .start_credentials_service_impl(addr, oneway)
+    //         .await?;
+    //
+    //     Ok(Response::ok(req.id()))
+    // }
 
     pub(super) async fn start_kafka_consumer_service<'a>(
         &mut self,

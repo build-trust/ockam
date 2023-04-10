@@ -7,13 +7,85 @@ use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_identity::credential::Credential;
+use ockam_identity::credential::{Credential, CredentialExchangeMode};
 use ockam_identity::IdentityVault;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_node::Context;
 use std::str::FromStr;
 
 use super::NodeManagerWorker;
+
+impl NodeManager {
+    pub(super) async fn get_credential_impl(
+        &mut self,
+        identity: &Identity,
+        overwrite: bool,
+    ) -> Result<()> {
+        debug!("Credential check: looking for identity");
+
+        if identity.credential().await.is_some() && !overwrite {
+            return Err(ApiError::generic("credential already exists"));
+        }
+
+        debug!("Credential check: looking for authorities...");
+        let authorities = self.authorities()?;
+
+        // Take first authority
+        let authority = authorities
+            .as_ref()
+            .first()
+            .ok_or_else(|| ApiError::generic("No known Authority"))?;
+
+        debug!("Getting credential from : {}", authority.addr);
+
+        let allowed = vec![authority.identity.identifier().clone()];
+
+        let authority_tcp_session =
+            match create_tcp_session(&authority.addr, &self.tcp_transport).await {
+                Some(authority_tcp_session) => authority_tcp_session,
+                None => {
+                    error!("INVALID ROUTE");
+                    return Err(ApiError::generic("invalid authority route"));
+                }
+            };
+
+        debug!("Create secure channel to project authority");
+        let sc = self
+            .create_secure_channel_internal(
+                identity,
+                authority_tcp_session.route,
+                Some(allowed),
+                None,
+                authority_tcp_session.session,
+                CredentialExchangeMode::None,
+                None,
+            )
+            .await?;
+        debug!("Created secure channel to project authority");
+
+        // Borrow checker issues...
+        let authorities = self.authorities()?;
+
+        let client = CredentialIssuerClient::new(
+            RpcClient::new(
+                route![sc, DefaultAddress::CREDENTIAL_ISSUER],
+                identity.ctx(),
+            )
+            .await?,
+        );
+        let credential = client.credential().await?;
+        debug!("Got credential");
+
+        identity
+            .verify_self_credential(&credential, authorities.public_identities().iter())
+            .await?;
+        debug!("Verified self credential");
+
+        identity.set_credential(credential.to_owned()).await;
+
+        Ok(())
+    }
+}
 
 impl NodeManagerWorker {
     pub(super) async fn get_credential(
@@ -52,50 +124,39 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn present_credential(
-        &self,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let node_manager = self.node_manager.read().await;
-        let request: PresentCredentialRequest = dec.decode()?;
-
-        // TODO: Replace with self.connect?
-        let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
-        let route = match local_multiaddr_to_route(&route) {
-            Some(route) => route,
-            None => return Err(ApiError::generic("invalid credentials service route")),
-        };
-
-        let credential = node_manager
-            .trust_context()?
-            .authority()?
-            .credential(&node_manager.identity)
-            .await?;
-
-        if request.oneway {
-            node_manager
-                .identity
-                .present_credential(
-                    route,
-                    &credential,
-                    MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
-                )
-                .await?;
-        } else {
-            node_manager
-                .identity
-                .present_credential_mutual(
-                    route,
-                    vec![node_manager.trust_context()?.authority()?.identity()],
-                    node_manager.attributes_storage.clone(),
-                    &credential,
-                    MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
-                )
-                .await?;
-        }
-
-        let response = Response::ok(req.id());
-        Ok(response)
-    }
+    // pub(super) async fn present_credential(
+    //     &self,
+    //     req: &Request<'_>,
+    //     dec: &mut Decoder<'_>,
+    // ) -> Result<ResponseBuilder> {
+    //     let node_manager = self.node_manager.read().await;
+    //     let request: PresentCredentialRequest = dec.decode()?;
+    //
+    //     // TODO: Replace with self.connect?
+    //     let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
+    //     let route = match local_multiaddr_to_route(&route) {
+    //         Some(route) => route,
+    //         None => return Err(ApiError::generic("invalid credentials service route")),
+    //     };
+    //
+    //     if request.oneway {
+    //         node_manager
+    //             .identity
+    //             .present_credential(route, None)
+    //             .await?;
+    //     } else {
+    //         node_manager
+    //             .identity
+    //             .present_credential_mutual(
+    //                 route,
+    //                 &node_manager.authorities()?.public_identities(),
+    //                 node_manager.attributes_storage.clone(),
+    //                 None,
+    //             )
+    //             .await?;
+    //     }
+    //
+    //     let response = Response::ok(req.id());
+    //     Ok(response)
+    // }
 }

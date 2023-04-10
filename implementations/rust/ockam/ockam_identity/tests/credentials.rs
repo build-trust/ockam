@@ -6,7 +6,7 @@ use ockam_identity::authenticated_storage::{
     IdentityAttributeStorageReader,
 };
 use ockam_identity::credential::access_control::CredentialAccessControl;
-use ockam_identity::credential::Credential;
+use ockam_identity::credential::{Credential, CredentialExchangeMode};
 use ockam_identity::{
     AuthorityInfo, CredentialMemoryRetriever, Identity, SecureChannelListenerOptions,
     SecureChannelOptions, TrustContext, TrustIdentifierPolicy,
@@ -21,9 +21,6 @@ use std::time::Duration;
 async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
-    let authenticated_attribute_storage =
-        AuthenticatedAttributeStorage::new(Arc::new(InMemoryStorage::new()));
-
     let authority = Identity::create(ctx, vault.clone()).await?;
     let server = Identity::create(ctx, vault.clone()).await?;
 
@@ -35,39 +32,38 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         "test_trust_context_id".to_string(),
         Some(AuthorityInfo::new(authority.to_public().await?, None)),
     );
-
     server
-        .start_credential_exchange_worker(
-            trust_context,
-            "credential_exchange",
-            false,
-            Arc::new(authenticated_attribute_storage.clone()),
+        .create_secure_channel_listener(
+            "listener",
+            SecureChannelListenerOptions::new().with_trust_context(trust_context.clone()),
         )
         .await?;
 
     let client = Identity::create(ctx, vault).await?;
-    let channel = client
+    let _channel = client
         .create_secure_channel(
             route!["listener"],
             SecureChannelOptions::new()
-                .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
+                .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone()))
+                .with_trust_context(trust_context),
         )
         .await?;
 
     let credential_builder = Credential::builder(client.identifier().clone());
     let credential = credential_builder.with_attribute("is_superuser", b"true");
-
     let credential = authority.issue_credential(credential).await?;
 
     client
-        .present_credential(
-            route![channel, "credential_exchange"],
-            &credential,
-            MessageSendReceiveOptions::new(),
+        .create_secure_channel(
+            route!["listener"],
+            SecureChannelOptions::new()
+                .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone()))
+                .with_credential(credential)
+                .with_credential_exchange_mode(CredentialExchangeMode::Oneway),
         )
         .await?;
 
-    let attrs = authenticated_attribute_storage
+    let attrs = AuthenticatedAttributeStorage::new(server.authenticated_storage())
         .get_attributes(client.identifier())
         .await?
         .unwrap();
@@ -82,23 +78,16 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
-    let authenticated_attribute_storage_client_1 =
-        AuthenticatedAttributeStorage::new(Arc::new(InMemoryStorage::new()));
-    let storage2 = Arc::new(InMemoryStorage::new());
-    let authenticated_attribute_storage_client_2 =
-        AuthenticatedAttributeStorage::new(storage2.clone());
 
     let authority = Identity::create(ctx, vault.clone()).await?;
-    let client2 = Identity::create(ctx, vault.clone()).await?;
+    let client1 = Identity::create(ctx, vault.clone()).await?;
+    let client2 = Identity::create(ctx, vault).await?;
 
     let credential2 =
         Credential::builder(client2.identifier().clone()).with_attribute("is_admin", b"true");
 
     let credential2 = authority.issue_credential(credential2).await?;
 
-    client2
-        .create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
-        .await?;
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
         Some(AuthorityInfo::new(
@@ -106,48 +95,36 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             Some(Arc::new(CredentialMemoryRetriever::new(credential2))),
         )),
     );
-    let authorities = vec![trust_context.authority()?.identity().clone()];
-
     client2
-        .start_credential_exchange_worker(
-            trust_context,
-            "credential_exchange",
-            true,
-            Arc::new(authenticated_attribute_storage_client_2),
+        .create_secure_channel_listener(
+            "listener",
+            SecureChannelListenerOptions::new().with_trust_context(tru),
         )
         .await?;
-
-    let client1 = Identity::create(ctx, vault).await?;
 
     let credential1 =
         Credential::builder(client1.identifier().clone()).with_attribute("is_user", b"true");
 
     let credential1 = authority.issue_credential(credential1).await?;
 
-    let channel = client1
-        .create_secure_channel(route!["listener"], SecureChannelOptions::new())
-        .await?;
-
-    let storage: Arc<dyn IdentityAttributeStorage> =
-        Arc::new(authenticated_attribute_storage_client_1.clone());
     client1
-        .present_credential_mutual(
-            route![channel, "credential_exchange"],
-            &authorities,
-            storage,
-            &credential1,
-            MessageSendReceiveOptions::new(),
+        .create_secure_channel(
+            route!["listener"],
+            SecureChannelOptions::new()
+                .with_trust_context(trust_context)
+                .with_credential(credential1)
+                .with_credential_exchange_mode(CredentialExchangeMode::Mutual),
         )
         .await?;
 
-    let attrs1 = AuthenticatedAttributeStorage::new(storage2.clone())
+    let attrs1 = AuthenticatedAttributeStorage::new(client2.authenticated_storage())
         .get_attributes(client1.identifier())
         .await?
         .unwrap();
 
     assert_eq!(attrs1.attrs().get("is_user").unwrap().as_slice(), b"true");
 
-    let attrs2 = authenticated_attribute_storage_client_1
+    let attrs2 = AuthenticatedAttributeStorage::new(client1.authenticated_storage())
         .get_attributes(client2.identifier())
         .await?
         .unwrap();
@@ -180,13 +157,8 @@ impl Worker for CountingWorker {
 #[ockam_macros::test]
 async fn access_control(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
-    let storage = Arc::new(InMemoryStorage::new());
     let authority = Identity::create(ctx, vault.clone()).await?;
     let server = Identity::create(ctx, vault.clone()).await?;
-
-    server
-        .create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
-        .await?;
 
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
@@ -194,26 +166,24 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     );
 
     server
-        .start_credential_exchange_worker(
-            trust_context,
-            "credential_exchange",
-            false,
-            Arc::new(AuthenticatedAttributeStorage::new(storage.clone())),
+        .create_secure_channel_listener(
+            "listener",
+            SecureChannelListenerOptions::new().with_trust_context(trust_context.clone()),
         )
         .await?;
 
     let client = Identity::create(ctx, vault.clone()).await?;
-    let channel = client
+    let _channel = client
         .create_secure_channel(
             route!["listener"],
             SecureChannelOptions::new()
+                .with_trust_context(trust_context.clone())
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
         )
         .await?;
 
     let credential_builder = Credential::builder(client.identifier().clone());
     let credential = credential_builder.with_attribute("is_superuser", b"true");
-
     let credential = authority.issue_credential(credential).await?;
 
     let counter = Arc::new(AtomicI8::new(0));
@@ -225,7 +195,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let required_attributes = vec![("is_superuser".to_string(), b"true".to_vec())];
     let access_control = CredentialAccessControl::new(
         &required_attributes,
-        AuthenticatedAttributeStorage::new(storage.clone()),
+        AuthenticatedAttributeStorage::new(server.authenticated_storage()),
     );
 
     WorkerBuilder::with_access_control(
@@ -236,8 +206,19 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     )
     .start(ctx)
     .await?;
-    ctx.sleep(Duration::from_millis(100)).await;
+
+    ctx.wait_for("counter").await?;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
+
+    // first secure channel without credential will be rejected
+    let channel = client
+        .create_secure_channel(
+            route!["listener"],
+            SecureChannelOptions::new()
+                .with_trust_context(trust_context.clone())
+                .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
+        )
+        .await?;
 
     let child_ctx = ctx
         .new_detached_with_mailboxes(Mailboxes::main(
@@ -253,11 +234,14 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 
-    client
-        .present_credential(
-            route![channel.clone(), "credential_exchange"],
-            &credential,
-            MessageSendReceiveOptions::new(),
+    // second secure channel with credential will pass
+    let channel = client
+        .create_secure_channel(
+            route!["listener"],
+            SecureChannelOptions::new()
+                .with_credential(credential)
+                .with_trust_context(trust_context)
+                .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
         )
         .await?;
 

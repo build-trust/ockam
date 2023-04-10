@@ -3,9 +3,9 @@ use clap::Args;
 
 use core::time::Duration;
 use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::{Request, RequestBuilder};
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};

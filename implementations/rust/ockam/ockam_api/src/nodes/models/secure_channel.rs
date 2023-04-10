@@ -8,21 +8,13 @@ use ockam_core::flow_control::FlowControlId;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{route, Address, CowStr, Result};
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use serde::Serialize;
 
 use crate::error::ApiError;
 use crate::route_to_multiaddr;
-
-#[derive(Debug, Clone, Copy, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(index_only)]
-pub enum CredentialExchangeMode {
-    #[n(0)] None,
-    #[n(1)] Oneway,
-    #[n(2)] Mutual,
-}
 
 /// Request body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]

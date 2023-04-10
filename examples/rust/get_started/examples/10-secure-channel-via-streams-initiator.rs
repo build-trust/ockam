@@ -1,3 +1,4 @@
+use ockam::identity::credential::CredentialExchangeMode;
 use ockam::identity::{Identity, SecureChannelOptions};
 use ockam::{
     route, stream::Stream, vault::Vault, Context, MessageReceiveOptions, Result, TcpConnectionOptions, TcpTransport,

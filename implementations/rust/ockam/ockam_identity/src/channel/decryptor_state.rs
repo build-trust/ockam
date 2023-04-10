@@ -2,11 +2,13 @@ use crate::channel::addresses::Addresses;
 use crate::channel::decryptor::Decryptor;
 use crate::channel::encryptor::Encryptor;
 use crate::channel::Role;
-use crate::{Identity, IdentityIdentifier, TrustPolicy};
+use crate::credential::{Credential, CredentialExchangeMode};
+use crate::{Identity, IdentityIdentifier, PublicIdentity, TrustPolicy};
 use alloc::vec::Vec;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, KeyExchanger, Route};
+use ockam_core::{Address, Any, KeyExchanger, Route, Routed};
+use ockam_node::Context;
 
 pub(crate) struct KeyExchangeState {
     pub(crate) role: Role,
@@ -17,8 +19,12 @@ pub(crate) struct KeyExchangeState {
     pub(crate) initial_responder_payload: Option<Vec<u8>>,
     pub(crate) initialization_run: bool,
 
+    // these variables are kept for the next state
     remote_backwards_compatibility_address: Option<Address>,
     trust_policy: Arc<dyn TrustPolicy>,
+    send_credential: bool,
+    provided_credential: Option<Credential>,
+    authorities: Vec<PublicIdentity>,
 }
 
 pub(crate) struct IdentityExchangeState {
@@ -31,6 +37,25 @@ pub(crate) struct IdentityExchangeState {
     pub(crate) auth_hash: [u8; 32],
     pub(crate) identity_sent: bool,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+    pub(crate) remote_backwards_compatibility_address: Option<Address>,
+
+    pub(crate) send_credential: bool,
+    pub(crate) provided_credential: Option<Credential>,
+    authorities: Vec<PublicIdentity>,
+}
+
+//temporary state for credential exchange
+//to be removed
+pub(crate) struct CredentialExchangeState {
+    //for debug purposes only
+    pub(crate) role: Role,
+    pub(crate) addresses: Addresses,
+    pub(crate) decryptor: Decryptor,
+    pub(crate) their_identity_id: IdentityIdentifier,
+    pub(crate) identity: Identity,
+    pub(crate) authorities: Vec<PublicIdentity>,
+    pub(crate) remote_route: Route,
+    pub(crate) encryptor: Option<Encryptor>,
     pub(crate) remote_backwards_compatibility_address: Option<Address>,
 }
 
@@ -60,20 +85,39 @@ impl KeyExchangeState {
             decryptor,
             auth_hash,
             identity_sent: false,
+            send_credential: self.send_credential,
+            provided_credential: self.provided_credential,
+            authorities: self.authorities,
         }
     }
 }
 
 impl IdentityExchangeState {
-    pub(crate) fn into_initialized(
+    pub(crate) fn into_credential_exchange(
         self,
         their_identity_id: IdentityIdentifier,
-    ) -> InitializedState {
+    ) -> CredentialExchangeState {
+        CredentialExchangeState {
+            role: self.role,
+            addresses: self.addresses,
+            decryptor: self.decryptor,
+            identity: self.identity,
+            authorities: self.authorities,
+            remote_route: self.remote_route,
+            encryptor: self.encryptor,
+            remote_backwards_compatibility_address: self.remote_backwards_compatibility_address,
+            their_identity_id,
+        }
+    }
+}
+
+impl CredentialExchangeState {
+    pub(crate) fn into_initialized(self) -> InitializedState {
         InitializedState {
             role: self.role.str(),
             addresses: self.addresses,
             decryptor: self.decryptor,
-            their_identity_id,
+            their_identity_id: self.their_identity_id,
         }
     }
 }
@@ -83,6 +127,7 @@ impl IdentityExchangeState {
 pub(crate) enum State {
     KeyExchange(KeyExchangeState),
     IdentityExchange(IdentityExchangeState),
+    CredentialExchange(CredentialExchangeState),
     Initialized(InitializedState),
 }
 
@@ -97,6 +142,9 @@ impl State {
         trust_policy: Arc<dyn TrustPolicy>,
         remote_backwards_compatibility_address: Option<Address>,
         initial_responder_payload: Option<Vec<u8>>,
+        send_credential: bool,
+        provided_credential: Option<Credential>,
+        authorities: Vec<PublicIdentity>,
     ) -> Self {
         Self::KeyExchange(KeyExchangeState {
             role,
@@ -108,6 +156,9 @@ impl State {
             remote_backwards_compatibility_address,
             initial_responder_payload,
             initialization_run: true,
+            send_credential,
+            provided_credential,
+            authorities,
         })
     }
 }

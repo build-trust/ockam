@@ -1,3 +1,4 @@
+use crate::credential::Credential;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Message;
 use serde::{Deserialize, Serialize};
@@ -28,4 +29,9 @@ impl IdentityChannelMessage {
             } => (identity, signature),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Message)]
+pub(crate) struct TmpCredentialPacket {
+    pub(crate) credential: Option<Credential>,
 }

@@ -12,9 +12,9 @@ use serde_json::json;
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::{config::lookup::ConfigLookup, nodes::models};
 use ockam_api::{nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr};
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_multiaddr::MultiAddr;
 
 /// Create Secure Channels
