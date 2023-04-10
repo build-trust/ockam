@@ -1,5 +1,5 @@
 use crate::compat::boxed::Box;
-use crate::{RelayMessage, Result};
+use crate::{async_trait, RelayMessage, Result};
 use core::fmt::Debug;
 
 /// Defines the interface for incoming message flow authorization.

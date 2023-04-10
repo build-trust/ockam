@@ -38,7 +38,7 @@ where
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl<S> Processor for WebSocketRecvProcessor<S>
 where
     S: AsyncStream,

@@ -269,7 +269,7 @@ impl WebSocketSendWorker<TcpClientStream> {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Worker for WebSocketSendWorker<TcpServerStream> {
     type Message = Any;
     type Context = Context;
@@ -288,7 +288,7 @@ impl Worker for WebSocketSendWorker<TcpServerStream> {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Worker for WebSocketSendWorker<TcpClientStream> {
     type Message = Any;
     type Context = Context;

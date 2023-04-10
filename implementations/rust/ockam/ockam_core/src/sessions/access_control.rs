@@ -2,7 +2,7 @@ use crate::compat::boxed::Box;
 use crate::compat::collections::BTreeSet;
 use crate::compat::sync::RwLock;
 use crate::sessions::{SessionId, SessionPolicy, Sessions};
-use crate::{Address, Result};
+use crate::{async_trait, Address, Result};
 use crate::{OutgoingAccessControl, RelayMessage};
 use core::fmt::{Debug, Formatter};
 
