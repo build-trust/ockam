@@ -315,7 +315,7 @@ async fn run_foreground_node(
     ctrlc::set_handler(move || {
         let _ = tx_clone.blocking_send(());
         let _ = opts_clone
-            .shell
+            .terminal
             .write_line(format!("{} Ctrl+C signal received", "!".light_yellow()).as_str());
     })
     .expect("Error setting Ctrl+C handler");
@@ -332,7 +332,7 @@ async fn run_foreground_node(
                 .expect("Error reading from stdin");
             let _ = tx_clone.blocking_send(());
             let _ = opts_clone
-                .shell
+                .terminal
                 .write_line(format!("{} EOF received", "!".light_yellow()).as_str());
         });
     }
@@ -341,7 +341,7 @@ async fn run_foreground_node(
     if rx.recv().await.is_some() {
         opts.state.nodes.get(&node_name)?.kill_process(false)?;
         ctx.stop().await?;
-        opts.shell
+        opts.terminal
             .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
             .unwrap();
     }

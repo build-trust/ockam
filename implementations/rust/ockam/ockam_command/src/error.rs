@@ -1,7 +1,8 @@
+use colorful::Colorful;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::version::Version;
-use crate::{exitcode, ExitCode};
+use crate::{exitcode, fmt_err, ExitCode};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -30,10 +31,11 @@ impl Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", Version::short())?;
+        let description = &self.description;
         if let Some(cause) = &self.cause {
-            writeln!(f, "{}. Caused by: {}", self.description, cause)?;
+            writeln!(f, "{}", fmt_err!("{description}. Caused by: {cause}"))?;
         } else {
-            writeln!(f, "{}", self.description)?;
+            writeln!(f, "{}", fmt_err!("{description}"))?;
         }
         Ok(())
     }

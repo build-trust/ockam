@@ -76,7 +76,7 @@ async fn run_impl(
     delete_embedded_node(&opts, rpc.node_name()).await;
 
     // log the deletion
-    opts.shell
+    opts.terminal
         .stdout()
         .plain(format!(
             "{} Space with name '{}' has been deleted.",

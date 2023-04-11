@@ -2,8 +2,8 @@ use std::str::FromStr;
 
 use crate::node::NodeOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::CommandGlobalOpts;
 use crate::Result;
+use crate::{fmt_warn, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use colorful::Colorful;
@@ -225,15 +225,13 @@ async fn run_impl(
             let payload = StartServiceRequest::new(payload, &addr);
             let req = Request::post("/node/services/kafka_consumer").body(payload);
 
-            opts.shell.write_line(&format!(
-                "{} Starting KafkaConsumer service at {}",
-                "!".light_green(),
-                &bootstrap_server.to_string(),
+            opts.terminal.write_line(&fmt_warn!(
+                "Starting KafkaConsumer service at {}",
+                &bootstrap_server.to_string()
             ))?;
-            opts.shell.write_line(&format!(
-                "{} Brokers port range set to {}",
-                "!".light_green(),
-                &brokers_port_range.to_string(),
+            opts.terminal.write_line(&fmt_warn!(
+                "Brokers port range set to {}",
+                &brokers_port_range.to_string()
             ))?;
             start_service_impl(
                 ctx,
@@ -256,15 +254,13 @@ async fn run_impl(
                 StartKafkaProducerRequest::new(bootstrap_server, brokers_port_range, project_route);
             let payload = StartServiceRequest::new(payload, &addr);
             let req = Request::post("/node/services/kafka_producer").body(payload);
-            opts.shell.write_line(&format!(
-                "{} Starting KafkaProducer service at {}",
-                "!".light_green(),
-                &bootstrap_server.to_string(),
+            opts.terminal.write_line(&fmt_warn!(
+                "Starting KafkaProducer service at {}",
+                &bootstrap_server.to_string()
             ))?;
-            opts.shell.write_line(&format!(
-                "{} Brokers port range set to {}",
-                "!".light_green(),
-                &brokers_port_range.to_string(),
+            opts.terminal.write_line(&fmt_warn!(
+                "Brokers port range set to {}",
+                &brokers_port_range.to_string()
             ))?;
             start_service_impl(
                 ctx,

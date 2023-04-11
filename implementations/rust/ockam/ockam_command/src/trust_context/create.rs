@@ -57,7 +57,7 @@ Trust Context:
             auth
         );
 
-        opts.shell
+        opts.terminal
             .stdout()
             .plain(output)
             .json(serde_json::to_string_pretty(&tcc)?)

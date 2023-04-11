@@ -115,7 +115,7 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
 
     let json_output = serde_json::to_string_pretty(&inlet)?;
 
-    opts.shell
+    opts.terminal
         .stdout()
         .plain(output)
         .machine(machine_output)

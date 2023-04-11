@@ -1,6 +1,7 @@
-use crate::CommandGlobalOpts;
+use crate::{fmt_ok, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
+use colorful::Colorful;
 use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use ockam_api::cli_state::CliStateError;
 
@@ -21,23 +22,28 @@ impl DefaultCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
+    let DefaultCommand { name } = cmd;
     let state = opts.state.vaults;
-    // Check if exists
-    match state.get(&cmd.name) {
+    match state.get(&name) {
         Ok(v) => {
             // If it exists, warn the user and exit
             if state.is_default(v.name())? {
-                Err(anyhow!("Vault '{}' is already the default", &cmd.name).into())
+                Err(anyhow!("Vault '{name}' is already the default").into())
             }
             // Otherwise, set it as default
             else {
                 state.set_default(v.name())?;
-                println!("Vault '{}' is now the default", &cmd.name,);
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("Vault '{name}' is now the default"))
+                    .machine(&name)
+                    .json(serde_json::json!({ "vault": {"name": name} }))
+                    .write_line()?;
                 Ok(())
             }
         }
         Err(err) => match err {
-            CliStateError::NotFound => Err(anyhow!("Vault '{}' not found", &cmd.name).into()),
+            CliStateError::NotFound => Err(anyhow!("Vault '{name}' not found").into()),
             _ => Err(err.into()),
         },
     }

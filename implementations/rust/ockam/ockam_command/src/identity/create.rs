@@ -57,7 +57,7 @@ impl CreateCommand {
         output.push_str(&format!("Identity created: {}", identity.identifier()));
 
         options
-            .shell
+            .terminal
             .stdout()
             .plain(output)
             .machine(identity.identifier())

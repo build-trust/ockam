@@ -41,7 +41,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
         delete_all_nodes(opts, cmd.force)?;
     } else {
         delete_node(&opts, &cmd.node_name, cmd.force)?;
-        opts.shell
+        opts.terminal
             .stdout()
             .plain(format!(
                 "{} Node with name '{}' has been deleted.",
