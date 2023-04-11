@@ -36,7 +36,7 @@ ockam_node = { path = "../ockam_node", version = "^0.80.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.50.0" }
 rand = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-socket2 = { version = "0.5.1", features = ["all"] }
+socket2 = { version = "0.5.2", features = ["all"] }
 tokio = { version = "1.27", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
 tracing = { version = "0.1", default-features = false }
 
