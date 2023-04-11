@@ -70,7 +70,7 @@ async fn run_impl(
 
     // Create secure channel to the project's authority node
     // RPC is in embedded mode
-    let (secure_channel_addr, _secure_channel_session_id) = if let Some(tc) =
+    let (secure_channel_addr, _secure_channel_flow_control_id) = if let Some(tc) =
         cmd.trust_opts.trust_context.as_ref()
     {
         let cred_retr = tc.authority()?.own_credential()?;

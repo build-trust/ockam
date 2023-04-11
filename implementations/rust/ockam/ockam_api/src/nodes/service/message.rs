@@ -77,8 +77,7 @@ mod node {
                 .send_and_receive_extended::<Vec<u8>>(
                     route,
                     msg,
-                    MessageSendReceiveOptions::new()
-                        .with_session(&node_manager.message_flow_sessions),
+                    MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
                 )
                 .await;
             match res {

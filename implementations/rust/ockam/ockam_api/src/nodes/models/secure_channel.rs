@@ -4,7 +4,7 @@ use minicbor::{Decode, Encode};
 
 use crate::nodes::registry::SecureChannelInfo;
 use ockam_core::compat::borrow::Cow;
-use ockam_core::sessions::SessionId;
+use ockam_core::flow_control::FlowControlId;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{route, Address, CowStr, Result};
@@ -69,16 +69,16 @@ pub struct CreateSecureChannelResponse<'a, 'b> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6056513>,
     #[b(1)] pub addr: CowStr<'a>,
-    #[b(2)] pub session_id: CowStr<'b>
+    #[b(2)] pub flow_control_id: CowStr<'b>
 }
 
 impl<'a, 'b> CreateSecureChannelResponse<'a, 'b> {
-    pub fn new(addr: &Address, session_id: &SessionId) -> Self {
+    pub fn new(addr: &Address, flow_control_id: &FlowControlId) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.to_string().into(),
-            session_id: session_id.to_string().into(),
+            flow_control_id: flow_control_id.to_string().into(),
         }
     }
 
@@ -87,12 +87,12 @@ impl<'a, 'b> CreateSecureChannelResponse<'a, 'b> {
             #[cfg(feature = "tag")]
             tag: self.tag.to_owned(),
             addr: self.addr.to_owned(),
-            session_id: self.session_id.to_owned(),
+            flow_control_id: self.flow_control_id.to_owned(),
         }
     }
 
-    pub fn session_id(&self) -> SessionId {
-        SessionId::new(self.session_id.as_ref())
+    pub fn flow_control_id(&self) -> FlowControlId {
+        FlowControlId::new(self.flow_control_id.as_ref())
     }
 
     pub fn addr(&self) -> Result<MultiAddr> {

@@ -244,7 +244,7 @@ async fn run_foreground_node(
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = &cmd.tcp_listener_address;
 
-    // TODO: This is only listening on loopback address, but should use Sessions anyways
+    // TODO: This is only listening on loopback address, but should use FlowControls anyways
     let (socket_addr, listener_addr) = tcp
         .listen(&bind, TcpListenerTrustOptions::insecure())
         .await?;
@@ -279,7 +279,7 @@ async fn run_foreground_node(
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listener_addr,
-                session_id: "<none>".into(), // TODO: Replace with proper value when loopbck TCP listener starts using Sessions
+                flow_control_id: "<none>".into(), // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
             },
             tcp.async_try_clone().await?,
         ),

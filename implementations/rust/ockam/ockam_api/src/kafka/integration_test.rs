@@ -22,7 +22,7 @@ mod test {
     use ockam::Context;
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
-    use ockam_core::sessions::Sessions;
+    use ockam_core::flow_control::FlowControls;
     use ockam_core::{route, Address, AllowAll, Route};
     use ockam_identity::SecureChannelListenerTrustOptions;
     use ockam_node::compat::tokio;
@@ -75,12 +75,12 @@ mod test {
         outlet_route: Route,
         kind: KafkaServiceKind,
     ) -> ockam::Result<u16> {
-        let sessions = Sessions::default();
+        let flow_controls = FlowControls::default();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handle.identity.clone(),
             route![],
             HopForwarderCreator {},
-            &sessions,
+            &flow_controls,
         );
 
         //the possibility to accept secure channels is the only real

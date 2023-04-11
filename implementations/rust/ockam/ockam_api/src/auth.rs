@@ -5,7 +5,7 @@ use minicbor::Decoder;
 use ockam_core::api::decode_option;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::Sessions;
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageReader};
 use ockam_identity::IdentityIdentifier;
@@ -78,7 +78,7 @@ pub struct Client {
     ctx: Context,
     route: Route,
     buf: Vec<u8>,
-    sessions: Option<Sessions>,
+    flow_controls: Option<FlowControls>,
 }
 
 impl fmt::Debug for Client {
@@ -102,21 +102,21 @@ impl Client {
             ctx,
             route: r,
             buf: Vec::new(),
-            sessions: None,
+            flow_controls: None,
         })
     }
 
-    pub fn with_session(mut self, sessions: &Sessions) -> Self {
-        self.sessions = Some(sessions.clone());
+    pub fn with_flow_control(mut self, flow_controls: &FlowControls) -> Self {
+        self.flow_controls = Some(flow_controls.clone());
         self
     }
 
     fn options(&self) -> MessageSendReceiveOptions {
         let options = MessageSendReceiveOptions::new();
 
-        match &self.sessions {
+        match &self.flow_controls {
             None => options,
-            Some(sessions) => options.with_session(sessions),
+            Some(flow_controls) => options.with_flow_control(flow_controls),
         }
     }
 

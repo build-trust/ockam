@@ -17,7 +17,7 @@ use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::{SessionId, SessionPolicy};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_core::{route, CowStr};
 
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
@@ -35,30 +35,30 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
-    ) -> Result<(Address, SessionId)> {
+    ) -> Result<(Address, FlowControlId)> {
         // If channel was already created, do nothing.
         if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
             // Actually should not happen, since every time a new TCP connection is created, so the
             // route is different
             let addr = channel.addr();
             debug!(%addr, "Using cached secure channel");
-            return Ok((addr.clone(), channel.session_id().clone()));
+            return Ok((addr.clone(), channel.flow_control_id().clone()));
         }
         // Else, create it.
 
         debug!(%sc_route, "Creating secure channel");
         let timeout = timeout.unwrap_or(Duration::from_secs(120));
-        let sc_session_id = self.message_flow_sessions.generate_session_id();
+        let sc_flow_control_id = self.flow_controls.generate_id();
         let trust_options =
-            SecureChannelTrustOptions::as_producer(&self.message_flow_sessions, &sc_session_id);
+            SecureChannelTrustOptions::as_producer(&self.flow_controls, &sc_flow_control_id);
 
         // Just add ourself as consumer for the next hop if it's a producer
         let trust_options = match self
-            .message_flow_sessions
-            .find_session_with_producer_address(sc_route.next()?)
-            .map(|x| x.session_id().clone())
+            .flow_controls
+            .find_flow_control_with_producer_address(sc_route.next()?)
+            .map(|x| x.flow_control_id().clone())
         {
-            Some(_session_id) => trust_options.as_consumer(&self.message_flow_sessions),
+            Some(_flow_control_id) => trust_options.as_consumer(&self.flow_controls),
             None => trust_options,
         };
 
@@ -76,11 +76,11 @@ impl NodeManager {
         self.registry.secure_channels.insert(
             sc_addr.clone(),
             sc_route,
-            sc_session_id.clone(),
+            sc_flow_control_id.clone(),
             authorized_identifiers,
         );
 
-        Ok((sc_addr, sc_session_id))
+        Ok((sc_addr, sc_flow_control_id))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -93,7 +93,7 @@ impl NodeManager {
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
         credential_name: Option<CowStr<'_>>,
-    ) -> Result<(Address, SessionId)> {
+    ) -> Result<(Address, FlowControlId)> {
         let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
             match idt_state.get(ctx, self.vault()?).await {
@@ -119,7 +119,7 @@ impl NodeManager {
             None
         };
 
-        let (sc_addr, sc_session_id) = self
+        let (sc_addr, sc_flow_control_id) = self
             .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
             .await?;
 
@@ -153,7 +153,7 @@ impl NodeManager {
                     .present_credential(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
                         &credential,
-                        MessageSendReceiveOptions::new().with_session(&self.message_flow_sessions),
+                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
                     )
                     .await?;
                 debug!(%sc_addr, "One-way credential presentation success");
@@ -176,7 +176,7 @@ impl NodeManager {
                         vec![self.trust_context()?.authority()?.identity()],
                         self.attributes_storage.clone(),
                         &credential,
-                        MessageSendReceiveOptions::new().with_session(&self.message_flow_sessions),
+                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
                     )
                     .await?;
                 debug!(%sc_addr, "Mutual credential presentation success");
@@ -184,7 +184,7 @@ impl NodeManager {
         }
 
         // Return secure channel address
-        Ok((sc_addr, sc_session_id))
+        Ok((sc_addr, sc_flow_control_id))
     }
 
     pub(super) async fn create_secure_channel_listener_impl(
@@ -194,13 +194,13 @@ impl NodeManager {
         vault_name: Option<CowStr<'_>>,
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
-    ) -> Result<SessionId> {
+    ) -> Result<FlowControlId> {
         info!(
             "Handling request to create a new secure channel listener: {}",
             addr
         );
 
-        let session_id = self.message_flow_sessions.generate_session_id();
+        let flow_control_id = self.flow_controls.generate_id();
 
         let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
@@ -219,8 +219,8 @@ impl NodeManager {
         };
 
         let trust_options =
-            SecureChannelListenerTrustOptions::as_spawner(&self.message_flow_sessions, &session_id)
-                .as_consumer(&self.message_flow_sessions);
+            SecureChannelListenerTrustOptions::as_spawner(&self.flow_controls, &flow_control_id)
+                .as_consumer(&self.flow_controls);
         let trust_options = match authorized_identifiers {
             Some(ids) => trust_options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => trust_options.with_trust_policy(TrustEveryonePolicy),
@@ -230,37 +230,38 @@ impl NodeManager {
             .create_secure_channel_listener(addr.clone(), trust_options)
             .await?;
 
-        self.registry
-            .secure_channel_listeners
-            .insert(addr, SecureChannelListenerInfo::new(session_id.clone()));
+        self.registry.secure_channel_listeners.insert(
+            addr,
+            SecureChannelListenerInfo::new(flow_control_id.clone()),
+        );
 
         // TODO: Clean
         // Add Echoer, Uppercase and Cred Exch as a consumer by default
-        self.message_flow_sessions.add_consumer(
+        self.flow_controls.add_consumer(
             &DefaultAddress::ECHO_SERVICE.into(),
-            &session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            &flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        self.message_flow_sessions.add_consumer(
+        self.flow_controls.add_consumer(
             &DefaultAddress::UPPERCASE_SERVICE.into(),
-            &session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            &flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        self.message_flow_sessions.add_consumer(
+        self.flow_controls.add_consumer(
             &DefaultAddress::CREDENTIALS_SERVICE.into(),
-            &session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            &flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        self.message_flow_sessions.add_consumer(
+        self.flow_controls.add_consumer(
             &KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS.into(),
-            &session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            &flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        Ok(session_id)
+        Ok(flow_control_id)
     }
 
     pub(super) async fn delete_secure_channel(&mut self, addr: &Address) -> Result<()> {
@@ -344,17 +345,17 @@ impl NodeManagerWorker {
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
-        let tcp_session = multiaddr_to_route(
+        let tcp_route = multiaddr_to_route(
             &addr,
             &node_manager.tcp_transport,
-            &node_manager.message_flow_sessions,
+            &node_manager.flow_controls,
         )
         .await
         .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-        let (sc_address, sc_session_id) = node_manager
+        let (sc_address, sc_flow_control_id) = node_manager
             .create_secure_channel_impl(
-                tcp_session.route,
+                tcp_route.route,
                 authorized_identifiers,
                 credential_exchange_mode,
                 timeout,
@@ -366,7 +367,7 @@ impl NodeManagerWorker {
 
         let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(
             &sc_address,
-            &sc_session_id,
+            &sc_flow_control_id,
         ));
 
         Ok(response)
@@ -446,7 +447,7 @@ impl NodeManagerWorker {
             return Ok(Response::bad_request(req.id()));
         }
 
-        // TODO: Return to the client side session_id
+        // TODO: Return to the client side flow_control_id
         node_manager
             .create_secure_channel_listener_impl(addr, authorized_identifiers, vault, identity, ctx)
             .await?;

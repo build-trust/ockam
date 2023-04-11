@@ -4,12 +4,12 @@ use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
+use ockam::flow_control::FlowControls;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{
     AuthorityInfo, CredentialMemoryRetriever, Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions,
     TrustContext, TrustEveryonePolicy,
 };
-use ockam::sessions::Sessions;
 use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 use std::sync::Arc;
 
@@ -36,13 +36,13 @@ async fn main(ctx: Context) -> Result<()> {
     // The credential issuer already knows the public identifier of this identity
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
-    let sessions = Sessions::default();
-    let session_id = sessions.generate_session_id();
-    let issuer_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &session_id);
+    let flow_controls = FlowControls::default();
+    let flow_control_id = flow_controls.generate_id();
+    let issuer_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&flow_controls, &flow_control_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
     let issuer_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(&sessions);
+        .as_consumer(&flow_controls);
     let issuer_channel = server
         .create_secure_channel(route![issuer_connection, "secure"], issuer_trust_options)
         .await?;
@@ -74,14 +74,14 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
-    let listener_session_id = sessions.generate_session_id();
-    let trust_options = SecureChannelListenerTrustOptions::as_spawner(&sessions, &listener_session_id)
+    let listener_flow_control_id = flow_controls.generate_id();
+    let trust_options = SecureChannelListenerTrustOptions::as_spawner(&flow_controls, &listener_flow_control_id)
         .with_trust_policy(TrustEveryonePolicy);
 
     server.create_secure_channel_listener("secure", trust_options).await?;
 
     // Create a TCP listener and wait for incoming connections
-    let tcp_listener_trust_options = TcpListenerTrustOptions::as_spawner(&sessions, &listener_session_id);
+    let tcp_listener_trust_options = TcpListenerTrustOptions::as_spawner(&flow_controls, &listener_flow_control_id);
     tcp.listen("127.0.0.1:4000", tcp_listener_trust_options).await?;
 
     // Don't call ctx.stop() here so this node runs forever.

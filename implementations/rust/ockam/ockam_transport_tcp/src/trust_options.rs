@@ -1,6 +1,6 @@
 use crate::workers::Addresses;
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::{SessionId, SessionOutgoingAccessControl, Sessions};
+use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{AllowAll, IncomingAccessControl, OutgoingAccessControl, Result};
 use ockam_transport_core::TransportError;
 
@@ -12,7 +12,7 @@ pub(crate) struct TcpConnectionAccessControl {
 /// Trust Options for a TCP connection
 #[derive(Clone, Debug)]
 pub struct TcpConnectionTrustOptions {
-    pub(crate) producer_session: Option<(Sessions, SessionId)>,
+    pub(crate) producer_flow_control: Option<(FlowControls, FlowControlId)>,
 }
 
 impl TcpConnectionTrustOptions {
@@ -22,22 +22,22 @@ impl TcpConnectionTrustOptions {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            producer_session: None,
+            producer_flow_control: None,
         }
     }
 
-    /// Mark this Tcp Receivers as a Producer for a given [`SessionId`]
-    pub fn as_producer(sessions: &Sessions, session_id: &SessionId) -> Self {
+    /// Mark this Tcp Receivers as a Producer for a given [`FlowControlId`]
+    pub fn as_producer(flow_controls: &FlowControls, flow_control_id: &FlowControlId) -> Self {
         Self {
-            producer_session: Some((sessions.clone(), session_id.clone())),
+            producer_flow_control: Some((flow_controls.clone(), flow_control_id.clone())),
         }
     }
 
-    pub(crate) fn setup_session(&self, addresses: &Addresses) {
-        if let Some((sessions, session_id)) = &self.producer_session {
-            sessions.add_producer(
+    pub(crate) fn setup_flow_control(&self, addresses: &Addresses) {
+        if let Some((flow_controls, flow_control_id)) = &self.producer_flow_control {
+            flow_controls.add_producer(
                 addresses.receiver_address(),
-                session_id,
+                flow_control_id,
                 None,
                 vec![addresses.sender_address().clone()],
             );
@@ -45,13 +45,15 @@ impl TcpConnectionTrustOptions {
     }
 
     pub(crate) fn create_access_control(self) -> TcpConnectionAccessControl {
-        match self.producer_session {
-            Some((sessions, session_id)) => TcpConnectionAccessControl {
-                sender_incoming_access_control: Arc::new(AllowAll),
-                receiver_outgoing_access_control: Arc::new(SessionOutgoingAccessControl::new(
-                    sessions, session_id, None,
-                )),
-            },
+        match self.producer_flow_control {
+            Some((flow_controls, flow_control_id)) => {
+                TcpConnectionAccessControl {
+                    sender_incoming_access_control: Arc::new(AllowAll),
+                    receiver_outgoing_access_control: Arc::new(
+                        FlowControlOutgoingAccessControl::new(flow_controls, flow_control_id, None),
+                    ),
+                }
+            }
             None => TcpConnectionAccessControl {
                 sender_incoming_access_control: Arc::new(AllowAll),
                 receiver_outgoing_access_control: Arc::new(AllowAll),
@@ -63,7 +65,7 @@ impl TcpConnectionTrustOptions {
 /// Trust Options for a TCP listener
 #[derive(Debug)]
 pub struct TcpListenerTrustOptions {
-    pub(crate) spawner_session: Option<(Sessions, SessionId)>,
+    pub(crate) spawner_flow_controls: Option<(FlowControls, FlowControlId)>,
 }
 
 impl TcpListenerTrustOptions {
@@ -72,7 +74,7 @@ impl TcpListenerTrustOptions {
     /// Should only be used for testing purposes
     pub fn insecure() -> Self {
         Self {
-            spawner_session: None,
+            spawner_flow_controls: None,
         }
     }
 
@@ -82,31 +84,31 @@ impl TcpListenerTrustOptions {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            spawner_session: None,
+            spawner_flow_controls: None,
         }
     }
 
-    /// Mark this Tcp Listener as a Spawner with given [`SessionId`].
-    /// NOTE: Spawned connections get fresh random [`SessionId`], however they are still marked
-    /// with Spawner's [`SessionId`]
-    pub fn as_spawner(sessions: &Sessions, session_id: &SessionId) -> Self {
+    /// Mark this Tcp Listener as a Spawner with given [`FlowControlId`].
+    /// NOTE: Spawned connections get fresh random [`FlowControlId`], however they are still marked
+    /// with Spawner's [`FlowControlId`]
+    pub fn as_spawner(flow_controls: &FlowControls, flow_control_id: &FlowControlId) -> Self {
         Self {
-            spawner_session: Some((sessions.clone(), session_id.clone())),
+            spawner_flow_controls: Some((flow_controls.clone(), flow_control_id.clone())),
         }
     }
 
-    pub(crate) fn setup_session(&self, addresses: &Addresses) -> Option<SessionId> {
-        if let Some((sessions, listener_session_id)) = &self.spawner_session {
-            let session_id = sessions.generate_session_id();
+    pub(crate) fn setup_flow_control(&self, addresses: &Addresses) -> Option<FlowControlId> {
+        if let Some((flow_controls, listener_flow_control_id)) = &self.spawner_flow_controls {
+            let flow_control_id = flow_controls.generate_id();
 
-            sessions.add_producer(
+            flow_controls.add_producer(
                 addresses.receiver_address(),
-                &session_id,
-                Some(listener_session_id),
+                &flow_control_id,
+                Some(listener_flow_control_id),
                 vec![addresses.sender_address().clone()],
             );
 
-            Some(session_id)
+            Some(flow_control_id)
         } else {
             None
         }
@@ -114,24 +116,26 @@ impl TcpListenerTrustOptions {
 
     pub(crate) fn create_access_control(
         &self,
-        session_id: Option<SessionId>,
+        flow_control_id: Option<FlowControlId>,
     ) -> Result<TcpConnectionAccessControl> {
-        match (&self.spawner_session, session_id) {
-            (Some((sessions, listener_session_id)), Some(session_id)) => {
+        match (&self.spawner_flow_controls, flow_control_id) {
+            (Some((flow_controls, listener_flow_control_id)), Some(flow_control_id)) => {
                 Ok(TcpConnectionAccessControl {
                     sender_incoming_access_control: Arc::new(AllowAll),
-                    receiver_outgoing_access_control: Arc::new(SessionOutgoingAccessControl::new(
-                        sessions.clone(),
-                        session_id,
-                        Some(listener_session_id.clone()),
-                    )),
+                    receiver_outgoing_access_control: Arc::new(
+                        FlowControlOutgoingAccessControl::new(
+                            flow_controls.clone(),
+                            flow_control_id,
+                            Some(listener_flow_control_id.clone()),
+                        ),
+                    ),
                 })
             }
             (None, None) => Ok(TcpConnectionAccessControl {
                 sender_incoming_access_control: Arc::new(AllowAll),
                 receiver_outgoing_access_control: Arc::new(AllowAll),
             }),
-            _ => Err(TransportError::SessionInconsistency.into()),
+            _ => Err(TransportError::FlowControlInconsistency.into()),
         }
     }
 }

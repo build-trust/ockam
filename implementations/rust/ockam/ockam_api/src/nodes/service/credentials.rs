@@ -79,8 +79,7 @@ impl NodeManagerWorker {
                 .present_credential(
                     route,
                     &credential,
-                    MessageSendReceiveOptions::new()
-                        .with_session(&node_manager.message_flow_sessions),
+                    MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
                 )
                 .await?;
         } else {
@@ -91,8 +90,7 @@ impl NodeManagerWorker {
                     vec![node_manager.trust_context()?.authority()?.identity()],
                     node_manager.attributes_storage.clone(),
                     &credential,
-                    MessageSendReceiveOptions::new()
-                        .with_session(&node_manager.message_flow_sessions),
+                    MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
                 )
                 .await?;
         }

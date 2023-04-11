@@ -103,8 +103,9 @@ impl RemoteForwarder {
         let heartbeat = DelayedEvent::create(ctx, addresses.heartbeat.clone(), vec![]).await?;
         let heartbeat_source_address = heartbeat.address();
 
-        let session_id = trust_options.setup_session(&addresses, registration_route.next()?);
-        let outgoing_access_control = trust_options.create_access_control(session_id);
+        let flow_control_id =
+            trust_options.setup_flow_control(&addresses, registration_route.next()?);
+        let outgoing_access_control = trust_options.create_access_control(flow_control_id);
 
         let forwarder = Self::new(
             addresses.clone(),
@@ -150,8 +151,9 @@ impl RemoteForwarder {
 
         let registration_route = route![hub_route, "forwarding_service"];
 
-        let session_id = trust_options.setup_session(&addresses, registration_route.next()?);
-        let outgoing_access_control = trust_options.create_access_control(session_id);
+        let flow_control_id =
+            trust_options.setup_flow_control(&addresses, registration_route.next()?);
+        let outgoing_access_control = trust_options.create_access_control(flow_control_id);
 
         let forwarder = Self::new(
             addresses.clone(),
@@ -197,8 +199,9 @@ impl RemoteForwarder {
 
         let registration_route = route![hub_route.into(), "forwarding_service"];
 
-        let session_id = trust_options.setup_session(&addresses, registration_route.next()?);
-        let outgoing_access_control = trust_options.create_access_control(session_id);
+        let flow_control_id =
+            trust_options.setup_flow_control(&addresses, registration_route.next()?);
+        let outgoing_access_control = trust_options.create_access_control(flow_control_id);
 
         let forwarder = Self::new(
             addresses.clone(),

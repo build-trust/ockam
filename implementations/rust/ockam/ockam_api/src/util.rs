@@ -1,7 +1,7 @@
 use crate::error::ApiError;
 use anyhow::anyhow;
 use ockam::TcpTransport;
-use ockam_core::sessions::{SessionId, Sessions};
+use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, Error, Result, Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Tcp, Worker};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -42,23 +42,23 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
     Some(rb.into())
 }
 
-pub struct TcpSession {
-    pub session_id: Option<SessionId>,
+pub struct MultiAddrToRouteResult {
+    pub flow_control_id: Option<FlowControlId>,
     pub route: Route,
 }
 
 pub async fn multiaddr_to_route(
     ma: &MultiAddr,
     tcp: &TcpTransport,
-    sessions: &Sessions,
-) -> Option<TcpSession> {
+    flow_controls: &FlowControls,
+) -> Option<MultiAddrToRouteResult> {
     let mut rb = Route::new();
     let mut it = ma.iter().peekable();
-    let session_id = sessions.generate_session_id();
+    let flow_control_id = flow_controls.generate_id();
 
     let mut trust_options = Some(TcpConnectionTrustOptions::as_producer(
-        sessions,
-        &session_id,
+        flow_controls,
+        &flow_control_id,
     ));
 
     while let Some(p) = it.next() {
@@ -136,12 +136,12 @@ pub async fn multiaddr_to_route(
     }
 
     match trust_options {
-        Some(_) => Some(TcpSession {
-            session_id: None,
+        Some(_) => Some(MultiAddrToRouteResult {
+            flow_control_id: None,
             route: rb.into(),
         }),
-        None => Some(TcpSession {
-            session_id: Some(session_id),
+        None => Some(MultiAddrToRouteResult {
+            flow_control_id: Some(flow_control_id),
             route: rb.into(),
         }),
     }
@@ -325,7 +325,7 @@ pub mod test {
                     tm: crate::nodes::models::transport::TransportMode::Listen,
                     socket_address: "127.0.0.1:123".parse().unwrap(),
                     worker_address: "".into(),
-                    session_id: "".into(),
+                    flow_control_id: "".into(),
                 },
                 tcp.async_try_clone().await?,
             ),

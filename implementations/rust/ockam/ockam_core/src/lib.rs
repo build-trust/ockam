@@ -50,7 +50,7 @@ pub mod compat;
 
 /// Debugger
 pub mod debugger;
-pub mod sessions;
+pub mod flow_control;
 pub mod vault;
 
 /// Encoding

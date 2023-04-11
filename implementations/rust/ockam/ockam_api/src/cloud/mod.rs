@@ -189,39 +189,39 @@ mod node {
                     None => node_manager.identity.clone(),
                 }
             };
-            let (sc_address, sessions, _sc_session_id) = {
+            let (sc_address, flow_controls, _sc_flow_control_id) = {
                 let node_manager = self.get().read().await;
-                let cloud_session = crate::multiaddr_to_route(
+                let cloud_route = crate::multiaddr_to_route(
                     cloud_multiaddr,
                     &node_manager.tcp_transport,
-                    &node_manager.message_flow_sessions,
+                    &node_manager.flow_controls,
                 )
                 .await
                 .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-                let sc_session_id = node_manager.message_flow_sessions.generate_session_id();
+                let sc_flow_control_id = node_manager.flow_controls.generate_id();
                 let trust_options = SecureChannelTrustOptions::as_producer(
-                    &node_manager.message_flow_sessions,
-                    &sc_session_id,
+                    &node_manager.flow_controls,
+                    &sc_flow_control_id,
                 )
                 .with_trust_policy(TrustIdentifierPolicy::new(
                     node_manager.controller_identity_id(),
                 ))
-                .as_consumer(&node_manager.message_flow_sessions);
+                .as_consumer(&node_manager.flow_controls);
                 let sc_address = identity
-                    .create_secure_channel(cloud_session.route, trust_options)
+                    .create_secure_channel(cloud_route.route, trust_options)
                     .await?;
 
                 (
                     sc_address,
-                    &node_manager.message_flow_sessions.clone(),
-                    sc_session_id,
+                    &node_manager.flow_controls.clone(),
+                    sc_flow_control_id,
                 )
             };
             let route = route![sc_address.clone(), api_service];
             let options = MessageSendReceiveOptions::new()
                 .with_timeout(timeout)
-                .with_session(sessions);
+                .with_flow_control(flow_controls);
             let res = request(ctx, label, schema, route, req, options).await;
             ctx.stop_worker(sc_address).await?;
             res

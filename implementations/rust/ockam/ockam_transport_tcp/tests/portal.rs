@@ -4,7 +4,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 use ockam_core::compat::rand::random;
-use ockam_core::sessions::{SessionPolicy, Sessions};
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{route, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::{
@@ -122,27 +122,29 @@ async fn portal__reverse_flow__should_succeed(ctx: &mut Context) -> Result<()> {
 
 #[allow(non_snake_case)]
 #[ockam_macros::test(timeout = 15000)]
-async fn portal__tcp_connection_with_sessions__should_succeed(ctx: &mut Context) -> Result<()> {
+async fn portal__tcp_connection_with_flow_controls__should_succeed(
+    ctx: &mut Context,
+) -> Result<()> {
     let payload1 = generate_binary();
     let payload2 = generate_binary();
 
-    let sessions = Sessions::default();
-    let outlet_session_id = sessions.generate_session_id();
-    let inlet_session_id = sessions.generate_session_id();
+    let flow_controls = FlowControls::default();
+    let outlet_flow_control_id = flow_controls.generate_id();
+    let inlet_flow_control_id = flow_controls.generate_id();
 
     let tcp = TcpTransport::create(ctx).await?;
 
     let (socket_address, _) = tcp
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::as_spawner(&sessions, &outlet_session_id),
+            TcpListenerTrustOptions::as_spawner(&flow_controls, &outlet_flow_control_id),
         )
         .await?;
 
     let tcp_connection = tcp
         .connect(
             socket_address.to_string(),
-            TcpConnectionTrustOptions::as_producer(&sessions, &inlet_session_id),
+            TcpConnectionTrustOptions::as_producer(&flow_controls, &inlet_flow_control_id),
         )
         .await?;
 
@@ -152,9 +154,9 @@ async fn portal__tcp_connection_with_sessions__should_succeed(ctx: &mut Context)
         "outlet",
         bind_address.clone(),
         TcpOutletTrustOptions::new().as_consumer(
-            &sessions,
-            &outlet_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            &flow_controls,
+            &outlet_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         ),
     )
     .await?;
@@ -163,7 +165,7 @@ async fn portal__tcp_connection_with_sessions__should_succeed(ctx: &mut Context)
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection.clone(), "outlet"],
-            TcpInletTrustOptions::new().as_consumer(&sessions),
+            TcpInletTrustOptions::new().as_consumer(&flow_controls),
         )
         .await?;
 
@@ -198,23 +200,23 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
 ) -> Result<()> {
     let payload = generate_binary();
 
-    let sessions = Sessions::default();
-    let outlet_session_id = sessions.generate_session_id();
-    let inlet_session_id = sessions.generate_session_id();
+    let flow_controls = FlowControls::default();
+    let outlet_flow_control_id = flow_controls.generate_id();
+    let inlet_flow_control_id = flow_controls.generate_id();
 
     let tcp = TcpTransport::create(ctx).await?;
 
     let (socket_address, _) = tcp
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::as_spawner(&sessions, &outlet_session_id),
+            TcpListenerTrustOptions::as_spawner(&flow_controls, &outlet_flow_control_id),
         )
         .await?;
 
     let tcp_connection = tcp
         .connect(
             socket_address.to_string(),
-            TcpConnectionTrustOptions::as_producer(&sessions, &inlet_session_id),
+            TcpConnectionTrustOptions::as_producer(&flow_controls, &inlet_flow_control_id),
         )
         .await?;
 
@@ -224,9 +226,9 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
         "outlet",
         bind_address.clone(),
         TcpOutletTrustOptions::new().as_consumer(
-            &sessions,
-            &outlet_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            &flow_controls,
+            &outlet_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         ),
     )
     .await?;
@@ -250,7 +252,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection, "outlet_invalid"],
-            TcpInletTrustOptions::new().as_consumer(&sessions),
+            TcpInletTrustOptions::new().as_consumer(&flow_controls),
         )
         .await?;
 

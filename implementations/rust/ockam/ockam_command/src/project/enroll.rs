@@ -79,46 +79,46 @@ impl Runner {
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let map = self.opts.config.lookup();
-        let (base_addr, _session_id) = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref()
-        {
-            let cred_retr = tc.authority()?.own_credential()?;
-            let addr = match cred_retr {
-                ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => {
-                    &c.maddr
-                }
-                _ => {
-                    return Err(anyhow!(
-                        "Trust context must be configured with a credential issuer"
-                    )
-                    .into())
-                }
+        let (base_addr, _flow_control_id) =
+            if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
+                let cred_retr = tc.authority()?.own_credential()?;
+                let addr = match cred_retr {
+                    ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => {
+                        &c.maddr
+                    }
+                    _ => {
+                        return Err(anyhow!(
+                            "Trust context must be configured with a credential issuer"
+                        )
+                        .into())
+                    }
+                };
+                let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
+                    &self.ctx,
+                    &self.opts,
+                    &node_name,
+                    tc.authority()?.identity().await?.identifier().clone(),
+                    addr,
+                    self.cmd.cloud_opts.identity.clone(),
+                )
+                .await?;
+
+                (sc_addr, Some(sc_flow_control_id))
+            } else if let Some(a) = project_authority(&self.cmd.to, &map)? {
+                let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
+                    &self.ctx,
+                    &self.opts,
+                    &node_name,
+                    a.identity_id().clone(),
+                    a.address(),
+                    self.cmd.cloud_opts.identity.clone(),
+                )
+                .await?;
+
+                (sc_addr, Some(sc_flow_control_id))
+            } else {
+                (self.cmd.to.clone(), None)
             };
-            let (sc_addr, sc_session_id) = create_secure_channel_to_authority(
-                &self.ctx,
-                &self.opts,
-                &node_name,
-                tc.authority()?.identity().await?.identifier().clone(),
-                addr,
-                self.cmd.cloud_opts.identity.clone(),
-            )
-            .await?;
-
-            (sc_addr, Some(sc_session_id))
-        } else if let Some(a) = project_authority(&self.cmd.to, &map)? {
-            let (sc_addr, sc_session_id) = create_secure_channel_to_authority(
-                &self.ctx,
-                &self.opts,
-                &node_name,
-                a.identity_id().clone(),
-                a.address(),
-                self.cmd.cloud_opts.identity.clone(),
-            )
-            .await?;
-
-            (sc_addr, Some(sc_session_id))
-        } else {
-            (self.cmd.to.clone(), None)
-        };
         // If an identity identifier is given add it as a member, otherwise
         // request an enrollment token that a future member can use to get a
         // credential.

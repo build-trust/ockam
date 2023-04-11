@@ -8,7 +8,7 @@ use ockam::compat::collections::HashMap;
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
 use ockam_api::is_local_node;
-use ockam_core::sessions::Sessions;
+use ockam_core::flow_control::FlowControls;
 use ockam_identity::authenticated_storage::AttributesEntry;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
@@ -124,12 +124,12 @@ fn print_entries(entries: &[(IdentityIdentifier, AttributesEntry)]) {
 }
 
 async fn client(ctx: &Context, tcp: &TcpTransport, addr: &MultiAddr) -> Result<auth::Client> {
-    let sessions = Sessions::default();
-    let to = ockam_api::multiaddr_to_route(addr, tcp, &sessions)
+    let flow_controls = FlowControls::default();
+    let route = ockam_api::multiaddr_to_route(addr, tcp, &flow_controls)
         .await
         .ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
-    let cl = auth::Client::new(to.route, ctx)
+    let cl = auth::Client::new(route.route, ctx)
         .await?
-        .with_session(&sessions);
+        .with_flow_control(&flow_controls);
     Ok(cl)
 }

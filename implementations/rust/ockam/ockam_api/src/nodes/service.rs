@@ -13,7 +13,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions as MessageFlowSessions};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{route, AllowAll, AsyncTryClone, IncomingAccessControl};
 use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
@@ -100,7 +100,7 @@ pub struct NodeManager {
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: Arc<dyn PolicyStorage>,
     attributes_storage: Arc<dyn IdentityAttributeStorage>,
-    pub(crate) message_flow_sessions: MessageFlowSessions,
+    pub(crate) flow_controls: FlowControls,
 }
 
 pub struct NodeManagerWorker {
@@ -184,8 +184,9 @@ impl NodeManager {
             .as_ref()
             .ok_or_else(|| ApiError::generic("Trust context doesn't exist"))
     }
-    pub fn message_flow_sessions(&self) -> &MessageFlowSessions {
-        &self.message_flow_sessions
+
+    pub fn flow_controls(&self) -> &FlowControls {
+        &self.flow_controls
     }
 }
 
@@ -233,8 +234,8 @@ pub struct ApiTransport {
     pub socket_address: SocketAddr,
     /// Worker address
     pub worker_address: Address,
-    /// SessionId
-    pub session_id: SessionId,
+    /// FlowControlId
+    pub flow_control_id: FlowControlId,
 }
 
 pub struct NodeManagerTransportOptions {
@@ -266,7 +267,7 @@ impl NodeManagerTrustOptions {
 pub(crate) struct ConnectResult {
     pub(crate) secure_channel: MultiAddr,
     pub(crate) suffix: MultiAddr,
-    pub(crate) session_id: Option<SessionId>,
+    pub(crate) flow_control_id: Option<FlowControlId>,
 }
 
 impl NodeManager {
@@ -311,8 +312,8 @@ impl NodeManager {
         let vault: Arc<dyn IdentityVault> = Arc::new(node_state.config.vault().await?);
         let identity = Arc::new(node_state.config.identity(ctx).await?);
 
-        let message_flow_sessions = ockam_core::sessions::Sessions::default();
-        let medic = Medic::new(message_flow_sessions.clone());
+        let flow_controls = FlowControls::default();
+        let medic = Medic::new(flow_controls.clone());
         let sessions = medic.sessions();
 
         let mut s = Self {
@@ -341,7 +342,7 @@ impl NodeManager {
             sessions,
             policies,
             attributes_storage,
-            message_flow_sessions,
+            flow_controls,
         };
 
         info!("NodeManager::create: {}", s.node_name);
@@ -420,21 +421,21 @@ impl NodeManager {
         let res = self.connect_impl(connection).await?;
 
         if add_default_consumers {
-            if let Some(session_id) = &res.session_id {
-                self.message_flow_sessions.add_consumer(
+            if let Some(flow_control_id) = &res.flow_control_id {
+                self.flow_controls.add_consumer(
                     &DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
-                    session_id,
-                    SessionPolicy::ProducerAllowMultiple,
+                    flow_control_id,
+                    FlowControlPolicy::ProducerAllowMultiple,
                 );
-                self.message_flow_sessions.add_consumer(
+                self.flow_controls.add_consumer(
                     &DefaultAddress::UPPERCASE_SERVICE.into(),
-                    session_id,
-                    SessionPolicy::ProducerAllowMultiple,
+                    flow_control_id,
+                    FlowControlPolicy::ProducerAllowMultiple,
                 );
-                self.message_flow_sessions.add_consumer(
+                self.flow_controls.add_consumer(
                     &DefaultAddress::ECHO_SERVICE.into(),
-                    session_id,
-                    SessionPolicy::ProducerAllowMultiple,
+                    flow_control_id,
+                    FlowControlPolicy::ProducerAllowMultiple,
                 );
             }
         }
@@ -464,14 +465,14 @@ impl NodeManager {
                     .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
                 let (a, i) = self.resolve_project(&p)?;
                 debug!(addr = %a, "creating secure channel");
-                let tcp_session = multiaddr_to_route(&a, transport, &self.message_flow_sessions)
+                let route = multiaddr_to_route(&a, transport, &self.flow_controls)
                     .await
                     .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
-                let (sc_address, sc_session_id) = self
+                let (sc_address, sc_flow_control_id) = self
                     .create_secure_channel_impl(
-                        tcp_session.route,
+                        route.route,
                         i,
                         m,
                         timeout,
@@ -485,7 +486,7 @@ impl NodeManager {
                 let res = ConnectResult {
                     secure_channel: try_address_to_multiaddr(&sc_address)?,
                     suffix: a,
-                    session_id: Some(sc_session_id),
+                    flow_control_id: Some(sc_flow_control_id),
                 };
 
                 return Ok(res);
@@ -497,18 +498,17 @@ impl NodeManager {
             let (a1, b1) = addr.split(pos1);
             return match starts_with_secure(&b1) {
                 Some(pos2) => {
-                    let tcp_session =
-                        multiaddr_to_route(&a1, transport, &self.message_flow_sessions)
-                            .await
-                            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                    let route = multiaddr_to_route(&a1, transport, &self.flow_controls)
+                        .await
+                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     debug!(%addr, "creating a secure channel");
                     let (a2, b2) = b1.split(pos2);
                     let m = CredentialExchangeMode::Mutual;
                     let r2 = local_multiaddr_to_route(&a2)
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                    let (sc_address, sc_session_id) = self
+                    let (sc_address, sc_flow_control_id) = self
                         .create_secure_channel_impl(
-                            route![tcp_session.route, r2],
+                            route![route.route, r2],
                             authorized_identities.clone(),
                             m,
                             timeout,
@@ -521,22 +521,21 @@ impl NodeManager {
                     let res = ConnectResult {
                         secure_channel: try_address_to_multiaddr(&sc_address)?,
                         suffix: b2,
-                        session_id: Some(sc_session_id),
+                        flow_control_id: Some(sc_flow_control_id),
                     };
 
                     Ok(res)
                 }
                 None => {
-                    let tcp_session =
-                        multiaddr_to_route(addr, transport, &self.message_flow_sessions)
-                            .await
-                            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                    let route = multiaddr_to_route(addr, transport, &self.flow_controls)
+                        .await
+                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
                     let res = ConnectResult {
-                        secure_channel: route_to_multiaddr(&tcp_session.route)
+                        secure_channel: route_to_multiaddr(&route.route)
                             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?,
                         suffix: Default::default(),
-                        session_id: tcp_session.session_id,
+                        flow_control_id: route.flow_control_id,
                     };
 
                     Ok(res)
@@ -549,7 +548,7 @@ impl NodeManager {
             let r = local_multiaddr_to_route(addr)
                 .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let m = CredentialExchangeMode::Mutual;
-            let (sc_address, sc_session_id) = self
+            let (sc_address, sc_flow_control_id) = self
                 .create_secure_channel_impl(
                     r,
                     authorized_identities.clone(),
@@ -564,7 +563,7 @@ impl NodeManager {
             let res = ConnectResult {
                 secure_channel: try_address_to_multiaddr(&sc_address)?,
                 suffix: Default::default(),
-                session_id: Some(sc_session_id),
+                flow_control_id: Some(sc_flow_control_id),
             };
 
             return Ok(res);
@@ -573,7 +572,7 @@ impl NodeManager {
         let res = ConnectResult {
             secure_channel: Default::default(),
             suffix: addr.clone(),
-            session_id: None,
+            flow_control_id: None,
         };
 
         Ok(res)
@@ -925,7 +924,7 @@ impl Worker for NodeManagerWorker {
 
         ctx.start_worker(
             DefaultAddress::RPC_PROXY,
-            RpcProxyService::new(node_manager.message_flow_sessions.clone()),
+            RpcProxyService::new(node_manager.flow_controls.clone()),
             AllowAll,
             AllowAll,
         )

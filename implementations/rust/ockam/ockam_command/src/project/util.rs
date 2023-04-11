@@ -14,7 +14,7 @@ use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
-use ockam_core::sessions::SessionId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::api::CloudOpts;
@@ -82,7 +82,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 .context("Invalid project node route")?;
             (node_route, id.to_string())
         };
-        let (sc_address, _sc_session_id) = create_secure_channel_to_project(
+        let (sc_address, _sc_flow_control_id) = create_secure_channel_to_project(
             ctx,
             opts,
             api_node,
@@ -112,7 +112,7 @@ pub async fn create_secure_channel_to_project(
     project_identity: &str,
     credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
-) -> crate::Result<(MultiAddr, SessionId)> {
+) -> crate::Result<(MultiAddr, FlowControlId)> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
 
@@ -127,7 +127,7 @@ pub async fn create_secure_channel_to_project(
     rpc.request(req).await?;
 
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
-    Ok((sc.addr()?, sc.session_id()))
+    Ok((sc.addr()?, sc.flow_control_id()))
 }
 
 pub async fn create_secure_channel_to_authority(
@@ -137,7 +137,7 @@ pub async fn create_secure_channel_to_authority(
     authority: IdentityIdentifier,
     addr: &MultiAddr,
     identity: Option<String>,
-) -> crate::Result<(MultiAddr, SessionId)> {
+) -> crate::Result<(MultiAddr, FlowControlId)> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
     let allowed = vec![authority];
@@ -152,7 +152,7 @@ pub async fn create_secure_channel_to_authority(
     rpc.request(req).await?;
     let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
     let addr = res.addr()?;
-    Ok((addr, res.session_id()))
+    Ok((addr, res.flow_control_id()))
 }
 
 async fn delete_secure_channel<'a>(
@@ -248,7 +248,7 @@ pub async fn check_project_readiness<'a>(
 
         Retry::spawn(retry_strategy.clone(), || async {
             std::io::stdout().flush()?;
-            if let Ok((sc_addr, _sc_session_id)) = create_secure_channel_to_project(
+            if let Ok((sc_addr, _sc_flow_control_id)) = create_secure_channel_to_project(
                 ctx,
                 opts,
                 api_node,

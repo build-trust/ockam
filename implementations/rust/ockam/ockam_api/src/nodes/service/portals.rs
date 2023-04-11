@@ -15,7 +15,7 @@ use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::SessionPolicy;
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::IncomingAccessControl;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
@@ -164,7 +164,7 @@ impl NodeManagerWorker {
 
         let trust_options = TcpInletTrustOptions::new()
             .with_incoming_access_control(access_control.clone())
-            .as_consumer(&node_manager.message_flow_sessions);
+            .as_consumer(&node_manager.flow_controls);
 
         let res = node_manager
             .tcp_transport
@@ -334,14 +334,14 @@ impl NodeManagerWorker {
             TcpOutletTrustOptions::new().with_incoming_access_control(access_control);
 
         // Accept messages from the default secure channel listener
-        let trust_options = if let Some(session_id) = node_manager
-            .message_flow_sessions
-            .get_session_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+        let trust_options = if let Some(flow_control_id) = node_manager
+            .flow_controls
+            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
         {
             trust_options.as_consumer(
-                &node_manager.message_flow_sessions,
-                &session_id,
-                SessionPolicy::SpawnerAllowMultipleMessages,
+                &node_manager.flow_controls,
+                &flow_control_id,
+                FlowControlPolicy::SpawnerAllowMultipleMessages,
             )
         } else {
             trust_options

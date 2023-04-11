@@ -4,7 +4,7 @@ use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
 use crate::{error::*, NodeMessage};
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
-use ockam_core::sessions::{SessionPolicy, Sessions};
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
@@ -14,7 +14,7 @@ use ockam_core::{LocalInfo, Mailbox};
 
 /// Full set of options to `send_and_receive_extended` function
 pub struct MessageSendReceiveOptions {
-    sessions: Option<Sessions>,
+    flow_controls: Option<FlowControls>,
     message_wait: MessageWait,
 }
 
@@ -25,10 +25,10 @@ impl Default for MessageSendReceiveOptions {
 }
 
 impl MessageSendReceiveOptions {
-    /// Default options with [`DEFAULT_TIMEOUT`] and no session
+    /// Default options with [`DEFAULT_TIMEOUT`] and no flow control
     pub fn new() -> Self {
         Self {
-            sessions: None,
+            flow_controls: None,
             message_wait: MessageWait::Timeout(Duration::from_secs(DEFAULT_TIMEOUT)),
         }
     }
@@ -45,16 +45,16 @@ impl MessageSendReceiveOptions {
         self
     }
 
-    /// Set session to be able to receive a response
-    pub fn with_session(mut self, sessions: &Sessions) -> Self {
-        self.sessions = Some(sessions.clone());
+    /// Set flow_controls to be able to receive a response
+    pub fn with_flow_control(mut self, flow_controls: &FlowControls) -> Self {
+        self.flow_controls = Some(flow_controls.clone());
         self
     }
 }
 
 impl Context {
     /// Using a temporary new context, send a message and then receive a message
-    /// with default timeout and no session
+    /// with default timeout and no flow control
     ///
     /// This helper function uses [`new_detached`], [`send`], and
     /// [`receive`] internally. See their documentation for more
@@ -104,13 +104,17 @@ impl Context {
             vec![],
         );
 
-        if let Some(sessions) = options.sessions {
-            if let Some(session_id) = sessions
-                .find_session_with_producer_address(&next)
-                .map(|x| x.session_id().clone())
+        if let Some(flow_controls) = options.flow_controls {
+            if let Some(flow_control_id) = flow_controls
+                .find_flow_control_with_producer_address(&next)
+                .map(|x| x.flow_control_id().clone())
             {
                 // To be able to receive the response
-                sessions.add_consumer(&address, &session_id, SessionPolicy::ProducerAllowMultiple);
+                flow_controls.add_consumer(
+                    &address,
+                    &flow_control_id,
+                    FlowControlPolicy::ProducerAllowMultiple,
+                );
             }
         }
 

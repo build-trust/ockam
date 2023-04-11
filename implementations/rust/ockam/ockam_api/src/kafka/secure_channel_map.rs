@@ -6,7 +6,7 @@ use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::Sessions;
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{async_trait, route, Address, AllowAll, Error, Result, Route, Routed, Worker};
 use ockam_core::{Any, Message};
 use ockam_identity::api::{
@@ -76,7 +76,7 @@ pub(crate) trait ForwarderCreator: Send + Sync + 'static {
 
 pub(crate) struct RemoteForwarderCreator {
     hub_route: Route,
-    sessions: Sessions,
+    flow_controls: FlowControls,
 }
 
 #[async_trait]
@@ -87,7 +87,7 @@ impl ForwarderCreator for RemoteForwarderCreator {
             context,
             self.hub_route.clone(),
             alias.clone(),
-            RemoteForwarderTrustOptions::as_consumer_and_producer(&self.sessions),
+            RemoteForwarderTrustOptions::as_consumer_and_producer(&self.flow_controls),
         )
         .await?;
         trace!("remote forwarder created: {remote_forwarder_information:?}");
@@ -105,7 +105,7 @@ struct SecureChannelIdentifierMessage {
 
 pub(crate) struct KafkaSecureChannelControllerImpl<F: ForwarderCreator> {
     inner: Arc<Mutex<InnerSecureChannelControllerImpl<F>>>,
-    sessions: Sessions,
+    flow_controls: FlowControls,
 }
 
 //had to manually implement since #[derive(Clone)] doesn't work well in this situation
@@ -113,7 +113,7 @@ impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
-            sessions: self.sessions.clone(),
+            flow_controls: self.flow_controls.clone(),
         }
     }
 }
@@ -136,16 +136,16 @@ impl KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
     pub(crate) fn new(
         identity: Arc<Identity>,
         project_route: Route,
-        sessions: &Sessions,
+        flow_controls: &FlowControls,
     ) -> KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
         Self::new_extended(
             identity,
             project_route.clone(),
             RemoteForwarderCreator {
                 hub_route: route![project_route, ORCHESTRATOR_KAFKA_CONSUMERS],
-                sessions: sessions.clone(),
+                flow_controls: flow_controls.clone(),
             },
-            sessions,
+            flow_controls,
         )
     }
 }
@@ -156,7 +156,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         identity: Arc<Identity>,
         project_route: Route,
         forwarder_creator: F,
-        sessions: &Sessions,
+        flow_controls: &FlowControls,
     ) -> KafkaSecureChannelControllerImpl<F> {
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
@@ -167,7 +167,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 forwarder_creator,
                 project_route,
             })),
-            sessions: sessions.clone(),
+            flow_controls: flow_controls.clone(),
         }
     }
 
@@ -246,12 +246,12 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
             } else {
                 trace!("creating new secure channel to {topic_partition_address}");
 
-                // This route should not use Sessions because we are using tunnel over existing
+                // This route should not use FlowControls because we are using tunnel over existing
                 // secure channel
-                let session_id = self.sessions.generate_session_id();
+                let flow_control_id = self.flow_controls.generate_id();
                 let trust_options =
-                    SecureChannelTrustOptions::as_producer(&self.sessions, &session_id)
-                        .as_consumer(&self.sessions)
+                    SecureChannelTrustOptions::as_producer(&self.flow_controls, &flow_control_id)
+                        .as_consumer(&self.flow_controls)
                         .with_trust_policy(TrustEveryonePolicy);
                 let encryptor_address = inner
                     .identity
@@ -287,7 +287,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                             KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS
                         ],
                         message,
-                        MessageSendReceiveOptions::new().with_session(&self.sessions),
+                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
                     )
                     .await?;
 

@@ -5,7 +5,7 @@ use crate::{local_multiaddr_to_route, DefaultAddress};
 use minicbor::{Decode, Encode};
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
-use ockam_core::sessions::SessionPolicy;
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
@@ -27,7 +27,7 @@ pub struct Medic {
     sessions: Arc<Mutex<Sessions>>,
     pings: JoinSet<(Key, Result<(), Error>)>,
     replacements: JoinSet<(Key, Result<MultiAddr, Error>)>,
-    message_flow_sessions: ockam_core::sessions::Sessions,
+    flow_controls: FlowControls,
 }
 
 #[derive(Debug, Copy, Clone, Encode, Decode)]
@@ -38,13 +38,13 @@ pub struct Message {
 }
 
 impl Medic {
-    pub fn new(message_flow_sessions: ockam_core::sessions::Sessions) -> Self {
+    pub fn new(flow_controls: FlowControls) -> Self {
         Self {
             delay: DELAY,
             sessions: Arc::new(Mutex::new(Sessions::new())),
             pings: JoinSet::new(),
             replacements: JoinSet::new(),
-            message_flow_sessions,
+            flow_controls,
         }
     }
 
@@ -109,15 +109,15 @@ impl Medic {
                                     continue;
                                 }
                             };
-                            if let Some(session_id) = self
-                                .message_flow_sessions
-                                .find_session_with_producer_address(next)
-                                .map(|x| x.session_id().clone())
+                            if let Some(flow_control_id) = self
+                                .flow_controls
+                                .find_flow_control_with_producer_address(next)
+                                .map(|x| x.flow_control_id().clone())
                             {
-                                self.message_flow_sessions.add_consumer(
+                                self.flow_controls.add_consumer(
                                     &Collector::address(),
-                                    &session_id,
-                                    SessionPolicy::ProducerAllowMultiple,
+                                    &flow_control_id,
+                                    FlowControlPolicy::ProducerAllowMultiple,
                                 );
                             }
                             let t = TransportMessage::v1(r, Collector::address(), v);

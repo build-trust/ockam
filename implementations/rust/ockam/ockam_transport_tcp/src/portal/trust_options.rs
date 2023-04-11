@@ -1,20 +1,20 @@
 use crate::portal::addresses::Addresses;
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl, Result};
 use ockam_transport_core::TransportError;
 
 /// Trust Options for an Inlet
 pub struct TcpInletTrustOptions {
-    pub(super) consumer_session: Option<Sessions>,
+    pub(super) consumer_flow_controls: Option<FlowControls>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
 
 impl TcpInletTrustOptions {
-    /// Default constructor without session and Incoming Access Control
+    /// Default constructor without flow control and Incoming Access Control
     pub fn new() -> Self {
         Self {
-            consumer_session: None,
+            consumer_flow_controls: None,
             incoming_access_control: Arc::new(AllowAll),
         }
     }
@@ -37,25 +37,25 @@ impl TcpInletTrustOptions {
         self
     }
 
-    /// Mark that created Inlets are Consumer for to the given [`SessionId`]
-    pub fn as_consumer(mut self, sessions: &Sessions) -> Self {
-        self.consumer_session = Some(sessions.clone());
+    /// Mark that created Inlets are Consumer for to the given [`FlowControlId`]
+    pub fn as_consumer(mut self, flow_controls: &FlowControls) -> Self {
+        self.consumer_flow_controls = Some(flow_controls.clone());
 
         self
     }
 
-    pub(super) fn setup_session(&self, addresses: &Addresses, next: &Address) -> Result<()> {
-        match &self.consumer_session {
-            Some(sessions) => {
-                if let Some(session_id) = sessions
-                    .find_session_with_producer_address(next)
-                    .map(|x| x.session_id().clone())
+    pub(super) fn setup_flow_control(&self, addresses: &Addresses, next: &Address) -> Result<()> {
+        match &self.consumer_flow_controls {
+            Some(flow_controls) => {
+                if let Some(flow_control_id) = flow_controls
+                    .find_flow_control_with_producer_address(next)
+                    .map(|x| x.flow_control_id().clone())
                 {
-                    // Allow a sender with corresponding session_id send messages to this address
-                    sessions.add_consumer(
+                    // Allow a sender with corresponding flow_control_id send messages to this address
+                    flow_controls.add_consumer(
                         &addresses.remote,
-                        &session_id,
-                        SessionPolicy::ProducerAllowMultiple,
+                        &flow_control_id,
+                        FlowControlPolicy::ProducerAllowMultiple,
                     );
                 }
             }
@@ -72,23 +72,23 @@ impl Default for TcpInletTrustOptions {
     }
 }
 
-pub(super) struct ConsumerSession {
-    pub(super) sessions: Sessions,
-    pub(super) session_id: SessionId,
-    pub(super) session_policy: SessionPolicy,
+pub(super) struct ConsumerFlowControl {
+    pub(super) flow_controls: FlowControls,
+    pub(super) flow_control_id: FlowControlId,
+    pub(super) flow_control_policy: FlowControlPolicy,
 }
 
 /// Trust Options for an Outlet
 pub struct TcpOutletTrustOptions {
-    pub(super) consumer_session: Option<ConsumerSession>,
+    pub(super) consumer_flow_control: Option<ConsumerFlowControl>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
 
 impl TcpOutletTrustOptions {
-    /// Default constructor without session and Incoming Access Control
+    /// Default constructor without flow control and Incoming Access Control
     pub fn new() -> Self {
         Self {
-            consumer_session: None,
+            consumer_flow_control: None,
             incoming_access_control: Arc::new(AllowAll),
         }
     }
@@ -111,44 +111,44 @@ impl TcpOutletTrustOptions {
         self
     }
 
-    /// Mark that this Outlet listener is a Consumer for to the given [`SessionId`]
-    /// Also, in this case spawned Outlets will be marked as Consumers with [`SessionId`]
+    /// Mark that this Outlet listener is a Consumer for to the given [`FlowControlId`]
+    /// Also, in this case spawned Outlets will be marked as Consumers with [`FlowControlId`]
     /// of the message that was used to create the Outlet
     pub fn as_consumer(
         mut self,
-        sessions: &Sessions,
-        session_id: &SessionId,
-        session_policy: SessionPolicy,
+        flow_controls: &FlowControls,
+        flow_control_id: &FlowControlId,
+        flow_control_policy: FlowControlPolicy,
     ) -> Self {
-        self.consumer_session = Some(ConsumerSession {
-            sessions: sessions.clone(),
-            session_id: session_id.clone(),
-            session_policy,
+        self.consumer_flow_control = Some(ConsumerFlowControl {
+            flow_controls: flow_controls.clone(),
+            flow_control_id: flow_control_id.clone(),
+            flow_control_policy,
         });
 
         self
     }
 
-    pub(super) fn setup_session(
+    pub(super) fn setup_flow_control(
         &self,
         addresses: &Addresses,
-        producer_session_id: Option<SessionId>,
+        producer_flow_control_id: Option<FlowControlId>,
     ) -> Result<()> {
-        match (&self.consumer_session, producer_session_id) {
-            (Some(consumer_session), Some(producer_session_id)) => {
-                // Allow a sender with corresponding session_id send messages to this address
-                consumer_session.sessions.add_consumer(
+        match (&self.consumer_flow_control, producer_flow_control_id) {
+            (Some(consumer_flow_control), Some(producer_flow_control_id)) => {
+                // Allow a sender with corresponding flow_control_id send messages to this address
+                consumer_flow_control.flow_controls.add_consumer(
                     &addresses.remote,
-                    &producer_session_id,
-                    SessionPolicy::ProducerAllowMultiple,
+                    &producer_flow_control_id,
+                    FlowControlPolicy::ProducerAllowMultiple,
                 );
             }
             (None, None) => {}
             // We act as a consumer in some cases,
-            // but we were reached without a session, which is fine
+            // but we were reached without flow control, which is fine
             (Some(_), None) => {}
             _ => {
-                return Err(TransportError::SessionInconsistency.into());
+                return Err(TransportError::FlowControlInconsistency.into());
             }
         }
 
