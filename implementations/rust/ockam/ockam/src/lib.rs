@@ -70,9 +70,9 @@ pub mod access_control {
     pub use ockam_identity::access_control::*;
 }
 
-/// Sessions
-pub mod sessions {
-    pub use ockam_core::sessions::*;
+/// Flow Controls
+pub mod flow_control {
+    pub use ockam_core::flow_control::*;
 }
 
 /// Mark an Ockam Worker implementation.

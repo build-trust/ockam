@@ -41,9 +41,8 @@ impl NodeManagerWorker {
 
         let connection = node_manager.connect(connection).await?;
 
-        let trust_options = RemoteForwarderTrustOptions::as_consumer_and_producer(
-            &node_manager.message_flow_sessions,
-        );
+        let trust_options =
+            RemoteForwarderTrustOptions::as_consumer_and_producer(&node_manager.flow_controls);
 
         let full = connection
             .secure_channel
@@ -178,9 +177,8 @@ fn replacer(
                 let r = local_multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
 
-                let trust_options = RemoteForwarderTrustOptions::as_consumer_and_producer(
-                    &this.message_flow_sessions,
-                );
+                let trust_options =
+                    RemoteForwarderTrustOptions::as_consumer_and_producer(&this.flow_controls);
 
                 if let Some(alias) = &alias {
                     RemoteForwarder::create_static(&ctx, r, alias, trust_options).await?;

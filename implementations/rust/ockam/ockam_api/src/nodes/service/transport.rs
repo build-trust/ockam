@@ -71,16 +71,16 @@ impl NodeManagerWorker {
         );
         let socket_addr = addr.to_string();
 
-        // TODO: Support Sessions from ockam_command CLI
-        let session_id = node_manager.message_flow_sessions.generate_session_id();
+        // TODO: Support FlowControls from ockam_command CLI
+        let flow_control_id = node_manager.flow_controls.generate_id();
         let res = match (tt, tm) {
             (Tcp, Listen) => node_manager
                 .tcp_transport
                 .listen(
                     &addr,
                     TcpListenerTrustOptions::as_spawner(
-                        &node_manager.message_flow_sessions,
-                        &session_id,
+                        &node_manager.flow_controls,
+                        &flow_control_id,
                     ),
                 )
                 .await
@@ -90,8 +90,8 @@ impl NodeManagerWorker {
                 .connect(
                     &socket_addr,
                     TcpConnectionTrustOptions::as_producer(
-                        &node_manager.message_flow_sessions,
-                        &session_id,
+                        &node_manager.flow_controls,
+                        &flow_control_id,
                     ),
                 )
                 .await
@@ -110,7 +110,7 @@ impl NodeManagerWorker {
                     tm,
                     socket_address,
                     worker_address: worker_address.address().into(),
-                    session_id,
+                    flow_control_id,
                 };
                 node_manager
                     .transports
@@ -125,7 +125,7 @@ impl NodeManagerWorker {
                         tm,
                         socket_address: "0.0.0.0:0000".parse().unwrap(),
                         worker_address: "<none>".into(),
-                        session_id: "<none>".into(),
+                        flow_control_id: "<none>".into(),
                     },
                     "<none>".to_string(),
                 ))

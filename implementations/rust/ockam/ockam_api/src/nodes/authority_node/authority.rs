@@ -9,7 +9,7 @@ use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Message, Result, Worker};
 use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
@@ -84,23 +84,23 @@ impl Authority {
     pub async fn start_secure_channel_listener(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
+        flow_controls: &FlowControls,
         configuration: &Configuration,
-    ) -> Result<SessionId> {
+    ) -> Result<FlowControlId> {
         // Start a secure channel listener that only allows channels with
         // authenticated identities.
-        let tcp_listener_session_id = sessions.generate_session_id();
-        let secure_channel_listener_session_id = sessions.generate_session_id();
+        let tcp_listener_flow_control_id = flow_controls.generate_id();
+        let secure_channel_listener_flow_control_id = flow_controls.generate_id();
 
         let trust_options = SecureChannelListenerTrustOptions::as_spawner(
-            sessions,
-            &secure_channel_listener_session_id,
+            flow_controls,
+            &secure_channel_listener_flow_control_id,
         )
         .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer_for_session(
-            sessions,
-            &tcp_listener_session_id,
-            SessionPolicy::SpawnerAllowOnlyOneMessage,
+        .as_consumer_with_flow_control_id(
+            flow_controls,
+            &tcp_listener_flow_control_id,
+            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
         );
 
         let listener_name = configuration.secure_channel_listener_name();
@@ -112,7 +112,7 @@ impl Authority {
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_listener_trust_options =
-            TcpListenerTrustOptions::as_spawner(sessions, &tcp_listener_session_id);
+            TcpListenerTrustOptions::as_spawner(flow_controls, &tcp_listener_flow_control_id);
 
         let (address, _) = tcp
             .listen(
@@ -122,15 +122,15 @@ impl Authority {
             .await?;
 
         info!("started a TCP listener at {address:?}");
-        Ok(secure_channel_listener_session_id)
+        Ok(secure_channel_listener_flow_control_id)
     }
 
     /// Start the authenticator service to enroll project members
     pub async fn start_direct_authenticator(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
-        secure_channel_session_id: &SessionId,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if configuration.no_direct_authentication {
@@ -144,10 +144,10 @@ impl Authority {
         .await?;
 
         let name = configuration.clone().authenticator_name();
-        sessions.add_consumer(
+        flow_controls.add_consumer(
             &Address::from_string(name.clone()),
-            secure_channel_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         self.start(ctx, configuration, name.clone(), EnrollerOnly, direct)
@@ -161,8 +161,8 @@ impl Authority {
     pub async fn start_enrollment_services(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
-        secure_channel_session_id: &SessionId,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if configuration.no_token_enrollment {
@@ -177,10 +177,10 @@ impl Authority {
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
-        sessions.add_consumer(
+        flow_controls.add_consumer(
             &Address::from_string(issuer_address.clone()),
-            secure_channel_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         self.start(
@@ -197,10 +197,10 @@ impl Authority {
         // that service is to access a one-time token stating that the sender of the message
         // is a project member
         let acceptor_address: String = DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into();
-        sessions.add_consumer(
+        flow_controls.add_consumer(
             &Address::from_string(acceptor_address.clone()),
-            secure_channel_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         WorkerBuilder::with_access_control(
@@ -222,8 +222,8 @@ impl Authority {
     pub async fn start_credential_issuer(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
-        secure_channel_session_id: &SessionId,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         // create and start a credential issuer worker
@@ -237,10 +237,10 @@ impl Authority {
         .await?;
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
-        sessions.add_consumer(
+        flow_controls.add_consumer(
             &Address::from_string(address.clone()),
-            secure_channel_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         self.start(ctx, configuration, address.clone(), AnyMember, issuer)
@@ -254,8 +254,8 @@ impl Authority {
     pub async fn start_okta(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
-        secure_channel_session_id: &SessionId,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if let Some(okta) = configuration.clone().okta {
@@ -268,10 +268,10 @@ impl Authority {
                 okta.attributes().as_slice(),
             )?;
 
-            sessions.add_consumer(
+            flow_controls.add_consumer(
                 &Address::from_string(okta.address.clone()),
-                secure_channel_session_id,
-                SessionPolicy::SpawnerAllowMultipleMessages,
+                secure_channel_flow_control_id,
+                FlowControlPolicy::SpawnerAllowMultipleMessages,
             );
 
             ctx.start_worker(

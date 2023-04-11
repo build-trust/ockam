@@ -416,9 +416,9 @@ impl NodeManager {
 
         let connection = self.connect(connection).await?;
 
-        let session_id = connection
-            .session_id
-            .ok_or_else(|| ApiError::generic("empty connect session_id"))?;
+        let flow_control_id = connection
+            .flow_control_id
+            .ok_or_else(|| ApiError::generic("empty connect flow_control_id"))?;
 
         let project_multiaddr = connection.secure_channel.try_with(&connection.suffix)?;
         let project_route = local_multiaddr_to_route(&project_multiaddr)
@@ -465,7 +465,7 @@ impl NodeManager {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             self.identity.clone(),
             project_route,
-            &self.message_flow_sessions,
+            &self.flow_controls,
         );
 
         if let KafkaServiceKind::Consumer = kind {
@@ -482,7 +482,7 @@ impl NodeManager {
             bind_ip,
             PortRange::try_from(brokers_port_range)
                 .map_err(|_| ApiError::message("invalid port range"))?,
-            Some((self.message_flow_sessions.clone(), session_id)),
+            Some((self.flow_controls.clone(), flow_control_id)),
         )
         .await?;
 

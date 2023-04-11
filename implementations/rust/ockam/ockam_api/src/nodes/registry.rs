@@ -1,7 +1,7 @@
 use crate::nodes::service::Alias;
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::sessions::SessionId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Route};
 use ockam_identity::IdentityIdentifier;
 
@@ -23,13 +23,13 @@ impl SecureChannelRegistry {
         &mut self,
         addr: Address,
         route: Route,
-        sc_session_id: SessionId,
+        sc_flow_control_id: FlowControlId,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) {
         self.channels.push(SecureChannelInfo::new(
             route,
             addr,
-            sc_session_id,
+            sc_flow_control_id,
             authorized_identifiers,
         ))
     }
@@ -49,7 +49,7 @@ pub struct SecureChannelInfo {
     route: Route,
     // Local address of the created channel
     addr: Address,
-    session_id: SessionId,
+    flow_control_id: FlowControlId,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 }
 
@@ -57,13 +57,13 @@ impl SecureChannelInfo {
     pub fn new(
         route: Route,
         addr: Address,
-        session_id: SessionId,
+        flow_control_id: FlowControlId,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) -> Self {
         Self {
             addr,
             route,
-            session_id,
+            flow_control_id,
             authorized_identifiers,
         }
     }
@@ -76,8 +76,8 @@ impl SecureChannelInfo {
         &self.addr
     }
 
-    pub fn session_id(&self) -> &SessionId {
-        &self.session_id
+    pub fn flow_control_id(&self) -> &FlowControlId {
+        &self.flow_control_id
     }
 
     pub fn authorized_identifiers(&self) -> Option<&Vec<IdentityIdentifier>> {
@@ -87,19 +87,19 @@ impl SecureChannelInfo {
 
 #[derive(Clone)]
 pub(crate) struct SecureChannelListenerInfo {
-    _session_id: SessionId,
+    _flow_control_id: FlowControlId,
 }
 
 impl SecureChannelListenerInfo {
-    pub fn new(session_id: SessionId) -> Self {
+    pub fn new(flow_control_id: FlowControlId) -> Self {
         Self {
-            _session_id: session_id,
+            _flow_control_id: flow_control_id,
         }
     }
 
     #[allow(unused)]
-    pub fn session_id(&self) -> &SessionId {
-        &self._session_id
+    pub fn flow_control_id(&self) -> &FlowControlId {
+        &self._flow_control_id
     }
 }
 

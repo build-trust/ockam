@@ -37,11 +37,11 @@ impl TcpOutletListenWorker {
     ) -> Result<()> {
         let access_control = trust_options.incoming_access_control.clone();
 
-        if let Some(consumer_session) = &trust_options.consumer_session {
-            consumer_session.sessions.add_consumer(
+        if let Some(consumer_flow_control) = &trust_options.consumer_flow_control {
+            consumer_flow_control.flow_controls.add_consumer(
                 &address,
-                &consumer_session.session_id,
-                consumer_session.session_policy,
+                &consumer_flow_control.flow_control_id,
+                consumer_flow_control.flow_control_policy,
             );
         }
 
@@ -88,20 +88,22 @@ impl Worker for TcpOutletListenWorker {
         }
 
         // Check if the Worker that send us this message is a Producer
-        // If yes - outlet worker will be added to that session to be able to receive further
+        // If yes - outlet worker will be added to that flow control to be able to receive further
         // messages from that Producer
-        let session_id = if let Some(consumer_session) = &self.trust_options.consumer_session {
-            consumer_session
-                .sessions
-                .get_session_with_producer(&src_addr)
-                .map(|x| x.session_id().clone())
-        } else {
-            None
-        };
+        let flow_control_id =
+            if let Some(consumer_flow_control) = &self.trust_options.consumer_flow_control {
+                consumer_flow_control
+                    .flow_controls
+                    .get_flow_control_with_producer(&src_addr)
+                    .map(|x| x.flow_control_id().clone())
+            } else {
+                None
+            };
 
         let addresses = Addresses::generate(PortalType::Outlet);
 
-        self.trust_options.setup_session(&addresses, session_id)?;
+        self.trust_options
+            .setup_flow_control(&addresses, flow_control_id)?;
 
         TcpPortalWorker::start_new_outlet(
             ctx,

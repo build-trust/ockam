@@ -65,7 +65,7 @@ impl Identity {
 
         let route = route.into();
         let next = route.next()?;
-        trust_options.setup_session(&addresses, next)?;
+        trust_options.setup_flow_control(&addresses, next)?;
         let access_control = trust_options.create_access_control();
 
         DecryptorWorker::create_initiator(
@@ -94,7 +94,7 @@ impl Identity {
         let route = route.into();
         let next = route.next()?;
         let trust_options = trust_options.into();
-        trust_options.setup_session(&addresses, next)?;
+        trust_options.setup_flow_control(&addresses, next)?;
         let access_control = trust_options.create_access_control();
 
         DecryptorWorker::create_initiator(

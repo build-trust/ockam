@@ -68,7 +68,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let tcp = TcpTransport::create(ctx).await?;
     let bind = cmd.tcp_listener_address;
 
-    // TODO: This is only listening on loopback address, but should use Sessions anyways
+    // TODO: This is only listening on loopback address, but should use FlowControls anyways
     let (socket_addr, listened_worker_address) = tcp
         .listen(&bind, TcpListenerTrustOptions::insecure())
         .await?;
@@ -90,7 +90,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listened_worker_address,
-                session_id: "<none>".into(), // TODO: Replace with proper value when loopbck TCP listener starts using Sessions
+                flow_control_id: "<none>".into(), // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
             },
             tcp,
         ),

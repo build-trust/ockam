@@ -1,7 +1,7 @@
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
+use ockam::flow_control::FlowControls;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy};
-use ockam::sessions::Sessions;
 use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpConnectionTrustOptions, TcpTransport};
 use std::sync::Arc;
 
@@ -33,13 +33,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     // The credential issuer already knows the public identifier of this identity
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
-    let sessions = Sessions::default();
-    let session_id = sessions.generate_session_id();
-    let issuer_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &session_id);
+    let flow_controls = FlowControls::default();
+    let flow_control_id = flow_controls.generate_id();
+    let issuer_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&flow_controls, &flow_control_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
     let issuer_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(&sessions);
+        .as_consumer(&flow_controls);
     let issuer_channel = client
         .create_secure_channel(route![issuer_connection, "secure"], issuer_trust_options)
         .await?;
@@ -48,12 +48,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     println!("Credential:\n{credential}");
 
     // Create a secure channel to the node that is running the Echoer service.
-    let server_session_id = sessions.generate_session_id();
-    let server_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&sessions, &server_session_id);
+    let server_flow_control_id = flow_controls.generate_id();
+    let server_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&flow_controls, &server_flow_control_id);
     let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_trust_options).await?;
     let channel_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(&sessions);
+        .as_consumer(&flow_controls);
     let channel = client
         .create_secure_channel(route![server_connection, "secure"], channel_trust_options)
         .await?;
@@ -68,7 +68,7 @@ async fn main(mut ctx: Context) -> Result<()> {
             &[issuer],
             storage,
             &credential,
-            MessageSendReceiveOptions::new().with_session(&sessions),
+            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
         )
         .await?;
 

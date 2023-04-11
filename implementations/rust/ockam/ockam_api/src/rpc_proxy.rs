@@ -1,14 +1,14 @@
 use ockam::{Any, Context, Result, Routed, Worker};
-use ockam_core::sessions::{SessionPolicy, Sessions};
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, LocalMessage, TransportMessage};
 
 pub struct RpcProxyService {
-    sessions: Sessions,
+    flow_controls: FlowControls,
 }
 
 impl RpcProxyService {
-    pub fn new(sessions: Sessions) -> Self {
-        Self { sessions }
+    pub fn new(flow_controls: FlowControls) -> Self {
+        Self { flow_controls }
     }
 }
 
@@ -49,15 +49,15 @@ impl Worker for RpcProxyService {
             .new_detached(child_address.clone(), AllowAll, AllowAll)
             .await?;
 
-        if let Some(session_id) = self
-            .sessions
-            .find_session_with_producer_address(&next)
-            .map(|x| x.session_id().clone())
+        if let Some(flow_control_id) = self
+            .flow_controls
+            .find_flow_control_with_producer_address(&next)
+            .map(|x| x.flow_control_id().clone())
         {
-            self.sessions.add_consumer(
+            self.flow_controls.add_consumer(
                 &child_address,
-                &session_id,
-                SessionPolicy::ProducerAllowMultiple,
+                &flow_control_id,
+                FlowControlPolicy::ProducerAllowMultiple,
             );
         }
 

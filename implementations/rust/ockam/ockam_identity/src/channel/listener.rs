@@ -26,18 +26,20 @@ impl IdentityChannelListener {
         trust_options: SecureChannelListenerTrustOptions,
         identity: Identity,
     ) -> Result<()> {
-        if let Some(ciphertext_session) = &trust_options.consumer_session {
-            if let Some(info) = &ciphertext_session.info {
-                ciphertext_session.sessions.add_consumer(
+        if let Some(ciphertext_flow_control) = &trust_options.consumer_flow_control {
+            if let Some(info) = &ciphertext_flow_control.info {
+                ciphertext_flow_control.flow_controls.add_consumer(
                     &address,
-                    &info.session_id,
-                    info.session_policy,
+                    &info.flow_control_id,
+                    info.flow_control_policy,
                 );
             }
         }
 
-        if let Some((sessions, session_id)) = &trust_options.channels_producer_session {
-            sessions.add_spawner(&address, session_id);
+        if let Some((flow_controls, flow_control_id)) =
+            &trust_options.channels_producer_flow_control
+        {
+            flow_controls.add_spawner(&address, flow_control_id);
         }
 
         let listener = Self::new(trust_options, identity);
@@ -65,22 +67,25 @@ impl Worker for IdentityChannelListener {
         let identity = self.identity.async_try_clone().await?;
 
         // Check if the Worker that send us this message is a Producer
-        // If yes - decryptor will be added to that session to be able to receive further messages
+        // If yes - decryptor will be added to that flow_control to be able to receive further messages
         // from that Producer
-        let session_id = if let Some(ciphertext_session) = &self.trust_options.consumer_session {
-            ciphertext_session
-                .sessions
-                .get_session_with_producer(&msg.src_addr())
-                .map(|x| x.session_id().clone())
-        } else {
-            None
-        };
+        let flow_control_id =
+            if let Some(ciphertext_flow_control) = &self.trust_options.consumer_flow_control {
+                ciphertext_flow_control
+                    .flow_controls
+                    .get_flow_control_with_producer(&msg.src_addr())
+                    .map(|x| x.flow_control_id().clone())
+            } else {
+                None
+            };
 
         let addresses = Addresses::generate(Role::Responder);
-        let session_id = self.trust_options.setup_session(&addresses, session_id)?;
+        let flow_control_id = self
+            .trust_options
+            .setup_flow_control(&addresses, flow_control_id)?;
         let access_control = self
             .trust_options
-            .create_access_control(session_id.clone())?;
+            .create_access_control(flow_control_id.clone())?;
 
         DecryptorWorker::create_responder(
             ctx,

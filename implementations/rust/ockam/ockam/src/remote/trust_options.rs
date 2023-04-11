@@ -1,11 +1,13 @@
 use crate::remote::Addresses;
 use ockam_core::compat::sync::Arc;
-use ockam_core::sessions::{SessionId, SessionOutgoingAccessControl, SessionPolicy, Sessions};
+use ockam_core::flow_control::{
+    FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
+};
 use ockam_core::{Address, AllowAll, OutgoingAccessControl};
 
 /// Trust options for [`RemoteForwarder`]
 pub struct RemoteForwarderTrustOptions {
-    pub(super) sessions: Option<Sessions>,
+    pub(super) flow_controls: Option<FlowControls>,
 }
 
 impl RemoteForwarderTrustOptions {
@@ -14,39 +16,50 @@ impl RemoteForwarderTrustOptions {
     /// Should only be used for testing purposes
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Self { sessions: None }
+        Self {
+            flow_controls: None,
+        }
     }
 
-    /// Mark this [`RemoteForwarder`] as a Producer and Consumer for a given [`SessionId`]
-    /// Usually [`SessionId`] should be shared with the Producer that was used to create this
+    /// Mark this [`RemoteForwarder`] as a Producer and Consumer for a given [`FlowControlId`]
+    /// Usually [`FlowControlId`] should be shared with the Producer that was used to create this
     /// forwarder (probably Secure Channel), since [`RemoteForwarder`] doesn't imply any new "trust"
     /// context, it's just a Message Routing helper. Therefore, workers that are allowed to receive
     /// messages from the corresponding Secure Channel should as well be allowed to receive messages
     /// through the [`RemoteForwarder`] through the same Secure Channel.
-    pub fn as_consumer_and_producer(sessions: &Sessions) -> Self {
+    pub fn as_consumer_and_producer(flow_controls: &FlowControls) -> Self {
         Self {
-            sessions: Some(sessions.clone()),
+            flow_controls: Some(flow_controls.clone()),
         }
     }
 
-    pub(super) fn setup_session(&self, addresses: &Addresses, next: &Address) -> Option<SessionId> {
-        match &self.sessions {
-            Some(sessions) => {
-                match sessions
-                    .find_session_with_producer_address(next)
-                    .map(|x| x.session_id().clone())
+    pub(super) fn setup_flow_control(
+        &self,
+        addresses: &Addresses,
+        next: &Address,
+    ) -> Option<FlowControlId> {
+        match &self.flow_controls {
+            Some(flow_controls) => {
+                match flow_controls
+                    .find_flow_control_with_producer_address(next)
+                    .map(|x| x.flow_control_id().clone())
                 {
-                    Some(session_id) => {
-                        // Allow a sender with corresponding session_id send messages to this address
-                        sessions.add_consumer(
+                    Some(flow_control_id) => {
+                        // Allow a sender with corresponding flow_control_id send messages to this address
+                        flow_controls.add_consumer(
                             &addresses.main_remote,
-                            &session_id,
-                            SessionPolicy::ProducerAllowMultiple,
+                            &flow_control_id,
+                            FlowControlPolicy::ProducerAllowMultiple,
                         );
 
-                        sessions.add_producer(&addresses.main_internal, &session_id, None, vec![]);
+                        flow_controls.add_producer(
+                            &addresses.main_internal,
+                            &flow_control_id,
+                            None,
+                            vec![],
+                        );
 
-                        Some(session_id)
+                        Some(flow_control_id)
                     }
                     None => None,
                 }
@@ -57,10 +70,12 @@ impl RemoteForwarderTrustOptions {
 
     pub(super) fn create_access_control(
         &self,
-        session_id: Option<SessionId>,
+        flow_control_id: Option<FlowControlId>,
     ) -> Arc<dyn OutgoingAccessControl> {
-        if let (Some(sessions), Some(session_id)) = (&self.sessions, session_id) {
-            let ac = SessionOutgoingAccessControl::new(sessions.clone(), session_id, None);
+        if let (Some(flow_controls), Some(flow_control_id)) = (&self.flow_controls, flow_control_id)
+        {
+            let ac =
+                FlowControlOutgoingAccessControl::new(flow_controls.clone(), flow_control_id, None);
 
             Arc::new(ac)
         } else {

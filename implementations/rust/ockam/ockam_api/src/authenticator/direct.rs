@@ -11,7 +11,7 @@ use ockam::identity::{Identity, IdentityIdentifier, IdentitySecureChannelLocalIn
 use ockam_core::api::{self, Error, Method, Request, RequestBuilder, Response, Status};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::Sessions;
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{self, Address, CowStr, DenyAll, Result, Route, Routed, Worker};
 use ockam_node::{Context, MessageSendReceiveOptions};
 use std::collections::HashMap;
@@ -563,7 +563,7 @@ pub struct RpcClient {
     ctx: Context,
     route: Route,
     timeout: Duration,
-    sessions: Option<Sessions>,
+    flow_controls: Option<FlowControls>,
 }
 
 impl fmt::Debug for RpcClient {
@@ -582,7 +582,7 @@ impl RpcClient {
         Ok(RpcClient {
             ctx,
             route: r,
-            sessions: None,
+            flow_controls: None,
             timeout: DEFAULT_CLIENT_TIMEOUT,
         })
     }
@@ -591,17 +591,17 @@ impl RpcClient {
         Self { timeout, ..self }
     }
 
-    pub fn with_sessions(self, sessions: &Sessions) -> Self {
+    pub fn with_flow_control(self, flow_controls: &FlowControls) -> Self {
         Self {
-            sessions: Some(sessions.clone()),
+            flow_controls: Some(flow_controls.clone()),
             ..self
         }
     }
 
     fn options(&self) -> MessageSendReceiveOptions {
         let options = MessageSendReceiveOptions::new().with_timeout(self.timeout);
-        if let Some(sessions) = &self.sessions {
-            options.with_session(sessions)
+        if let Some(flow_controls) = &self.flow_controls {
+            options.with_flow_control(flow_controls)
         } else {
             options
         }
