@@ -365,6 +365,7 @@ pub struct TrustContextConfigBuilder {
     project: Option<String>,
     authority_identity: Option<String>,
     credential_name: Option<String>,
+    use_default_trust_context: bool,
 }
 
 impl TrustContextConfigBuilder {
@@ -375,6 +376,7 @@ impl TrustContextConfigBuilder {
             project: tco.project.clone(),
             authority_identity: None,
             credential_name: None,
+            use_default_trust_context: true,
         }
     }
 
@@ -387,6 +389,11 @@ impl TrustContextConfigBuilder {
     // with_credential_name
     pub fn with_credential_name(&mut self, credential_name: Option<&String>) -> &mut Self {
         self.credential_name = credential_name.map(|s| s.to_string());
+        self
+    }
+
+    pub fn use_default_trust_context(&mut self, use_default_trust_context: bool) -> &mut Self {
+        self.use_default_trust_context = use_default_trust_context;
         self
     }
 
@@ -442,6 +449,10 @@ impl TrustContextConfigBuilder {
     }
 
     fn get_from_default_trust_context(&self) -> Option<TrustContextConfig> {
+        if !self.use_default_trust_context {
+            return None;
+        }
+
         let state = CliState::try_default().ok()?;
         let tc = state.trust_contexts.default().ok()?.config;
         Some(tc)

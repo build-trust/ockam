@@ -33,10 +33,35 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let tcc = TrustContextConfigBuilder::new(&tco)
         .with_credential_name(cmd.credential.as_ref())
+        .use_default_trust_context(false)
         .build();
 
     if let Some(tcc) = tcc {
-        opts.state.trust_contexts.create(&cmd.name, tcc)?;
+        opts.state.trust_contexts.create(&cmd.name, tcc.clone())?;
+
+        let auth = if let Ok(auth) = tcc.authority() {
+            auth.identity_str()
+        } else {
+            "None"
+        };
+
+        let output = format!(
+            r#"
+Trust Context:
+    Name: {}
+    ID: {}
+    Authority: {}
+"#,
+            cmd.name,
+            tcc.id(),
+            auth
+        );
+
+        opts.shell
+            .stdout()
+            .plain(output)
+            .json(serde_json::to_string_pretty(&tcc)?)
+            .write_line()?;
     } else {
         return Err(anyhow!("Unable to create trust context").into());
     }

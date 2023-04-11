@@ -232,6 +232,11 @@ impl TrustAuthorityConfig {
             own_credential,
         }
     }
+
+    pub fn identity_str(&self) -> &str {
+        &self.identity
+    }
+
     pub async fn identity(&self) -> Result<PublicIdentity> {
         let vault = Vault::create();
         let ident = PublicIdentity::import(
