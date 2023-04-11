@@ -1,4 +1,4 @@
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::util::is_tty;
 use crate::{
     util::{api, extract_address_value, node_rpc, Rpc},
@@ -14,7 +14,7 @@ use serde_json::json;
 #[derive(Clone, Debug, Args)]
 pub struct TcpConnectionNodeOpts {
     /// Node that will initiate the connection
-    #[arg(global = true, short, long, value_name = "NODE", default_value_t = default_node_name())]
+    #[arg(global = true, short, long, value_name = "NODE", default_value_t = default_node_name(), value_parser = node_name_parser)]
     pub from: String,
 }
 

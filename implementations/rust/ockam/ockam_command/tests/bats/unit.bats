@@ -369,6 +369,14 @@ teardown() {
   assert_success
 }
 
+@test "forwarder - create forwarder relying on a default node to be created" {
+  skip_if_orchestrator_tests_not_enabled
+  load_orchestrator_data
+
+  run "$OCKAM" forwarder create
+  assert_success
+}
+
 @test "forwarder - create forwarder and send message through it" {
   run "$OCKAM" node create n1
   assert_success

@@ -1,4 +1,4 @@
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::util::Rpc;
 use crate::util::{node_rpc, parse_node_name};
 use crate::CommandGlobalOpts;
@@ -12,7 +12,7 @@ use ockam_multiaddr::MultiAddr;
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
     /// Node at which to create the listener
-    #[arg(global = true, long, value_name = "NODE", default_value_t = default_node_name())]
+    #[arg(global = true, long, value_name = "NODE", default_value_t = default_node_name(), value_parser = node_name_parser)]
     pub at: String,
 
     /// Address for this listener (eg. 127.0.0.1:7000)

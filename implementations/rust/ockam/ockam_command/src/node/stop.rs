@@ -1,4 +1,4 @@
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 
@@ -14,7 +14,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/stop/after_long_help.txt");
 )]
 pub struct StopCommand {
     /// Name of the node.
-    #[arg(default_value_t = default_node_name())]
+    #[arg(default_value_t = default_node_name(), value_parser = node_name_parser)]
     node_name: String,
     /// Whether to use the SIGTERM or SIGKILL signal to stop the node
     #[arg(long)]

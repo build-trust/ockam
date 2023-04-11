@@ -150,6 +150,20 @@ pub struct GlobalArgs {
     test_argument_parser: bool,
 }
 
+impl Default for GlobalArgs {
+    fn default() -> Self {
+        Self {
+            help: None,
+            quiet: false,
+            verbose: 0,
+            no_color: false,
+            no_input: false,
+            output_format: OutputFormat::Plain,
+            test_argument_parser: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
