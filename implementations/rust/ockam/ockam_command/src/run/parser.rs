@@ -184,7 +184,7 @@ impl NodeConfig {
                 if let Some(exp) = &inlet.access_control {
                     let args = &[
                         "policy",
-                        "set",
+                        "create",
                         "--at",
                         &node_name_formatted,
                         "--resource",
@@ -216,7 +216,7 @@ impl NodeConfig {
                 if let Some(exp) = &outlet.access_control {
                     let args = &[
                         "policy",
-                        "set",
+                        "create",
                         "--at",
                         &node_name_formatted,
                         "--resource",
