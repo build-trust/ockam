@@ -190,58 +190,41 @@ impl CommandGlobalOpts {
 pub enum OckamSubcommand {
     #[command(display_order = 800)]
     Enroll(EnrollCommand),
-    #[command(display_order = 801)]
     Space(SpaceCommand),
-    #[command(display_order = 802)]
     Project(ProjectCommand),
-    #[command(display_order = 803)]
-    Status(StatusCommand),
-    #[command(display_order = 804)]
-    Reset(ResetCommand),
+    Admin(AdminCommand),
+    Subscription(SubscriptionCommand),
 
-    #[command(display_order = 810)]
-    Authority(AuthorityCommand),
-    #[command(display_order = 811)]
     Node(Box<NodeCommand>),
-    #[command(display_order = 812)]
-    Identity(IdentityCommand),
-    #[command(display_order = 813)]
-    TcpListener(TcpListenerCommand),
-    #[command(display_order = 814)]
-    TcpConnection(TcpConnectionCommand),
-    #[command(display_order = 815)]
-    TcpOutlet(TcpOutletCommand),
-    #[command(display_order = 816)]
-    TcpInlet(TcpInletCommand),
-    #[command(display_order = 817)]
-    SecureChannelListener(SecureChannelListenerCommand),
-    #[command(display_order = 818)]
-    SecureChannel(SecureChannelCommand),
-    #[command(display_order = 819)]
-    Forwarder(ForwarderCommand),
-    #[command(display_order = 820)]
-    Message(MessageCommand),
-    #[command(display_order = 821)]
-    Policy(PolicyCommand),
-    #[command(display_order = 821)]
     Worker(WorkerCommand),
+    Service(ServiceCommand),
+    Message(MessageCommand),
+    Forwarder(ForwarderCommand),
 
-    #[command(display_order = 900)]
-    Completion(CompletionCommand),
+    TcpListener(TcpListenerCommand),
+    TcpConnection(TcpConnectionCommand),
+    TcpOutlet(TcpOutletCommand),
+    TcpInlet(TcpInletCommand),
 
-    #[command(display_order = 901)]
+    SecureChannelListener(SecureChannelListenerCommand),
+    SecureChannel(SecureChannelCommand),
+
+    Vault(VaultCommand),
+    Identity(IdentityCommand),
+    Credential(CredentialCommand),
+    Authority(AuthorityCommand),
+    Policy(PolicyCommand),
+    Lease(LeaseCommand),
+
     Run(RunCommand),
-
+    Status(StatusCommand),
+    Reset(ResetCommand),
     Authenticated(AuthenticatedCommand),
     Configuration(ConfigurationCommand),
-    Credential(CredentialCommand),
-    Service(ServiceCommand),
-    Vault(VaultCommand),
-    Subscription(SubscriptionCommand),
-    Admin(AdminCommand),
-    Manpages(ManpagesCommand),
-    Lease(LeaseCommand),
+
+    Completion(CompletionCommand),
     Markdown(MarkdownCommand),
+    Manpages(ManpagesCommand),
 }
 
 pub fn run() {
@@ -279,36 +262,39 @@ impl OckamCommand {
             OckamSubcommand::Enroll(c) => c.run(options),
             OckamSubcommand::Space(c) => c.run(options),
             OckamSubcommand::Project(c) => c.run(options),
-            OckamSubcommand::Status(c) => c.run(options),
-            OckamSubcommand::Reset(c) => c.run(options),
+            OckamSubcommand::Admin(c) => c.run(options),
+            OckamSubcommand::Subscription(c) => c.run(options),
 
-            OckamSubcommand::Authority(c) => c.run(options),
             OckamSubcommand::Node(c) => c.run(options),
-            OckamSubcommand::Identity(c) => c.run(options),
+            OckamSubcommand::Worker(c) => c.run(options),
+            OckamSubcommand::Service(c) => c.run(options),
+            OckamSubcommand::Message(c) => c.run(options),
+            OckamSubcommand::Forwarder(c) => c.run(options),
+
             OckamSubcommand::TcpListener(c) => c.run(options),
             OckamSubcommand::TcpConnection(c) => c.run(options),
             OckamSubcommand::TcpOutlet(c) => c.run(options),
             OckamSubcommand::TcpInlet(c) => c.run(options),
+
             OckamSubcommand::SecureChannelListener(c) => c.run(options),
             OckamSubcommand::SecureChannel(c) => c.run(options),
-            OckamSubcommand::Forwarder(c) => c.run(options),
-            OckamSubcommand::Message(c) => c.run(options),
+
+            OckamSubcommand::Vault(c) => c.run(options),
+            OckamSubcommand::Identity(c) => c.run(options),
+            OckamSubcommand::Credential(c) => c.run(options),
+            OckamSubcommand::Authority(c) => c.run(options),
             OckamSubcommand::Policy(c) => c.run(options),
-            OckamSubcommand::Worker(c) => c.run(options),
+            OckamSubcommand::Lease(c) => c.run(options),
 
-            OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Run(c) => c.run(options),
-
+            OckamSubcommand::Status(c) => c.run(options),
+            OckamSubcommand::Reset(c) => c.run(options),
             OckamSubcommand::Authenticated(c) => c.run(),
             OckamSubcommand::Configuration(c) => c.run(options),
-            OckamSubcommand::Credential(c) => c.run(options),
-            OckamSubcommand::Service(c) => c.run(options),
-            OckamSubcommand::Vault(c) => c.run(options),
-            OckamSubcommand::Subscription(c) => c.run(options),
-            OckamSubcommand::Admin(c) => c.run(options),
-            OckamSubcommand::Manpages(c) => c.run(),
-            OckamSubcommand::Lease(c) => c.run(options),
+
+            OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Markdown(c) => c.run(),
+            OckamSubcommand::Manpages(c) => c.run(),
         }
     }
 }

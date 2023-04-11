@@ -21,15 +21,13 @@ pub(crate) use show::ShowCommand;
 pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
-use crate::CommandGlobalOpts;
-use crate::{docs, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
 
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
 #[command(
-    hide = docs::hide(),
     after_long_help = docs::after_help(HELP_DETAIL),
     arg_required_else_help = true,
     subcommand_required = true
@@ -41,6 +39,7 @@ pub struct CredentialCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum CredentialSubcommand {
+    #[command(display_order = 900)]
     Get(GetCommand),
     Issue(IssueCommand),
     List(ListCommand),
