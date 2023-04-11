@@ -11,7 +11,7 @@ use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::Result;
@@ -33,7 +33,7 @@ pub struct CreateCommand {
     forwarder_name: String,
 
     /// Node for which to create the forwarder
-    #[arg(long, id = "NODE", display_order = 900, default_value_t = default_node_name())]
+    #[arg(long, id = "NODE", display_order = 900, default_value_t = default_node_name(), value_parser = node_name_parser)]
     to: String,
 
     /// Route to the node at which to create the forwarder (optional)

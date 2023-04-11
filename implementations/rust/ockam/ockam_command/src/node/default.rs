@@ -1,5 +1,5 @@
-use crate::node::default_node_name;
 use crate::node::util::{check_default, set_default_node};
+use crate::node::{default_node_name, node_name_parser};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 
@@ -14,7 +14,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt
 )]
 pub struct DefaultCommand {
     /// Name of the node.
-    #[arg(default_value_t = default_node_name())]
+    #[arg(default_value_t = default_node_name(), value_parser = node_name_parser)]
     node_name: String,
 }
 

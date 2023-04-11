@@ -1,4 +1,4 @@
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::tcp::util::alias_parser;
 use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
@@ -22,7 +22,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
-    #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name())]
+    #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name(), value_parser = node_name_parser)]
     at: String,
 
     /// Address on which to accept tcp connections.

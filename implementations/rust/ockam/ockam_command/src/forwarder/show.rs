@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
 
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
@@ -17,7 +17,7 @@ pub struct ShowCommand {
     remote_address: String,
 
     /// Node which forwarder belongs to
-    #[arg(display_order = 901, global = true, long, value_name = "NODE", default_value_t = default_node_name())]
+    #[arg(display_order = 901, global = true, long, value_name = "NODE", default_value_t = default_node_name(), value_parser = node_name_parser)]
     pub at: String,
 }
 

@@ -1,4 +1,4 @@
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
@@ -17,7 +17,7 @@ use std::net::SocketAddr;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
-    #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name())]
+    #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name(), value_parser = node_name_parser)]
     at: String,
 
     /// Address of the tcp outlet.

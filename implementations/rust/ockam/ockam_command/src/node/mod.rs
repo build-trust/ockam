@@ -10,7 +10,7 @@ use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, util::OckamConfig, CommandGlobalOpts, GlobalArgs, Result};
 
 mod create;
 mod default;
@@ -82,7 +82,7 @@ pub struct NodeOpts {
         value_name = "NODE",
         short,
         long,
-        default_value_t = default_node_name()
+        default_value_t = default_node_name(), value_parser = node_name_parser
     )]
     pub api_node: String,
 }
@@ -94,4 +94,22 @@ pub fn default_node_name() -> String {
         .default()
         .map(|n| n.config.name)
         .unwrap_or_else(|_| "default".to_string())
+}
+
+pub fn node_name_parser(node_name: &str) -> Result<String> {
+    if node_name == "default" && CliState::try_default().unwrap().nodes.default().is_err() {
+        return Ok(spawn_default_node(node_name));
+    }
+
+    Ok(node_name.to_string())
+}
+
+pub fn spawn_default_node(node_name: &str) -> String {
+    let config = OckamConfig::load().expect("Failed to load config");
+    let global_opts = CommandGlobalOpts::new(GlobalArgs::default(), config);
+    let mut create_command = CreateCommand::default();
+    create_command.node_name = node_name.to_string();
+
+    create_command.run(global_opts);
+    node_name.to_string()
 }
