@@ -6,12 +6,11 @@ use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;
 use crate::policy::list::ListCommand;
 use crate::policy::show::ShowCommand;
-use crate::{docs, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use ockam_abac::{Action, Resource};
 
 #[derive(Clone, Debug, Args)]
-#[command(hide = docs::hide())]
 pub struct PolicyCommand {
     #[command(subcommand)]
     subcommand: PolicySubcommand,
@@ -19,6 +18,7 @@ pub struct PolicyCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum PolicySubcommand {
+    #[command(display_order = 900)]
     Create(CreateCommand),
     Show(ShowCommand),
     Delete(DeleteCommand),

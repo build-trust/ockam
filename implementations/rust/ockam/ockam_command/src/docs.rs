@@ -43,7 +43,7 @@ fn is_markdown() -> bool {
 }
 
 pub(crate) fn hide() -> bool {
-    get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", false).unwrap_or(false)
+    get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", true).unwrap_or(true)
 }
 
 pub(crate) fn about(body: &str) -> &'static str {
@@ -69,7 +69,7 @@ pub(crate) fn after_help(body: &str) -> &'static str {
 }
 
 /// Render the string if the document should be displayed in a terminal
-/// Otherwise, if it is a Mardown document just return a static string
+/// Otherwise, if it is a Markdown document just return a static string
 pub(crate) fn render(body: &str) -> &'static str {
     if is_markdown() {
         Box::leak(body.to_string().into_boxed_str())
