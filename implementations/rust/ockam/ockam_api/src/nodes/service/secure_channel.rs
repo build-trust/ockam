@@ -25,7 +25,7 @@ use ockam_identity::credential::{Credential, CredentialExchangeMode};
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use ockam_identity::{
     Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerOptions,
-    SecureChannelOptions, TrustMultiIdentifiersPolicy,
+    SecureChannelOptions, TrustContext, TrustMultiIdentifiersPolicy,
 };
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -76,7 +76,9 @@ impl NodeManager {
                 options,
                 exchange_mode,
                 credential,
-                vec![],
+                self.trust_context()
+                    .cloned()
+                    .unwrap_or_else(|_| TrustContext::empty()),
                 timeout,
             )
             .await?;
@@ -139,18 +141,19 @@ impl NodeManager {
             CredentialExchangeMode::None
         };
 
-        if credential_exchange_mode != CredentialExchangeMode::None && provided_credential.is_none()
+        let credential = if credential_exchange_mode != CredentialExchangeMode::None
+            && provided_credential.is_none()
         {
             //if we don't have any authority there is no point in trying to get a credential
-            if self
-                .authorities
-                .as_ref()
-                .map(|x| !x.0.is_empty())
-                .unwrap_or(false)
-            {
-                self.get_credential_if_needed(&identity).await?;
-            }
-        }
+            Some(
+                self.trust_context()?
+                    .authority()?
+                    .credential(&identity)
+                    .await?,
+            )
+        } else {
+            provided_credential
+        };
 
         let sc_addr = self
             .create_secure_channel_internal(
@@ -160,7 +163,7 @@ impl NodeManager {
                 timeout,
                 session,
                 actual_exchange_mode,
-                provided_credential,
+                credential,
             )
             .await?;
         //
@@ -243,6 +246,11 @@ impl NodeManager {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
+
+        let trust_context = self
+            .trust_context()
+            .cloned()
+            .unwrap_or_else(|_| TrustContext::empty());
 
         identity
             .create_secure_channel_listener(addr.clone(), options)

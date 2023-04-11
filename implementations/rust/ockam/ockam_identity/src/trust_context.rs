@@ -12,10 +12,25 @@ pub struct TrustContext {
 }
 
 impl TrustContext {
-    /// Create a new Trust Context
-    pub fn new(id: String, authority: Option<AuthorityInfo>) -> Self {
+    pub fn empty() -> TrustContext {
+        Self {
+            id: String::new(),
+            authority: None,
+        }
+    }
+
+    /// Create a new [`TrustContext`]
+    pub fn new(id: String, authority: AuthorityInfo) -> Self {
+        Self {
+            id,
+            authority: Some(authority),
+        }
+    }
+
+    pub fn new_extended(id: String, authority: Option<AuthorityInfo>) -> TrustContext {
         Self { id, authority }
     }
+
     /// Return the ID of the Trust Context
     pub fn id(&self) -> &str {
         &self.id

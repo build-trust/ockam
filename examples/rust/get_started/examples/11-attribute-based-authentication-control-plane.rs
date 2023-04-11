@@ -76,10 +76,29 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         options.with_trust_policy(project)
     };
 
+    // Create a trust context that will be used to authenticate credential exchanges
+    let trust_context = TrustContext::new(
+        "trust_context_id".to_string(),
+        AuthorityInfo::new(
+            project.authority_public_identity(),
+            Some(Arc::new(CredentialIssuerRetriever::new(
+                CredentialIssuerInfo::new(
+                    hex::encode(project.authority_public_identity().export()?),
+                    project.authority_route(),
+                ),
+                tcp.async_try_clone().await?,
+            ))),
+        ),
+    );
+
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = control_plane
-        .create_secure_channel_extended(tcp_route.route, options, Duration::from_secs(120))
+        .create_secure_channel_extended(
+            tcp_route.route,
+            options.with_trust_context(trust_context),
+            Duration::from_secs(120),
+        )
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
@@ -90,21 +109,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .await?,
     );
     token_acceptor.present_token(&token).await?;
-
-    // Create a trust context that will be used to authenticate credential exchanges
-    let trust_context = TrustContext::new(
-        "trust_context_id".to_string(),
-        Some(AuthorityInfo::new(
-            project.authority_public_identity(),
-            Some(Arc::new(CredentialIssuerRetriever::new(
-                CredentialIssuerInfo::new(
-                    hex::encode(project.authority_public_identity().export()?),
-                    project.authority_route(),
-                ),
-                tcp.async_try_clone().await?,
-            ))),
-        )),
-    );
 
     let credential = trust_context.authority()?.credential(&control_plane).await?;
 

@@ -3,7 +3,7 @@ use crate::channel::decryptor::Decryptor;
 use crate::channel::encryptor::Encryptor;
 use crate::channel::Role;
 use crate::credential::{Credential, CredentialExchangeMode};
-use crate::{Identity, IdentityIdentifier, PublicIdentity, TrustPolicy};
+use crate::{Identity, IdentityIdentifier, PublicIdentity, TrustContext, TrustPolicy};
 use alloc::vec::Vec;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
@@ -22,9 +22,8 @@ pub(crate) struct KeyExchangeState {
     // these variables are kept for the next state
     remote_backwards_compatibility_address: Option<Address>,
     trust_policy: Arc<dyn TrustPolicy>,
-    send_credential: bool,
-    provided_credential: Option<Credential>,
-    authorities: Vec<PublicIdentity>,
+    credential: Option<Credential>,
+    trust_context: TrustContext,
 }
 
 pub(crate) struct IdentityExchangeState {
@@ -39,9 +38,8 @@ pub(crate) struct IdentityExchangeState {
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     pub(crate) remote_backwards_compatibility_address: Option<Address>,
 
-    pub(crate) send_credential: bool,
-    pub(crate) provided_credential: Option<Credential>,
-    authorities: Vec<PublicIdentity>,
+    pub(crate) credential: Option<Credential>,
+    trust_context: TrustContext,
 }
 
 //temporary state for credential exchange
@@ -53,7 +51,7 @@ pub(crate) struct CredentialExchangeState {
     pub(crate) decryptor: Decryptor,
     pub(crate) their_identity_id: IdentityIdentifier,
     pub(crate) identity: Identity,
-    pub(crate) authorities: Vec<PublicIdentity>,
+    pub(crate) trust_context: TrustContext,
     pub(crate) remote_route: Route,
     pub(crate) encryptor: Option<Encryptor>,
     pub(crate) remote_backwards_compatibility_address: Option<Address>,
@@ -85,9 +83,8 @@ impl KeyExchangeState {
             decryptor,
             auth_hash,
             identity_sent: false,
-            send_credential: self.send_credential,
-            provided_credential: self.provided_credential,
-            authorities: self.authorities,
+            credential: self.credential,
+            trust_context: self.trust_context,
         }
     }
 }
@@ -102,7 +99,7 @@ impl IdentityExchangeState {
             addresses: self.addresses,
             decryptor: self.decryptor,
             identity: self.identity,
-            authorities: self.authorities,
+            trust_context: self.trust_context,
             remote_route: self.remote_route,
             encryptor: self.encryptor,
             remote_backwards_compatibility_address: self.remote_backwards_compatibility_address,
@@ -142,9 +139,8 @@ impl State {
         trust_policy: Arc<dyn TrustPolicy>,
         remote_backwards_compatibility_address: Option<Address>,
         initial_responder_payload: Option<Vec<u8>>,
-        send_credential: bool,
-        provided_credential: Option<Credential>,
-        authorities: Vec<PublicIdentity>,
+        credential: Option<Credential>,
+        trust_context: TrustContext,
     ) -> Self {
         Self::KeyExchange(KeyExchangeState {
             role,
@@ -156,9 +152,8 @@ impl State {
             remote_backwards_compatibility_address,
             initial_responder_payload,
             initialization_run: true,
-            send_credential,
-            provided_credential,
-            authorities,
+            credential,
+            trust_context,
         })
     }
 }

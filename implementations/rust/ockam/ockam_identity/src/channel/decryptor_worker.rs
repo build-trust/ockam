@@ -13,7 +13,7 @@ use crate::credential::{Credential, CredentialExchangeMode};
 use crate::{
     to_symmetric_vault, to_xx_vault, Identity, IdentityError, IdentityIdentifier,
     IdentitySecureChannelLocalInfo, PublicIdentity, SecureChannelRegistryEntry,
-    SecureChannelTrustInfo, TrustPolicy,
+    SecureChannelTrustInfo, TrustContext, TrustPolicy,
 };
 use core::time::Duration;
 use ockam_core::compat::vec::Vec;
@@ -46,9 +46,8 @@ impl DecryptorWorker {
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         timeout: Duration,
-        send_credential: bool,
-        provided_credential: Option<Credential>,
-        authorities: Vec<PublicIdentity>,
+        credential: Option<Credential>,
+        trust_context: TrustContext,
     ) -> Result<Address> {
         let mut completion_callback_ctx = ctx
             .new_detached(
@@ -74,9 +73,8 @@ impl DecryptorWorker {
                 trust_policy,
                 None,
                 None,
-                send_credential,
-                provided_credential,
-                authorities,
+                credential,
+                trust_context,
             )),
         };
 
@@ -107,9 +105,8 @@ impl DecryptorWorker {
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         msg: Routed<CreateResponderChannelMessage>,
-        send_credential: bool,
-        provided_credential: Option<Credential>,
-        authorities: Vec<PublicIdentity>,
+        credential: Option<Credential>,
+        trust_context: TrustContext,
     ) -> Result<()> {
         // Route to the decryptor on the other side
         let remote_route = msg.return_route();
@@ -138,9 +135,8 @@ impl DecryptorWorker {
                 trust_policy,
                 Some(remote_backwards_compatibility_address),
                 Some(body.payload().to_vec()),
-                send_credential,
-                provided_credential,
-                authorities,
+                credential,
+                trust_context,
             )),
         };
 
@@ -325,17 +321,9 @@ impl IdentityExchangeState {
 
     // temporary method, just to go back to a working state
     async fn send_credential(&mut self, ctx: &mut Context) -> Result<()> {
-        let credential = if self.send_credential {
-            if let Some(credential) = self.provided_credential.as_ref() {
-                Some(credential.clone())
-            } else {
-                None
-            }
-        } else {
-            None
+        let credential_message = TmpCredentialPacket {
+            credential: self.credential.clone(),
         };
-
-        let credential_message = TmpCredentialPacket { credential };
         let data = TransportMessage::v1(
             self.remote_backwards_compatibility_address
                 .clone()
@@ -488,13 +476,13 @@ impl CredentialExchangeState {
         let mut message = TmpCredentialPacket::decode(&body.payload)?;
 
         //we can't validate credential without authorities
-        if !self.authorities.is_empty() {
+        if let Ok(authority) = self.trust_context.authority() {
             if let Some(credential) = message.credential.take() {
                 self.identity
                     .receive_presented_credential(
                         self.their_identity_id.clone(),
                         credential,
-                        self.authorities.iter(),
+                        vec![authority.identity()],
                         Arc::new(AuthenticatedAttributeStorage::new(
                             self.identity.authenticated_storage(),
                         )),

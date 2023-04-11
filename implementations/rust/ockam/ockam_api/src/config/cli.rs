@@ -130,7 +130,7 @@ impl TrustContextConfig {
             None
         };
 
-        Ok(TrustContext::new(self.id.clone(), authority))
+        Ok(TrustContext::new_extended(self.id.clone(), authority))
     }
 
     pub fn from_authority_identity(

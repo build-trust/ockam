@@ -397,14 +397,6 @@ impl NodeManager {
         )
         .await?;
 
-        // // If we've been configured with a trust context, we can start Credential Exchange service
-        // if let Ok(tc) = self.trust_context() {
-        //     self.start_credentials_service_impl(tc.clone(),
-                DefaultAddress::CREDENTIALS_SERVICE.into(),
-                false,)
-        //         .await?;
-        // }
-
         Ok(())
     }
 
