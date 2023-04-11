@@ -63,18 +63,27 @@ python_pid_file_path() {
 setup_home_dir() {
   dir="$BATS_FILE_TMPDIR/$(openssl rand -hex 8)"
   export OCKAM_HOME="$dir"
+  if [[ -z "$HOME_DIRS" ]]; then
+    export HOME_DIRS="$OCKAM_HOME"
+  else
+    export HOME_DIRS="$HOME_DIRS;$OCKAM_HOME"
+  fi
 }
 
 mkdir -p "$HOME/.bats-tests"
 teardown_home_dir() {
-  # If BATS_TEST_COMPLETED is not set, the test failed.
-  if [[ -z "$BATS_TEST_COMPLETED" ]]; then
-    # Copy the CLI directory to $HOME/.bats-tests so it can be inspected.
-    # For some reason, if the directory is moved, the teardown function gets stuck.
-    cp -a "$OCKAM_HOME" "$HOME/.bats-tests"
-  fi
-  $OCKAM node delete --all --force
-  $OCKAM reset -y
+  IFS=';' read -ra DIRS <<<"$HOME_DIRS"
+  for dir in "${DIRS[@]}"; do
+    OCKAM_HOME="$dir"
+    # If BATS_TEST_COMPLETED is not set, the test failed.
+    if [[ -z "$BATS_TEST_COMPLETED" ]]; then
+      # Copy the CLI directory to $HOME/.bats-tests so it can be inspected.
+      # For some reason, if the directory is moved, the teardown function gets stuck.
+      cp -a "$OCKAM_HOME" "$HOME/.bats-tests"
+    fi
+    $OCKAM node delete --all --force
+    $OCKAM reset -y
+  done
 }
 
 to_uppercase() {

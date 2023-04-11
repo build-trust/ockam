@@ -116,11 +116,4 @@ teardown() {
   $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
   run curl --fail --head --max-time 5 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
-
-  # Cleanup
-  teardown_home_dir # edge_plane
-  OCKAM_HOME=$CONTROL_OCKAM_HOME
-  teardown_home_dir # control_plane
-  OCKAM_HOME=$ADMIN_OCKAM_HOME
-  teardown_home_dir # admin
 }
