@@ -5,7 +5,7 @@
 
 use hello_ockam::Forwarder;
 use ockam::access_control::AllowAll;
-use ockam::{Context, Result, TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
+use ockam::{Context, Result, TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -13,7 +13,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP connection to the responder node.
-    let connection_to_responder = tcp.connect("127.0.0.1:4000", TcpConnectionTrustOptions::new()).await?;
+    let connection_to_responder = tcp.connect("127.0.0.1:4000", TcpConnectionOptions::new()).await?;
 
     // Create a Forwarder worker
     ctx.start_worker(
@@ -25,7 +25,7 @@ async fn main(ctx: Context) -> Result<()> {
     .await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:3000", TcpListenerTrustOptions::new()).await?;
+    tcp.listen("127.0.0.1:3000", TcpListenerOptions::new()).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

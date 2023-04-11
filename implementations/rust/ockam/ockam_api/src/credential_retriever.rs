@@ -4,8 +4,8 @@ use ockam::{route, TcpTransport};
 use ockam_core::async_trait;
 use ockam_core::flow_control::FlowControls;
 use ockam_identity::{
-    credential::Credential, CredentialRetriever, Identity, PublicIdentity,
-    SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
+    credential::Credential, CredentialRetriever, Identity, PublicIdentity, SecureChannelOptions,
+    TrustMultiIdentifiersPolicy,
 };
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
@@ -68,15 +68,14 @@ impl CredentialRetriever for CredentialIssuerRetriever {
         debug!("Create secure channel to authority");
 
         let flow_control_id = self.flow_controls.generate_id();
-        let trust_options =
-            SecureChannelTrustOptions::as_producer(&self.flow_controls, &flow_control_id)
-                .as_consumer(&self.flow_controls)
-                .with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed));
+        let options = SecureChannelOptions::as_producer(&self.flow_controls, &flow_control_id)
+            .as_consumer(&self.flow_controls)
+            .with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed));
 
         let sc = for_identity
             .create_secure_channel_extended(
                 authority_tcp_route.route,
-                trust_options,
+                options,
                 Duration::from_secs(120),
             )
             .await?;

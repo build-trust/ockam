@@ -4,7 +4,7 @@ use std::sync::Arc;
 use minicbor::Decoder;
 
 use ockam::compat::asynchronous::RwLock;
-use ockam::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderTrustOptions};
+use ockam::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use ockam::Result;
 use ockam_core::api::{Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::AsyncTryClone;
@@ -41,8 +41,7 @@ impl NodeManagerWorker {
 
         let connection = node_manager.connect(connection).await?;
 
-        let trust_options =
-            RemoteForwarderTrustOptions::as_consumer_and_producer(&node_manager.flow_controls);
+        let options = RemoteForwarderOptions::as_consumer_and_producer(&node_manager.flow_controls);
 
         let full = connection
             .secure_channel
@@ -53,16 +52,15 @@ impl NodeManagerWorker {
 
         let forwarder = if req.at_rust_node() {
             if let Some(alias) = req.alias() {
-                RemoteForwarder::create_static_without_heartbeats(ctx, route, alias, trust_options)
-                    .await
+                RemoteForwarder::create_static_without_heartbeats(ctx, route, alias, options).await
             } else {
-                RemoteForwarder::create(ctx, route, trust_options).await
+                RemoteForwarder::create(ctx, route, options).await
             }
         } else {
             let f = if let Some(alias) = req.alias() {
-                RemoteForwarder::create_static(ctx, route, alias, trust_options).await
+                RemoteForwarder::create_static(ctx, route, alias, options).await
             } else {
-                RemoteForwarder::create(ctx, route, trust_options).await
+                RemoteForwarder::create(ctx, route, options).await
             };
             if f.is_ok() && !connection.secure_channel.is_empty() {
                 let ctx = Arc::new(ctx.async_try_clone().await?);
@@ -177,13 +175,12 @@ fn replacer(
                 let r = local_multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
 
-                let trust_options =
-                    RemoteForwarderTrustOptions::as_consumer_and_producer(&this.flow_controls);
+                let options = RemoteForwarderOptions::as_consumer_and_producer(&this.flow_controls);
 
                 if let Some(alias) = &alias {
-                    RemoteForwarder::create_static(&ctx, r, alias, trust_options).await?;
+                    RemoteForwarder::create_static(&ctx, r, alias, options).await?;
                 } else {
-                    RemoteForwarder::create(&ctx, r, trust_options).await?;
+                    RemoteForwarder::create(&ctx, r, options).await?;
                 }
 
                 Ok(connection.secure_channel)

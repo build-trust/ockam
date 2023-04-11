@@ -2,14 +2,14 @@ use hello_ockam::{create_token, import_project};
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{
-    AuthorityInfo, Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustContext,
+    AuthorityInfo, Identity, SecureChannelListenerOptions, SecureChannelOptions, TrustContext,
     TrustMultiIdentifiersPolicy,
 };
 use ockam::AsyncTryClone;
 
 use ockam::abac::AbacAccessControl;
-use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
-use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpOutletTrustOptions, TcpTransport};
+use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
+use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpOutletOptions, TcpTransport};
 use ockam_api::authenticator::direct::{RpcClient, TokenAcceptorClient};
 use ockam_api::{multiaddr_to_route, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress};
 use ockam_core::flow_control::FlowControls;
@@ -67,18 +67,18 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let tcp_route = multiaddr_to_route(&project.authority_route(), &tcp, &flow_controls)
         .await
         .unwrap(); // FIXME: Handle error
-    let trust_options = SecureChannelTrustOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
-        project.authority_public_identifier(),
+    let options = SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
+        project.authority_public_identifier()
     ]));
-    let trust_options = if let Some(_flow_control_id) = tcp_route.flow_control_id {
-        trust_options.as_consumer(&flow_controls)
+    let options = if let Some(_flow_control_id) = tcp_route.flow_control_id {
+        options.as_consumer(&flow_controls)
     } else {
-        trust_options
+        options
     };
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = control_plane
-        .create_secure_channel_extended(tcp_route.route, trust_options, Duration::from_secs(120))
+        .create_secure_channel_extended(tcp_route.route, options, Duration::from_secs(120))
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
@@ -121,7 +121,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     tcp.create_outlet(
         "outlet",
         "127.0.0.1:5000",
-        TcpOutletTrustOptions::new().with_incoming_access_control_impl(access_control),
+        TcpOutletOptions::new().with_incoming_access_control_impl(access_control),
     )
     .await?;
 
@@ -130,18 +130,18 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let tcp_project_route = multiaddr_to_route(&project.route(), &tcp, &flow_controls)
         .await
         .unwrap(); // FIXME: Handle error
-    let project_trust_options = SecureChannelTrustOptions::new()
-        .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
-    let project_trust_options = if let Some(_flow_control_id) = tcp_project_route.flow_control_id {
-        project_trust_options.as_consumer(&flow_controls)
+    let project_options =
+        SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
+    let project_options = if let Some(_flow_control_id) = tcp_project_route.flow_control_id {
+        project_options.as_consumer(&flow_controls)
     } else {
-        project_trust_options
+        project_options
     };
 
     // create a secure channel to the project first
     // we make sure that we indeed connect to the correct project on the Orchestrator
     let secure_channel_address = control_plane
-        .create_secure_channel_extended(tcp_project_route.route, project_trust_options, Duration::from_secs(120))
+        .create_secure_channel_extended(tcp_project_route.route, project_options, Duration::from_secs(120))
         .await?;
     println!("secure channel to project: {secure_channel_address:?}");
 
@@ -159,7 +159,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         &ctx,
         secure_channel_address,
         "control_plane1",
-        RemoteForwarderTrustOptions::new(),
+        RemoteForwarderOptions::new(),
     )
     .await?;
     println!("forwarder is {forwarder:?}");
@@ -167,7 +167,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 6. create a secure channel listener which will allow the edge node to
     //    start a secure channel when it is ready
     control_plane
-        .create_secure_channel_listener("untrusted", SecureChannelListenerTrustOptions::new())
+        .create_secure_channel_listener("untrusted", SecureChannelListenerOptions::new())
         .await?;
     println!("created a secure channel listener");
 

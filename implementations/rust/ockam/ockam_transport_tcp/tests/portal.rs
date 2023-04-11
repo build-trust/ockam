@@ -8,8 +8,7 @@ use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{route, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::{
-    TcpConnectionTrustOptions, TcpInletTrustOptions, TcpListenerTrustOptions,
-    TcpOutletTrustOptions, TcpTransport,
+    TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
 };
 
 const LENGTH: usize = 32;
@@ -20,13 +19,13 @@ async fn setup(ctx: &Context) -> Result<(String, TcpListener)> {
     let listener = {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let bind_address = listener.local_addr().unwrap().to_string();
-        tcp.create_outlet("outlet", bind_address.clone(), TcpOutletTrustOptions::new())
+        tcp.create_outlet("outlet", bind_address.clone(), TcpOutletOptions::new())
             .await?;
         listener
     };
 
     let (inlet_saddr, _) = tcp
-        .create_inlet("127.0.0.1:0", route!["outlet"], TcpInletTrustOptions::new())
+        .create_inlet("127.0.0.1:0", route!["outlet"], TcpInletOptions::new())
         .await?;
 
     Ok((inlet_saddr.to_string(), listener))
@@ -137,14 +136,14 @@ async fn portal__tcp_connection_with_flow_controls__should_succeed(
     let (socket_address, _) = tcp
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::as_spawner(&flow_controls, &outlet_flow_control_id),
+            TcpListenerOptions::as_spawner(&flow_controls, &outlet_flow_control_id),
         )
         .await?;
 
     let tcp_connection = tcp
         .connect(
             socket_address.to_string(),
-            TcpConnectionTrustOptions::as_producer(&flow_controls, &inlet_flow_control_id),
+            TcpConnectionOptions::as_producer(&flow_controls, &inlet_flow_control_id),
         )
         .await?;
 
@@ -153,7 +152,7 @@ async fn portal__tcp_connection_with_flow_controls__should_succeed(
     tcp.create_outlet(
         "outlet",
         bind_address.clone(),
-        TcpOutletTrustOptions::new().as_consumer(
+        TcpOutletOptions::new().as_consumer(
             &flow_controls,
             &outlet_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
@@ -165,7 +164,7 @@ async fn portal__tcp_connection_with_flow_controls__should_succeed(
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection.clone(), "outlet"],
-            TcpInletTrustOptions::new().as_consumer(&flow_controls),
+            TcpInletOptions::new().as_consumer(&flow_controls),
         )
         .await?;
 
@@ -209,14 +208,14 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
     let (socket_address, _) = tcp
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::as_spawner(&flow_controls, &outlet_flow_control_id),
+            TcpListenerOptions::as_spawner(&flow_controls, &outlet_flow_control_id),
         )
         .await?;
 
     let tcp_connection = tcp
         .connect(
             socket_address.to_string(),
-            TcpConnectionTrustOptions::as_producer(&flow_controls, &inlet_flow_control_id),
+            TcpConnectionOptions::as_producer(&flow_controls, &inlet_flow_control_id),
         )
         .await?;
 
@@ -225,7 +224,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
     tcp.create_outlet(
         "outlet",
         bind_address.clone(),
-        TcpOutletTrustOptions::new().as_consumer(
+        TcpOutletOptions::new().as_consumer(
             &flow_controls,
             &outlet_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
@@ -236,7 +235,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
     tcp.create_outlet(
         "outlet_invalid",
         bind_address.clone(),
-        TcpOutletTrustOptions::new(),
+        TcpOutletOptions::new(),
     )
     .await?;
 
@@ -244,7 +243,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection.clone(), "outlet"],
-            TcpInletTrustOptions::new(),
+            TcpInletOptions::new(),
         )
         .await?;
 
@@ -252,7 +251,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection, "outlet_invalid"],
-            TcpInletTrustOptions::new().as_consumer(&flow_controls),
+            TcpInletOptions::new().as_consumer(&flow_controls),
         )
         .await?;
 

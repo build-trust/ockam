@@ -130,6 +130,5 @@ pub mod authenticated_storage {
 
 #[cfg(feature = "ockam_transport_tcp")]
 pub use ockam_transport_tcp::{
-    TcpConnectionTrustOptions, TcpInletTrustOptions, TcpListenerTrustOptions,
-    TcpOutletTrustOptions, TcpTransport,
+    TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
 };

@@ -11,11 +11,11 @@ pub(crate) struct TcpConnectionAccessControl {
 
 /// Trust Options for a TCP connection
 #[derive(Clone, Debug)]
-pub struct TcpConnectionTrustOptions {
+pub struct TcpConnectionOptions {
     pub(crate) producer_flow_control: Option<(FlowControls, FlowControlId)>,
 }
 
-impl TcpConnectionTrustOptions {
+impl TcpConnectionOptions {
     /// This constructor is insecure, because outgoing messages from such connection will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
@@ -64,11 +64,11 @@ impl TcpConnectionTrustOptions {
 
 /// Trust Options for a TCP listener
 #[derive(Debug)]
-pub struct TcpListenerTrustOptions {
+pub struct TcpListenerOptions {
     pub(crate) spawner_flow_controls: Option<(FlowControls, FlowControlId)>,
 }
 
-impl TcpListenerTrustOptions {
+impl TcpListenerOptions {
     /// This constructor is insecure, because outgoing messages from such connections will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes

@@ -22,7 +22,7 @@ use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpInletTrustOptions, TcpOutletTrustOptions};
+use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
 use std::collections::BTreeMap;
 
 use super::{NodeManager, NodeManagerWorker};
@@ -162,13 +162,13 @@ impl NodeManagerWorker {
             .access_control(&resource, &actions::HANDLE_MESSAGE, project_id, None)
             .await?;
 
-        let trust_options = TcpInletTrustOptions::new()
+        let options = TcpInletOptions::new()
             .with_incoming_access_control(access_control.clone())
             .as_consumer(&node_manager.flow_controls);
 
         let res = node_manager
             .tcp_transport
-            .create_inlet(listen_addr.clone(), outlet_route.clone(), trust_options)
+            .create_inlet(listen_addr.clone(), outlet_route.clone(), options)
             .await;
 
         Ok(match res {
@@ -330,26 +330,25 @@ impl NodeManagerWorker {
         let access_control = node_manager
             .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
             .await?;
-        let trust_options =
-            TcpOutletTrustOptions::new().with_incoming_access_control(access_control);
+        let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
 
         // Accept messages from the default secure channel listener
-        let trust_options = if let Some(flow_control_id) = node_manager
+        let options = if let Some(flow_control_id) = node_manager
             .flow_controls
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
         {
-            trust_options.as_consumer(
+            options.as_consumer(
                 &node_manager.flow_controls,
                 &flow_control_id,
                 FlowControlPolicy::SpawnerAllowMultipleMessages,
             )
         } else {
-            trust_options
+            options
         };
 
         let res = node_manager
             .tcp_transport
-            .create_outlet(worker_addr.clone(), tcp_addr.clone(), trust_options)
+            .create_outlet(worker_addr.clone(), tcp_addr.clone(), options)
             .await;
 
         Ok(match res {
@@ -540,7 +539,7 @@ fn replacer(
                     .create_inlet(
                         bind,
                         r,
-                        TcpInletTrustOptions::new().with_incoming_access_control(access),
+                        TcpInletOptions::new().with_incoming_access_control(access),
                     )
                     .await?
                     .1;

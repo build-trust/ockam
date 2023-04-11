@@ -1,7 +1,6 @@
-use ockam::identity::{Identity, SecureChannelTrustOptions};
+use ockam::identity::{Identity, SecureChannelOptions};
 use ockam::{
-    route, stream::Stream, vault::Vault, Context, MessageReceiveOptions, Result, TcpConnectionTrustOptions,
-    TcpTransport,
+    route, stream::Stream, vault::Vault, Context, MessageReceiveOptions, Result, TcpConnectionOptions, TcpTransport,
 };
 
 #[ockam::node]
@@ -10,9 +9,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
-    let node_in_hub = tcp
-        .connect(hub_node_tcp_address, TcpConnectionTrustOptions::new())
-        .await?;
+    let node_in_hub = tcp.connect(hub_node_tcp_address, TcpConnectionOptions::new()).await?;
 
     // Create a vault
     let vault = Vault::create();
@@ -40,7 +37,7 @@ async fn main(mut ctx: Context) -> Result<()> {
                 sender.clone(),            // via the "sc-initiator-to-responder" stream
                 "secure_channel_listener"  // to the "secure_channel_listener" listener
             ],
-            SecureChannelTrustOptions::new(),
+            SecureChannelOptions::new(),
         )
         .await?;
 

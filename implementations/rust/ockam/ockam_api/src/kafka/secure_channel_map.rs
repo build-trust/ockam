@@ -2,7 +2,7 @@ use crate::kafka::{
     KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
     ORCHESTRATOR_KAFKA_CONSUMERS,
 };
-use ockam::remote::{RemoteForwarder, RemoteForwarderTrustOptions};
+use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -13,7 +13,7 @@ use ockam_identity::api::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
 };
 use ockam_identity::{
-    Identity, SecureChannelRegistryEntry, SecureChannelTrustOptions, TrustEveryonePolicy,
+    Identity, SecureChannelOptions, SecureChannelRegistryEntry, TrustEveryonePolicy,
 };
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -87,7 +87,7 @@ impl ForwarderCreator for RemoteForwarderCreator {
             context,
             self.hub_route.clone(),
             alias.clone(),
-            RemoteForwarderTrustOptions::as_consumer_and_producer(&self.flow_controls),
+            RemoteForwarderOptions::as_consumer_and_producer(&self.flow_controls),
         )
         .await?;
         trace!("remote forwarder created: {remote_forwarder_information:?}");
@@ -249,8 +249,8 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 // This route should not use FlowControls because we are using tunnel over existing
                 // secure channel
                 let flow_control_id = self.flow_controls.generate_id();
-                let trust_options =
-                    SecureChannelTrustOptions::as_producer(&self.flow_controls, &flow_control_id)
+                let options =
+                    SecureChannelOptions::as_producer(&self.flow_controls, &flow_control_id)
                         .as_consumer(&self.flow_controls)
                         .with_trust_policy(TrustEveryonePolicy);
                 let encryptor_address = inner
@@ -261,7 +261,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                             topic_partition_address.clone(),
                             KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS
                         ],
-                        trust_options,
+                        options,
                     )
                     .await?;
 

@@ -1,7 +1,7 @@
 use ockam::access_control::AllowAll;
-use ockam::identity::SecureChannelListenerTrustOptions;
+use ockam::identity::SecureChannelListenerOptions;
 use ockam::{
-    identity::Identity, route, stream::Stream, vault::Vault, Context, Result, Routed, TcpConnectionTrustOptions,
+    identity::Identity, route, stream::Stream, vault::Vault, Context, Result, Routed, TcpConnectionOptions,
     TcpTransport, Worker,
 };
 
@@ -35,7 +35,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::new())
+    bob.create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and
@@ -47,7 +47,7 @@ async fn main(ctx: Context) -> Result<()> {
     // - a sender (producer) for the `bob_to_alice` stream.
 
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
     let b_to_a_stream_address = ockam::unique_with_prefix("bob_to_alice");
     let a_to_b_stream_address = ockam::unique_with_prefix("alice_to_bob");

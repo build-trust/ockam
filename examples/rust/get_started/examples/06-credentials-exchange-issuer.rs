@@ -1,8 +1,8 @@
 use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::credential_issuer::CredentialIssuer;
-use ockam::identity::SecureChannelListenerTrustOptions;
-use ockam::{Context, Result, TcpListenerTrustOptions, TcpTransport};
+use ockam::identity::SecureChannelListenerOptions;
+use ockam::{Context, Result, TcpListenerOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -38,7 +38,7 @@ async fn main(ctx: Context) -> Result<()> {
     // corresponding to one of the above known public identifiers.
     issuer
         .identity()
-        .create_secure_channel_listener("secure", SecureChannelListenerTrustOptions::new())
+        .create_secure_channel_listener("secure", SecureChannelListenerOptions::new())
         .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from
@@ -48,7 +48,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Initialize TCP Transport, create a TCP listener, and wait for connections.
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.listen("127.0.0.1:5000", TcpListenerTrustOptions::new()).await?;
+    tcp.listen("127.0.0.1:5000", TcpListenerOptions::new()).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

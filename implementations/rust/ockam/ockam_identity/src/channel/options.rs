@@ -8,7 +8,7 @@ use ockam_core::flow_control::{
 use ockam_core::{Address, AllowAll, OutgoingAccessControl, Result};
 
 /// Trust options for a Secure Channel
-pub struct SecureChannelTrustOptions {
+pub struct SecureChannelOptions {
     pub(crate) consumer_flow_control: Option<FlowControls>,
     pub(crate) producer_flow_control: Option<(FlowControls, FlowControlId)>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
@@ -18,7 +18,7 @@ pub(crate) struct SecureChannelAccessControl {
     pub(crate) decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
 }
 
-impl SecureChannelTrustOptions {
+impl SecureChannelOptions {
     /// This constructor is insecure, because outgoing messages from such channels will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
@@ -114,13 +114,13 @@ pub(crate) struct CiphertextFlowControl {
 }
 
 /// Trust options for a Secure Channel Listener
-pub struct SecureChannelListenerTrustOptions {
+pub struct SecureChannelListenerOptions {
     pub(crate) consumer_flow_control: Option<CiphertextFlowControl>,
     pub(crate) channels_producer_flow_control: Option<(FlowControls, FlowControlId)>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
 }
 
-impl SecureChannelListenerTrustOptions {
+impl SecureChannelListenerOptions {
     /// This constructor is insecure, because outgoing messages from such channels will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes

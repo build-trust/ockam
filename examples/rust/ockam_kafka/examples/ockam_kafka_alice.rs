@@ -1,7 +1,7 @@
-use ockam::identity::SecureChannelTrustOptions;
+use ockam::identity::SecureChannelOptions;
 use ockam::{
-    identity::Identity, route, stream::Stream, unique_with_prefix, vault::Vault, Context, Result,
-    TcpConnectionTrustOptions, TcpTransport,
+    identity::Identity, route, stream::Stream, unique_with_prefix, vault::Vault, Context, Result, TcpConnectionOptions,
+    TcpTransport,
 };
 use std::io;
 
@@ -40,7 +40,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // for the `bob_to_alice` stream to get two-way communication.
 
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
     let (sender, _receiver) = Stream::new(&ctx)
         .await?
@@ -54,7 +54,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
-    let channel = alice.create_secure_channel(r, SecureChannelTrustOptions::new()).await?;
+    let channel = alice.create_secure_channel(r, SecureChannelOptions::new()).await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 
