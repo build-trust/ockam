@@ -350,7 +350,7 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
   load_orchestrator_data
 
-    port=7100
+  port=7100
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success

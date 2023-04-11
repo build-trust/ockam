@@ -90,10 +90,6 @@ teardown() {
   fwd=$(random_str)
   run "$OCKAM" forwarder create "$fwd"
   assert_success
-
-  teardown_home_dir
-  OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  teardown_home_dir
 }
 
 @test "projects - send a message to a project node from an embedded node, enrolled member on different install" {
