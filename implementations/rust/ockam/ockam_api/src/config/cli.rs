@@ -76,7 +76,7 @@ impl OckamConfig {
 
 /// A configuration struct to serialize and deserialize a trust context
 /// used within the ockam CLI and ockam node
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TrustContextConfig {
     id: String,
     authority: Option<TrustAuthorityConfig>,
@@ -219,7 +219,7 @@ impl TryFrom<ProjectLookup> for TrustContextConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TrustAuthorityConfig {
     identity: String,
     own_credential: Option<CredentialRetrieverType>,
@@ -251,7 +251,7 @@ impl TrustAuthorityConfig {
 }
 
 /// Type of credential retriever
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum CredentialRetrieverType {
     /// Credential is stored in memory
     FromMemory(Credential),

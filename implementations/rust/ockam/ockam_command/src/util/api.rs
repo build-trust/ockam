@@ -4,7 +4,7 @@ use ockam_api::cli_state::CliState;
 use ockam_api::cloud::project::Project;
 use ockam_api::config::cli::TrustContextConfig;
 use regex::Regex;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Context};
 use clap::Args;
@@ -443,7 +443,7 @@ impl TrustContextConfigBuilder {
 
     fn get_from_default_trust_context(&self) -> Option<TrustContextConfig> {
         let state = CliState::try_default().ok()?;
-        let tc = state.trust_contexts.default().ok()?.config().ok()?;
+        let tc = state.trust_contexts.default().ok()?.config;
         Some(tc)
     }
 
@@ -456,32 +456,25 @@ impl TrustContextConfigBuilder {
 }
 
 pub fn parse_trust_context(trust_context_input: &str) -> Result<TrustContextConfig> {
-    let trust_context_path = match Path::new(trust_context_input).exists() {
-        true => Some(trust_context_input.to_string()),
-        false => {
-            let tc = CliState::try_default()
+    let tcc = match std::fs::read_to_string(trust_context_input) {
+        Ok(s) => {
+            let mut tc = serde_json::from_str::<TrustContextConfig>(&s)
+                .context("Failed to parse trust context")?;
+            tc.set_path(PathBuf::from(trust_context_input));
+            tc
+        }
+        Err(_) => {
+            let state = CliState::try_default()
                 .ok()
                 .and_then(|state| state.trust_contexts.get(trust_context_input).ok());
-            Some(
-                tc.context("Invalid Trust Context name or path")?
-                    .path
-                    .to_str()
-                    .context("Unable to obtain path to trust context")?
-                    .to_string(),
-            )
+            let state = state.context("Invalid Trust Context name or path")?;
+            let mut tcc = state.config;
+            tcc.set_path(state.path);
+            tcc
         }
-    }
-    .context(format!(
-        "Unable to retrieve trust context from input {}",
-        trust_context_input
-    ))?;
+    };
 
-    let serialized_trust_context = std::fs::read_to_string(&trust_context_path)?;
-    let mut tc: TrustContextConfig = serde_json::from_str(&serialized_trust_context)
-        .context(anyhow!("Not a valid trust context"))?;
-    tc.set_path(PathBuf::from(trust_context_path));
-
-    Ok(tc)
+    Ok(tcc)
 }
 
 impl CloudOpts {

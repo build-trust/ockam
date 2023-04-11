@@ -1277,7 +1277,7 @@ impl TrustContextsState {
             self.set_default(name)?;
         }
 
-        Ok(TrustContextState { path })
+        path.try_into()
     }
 
     pub fn get(&self, name: &str) -> Result<TrustContextState> {
@@ -1289,7 +1289,7 @@ impl TrustContextsState {
             }
             path
         };
-        Ok(TrustContextState { path })
+        path.try_into()
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
@@ -1301,7 +1301,7 @@ impl TrustContextsState {
 
     pub fn default(&self) -> Result<TrustContextState> {
         let path = std::fs::canonicalize(self.default_path()?)?;
-        Ok(TrustContextState { path })
+        path.try_into()
     }
 
     pub fn set_default(&self, name: &str) -> Result<TrustContextState> {
@@ -1323,6 +1323,17 @@ impl TrustContextsState {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TrustContextState {
     pub path: PathBuf,
+    pub config: TrustContextConfig,
+}
+
+impl TryFrom<PathBuf> for TrustContextState {
+    type Error = CliStateError;
+
+    fn try_from(path: PathBuf) -> Result<Self> {
+        let contents = std::fs::read_to_string(&path)?;
+        let config = serde_json::from_str(&contents)?;
+        Ok(TrustContextState { path, config })
+    }
 }
 
 impl TrustContextState {
