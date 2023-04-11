@@ -97,7 +97,7 @@ impl CredentialRetriever for CredentialIssuerRetriever {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CredentialIssuerInfo {
     pub identity: String,
     pub maddr: MultiAddr,
