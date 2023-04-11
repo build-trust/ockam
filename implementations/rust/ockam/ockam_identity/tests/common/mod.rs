@@ -1,9 +1,9 @@
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result, Route};
-use ockam_identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions};
+use ockam_identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::{Context, MessageReceiveOptions};
-use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
+use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use ockam_vault::Vault;
 use rand::random;
 
@@ -138,13 +138,11 @@ async fn create_tcp_listener(ctx: &Context, with_flow_control: bool) -> Result<T
     let (socket_addr, flow_control) = if with_flow_control {
         let flow_controls = FlowControls::default();
         let flow_control_id = flow_controls.generate_id();
-        let trust_options = TcpListenerTrustOptions::as_spawner(&flow_controls, &flow_control_id);
-        let (socket_addr, _) = tcp.listen("127.0.0.1:0", trust_options).await?;
+        let options = TcpListenerOptions::as_spawner(&flow_controls, &flow_control_id);
+        let (socket_addr, _) = tcp.listen("127.0.0.1:0", options).await?;
         (socket_addr, Some((flow_controls, flow_control_id)))
     } else {
-        let (socket_addr, _) = tcp
-            .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
-            .await?;
+        let (socket_addr, _) = tcp.listen("127.0.0.1:0", TcpListenerOptions::new()).await?;
         (socket_addr, None)
     };
 
@@ -188,13 +186,12 @@ async fn create_tcp_connection(
     let (address, flow_control) = if with_flow_control {
         let flow_controls = FlowControls::default();
         let flow_control_id = flow_controls.generate_id();
-        let trust_options =
-            TcpConnectionTrustOptions::as_producer(&flow_controls, &flow_control_id);
-        let address = tcp.connect(socket_addr.to_string(), trust_options).await?;
+        let options = TcpConnectionOptions::as_producer(&flow_controls, &flow_control_id);
+        let address = tcp.connect(socket_addr.to_string(), options).await?;
         (address, Some((flow_controls, flow_control_id)))
     } else {
         let address = tcp
-            .connect(socket_addr.to_string(), TcpConnectionTrustOptions::new())
+            .connect(socket_addr.to_string(), TcpConnectionOptions::new())
             .await?;
         (address, None)
     };
@@ -233,21 +230,21 @@ pub async fn create_secure_channel_listener(
 ) -> Result<SecureChannelListenerInfo> {
     let identity = Identity::create(ctx, Vault::create()).await?;
 
-    let trust_options = SecureChannelListenerTrustOptions::new();
-    let trust_options = if let Some((flow_controls, flow_control_id)) = flow_control {
+    let options = SecureChannelListenerOptions::new();
+    let options = if let Some((flow_controls, flow_control_id)) = flow_control {
         let policy = if with_tcp_listener {
             FlowControlPolicy::SpawnerAllowOnlyOneMessage
         } else {
             FlowControlPolicy::ProducerAllowMultiple
         };
 
-        trust_options.as_consumer_with_flow_control_id(flow_controls, flow_control_id, policy)
+        options.as_consumer_with_flow_control_id(flow_controls, flow_control_id, policy)
     } else {
-        trust_options
+        options
     };
 
     identity
-        .create_secure_channel_listener("listener", trust_options)
+        .create_secure_channel_listener("listener", options)
         .await?;
 
     let info = SecureChannelListenerInfo { identity };
@@ -268,18 +265,15 @@ pub async fn create_secure_channel(
 ) -> Result<SecureChannelInfo> {
     let identity = Identity::create(ctx, Vault::create()).await?;
 
-    let trust_options = SecureChannelTrustOptions::new();
-    let trust_options = if let Some((flow_controls, _flow_control_id)) = &connection.flow_control {
-        trust_options.as_consumer(flow_controls)
+    let options = SecureChannelOptions::new();
+    let options = if let Some((flow_controls, _flow_control_id)) = &connection.flow_control {
+        options.as_consumer(flow_controls)
     } else {
-        trust_options
+        options
     };
 
     let address = identity
-        .create_secure_channel(
-            route![connection.address.clone(), "listener"],
-            trust_options,
-        )
+        .create_secure_channel(route![connection.address.clone(), "listener"], options)
         .await?;
 
     let info = SecureChannelInfo { identity, address };

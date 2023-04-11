@@ -1,7 +1,7 @@
 use ockam::access_control::AllowAll;
-use ockam::identity::{Identity, SecureChannelListenerTrustOptions};
-use ockam::remote::RemoteForwarderTrustOptions;
-use ockam::{remote::RemoteForwarder, Routed, TcpConnectionTrustOptions, TcpTransport, Worker};
+use ockam::identity::{Identity, SecureChannelListenerOptions};
+use ockam::remote::RemoteForwarderOptions;
+use ockam::{remote::RemoteForwarder, Routed, TcpConnectionOptions, TcpTransport, Worker};
 use ockam::{vault::Vault, Context, Result};
 
 struct Echoer;
@@ -38,7 +38,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::new())
+    bob.create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
         .await?;
 
     // The computer that is running this program is likely within a private network and
@@ -51,9 +51,9 @@ async fn main(ctx: Context) -> Result<()> {
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderTrustOptions::new()).await?;
+    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderOptions::new()).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
     println!("{}", forwarder.remote_address());

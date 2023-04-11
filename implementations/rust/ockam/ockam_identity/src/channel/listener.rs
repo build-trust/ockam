@@ -2,31 +2,28 @@ use crate::channel::addresses::Addresses;
 use crate::channel::common::CreateResponderChannelMessage;
 use crate::channel::decryptor_worker::DecryptorWorker;
 use crate::channel::Role;
-use crate::{Identity, SecureChannelListenerTrustOptions};
+use crate::{Identity, SecureChannelListenerOptions};
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, AllowAll, AsyncTryClone, DenyAll, Result, Routed, Worker};
 use ockam_node::Context;
 
 pub(crate) struct IdentityChannelListener {
-    trust_options: SecureChannelListenerTrustOptions,
+    options: SecureChannelListenerOptions,
     identity: Identity,
 }
 
 impl IdentityChannelListener {
-    pub fn new(trust_options: SecureChannelListenerTrustOptions, identity: Identity) -> Self {
-        Self {
-            trust_options,
-            identity,
-        }
+    pub fn new(options: SecureChannelListenerOptions, identity: Identity) -> Self {
+        Self { options, identity }
     }
 
     pub async fn create(
         ctx: &Context,
         address: Address,
-        trust_options: SecureChannelListenerTrustOptions,
+        options: SecureChannelListenerOptions,
         identity: Identity,
     ) -> Result<()> {
-        if let Some(ciphertext_flow_control) = &trust_options.consumer_flow_control {
+        if let Some(ciphertext_flow_control) = &options.consumer_flow_control {
             if let Some(info) = &ciphertext_flow_control.info {
                 ciphertext_flow_control.flow_controls.add_consumer(
                     &address,
@@ -36,13 +33,11 @@ impl IdentityChannelListener {
             }
         }
 
-        if let Some((flow_controls, flow_control_id)) =
-            &trust_options.channels_producer_flow_control
-        {
+        if let Some((flow_controls, flow_control_id)) = &options.channels_producer_flow_control {
             flow_controls.add_spawner(&address, flow_control_id);
         }
 
-        let listener = Self::new(trust_options, identity);
+        let listener = Self::new(options, identity);
 
         ctx.start_worker(
             address, listener, AllowAll, // TODO: @ac allow to customize
@@ -70,7 +65,7 @@ impl Worker for IdentityChannelListener {
         // If yes - decryptor will be added to that flow_control to be able to receive further messages
         // from that Producer
         let flow_control_id =
-            if let Some(ciphertext_flow_control) = &self.trust_options.consumer_flow_control {
+            if let Some(ciphertext_flow_control) = &self.options.consumer_flow_control {
                 ciphertext_flow_control
                     .flow_controls
                     .get_flow_control_with_producer(&msg.src_addr())
@@ -81,17 +76,17 @@ impl Worker for IdentityChannelListener {
 
         let addresses = Addresses::generate(Role::Responder);
         let flow_control_id = self
-            .trust_options
+            .options
             .setup_flow_control(&addresses, flow_control_id)?;
         let access_control = self
-            .trust_options
+            .options
             .create_access_control(flow_control_id.clone())?;
 
         DecryptorWorker::create_responder(
             ctx,
             identity,
             addresses,
-            self.trust_options.trust_policy.clone(),
+            self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             msg,
         )

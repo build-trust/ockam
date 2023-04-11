@@ -6,11 +6,11 @@ use ockam_core::flow_control::{
 use ockam_core::{Address, AllowAll, OutgoingAccessControl};
 
 /// Trust options for [`RemoteForwarder`]
-pub struct RemoteForwarderTrustOptions {
+pub struct RemoteForwarderOptions {
     pub(super) flow_controls: Option<FlowControls>,
 }
 
-impl RemoteForwarderTrustOptions {
+impl RemoteForwarderOptions {
     /// This constructor is insecure, because outgoing messages from such forwarder will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes

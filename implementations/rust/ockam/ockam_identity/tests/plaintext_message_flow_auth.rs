@@ -3,9 +3,9 @@ use crate::common::{
 };
 use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result};
-use ockam_identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions};
+use ockam_identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
+use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use ockam_vault::Vault;
 use std::time::Duration;
 
@@ -26,20 +26,14 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 
     bob.create_secure_channel_listener(
         "listener",
-        SecureChannelListenerTrustOptions::as_spawner(
-            &flow_controls_bob,
-            &flow_control_id_bob_channel,
-        ),
+        SecureChannelListenerOptions::as_spawner(&flow_controls_bob, &flow_control_id_bob_channel),
     )
     .await?;
 
     let channel_to_bob = alice
         .create_secure_channel(
             route!["listener"],
-            SecureChannelTrustOptions::as_producer(
-                &flow_controls_alice,
-                &flow_control_id_alice_channel,
-            ),
+            SecureChannelOptions::as_producer(&flow_controls_alice, &flow_control_id_alice_channel),
         )
         .await?;
 
@@ -91,17 +85,14 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let (socket_addr, _) = tcp_bob
         .listen(
             "127.0.0.1:0",
-            TcpListenerTrustOptions::as_spawner(&flow_controls_bob, &flow_control_id_bob_tcp),
+            TcpListenerOptions::as_spawner(&flow_controls_bob, &flow_control_id_bob_tcp),
         )
         .await?;
 
     let connection_to_bob = tcp_alice
         .connect(
             socket_addr.to_string(),
-            TcpConnectionTrustOptions::as_producer(
-                &flow_controls_alice,
-                &flow_control_id_alice_tcp,
-            ),
+            TcpConnectionOptions::as_producer(&flow_controls_alice, &flow_control_id_alice_tcp),
         )
         .await?;
 
@@ -119,7 +110,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     bob.create_secure_channel_listener(
         "listener",
-        SecureChannelListenerTrustOptions::as_spawner(
+        SecureChannelListenerOptions::as_spawner(
             &flow_controls_bob,
             &flow_control_id_bob_plaintext,
         )
@@ -134,7 +125,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let channel_to_bob = alice
         .create_secure_channel(
             route![connection_to_bob, "listener"],
-            SecureChannelTrustOptions::as_producer(
+            SecureChannelOptions::as_producer(
                 &flow_controls_alice,
                 &flow_control_id_alice_plaintext,
             )

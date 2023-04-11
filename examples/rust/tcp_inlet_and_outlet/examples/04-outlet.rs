@@ -1,8 +1,8 @@
-use ockam::identity::SecureChannelListenerTrustOptions;
-use ockam::remote::RemoteForwarderTrustOptions;
+use ockam::identity::SecureChannelListenerOptions;
+use ockam::remote::RemoteForwarderOptions;
 use ockam::{
-    identity::Identity, remote::RemoteForwarder, vault::Vault, Context, Result, TcpConnectionTrustOptions,
-    TcpOutletTrustOptions, TcpTransport,
+    identity::Identity, remote::RemoteForwarder, vault::Vault, Context, Result, TcpConnectionOptions, TcpOutletOptions,
+    TcpTransport,
 };
 
 #[ockam::node]
@@ -12,7 +12,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", SecureChannelListenerTrustOptions::new())
+    e.create_secure_channel_listener("secure_channel_listener", SecureChannelListenerOptions::new())
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
@@ -32,7 +32,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, TcpOutletTrustOptions::new())
+    tcp.create_outlet("outlet", outlet_target, TcpOutletOptions::new())
         .await?;
 
     // To allow Inlet Node and others to initiate an end-to-end secure channel with this program
@@ -42,9 +42,9 @@ async fn main(ctx: Context) -> Result<()> {
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderTrustOptions::new()).await?;
+    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderOptions::new()).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address in Hub is:");
     println!("{}", forwarder.remote_address());

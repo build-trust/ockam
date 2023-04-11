@@ -1,5 +1,5 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{PortalMessage, TcpOutletTrustOptions, TcpPortalWorker, TcpRegistry};
+use crate::{PortalMessage, TcpOutletOptions, TcpPortalWorker, TcpRegistry};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Address, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
@@ -15,16 +15,16 @@ use tracing::debug;
 pub(crate) struct TcpOutletListenWorker {
     registry: TcpRegistry,
     peer: SocketAddr,
-    trust_options: TcpOutletTrustOptions,
+    options: TcpOutletOptions,
 }
 
 impl TcpOutletListenWorker {
     /// Create a new `TcpOutletListenWorker`
-    fn new(registry: TcpRegistry, peer: SocketAddr, trust_options: TcpOutletTrustOptions) -> Self {
+    fn new(registry: TcpRegistry, peer: SocketAddr, options: TcpOutletOptions) -> Self {
         Self {
             registry,
             peer,
-            trust_options,
+            options,
         }
     }
 
@@ -33,11 +33,11 @@ impl TcpOutletListenWorker {
         registry: TcpRegistry,
         address: Address,
         peer: SocketAddr,
-        trust_options: TcpOutletTrustOptions,
+        options: TcpOutletOptions,
     ) -> Result<()> {
-        let access_control = trust_options.incoming_access_control.clone();
+        let access_control = options.incoming_access_control.clone();
 
-        if let Some(consumer_flow_control) = &trust_options.consumer_flow_control {
+        if let Some(consumer_flow_control) = &options.consumer_flow_control {
             consumer_flow_control.flow_controls.add_consumer(
                 &address,
                 &consumer_flow_control.flow_control_id,
@@ -45,7 +45,7 @@ impl TcpOutletListenWorker {
             );
         }
 
-        let worker = Self::new(registry, peer, trust_options);
+        let worker = Self::new(registry, peer, options);
         WorkerBuilder::with_mailboxes(
             Mailboxes::main(address, access_control, Arc::new(DenyAll)),
             worker,
@@ -91,7 +91,7 @@ impl Worker for TcpOutletListenWorker {
         // If yes - outlet worker will be added to that flow control to be able to receive further
         // messages from that Producer
         let flow_control_id =
-            if let Some(consumer_flow_control) = &self.trust_options.consumer_flow_control {
+            if let Some(consumer_flow_control) = &self.options.consumer_flow_control {
                 consumer_flow_control
                     .flow_controls
                     .get_flow_control_with_producer(&src_addr)
@@ -102,7 +102,7 @@ impl Worker for TcpOutletListenWorker {
 
         let addresses = Addresses::generate(PortalType::Outlet);
 
-        self.trust_options
+        self.options
             .setup_flow_control(&addresses, flow_control_id)?;
 
         TcpPortalWorker::start_new_outlet(
@@ -111,7 +111,7 @@ impl Worker for TcpOutletListenWorker {
             self.peer,
             return_route.clone(),
             addresses.clone(),
-            self.trust_options.incoming_access_control.clone(),
+            self.options.incoming_access_control.clone(),
         )
         .await?;
 

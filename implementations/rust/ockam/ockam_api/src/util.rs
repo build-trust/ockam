@@ -5,7 +5,7 @@ use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, Error, Result, Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Tcp, Worker};
 use ockam_multiaddr::{MultiAddr, Protocol};
-use ockam_transport_tcp::TcpConnectionTrustOptions;
+use ockam_transport_tcp::TcpConnectionOptions;
 use std::net::{SocketAddrV4, SocketAddrV6};
 
 /// Try to convert a multi-address to an Ockam route.
@@ -56,7 +56,7 @@ pub async fn multiaddr_to_route(
     let mut it = ma.iter().peekable();
     let flow_control_id = flow_controls.generate_id();
 
-    let mut trust_options = Some(TcpConnectionTrustOptions::as_producer(
+    let mut options = Some(TcpConnectionOptions::as_producer(
         flow_controls,
         &flow_control_id,
     ));
@@ -68,15 +68,12 @@ pub async fn multiaddr_to_route(
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
 
-                let trust_options = match trust_options.take() {
-                    Some(trust_options) => trust_options,
+                let options = match options.take() {
+                    Some(options) => options,
                     None => return None, // Only 1 TCP hop is allowed
                 };
 
-                let addr = tcp
-                    .connect(socket_addr.to_string(), trust_options)
-                    .await
-                    .ok()?;
+                let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
                 rb = rb.append(addr)
             }
             Ip6::CODE => {
@@ -84,15 +81,12 @@ pub async fn multiaddr_to_route(
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
 
-                let trust_options = match trust_options.take() {
-                    Some(trust_options) => trust_options,
+                let options = match options.take() {
+                    Some(options) => options,
                     None => return None, // Only 1 TCP hop is allowed
                 };
 
-                let addr = tcp
-                    .connect(socket_addr.to_string(), trust_options)
-                    .await
-                    .ok()?;
+                let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
                 rb = rb.append(addr)
             }
             DnsAddr::CODE => {
@@ -101,13 +95,13 @@ pub async fn multiaddr_to_route(
                     if p.code() == Tcp::CODE {
                         let port = p.cast::<Tcp>()?;
 
-                        let trust_options = match trust_options.take() {
-                            Some(trust_options) => trust_options,
+                        let options = match options.take() {
+                            Some(options) => options,
                             None => return None, // Only 1 TCP hop is allowed
                         };
 
                         let addr = tcp
-                            .connect(format!("{}:{}", &*host, *port), trust_options)
+                            .connect(format!("{}:{}", &*host, *port), options)
                             .await
                             .ok()?;
                         rb = rb.append(addr);
@@ -135,7 +129,7 @@ pub async fn multiaddr_to_route(
         }
     }
 
-    match trust_options {
+    match options {
         Some(_) => Some(MultiAddrToRouteResult {
             flow_control_id: None,
             route: rb.into(),

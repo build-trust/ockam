@@ -1,6 +1,6 @@
 use crate::portal::TcpInletListenProcessor;
 use crate::transport::common::{parse_socket_addr, resolve_peer};
-use crate::{TcpInletTrustOptions, TcpOutletListenWorker, TcpOutletTrustOptions, TcpTransport};
+use crate::{TcpInletOptions, TcpOutletListenWorker, TcpOutletOptions, TcpTransport};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result, Route};
 
@@ -11,14 +11,14 @@ impl TcpTransport {
     /// Pair of corresponding Inlet and Outlet is called Portal.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpInletTrustOptions, TcpTransport};
+    /// use ockam_transport_tcp::{TcpInletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result, route};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let route_path = route!["outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route_path, TcpInletTrustOptions::new()).await?;
+    /// tcp.create_inlet("inlet", route_path, TcpInletOptions::new()).await?;
     /// # tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
@@ -26,7 +26,7 @@ impl TcpTransport {
         &self,
         bind_addr: impl Into<String>,
         outlet_route: impl Into<Route>,
-        trust_options: TcpInletTrustOptions,
+        options: TcpInletOptions,
     ) -> Result<(SocketAddr, Address)> {
         let socket_addr = parse_socket_addr(&bind_addr.into())?;
         TcpInletListenProcessor::start(
@@ -34,7 +34,7 @@ impl TcpTransport {
             self.registry.clone(),
             outlet_route.into(),
             socket_addr,
-            trust_options,
+            options,
         )
         .await
     }
@@ -42,14 +42,14 @@ impl TcpTransport {
     /// Stop inlet at addr
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpInletTrustOptions, TcpTransport};
+    /// use ockam_transport_tcp::{TcpInletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result, route};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let route = route!["outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route, TcpInletTrustOptions::new()).await?;
+    /// tcp.create_inlet("inlet", route, TcpInletOptions::new()).await?;
     /// tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
@@ -66,13 +66,13 @@ impl TcpTransport {
     /// Pair of corresponding Inlet and Outlet is called Portal.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpOutletTrustOptions, TcpTransport};
+    /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", "localhost:9000", TcpOutletTrustOptions::new()).await?;
+    /// tcp.create_outlet("outlet", "localhost:9000", TcpOutletOptions::new()).await?;
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
@@ -80,7 +80,7 @@ impl TcpTransport {
         &self,
         address: impl Into<Address>,
         peer: impl Into<String>,
-        trust_options: TcpOutletTrustOptions,
+        options: TcpOutletOptions,
     ) -> Result<()> {
         // Resolve peer address
         let peer_addr = resolve_peer(peer.into())?;
@@ -89,7 +89,7 @@ impl TcpTransport {
             self.registry.clone(),
             address.into(),
             peer_addr,
-            trust_options,
+            options,
         )
         .await?;
 
@@ -98,14 +98,14 @@ impl TcpTransport {
 
     /// Stop outlet at addr
     /// ```rust
-    /// use ockam_transport_tcp::{TcpOutletTrustOptions, TcpTransport};
+    /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// const TARGET_PEER: &str = "127.0.0.1:5000";
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", TARGET_PEER, TcpOutletTrustOptions::new()).await?;
+    /// tcp.create_outlet("outlet", TARGET_PEER, TcpOutletOptions::new()).await?;
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```

@@ -25,7 +25,7 @@ use crate::{
     docs, identity, node::show::print_query_status, util::find_available_port, CommandGlobalOpts,
     Result,
 };
-use ockam::{Address, AsyncTryClone, TcpListenerTrustOptions};
+use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
@@ -245,9 +245,7 @@ async fn run_foreground_node(
     let bind = &cmd.tcp_listener_address;
 
     // TODO: This is only listening on loopback address, but should use FlowControls anyways
-    let (socket_addr, listener_addr) = tcp
-        .listen(&bind, TcpListenerTrustOptions::insecure())
-        .await?;
+    let (socket_addr, listener_addr) = tcp.listen(&bind, TcpListenerOptions::insecure()).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     let setup_config = node_state.setup()?;

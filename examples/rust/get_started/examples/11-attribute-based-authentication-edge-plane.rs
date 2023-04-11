@@ -6,8 +6,8 @@ use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
-use ockam::identity::{AuthorityInfo, Identity, SecureChannelTrustOptions, TrustContext, TrustMultiIdentifiersPolicy};
-use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpInletTrustOptions, TcpTransport};
+use ockam::identity::{AuthorityInfo, Identity, SecureChannelOptions, TrustContext, TrustMultiIdentifiersPolicy};
+use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpInletOptions, TcpTransport};
 use ockam_api::authenticator::direct::{RpcClient, TokenAcceptorClient};
 use ockam_api::{multiaddr_to_route, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress};
 use ockam_core::flow_control::FlowControls;
@@ -62,20 +62,19 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let tcp_authority_route = multiaddr_to_route(&project.authority_route(), &tcp, &flow_controls)
         .await
         .unwrap(); // FIXME: Handle error
-    let authority_trust_options =
-        SecureChannelTrustOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
-            project.authority_public_identifier()
-        ]));
-    let trust_options = if let Some(_flow_control_id) = tcp_authority_route.flow_control_id {
-        authority_trust_options.as_consumer(&flow_controls)
+    let authority_options = SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
+        project.authority_public_identifier(),
+    ]));
+    let options = if let Some(_flow_control_id) = tcp_authority_route.flow_control_id {
+        authority_options.as_consumer(&flow_controls)
     } else {
-        authority_trust_options
+        authority_options
     };
 
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = edge_plane
-        .create_secure_channel_extended(tcp_authority_route.route, trust_options, Duration::from_secs(120))
+        .create_secure_channel_extended(tcp_authority_route.route, options, Duration::from_secs(120))
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
@@ -121,17 +120,17 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let tcp_project_route = multiaddr_to_route(&project.route(), &tcp, &flow_controls)
         .await
         .unwrap(); // FIXME: Handle error
-    let project_trust_options = SecureChannelTrustOptions::new()
-        .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
-    let project_trust_options = if let Some(_flow_control_id) = tcp_project_route.flow_control_id {
-        project_trust_options.as_consumer(&flow_controls)
+    let project_options =
+        SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
+    let project_options = if let Some(_flow_control_id) = tcp_project_route.flow_control_id {
+        project_options.as_consumer(&flow_controls)
     } else {
-        project_trust_options
+        project_options
     };
 
     // 4.1 first created a secure channel to the project
     let secure_channel_address = edge_plane
-        .create_secure_channel_extended(tcp_project_route.route, project_trust_options, Duration::from_secs(120))
+        .create_secure_channel_extended(tcp_project_route.route, project_options, Duration::from_secs(120))
         .await?;
     println!("secure channel address to the project: {secure_channel_address:?}");
 
@@ -149,7 +148,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let secure_channel_to_control = edge_plane
         .create_secure_channel_extended(
             secure_channel_listener_route.clone(),
-            SecureChannelTrustOptions::new(),
+            SecureChannelOptions::new(),
             Duration::from_secs(120),
         )
         .await?;
@@ -175,7 +174,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .create_inlet(
             "127.0.0.1:7000",
             outlet_route.clone(),
-            TcpInletTrustOptions::new().with_incoming_access_control_impl(access_control),
+            TcpInletOptions::new().with_incoming_access_control_impl(access_control),
         )
         .await?;
     println!("the inlet is {inlet:?}");

@@ -9,14 +9,14 @@ mod messages;
 
 mod common;
 mod local_info;
+mod options;
 mod registry;
-mod trust_options;
 mod trust_policy;
 
 pub use common::*;
 pub use local_info::*;
+pub use options::*;
 pub use registry::*;
-pub use trust_options::*;
 pub use trust_policy::*;
 
 /// `AccessControl` implementation based on SecureChannel authentication guarantees
@@ -33,58 +33,53 @@ use core::time::Duration;
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 
 impl Identity {
-    /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerTrustOptions`]
+    /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerOptions`]
     pub async fn create_secure_channel_listener(
         &self,
         address: impl Into<Address>,
-        trust_options: impl Into<SecureChannelListenerTrustOptions>,
+        options: impl Into<SecureChannelListenerOptions>,
     ) -> Result<()> {
         let identity_clone = self.async_try_clone().await?;
 
-        IdentityChannelListener::create(
-            &self.ctx,
-            address.into(),
-            trust_options.into(),
-            identity_clone,
-        )
-        .await?;
+        IdentityChannelListener::create(&self.ctx, address.into(), options.into(), identity_clone)
+            .await?;
 
         Ok(())
     }
 
-    /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelTrustOptions`]
+    /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
     pub async fn create_secure_channel(
         &self,
         route: impl Into<Route>,
-        trust_options: impl Into<SecureChannelTrustOptions>,
+        options: impl Into<SecureChannelOptions>,
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
 
         let addresses = Addresses::generate(Role::Initiator);
-        let trust_options = trust_options.into();
+        let options = options.into();
 
         let route = route.into();
         let next = route.next()?;
-        trust_options.setup_flow_control(&addresses, next)?;
-        let access_control = trust_options.create_access_control();
+        options.setup_flow_control(&addresses, next)?;
+        let access_control = options.create_access_control();
 
         DecryptorWorker::create_initiator(
             &self.ctx,
             route,
             identity_clone,
             addresses,
-            trust_options.trust_policy,
+            options.trust_policy,
             access_control.decryptor_outgoing_access_control,
             Duration::from_secs(120),
         )
         .await
     }
 
-    /// Extended function to create a SecureChannel with [`SecureChannelTrustOptions`]
+    /// Extended function to create a SecureChannel with [`SecureChannelOptions`]
     pub async fn create_secure_channel_extended(
         &self,
         route: impl Into<Route>,
-        trust_options: impl Into<SecureChannelTrustOptions>,
+        options: impl Into<SecureChannelOptions>,
         timeout: Duration,
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
@@ -93,16 +88,16 @@ impl Identity {
 
         let route = route.into();
         let next = route.next()?;
-        let trust_options = trust_options.into();
-        trust_options.setup_flow_control(&addresses, next)?;
-        let access_control = trust_options.create_access_control();
+        let options = options.into();
+        options.setup_flow_control(&addresses, next)?;
+        let access_control = options.create_access_control();
 
         DecryptorWorker::create_initiator(
             &self.ctx,
             route,
             identity_clone,
             addresses,
-            trust_options.trust_policy,
+            options.trust_policy,
             access_control.decryptor_outgoing_access_control,
             timeout,
         )

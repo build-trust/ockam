@@ -5,7 +5,7 @@ use crate::common::{
 };
 use core::time::Duration;
 use ockam_core::{route, Result};
-use ockam_identity::SecureChannelTrustOptions;
+use ockam_identity::SecureChannelOptions;
 use ockam_node::Context;
 
 mod common;
@@ -66,7 +66,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .identity
         .create_secure_channel_extended(
             route![connection_to_bob.address.clone(), "listener"],
-            SecureChannelTrustOptions::new(),
+            SecureChannelOptions::new(),
             Duration::from_secs(1),
         )
         .await;
@@ -106,7 +106,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
         .identity
         .create_secure_channel_extended(
             route![connection_to_bob.address.clone(), "listener"],
-            SecureChannelTrustOptions::new(),
+            SecureChannelOptions::new(),
             Duration::from_secs(1),
         )
         .await;
@@ -146,7 +146,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .identity
         .create_secure_channel_extended(
             route![connection_to_bob.address.clone(), "listener"],
-            SecureChannelTrustOptions::new(),
+            SecureChannelOptions::new(),
             Duration::from_secs(1),
         )
         .await;
@@ -186,7 +186,7 @@ async fn test5(ctx: &mut Context) -> Result<()> {
         .identity
         .create_secure_channel_extended(
             route![connection_to_alice.address.clone(), "listener"],
-            SecureChannelTrustOptions::new(),
+            SecureChannelOptions::new(),
             Duration::from_secs(1),
         )
         .await;

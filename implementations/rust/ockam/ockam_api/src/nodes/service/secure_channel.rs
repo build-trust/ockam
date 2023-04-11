@@ -22,8 +22,8 @@ use ockam_core::{route, CowStr};
 
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use ockam_identity::{
-    Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerTrustOptions,
-    SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
+    Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerOptions,
+    SecureChannelOptions, TrustMultiIdentifiersPolicy,
 };
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -49,26 +49,25 @@ impl NodeManager {
         debug!(%sc_route, "Creating secure channel");
         let timeout = timeout.unwrap_or(Duration::from_secs(120));
         let sc_flow_control_id = self.flow_controls.generate_id();
-        let trust_options =
-            SecureChannelTrustOptions::as_producer(&self.flow_controls, &sc_flow_control_id);
+        let options = SecureChannelOptions::as_producer(&self.flow_controls, &sc_flow_control_id);
 
         // Just add ourself as consumer for the next hop if it's a producer
-        let trust_options = match self
+        let options = match self
             .flow_controls
             .find_flow_control_with_producer_address(sc_route.next()?)
             .map(|x| x.flow_control_id().clone())
         {
-            Some(_flow_control_id) => trust_options.as_consumer(&self.flow_controls),
-            None => trust_options,
+            Some(_flow_control_id) => options.as_consumer(&self.flow_controls),
+            None => options,
         };
 
-        let trust_options = match authorized_identifiers.clone() {
-            Some(ids) => trust_options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
-            None => trust_options.with_trust_policy(TrustEveryonePolicy),
+        let options = match authorized_identifiers.clone() {
+            Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
+            None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
         let sc_addr = identity
-            .create_secure_channel_extended(sc_route.clone(), trust_options, timeout)
+            .create_secure_channel_extended(sc_route.clone(), options, timeout)
             .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
@@ -218,16 +217,16 @@ impl NodeManager {
             self.identity.clone()
         };
 
-        let trust_options =
-            SecureChannelListenerTrustOptions::as_spawner(&self.flow_controls, &flow_control_id)
+        let options =
+            SecureChannelListenerOptions::as_spawner(&self.flow_controls, &flow_control_id)
                 .as_consumer(&self.flow_controls);
-        let trust_options = match authorized_identifiers {
-            Some(ids) => trust_options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
-            None => trust_options.with_trust_policy(TrustEveryonePolicy),
+        let options = match authorized_identifiers {
+            Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
+            None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
         identity
-            .create_secure_channel_listener(addr.clone(), trust_options)
+            .create_secure_channel_listener(addr.clone(), options)
             .await?;
 
         self.registry.secure_channel_listeners.insert(

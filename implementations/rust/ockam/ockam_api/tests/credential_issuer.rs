@@ -10,9 +10,7 @@ use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_core::compat::rand::random_string;
 use ockam_core::{AllowAll, Result};
 use ockam_identity::credential::Timestamp;
-use ockam_identity::{
-    PublicIdentity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions,
-};
+use ockam_identity::{PublicIdentity, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::Context;
 
 #[ockam_macros::test]
@@ -36,7 +34,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Create the CredentialIssuer:
     auth_identity
-        .create_secure_channel_listener(&api_worker_addr, SecureChannelListenerTrustOptions::new())
+        .create_secure_channel_listener(&api_worker_addr, SecureChannelListenerOptions::new())
         .await?;
     let auth =
         direct::CredentialIssuer::new(b"project42".to_vec(), store, auth_identity.clone()).await?;
@@ -50,7 +48,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Connect to the API channel from the member:
     let e2a = member_identity
-        .create_secure_channel(&api_worker_addr, SecureChannelTrustOptions::new())
+        .create_secure_channel(&api_worker_addr, SecureChannelOptions::new())
         .await?;
     // Add the member via the enroller's connection:
     let c = direct::CredentialIssuerClient::new(

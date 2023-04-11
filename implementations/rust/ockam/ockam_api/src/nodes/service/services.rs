@@ -38,7 +38,7 @@ use ockam_identity::{AuthorityInfo, PublicIdentity, TrustContext};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
-use ockam_transport_tcp::TcpInletTrustOptions;
+use ockam_transport_tcp::TcpInletOptions;
 use ockam_vault::Vault;
 
 use super::NodeManagerWorker;
@@ -458,7 +458,7 @@ impl NodeManager {
             .create_inlet(
                 format!("{}:{}", &bind_ip, server_bootstrap_port),
                 bootstrap_address_route,
-                TcpInletTrustOptions::new(),
+                TcpInletOptions::new(),
             )
             .await?;
 

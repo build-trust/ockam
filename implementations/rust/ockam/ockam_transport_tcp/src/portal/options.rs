@@ -5,12 +5,12 @@ use ockam_core::{Address, AllowAll, IncomingAccessControl, Result};
 use ockam_transport_core::TransportError;
 
 /// Trust Options for an Inlet
-pub struct TcpInletTrustOptions {
+pub struct TcpInletOptions {
     pub(super) consumer_flow_controls: Option<FlowControls>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
 
-impl TcpInletTrustOptions {
+impl TcpInletOptions {
     /// Default constructor without flow control and Incoming Access Control
     pub fn new() -> Self {
         Self {
@@ -66,7 +66,7 @@ impl TcpInletTrustOptions {
     }
 }
 
-impl Default for TcpInletTrustOptions {
+impl Default for TcpInletOptions {
     fn default() -> Self {
         Self::new()
     }
@@ -79,12 +79,12 @@ pub(super) struct ConsumerFlowControl {
 }
 
 /// Trust Options for an Outlet
-pub struct TcpOutletTrustOptions {
+pub struct TcpOutletOptions {
     pub(super) consumer_flow_control: Option<ConsumerFlowControl>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
 
-impl TcpOutletTrustOptions {
+impl TcpOutletOptions {
     /// Default constructor without flow control and Incoming Access Control
     pub fn new() -> Self {
         Self {
@@ -156,7 +156,7 @@ impl TcpOutletTrustOptions {
     }
 }
 
-impl Default for TcpOutletTrustOptions {
+impl Default for TcpOutletOptions {
     fn default() -> Self {
         Self::new()
     }

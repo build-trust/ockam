@@ -8,8 +8,8 @@ use ockam_identity::authenticated_storage::{
 use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::credential::Credential;
 use ockam_identity::{
-    AuthorityInfo, CredentialMemoryRetriever, Identity, SecureChannelListenerTrustOptions,
-    SecureChannelTrustOptions, TrustContext, TrustIdentifierPolicy,
+    AuthorityInfo, CredentialMemoryRetriever, Identity, SecureChannelListenerOptions,
+    SecureChannelOptions, TrustContext, TrustIdentifierPolicy,
 };
 
 use ockam_node::{Context, MessageSendReceiveOptions, WorkerBuilder};
@@ -28,7 +28,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let server = Identity::create(ctx, vault.clone()).await?;
 
     server
-        .create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::new())
+        .create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
         .await?;
 
     let trust_context = TrustContext::new(
@@ -49,7 +49,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let channel = client
         .create_secure_channel(
             route!["listener"],
-            SecureChannelTrustOptions::new()
+            SecureChannelOptions::new()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
         )
         .await?;
@@ -97,7 +97,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let credential2 = authority.issue_credential(credential2).await?;
 
     client2
-        .create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::new())
+        .create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
         .await?;
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
@@ -125,7 +125,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let credential1 = authority.issue_credential(credential1).await?;
 
     let channel = client1
-        .create_secure_channel(route!["listener"], SecureChannelTrustOptions::new())
+        .create_secure_channel(route!["listener"], SecureChannelOptions::new())
         .await?;
 
     let storage: Arc<dyn IdentityAttributeStorage> =
@@ -185,7 +185,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let server = Identity::create(ctx, vault.clone()).await?;
 
     server
-        .create_secure_channel_listener("listener", SecureChannelListenerTrustOptions::new())
+        .create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
         .await?;
 
     let trust_context = TrustContext::new(
@@ -206,7 +206,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let channel = client
         .create_secure_channel(
             route!["listener"],
-            SecureChannelTrustOptions::new()
+            SecureChannelOptions::new()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
         )
         .await?;

@@ -6,7 +6,7 @@ use crate::nodes::service::{random_alias, Alias, ApiTransport, Transports};
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions};
+use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions};
 use std::net::{AddrParseError, SocketAddr};
 
 use super::NodeManagerWorker;
@@ -78,10 +78,7 @@ impl NodeManagerWorker {
                 .tcp_transport
                 .listen(
                     &addr,
-                    TcpListenerTrustOptions::as_spawner(
-                        &node_manager.flow_controls,
-                        &flow_control_id,
-                    ),
+                    TcpListenerOptions::as_spawner(&node_manager.flow_controls, &flow_control_id),
                 )
                 .await
                 .map(|(socket, worker_address)| (socket.to_string(), worker_address)),
@@ -89,7 +86,7 @@ impl NodeManagerWorker {
                 .tcp_transport
                 .connect(
                     &socket_addr,
-                    TcpConnectionTrustOptions::as_producer(
+                    TcpConnectionOptions::as_producer(
                         &node_manager.flow_controls,
                         &flow_control_id,
                     ),

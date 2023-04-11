@@ -1,5 +1,5 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{TcpInletTrustOptions, TcpPortalWorker, TcpRegistry};
+use crate::{TcpInletOptions, TcpPortalWorker, TcpRegistry};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{async_trait, compat::boxed::Box, DenyAll};
 use ockam_core::{Address, Processor, Result, Route};
@@ -17,7 +17,7 @@ pub(crate) struct TcpInletListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
     outlet_listener_route: Route,
-    trust_options: TcpInletTrustOptions,
+    options: TcpInletOptions,
 }
 
 impl TcpInletListenProcessor {
@@ -25,13 +25,13 @@ impl TcpInletListenProcessor {
         registry: TcpRegistry,
         inner: TcpListener,
         outlet_listener_route: Route,
-        trust_options: TcpInletTrustOptions,
+        options: TcpInletOptions,
     ) -> Self {
         Self {
             registry,
             inner,
             outlet_listener_route,
-            trust_options,
+            options,
         }
     }
 
@@ -41,7 +41,7 @@ impl TcpInletListenProcessor {
         registry: TcpRegistry,
         outlet_listener_route: Route,
         addr: SocketAddr,
-        trust_options: TcpInletTrustOptions,
+        options: TcpInletOptions,
     ) -> Result<(SocketAddr, Address)> {
         let processor_address = Address::random_tagged("TcpInletListenProcessor");
 
@@ -54,7 +54,7 @@ impl TcpInletListenProcessor {
             }
         };
         let socket_addr = inner.local_addr().map_err(TransportError::from)?;
-        let processor = Self::new(registry, inner, outlet_listener_route, trust_options);
+        let processor = Self::new(registry, inner, outlet_listener_route, options);
 
         ctx.start_processor(processor_address.clone(), processor, DenyAll, DenyAll)
             .await?;
@@ -84,7 +84,7 @@ impl Processor for TcpInletListenProcessor {
         let addresses = Addresses::generate(PortalType::Inlet);
         let outlet_listener_route = self.outlet_listener_route.clone();
 
-        self.trust_options
+        self.options
             .setup_flow_control(&addresses, outlet_listener_route.next()?)?;
 
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
@@ -95,7 +95,7 @@ impl Processor for TcpInletListenProcessor {
             peer,
             outlet_listener_route,
             addresses,
-            self.trust_options.incoming_access_control.clone(),
+            self.options.incoming_access_control.clone(),
         )
         .await?;
 

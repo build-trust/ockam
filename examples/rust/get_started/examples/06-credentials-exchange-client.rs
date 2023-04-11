@@ -1,8 +1,8 @@
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::flow_control::FlowControls;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
-use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpConnectionTrustOptions, TcpTransport};
+use ockam::identity::{Identity, SecureChannelOptions, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpConnectionOptions, TcpTransport};
 use std::sync::Arc;
 
 #[ockam::node]
@@ -35,13 +35,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     // attesting to that knowledge.
     let flow_controls = FlowControls::default();
     let flow_control_id = flow_controls.generate_id();
-    let issuer_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&flow_controls, &flow_control_id);
-    let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
-    let issuer_trust_options = SecureChannelTrustOptions::new()
+    let issuer_tcp_options = TcpConnectionOptions::as_producer(&flow_controls, &flow_control_id);
+    let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_options).await?;
+    let issuer_options = SecureChannelOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
         .as_consumer(&flow_controls);
     let issuer_channel = client
-        .create_secure_channel(route![issuer_connection, "secure"], issuer_trust_options)
+        .create_secure_channel(route![issuer_connection, "secure"], issuer_options)
         .await?;
     let issuer_client = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
     let credential = issuer_client.get_credential(client.identifier()).await?.unwrap();
@@ -49,13 +49,13 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a secure channel to the node that is running the Echoer service.
     let server_flow_control_id = flow_controls.generate_id();
-    let server_tcp_trust_options = TcpConnectionTrustOptions::as_producer(&flow_controls, &server_flow_control_id);
-    let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_trust_options).await?;
-    let channel_trust_options = SecureChannelTrustOptions::new()
+    let server_tcp_options = TcpConnectionOptions::as_producer(&flow_controls, &server_flow_control_id);
+    let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_options).await?;
+    let channel_options = SecureChannelOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
         .as_consumer(&flow_controls);
     let channel = client
-        .create_secure_channel(route![server_connection, "secure"], channel_trust_options)
+        .create_secure_channel(route![server_connection, "secure"], channel_options)
         .await?;
 
     // Present credentials over the secure channel

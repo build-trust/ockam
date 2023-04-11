@@ -1,5 +1,5 @@
-use ockam::identity::{Identity, SecureChannelTrustOptions};
-use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpInletTrustOptions, TcpTransport};
+use ockam::identity::{Identity, SecureChannelOptions};
+use ockam::{route, vault::Vault, Context, Result, TcpConnectionOptions, TcpInletOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -20,10 +20,10 @@ async fn main(ctx: Context) -> Result<()> {
     let e = Identity::create(&ctx, vault).await?;
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let outlet_connection = tcp
-        .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionTrustOptions::new())
+        .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionOptions::new())
         .await?;
     let r = route![outlet_connection, "secure_channel_listener"];
-    let channel = e.create_secure_channel(r, SecureChannelTrustOptions::new()).await?;
+    let channel = e.create_secure_channel(r, SecureChannelOptions::new()).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
@@ -45,7 +45,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to q connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route_to_outlet, TcpInletTrustOptions::new())
+    tcp.create_inlet(inlet_address, route_to_outlet, TcpInletOptions::new())
         .await?;
 
     // We won't call ctx.stop() here,

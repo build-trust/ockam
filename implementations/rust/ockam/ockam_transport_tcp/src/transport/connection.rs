@@ -1,25 +1,25 @@
 use crate::transport::common::resolve_peer;
 use crate::workers::{Addresses, ConnectionRole, TcpRecvProcessor, TcpSendWorker};
-use crate::{TcpConnectionTrustOptions, TcpTransport};
+use crate::{TcpConnectionOptions, TcpTransport};
 use ockam_core::{Address, Result};
 
 impl TcpTransport {
     /// Establish an outgoing TCP connection.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
+    /// use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::new()).await?; // Listen on port 8000
-    /// let addr = tcp.connect("127.0.0.1:5000", TcpConnectionTrustOptions::new()).await?; // and connect to port 5000
+    /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
+    /// let addr = tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
     pub async fn connect(
         &self,
         peer: impl Into<String>,
-        trust_options: TcpConnectionTrustOptions,
+        options: TcpConnectionOptions,
     ) -> Result<Address> {
         // Resolve peer address
         let socket = resolve_peer(peer.into())?;
@@ -28,8 +28,8 @@ impl TcpTransport {
 
         let addresses = Addresses::generate(ConnectionRole::Initiator);
 
-        trust_options.setup_flow_control(&addresses);
-        let access_control = trust_options.create_access_control();
+        options.setup_flow_control(&addresses);
+        let access_control = options.create_access_control();
 
         TcpSendWorker::start(
             &self.ctx,

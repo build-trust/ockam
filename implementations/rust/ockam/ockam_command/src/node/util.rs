@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use ockam::identity::Identity;
-use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
+use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state;
 
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
@@ -69,9 +69,8 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let bind = cmd.tcp_listener_address;
 
     // TODO: This is only listening on loopback address, but should use FlowControls anyways
-    let (socket_addr, listened_worker_address) = tcp
-        .listen(&bind, TcpListenerTrustOptions::insecure())
-        .await?;
+    let (socket_addr, listened_worker_address) =
+        tcp.listen(&bind, TcpListenerOptions::insecure()).await?;
 
     let projects = cfg.inner().lookup().projects().collect();
 

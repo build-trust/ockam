@@ -15,11 +15,11 @@ use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
 use ockam_identity::{
-    Identity, IdentityVault, PublicIdentity, SecureChannelListenerTrustOptions,
-    SecureChannelRegistry, TrustEveryonePolicy,
+    Identity, IdentityVault, PublicIdentity, SecureChannelListenerOptions, SecureChannelRegistry,
+    TrustEveryonePolicy,
 };
 use ockam_node::{Context, WorkerBuilder};
-use ockam_transport_tcp::{TcpListenerTrustOptions, TcpTransport};
+use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 use std::path::Path;
@@ -92,7 +92,7 @@ impl Authority {
         let tcp_listener_flow_control_id = flow_controls.generate_id();
         let secure_channel_listener_flow_control_id = flow_controls.generate_id();
 
-        let trust_options = SecureChannelListenerTrustOptions::as_spawner(
+        let options = SecureChannelListenerOptions::as_spawner(
             flow_controls,
             &secure_channel_listener_flow_control_id,
         )
@@ -105,20 +105,17 @@ impl Authority {
 
         let listener_name = configuration.secure_channel_listener_name();
         self.identity
-            .create_secure_channel_listener(listener_name.clone(), trust_options)
+            .create_secure_channel_listener(listener_name.clone(), options)
             .await?;
         info!("started a secure channel listener with name '{listener_name}'");
 
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
-        let tcp_listener_trust_options =
-            TcpListenerTrustOptions::as_spawner(flow_controls, &tcp_listener_flow_control_id);
+        let tcp_listener_options =
+            TcpListenerOptions::as_spawner(flow_controls, &tcp_listener_flow_control_id);
 
         let (address, _) = tcp
-            .listen(
-                configuration.tcp_listener_address(),
-                tcp_listener_trust_options,
-            )
+            .listen(configuration.tcp_listener_address(), tcp_listener_options)
             .await?;
 
         info!("started a TCP listener at {address:?}");

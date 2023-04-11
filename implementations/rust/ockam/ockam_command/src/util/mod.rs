@@ -13,7 +13,7 @@ use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub use config::*;
 use ockam::{
-    Address, Context, MessageSendReceiveOptions, NodeBuilder, Route, TcpConnectionTrustOptions,
+    Address, Context, MessageSendReceiveOptions, NodeBuilder, Route, TcpConnectionOptions,
     TcpTransport,
 };
 use ockam_api::cli_state::{CliState, NodeState};
@@ -211,7 +211,7 @@ impl<'a> Rpc<'a> {
                         let flow_control_id = flow_controls.generate_id();
                         tcp.connect(
                             addr_str,
-                            TcpConnectionTrustOptions::as_producer(flow_controls, &flow_control_id),
+                            TcpConnectionOptions::as_producer(flow_controls, &flow_control_id),
                         )
                         .await?
                     }
@@ -220,7 +220,7 @@ impl<'a> Rpc<'a> {
                         let flow_control_id = flow_controls.generate_id();
                         tcp.connect(
                             addr_str,
-                            TcpConnectionTrustOptions::as_producer(flow_controls, &flow_control_id),
+                            TcpConnectionOptions::as_producer(flow_controls, &flow_control_id),
                         )
                         .await?
                     }
