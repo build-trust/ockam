@@ -39,7 +39,7 @@ pub async fn run_impl(
     rpc.is_ok()?;
 
     options
-        .shell
+        .terminal
         .stdout()
         .plain(format!(
             "{} TCP Outlet with alias {alias} on Node {node} has been deleted.",

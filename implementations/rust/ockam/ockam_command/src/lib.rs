@@ -224,7 +224,7 @@ pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     pub config: OckamConfig,
     pub state: CliState,
-    pub shell: Terminal<TerminalStream<Term>>,
+    pub terminal: Terminal<TerminalStream<Term>>,
 }
 
 impl CommandGlobalOpts {
@@ -240,7 +240,7 @@ impl CommandGlobalOpts {
             global_args,
             config,
             state,
-            shell: terminal,
+            terminal,
         }
     }
 }

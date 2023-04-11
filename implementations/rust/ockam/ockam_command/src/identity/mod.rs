@@ -12,7 +12,7 @@ use ockam_api::cli_state::CliState;
 pub(crate) use show::ShowCommand;
 
 use crate::util::OckamConfig;
-use crate::{docs, CommandGlobalOpts, GlobalArgs, Result};
+use crate::{docs, fmt_warn, CommandGlobalOpts, GlobalArgs, Result};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
 
@@ -96,19 +96,15 @@ pub fn create_default_identity(identity_name: &str) -> String {
         config,
     );
 
-    let _ = opts.shell.write_line(&format!(
-        "{} No default identity found. Creating one...",
-        "!".light_green(),
-    ));
+    let _ = opts
+        .terminal
+        .write_line(&fmt_warn!("No default identity found. Creating one..."));
 
     let create_command = CreateCommand::new(identity_name.into(), None);
     create_command.run(quiet_opts);
 
-    let _ = opts.shell.write_line(&format!(
-        "{} Created default identity: {}",
-        "!".light_green(),
-        identity_name
-    ));
-
+    let _ = opts
+        .terminal
+        .write_line(&fmt_warn!("Created default identity: {}", identity_name));
     identity_name.to_string()
 }

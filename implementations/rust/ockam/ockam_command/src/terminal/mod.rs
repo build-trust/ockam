@@ -11,17 +11,36 @@ use ockam_core::errcode::Kind;
 
 use crate::{OutputFormat, Result};
 
+pub mod fmt;
 pub mod term;
+
+pub use fmt::*;
 
 /// A terminal abstraction to handle commands' output and messages styling.
 #[derive(Clone)]
-pub struct Terminal<T: TerminalWriter, WriteMode = Logging> {
+pub struct Terminal<T: TerminalWriter, WriteMode = ToStdErr> {
     stdout: T,
     stderr: T,
     quiet: bool,
     no_input: bool,
     output_format: OutputFormat,
     mode: WriteMode,
+}
+
+pub enum ConfirmResult {
+    Yes,
+    No,
+    NonTTY,
+}
+
+impl From<bool> for ConfirmResult {
+    fn from(value: bool) -> Self {
+        if value {
+            ConfirmResult::Yes
+        } else {
+            ConfirmResult::No
+        }
+    }
 }
 
 pub enum TerminalBackground {
@@ -118,11 +137,11 @@ pub mod mode {
 
     /// Write mode used when writing to the stderr stream.
     #[derive(Clone)]
-    pub struct Logging;
+    pub struct ToStdErr;
 
     /// Write mode used when writing to the stdout stream.
     #[derive(Clone)]
-    pub struct Finished {
+    pub struct ToStdOut {
         pub output: Output,
     }
 }
@@ -169,11 +188,25 @@ impl<W: TerminalWriter> Terminal<W> {
             quiet,
             no_input,
             output_format,
-            mode: Logging,
+            mode: ToStdErr,
         }
     }
 
-    pub fn can_ask_for_user_input(&self) -> bool {
+    /// Prompt the user for a confirmation.
+    pub fn confirm(&self, msg: &str) -> Result<ConfirmResult> {
+        if !self.can_ask_for_user_input() {
+            return Ok(ConfirmResult::NonTTY);
+        }
+        Ok(ConfirmResult::from(
+            dialoguer::Confirm::new()
+                .default(true)
+                .show_default(true)
+                .with_prompt(msg)
+                .interact()?,
+        ))
+    }
+
+    fn can_ask_for_user_input(&self) -> bool {
         !self.no_input && self.stderr.is_tty()
     }
 
@@ -191,7 +224,7 @@ impl<W: TerminalWriter> Terminal<W> {
 }
 
 // Logging mode
-impl<W: TerminalWriter> Terminal<W, Logging> {
+impl<W: TerminalWriter> Terminal<W, ToStdErr> {
     pub fn write(&self, msg: &str) -> Result<()> {
         if self.quiet {
             return Ok(());
@@ -213,14 +246,14 @@ impl<W: TerminalWriter> Terminal<W, Logging> {
         self.stderr.write_line(msg)
     }
 
-    pub fn stdout(self) -> Terminal<W, Finished> {
+    pub fn stdout(self) -> Terminal<W, ToStdOut> {
         Terminal {
             stdout: self.stdout,
             stderr: self.stderr,
             quiet: self.quiet,
             no_input: self.no_input,
             output_format: self.output_format,
-            mode: Finished {
+            mode: ToStdOut {
                 output: Output::new(),
             },
         }
@@ -228,7 +261,7 @@ impl<W: TerminalWriter> Terminal<W, Logging> {
 }
 
 // Finished mode
-impl<W: TerminalWriter> Terminal<W, Finished> {
+impl<W: TerminalWriter> Terminal<W, ToStdOut> {
     pub fn plain<T: Display>(mut self, msg: T) -> Self {
         self.mode.output.plain = Some(msg.to_string());
         self

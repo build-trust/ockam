@@ -35,7 +35,7 @@ async fn run_impl(
     rpc.request(req).await?;
     rpc.is_ok()?;
 
-    opts.shell
+    opts.terminal
         .stdout()
         .plain(format!(
             "{} TCP listener with id '{}' has been deleted.",

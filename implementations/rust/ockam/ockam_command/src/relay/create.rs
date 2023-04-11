@@ -98,7 +98,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     let machine = relay.remote_address_ma()?;
     let json = serde_json::to_string_pretty(&relay)?;
 
-    opts.shell
+    opts.terminal
         .stdout()
         .plain(plain)
         .machine(machine)

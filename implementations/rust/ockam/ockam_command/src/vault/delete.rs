@@ -6,8 +6,9 @@ use ockam::Context;
 use ockam_api::cli_state::traits::StateTrait;
 use ockam_api::cli_state::CliStateError;
 
+use crate::terminal::ConfirmResult;
 use crate::util::node_rpc;
-use crate::CommandGlobalOpts;
+use crate::{fmt_ok, fmt_warn, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -33,29 +34,30 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> crate::Result<()> {
+    let DeleteCommand { name } = cmd;
     let state = opts.state.vaults;
-    let name = cmd.name;
-    // Check if exists
     match state.get(&name) {
         // If it exists, proceed
         Ok(_) => {
+            if let ConfirmResult::No = opts.terminal.confirm(&fmt_warn!(
+                "This will delete the vault with name '{name}'. Do you want to continue?"
+            ))? {
+                // If the user has not confirmed, exit
+                return Ok(());
+            }
+
             state.delete(&name).await?;
 
-            // log the deletion
-            opts.shell
+            opts.terminal
                 .stdout()
-                .plain(format!(
-                    "{} Vault with name '{}' has been deleted.",
-                    "✔︎".light_green(),
-                    &name
-                ))
+                .plain(fmt_ok!("Vault with name '{name}' has been deleted"))
                 .machine(&name)
                 .json(serde_json::json!({ "vault": { "name": &name } }))
                 .write_line()?;
 
             Ok(())
         }
-        // Return the appropriate error
+        // Else, return the appropriate error
         Err(err) => match err {
             CliStateError::NotFound => Err(anyhow!("Vault '{name}' not found").into()),
             _ => Err(err.into()),

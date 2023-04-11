@@ -1,4 +1,5 @@
 use clap::Args;
+use colorful::Colorful;
 use rand::prelude::random;
 
 use ockam::Context;
@@ -6,7 +7,7 @@ use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateTrait;
 
 use crate::util::node_rpc;
-use crate::CommandGlobalOpts;
+use crate::{fmt_info, fmt_ok, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -39,8 +40,20 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> crate::Result<()> {
-    let config = cli_state::VaultConfig::new(cmd.aws_kms)?;
-    opts.state.vaults.create(&cmd.name, config.clone()).await?;
-    println!("Vault created: {}", &cmd.name);
+    let CreateCommand { name, aws_kms, .. } = cmd;
+    let config = cli_state::VaultConfig::new(aws_kms)?;
+    if !opts.state.vaults.has_default()? {
+        opts.terminal.write_line(&fmt_info!(
+            "This is the first vault to be created in this environment. It will be set as the default vault"
+        ))?;
+    }
+    opts.state.vaults.create(&name, config.clone()).await?;
+
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!("Vault created with name '{name}'!"))
+        .machine(&name)
+        .json(serde_json::json!({ "vault": { "name": &name } }))
+        .write_line()?;
     Ok(())
 }

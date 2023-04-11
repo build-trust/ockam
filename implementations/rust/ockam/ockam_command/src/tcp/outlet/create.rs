@@ -106,7 +106,7 @@ pub async fn run_impl(
     let json = serde_json::to_string_pretty(&outlet_status)?;
 
     options
-        .shell
+        .terminal
         .stdout()
         .plain(plain)
         .machine(machine)
