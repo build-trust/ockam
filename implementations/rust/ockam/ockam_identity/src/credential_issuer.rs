@@ -4,7 +4,7 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AsyncTryClone, Error, Message, Result, Route, Routed, Worker};
 
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 use ockam_vault::Vault;
 use CredentialIssuerRequest::*;
 use CredentialIssuerResponse::*;
@@ -15,6 +15,7 @@ use crate::authenticated_storage::{
 };
 use crate::credential::{Credential, Timestamp};
 use crate::{Identity, IdentityIdentifier, PublicIdentity};
+use ockam_core::flow_control::FlowControls;
 use serde::{Deserialize, Serialize};
 
 /// This struct provides a simplified credential issuer which can be used in test scenarios
@@ -33,18 +34,25 @@ use serde::{Deserialize, Serialize};
 ///
 pub struct CredentialIssuer {
     identity: Identity,
+    flow_controls: FlowControls,
 }
 
 impl CredentialIssuer {
     /// Create a fully in-memory issuer for testing
-    pub async fn create(ctx: &Context) -> Result<CredentialIssuer> {
+    pub async fn create(ctx: &Context, flow_controls: &FlowControls) -> Result<CredentialIssuer> {
         let identity = Identity::create(ctx, Vault::create()).await?;
-        Ok(CredentialIssuer { identity })
+        Ok(CredentialIssuer {
+            identity,
+            flow_controls: flow_controls.clone(),
+        })
     }
 
     /// Create a new CredentialIssuer from an Identity
-    pub fn new(identity: Identity) -> CredentialIssuer {
-        CredentialIssuer { identity }
+    pub fn new(identity: Identity, flow_controls: &FlowControls) -> CredentialIssuer {
+        CredentialIssuer {
+            identity,
+            flow_controls: flow_controls.clone(),
+        }
     }
 
     /// Return the identity holding credentials
@@ -88,12 +96,16 @@ impl CredentialIssuer {
 #[ockam_core::async_trait]
 impl CredentialIssuerApi for CredentialIssuer {
     /// Return the issuer public identity
-    async fn public_identity(&self) -> Result<PublicIdentity> {
+    async fn public_identity(&self, _options: MessageSendReceiveOptions) -> Result<PublicIdentity> {
         self.identity.to_public().await
     }
 
     /// Create an authenticated credential for an identity
-    async fn get_credential(&self, subject: &IdentityIdentifier) -> Result<Option<Credential>> {
+    async fn get_credential(
+        &self,
+        subject: &IdentityIdentifier,
+        _options: MessageSendReceiveOptions,
+    ) -> Result<Option<Credential>> {
         let mut builder = Credential::builder(subject.clone());
         let identity_attributes: AuthenticatedAttributeStorage = self.attributes_storage().await?;
         if let Some(attributes) = identity_attributes.get_attributes(subject).await? {
@@ -117,10 +129,14 @@ impl CredentialIssuerApi for CredentialIssuer {
 #[ockam_core::async_trait]
 pub trait CredentialIssuerApi {
     /// Return the issuer public identity
-    async fn public_identity(&self) -> Result<PublicIdentity>;
+    async fn public_identity(&self, options: MessageSendReceiveOptions) -> Result<PublicIdentity>;
 
     /// Return an authenticated credential a given identity
-    async fn get_credential(&self, subject: &IdentityIdentifier) -> Result<Option<Credential>>;
+    async fn get_credential(
+        &self,
+        subject: &IdentityIdentifier,
+        options: MessageSendReceiveOptions,
+    ) -> Result<Option<Credential>>;
 }
 
 /// Worker implementation for a CredentialIssuer
@@ -140,11 +156,20 @@ impl Worker for CredentialIssuer {
         let return_route = msg.return_route();
         match msg.body() {
             GetCredential(subject) => {
-                let credential = self.get_credential(&subject).await?;
+                let credential = self
+                    .get_credential(
+                        &subject,
+                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
+                    )
+                    .await?;
                 ctx.send(return_route, CredentialResponse(credential)).await
             }
             GetPublicIdentity => {
-                let identity = self.public_identity().await?;
+                let identity = self
+                    .public_identity(
+                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
+                    )
+                    .await?;
                 ctx.send(return_route, PublicIdentityResponse(identity))
                     .await
             }
@@ -189,28 +214,36 @@ impl CredentialIssuerClient {
 
 #[ockam_core::async_trait]
 impl CredentialIssuerApi for CredentialIssuerClient {
-    async fn public_identity(&self) -> Result<PublicIdentity> {
+    async fn public_identity(&self, options: MessageSendReceiveOptions) -> Result<PublicIdentity> {
         let response = self
             .ctx
-            .send_and_receive(
+            .send_and_receive_extended::<CredentialIssuerResponse>(
                 route![self.credential_issuer_route.clone(), "issuer"],
                 GetPublicIdentity,
+                options,
             )
-            .await?;
+            .await?
+            .body();
         match response {
             PublicIdentityResponse(identity) => Ok(identity),
             _ => Err(error("missing public identity for the credential issuer")),
         }
     }
 
-    async fn get_credential(&self, subject: &IdentityIdentifier) -> Result<Option<Credential>> {
+    async fn get_credential(
+        &self,
+        subject: &IdentityIdentifier,
+        options: MessageSendReceiveOptions,
+    ) -> Result<Option<Credential>> {
         let response = self
             .ctx
-            .send_and_receive(
+            .send_and_receive_extended::<CredentialIssuerResponse>(
                 route![self.credential_issuer_route.clone(), "issuer"],
                 GetCredential(subject.clone()),
+                options,
             )
-            .await?;
+            .await?
+            .body();
         match response {
             CredentialResponse(credential) => Ok(credential),
             _ => Err(error("missing credential")),
