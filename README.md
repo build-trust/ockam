@@ -66,7 +66,7 @@ python3 -m http.server --bind 127.0.0.1 5000
 # service. Finally create a forwarder in your default Orchestrator project.
 ockam node create s --project-path default-project.json
 ockam tcp-outlet create --at /node/s --from /service/outlet --to 127.0.0.1:5000
-ockam forwarder create s --at /project/default --to /node/s
+ockam relay create s --at /project/default --to /node/s
 
 # -- APPLICATION CLIENT --
 

@@ -90,7 +90,7 @@ impl ForwarderCreator for RemoteForwarderCreator {
             RemoteForwarderOptions::as_consumer_and_producer(&self.flow_controls),
         )
         .await?;
-        trace!("remote forwarder created: {remote_forwarder_information:?}");
+        trace!("remote relay created: {remote_forwarder_information:?}");
         Ok(())
     }
 }

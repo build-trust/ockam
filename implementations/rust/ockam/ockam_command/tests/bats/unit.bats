@@ -342,9 +342,9 @@ teardown() {
   assert [ "$output" == "$(to_uppercase "$msg")" ]
 }
 
-# ===== FORWARDER
+# ===== RELAY
 
-@test "forwarder - create forwarder with default parameters" {
+@test "relay - create relay with default parameters" {
   skip_if_orchestrator_tests_not_enabled
   load_orchestrator_data
 
@@ -355,7 +355,7 @@ teardown() {
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
   fwd="$(random_str)"
-  run "$OCKAM" forwarder create $fwd
+  run "$OCKAM" relay create $fwd
   assert_success
 
   run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
@@ -367,14 +367,14 @@ teardown() {
   assert_success
 }
 
-@test "forwarder - create forwarder and send message through it" {
+@test "relay - create relay and send message through it" {
   run "$OCKAM" node create n1
   assert_success
   run "$OCKAM" node create n2
   assert_success
 
   # In two separate commands
-  $OCKAM forwarder create n2 --at /node/n1 --to /node/n2
+  $OCKAM relay create n2 --at /node/n1 --to /node/n2
   msg=$(random_str)
   run "$OCKAM" message send --timeout 5 "$msg" --to /node/n1/service/hop/service/forward_to_n2/service/uppercase
   assert_success
@@ -382,54 +382,54 @@ teardown() {
 
   # Piping the output of the first command into the second
   msg=$(random_str)
-  output=$($OCKAM forwarder create --at /node/n2 --to /node/n1 |
+  output=$($OCKAM relay create --at /node/n2 --to /node/n1 |
     $OCKAM message send "$msg" --to /node/n2/service/hop/-/service/uppercase)
   assert [ "$output" == "$(to_uppercase "$msg")" ]
 }
 
-@test "forwarder - create two forwarders and list them on a node" {
+@test "relay - create two relays and list them on a node" {
   run --separate-stderr "$OCKAM" node create n1
   assert_success
   run --separate-stderr "$OCKAM" node create n2
   assert_success
 
-  run $OCKAM forwarder create blue --at /node/n1 --to /node/n2
+  run $OCKAM relay create blue --at /node/n1 --to /node/n2
   assert_success
-  run $OCKAM forwarder create red --at /node/n1 --to /node/n2
+  run $OCKAM relay create red --at /node/n1 --to /node/n2
   assert_success
 
-  run $OCKAM forwarder list --at /node/n2
-  assert_output --regexp "Forwarding Route:.* => 0#forward_to_blue"
+  run $OCKAM relay list --at /node/n2
+  assert_output --regexp "Relay Route:.* => 0#forward_to_blue"
   assert_output --partial "Remote Address: forward_to_blue"
   assert_output --regexp "Worker Address: 0#.*"
-  assert_output --regexp "Forwarding Route:.* => 0#forward_to_red"
+  assert_output --regexp "Relay Route:.* => 0#forward_to_red"
   assert_output --partial "Remote Address: forward_to_red"
   assert_output --regexp "Worker Address: 0#.*"
   assert_success
 
-  # Test listing node with no forwarders
-  run $OCKAM forwarder list --at /node/n1
-  assert_output --partial "No Forwarders found on node n1"
+  # Test listing node with no relays
+  run $OCKAM relay list --at /node/n1
+  assert_output --partial "No relays found on node n1"
   assert_failure
 }
 
-@test "forwarder - show a forwarder on a node" {
+@test "relay - show a relay on a node" {
   run --separate-stderr "$OCKAM" node create n1
   assert_success
   run --separate-stderr "$OCKAM" node create n2
   assert_success
 
-  run $OCKAM forwarder create blue --at /node/n1 --to /node/n2
+  run $OCKAM relay create blue --at /node/n1 --to /node/n2
   assert_success
 
-  run $OCKAM forwarder show forward_to_blue --at /node/n2
-  assert_output --regexp "Forwarding Route:.* => 0#forward_to_blue"
+  run $OCKAM relay show forward_to_blue --at /node/n2
+  assert_output --regexp "Relay Route:.* => 0#forward_to_blue"
   assert_output --partial "Remote Address: forward_to_blue"
   assert_output --regexp "Worker Address: 0#.*"
   assert_success
 
-  # Test showing non-existing with no forwarder
-  run $OCKAM forwarder show forwarder_blank --at /node/n2
+  # Test showing non-existing with no relay
+  run $OCKAM relay show forwarder_blank --at /node/n2
   assert_output --partial "NotFound"
   assert_failure
 }
@@ -572,7 +572,7 @@ teardown() {
   assert_success
 }
 
-@test "portals - create an inlet/outlet pair with relay through a forwarder and move tcp traffic through it" {
+@test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
   port=6001
   run "$OCKAM" node create relay
   assert_success
@@ -580,7 +580,7 @@ teardown() {
   assert_success
 
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
-  $OCKAM forwarder create blue --at /node/relay --to /node/blue
+  $OCKAM relay create blue --at /node/relay --to /node/blue
 
   run "$OCKAM" node create green
   assert_success

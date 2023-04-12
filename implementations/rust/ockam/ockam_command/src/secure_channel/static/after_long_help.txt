@@ -62,7 +62,7 @@ to the node that registered the forwarding address.
 $ ockam node create relay
 
 # Create a forwarder to node n2 at node relay
-$ ockam forwarder create blue --at /node/relay --to /node/n2
+$ ockam relay create blue --at /node/relay --to /node/n2
 /service/forward_to_n2
 
 # Create an end-to-end secure channel between n1 and n2.

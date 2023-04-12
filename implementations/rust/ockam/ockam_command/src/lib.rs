@@ -10,7 +10,6 @@ mod credential;
 mod docs;
 mod enroll;
 mod error;
-mod forwarder;
 mod identity;
 mod lease;
 mod manpages;
@@ -19,6 +18,7 @@ mod message;
 mod node;
 mod policy;
 mod project;
+mod relay;
 mod reset;
 mod run;
 mod secure_channel;
@@ -41,7 +41,6 @@ use configuration::ConfigurationCommand;
 use credential::CredentialCommand;
 use enroll::EnrollCommand;
 use error::{Error, Result};
-use forwarder::ForwarderCommand;
 use identity::IdentityCommand;
 use lease::LeaseCommand;
 use manpages::ManpagesCommand;
@@ -50,6 +49,7 @@ use message::MessageCommand;
 use node::NodeCommand;
 use policy::PolicyCommand;
 use project::ProjectCommand;
+use relay::RelayCommand;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
@@ -215,7 +215,7 @@ pub enum OckamSubcommand {
     Worker(WorkerCommand),
     Service(ServiceCommand),
     Message(MessageCommand),
-    Forwarder(ForwarderCommand),
+    Relay(RelayCommand),
 
     TcpListener(TcpListenerCommand),
     TcpConnection(TcpConnectionCommand),
@@ -286,7 +286,7 @@ impl OckamCommand {
             OckamSubcommand::Worker(c) => c.run(options),
             OckamSubcommand::Service(c) => c.run(options),
             OckamSubcommand::Message(c) => c.run(options),
-            OckamSubcommand::Forwarder(c) => c.run(options),
+            OckamSubcommand::Relay(c) => c.run(options),
 
             OckamSubcommand::TcpListener(c) => c.run(options),
             OckamSubcommand::TcpConnection(c) => c.run(options),

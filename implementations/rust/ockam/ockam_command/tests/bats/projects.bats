@@ -77,7 +77,7 @@ teardown() {
 
   # Node can't create forwarder as it isn't a member
   fwd=$(random_str)
-  run "$OCKAM" forwarder create "$fwd"
+  run "$OCKAM" relay create "$fwd"
   assert_failure
 
   # Add node as a member
@@ -88,7 +88,7 @@ teardown() {
   # The node can now access the project's services
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   fwd=$(random_str)
-  run "$OCKAM" forwarder create "$fwd"
+  run "$OCKAM" relay create "$fwd"
   assert_success
 }
 

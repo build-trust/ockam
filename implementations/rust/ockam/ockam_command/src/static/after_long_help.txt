@@ -32,7 +32,7 @@ $ ockam node create blue
 $ ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
 # Then create a forwarding relay at your default orchestrator project to blue.
-$ ockam forwarder create blue --at /project/default --to /node/blue
+$ ockam relay create blue --at /project/default --to /node/blue
 ```
 
 Application Client:

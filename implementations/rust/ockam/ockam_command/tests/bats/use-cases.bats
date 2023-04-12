@@ -33,7 +33,7 @@ teardown() {
 
   run "$OCKAM" tcp-outlet create --at /node/server_sidecar --from /service/outlet --to 127.0.0.1:5000
   assert_success
-  run "$OCKAM" forwarder create server_sidecar --at /node/relay --to /node/server_sidecar
+  run "$OCKAM" relay create server_sidecar --at /node/relay --to /node/server_sidecar
   assert_output --partial "forward_to_server_sidecar"
   assert_success
 
@@ -60,7 +60,7 @@ teardown() {
   run "$OCKAM" tcp-outlet create --at /node/s --from /service/outlet --to 127.0.0.1:5000
 
   fwd=$(random_str)
-  run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/s
+  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/s
 
   # Client
   run "$OCKAM" node create c --project-path "$PROJECT_JSON_PATH"
@@ -95,7 +95,7 @@ teardown() {
   $OCKAM node create control_plane1 --project-path "$PROJECT_JSON_PATH" --identity control_identity
   $OCKAM policy create --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
   $OCKAM tcp-outlet create --at /node/control_plane1 --from /service/outlet --to 127.0.0.1:5000
-  run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/control_plane1
+  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/control_plane1
   assert_success
 
   # Edge plane
