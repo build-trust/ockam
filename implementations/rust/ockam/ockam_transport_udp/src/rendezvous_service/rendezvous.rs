@@ -2,9 +2,9 @@ use crate::{
     rendezvous_service::{RendezvousRequest, RendezvousResponse},
     UDP,
 };
-use ockam_core::{async_trait, Address, AllowAll, Result, Route, Routed, Worker};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{async_trait, Address, AllowAll, Error, Result, Route, Routed, Worker};
 use ockam_node::Context;
-use ockam_transport_core::TransportError;
 use std::collections::BTreeMap;
 use tracing::{debug, trace, warn};
 
@@ -85,24 +85,23 @@ impl RendezvousWorker {
     }
 
     // Handle Update request
-    fn handle_update(&mut self, node_name: &str, return_route: &Route) -> Result<Route> {
+    fn handle_update(&mut self, puncher_name: &str, return_route: &Route) {
         // Update map
-        let route = Self::parse_route(return_route);
-        if !route.is_empty() {
-            self.map.insert(node_name.to_owned(), route.clone());
-            Ok(route)
+        let r = Self::parse_route(return_route);
+        if !r.is_empty() {
+            self.map.insert(puncher_name.to_owned(), r);
         } else {
-            // This could happen if a client erroneously contacts this service over TCP not UDP
-            warn!("Return route has no public, UDP part: {:?}", return_route);
-            Err(TransportError::UnknownRoute.into())
+            // This could happen if a client erroneously contacts this service over TCP not UDP, for example
+            warn!("Return route has no UDP part: {:?}", return_route);
+            // Ignore issue, we don't have a way of informing the sender
         }
     }
 
     // Handle Query request
-    fn handle_query(&self, node_name: &String) -> Result<Route> {
-        match self.map.get(node_name) {
+    fn handle_query(&self, puncher_name: &String) -> Result<Route> {
+        match self.map.get(puncher_name) {
             Some(route) => Ok(route.clone()),
-            None => Err(TransportError::PeerNotFound.into()),
+            None => Err(Error::new_without_cause(Origin::Other, Kind::NotFound)),
         }
     }
 }
@@ -120,13 +119,11 @@ impl Worker for RendezvousWorker {
         debug!("Received message: {:?}", msg);
         let return_route = msg.return_route();
         match msg.as_body() {
-            RendezvousRequest::Update { node_name } => {
-                let res = self.handle_update(node_name, &return_route);
-                ctx.send(return_route, RendezvousResponse::Update(res))
-                    .await?;
+            RendezvousRequest::Update { puncher_name } => {
+                self.handle_update(puncher_name, &return_route);
             }
-            RendezvousRequest::Query { node_name } => {
-                let res = self.handle_query(node_name);
+            RendezvousRequest::Query { puncher_name } => {
+                let res = self.handle_query(puncher_name);
                 ctx.send(return_route, RendezvousResponse::Query(res))
                     .await?;
             }
@@ -141,14 +138,41 @@ impl Worker for RendezvousWorker {
 
 #[cfg(test)]
 mod tests {
+    use super::RendezvousWorker;
     use crate::rendezvous_service::{RendezvousRequest, RendezvousResponse};
     use crate::{UdpRendezvousService, UdpTransport, UDP};
     use ockam_core::errcode::Origin;
-    use ockam_core::{route, AllowAll, Error, Result, Route, Routed, Worker};
+    use ockam_core::{route, AllowAll, Error, Result, Route, Routed, TransportType, Worker};
     use ockam_node::Context;
     use std::net::SocketAddr;
     use tokio::net::UdpSocket;
-    use tracing::{debug, trace};
+    use tracing::debug;
+
+    #[test]
+    fn parse_route() {
+        assert_eq!(
+            route![(UDP, "c")],
+            RendezvousWorker::parse_route(&route!["a", "b", (UDP, "c")])
+        );
+        assert_eq!(
+            route![(UDP, "c"), "d"],
+            RendezvousWorker::parse_route(&route!["a", "b", (UDP, "c"), "d"])
+        );
+        assert_eq!(
+            route![(UDP, "c"), "d", "e"],
+            RendezvousWorker::parse_route(&route!["a", "b", (UDP, "c"), "d", "e"])
+        );
+        let not_udp = TransportType::new((u8::from(UDP)) + 1);
+        assert_eq!(
+            route![],
+            RendezvousWorker::parse_route(&route!["a", "b", (not_udp, "c"), "d"])
+        );
+        assert_eq!(
+            route![],
+            RendezvousWorker::parse_route(&route!["a", "b", "c", "d"])
+        );
+        assert_eq!(route![], RendezvousWorker::parse_route(&route![]));
+    }
 
     #[ockam_macros::test]
     async fn update_and_query(ctx: &mut Context) -> Result<()> {
@@ -161,14 +185,12 @@ mod tests {
         // Use Alice and Bob with the same address to check the service can
         // handle multiple internal mappings and that multiple map values
         // can be for the same node.
-        let res = update_operation("Alice", ctx, &rendezvous_route)
+        update_operation("Alice", ctx, &rendezvous_route)
             .await
             .unwrap();
-        assert_eq!(res, our_public_route);
-        let res = update_operation("Bob", ctx, &rendezvous_route)
+        update_operation("Bob", ctx, &rendezvous_route)
             .await
             .unwrap();
-        assert_eq!(res, our_public_route);
 
         // Query service, should work
         let res = query_operation("Alice", ctx, &rendezvous_route)
@@ -226,24 +248,19 @@ mod tests {
     }
 
     /// Helper
-    async fn update_operation(node_name: &str, ctx: &mut Context, route: &Route) -> Result<Route> {
+    async fn update_operation(puncher_name: &str, ctx: &mut Context, route: &Route) -> Result<()> {
         let msg = RendezvousRequest::Update {
-            node_name: String::from(node_name),
+            puncher_name: String::from(puncher_name),
         };
 
         // Send from our context's main address
-        ctx.send(route.clone(), msg).await?;
-        let res = ctx.receive::<RendezvousResponse>().await?.body();
-        match res {
-            RendezvousResponse::Update(r) => r,
-            r => panic!("Unexpected response: {:?}", r),
-        }
+        ctx.send(route.clone(), msg).await
     }
 
     /// Helper
-    async fn query_operation(node_name: &str, ctx: &Context, route: &Route) -> Result<Route> {
+    async fn query_operation(puncher_name: &str, ctx: &Context, route: &Route) -> Result<Route> {
         let msg = RendezvousRequest::Query {
-            node_name: String::from(node_name),
+            puncher_name: String::from(puncher_name),
         };
         let res: RendezvousResponse = ctx.send_and_receive(route.clone(), msg).await?;
         match res {
@@ -272,7 +289,7 @@ mod tests {
             };
 
             // Reply
-            trace!("Replying '{}' to {}", src_addr, &msg.return_route());
+            debug!("Replying '{}' to {}", src_addr, &msg.return_route());
             ctx.send(msg.return_route(), src_addr).await
         }
     }
