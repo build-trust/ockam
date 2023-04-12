@@ -96,11 +96,11 @@ impl Server {
                                             crate::authenticator::direct::LEGACY_ID.to_owned(),
                                             self.project.clone(),
                                         ),
-                                        ((
+                                        (
                                             crate::authenticator::direct::TRUST_CONTEXT_ID
                                                 .to_owned(),
                                             self.project.clone(),
-                                        )),
+                                        ),
                                     ]
                                     .into_iter(),
                                 )
