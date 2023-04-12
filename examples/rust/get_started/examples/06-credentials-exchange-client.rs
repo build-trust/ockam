@@ -1,12 +1,13 @@
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
-use ockam::flow_control::FlowControls;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{Identity, SecureChannelOptions, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpConnectionOptions, TcpTransport};
+use ockam_core::flow_control::FlowControls;
 use std::sync::Arc;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
+    let flow_controls = FlowControls::default();
     // Initialize the TCP Transport
     let tcp = TcpTransport::create(&ctx).await?;
 
@@ -33,34 +34,41 @@ async fn main(mut ctx: Context) -> Result<()> {
     // The credential issuer already knows the public identifier of this identity
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
-    let flow_controls = FlowControls::default();
-    let flow_control_id = flow_controls.generate_id();
-    let issuer_tcp_options = TcpConnectionOptions::as_producer(&flow_controls, &flow_control_id);
+    let tcp_flow_control_id = flow_controls.generate_id();
+    let issuer_tcp_options = TcpConnectionOptions::as_producer(&flow_controls, &tcp_flow_control_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_options).await?;
-    let issuer_options = SecureChannelOptions::new()
-        .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(&flow_controls);
+    let secure_channel_flow_control_id = flow_controls.generate_id();
+    let issuer_options = SecureChannelOptions::as_producer(&flow_controls, &secure_channel_flow_control_id)
+        .as_consumer(&flow_controls)
+        .with_trust_policy(TrustEveryonePolicy);
     let issuer_channel = client
         .create_secure_channel(route![issuer_connection, "secure"], issuer_options)
         .await?;
     let issuer_client = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
-    let credential = issuer_client.get_credential(client.identifier()).await?.unwrap();
+    let credential = issuer_client
+        .get_credential(
+            client.identifier(),
+            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
+        )
+        .await?
+        .unwrap();
     println!("Credential:\n{credential}");
 
     // Create a secure channel to the node that is running the Echoer service.
-    let server_flow_control_id = flow_controls.generate_id();
-    let server_tcp_options = TcpConnectionOptions::as_producer(&flow_controls, &server_flow_control_id);
+    let server_tcp_options = TcpConnectionOptions::as_producer(&flow_controls, &flow_controls.generate_id());
     let server_connection = tcp.connect("127.0.0.1:4000", server_tcp_options).await?;
-    let channel_options = SecureChannelOptions::new()
-        .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(&flow_controls);
+    let channel_options = SecureChannelOptions::as_producer(&flow_controls, &flow_controls.generate_id())
+        .as_consumer(&flow_controls)
+        .with_trust_policy(TrustEveryonePolicy);
     let channel = client
         .create_secure_channel(route![server_connection, "secure"], channel_options)
         .await?;
 
     // Present credentials over the secure channel
     let storage = Arc::new(AuthenticatedAttributeStorage::new(store.clone()));
-    let issuer = issuer_client.public_identity().await?;
+    let issuer = issuer_client
+        .public_identity(MessageSendReceiveOptions::new().with_flow_control(&flow_controls))
+        .await?;
     let r = route![channel.clone(), "credentials"];
     client
         .present_credential_mutual(
@@ -73,12 +81,15 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Send a message to the worker at address "echoer".
-    ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;
-
     // Wait to receive a reply and print it.
-    let reply = ctx.receive::<String>().await?;
+    let reply = ctx
+        .send_and_receive_extended::<String>(
+            route![channel, "echoer"],
+            "Hello Ockam!".to_string(),
+            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
+        )
+        .await?;
     println!("Received: {}", reply); // should print "Hello Ockam!"
 
-    // Don't call ctx.stop() here so this node runs forever.
-    Ok(())
+    ctx.stop().await
 }
