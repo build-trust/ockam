@@ -10,16 +10,17 @@ categories = [
   "network-programming",
   "embedded",
 ]
+
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
-keywords = ["ockam", "crypto", "network", "networking", "tcp"]
+keywords = ["ockam", "crypto", "network", "networking", "udp"]
 license = "Apache-2.0"
 publish = false
 readme = "README.md"
-repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_tcp"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_udp"
 rust-version = "1.56.0"
 description = """
-TCP Transport for the Ockam Routing Protocol.
+UDP Transport for the Ockam Routing Protocol.
 """
 
 [features]
