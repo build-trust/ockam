@@ -86,9 +86,10 @@ pub fn identity_name_parser(identity_name: &str) -> Result<String> {
 
 pub fn create_default_identity(identity_name: &str) -> String {
     let config = OckamConfig::load().expect("Failed to load config");
-    let mut args = GlobalArgs::default();
-    args.quiet = true;
-
+    let args = GlobalArgs {
+        quiet: true,
+        ..Default::default()
+    };
     let global_opts = CommandGlobalOpts::new(args, config);
     let create_command = CreateCommand::new(identity_name.into(), None);
 
