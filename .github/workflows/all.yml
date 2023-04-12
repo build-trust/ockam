@@ -36,13 +36,13 @@ jobs:
     steps:
       - name: Checkout
         if: github.event_name != 'pull_request'
-        uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
+        uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
         with:
           fetch-depth: 0 # checkout full tree
 
       - name: Checkout (Pull Request)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
+        uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
         with:
           fetch-depth: 0 # checkout full tree
           ref: ${{ github.event.pull_request.head.sha }}
@@ -283,7 +283,7 @@ jobs:
     container: # gitlab.com/greut/eclint
       image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
     steps:
-      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - shell: sh
@@ -297,7 +297,7 @@ jobs:
     container:
       image: returntocorp/semgrep
     steps:
-      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - name: Run Semgrep
