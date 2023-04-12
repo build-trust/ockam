@@ -4,17 +4,22 @@ use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
-use ockam::flow_control::FlowControls;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{
     AuthorityInfo, CredentialMemoryRetriever, Identity, SecureChannelListenerOptions, SecureChannelOptions,
     TrustContext, TrustEveryonePolicy,
 };
-use ockam::{route, vault::Vault, Context, Result, TcpConnectionOptions, TcpListenerOptions, TcpTransport};
+use ockam::{
+    route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpConnectionOptions, TcpListenerOptions,
+    TcpTransport,
+};
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
+    let flow_controls = FlowControls::default();
+
     // Initialize the TCP Transport
     let tcp = TcpTransport::create(&ctx).await?;
     let vault = Vault::create();
@@ -36,25 +41,33 @@ async fn main(ctx: Context) -> Result<()> {
     // The credential issuer already knows the public identifier of this identity
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
-    let flow_controls = FlowControls::default();
-    let flow_control_id = flow_controls.generate_id();
-    let issuer_tcp_options = TcpConnectionOptions::as_producer(&flow_controls, &flow_control_id);
+    let tcp_flow_control_id = flow_controls.generate_id();
+    let issuer_tcp_options = TcpConnectionOptions::as_producer(&flow_controls, &tcp_flow_control_id);
     let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_options).await?;
-    let issuer_options = SecureChannelOptions::new()
-        .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer(&flow_controls);
+    let secure_channel_flow_control_id = flow_controls.generate_id();
+    let issuer_options = SecureChannelOptions::as_producer(&flow_controls, &secure_channel_flow_control_id)
+        .as_consumer(&flow_controls)
+        .with_trust_policy(TrustEveryonePolicy);
     let issuer_channel = server
         .create_secure_channel(route![issuer_connection, "secure"], issuer_options)
         .await?;
     let issuer = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
-    let credential = issuer.get_credential(server.identifier()).await?.unwrap();
+    let credential = issuer
+        .get_credential(
+            server.identifier(),
+            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
+        )
+        .await?
+        .unwrap();
     println!("Credential:\n{credential}");
 
     // Create a trust context that will be used to authenticate credential exchanges
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
         Some(AuthorityInfo::new(
-            server.to_public().await?,
+            issuer
+                .public_identity(MessageSendReceiveOptions::new().with_flow_control(&flow_controls))
+                .await?,
             Some(Arc::new(CredentialMemoryRetriever::new(credential))),
         )),
     );
@@ -64,24 +77,40 @@ async fn main(ctx: Context) -> Result<()> {
     // issuer. These credentials must also attest that requesting identity is
     // a member of the production cluster.
     let allow_production = AbacAccessControl::create(store.clone(), "cluster", "production");
+    let secure_channel_listener_flow_control_id = flow_controls.generate_id();
+    flow_controls.add_consumer(
+        &"echoer".into(),
+        &secure_channel_listener_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
     ctx.start_worker("echoer", Echoer, allow_production, AllowAll).await?;
 
     // Start a worker which will receive credentials sent by the client and issued by the issuer node
     let storage = Arc::new(AuthenticatedAttributeStorage::new(store.clone()));
+    flow_controls.add_consumer(
+        &"credentials".into(),
+        &secure_channel_listener_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
     server
         .start_credential_exchange_worker(trust_context, "credentials", true, storage)
         .await?;
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
-    let listener_flow_control_id = flow_controls.generate_id();
-    let options = SecureChannelListenerOptions::as_spawner(&flow_controls, &listener_flow_control_id)
+    let tcp_listener_flow_control_id = flow_controls.generate_id();
+    let options = SecureChannelListenerOptions::as_spawner(&flow_controls, &secure_channel_listener_flow_control_id)
+        .as_consumer_with_flow_control_id(
+            &flow_controls,
+            &tcp_listener_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        )
         .with_trust_policy(TrustEveryonePolicy);
 
     server.create_secure_channel_listener("secure", options).await?;
 
     // Create a TCP listener and wait for incoming connections
-    let tcp_listener_options = TcpListenerOptions::as_spawner(&flow_controls, &listener_flow_control_id);
+    let tcp_listener_options = TcpListenerOptions::as_spawner(&flow_controls, &tcp_listener_flow_control_id);
     tcp.listen("127.0.0.1:4000", tcp_listener_options).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
