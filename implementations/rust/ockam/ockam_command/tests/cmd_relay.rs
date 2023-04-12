@@ -5,7 +5,7 @@ use std::process::Command;
 fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.arg("--test-argument-parser")
-        .arg("forwarder")
+        .arg("relay")
         .arg("create")
         .arg("n1")
         .arg("--at")
