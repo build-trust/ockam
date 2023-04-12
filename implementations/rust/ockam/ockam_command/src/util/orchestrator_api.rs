@@ -21,6 +21,8 @@ use ockam_api::{
 };
 use ockam_core::api::RequestBuilder;
 use ockam_core::flow_control::FlowControlId;
+use ockam_core::route;
+use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use tracing::info;
 
@@ -159,8 +161,13 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 .context(format!("Invalid MultiAddr {addr}"))?
         };
 
-        let client =
-            CredentialIssuerClient::new(RpcClient::new(authenticator_route, self.ctx).await?);
+        let client = CredentialIssuerClient::new(
+            RpcClient::new(
+                route![DefaultAddress::RPC_PROXY, authenticator_route],
+                self.ctx,
+            )
+            .await?,
+        );
 
         let credential = client.credential().await?;
 
@@ -176,11 +183,13 @@ impl<'a> OrchestratorApiBuilder<'a> {
         //  Establish a secure channel
         let (sc_addr, _sc_flow_control_id) = self.secure_channel_to(&self.destination).await?;
 
-        let to = sc_addr.concat(service_address)?;
+        let mut to = sc_addr.concat(service_address)?;
         info!(
             "creating an rpc client to service: {} over secure channel {}",
             service_address, to
         );
+
+        to.push_front(Service::new(DefaultAddress::RPC_PROXY))?;
 
         let node_name = self.node_name.as_ref().context("Node is required")?;
         let rpc = RpcBuilder::new(self.ctx, self.opts, node_name)
