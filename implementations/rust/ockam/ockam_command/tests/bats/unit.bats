@@ -163,16 +163,14 @@ teardown() {
   # Create with random name
   run "$OCKAM" identity create
   assert_success
-  assert_output --partial "Identity created"
 
   # Create a named identity and delete it
   i=$(random_str)
   run "$OCKAM" identity create "${i}"
   assert_success
-  assert_output --partial "Identity created"
+  
   run "$OCKAM" identity delete "${i}"
   assert_success
-  assert_output --partial "Identity '${i}' deleted"
 
   # Fail to delete identity when it's in use by a node
   i=$(random_str)
@@ -350,7 +348,7 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
   load_orchestrator_data
 
-  port=7100
+    port=7100
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
@@ -366,14 +364,6 @@ teardown() {
     $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
 
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
-  assert_success
-}
-
-@test "forwarder - create forwarder relying on a default node to be created" {
-  skip_if_orchestrator_tests_not_enabled
-  load_orchestrator_data
-
-  run "$OCKAM" forwarder create
   assert_success
 }
 

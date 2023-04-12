@@ -106,7 +106,9 @@ pub fn node_name_parser(node_name: &str) -> Result<String> {
 
 pub fn spawn_default_node(node_name: &str) -> String {
     let config = OckamConfig::load().expect("Failed to load config");
-    let global_opts = CommandGlobalOpts::new(GlobalArgs::default(), config);
+    let mut args = GlobalArgs::default();
+    args.quiet = true;
+    let global_opts = CommandGlobalOpts::new(args, config);
     let mut create_command = CreateCommand::default();
     create_command.node_name = node_name.to_string();
 

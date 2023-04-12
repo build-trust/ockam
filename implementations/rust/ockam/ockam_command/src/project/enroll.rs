@@ -99,7 +99,7 @@ impl Runner {
                     &node_name,
                     tc.authority()?.identity().await?.identifier().clone(),
                     addr,
-                    self.cmd.cloud_opts.identity.clone(),
+                    Some(self.cmd.cloud_opts.identity.clone()),
                 )
                 .await?;
 
@@ -111,7 +111,7 @@ impl Runner {
                     &node_name,
                     a.identity_id().clone(),
                     a.address(),
-                    self.cmd.cloud_opts.identity.clone(),
+                    Some(self.cmd.cloud_opts.identity.clone()),
                 )
                 .await?;
 

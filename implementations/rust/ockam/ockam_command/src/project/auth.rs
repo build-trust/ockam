@@ -88,7 +88,7 @@ async fn run_impl(
             &node_name,
             tc.authority()?.identity().await?.identifier().clone(),
             addr,
-            cmd.cloud_opts.identity,
+            Some(cmd.cloud_opts.identity),
         )
         .await?
     } else {
@@ -102,7 +102,7 @@ async fn run_impl(
             &node_name,
             authority.identity_id().clone(),
             authority.address(),
-            cmd.cloud_opts.identity,
+            Some(cmd.cloud_opts.identity),
         )
         .await?
     };
