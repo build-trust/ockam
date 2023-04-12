@@ -3,18 +3,18 @@
 $ ockam node create blue
 $ ockam node create green
 
-# Create a forwarder to node n2 at node n1
-$ ockam forwarder create blue --at /node/green --to /node/blue
+# Create a relay to node n2 at node n1
+$ ockam relay create blue --at /node/green --to /node/blue
 /service/forward_to_blue
 
-# Send a message to the uppercase service on blue via its forwarder on green
+# Send a message to the uppercase service on blue via its relay on green
 $ ockam message send hello --to /node/green/service/forward_to_blue/service/uppercase
 ```
 
 This can be very useful in establishing communication between applications
 that cannot otherwise reach each other over the network.
 
-For instance, we can use forwarders to create an end-to-end secure channel between
+For instance, we can use relays to create an end-to-end secure channel between
 two nodes that are behind private NATs
 
 ```sh
@@ -22,7 +22,7 @@ two nodes that are behind private NATs
 $ ockam node create yellow
 
 # Create an end-to-end secure channel between yellow and blue.
-# This secure channel is created through blue's forwarder at green and we can
+# This secure channel is created through blue's relay at green and we can
 # send end-to-end encrypted messages through it.
 $ ockam secure-channel create --from /node/yellow --to /node/green/service/forward_to_blue/service/api \\
     | ockam message send hello --from /node/yellow --to -/service/uppercase

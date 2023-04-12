@@ -29,7 +29,7 @@ teardown() {
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
   fwd="$(random_str)"
-  $OCKAM forwarder create "$fwd" --at /project/default --to /node/blue
+  $OCKAM relay create "$fwd" --at /project/default --to /node/blue
 
   run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
   assert_success
@@ -48,7 +48,7 @@ teardown() {
 
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
-  $OCKAM forwarder create --at /project/default --to /node/blue
+  $OCKAM relay create --at /project/default --to /node/blue
 
   addr=$($OCKAM tcp-inlet create)
 
@@ -64,7 +64,7 @@ teardown() {
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
 
   fwd="$(random_str)"
-  $OCKAM forwarder create "$fwd" --at /project/default --to /node/blue
+  $OCKAM relay create "$fwd" --at /project/default --to /node/blue
 
   run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
   assert_success
@@ -104,7 +104,7 @@ teardown() {
   assert_success
 
   fwd="$(random_str)"
-  run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/blue
+  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/blue
   assert_output --partial "forward_to_$fwd"
   assert_success
 
@@ -146,7 +146,7 @@ teardown() {
   assert_success
 
   fwd="$(random_str)"
-  run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/blue
+  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/blue
   assert_output --partial "forward_to_$fwd"
   assert_success
 
@@ -184,7 +184,7 @@ teardown() {
   assert_success
 
   fwd="$(random_str)"
-  run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/blue
+  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/blue
   assert_success
   assert_output --partial "forward_to_$fwd"
 
@@ -229,7 +229,7 @@ teardown() {
   assert_success
 
   fwd="$(random_str)"
-  run "$OCKAM" forwarder create "$fwd" --at /project/default --to /node/blue
+  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/blue
   assert_output --partial "forward_to_$fwd"
   assert_success
 

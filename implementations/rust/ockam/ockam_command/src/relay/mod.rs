@@ -10,27 +10,27 @@ mod create;
 mod list;
 mod show;
 
-/// Manage Forwarders
+/// Manage Relays
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
-pub struct ForwarderCommand {
+pub struct RelayCommand {
     #[command(subcommand)]
-    subcommand: ForwarderSubCommand,
+    subcommand: RelaySubCommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
-pub enum ForwarderSubCommand {
+pub enum RelaySubCommand {
     Create(CreateCommand),
     List(ListCommand),
     Show(ShowCommand),
 }
 
-impl ForwarderCommand {
+impl RelayCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         match self.subcommand {
-            ForwarderSubCommand::Create(c) => c.run(opts),
-            ForwarderSubCommand::List(c) => c.run(opts),
-            ForwarderSubCommand::Show(c) => c.run(opts),
+            RelaySubCommand::Create(c) => c.run(opts),
+            RelaySubCommand::List(c) => c.run(opts),
+            RelaySubCommand::Show(c) => c.run(opts),
         }
     }
 }

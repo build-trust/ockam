@@ -11,7 +11,7 @@ use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::node::{default_node_name, node_name_parser};
+use crate::node::default_node_name;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::Result;
@@ -20,7 +20,7 @@ use crate::{docs, CommandGlobalOpts};
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
-/// Create Forwarders
+/// Create Relays
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = false,
@@ -28,15 +28,15 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the forwarder (optional)
+    /// Name of the relay (optional)
     #[arg(hide_default_value = true, default_value = "default")]
-    forwarder_name: String,
+    relay_name: String,
 
-    /// Node for which to create the forwarder
-    #[arg(long, id = "NODE", display_order = 900, default_value_t = default_node_name(), value_parser = node_name_parser)]
+    /// Node for which to create the relay
+    #[arg(long, id = "NODE", display_order = 900, default_value_t = default_node_name())]
     to: String,
 
-    /// Route to the node at which to create the forwarder (optional)
+    /// Route to the node at which to create the relay (optional)
     #[arg(long, id = "ROUTE", display_order = 900, default_value_t = default_forwarder_at())]
     at: MultiAddr,
 
@@ -52,7 +52,7 @@ impl CreateCommand {
 }
 
 pub fn default_forwarder_at() -> MultiAddr {
-    MultiAddr::from_str("/project/default").expect("Default forwarder address is invalid")
+    MultiAddr::from_str("/project/default").expect("Default relay address is invalid")
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
@@ -64,9 +64,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 
     let req = {
         let alias = if at_rust_node {
-            format!("forward_to_{}", cmd.forwarder_name)
+            format!("forward_to_{}", cmd.relay_name)
         } else {
-            cmd.forwarder_name.clone()
+            cmd.relay_name.clone()
         };
         let body = if cmd.at.matches(0, &[Project::CODE.into()]) {
             if cmd.authorized.is_some() {
