@@ -168,7 +168,7 @@ teardown() {
   i=$(random_str)
   run "$OCKAM" identity create "${i}"
   assert_success
-  
+
   run "$OCKAM" identity delete "${i}"
   assert_success
 
