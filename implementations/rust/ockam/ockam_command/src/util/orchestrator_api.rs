@@ -133,8 +133,8 @@ impl<'a> OrchestratorApiBuilder<'a> {
         self
     }
 
-    pub fn as_identity(&mut self, identity: Option<String>) -> &mut Self {
-        self.identity = identity;
+    pub fn as_identity(&mut self, identity: String) -> &mut Self {
+        self.identity = Some(identity);
         self
     }
 

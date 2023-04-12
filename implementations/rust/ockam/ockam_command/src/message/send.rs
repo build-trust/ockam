@@ -64,7 +64,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
                 ctx,
                 opts,
                 None,
-                cmd.cloud_opts.identity.as_ref(),
+                Some(&cmd.cloud_opts.identity),
                 Some(&cmd.trust_context_opts),
             )
             .await?;

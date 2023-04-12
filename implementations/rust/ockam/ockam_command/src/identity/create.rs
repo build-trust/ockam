@@ -46,6 +46,7 @@ impl CreateCommand {
         ctx: Context,
         options: CommandGlobalOpts,
     ) -> crate::Result<PublicIdentity> {
+        let mut output = String::new();
         let vault_state = if let Some(vault_name) = self.vault.clone() {
             options.state.vaults.get(&vault_name)?
         } else if options.state.vaults.default().is_err() {
@@ -55,7 +56,7 @@ impl CreateCommand {
                 .vaults
                 .create(&vault_name, VaultConfig::default())
                 .await?;
-            println!("Default vault created: {}", &vault_name);
+            output.push_str(&format!("Default vault created: {}\n", &vault_name));
             state
         } else {
             options.state.vaults.default()?
@@ -72,7 +73,17 @@ impl CreateCommand {
             .state
             .identities
             .create(&self.name, identity_config)?;
-        println!("Identity created: {}", identity.identifier());
+
+        output.push_str(&format!("Identity created: {}", identity.identifier()));
+
+        options
+            .shell
+            .stdout()
+            .plain(output)
+            .machine(identity.identifier())
+            .json(&serde_json::json!({ "identity": { "identifier": &identity.identifier() } }))
+            .write_line()?;
+
         Ok(identity_state.config.public_identity())
     }
 }

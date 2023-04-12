@@ -167,7 +167,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         to,
         authorized_identifiers,
         CredentialExchangeMode::Mutual,
-        cmd.cloud_opts.identity.clone(),
+        Some(cmd.cloud_opts.identity.clone()),
         cmd.credential.clone(),
     );
     let request = Request::post("/node/secure_channel").body(payload);

@@ -196,6 +196,13 @@ async fn run_impl(
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, node_name);
+
+    // TODO: This is a temporary workaround until we have proper
+    // support for controling the output of commands
+    if opts.global_args.quiet {
+        return Ok(());
+    }
+
     print_query_status(&mut rpc, node_name, true, is_default).await?;
 
     Ok(())
