@@ -74,7 +74,7 @@ pub struct CreateCommand {
     certificate: Option<String>,
 
     /// Okta: name of the attributes which can be retrieved from Okta (optional)
-    #[arg(long, value_name = "COMMA_SEPARATED_LIST", default_value = None)]
+    #[arg(long, value_name = "ATTRIBUTE_NAMES", default_value = None)]
     attributes: Option<Vec<String>>,
 
     /// Run the node in foreground.
@@ -156,8 +156,10 @@ async fn spawn_background_node(
     }
 
     if let Some(attributes) = &cmd.attributes {
-        args.push("--attributes".to_string());
-        args.push(attributes.join(","));
+        attributes.iter().for_each(|attr| {
+            args.push("--attributes".to_string());
+            args.push(attr.clone());
+        });
     }
 
     if let Some(vault) = &cmd.vault {

@@ -91,10 +91,17 @@ impl Server {
                                 .into_iter()
                                 .map(|(k, v)| (k, v.as_bytes().to_vec()))
                                 .chain(
-                                    [(
-                                        crate::authenticator::direct::LEGACY_ID.to_owned(),
-                                        self.project.clone(),
-                                    )]
+                                    [
+                                        (
+                                            crate::authenticator::direct::LEGACY_ID.to_owned(),
+                                            self.project.clone(),
+                                        ),
+                                        ((
+                                            crate::authenticator::direct::TRUST_CONTEXT_ID
+                                                .to_owned(),
+                                            self.project.clone(),
+                                        )),
+                                    ]
                                     .into_iter(),
                                 )
                                 .collect(),
