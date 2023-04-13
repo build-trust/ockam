@@ -1,7 +1,3 @@
-use ockam::{node, MessageSendReceiveOptions, TcpInletOptions};
-use ockam_core::compat::sync::Arc;
-use std::time::Duration;
-
 use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::credential::OneTimeCode;
@@ -9,12 +5,14 @@ use ockam::identity::{
     identities, AuthorityService, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannelOptions,
     TrustContext, TrustMultiIdentifiersPolicy,
 };
+use ockam::{node, TcpInletOptions};
 use ockam::{route, Context, Result};
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
-use ockam_core::flow_control::FlowControls;
+use ockam_core::compat::sync::Arc;
 use ockam_node::RpcClient;
 use ockam_transport_tcp::TcpTransportExtension;
+use std::time::Duration;
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
@@ -63,17 +61,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Import the authority identity and route from the information file
     let project = import_project(project_information_path, node.identities()).await?;
 
-    let flow_controls = FlowControls::default();
-    let tcp_authority_route = multiaddr_to_route(&project.authority_route(), &tcp, &flow_controls)
-        .await
-        .unwrap(); // FIXME: Handle error
-    let authority_options = SecureChannelOptions::new()
+    let tcp_authority_route = multiaddr_to_route(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
+    let options = SecureChannelOptions::new()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.authority_identifier()]));
-    let options = if let Some(_session_id) = tcp_authority_route.flow_control_id {
-        authority_options.as_consumer(&flow_controls)
-    } else {
-        authority_options
-    };
 
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
@@ -96,9 +86,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     token_acceptor.present_token(&token).await?;
 
     // Create a trust context that will be used to authenticate credential exchanges
-    let tcp_project_session = multiaddr_to_route(&project.route(), &tcp, &flow_controls)
-        .await
-        .unwrap(); // FIXME: Handle error
+    let tcp_project_session = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
 
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
@@ -113,7 +101,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
                     tcp_project_session.route,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 ),
-                flow_controls.clone(),
             ))),
         )),
     );
@@ -142,16 +129,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 4. create a tcp inlet with the above policy
 
-    let tcp_project_route = multiaddr_to_route(&project.route(), &tcp, &flow_controls)
-        .await
-        .unwrap(); // FIXME: Handle error
+    let tcp_project_route = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
     let project_options =
         SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
-    let project_options = if let Some(_flow_control_id) = tcp_project_route.flow_control_id {
-        project_options.as_consumer(&flow_controls)
-    } else {
-        project_options
-    };
 
     // 4.1 first created a secure channel to the project
     let secure_channel_address = node
@@ -170,7 +150,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
             node.context(),
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
             credential.clone(),
-            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
         )
         .await?;
 
@@ -194,7 +173,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
             route![secure_channel_to_control.clone(), "credential_exchange"],
             &[project.authority_identity()],
             credential,
-            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
         )
         .await?;
     println!("credential exchange done");

@@ -36,7 +36,7 @@ impl Instantiator for PlainTcpInstantiator {
         let (before, tcp_piece, after) =
             ConnectionInstanceBuilder::extract(&builder.current_multiaddr, match_start, 2);
 
-        let tcp = multiaddr_to_route(&tcp_piece, &self.tcp_transport, &builder.flow_controls)
+        let tcp = multiaddr_to_route(&tcp_piece, &self.tcp_transport)
             .await
             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 

@@ -1,4 +1,5 @@
 use ockam::access_control::AllowAll;
+use ockam::flow_control::FlowControls;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, route, Context, Result, Routed, TcpConnectionOptions, Worker};
 use ockam_transport_tcp::TcpTransportExtension;
@@ -31,7 +32,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    node.create_secure_channel_listener(&bob, "listener", SecureChannelListenerOptions::new())
+    let sc_flow_control_id = FlowControls::generate_id();
+    node.create_secure_channel_listener(&bob, "listener", SecureChannelListenerOptions::new(&sc_flow_control_id))
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and

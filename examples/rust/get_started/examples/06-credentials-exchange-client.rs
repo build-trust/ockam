@@ -1,5 +1,5 @@
 use ockam::identity::{CredentialsIssuerClient, SecureChannelOptions};
-use ockam::{node, route, Context, MessageSendReceiveOptions, Result, TcpConnectionOptions};
+use ockam::{node, route, Context, Result, TcpConnectionOptions};
 use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
@@ -60,13 +60,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Present credentials over the secure channel
     let r = route![channel.clone(), "credentials"];
     node.credentials_server()
-        .present_credential_mutual(
-            node.context(),
-            r,
-            &[issuer],
-            credential,
-            MessageSendReceiveOptions::new(),
-        )
+        .present_credential_mutual(node.context(), r, &[issuer], credential)
         .await?;
 
     // Send a message to the worker at address "echoer".

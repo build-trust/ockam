@@ -11,7 +11,7 @@ use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
-use ockam_core::{Address, AllowAll, Error, Message, Result, Worker};
+use ockam_core::{AllowAll, Error, Message, Result, Worker};
 use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
@@ -73,24 +73,19 @@ impl Authority {
     pub async fn start_secure_channel_listener(
         &self,
         ctx: &Context,
-        flow_controls: &FlowControls,
         configuration: &Configuration,
     ) -> Result<FlowControlId> {
         // Start a secure channel listener that only allows channels with
         // authenticated identities.
-        let tcp_listener_flow_control_id = flow_controls.generate_id();
-        let secure_channel_listener_flow_control_id = flow_controls.generate_id();
+        let tcp_listener_flow_control_id = FlowControls::generate_id();
+        let secure_channel_listener_flow_control_id = FlowControls::generate_id();
 
-        let options = SecureChannelListenerOptions::as_spawner(
-            flow_controls,
-            &secure_channel_listener_flow_control_id,
-        )
-        .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer_with_flow_control_id(
-            flow_controls,
-            &tcp_listener_flow_control_id,
-            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-        );
+        let options = SecureChannelListenerOptions::new(&secure_channel_listener_flow_control_id)
+            .with_trust_policy(TrustEveryonePolicy)
+            .as_consumer(
+                &tcp_listener_flow_control_id,
+                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+            );
 
         let listener_name = configuration.secure_channel_listener_name();
         self.secure_channels
@@ -100,8 +95,7 @@ impl Authority {
 
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
-        let tcp_listener_options =
-            TcpListenerOptions::as_spawner(flow_controls, &tcp_listener_flow_control_id);
+        let tcp_listener_options = TcpListenerOptions::new(&tcp_listener_flow_control_id);
 
         let (address, _) = tcp
             .listen(configuration.tcp_listener_address(), tcp_listener_options)
@@ -115,7 +109,6 @@ impl Authority {
     pub async fn start_direct_authenticator(
         &self,
         ctx: &Context,
-        flow_controls: &FlowControls,
         secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
@@ -130,8 +123,8 @@ impl Authority {
         .await?;
 
         let name = configuration.clone().authenticator_name();
-        flow_controls.add_consumer(
-            &Address::from_string(name.clone()),
+        ctx.flow_controls().add_consumer(
+            name.clone(),
             secure_channel_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
@@ -147,7 +140,6 @@ impl Authority {
     pub async fn start_enrollment_services(
         &self,
         ctx: &Context,
-        flow_controls: &FlowControls,
         secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
@@ -163,8 +155,8 @@ impl Authority {
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
-        flow_controls.add_consumer(
-            &Address::from_string(issuer_address.clone()),
+        ctx.flow_controls().add_consumer(
+            issuer_address.clone(),
             secure_channel_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
@@ -183,8 +175,8 @@ impl Authority {
         // that service is to access a one-time token stating that the sender of the message
         // is a project member
         let acceptor_address: String = DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into();
-        flow_controls.add_consumer(
-            &Address::from_string(acceptor_address.clone()),
+        ctx.flow_controls().add_consumer(
+            acceptor_address.clone(),
             secure_channel_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
@@ -208,7 +200,6 @@ impl Authority {
     pub async fn start_credential_issuer(
         &self,
         ctx: &Context,
-        flow_controls: &FlowControls,
         secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
@@ -221,8 +212,8 @@ impl Authority {
         .await?;
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
-        flow_controls.add_consumer(
-            &Address::from_string(address.clone()),
+        ctx.flow_controls().add_consumer(
+            address.clone(),
             secure_channel_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
@@ -238,7 +229,6 @@ impl Authority {
     pub async fn start_okta(
         &self,
         ctx: &Context,
-        flow_controls: &FlowControls,
         secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
@@ -251,8 +241,8 @@ impl Authority {
                 okta.attributes().as_slice(),
             )?;
 
-            flow_controls.add_consumer(
-                &Address::from_string(okta.address.clone()),
+            ctx.flow_controls().add_consumer(
+                okta.address.clone(),
                 secure_channel_flow_control_id,
                 FlowControlPolicy::SpawnerAllowMultipleMessages,
             );
@@ -272,13 +262,12 @@ impl Authority {
     pub async fn start_echo_service(
         &self,
         ctx: &Context,
-        flow_controls: &FlowControls,
         secure_channel_flow_control_id: &FlowControlId,
     ) -> Result<()> {
         let address = DefaultAddress::ECHO_SERVICE;
 
-        flow_controls.add_consumer(
-            &Address::from_string(address),
+        ctx.flow_controls().add_consumer(
+            address,
             secure_channel_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );

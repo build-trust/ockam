@@ -8,7 +8,7 @@ use crate::Address;
 // TODO: Consider integrating this into Routing for better UX + to allow removing
 // entries from that storage
 /// Storage for all Flow Control-related data
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct FlowControls {
     // All known consumers
     consumers: Arc<RwLock<BTreeMap<FlowControlId, ConsumersInfo>>>,
@@ -22,18 +22,32 @@ pub struct FlowControls {
 }
 
 impl FlowControls {
+    /// Constructor
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {
+            consumers: Default::default(),
+            producers: Default::default(),
+            producers_additional_addresses: Default::default(),
+            spawners: Default::default(),
+        }
+    }
+}
+
+impl FlowControls {
     /// Generate a fresh random [`FlowControlId`]
-    pub fn generate_id(&self) -> FlowControlId {
+    pub fn generate_id() -> FlowControlId {
         random()
     }
 
     /// Mark that given [`Address`] is a Consumer for Producer or Spawner with the given [`FlowControlId`]
     pub fn add_consumer(
         &self,
-        address: &Address,
+        address: impl Into<Address>,
         flow_control_id: &FlowControlId,
         policy: FlowControlPolicy,
     ) {
+        let address = address.into();
         let mut consumers = self.consumers.write().unwrap();
         if !consumers.contains_key(flow_control_id) {
             consumers.insert(flow_control_id.clone(), Default::default());
@@ -41,7 +55,7 @@ impl FlowControls {
 
         let flow_control_consumers = consumers.get_mut(flow_control_id).unwrap();
 
-        flow_control_consumers.0.insert(address.clone(), policy);
+        flow_control_consumers.0.insert(address, policy);
     }
 
     /// Mark that given [`Address`] is a Producer for to the given [`FlowControlId`]
@@ -49,11 +63,12 @@ impl FlowControls {
     /// with the given spawner [`FlowControlId`] (if that's the case).
     pub fn add_producer(
         &self,
-        address: &Address,
+        address: impl Into<Address>,
         flow_control_id: &FlowControlId,
         spawner_flow_control_id: Option<&FlowControlId>,
         additional_addresses: Vec<Address>,
     ) {
+        let address = address.into();
         let mut producers = self.producers.write().unwrap();
         producers.insert(
             address.clone(),
@@ -73,10 +88,11 @@ impl FlowControls {
     }
 
     /// Mark that given [`Address`] is a Spawner for to the given [`FlowControlId`]
-    pub fn add_spawner(&self, address: &Address, flow_control_id: &FlowControlId) {
+    pub fn add_spawner(&self, address: impl Into<Address>, flow_control_id: &FlowControlId) {
+        let address = address.into();
         let mut spawners = self.spawners.write().unwrap();
 
-        spawners.insert(address.clone(), flow_control_id.clone());
+        spawners.insert(address, flow_control_id.clone());
     }
 
     /// Get known Consumers for the given [`FlowControlId`]

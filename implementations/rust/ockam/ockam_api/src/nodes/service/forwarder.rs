@@ -31,18 +31,17 @@ impl NodeManagerWorker {
     ) -> Result<Vec<u8>> {
         let manager = self.node_manager.clone();
         let req: CreateForwarder = dec.decode()?;
-        let flow_controls = self.node_manager.read().await.flow_controls.clone();
 
         debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
-        let connection = Connection::new(ctx, req.address(), &flow_controls)
+        let connection = Connection::new(ctx, req.address())
             .with_authorized_identity(req.authorized())
             .add_default_consumers();
 
         let connection_instance =
             NodeManager::connect(self.node_manager.clone(), connection).await?;
 
-        let options = RemoteForwarderOptions::as_consumer_and_producer(&flow_controls);
+        let options = RemoteForwarderOptions::new();
 
         let route = local_multiaddr_to_route(&connection_instance.normalized_addr)
             .ok_or_else(|| ApiError::message("invalid address: {addr}"))?;
@@ -211,10 +210,9 @@ fn replacer(
                         debug!("cannot stop tcp worker `{tcp_worker}`: {error}");
                     }
                 }
-                let flow_controls = node_manager.flow_controls.clone();
                 drop(node_manager);
 
-                let connection = Connection::new(ctx.as_ref(), &addr, &flow_controls)
+                let connection = Connection::new(ctx.as_ref(), &addr)
                     .with_authorized_identity(auth)
                     .with_timeout(MAX_CONNECT_TIME)
                     .add_default_consumers();
@@ -232,7 +230,7 @@ fn replacer(
                         ))
                     })?;
 
-                let options = RemoteForwarderOptions::as_consumer_and_producer(&flow_controls);
+                let options = RemoteForwarderOptions::new();
                 if let Some(alias) = &alias {
                     RemoteForwarder::create_static(&ctx, route, alias, options).await?;
                 } else {

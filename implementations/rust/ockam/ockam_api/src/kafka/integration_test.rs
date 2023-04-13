@@ -29,6 +29,7 @@ mod test {
     use uuid::Uuid;
 
     use ockam::compat::tokio::io::DuplexStream;
+    use ockam::flow_control::FlowControls;
     use ockam::Context;
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
@@ -80,24 +81,10 @@ mod test {
         outlet_address: Address,
         kind: KafkaServiceKind,
     ) -> ockam::Result<u16> {
-        let flow_controls = &handle.flow_controls;
-        let flow_control_id = flow_controls.generate_id();
-
-        //a producer flow is expected
-        flow_controls.add_producer(&outlet_address, &flow_control_id, None, vec![]);
-
-        //adds context itself as consumer
-        flow_controls.add_consumer(
-            &context.address(),
-            &flow_control_id,
-            FlowControlPolicy::ProducerAllowMultiple,
-        );
-
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handle.secure_channels.clone(),
             MultiAddr::try_from("/service/api")?,
             HopForwarderCreator {},
-            flow_controls,
         );
 
         //the possibility to accept secure channels is the only real
@@ -107,6 +94,13 @@ mod test {
                 .create_consumer_listener(context)
                 .await?;
 
+            let sc_flow_control_id = FlowControls::generate_id();
+            context.flow_controls().add_consumer(
+                crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS,
+                &sc_flow_control_id,
+                FlowControlPolicy::SpawnerAllowMultipleMessages,
+            );
+
             // in a normal setup the secure channel listener is already created
             handle
                 .secure_channels
@@ -114,11 +108,7 @@ mod test {
                     context,
                     &handle.identifier,
                     DefaultAddress::SECURE_CHANNEL_LISTENER,
-                    SecureChannelListenerOptions::new().as_consumer_with_flow_control_id(
-                        flow_controls,
-                        &flow_control_id,
-                        FlowControlPolicy::ProducerAllowMultiple,
-                    ),
+                    SecureChannelListenerOptions::new(&sc_flow_control_id),
                 )
                 .await?;
         }
@@ -139,7 +129,7 @@ mod test {
             .create_inlet(
                 "127.0.0.1:0",
                 route![listener_address.clone(), outlet_address.clone()],
-                TcpInletOptions::new().as_consumer(flow_controls),
+                TcpInletOptions::new(),
             )
             .await?;
 
@@ -148,7 +138,6 @@ mod test {
             inlet_controller,
             secure_channel_controller.into_trait(),
             listener_address,
-            flow_controls.clone(),
         )
         .await?;
 
@@ -165,8 +154,8 @@ mod test {
         let consumer_bootstrap_port = create_kafka_service(
             context,
             &handler,
-            Address::from_string("kafka_consumer_listener"),
-            Address::from_string("kafka_consumer_outlet"),
+            "kafka_consumer_listener".into(),
+            "kafka_consumer_outlet".into(),
             KafkaServiceKind::Consumer,
         )
         .await?;
@@ -174,8 +163,8 @@ mod test {
         let producer_bootstrap_port = create_kafka_service(
             context,
             &handler,
-            Address::from_string("kafka_producer_listener"),
-            Address::from_string("kafka_producer_outlet"),
+            "kafka_producer_listener".into(),
+            "kafka_producer_outlet".into(),
             KafkaServiceKind::Producer,
         )
         .await?;

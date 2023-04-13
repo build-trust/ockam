@@ -32,9 +32,7 @@ impl TcpListenProcessor {
         let saddr = inner.local_addr().map_err(TransportError::from)?;
 
         let address = Address::random_tagged("TcpListenProcessor");
-        if let Some((flow_controls, flow_control_id)) = &options.spawner_flow_controls {
-            flow_controls.add_spawner(&address, flow_control_id);
-        }
+        options.setup_flow_control_for_listener(ctx.flow_controls(), &address);
 
         let processor = Self {
             registry,
@@ -76,10 +74,12 @@ impl Processor for TcpListenProcessor {
 
         let addresses = Addresses::generate(ConnectionRole::Responder);
 
-        let flow_control_id = self.options.setup_flow_control(&addresses);
+        let flow_control_id = self
+            .options
+            .setup_flow_control_for_connection(ctx.flow_controls(), &addresses);
         let access_control = self
             .options
-            .create_access_control(flow_control_id.clone())?;
+            .create_access_control(ctx.flow_controls(), flow_control_id.clone());
 
         let (read_half, write_half) = stream.into_split();
 

@@ -83,9 +83,10 @@ mod node {
     use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_core::api::RequestBuilder;
     use ockam_core::env::get_env;
+    use ockam_core::flow_control::FlowControls;
     use ockam_core::{self, route, CowStr, Result};
     use ockam_multiaddr::MultiAddr;
-    use ockam_node::api::request;
+    use ockam_node::api::request_with_options;
     use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
@@ -181,41 +182,28 @@ mod node {
                     .await?
             };
 
-            let (sc_address, flow_controls, _sc_flow_control_id) = {
+            let (sc_address, _sc_flow_control_id) = {
                 let node_manager = self.get().read().await;
-                let cloud_route = crate::multiaddr_to_route(
-                    cloud_multiaddr,
-                    &node_manager.tcp_transport,
-                    &node_manager.flow_controls,
-                )
-                .await
-                .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+                let cloud_route =
+                    crate::multiaddr_to_route(cloud_multiaddr, &node_manager.tcp_transport)
+                        .await
+                        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-                let sc_flow_control_id = node_manager.flow_controls.generate_id();
-                let options = SecureChannelOptions::as_producer(
-                    &node_manager.flow_controls,
-                    &sc_flow_control_id,
-                )
-                .with_trust_policy(TrustIdentifierPolicy::new(
-                    node_manager.controller_identity_id(),
-                ))
-                .as_consumer(&node_manager.flow_controls);
+                let sc_flow_control_id = FlowControls::generate_id();
+                let options = SecureChannelOptions::as_producer(&sc_flow_control_id)
+                    .with_trust_policy(TrustIdentifierPolicy::new(
+                        node_manager.controller_identity_id(),
+                    ));
                 let sc_address = secure_channels
                     .create_secure_channel(ctx, &identifier, cloud_route.route, options)
                     .await?;
 
-                (
-                    sc_address,
-                    &node_manager.flow_controls.clone(),
-                    sc_flow_control_id,
-                )
+                (sc_address, sc_flow_control_id)
             };
 
             let route = route![sc_address.clone(), api_service];
-            let options = MessageSendReceiveOptions::new()
-                .with_timeout(timeout)
-                .with_flow_control(flow_controls);
-            let res = request(ctx, label, schema, route, req, options).await;
+            let options = MessageSendReceiveOptions::new().with_timeout(timeout);
+            let res = request_with_options(ctx, label, schema, route, req, options).await;
             ctx.stop_worker(sc_address).await?;
             res
         }

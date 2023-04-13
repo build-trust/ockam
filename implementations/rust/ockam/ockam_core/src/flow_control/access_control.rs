@@ -29,12 +29,12 @@ impl Debug for FlowControlOutgoingAccessControl {
 impl FlowControlOutgoingAccessControl {
     /// Constructor
     pub fn new(
-        flow_controls: FlowControls,
+        flow_controls: &FlowControls,
         flow_control_id: FlowControlId,
         spawner_flow_control_id: Option<FlowControlId>,
     ) -> Self {
         Self {
-            flow_controls,
+            flow_controls: flow_controls.clone(),
             flow_control_id,
             spawner_flow_control_id,
             sent_single_message_to_addresses: Default::default(),
