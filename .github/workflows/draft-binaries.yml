@@ -27,7 +27,7 @@ jobs:
     steps:
     - name: Checkout repository
       if: matrix.os == 'ubuntu-22.04'
-      uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
+      uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       with:
         fetch-depth: 0
         ref: ${{ github.event.inputs.git_tag }}
