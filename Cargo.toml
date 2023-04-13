@@ -10,7 +10,6 @@ members = [
   "implementations/rust/ockam/ockam_api",
   "implementations/rust/ockam/ockam_command",
   "implementations/rust/ockam/ockam_core",
-  "implementations/rust/ockam/ockam_examples",
   "implementations/rust/ockam/ockam_executor",
   "implementations/rust/ockam/ockam_ffi",
   "implementations/rust/ockam/ockam_identity",
@@ -28,8 +27,6 @@ members = [
   "tools/docs/example_blocks",
   "tools/docs/example_test_helper",
 ]
-
-exclude = ["implementations/rust/ockam/ockam_examples/example_projects"]
 
 # Coverage profile for generating code coverage with grcov.
 #

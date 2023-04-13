@@ -3412,10 +3412,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_examples"
-version = "0.44.0"
-
-[[package]]
 name = "ockam_executor"
 version = "0.46.0"
 dependencies = [

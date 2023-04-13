@@ -55,13 +55,13 @@ fn entry() -> ! {
 
 // - ockam::node entrypoint ---------------------------------------------------
 
-use ockam::{Context, Result};
+use ockam::{node, Context, Result};
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
+    let mut node = node(ctx);
+
     // Stop the node as soon as it starts.
     info!("Stop the node as soon as it starts.");
-    let result = ctx.stop().await;
-
-    result
+    node.stop().await;
 }
