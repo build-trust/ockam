@@ -62,29 +62,25 @@ fn entry() -> ! {
 
 // - ockam::node entrypoint ---------------------------------------------------
 
-use ockam::{
-    identity::{Identity, TrustEveryonePolicy},
-    route, Context, Result,
-};
+use ockam::{identity::TrustEveryonePolicy, node, route, Context, Result};
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
-    let secure_channels = SecureChannels::create().await?;
-    let bob = secure_channels.identities().create_identity().await?;
+async fn main(ctx: Context) -> Result<()> {
+    let mut node = node(ctx);
+    let bob = node.create_identity().await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    secure_channels
-        .create_secure_channel_listener(&ctx, &bob, "bob", TrustEveryonePolicy)
+    node.create_secure_channel_listener(&bob, "bob", TrustEveryonePolicy)
         .await?;
 
     // Create an entity to represent Alice.
-    let alice = secure_channels.identities().create_identity().await?;
+    let alice = node.create_identity().await?;
 
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
-    let channel = secure_channels
-        .create_secure_channel(&ctx, &alice, "bob", TrustEveryonePolicy)
+    let channel = node
+        .create_secure_channel(&alice, "bob", TrustEveryonePolicy)
         .await?;
 
     // Send a message, ** THROUGH ** the secure channel,
@@ -92,11 +88,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     //
     // This message will automatically get encrypted when it enters the channel
     // and decrypted just before it exits the channel.
-    ctx.send(route![channel, "app"], "Hello Ockam!".to_string())
+    node.send(route![channel, "app"], "Hello Ockam!".to_string())
         .await?;
 
     // Wait to receive a message for the "app" worker and print it.
-    let message = ctx.receive::<String>().await?;
+    let message = node.receive::<String>().await?;
     info!("App Received: {}", message); // should print "Hello Ockam!"
 
     #[cfg(feature = "debugger")]
@@ -105,7 +101,5 @@ async fn main(mut ctx: Context) -> Result<()> {
     }
 
     // Stop all workers, stop the node, cleanup and return.
-    let result = ctx.stop().await;
-
-    result
+    node.stop().await;
 }
