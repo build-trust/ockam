@@ -94,7 +94,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 tracing = { version = "0.1", default_features = false }
 
 # Target os: TODO move this into its own "Ockam Addon" crate
-btleplug = { version = "0.10.4", optional = true }
+btleplug = { version = "0.10.5", optional = true }
 uuid = { version = "1.3.1", optional = true }
 
 # Target baremetal: TODO move this into its own "Ockam Addon" crate
