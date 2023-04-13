@@ -121,6 +121,7 @@ async fn spawn_background_node(
             0 => "-vv".to_string(),
             v => format!("-{}", "v".repeat(v as usize)),
         },
+        "--no-color".to_string(),
     ];
 
     if cmd.no_direct_authentication {
