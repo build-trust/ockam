@@ -1,3 +1,4 @@
+use ockam::flow_control::{FlowControlPolicy, FlowControls};
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, Context, Result, TcpConnectionOptions, TcpOutletOptions};
@@ -10,8 +11,15 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = node.create_tcp_transport().await?;
 
     let e = node.create_identity().await?;
-    node.create_secure_channel_listener(&e, "secure_channel_listener", SecureChannelListenerOptions::new())
-        .await?;
+    let secure_channel_flow_control_id = FlowControls::generate_id();
+    let tcp_flow_control_id = FlowControls::generate_id();
+    node.create_secure_channel_listener(
+        &e,
+        "secure_channel_listener",
+        SecureChannelListenerOptions::new(&secure_channel_flow_control_id)
+            .as_consumer(&tcp_flow_control_id, FlowControlPolicy::ProducerAllowMultiple),
+    )
+    .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:4002
@@ -30,8 +38,15 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, TcpOutletOptions::new())
-        .await?;
+    tcp.create_outlet(
+        "outlet",
+        outlet_target,
+        TcpOutletOptions::new().as_consumer(
+            &secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        ),
+    )
+    .await?;
 
     // To allow Inlet Node and others to initiate an end-to-end secure channel with this program
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
@@ -40,7 +55,10 @@ async fn main(ctx: Context) -> Result<()> {
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
+        .connect(
+            "1.node.ockam.network:4000",
+            TcpConnectionOptions::as_producer(&tcp_flow_control_id),
+        )
         .await?;
     let forwarder = node
         .create_forwarder(node_in_hub, RemoteForwarderOptions::new())

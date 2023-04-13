@@ -1,6 +1,5 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{Error, Result, Route, TransportType};
 use ockam_transport_core::Transport;
 
@@ -22,11 +21,7 @@ impl Context {
     /// For each address handled by a given transport in a route, for example, (TCP, "127.0.0.1:4000")
     /// Create a worker supporting the routing of messages for this transport and replace the address
     /// in the route with the worker address
-    pub async fn resolve_transport_route(
-        &self,
-        flow_controls: &FlowControls,
-        route: Route,
-    ) -> Result<Route> {
+    pub async fn resolve_transport_route(&self, route: Route) -> Result<Route> {
         let transports = self.transports.read().unwrap().clone();
 
         // check the number of transport hops, there can be only one
@@ -50,9 +45,7 @@ impl Context {
         for address in route.iter() {
             if !address.is_local() {
                 if let Some(transport) = transports.get(&address.transport_type()) {
-                    let resolved_address = transport
-                        .resolve_address(flow_controls, address.clone())
-                        .await?;
+                    let resolved_address = transport.resolve_address(address.clone()).await?;
                     resolved = resolved.append(resolved_address);
                 } else {
                     return Err(Error::new(
@@ -89,20 +82,15 @@ mod tests {
         let transport = Arc::new(SomeTransport());
         ctx.register_transport(transport.clone());
 
-        let flow_controls = FlowControls::default();
-
         // resolve a route with known transports
         let result = ctx
-            .resolve_transport_route(
-                &flow_controls,
-                route![(transport.transport_type(), "address")],
-            )
+            .resolve_transport_route(route![(transport.transport_type(), "address")])
             .await;
         assert!(result.is_ok());
 
         // resolve a route with unknown transports
         let result = ctx
-            .resolve_transport_route(&flow_controls, route![(TransportType::new(1), "address")])
+            .resolve_transport_route(route![(TransportType::new(1), "address")])
             .await;
 
         assert!(result.is_err());
@@ -112,14 +100,11 @@ mod tests {
     #[ockam_macros::test(crate = "crate")]
     async fn test_resolve_route_only_single_hop_is_allowed(ctx: &mut Context) -> Result<()> {
         let result = ctx
-            .resolve_transport_route(
-                &FlowControls::default(),
-                route![
-                    (TransportType::new(1), "address1"),
-                    (LOCAL, "address2"),
-                    (TransportType::new(1), "address3")
-                ],
-            )
+            .resolve_transport_route(route![
+                (TransportType::new(1), "address1"),
+                (LOCAL, "address2"),
+                (TransportType::new(1), "address3")
+            ])
             .await
             .err();
 
@@ -139,11 +124,7 @@ mod tests {
         }
 
         /// This implementation simply marks each address as a local address
-        async fn resolve_address(
-            &self,
-            _flow_controls: &FlowControls,
-            address: Address,
-        ) -> Result<Address> {
+        async fn resolve_address(&self, address: Address) -> Result<Address> {
             Ok(Address::new(LOCAL, address.address()))
         }
     }

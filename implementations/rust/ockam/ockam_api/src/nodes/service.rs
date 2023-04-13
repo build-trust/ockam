@@ -23,7 +23,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, FlowControls};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone, LOCAL};
 use ockam_identity::TrustContext;
@@ -102,7 +102,6 @@ pub struct NodeManager {
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: Arc<dyn PolicyStorage>,
-    pub(crate) flow_controls: FlowControls,
 }
 
 impl NodeManager {
@@ -218,10 +217,6 @@ impl NodeManager {
         self.trust_context
             .as_ref()
             .ok_or_else(|| ApiError::generic("Trust context doesn't exist"))
-    }
-
-    pub fn flow_controls(&self) -> &FlowControls {
-        &self.flow_controls
     }
 }
 
@@ -341,8 +336,7 @@ impl NodeManager {
         // make sure that the configured identity exists in the repository
         identities_repository.update_identity(&identity).await?;
 
-        let flow_controls = FlowControls::default();
-        let medic = Medic::new(flow_controls.clone());
+        let medic = Medic::new();
         let sessions = medic.sessions();
 
         let mut s = Self {
@@ -370,7 +364,6 @@ impl NodeManager {
             },
             sessions,
             policies,
-            flow_controls,
         };
 
         info!("NodeManager::create: {}", s.node_name);
@@ -472,38 +465,38 @@ impl NodeManager {
             .async_try_clone()
             .await?;
 
-        let connection_instance =
-            ConnectionInstanceBuilder::new(connection.addr.clone(), connection.flow_controls)
-                .instantiate(ProjectInstantiator::new(
-                    context.clone(),
-                    node_manager.clone(),
-                    connection.timeout,
-                    connection.credential_name.map(|x| x.to_string()),
-                    connection.identity_name.map(|x| x.to_string()),
-                ))
-                .await?
-                .instantiate(PlainTcpInstantiator::new(tcp_transport))
-                .await?
-                .instantiate(SecureChannelInstantiator::new(
-                    context.clone(),
-                    node_manager.clone(),
-                    connection.timeout,
-                    connection.authorized_identities,
-                ))
-                .await?
-                .build();
+        let connection_instance = ConnectionInstanceBuilder::new(connection.addr.clone())
+            .instantiate(ProjectInstantiator::new(
+                context.clone(),
+                node_manager.clone(),
+                connection.timeout,
+                connection.credential_name.map(|x| x.to_string()),
+                connection.identity_name.map(|x| x.to_string()),
+            ))
+            .await?
+            .instantiate(PlainTcpInstantiator::new(tcp_transport))
+            .await?
+            .instantiate(SecureChannelInstantiator::new(
+                context.clone(),
+                node_manager.clone(),
+                connection.timeout,
+                connection.authorized_identities,
+            ))
+            .await?
+            .build();
 
         debug!("connected to {connection_instance:?}");
 
         // Every piece of the chain must be part of the session to allow communication
         for service in intermediary_services {
-            connection_instance.add_consumer(&service);
+            connection_instance.add_consumer(&context, &service);
         }
 
         if connection.add_default_consumers {
-            connection_instance.add_consumer(&DefaultAddress::SECURE_CHANNEL_LISTENER.into());
-            connection_instance.add_consumer(&DefaultAddress::UPPERCASE_SERVICE.into());
-            connection_instance.add_consumer(&DefaultAddress::ECHO_SERVICE.into());
+            connection_instance
+                .add_consumer(&context, &DefaultAddress::SECURE_CHANNEL_LISTENER.into());
+            connection_instance.add_consumer(&context, &DefaultAddress::UPPERCASE_SERVICE.into());
+            connection_instance.add_consumer(&context, &DefaultAddress::ECHO_SERVICE.into());
         }
 
         Ok(connection_instance)
@@ -730,7 +723,7 @@ impl NodeManagerWorker {
             }
             (Get, ["node", "outlet", alias]) => self.show_outlet(req, alias).await?.to_vec()?,
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,
-            (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
+            (Post, ["node", "outlet"]) => self.create_outlet(ctx, req, dec).await?.to_vec()?,
             (Delete, ["node", "outlet", alias]) => {
                 self.delete_outlet(req, alias).await?.to_vec()?
             }
@@ -856,7 +849,7 @@ impl Worker for NodeManagerWorker {
 
         ctx.start_worker(
             DefaultAddress::RPC_PROXY,
-            RpcProxyService::new(node_manager.flow_controls.clone()),
+            RpcProxyService::new(),
             AllowAll,
             AllowAll,
         )

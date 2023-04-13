@@ -27,6 +27,28 @@ pub async fn request<T>(
     #[allow(unused_variables)] struct_name: impl Into<Option<&str>>,
     route: impl Into<Route> + Display,
     req: RequestBuilder<'_, T>,
+) -> Result<Vec<u8>>
+where
+    T: Encode<()>,
+{
+    request_with_options(
+        ctx,
+        label,
+        struct_name,
+        route,
+        req,
+        MessageSendReceiveOptions::new(),
+    )
+    .await
+}
+
+/// Encode request header and body (if any), send the package to the server and returns its response.
+pub async fn request_with_options<T>(
+    ctx: &Context,
+    label: &str,
+    #[allow(unused_variables)] struct_name: impl Into<Option<&str>>,
+    route: impl Into<Route> + Display,
+    req: RequestBuilder<'_, T>,
     options: MessageSendReceiveOptions,
 ) -> Result<Vec<u8>>
 where
@@ -59,7 +81,6 @@ pub async fn request_with_local_info<T>(
     #[allow(unused_variables)] struct_name: impl Into<Option<&str>>,
     route: impl Into<Route> + Display,
     req: RequestBuilder<'_, T>,
-    options: MessageSendReceiveOptions,
 ) -> Result<(Vec<u8>, Vec<LocalInfo>)>
 where
     T: Encode<()>,
@@ -81,7 +102,7 @@ where
     // TODO: Check IdentityId is the same we sent message to?
     // TODO: Check response id matches request id?
     let resp = ctx
-        .send_and_receive_extended::<Vec<u8>>(route, buf, options)
+        .send_and_receive_extended::<Vec<u8>>(route, buf, MessageSendReceiveOptions::new())
         .await?;
     let local_info = resp.local_message().local_info().to_vec();
     let body = resp.body();

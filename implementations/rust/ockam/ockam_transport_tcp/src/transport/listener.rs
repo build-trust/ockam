@@ -13,12 +13,14 @@ impl TcpTransport {
     /// which port was actually bound.
     ///
     /// ```rust
+    /// use ockam_core::flow_control::FlowControls;
     /// use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?;
+    /// let flow_control_id = FlowControls::generate_id();
+    /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new(&flow_control_id)).await?;
     /// # Ok(()) }
     pub async fn listen(
         &self,

@@ -9,7 +9,7 @@ use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_identity::IdentitiesVault;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_node::Context;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::error::ApiError;
@@ -81,12 +81,7 @@ impl NodeManagerWorker {
         if request.oneway {
             node_manager
                 .credentials_service()
-                .present_credential(
-                    ctx,
-                    route,
-                    credential,
-                    MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
-                )
+                .present_credential(ctx, route, credential)
                 .await?;
         } else {
             node_manager
@@ -100,7 +95,6 @@ impl NodeManagerWorker {
                         .await?
                         .as_slice(),
                     credential,
-                    MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
                 )
                 .await?;
         }

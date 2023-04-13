@@ -100,12 +100,6 @@ impl NodeManagerWorker {
             "Creating inlet portal"
         }
 
-        let flow_controls;
-        {
-            let node_manager = self.node_manager.read().await;
-            flow_controls = node_manager.flow_controls.clone();
-        }
-
         // The addressing scheme is very flexible. Typically the node connects to
         // the cloud via secure channel and the with another secure channel via
         // forwarder to the actual outlet on the target node. However it is also
@@ -117,7 +111,7 @@ impl NodeManagerWorker {
                 .wait_for_outlet_duration()
                 .unwrap_or(Duration::from_secs(5));
 
-            let connection = Connection::new(ctx, req.outlet_addr(), &flow_controls)
+            let connection = Connection::new(ctx, req.outlet_addr())
                 .with_authorized_identity(req.authorized())
                 .with_timeout(duration);
 
@@ -135,7 +129,7 @@ impl NodeManagerWorker {
         // prefix services needs to be part of the session
         // suffix services are remote so we can safely ignore them
         for address in req.prefix_route().iter() {
-            connection_instance.add_consumer(address);
+            connection_instance.add_consumer(ctx, address);
         }
 
         let outlet_route = route![
@@ -172,9 +166,7 @@ impl NodeManagerWorker {
             .access_control(&resource, &actions::HANDLE_MESSAGE, project_id, None)
             .await?;
 
-        let options = TcpInletOptions::new()
-            .with_incoming_access_control(access_control.clone())
-            .as_consumer(&flow_controls);
+        let options = TcpInletOptions::new().with_incoming_access_control(access_control.clone());
 
         let res = node_manager
             .tcp_transport
@@ -316,6 +308,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_outlet<'a>(
         &mut self,
+        ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
@@ -349,12 +342,11 @@ impl NodeManagerWorker {
         let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
 
         // Accept messages from the default secure channel listener
-        let options = if let Some(flow_control_id) = node_manager
-            .flow_controls
+        let options = if let Some(flow_control_id) = ctx
+            .flow_controls()
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
         {
             options.as_consumer(
-                &node_manager.flow_controls,
                 &flow_control_id,
                 FlowControlPolicy::SpawnerAllowMultipleMessages,
             )
@@ -532,11 +524,10 @@ fn replacer(
                 {
                     debug!("cannot stop inlet `{inlet_address}`: {error}");
                 }
-                let flow_controls = node_manager.flow_controls.clone();
                 drop(node_manager);
 
                 // Now a connection attempt is made:
-                let connection = Connection::new(ctx.as_ref(), &addr, &flow_controls)
+                let connection = Connection::new(ctx.as_ref(), &addr)
                     .with_authorized_identity(auth)
                     .with_timeout(MAX_CONNECT_TIME);
 
@@ -546,7 +537,7 @@ fn replacer(
                 *connection_instance_arc.lock().unwrap() = new_connection_instance.clone();
 
                 for address in prefix_route.iter() {
-                    new_connection_instance.add_consumer(address);
+                    new_connection_instance.add_consumer(&ctx, address);
                 }
 
                 //we expect a fully normalized MultiAddr
@@ -559,9 +550,7 @@ fn replacer(
 
                 let node_manager = node_manager_arc.write().await;
 
-                let options = TcpInletOptions::new()
-                    .with_incoming_access_control(access)
-                    .as_consumer(&flow_controls);
+                let options = TcpInletOptions::new().with_incoming_access_control(access);
 
                 // Finally attempt to create a new inlet using the new route:
                 let new_inlet_address = node_manager

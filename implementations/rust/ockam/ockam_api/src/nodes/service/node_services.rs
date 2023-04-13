@@ -674,9 +674,7 @@ impl NodeManagerWorker {
     ) -> Result<()> {
         debug!("project_multiaddr: {}", project_multiaddr.to_string());
 
-        let secure_channels;
-        let flow_controls;
-        {
+        let secure_channels = {
             // override default policy to allow incoming packets from the project
             let node_manager = self.node_manager.read().await;
             let (_addr, identity_identifier) = node_manager.resolve_project(&project_name)?;
@@ -692,15 +690,11 @@ impl NodeManagerWorker {
                 )
                 .await?;
 
-            secure_channels = node_manager.secure_channels.clone();
-            flow_controls = node_manager.flow_controls.clone();
-        }
+            node_manager.secure_channels.clone()
+        };
 
-        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
-            secure_channels,
-            project_multiaddr.clone(),
-            &flow_controls,
-        );
+        let secure_channel_controller =
+            KafkaSecureChannelControllerImpl::new(secure_channels, project_multiaddr.clone());
 
         if let KafkaServiceKind::Consumer = kind {
             secure_channel_controller
@@ -735,17 +729,11 @@ impl NodeManagerWorker {
         )
         .await?;
 
-        let flow_controls = {
-            let node_manager = self.node_manager.write().await;
-            node_manager.flow_controls.clone()
-        };
-
         KafkaPortalListener::create(
             context,
             inlet_controller,
             secure_channel_controller.into_trait(),
             local_interceptor_address.clone(),
-            flow_controls,
         )
         .await?;
 

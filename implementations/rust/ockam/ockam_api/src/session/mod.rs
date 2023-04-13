@@ -5,10 +5,8 @@ use crate::DefaultAddress;
 use minicbor::{Decode, Encode};
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
-use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
-use ockam_core::{
-    route, Address, AllowAll, Decodable, DenyAll, Encodable, Error, Result, Routed, LOCAL,
-};
+use ockam_core::flow_control::FlowControlPolicy;
+use ockam_core::{route, Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
 use ockam_node::tokio;
 use ockam_node::tokio::sync::mpsc;
 use ockam_node::tokio::task::JoinSet;
@@ -27,7 +25,6 @@ pub struct Medic {
     sessions: Arc<Mutex<Sessions>>,
     pings: JoinSet<(Key, Result<(), Error>)>,
     replacements: JoinSet<(Key, Result<Route, Error>)>,
-    flow_controls: FlowControls,
 }
 
 #[derive(Debug, Copy, Clone, Encode, Decode)]
@@ -38,14 +35,13 @@ pub struct Message {
 }
 
 impl Medic {
-    pub fn new(flow_controls: FlowControls) -> Self {
+    pub fn new() -> Self {
         Self {
             retry_delay: RETRY_DELAY,
             delay: DELAY,
             sessions: Arc::new(Mutex::new(Sessions::new())),
             pings: JoinSet::new(),
             replacements: JoinSet::new(),
-            flow_controls,
         }
     }
 
@@ -98,13 +94,13 @@ impl Medic {
                                     continue;
                                 }
                             };
-                            if let Some(flow_control_id) = self
-                                .flow_controls
+                            if let Some(flow_control_id) = ctx
+                                .flow_controls()
                                 .find_flow_control_with_producer_address(next)
                                 .map(|x| x.flow_control_id().clone())
                             {
-                                self.flow_controls.add_consumer(
-                                    &Collector::address(),
+                                ctx.flow_controls().add_consumer(
+                                    Collector::address(),
                                     &flow_control_id,
                                     FlowControlPolicy::ProducerAllowMultiple,
                                 );
