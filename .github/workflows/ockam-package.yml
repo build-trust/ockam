@@ -48,7 +48,7 @@ jobs:
           mkdir assets && cd assets
           gh release download ${{ github.event.inputs.tag }} -R ${ORGANIZATION}/ockam
 
-      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           path: ockam
 
@@ -120,7 +120,7 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
 
       - uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         with:
