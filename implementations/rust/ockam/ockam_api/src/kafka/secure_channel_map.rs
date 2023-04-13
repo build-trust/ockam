@@ -10,9 +10,8 @@ use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControls;
+use ockam_core::Message;
 use ockam_core::{async_trait, route, Address, AllowAll, Error, Result, Routed, Worker};
-use ockam_core::{Any, Message};
 use ockam_identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
     SecureChannelRegistryEntry, SecureChannels,
@@ -20,7 +19,7 @@ use ockam_identity::{
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::tokio::sync::Mutex;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 
 pub(crate) struct KafkaEncryptedContent {
@@ -142,7 +141,6 @@ struct SecureChannelIdentifierMessage {
 
 pub(crate) struct KafkaSecureChannelControllerImpl<F: ForwarderCreator> {
     inner: Arc<Mutex<InnerSecureChannelControllerImpl<F>>>,
-    flow_controls: FlowControls,
 }
 
 //had to manually implement since #[derive(Clone)] doesn't work well in this situation
@@ -150,7 +148,6 @@ impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
-            flow_controls: self.flow_controls.clone(),
         }
     }
 }
@@ -173,7 +170,6 @@ impl KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
     pub(crate) fn new(
         secure_channels: Arc<SecureChannels>,
         project_multiaddr: MultiAddr,
-        flow_controls: &FlowControls,
     ) -> KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
         let mut orchestrator_multiaddr = project_multiaddr.clone();
         orchestrator_multiaddr
@@ -185,7 +181,6 @@ impl KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
             NodeManagerForwarderCreator {
                 orchestrator_multiaddr,
             },
-            flow_controls,
         )
     }
 }
@@ -196,7 +191,6 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         secure_channels: Arc<SecureChannels>,
         project_multiaddr: MultiAddr,
         forwarder_creator: F,
-        flow_controls: &FlowControls,
     ) -> KafkaSecureChannelControllerImpl<F> {
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
@@ -207,7 +201,6 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 forwarder_creator,
                 project_multiaddr,
             })),
-            flow_controls: flow_controls.clone(),
         }
     }
 
@@ -351,13 +344,12 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 //secure channel, and wait to an empty reply to avoid race conditions
                 //on the order of encryption/decryption of messages
                 context
-                    .send_and_receive_extended::<Any>(
+                    .send_and_receive(
                         route![
                             encryptor_address.clone(),
                             KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS
                         ],
                         message,
-                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
                     )
                     .await?;
 

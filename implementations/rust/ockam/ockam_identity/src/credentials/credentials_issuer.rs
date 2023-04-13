@@ -6,7 +6,6 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{api, Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
@@ -143,12 +142,5 @@ impl CredentialsIssuerClient {
     /// Return a credential for the identity which initiated the secure channel
     pub async fn credential(&self) -> Result<Credential> {
         self.client.request(&Request::post("/")).await
-    }
-
-    /// Specify the flow controls to use for the RpcClient
-    pub fn with_flow_controls(self, flow_controls: &FlowControls) -> Self {
-        Self {
-            client: self.client.with_flow_controls(flow_controls),
-        }
     }
 }

@@ -89,8 +89,8 @@ impl SecureChannels {
         let route = route.into();
         let next = route.next()?;
         let options = options.into();
-        options.setup_flow_control(&addresses, next)?;
-        let access_control = options.create_access_control();
+        options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
+        let access_control = options.create_access_control(ctx.flow_controls());
 
         InitiatorWorker::create(
             ctx,

@@ -1,4 +1,5 @@
 use ockam_core::compat::sync::Arc;
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
 
 use crate::{debugger, Context, Executor};
@@ -49,6 +50,9 @@ impl NodeBuilder {
         let mut exe = Executor::new();
         let addr: Address = "app".into();
 
+        // Shared instance of FlowControls
+        let flow_controls = FlowControls::new();
+
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.
         let (ctx, sender, _) = Context::new(
@@ -60,6 +64,7 @@ impl NodeBuilder {
             ),
             None,
             Default::default(),
+            &flow_controls,
         );
 
         debugger::log_inherit_context("NODE", &ctx, &ctx);

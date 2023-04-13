@@ -2,7 +2,7 @@ use crate::common::{
     message_should_not_pass, message_should_not_pass_with_ctx, message_should_pass_with_ctx,
 };
 use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
-use ockam_core::{route, Address, AllowAll, Result};
+use ockam_core::{route, AllowAll, Result};
 use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
@@ -10,15 +10,12 @@ use std::time::Duration;
 
 mod common;
 
-// Alice: Secure Channel. With flow_control
-// Bob: Secure Channel listener. With flow_control
+// Alice: Secure Channel
+// Bob: Secure Channel listener
 #[ockam_macros::test]
 async fn test1(ctx: &mut Context) -> Result<()> {
-    let flow_controls_alice = FlowControls::default();
-    let flow_control_id_alice_channel = flow_controls_alice.generate_id();
-
-    let flow_controls_bob = FlowControls::default();
-    let flow_control_id_bob_channel = flow_controls_bob.generate_id();
+    let flow_control_id_alice_channel = FlowControls::generate_id();
+    let flow_control_id_bob_channel = FlowControls::generate_id();
 
     let alice_secure_channels = secure_channels();
     let bob_secure_channels = secure_channels();
@@ -39,10 +36,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
             ctx,
             &bob.identifier(),
             "listener",
-            SecureChannelListenerOptions::as_spawner(
-                &flow_controls_bob,
-                &flow_control_id_bob_channel,
-            ),
+            SecureChannelListenerOptions::new(&flow_control_id_bob_channel),
         )
         .await?;
 
@@ -51,7 +45,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
             ctx,
             &alice.identifier(),
             route!["listener"],
-            SecureChannelOptions::as_producer(&flow_controls_alice, &flow_control_id_alice_channel),
+            SecureChannelOptions::as_producer(&flow_control_id_alice_channel),
         )
         .await?;
 
@@ -66,8 +60,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 
     let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, &channel_to_bob, &mut bob_ctx).await?;
-    flow_controls_bob.add_consumer(
-        &Address::from("bob_ctx"),
+    ctx.flow_controls().add_consumer(
+        "bob_ctx",
         &flow_control_id_bob_channel,
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
@@ -75,8 +69,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 
     let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
-    flow_controls_alice.add_consumer(
-        &Address::from("alice_ctx"),
+    ctx.flow_controls().add_consumer(
+        "alice_ctx",
         &flow_control_id_alice_channel,
         FlowControlPolicy::ProducerAllowMultiple,
     );
@@ -85,17 +79,14 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     ctx.stop().await
 }
 
-// Alice: TCP connection + Secure Channel. With flow_control
-// Bob: TCP listener + Secure Channel listener. With flow_control
+// Alice: TCP connection + Secure Channel
+// Bob: TCP listener + Secure Channel listener
 #[ockam_macros::test]
 async fn test2(ctx: &mut Context) -> Result<()> {
-    let flow_controls_alice = FlowControls::default();
-    let flow_control_id_alice_tcp = flow_controls_alice.generate_id();
-    let flow_control_id_alice_plaintext = flow_controls_alice.generate_id();
+    let flow_control_id_alice_plaintext = FlowControls::generate_id();
 
-    let flow_controls_bob = FlowControls::default();
-    let flow_control_id_bob_tcp = flow_controls_bob.generate_id();
-    let flow_control_id_bob_plaintext = flow_controls_bob.generate_id();
+    let flow_control_id_bob_tcp = FlowControls::generate_id();
+    let flow_control_id_bob_plaintext = FlowControls::generate_id();
 
     let tcp_alice = TcpTransport::create(ctx).await?;
     let tcp_bob = TcpTransport::create(ctx).await?;
@@ -103,15 +94,12 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let (socket_addr, _) = tcp_bob
         .listen(
             "127.0.0.1:0",
-            TcpListenerOptions::as_spawner(&flow_controls_bob, &flow_control_id_bob_tcp),
+            TcpListenerOptions::new(&flow_control_id_bob_tcp),
         )
         .await?;
 
     let connection_to_bob = tcp_alice
-        .connect(
-            socket_addr.to_string(),
-            TcpConnectionOptions::as_producer(&flow_controls_alice, &flow_control_id_alice_tcp),
-        )
+        .connect(socket_addr.to_string(), TcpConnectionOptions::new())
         .await?;
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
@@ -142,12 +130,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
             ctx,
             &bob.identifier(),
             "listener",
-            SecureChannelListenerOptions::as_spawner(
-                &flow_controls_bob,
-                &flow_control_id_bob_plaintext,
-            )
-            .as_consumer_with_flow_control_id(
-                &flow_controls_bob,
+            SecureChannelListenerOptions::new(&flow_control_id_bob_plaintext).as_consumer(
                 &flow_control_id_bob_tcp,
                 FlowControlPolicy::SpawnerAllowOnlyOneMessage,
             ),
@@ -159,11 +142,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
             ctx,
             &alice.identifier(),
             route![connection_to_bob, "listener"],
-            SecureChannelOptions::as_producer(
-                &flow_controls_alice,
-                &flow_control_id_alice_plaintext,
-            )
-            .as_consumer(&flow_controls_alice),
+            SecureChannelOptions::as_producer(&flow_control_id_alice_plaintext),
         )
         .await?;
 
@@ -181,8 +160,8 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, &channel_to_bob, &mut bob_ctx).await?;
-    flow_controls_bob.add_consumer(
-        &Address::from("bob_ctx"),
+    ctx.flow_controls().add_consumer(
+        "bob_ctx",
         &flow_control_id_bob_plaintext,
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
@@ -190,8 +169,8 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
-    flow_controls_alice.add_consumer(
-        &Address::from("alice_ctx"),
+    ctx.flow_controls().add_consumer(
+        "alice_ctx",
         &flow_control_id_alice_plaintext,
         FlowControlPolicy::ProducerAllowMultiple,
     );

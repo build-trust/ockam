@@ -15,11 +15,9 @@ async fn main(ctx: Context) -> Result<()> {
     let connection_to_middle_node = tcp.connect("localhost:3000", TcpConnectionOptions::new()).await?;
 
     // Send a message to the "echoer" worker, on a different node, over two tcp hops.
-    let r = route![connection_to_middle_node, "forward_to_responder", "echoer"];
-    node.send(r, "Hello Ockam!".to_string()).await?;
-
     // Wait to receive a reply and print it.
-    let reply = node.receive::<String>().await?;
+    let r = route![connection_to_middle_node, "forward_to_responder", "echoer"];
+    let reply = node.send_and_receive::<String>(r, "Hello Ockam!".to_string()).await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.

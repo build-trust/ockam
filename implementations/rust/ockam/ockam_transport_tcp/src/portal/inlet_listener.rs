@@ -84,8 +84,11 @@ impl Processor for TcpInletListenProcessor {
         let addresses = Addresses::generate(PortalType::Inlet);
         let outlet_listener_route = self.outlet_listener_route.clone();
 
-        self.options
-            .setup_flow_control(&addresses, outlet_listener_route.next()?)?;
+        self.options.setup_flow_control(
+            ctx.flow_controls(),
+            &addresses,
+            outlet_listener_route.next()?,
+        );
 
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
         TcpPortalWorker::start_new_inlet(

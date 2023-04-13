@@ -3,8 +3,8 @@ mod project;
 mod secure;
 
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::flow_control::FlowControlPolicy::ProducerAllowMultiple;
-use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{async_trait, route, Address, CowStr, Route, LOCAL};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Service;
@@ -25,11 +25,10 @@ pub struct Connection<'a> {
     pub authorized_identities: Option<Vec<IdentityIdentifier>>,
     pub timeout: Option<Duration>,
     pub add_default_consumers: bool,
-    pub flow_controls: FlowControls,
 }
 
 impl<'a> Connection<'a> {
-    pub fn new(ctx: &'a Context, addr: &'a MultiAddr, flow_controls: &FlowControls) -> Self {
+    pub fn new(ctx: &'a Context, addr: &'a MultiAddr) -> Self {
         Self {
             ctx,
             addr,
@@ -38,7 +37,6 @@ impl<'a> Connection<'a> {
             authorized_identities: None,
             timeout: None,
             add_default_consumers: false,
-            flow_controls: flow_controls.clone(),
         }
     }
 
@@ -85,16 +83,17 @@ pub struct ConnectionInstance {
     pub tcp_worker: Option<Address>,
     /// If a flow control was created
     pub flow_control_id: Option<FlowControlId>,
-    /// Flow controls
-    pub flow_controls: FlowControls,
 }
 
 impl ConnectionInstance {
     /// Shorthand to add the address as consumer to the flow control
-    pub fn add_consumer(&self, address: &Address) {
+    pub fn add_consumer(&self, context: &Context, address: &Address) {
         if let Some(flow_control_id) = &self.flow_control_id {
-            self.flow_controls
-                .add_consumer(address, flow_control_id, ProducerAllowMultiple);
+            context.flow_controls().add_consumer(
+                address.clone(),
+                flow_control_id,
+                ProducerAllowMultiple,
+            );
         }
     }
 }
@@ -121,7 +120,6 @@ pub struct ConnectionInstanceBuilder {
     original_multiaddr: MultiAddr,
     pub current_multiaddr: MultiAddr,
     pub transport_route: Route,
-    pub flow_controls: FlowControls,
     pub flow_control_id: Option<FlowControlId>,
     pub secure_channel_encryptors: Vec<Address>,
     pub tcp_worker: Option<Address>,
@@ -178,7 +176,7 @@ pub trait Instantiator: Send + Sync + 'static {
 }
 
 impl ConnectionInstanceBuilder {
-    pub fn new(multi_addr: MultiAddr, flow_controls: FlowControls) -> Self {
+    pub fn new(multi_addr: MultiAddr) -> Self {
         ConnectionInstanceBuilder {
             transport_route: route![],
             original_multiaddr: multi_addr.clone(),
@@ -186,7 +184,6 @@ impl ConnectionInstanceBuilder {
             secure_channel_encryptors: vec![],
             flow_control_id: None,
             tcp_worker: None,
-            flow_controls,
         }
     }
 
@@ -198,7 +195,6 @@ impl ConnectionInstanceBuilder {
             secure_channel_encryptors: self.secure_channel_encryptors,
             tcp_worker: self.tcp_worker,
             flow_control_id: self.flow_control_id,
-            flow_controls: self.flow_controls,
         }
     }
 
@@ -253,7 +249,6 @@ impl ConnectionInstanceBuilder {
             current_multiaddr: self.current_multiaddr,
             flow_control_id: self.flow_control_id,
             tcp_worker: self.tcp_worker,
-            flow_controls: self.flow_controls,
         })
     }
 

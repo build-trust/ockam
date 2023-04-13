@@ -1,4 +1,5 @@
 use ockam::{Address, Any, Context, LocalMessage, Result, Routed, Worker};
+use ockam_core::flow_control::FlowControlPolicy;
 
 pub struct Forwarder(pub Address);
 
@@ -21,8 +22,26 @@ impl Worker for Forwarder {
             .pop_front() // Remove my address from the onward_route
             .prepend(self.0.clone()); // Prepend predefined address to the onward_route
 
+        let prev_hop = transport_message.return_route.next()?.clone();
+
         // Wipe all local info (e.g. transport types)
         let message = LocalMessage::new(transport_message, vec![]);
+
+        if let Some(info) = ctx.flow_controls().find_flow_control_with_producer_address(&self.0) {
+            ctx.flow_controls().add_consumer(
+                prev_hop.clone(),
+                info.flow_control_id(),
+                FlowControlPolicy::ProducerAllowMultiple,
+            );
+        }
+
+        if let Some(info) = ctx.flow_controls().find_flow_control_with_producer_address(&prev_hop) {
+            ctx.flow_controls().add_consumer(
+                self.0.clone(),
+                info.flow_control_id(),
+                FlowControlPolicy::ProducerAllowMultiple,
+            );
+        }
 
         // Send the message on its onward_route
         ctx.forward(message).await

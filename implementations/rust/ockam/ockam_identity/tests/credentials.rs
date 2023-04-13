@@ -2,14 +2,15 @@ use std::sync::atomic::{AtomicI8, Ordering};
 use std::time::Duration;
 
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, AllowAll, Any, DenyAll, Mailboxes};
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
+use ockam_core::{async_trait, Any, DenyAll};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::{
     AuthorityService, CredentialAccessControl, CredentialData, CredentialsMemoryRetriever,
     SecureChannelListenerOptions, SecureChannelOptions, TrustContext, TrustIdentifierPolicy,
 };
-use ockam_node::{Context, MessageSendReceiveOptions, WorkerBuilder};
+use ockam_node::{Context, WorkerBuilder};
 
 #[ockam_macros::test]
 async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
@@ -24,12 +25,13 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let server = identities_creation.create_identity().await?;
     let client = identities_creation.create_identity().await?;
 
+    let sc_flow_control_id = FlowControls::generate_id();
     secure_channels
         .create_secure_channel_listener(
             ctx,
             &server.identifier(),
             "listener",
-            SecureChannelListenerOptions::new(),
+            SecureChannelListenerOptions::new(&sc_flow_control_id),
         )
         .await?;
 
@@ -43,6 +45,11 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         )),
     );
 
+    ctx.flow_controls().add_consumer(
+        "credential_exchange",
+        &sc_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
     credentials_service
         .start(
             ctx,
@@ -72,12 +79,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .await?;
 
     credentials_service
-        .present_credential(
-            ctx,
-            route![channel, "credential_exchange"],
-            credential,
-            MessageSendReceiveOptions::new(),
-        )
+        .present_credential(ctx, route![channel, "credential_exchange"], credential)
         .await?;
 
     let attrs = identities_repository
@@ -112,12 +114,13 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .issue_credential(&authority.identifier(), credential_data)
         .await?;
 
+    let sc_flow_control_id = FlowControls::generate_id();
     secure_channels
         .create_secure_channel_listener(
             ctx,
             &client1.identifier(),
             "listener",
-            SecureChannelListenerOptions::new(),
+            SecureChannelListenerOptions::new(&sc_flow_control_id),
         )
         .await?;
     let trust_context = TrustContext::new(
@@ -129,6 +132,12 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             Some(Arc::new(CredentialsMemoryRetriever::new(credential))),
         )),
     );
+    ctx.flow_controls().add_consumer(
+        "credential_exchange",
+        &sc_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
+
     credentials_service
         .start(
             ctx,
@@ -161,7 +170,6 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             route![channel, "credential_exchange"],
             trust_context.authorities().await?.as_slice(),
             credential,
-            MessageSendReceiveOptions::new(),
         )
         .await?;
 
@@ -195,12 +203,13 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let server = identities_creation.create_identity().await?;
     let client = identities_creation.create_identity().await?;
 
+    let sc_flow_control_id = FlowControls::generate_id();
     secure_channels
         .create_secure_channel_listener(
             ctx,
             &server.identifier(),
             "listener",
-            SecureChannelListenerOptions::new(),
+            SecureChannelListenerOptions::new(&sc_flow_control_id),
         )
         .await?;
 
@@ -212,6 +221,12 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
             authority.identifier(),
             None,
         )),
+    );
+
+    ctx.flow_controls().add_consumer(
+        "credential_exchange",
+        &sc_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
     credentials_service
@@ -251,6 +266,12 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let access_control =
         CredentialAccessControl::new(&required_attributes, identities_repository.clone());
 
+    ctx.flow_controls().add_consumer(
+        "counter",
+        &sc_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
+
     WorkerBuilder::with_access_control(
         Arc::new(access_control),
         Arc::new(DenyAll),
@@ -262,16 +283,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 
-    let child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
-
-    child_ctx
-        .send(route![channel.clone(), "counter"], "Hello".to_string())
+    ctx.send(route![channel.clone(), "counter"], "Hello".to_string())
         .await?;
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
@@ -281,12 +293,10 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
             ctx,
             route![channel.clone(), "credential_exchange"],
             credential,
-            MessageSendReceiveOptions::new(),
         )
         .await?;
 
-    child_ctx
-        .send(route![channel, "counter"], "Hello".to_string())
+    ctx.send(route![channel, "counter"], "Hello".to_string())
         .await?;
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 1);
