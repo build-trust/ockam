@@ -283,9 +283,21 @@ impl Authority {
     }
 
     /// Start an echo service
-    pub async fn start_echo_service(&self, ctx: &Context) -> Result<()> {
-        ctx.start_worker(DefaultAddress::ECHO_SERVICE, Echoer, AllowAll, AllowAll)
-            .await
+    pub async fn start_echo_service(
+        &self,
+        ctx: &Context,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
+    ) -> Result<()> {
+        let address = DefaultAddress::ECHO_SERVICE;
+
+        flow_controls.add_consumer(
+            &Address::from_string(address),
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
+
+        ctx.start_worker(address, Echoer, AllowAll, AllowAll).await
     }
 }
 

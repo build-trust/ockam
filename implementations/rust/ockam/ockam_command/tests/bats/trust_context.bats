@@ -130,8 +130,14 @@ teardown() {
 
   $OCKAM node create --identity alice --tcp-listener-address 127.0.0.1:$port --trust-context ./trust_context.json
 
+  # send a message to alice using the trust context
   msg=$(random_str)
   run "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context ./trust_context.json $msg
+  assert_success
+  assert_output "$msg"
+
+  # send a message to authority node echo service to make sure we can use it as a healthcheck endpoint
+  run "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/4200/secure/api/service/echo $msg
   assert_success
   assert_output "$msg"
 

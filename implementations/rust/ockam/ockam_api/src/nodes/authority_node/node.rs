@@ -57,7 +57,9 @@ pub async fn start_node(ctx: &Context, configuration: &Configuration) -> Result<
         .await?;
 
     // start an echo service so that the node can be queried as healthy
-    authority.start_echo_service(ctx).await?;
+    authority
+        .start_echo_service(ctx, &flow_controls, &secure_channel_flow_control_id)
+        .await?;
 
     info!(
         "Authority node started with identity\n{}",
