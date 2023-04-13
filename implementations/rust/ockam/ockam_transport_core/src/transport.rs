@@ -1,5 +1,4 @@
 use ockam_core::compat::boxed::Box;
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{async_trait, Address, Result, TransportType};
 
 /// Generic representation of a Transport
@@ -13,9 +12,5 @@ pub trait Transport: Send + Sync + 'static {
 
     /// Instantiate transport workers for in order to communicate with a remote address
     /// and return the local address of the transport worker
-    async fn resolve_address(
-        &self,
-        flow_controls: &FlowControls,
-        address: Address,
-    ) -> Result<Address>;
+    async fn resolve_address(&self, address: Address) -> Result<Address>;
 }

@@ -35,19 +35,7 @@ impl IdentityChannelListener {
         address: Address,
         options: SecureChannelListenerOptions,
     ) -> Result<()> {
-        if let Some(ciphertext_flow_control) = &options.consumer_flow_control {
-            if let Some(info) = &ciphertext_flow_control.info {
-                ciphertext_flow_control.flow_controls.add_consumer(
-                    &address,
-                    &info.flow_control_id,
-                    info.flow_control_policy,
-                );
-            }
-        }
-
-        if let Some((flow_controls, flow_control_id)) = &options.channels_producer_flow_control {
-            flow_controls.add_spawner(&address, flow_control_id);
-        }
+        options.setup_flow_control_for_listener(ctx.flow_controls(), &address);
 
         let listener = Self::new(secure_channels.clone(), identifier.clone(), options);
 
@@ -73,26 +61,15 @@ impl Worker for IdentityChannelListener {
         ctx: &mut Self::Context,
         message: Routed<Self::Message>,
     ) -> Result<()> {
-        // Check if the Worker that send us this message is a Producer
-        // If yes - decryptor will be added to that flow_control to be able to receive further messages
-        // from that Producer
-        let flow_control_id =
-            if let Some(ciphertext_flow_control) = &self.options.consumer_flow_control {
-                ciphertext_flow_control
-                    .flow_controls
-                    .get_flow_control_with_producer(&message.src_addr())
-                    .map(|x| x.flow_control_id().clone())
-            } else {
-                None
-            };
-
         let addresses = Addresses::generate(Role::Responder);
-        let flow_control_id = self
-            .options
-            .setup_flow_control(&addresses, flow_control_id)?;
+        let flow_control_id = self.options.setup_flow_control_for_channel(
+            ctx.flow_controls(),
+            &addresses,
+            &message.src_addr(),
+        );
         let access_control = self
             .options
-            .create_access_control(flow_control_id.clone())?;
+            .create_access_control(ctx.flow_controls(), flow_control_id);
 
         let credentials = if self.options.credentials.is_empty() {
             if let Some(trust_context) = &self.options.trust_context {

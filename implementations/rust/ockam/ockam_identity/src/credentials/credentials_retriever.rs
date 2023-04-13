@@ -51,7 +51,6 @@ impl CredentialsRetriever for CredentialsMemoryRetriever {
 pub struct RemoteCredentialsRetriever {
     secure_channels: Arc<SecureChannels>,
     issuer: RemoteCredentialsRetrieverInfo,
-    flow_controls: FlowControls,
 }
 
 impl RemoteCredentialsRetriever {
@@ -59,12 +58,10 @@ impl RemoteCredentialsRetriever {
     pub fn new(
         secure_channels: Arc<SecureChannels>,
         issuer: RemoteCredentialsRetrieverInfo,
-        flow_controls: FlowControls,
     ) -> Self {
         Self {
             secure_channels,
             issuer,
-            flow_controls,
         }
     }
 }
@@ -78,7 +75,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
     ) -> Result<Credential> {
         debug!("Getting credential from : {}", &self.issuer.route);
         let resolved_route = ctx
-            .resolve_transport_route(&self.flow_controls, self.issuer.route.clone())
+            .resolve_transport_route(self.issuer.route.clone())
             .await?;
         trace!(
             "Getting credential from resolved route: {}",
@@ -88,9 +85,8 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
         let allowed = vec![self.issuer.identifier.clone()];
         debug!("Create secure channel to authority");
 
-        let flow_control_id = self.flow_controls.generate_id();
-        let options = SecureChannelOptions::as_producer(&self.flow_controls, &flow_control_id)
-            .as_consumer(&self.flow_controls)
+        let flow_control_id = FlowControls::generate_id();
+        let options = SecureChannelOptions::as_producer(&flow_control_id)
             .with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed));
 
         let sc = self
@@ -102,8 +98,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
 
         let client =
             CredentialsIssuerClient::new(route![sc, self.issuer.service_address.clone()], ctx)
-                .await?
-                .with_flow_controls(&self.flow_controls);
+                .await?;
 
         let credential = client.credential().await?;
         Ok(credential)

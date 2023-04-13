@@ -12,7 +12,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, AllowAll, Error, Mailboxes, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
-use ockam_node::{Context, MessageSendReceiveOptions, WorkerBuilder};
+use ockam_node::{Context, WorkerBuilder};
 
 /// This trait allows an identity to send its credential to another identity
 /// located at the end of a secure channel route
@@ -27,7 +27,6 @@ pub trait CredentialsServer: Send + Sync {
         route: Route,
         authorities: &[Identity],
         credential: Credential,
-        options: MessageSendReceiveOptions,
     ) -> Result<()>;
 
     /// Present credential to other party, route shall use secure channel
@@ -36,7 +35,6 @@ pub trait CredentialsServer: Send + Sync {
         ctx: &Context,
         route: Route,
         credential: Credential,
-        options: MessageSendReceiveOptions,
     ) -> Result<()>;
 
     /// Start this service as a worker
@@ -65,7 +63,6 @@ impl CredentialsServer for CredentialsServerModule {
         route: Route,
         authorities: &[Identity],
         credential: Credential,
-        options: MessageSendReceiveOptions,
     ) -> Result<()> {
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
@@ -74,7 +71,6 @@ impl CredentialsServer for CredentialsServerModule {
             None,
             route,
             Request::post(path).body(credential),
-            options,
         )
         .await?;
 
@@ -116,7 +112,6 @@ impl CredentialsServer for CredentialsServerModule {
         ctx: &Context,
         route: Route,
         credential: Credential,
-        options: MessageSendReceiveOptions,
     ) -> Result<()> {
         let buf = request(
             ctx,
@@ -124,7 +119,6 @@ impl CredentialsServer for CredentialsServerModule {
             None,
             route,
             Request::post("actions/present").body(credential),
-            options,
         )
         .await?;
 

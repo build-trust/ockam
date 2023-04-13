@@ -6,7 +6,7 @@ use ockam::identity::{
     SecureChannelOptions, TrustContext, TrustMultiIdentifiersPolicy,
 };
 use ockam::remote::RemoteForwarderOptions;
-use ockam::{node, route, Context, MessageSendReceiveOptions, Result, TcpOutletOptions};
+use ockam::{node, route, Context, Result, TcpOutletOptions};
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_core::compat::sync::Arc;
@@ -62,17 +62,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Import the authority identity and route from the information file
     let project = import_project(project_information_path, node.identities()).await?;
 
-    let flow_controls = FlowControls::default();
-    let tcp_route = multiaddr_to_route(&project.authority_route(), &tcp, &flow_controls)
-        .await
-        .unwrap(); // FIXME: Handle error
+    let tcp_route = multiaddr_to_route(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
     let options = SecureChannelOptions::new()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.authority_identifier()]));
-    let options = if let Some(_flow_control_id) = tcp_route.flow_control_id {
-        options.as_consumer(&flow_controls)
-    } else {
-        options
-    };
+
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = node
@@ -88,9 +81,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     );
     token_acceptor.present_token(&token).await?;
 
-    let tcp_project_session = multiaddr_to_route(&project.authority_route(), &tcp, &flow_controls)
-        .await
-        .unwrap(); // FIXME: Handle error
+    let tcp_project_session = multiaddr_to_route(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
 
     // Create a trust context that will be used to authenticate credential exchanges
     let trust_context = TrustContext::new(
@@ -106,7 +97,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
                     tcp_project_session.route,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 ),
-                flow_controls.clone(),
             ))),
         )),
     );
@@ -143,16 +133,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 5. create a forwarder on the Ockam orchestrator
 
-    let tcp_project_route = multiaddr_to_route(&project.route(), &tcp, &flow_controls)
-        .await
-        .unwrap(); // FIXME: Handle error
+    let tcp_project_route = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
     let project_options =
         SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
-    let project_options = if let Some(_flow_control_id) = tcp_project_route.flow_control_id {
-        project_options.as_consumer(&flow_controls)
-    } else {
-        project_options
-    };
 
     // create a secure channel to the project first
     // we make sure that we indeed connect to the correct project on the Orchestrator
@@ -167,7 +150,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
             node.context(),
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
             credential,
-            MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
         )
         .await?;
 
@@ -179,8 +161,13 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 6. create a secure channel listener which will allow the edge node to
     //    start a secure channel when it is ready
-    node.create_secure_channel_listener(&control_plane, "untrusted", SecureChannelListenerOptions::new())
-        .await?;
+    let sc_flow_control_id = FlowControls::generate_id();
+    node.create_secure_channel_listener(
+        &control_plane,
+        "untrusted",
+        SecureChannelListenerOptions::new(&sc_flow_control_id),
+    )
+    .await?;
     println!("created a secure channel listener");
 
     // don't stop the node

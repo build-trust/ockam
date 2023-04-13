@@ -62,6 +62,7 @@ fn entry() -> ! {
 
 // - ockam::node entrypoint ---------------------------------------------------
 
+use ockam::flow_control::FlowControls;
 use ockam::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use ockam::{node, route, Context, Result};
 
@@ -72,8 +73,13 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    node.create_secure_channel_listener(&bob, "bob", SecureChannelListenerOptions::new())
-        .await?;
+    let flow_control_id = FlowControls::generate_id();
+    node.create_secure_channel_listener(
+        &bob,
+        "bob",
+        SecureChannelListenerOptions::new(&flow_control_id),
+    )
+    .await?;
 
     // Create an entity to represent Alice.
     let alice = node.create_identity().await?;

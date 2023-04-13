@@ -1,7 +1,8 @@
 use core::time::Duration;
 
 use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock, vec::Vec};
+use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock};
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AsyncTryClone, DenyAll, Error, IncomingAccessControl, Mailboxes,
@@ -60,6 +61,7 @@ impl Context {
         mailboxes: Mailboxes,
         async_drop_sender: Option<AsyncDropSender>,
         transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
+        flow_controls: &FlowControls,
     ) -> (Self, SenderPair, SmallReceiver<CtrlSignal>) {
         let (mailbox_tx, receiver) = message_channel();
         let (ctrl_tx, ctrl_rx) = small_channel();
@@ -72,6 +74,7 @@ impl Context {
                 async_drop_sender,
                 mailbox_count: Arc::new(0.into()),
                 transports,
+                flow_controls: flow_controls.clone(),
             },
             SenderPair {
                 msgs: mailbox_tx,
@@ -91,6 +94,7 @@ impl Context {
             mailboxes,
             None,
             self.transports.clone(),
+            &self.flow_controls,
         )
     }
 
@@ -105,22 +109,8 @@ impl Context {
             mailboxes,
             Some(drop_sender),
             self.transports.clone(),
+            &self.flow_controls,
         )
-    }
-
-    /// Return the primary address of the current worker
-    pub fn address(&self) -> Address {
-        self.mailboxes.main_address()
-    }
-
-    /// Return all addresses of the current worker
-    pub fn addresses(&self) -> Vec<Address> {
-        self.mailboxes.addresses()
-    }
-
-    /// Return a reference to the mailboxes of this context
-    pub fn mailboxes(&self) -> &Mailboxes {
-        &self.mailboxes
     }
 
     /// Utility function to sleep tasks from other crates
@@ -194,7 +184,6 @@ impl Context {
 
 #[cfg(test)]
 mod tests {
-    use ockam_core::flow_control::FlowControls;
     use ockam_core::{async_trait, Mailbox};
 
     use super::*;
@@ -225,11 +214,7 @@ mod tests {
             TransportType::new(0)
         }
 
-        async fn resolve_address(
-            &self,
-            _flow_controls: &FlowControls,
-            address: Address,
-        ) -> Result<Address> {
+        async fn resolve_address(&self, address: Address) -> Result<Address> {
             Ok(address)
         }
     }

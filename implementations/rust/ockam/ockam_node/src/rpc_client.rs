@@ -4,7 +4,6 @@ use minicbor::{Decode, Decoder, Encode};
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::compat::{fmt, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{Address, DenyAll, Error, Result, Route};
 
 const DEFAULT_CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
@@ -14,7 +13,6 @@ pub struct RpcClient {
     ctx: Context,
     route: Route,
     timeout: Duration,
-    flow_controls: Option<FlowControls>,
 }
 
 impl fmt::Debug for RpcClient {
@@ -34,7 +32,6 @@ impl RpcClient {
         Ok(RpcClient {
             ctx,
             route: r,
-            flow_controls: None,
             timeout: DEFAULT_CLIENT_TIMEOUT,
         })
     }
@@ -44,22 +41,9 @@ impl RpcClient {
         Self { timeout, ..self }
     }
 
-    /// Specify the flow controls to use for the RpcClient
-    pub fn with_flow_controls(self, flow_controls: &FlowControls) -> Self {
-        Self {
-            flow_controls: Some(flow_controls.clone()),
-            ..self
-        }
-    }
-
     /// Make message options
     fn options(&self) -> MessageSendReceiveOptions {
-        let options = MessageSendReceiveOptions::new().with_timeout(self.timeout);
-        if let Some(flow_controls) = &self.flow_controls {
-            options.with_flow_control(flow_controls)
-        } else {
-            options
-        }
+        MessageSendReceiveOptions::new().with_timeout(self.timeout)
     }
 
     /// Encode request header and body (if any) and send the package to the server.

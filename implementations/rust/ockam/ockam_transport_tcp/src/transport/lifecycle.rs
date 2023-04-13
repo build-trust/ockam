@@ -1,12 +1,8 @@
-use core::str::FromStr;
-use std::net::SocketAddr;
-use std::sync::Arc;
-
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{async_trait, Address, AsyncTryClone, Error, Result, TransportType};
 use ockam_node::Context;
 use ockam_transport_core::Transport;
+use std::sync::Arc;
 
 use crate::{TcpConnectionOptions, TcpRegistry, TcpTransport, TCP};
 
@@ -51,23 +47,11 @@ impl Transport for TcpTransport {
         TCP
     }
 
-    async fn resolve_address(
-        &self,
-        flow_controls: &FlowControls,
-        address: Address,
-    ) -> Result<Address> {
+    async fn resolve_address(&self, address: Address) -> Result<Address> {
         if address.transport_type() == TCP {
-            let options = if SocketAddr::from_str(address.address())
-                .map(|socket_addr| socket_addr.ip().is_loopback())
-                .is_ok()
-            {
-                // TODO: Enable FlowControl for loopback addresses as well
-                TcpConnectionOptions::insecure()
-            } else {
-                let id = flow_controls.generate_id();
-                TcpConnectionOptions::as_producer(flow_controls, &id)
-            };
-            Ok(self.connect(address.address().to_string(), options).await?)
+            Ok(self
+                .connect(address.address().to_string(), TcpConnectionOptions::new())
+                .await?)
         } else {
             Err(Error::new(
                 Origin::Transport,
@@ -96,10 +80,7 @@ mod tests {
         let local_address = listener.local_addr().unwrap().to_string();
 
         let resolved = tcp
-            .resolve_address(
-                &FlowControls::default(),
-                Address::new(TCP, local_address.clone()),
-            )
+            .resolve_address(Address::new(TCP, local_address.clone()))
             .await?;
 
         // there are 2 additional workers
@@ -112,7 +93,7 @@ mod tests {
 
         // trying to resolve the address a second time should still work
         let _route = tcp
-            .resolve_address(&FlowControls::default(), Address::new(TCP, local_address))
+            .resolve_address(Address::new(TCP, local_address))
             .await?;
 
         ctx.stop().await
@@ -122,10 +103,7 @@ mod tests {
     async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
         let result = tcp
-            .resolve_address(
-                &FlowControls::default(),
-                Address::new(TCP, "www.google.com:80"),
-            )
+            .resolve_address(Address::new(TCP, "www.google.com:80"))
             .await
             .is_ok();
 

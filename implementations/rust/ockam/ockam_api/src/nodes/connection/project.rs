@@ -66,13 +66,9 @@ impl Instantiator for ProjectInstantiator {
         let (project_multiaddr, project_identifier) = node_manager.resolve_project(&project)?;
 
         debug!(addr = %project_multiaddr, "creating secure channel");
-        let tcp = multiaddr_to_route(
-            &project_multiaddr,
-            &node_manager.tcp_transport,
-            &builder.flow_controls,
-        )
-        .await
-        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+        let tcp = multiaddr_to_route(&project_multiaddr, &node_manager.tcp_transport)
+            .await
+            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
         let (encryptor_address, flow_control_id) = node_manager
             .create_secure_channel_impl(

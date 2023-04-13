@@ -1,9 +1,7 @@
 use ockam_core::compat::sync::Arc;
-use tracing::trace;
-
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{route, Address, AllowAll, Any, Routed, Worker};
 use ockam_node::Context;
+use tracing::trace;
 
 use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::portal_worker::KafkaPortalWorker;
@@ -16,7 +14,6 @@ pub(crate) struct KafkaPortalListener {
     inlet_controller: KafkaInletController,
     secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
     uuid_to_name: TopicUuidMap,
-    flow_controls: FlowControls,
 }
 
 #[ockam::worker]
@@ -39,8 +36,8 @@ impl Worker for KafkaPortalListener {
         let next_hop = message.transport().onward_route.next()?;
 
         // Retrieve the flow id from the next hop if it exists
-        let flow_control_id = self
-            .flow_controls
+        let flow_control_id = context
+            .flow_controls()
             .find_flow_control_with_producer_address(next_hop)
             .map(|x| x.flow_control_id().clone());
 
@@ -52,7 +49,6 @@ impl Worker for KafkaPortalListener {
             self.uuid_to_name.clone(),
             self.inlet_controller.clone(),
             None,
-            &self.flow_controls,
             flow_control_id,
             route![inlet_responder_address],
         )
@@ -83,7 +79,6 @@ impl KafkaPortalListener {
         inlet_controller: KafkaInletController,
         secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         listener_address: Address,
-        flow_control: FlowControls,
     ) -> ockam_core::Result<()> {
         context
             .start_worker(
@@ -92,7 +87,6 @@ impl KafkaPortalListener {
                     inlet_controller,
                     secure_channel_controller,
                     uuid_to_name: Default::default(),
-                    flow_controls: flow_control,
                 },
                 AllowAll,
                 AllowAll,

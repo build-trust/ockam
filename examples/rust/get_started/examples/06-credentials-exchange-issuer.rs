@@ -3,6 +3,7 @@ use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::CredentialsIssuer;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, Context, Result, TcpListenerOptions};
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
@@ -44,18 +45,31 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a secure channel listener that only allows channels where the identity
     // at the other end of the channel can authenticate with the latest private key
     // corresponding to one of the above known public identifiers.
-    node.create_secure_channel_listener(&issuer.identifier(), "secure", SecureChannelListenerOptions::new())
-        .await?;
+    let tcp_flow_control_id = FlowControls::generate_id();
+    let secure_channel_flow_control_id = FlowControls::generate_id();
+    node.create_secure_channel_listener(
+        &issuer.identifier(),
+        "secure",
+        SecureChannelListenerOptions::new(&secure_channel_flow_control_id)
+            .as_consumer(&tcp_flow_control_id, FlowControlPolicy::SpawnerAllowMultipleMessages),
+    )
+    .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from
     // authenticated secure channels with our known public identifiers.
     let allow_known = IdentityIdAccessControl::new(known_identifiers);
+    node.flow_controls().add_consumer(
+        "issuer",
+        &secure_channel_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
     node.start_worker("issuer", credential_issuer, allow_known, AllowAll)
         .await?;
 
     // Initialize TCP Transport, create a TCP listener, and wait for connections.
     let tcp = node.create_tcp_transport().await?;
-    tcp.listen("127.0.0.1:5000", TcpListenerOptions::new()).await?;
+    tcp.listen("127.0.0.1:5000", TcpListenerOptions::new(&tcp_flow_control_id))
+        .await?;
 
     // Don't call node.stop() here so this node runs forever.
     println!("issuer started");

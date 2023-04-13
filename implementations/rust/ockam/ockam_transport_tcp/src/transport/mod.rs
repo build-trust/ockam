@@ -26,12 +26,14 @@ use ockam_node::{Context, HasContext};
 /// establishing a connection upon arrival of an initial message.
 ///
 /// ```rust
+/// use ockam_core::flow_control::FlowControls;
 /// use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
 /// let tcp = TcpTransport::create(&ctx).await?;
-/// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
+/// let flow_control_id = FlowControls::generate_id();
+/// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new(&flow_control_id)).await?; // Listen on port 8000
 /// tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?; // And connect to port 5000
 /// # Ok(()) }
 /// ```
@@ -39,13 +41,16 @@ use ockam_node::{Context, HasContext};
 /// The same `TcpTransport` can also bind to multiple ports.
 ///
 /// ```rust
+/// use ockam_core::flow_control::FlowControls;
 /// use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
 /// let tcp = TcpTransport::create(&ctx).await?;
-/// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
-/// tcp.listen("127.0.0.1:9000", TcpListenerOptions::new()).await?; // Listen on port 9000
+/// let flow_control_id1 = FlowControls::generate_id();
+/// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new(&flow_control_id1)).await?; // Listen on port 8000
+/// let flow_control_id2 = FlowControls::generate_id();
+/// tcp.listen("127.0.0.1:9000", TcpListenerOptions::new(&flow_control_id2)).await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
 #[derive(AsyncTryClone)]

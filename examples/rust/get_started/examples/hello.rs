@@ -1,5 +1,7 @@
+use ockam::flow_control::FlowControls;
 use ockam::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use ockam::{node, route, Context, Result};
+use ockam_core::flow_control::FlowControlPolicy;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -10,7 +12,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    node.create_secure_channel_listener(&bob, "bob", SecureChannelListenerOptions::new())
+    let sc_flow_control_id = FlowControls::generate_id();
+    node.create_secure_channel_listener(&bob, "bob", SecureChannelListenerOptions::new(&sc_flow_control_id))
         .await?;
 
     // Create an entity to represent Alice.
@@ -27,6 +30,11 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // This message will automatically get encrypted when it enters the channel
     // and decrypted just before it exits the channel.
+    node.flow_controls().add_consumer(
+        "app",
+        &sc_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
     node.send(route![channel, "app"], "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a message for the "app" worker and print it.

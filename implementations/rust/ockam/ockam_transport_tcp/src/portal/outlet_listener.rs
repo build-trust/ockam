@@ -37,13 +37,7 @@ impl TcpOutletListenWorker {
     ) -> Result<()> {
         let access_control = options.incoming_access_control.clone();
 
-        if let Some(consumer_flow_control) = &options.consumer_flow_control {
-            consumer_flow_control.flow_controls.add_consumer(
-                &address,
-                &consumer_flow_control.flow_control_id,
-                consumer_flow_control.flow_control_policy,
-            );
-        }
+        options.setup_flow_control_for_outlet_listener(ctx.flow_controls(), &address);
 
         let worker = Self::new(registry, peer, options);
         WorkerBuilder::with_mailboxes(
@@ -87,23 +81,10 @@ impl Worker for TcpOutletListenWorker {
             return Err(TransportError::Protocol.into());
         }
 
-        // Check if the Worker that send us this message is a Producer
-        // If yes - outlet worker will be added to that flow control to be able to receive further
-        // messages from that Producer
-        let flow_control_id =
-            if let Some(consumer_flow_control) = &self.options.consumer_flow_control {
-                consumer_flow_control
-                    .flow_controls
-                    .get_flow_control_with_producer(&src_addr)
-                    .map(|x| x.flow_control_id().clone())
-            } else {
-                None
-            };
-
         let addresses = Addresses::generate(PortalType::Outlet);
 
         self.options
-            .setup_flow_control(&addresses, flow_control_id)?;
+            .setup_flow_control_for_outlet(ctx.flow_controls(), &addresses, &src_addr);
 
         TcpPortalWorker::start_new_outlet(
             ctx,

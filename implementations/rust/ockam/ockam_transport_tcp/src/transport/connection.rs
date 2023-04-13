@@ -7,12 +7,14 @@ impl TcpTransport {
     /// Establish an outgoing TCP connection.
     ///
     /// ```rust
+    /// use ockam_core::flow_control::FlowControls;
     /// use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
+    /// let flow_control_id = FlowControls::generate_id();
+    /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new(&flow_control_id)).await?; // Listen on port 8000
     /// let addr = tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
@@ -28,8 +30,8 @@ impl TcpTransport {
 
         let addresses = Addresses::generate(ConnectionRole::Initiator);
 
-        options.setup_flow_control(&addresses);
-        let access_control = options.create_access_control();
+        options.setup_flow_control(self.ctx.flow_controls(), &addresses);
+        let access_control = options.create_access_control(self.ctx.flow_controls());
 
         TcpSendWorker::start(
             &self.ctx,
