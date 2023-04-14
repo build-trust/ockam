@@ -72,27 +72,45 @@ impl NodeManagerWorker {
         let socket_addr = addr.to_string();
 
         // TODO: Support FlowControls from ockam_command CLI
-        let flow_control_id = node_manager.flow_controls.generate_id();
+        let flow_control_id = {
+            let s_addr: SocketAddr = socket_addr
+                .parse()
+                .map_err(|_| ApiError::generic("InvalidAddress tcp address"))?;
+
+            if s_addr.ip().is_loopback() {
+                // TODO: Enable FlowControl for loopback addresses as well
+                None
+            } else {
+                Some(node_manager.flow_controls.generate_id())
+            }
+        };
         let res = match (tt, tm) {
-            (Tcp, Listen) => node_manager
-                .tcp_transport
-                .listen(
-                    &addr,
-                    TcpListenerOptions::as_spawner(&node_manager.flow_controls, &flow_control_id),
-                )
-                .await
-                .map(|(socket, worker_address)| (socket.to_string(), worker_address)),
-            (Tcp, Connect) => node_manager
-                .tcp_transport
-                .connect(
-                    &socket_addr,
-                    TcpConnectionOptions::as_producer(
-                        &node_manager.flow_controls,
-                        &flow_control_id,
-                    ),
-                )
-                .await
-                .map(|worker_address| (socket_addr, worker_address)),
+            (Tcp, Listen) => {
+                let options = if let Some(flow_control_id) = flow_control_id {
+                    TcpListenerOptions::as_spawner(&node_manager.flow_controls, &flow_control_id)
+                } else {
+                    TcpListenerOptions::insecure()
+                };
+
+                node_manager
+                    .tcp_transport
+                    .listen(&addr, options)
+                    .await
+                    .map(|(socket, worker_address)| (socket.to_string(), worker_address))
+            }
+            (Tcp, Connect) => {
+                let options = if let Some(flow_control_id) = flow_control_id {
+                    TcpConnectionOptions::as_producer(&node_manager.flow_controls, &flow_control_id)
+                } else {
+                    TcpConnectionOptions::insecure()
+                };
+
+                node_manager
+                    .tcp_transport
+                    .connect(&socket_addr, options)
+                    .await
+                    .map(|worker_address| (socket_addr, worker_address))
+            }
             _ => unimplemented!(),
         };
 
@@ -107,7 +125,7 @@ impl NodeManagerWorker {
                     tm,
                     socket_address,
                     worker_address: worker_address.address().into(),
-                    flow_control_id,
+                    flow_control_id: None,
                 };
                 node_manager
                     .transports
@@ -122,7 +140,7 @@ impl NodeManagerWorker {
                         tm,
                         socket_address: "0.0.0.0:0000".parse().unwrap(),
                         worker_address: "<none>".into(),
-                        flow_control_id: "<none>".into(),
+                        flow_control_id: None,
                     },
                     "<none>".to_string(),
                 ))

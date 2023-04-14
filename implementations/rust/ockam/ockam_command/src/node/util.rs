@@ -87,7 +87,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listened_worker_address,
-                flow_control_id: "<none>".into(), // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
+                flow_control_id: None, // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
             },
             tcp,
         ),

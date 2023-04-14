@@ -54,56 +54,75 @@ pub async fn multiaddr_to_route(
 ) -> Option<MultiAddrToRouteResult> {
     let mut rb = Route::new();
     let mut it = ma.iter().peekable();
-    let flow_control_id = flow_controls.generate_id();
 
-    let mut options = Some(TcpConnectionOptions::as_producer(
-        flow_controls,
-        &flow_control_id,
-    ));
+    let mut flow_control_id = None;
+    let mut number_of_tcp_hops = 0;
 
     while let Some(p) = it.next() {
         match p.code() {
             Ip4::CODE => {
+                if number_of_tcp_hops >= 1 {
+                    return None; // Only 1 TCP hop is allowed
+                }
+
                 let ip4 = p.cast::<Ip4>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
 
-                let options = match options.take() {
-                    Some(options) => options,
-                    None => return None, // Only 1 TCP hop is allowed
+                let options = if socket_addr.ip().is_loopback() {
+                    // TODO: Enable FlowControl for loopback addresses as well
+                    TcpConnectionOptions::insecure()
+                } else {
+                    let id = flow_controls.generate_id();
+                    flow_control_id = Some(id.clone());
+                    TcpConnectionOptions::as_producer(flow_controls, &id)
                 };
 
                 let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                number_of_tcp_hops += 1;
                 rb = rb.append(addr)
             }
             Ip6::CODE => {
+                if number_of_tcp_hops >= 1 {
+                    return None; // Only 1 TCP hop is allowed
+                }
+
                 let ip6 = p.cast::<Ip6>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
 
-                let options = match options.take() {
-                    Some(options) => options,
-                    None => return None, // Only 1 TCP hop is allowed
+                let options = if socket_addr.ip().is_loopback() {
+                    // TODO: Enable FlowControl for loopback addresses as well
+                    TcpConnectionOptions::insecure()
+                } else {
+                    let id = flow_controls.generate_id();
+                    flow_control_id = Some(id.clone());
+                    TcpConnectionOptions::as_producer(flow_controls, &id)
                 };
 
                 let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                number_of_tcp_hops += 1;
                 rb = rb.append(addr)
             }
             DnsAddr::CODE => {
+                if number_of_tcp_hops >= 1 {
+                    return None; // Only 1 TCP hop is allowed
+                }
+
                 let host = p.cast::<DnsAddr>()?;
                 if let Some(p) = it.peek() {
                     if p.code() == Tcp::CODE {
                         let port = p.cast::<Tcp>()?;
 
-                        let options = match options.take() {
-                            Some(options) => options,
-                            None => return None, // Only 1 TCP hop is allowed
-                        };
+                        let id = flow_controls.generate_id();
+                        flow_control_id = Some(id.clone());
+                        let options = TcpConnectionOptions::as_producer(flow_controls, &id);
 
                         let addr = tcp
                             .connect(format!("{}:{}", &*host, *port), options)
                             .await
                             .ok()?;
+                        number_of_tcp_hops += 1;
                         rb = rb.append(addr);
                         let _ = it.next();
                         continue;
@@ -129,16 +148,10 @@ pub async fn multiaddr_to_route(
         }
     }
 
-    match options {
-        Some(_) => Some(MultiAddrToRouteResult {
-            flow_control_id: None,
-            route: rb.into(),
-        }),
-        None => Some(MultiAddrToRouteResult {
-            flow_control_id: Some(flow_control_id),
-            route: rb.into(),
-        }),
-    }
+    Some(MultiAddrToRouteResult {
+        flow_control_id,
+        route: rb.into(),
+    })
 }
 
 /// Try to convert a multiaddr to an Ockam Address
@@ -319,7 +332,7 @@ pub mod test {
                     tm: crate::nodes::models::transport::TransportMode::Listen,
                     socket_address: "127.0.0.1:123".parse().unwrap(),
                     worker_address: "".into(),
-                    flow_control_id: "".into(),
+                    flow_control_id: None,
                 },
                 tcp.async_try_clone().await?,
             ),

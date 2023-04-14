@@ -16,6 +16,15 @@ pub struct TcpConnectionOptions {
 }
 
 impl TcpConnectionOptions {
+    /// This constructor is insecure, because outgoing messages from such connections will not be
+    /// restricted and can reach any [`Address`] on this node.
+    /// Should only be used for testing purposes
+    pub fn insecure() -> Self {
+        Self {
+            producer_flow_control: None,
+        }
+    }
+
     /// This constructor is insecure, because outgoing messages from such connection will not be
     /// restricted and can reach any [`Address`] on this node.
     /// Should only be used for testing purposes
