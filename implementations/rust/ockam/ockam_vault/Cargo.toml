@@ -40,6 +40,8 @@ std = [
   "x25519-dalek/std",
   "x25519-dalek/u64_backend",
   "alloc",
+  # required for p256
+  "rustcrypto",
   "p256/std",
   "fs2",
 ]
