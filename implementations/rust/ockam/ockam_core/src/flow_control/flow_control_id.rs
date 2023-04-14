@@ -20,12 +20,6 @@ impl ToString for FlowControlId {
     }
 }
 
-impl From<&str> for FlowControlId {
-    fn from(value: &str) -> Self {
-        Self(value.to_string())
-    }
-}
-
 impl Distribution<FlowControlId> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> FlowControlId {
         let address: [u8; 16] = rng.gen();

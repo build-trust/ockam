@@ -276,7 +276,7 @@ async fn run_foreground_node(
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listener_addr,
-                flow_control_id: "<none>".into(), // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
+                flow_control_id: None, // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
             },
             tcp.async_try_clone().await?,
         ),
