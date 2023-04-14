@@ -28,18 +28,18 @@ teardown() {
 }
 
 @test "trust context - trust context with an id only; ABAC rules are applied" {
+  run "$OCKAM" identity create m1
+
   echo "{
         \"id\": \"1\"
-    }" >./trust_context.json
-
-  run "$OCKAM" identity create m1
+    }" >"$OCKAM_HOME/trust_context.json"
 
   m1_identifier=$(run "$OCKAM" identity show m1)
   trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\", \"trust_context_id\" : \"1\"}}"
 
   run "$OCKAM" node create n1 --identity m1
 
-  run "$OCKAM" node create n2 --trust-context ./trust_context.json --trusted-identities "$trusted"
+  run "$OCKAM" node create n2 --trust-context "$OCKAM_HOME/trust_context.json" --trusted-identities "$trusted"
 
   run bash -c "$OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api \
         | $OCKAM message send hello --from /node/n1 --to -/service/echo"
@@ -65,13 +65,13 @@ teardown() {
   authority_identity=$($OCKAM identity show authority --full --encoding hex)
 
     # issue and store credentials for alice
-    $OCKAM credential issue --as authority --for $alice_identity --attribute city="New York" --encoding hex > alice.cred
-    run "$OCKAM" credential store alice-cred --issuer $authority_identity --credential-path alice.cred
+    $OCKAM credential issue --as authority --for $alice_identity --attribute city="New York" --encoding hex >"$OCKAM_HOME/alice.cred"
+    run "$OCKAM" credential store alice-cred --issuer $authority_identity --credential-path "$OCKAM_HOME/alice.cred"
     $OCKAM trust-context create alice-trust-context --credential alice-cred
 
     # issue and store credential for bob
-    $OCKAM credential issue --as authority --for $bob_identity --attribute city="New York" --encoding hex > bob.cred
-    run "$OCKAM" credential store bob-cred --issuer $authority_identity --credential-path bob.cred
+    $OCKAM credential issue --as authority --for $bob_identity --attribute city="New York" --encoding hex >"$OCKAM_HOME/bob.cred"
+    run "$OCKAM" credential store bob-cred --issuer $authority_identity --credential-path "$OCKAM_HOME/bob.cred"
     $OCKAM trust-context create bob-trust-context --credential bob-cred
 
     # Create a node for alice that trust authority as a credential authority
@@ -84,7 +84,7 @@ teardown() {
   assert_failure
 
     # Fail, attacker will present an invalid credential (self signed rather than signed by authority)
-    $OCKAM credential issue --as attacker --for $($OCKAM identity show attacker --full --encoding hex) --encoding hex > "$OCKAM_HOME/attacker.cred"
+    $OCKAM credential issue --as attacker --for $($OCKAM identity show attacker --full --encoding hex) --encoding hex >"$OCKAM_HOME/attacker.cred"
     $OCKAM credential store att-cred --issuer $authority_identity --credential-path $OCKAM_HOME/attacker.cred
     $OCKAM trust-context create att-trust-context --credential att-cred
 
@@ -100,8 +100,8 @@ teardown() {
     assert_output $msg
 
   $OCKAM node delete alice
-  echo "{\"id\": \"$authority_id\"}" >alice-trust-context.json
-  $OCKAM node create alice --tcp-listener-address 127.0.0.1:$port --identity alice --trust-context ./alice-trust-context.json
+  echo "{\"id\": \"$authority_id\"}" >"$OCKAM_HOME/alice-trust-context.json"
+  $OCKAM node create alice --tcp-listener-address 127.0.0.1:$port --identity alice --trust-context "$OCKAM_HOME/alice-trust-context.json"
 
     run "$OCKAM" message send --timeout 2 --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo  --trust-context bob-trust-context $msg
     assert_failure
@@ -126,13 +126,13 @@ teardown() {
             \"own_credential\" :{
                 \"FromCredentialIssuer\" : {
                     \"identity\": \"$authority_identity\",
-                    \"maddr\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\" }}}}" >./trust_context.json
+                    \"maddr\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\" }}}}" >"$OCKAM_HOME/trust_context.json"
 
-  $OCKAM node create --identity alice --tcp-listener-address 127.0.0.1:$port --trust-context ./trust_context.json
+  $OCKAM node create --identity alice --tcp-listener-address 127.0.0.1:$port --trust-context "$OCKAM_HOME/trust_context.json"
 
   # send a message to alice using the trust context
   msg=$(random_str)
-  run "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context ./trust_context.json $msg
+  run "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context "$OCKAM_HOME/trust_context.json" $msg
   assert_success
   assert_output "$msg"
 
@@ -141,7 +141,7 @@ teardown() {
   assert_success
   assert_output "$msg"
 
-  run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context ./trust_context.json $msg
+  run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context "$OCKAM_HOME/trust_context.json" $msg
   assert_failure
   run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context $msg
   assert_failure
@@ -154,12 +154,12 @@ teardown() {
     $OCKAM trust-context create orchestrator-test
 
     run "$OCKAM" identity create m1
-    $OCKAM project enroll > m1.token
-    run "$OCKAM" project authenticate --identity m1 --trust-context orchestrator-test --token $(cat m1.token)
+    $OCKAM project enroll >"$OCKAM_HOME/m1.token"
+    run "$OCKAM" project authenticate --identity m1 --trust-context orchestrator-test --token $(cat "$OCKAM_HOME/m1.token")
 
     run "$OCKAM" identity create m2
-    $OCKAM project enroll > m2.token
-    run "$OCKAM" project authenticate --identity m2 --trust-context orchestrator-test --token $(cat m2.token)
+    $OCKAM project enroll >"$OCKAM_HOME/m2.token"
+    run "$OCKAM" project authenticate --identity m2 --trust-context orchestrator-test --token $(cat "$OCKAM_HOME/m2.token")
 
     run "$OCKAM" node create n1 --identity m1 --trust-context orchestrator-test
     assert_success
