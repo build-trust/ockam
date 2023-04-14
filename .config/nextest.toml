@@ -1,0 +1,10 @@
+[test-groups]
+sequential = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'package(hello_ockam)'
+test-group = 'sequential'
+
+[[profile.default.overrides]]
+filter = 'package(tcp_inlet_and_outlet)'
+test-group = 'sequential'
