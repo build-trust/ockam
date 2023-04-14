@@ -84,7 +84,7 @@ async fn run_impl(
             &cmd.name
         ))
         .machine(&cmd.name)
-        .json(&serde_json::json!({ "space": { "name": &cmd.name } }))
+        .json(serde_json::json!({ "space": { "name": &cmd.name } }))
         .write_line()?;
 
     Ok(())

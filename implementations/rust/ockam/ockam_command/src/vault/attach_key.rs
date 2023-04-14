@@ -3,6 +3,7 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cli_state;
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 
 use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_identity::{IdentityChangeConstants, KeyAttributes};
@@ -35,7 +36,7 @@ async fn rpc(
 
 async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Result<()> {
     let v_state = opts.state.vaults.get(&cmd.vault)?;
-    if !v_state.config.is_aws() {
+    if !v_state.config().is_aws() {
         return Err(anyhow!("Vault {} is not an AWS KMS vault", cmd.vault).into());
     }
     let vault = v_state.get().await?;

@@ -3,6 +3,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
+use ockam_api::cli_state::traits::StateTrait;
 use ockam_api::cli_state::CliStateError;
 
 use crate::util::node_rpc;
@@ -49,14 +50,14 @@ async fn run_impl(
                     &name
                 ))
                 .machine(&name)
-                .json(&serde_json::json!({ "vault": { "name": &name } }))
+                .json(serde_json::json!({ "vault": { "name": &name } }))
                 .write_line()?;
 
             Ok(())
         }
         // Return the appropriate error
         Err(err) => match err {
-            CliStateError::NotFound(_) => Err(anyhow!("Vault '{name}' not found").into()),
+            CliStateError::NotFound => Err(anyhow!("Vault '{name}' not found").into()),
             _ => Err(err.into()),
         },
     }

@@ -2,7 +2,9 @@ use anyhow::{anyhow, Context as _};
 
 use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state;
+use ockam_api::cli_state::traits::StateItemDirTrait;
 use ockam_api::config::lookup::ProjectLookup;
+
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
@@ -151,7 +153,7 @@ pub(crate) async fn init_node_state(
 
     // Create the node with the given vault and identity
     let node_config = cli_state::NodeConfigBuilder::default()
-        .vault(vault_state.path)
+        .vault(vault_state.path().clone())
         .identity(identity_state.path)
         .build(&opts.state)?;
     opts.state.nodes.create(node_name, node_config)?;

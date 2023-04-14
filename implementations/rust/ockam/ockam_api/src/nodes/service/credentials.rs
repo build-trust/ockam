@@ -1,3 +1,4 @@
+use crate::cli_state::traits::StateTrait;
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};

@@ -20,6 +20,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_core::route;
 
+use crate::cli_state::traits::StateTrait;
 use crate::cli_state::CliStateError;
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use crate::nodes::service::NodeIdentities;
@@ -292,7 +293,7 @@ impl NodeManager {
             {
                 Ok(identity)
             } else {
-                Err(CliStateError::NotFound(format!("identity not found with name {name}")).into())
+                Err(CliStateError::NotFound.into())
             }
         } else {
             Ok(self.identity.clone())

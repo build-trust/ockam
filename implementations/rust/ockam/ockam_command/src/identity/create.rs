@@ -3,6 +3,7 @@ use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam::identity::Identity;
 use ockam::Context;
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use rand::prelude::random;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -44,7 +45,7 @@ impl CreateCommand {
         let vault_state = options.state.create_vault_state(self.vault.clone()).await?;
         let mut output = String::new();
         if default_vault_created {
-            output.push_str(&format!("Default vault created: {}\n", &vault_state.name));
+            output.push_str(&format!("Default vault created: {}\n", &vault_state.name()));
         }
 
         let identity_state = options
@@ -60,7 +61,7 @@ impl CreateCommand {
             .stdout()
             .plain(output)
             .machine(identity.identifier())
-            .json(&serde_json::json!({ "identity": { "identifier": &identity.identifier() } }))
+            .json(serde_json::json!({ "identity": { "identifier": &identity.identifier() } }))
             .write_line()?;
         Ok(identity)
     }
