@@ -382,6 +382,12 @@ impl State {
     }
 }
 
+impl State {
+    pub(crate) fn current_hash(&self) -> Option<[u8; 32]> {
+        self.h.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::state::{DhState, State};

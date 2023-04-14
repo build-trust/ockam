@@ -2,8 +2,8 @@ use crate::{Context, NodeError, NodeMessage, NodeReason};
 use crate::{ProcessorBuilder, WorkerBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    Address, IncomingAccessControl, Mailboxes, Message, OutgoingAccessControl, Processor, Result,
-    Worker,
+    Address, IncomingAccessControl, Mailboxes, Message, OutgoingAccessControl, Processor,
+    RelayMessage, Result, Worker,
 };
 
 enum AddressType {
@@ -104,6 +104,18 @@ impl Context {
     /// Shut down a local worker by its primary address
     pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
         self.stop_address(addr.into(), AddressType::Worker).await
+    }
+
+    /// Stop a worker and then extract all messages left in the queue
+    pub async fn deconstruct<A: Into<Address>>(&mut self, addr: A) -> Result<Vec<RelayMessage>> {
+        self.stop_address(addr.into(), AddressType::Worker).await?;
+
+        let mut relay_messages = vec![];
+        while let Some(next) = self.receiver_next().await? {
+            relay_messages.push(next);
+        }
+
+        Ok(relay_messages)
     }
 
     /// Shut down a local processor by its address

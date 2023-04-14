@@ -18,6 +18,8 @@ pub trait KeyExchanger: Send + Sync + 'static {
     async fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
     /// Handle response from other party and return payload.
     async fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>>;
+    ///Returns the current hash status of the key exchange.
+    fn current_hash(&self) -> Option<[u8; 32]>;
     /// Returns true if the key exchange process is complete.
     async fn is_complete(&self) -> Result<bool>;
     /// Return the data and keys needed for channels. Key exchange must be completed prior to calling this function.

@@ -69,6 +69,10 @@ impl KeyExchanger for Initiator {
         }
     }
 
+    fn current_hash(&self) -> Option<[u8; 32]> {
+        self.state_data.current_hash()
+    }
+
     async fn is_complete(&self) -> Result<bool> {
         Ok(matches!(self.state, InitiatorState::Done))
     }

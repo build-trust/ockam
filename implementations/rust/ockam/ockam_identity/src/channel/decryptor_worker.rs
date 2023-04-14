@@ -1,15 +1,15 @@
 use crate::api::{DecryptionRequest, DecryptionResponse};
-use crate::authenticated_storage::{AuthenticatedAttributeStorage, IdentityAttributeStorage};
+use crate::authenticated_storage::AuthenticatedAttributeStorage;
 use crate::channel::addresses::Addresses;
 use crate::channel::common::{AuthenticationConfirmation, CreateResponderChannelMessage, Role};
 use crate::channel::decryptor::Decryptor;
 use crate::channel::decryptor_state::{
-    CredentialExchangeState, IdentityExchangeState, InitializedState, KeyExchangeState, State,
+    CredentialExchangeState, IdentityExchangeState, InitializedState, InitializerStatus, State,
 };
 use crate::channel::encryptor::Encryptor;
 use crate::channel::encryptor_worker::EncryptorWorker;
 use crate::channel::messages::{IdentityChannelMessage, TmpCredentialPacket};
-use crate::credential::{Credential, CredentialExchangeMode};
+use crate::credential::Credential;
 use crate::{
     to_symmetric_vault, to_xx_vault, Identity, IdentityError, IdentityIdentifier,
     IdentitySecureChannelLocalInfo, PublicIdentity, SecureChannelRegistryEntry,
@@ -71,8 +71,6 @@ impl DecryptorWorker {
                 Box::new(key_exchanger),
                 remote_route,
                 trust_policy,
-                None,
-                None,
                 credential,
                 trust_context,
             )),
@@ -104,26 +102,14 @@ impl DecryptorWorker {
         addresses: Addresses,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        msg: Routed<CreateResponderChannelMessage>,
         credential: Option<Credential>,
         trust_context: TrustContext,
-    ) -> Result<()> {
-        // Route to the decryptor on the other side
-        let remote_route = msg.return_route();
-        let body = msg.body();
-        // This is the address of the Worker on the other end that Initiator gave us to perform further negotiations.
-        // This is the remote_backwards_compatibility_address
-        let remote_backwards_compatibility_address = body
-            .custom_payload()
-            .as_ref()
-            .ok_or(IdentityError::NoCustomPayload)?;
-        let remote_backwards_compatibility_address =
-            Address::decode(remote_backwards_compatibility_address)?;
-
+    ) -> Result<Address> {
         let vault = to_xx_vault(identity.vault.clone());
         let key_exchanger = XXNewKeyExchanger::new(vault).responder().await?;
-
         let mailboxes = Self::mailboxes(&addresses, decryptor_outgoing_access_control);
+
+        let main_address = mailboxes.main_address();
 
         let worker = DecryptorWorker {
             state: Some(State::new(
@@ -131,10 +117,8 @@ impl DecryptorWorker {
                 identity,
                 addresses.clone(),
                 Box::new(key_exchanger),
-                remote_route,
+                route![],
                 trust_policy,
-                Some(remote_backwards_compatibility_address),
-                Some(body.payload().to_vec()),
                 credential,
                 trust_context,
             )),
@@ -149,7 +133,7 @@ impl DecryptorWorker {
             &addresses.decryptor_remote
         );
 
-        Ok(())
+        Ok(main_address)
     }
 }
 
@@ -191,7 +175,7 @@ impl DecryptorWorker {
 }
 
 // Key exchange
-impl KeyExchangeState {
+impl InitializerStatus {
     async fn send_key_exchange_payload(
         ctx: &mut <DecryptorWorker as Worker>::Context,
         payload: Vec<u8>,
@@ -214,17 +198,17 @@ impl KeyExchangeState {
         }
     }
 
-    async fn handle_key_exchange_msg(
+    async fn handle_second_packet(
         mut self,
         ctx: &mut <DecryptorWorker as Worker>::Context,
         msg: Routed<<DecryptorWorker as Worker>::Message>,
     ) -> Result<State> {
         self.remote_route = msg.return_route();
         let payload = Vec::<u8>::decode(&msg.into_transport_message().payload)?;
-        self.handle_key_exchange(ctx, Some(&payload)).await
+        self.handle_first_message(ctx, Some(&payload)).await
     }
 
-    async fn handle_key_exchange(
+    async fn handle_first_message(
         mut self,
         ctx: &mut <DecryptorWorker as Worker>::Context,
         payload: Option<&[u8]>,
@@ -324,28 +308,27 @@ impl IdentityExchangeState {
         let credential_message = TmpCredentialPacket {
             credential: self.credential.clone(),
         };
-        let data = TransportMessage::v1(
-            self.remote_backwards_compatibility_address
-                .clone()
-                .ok_or(IdentityError::InvalidSecureChannelInternalState)?,
-            route![self.addresses.decryptor_backwards_compatibility.clone()],
-            credential_message.encode()?,
-        )
-        .encode()?;
+        // let data = TransportMessage::v1(
+        //     route![self.addresses.decryptor_backwards_compatibility.clone()],
+        //     credential_message.encode()?,
+        // )
+        // .encode()?;
+        //
+        // let encrypted = self
+        //     .encryptor
+        //     .as_mut()
+        //     .ok_or(IdentityError::InvalidSecureChannelInternalState)?
+        //     .encrypt(&data)
+        //     .await?;
+        //
+        // ctx.send_from_address(
+        //     self.remote_route.clone(),
+        //     encrypted,
+        //     self.addresses.decryptor_remote.clone(),
+        // )
+        // .await
 
-        let encrypted = self
-            .encryptor
-            .as_mut()
-            .ok_or(IdentityError::InvalidSecureChannelInternalState)?
-            .encrypt(&data)
-            .await?;
-
-        ctx.send_from_address(
-            self.remote_route.clone(),
-            encrypted,
-            self.addresses.decryptor_remote.clone(),
-        )
-        .await
+        Ok(())
     }
 
     async fn handle_incoming_identity(&mut self, msg: Routed<Any>) -> Result<IdentityIdentifier> {
@@ -354,9 +337,6 @@ impl IdentityExchangeState {
         let body = TransportMessage::decode(&body)?;
         if body.onward_route.next()? != &self.addresses.decryptor_backwards_compatibility {
             return Err(IdentityError::UnknownChannelMsgDestination.into());
-        }
-        if self.remote_backwards_compatibility_address.is_none() {
-            self.remote_backwards_compatibility_address = Some(body.return_route.recipient()?);
         }
         let body = IdentityChannelMessage::decode(&body.payload)?;
 
@@ -428,34 +408,31 @@ impl IdentityExchangeState {
             }
         };
 
-        let msg = TransportMessage::v1(
-            self.remote_backwards_compatibility_address
-                .clone()
-                .ok_or(IdentityError::InvalidSecureChannelInternalState)?,
-            route![self.addresses.decryptor_backwards_compatibility.clone()],
-            auth_msg.encode()?,
-        );
-        let data = msg.encode()?;
-
-        let encrypted = self
-            .encryptor
-            .as_mut()
-            .ok_or(IdentityError::InvalidSecureChannelInternalState)?
-            .encrypt(&data)
-            .await?;
-
-        ctx.send_from_address(
-            self.remote_route.clone(),
-            encrypted,
-            self.addresses.decryptor_remote.clone(),
-        )
-        .await?;
-        debug!(
-            "Sent Authentication response {}",
-            &self.addresses.decryptor_remote
-        );
-
-        self.identity_sent = true;
+        // let msg = TransportMessage::v1(
+        //     route![self.addresses.decryptor_backwards_compatibility.clone()],
+        //     auth_msg.encode()?,
+        // );
+        // let data = msg.encode()?;
+        //
+        // let encrypted = self
+        //     .encryptor
+        //     .as_mut()
+        //     .ok_or(IdentityError::InvalidSecureChannelInternalState)?
+        //     .encrypt(&data)
+        //     .await?;
+        //
+        // ctx.send_from_address(
+        //     self.remote_route.clone(),
+        //     encrypted,
+        //     self.addresses.decryptor_remote.clone(),
+        // )
+        // .await?;
+        // debug!(
+        //     "Sent Authentication response {}",
+        //     &self.addresses.decryptor_remote
+        // );
+        //
+        // self.identity_sent = true;
         Ok(())
     }
 }
@@ -513,9 +490,6 @@ impl CredentialExchangeState {
             self.role.str(),
             self.addresses.clone(),
             self.remote_route.clone(),
-            self.remote_backwards_compatibility_address
-                .clone()
-                .ok_or(IdentityError::InvalidSecureChannelInternalState)?,
             encryptor,
         );
 
@@ -671,13 +645,19 @@ impl Worker for DecryptorWorker {
 
         let new_state = match state {
             State::KeyExchange(mut state) => {
-                let init_payload = match &state.role {
-                    Role::Initiator => None,
-                    Role::Responder => state.initial_responder_payload.take(),
+                match &state.role {
+                    Role::Initiator => {
+                        let msg = state.create_first_message()?;
+                        ctx.send_from_address(
+                            route![state.remote_route],
+                            msg,
+                            state.addresses.decryptor_remote.clone(),
+                        )
+                        .await?;
+                        state
+                    }
+                    Role::Responder => state,
                 };
-                state
-                    .handle_key_exchange(ctx, init_payload.as_deref())
-                    .await?
             }
             _ => {
                 return Err(IdentityError::InvalidSecureChannelInternalState.into());
@@ -725,7 +705,7 @@ impl Worker for DecryptorWorker {
         let new_state = match state {
             State::KeyExchange(state) => {
                 if msg_addr == state.addresses.decryptor_remote {
-                    let result = state.handle_key_exchange_msg(ctx, msg).await;
+                    let result = state.handle_second_packet(ctx, msg).await;
                     if result.is_err() {
                         if let Err(err) = ctx.stop_worker(msg_addr.clone()).await {
                             warn!("cannot stop decryptor: {err} using address {msg_addr}");

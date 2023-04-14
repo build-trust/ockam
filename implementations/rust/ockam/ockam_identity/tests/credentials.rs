@@ -2,8 +2,7 @@ use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{async_trait, AllowAll, Any, DenyAll, Mailboxes};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::authenticated_storage::{
-    mem::InMemoryStorage, AuthenticatedAttributeStorage, IdentityAttributeStorage,
-    IdentityAttributeStorageReader,
+    AuthenticatedAttributeStorage, IdentityAttributeStorageReader,
 };
 use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::credential::{Credential, CredentialExchangeMode};

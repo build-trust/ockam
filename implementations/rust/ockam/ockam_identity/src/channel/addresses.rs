@@ -15,9 +15,6 @@ pub(crate) struct Addresses {
     pub(crate) decryptor_remote: Address,
     // Used to encrypt messages without sending them with Ockam Routing to the other end of the channel
     pub(crate) decryptor_api: Address,
-    // Decryptor worker address for backwards compatibility, not used for messaging but inserted
-    // in the routes manually
-    pub(crate) decryptor_backwards_compatibility: Address,
 
     // Encryptor worker address used to receive plain messages that will be encrypted and forwarded
     // to the other end of the channel
@@ -42,9 +39,6 @@ impl Addresses {
         let decryptor_api =
             Address::random_tagged(&format!("SecureChannel.{}.decryptor.api", role_str));
 
-        let decryptor_backwards_compatibility =
-            Address::random_tagged(&format!("SecureChannel.{}.decryptor.backwards", role_str));
-
         let encryptor = Address::random_tagged(&format!("SecureChannel.{}.encryptor", role_str));
         let encryptor_api =
             Address::random_tagged(&format!("SecureChannel.{}.encryptor.api", role_str));
@@ -59,7 +53,6 @@ impl Addresses {
             decryptor_callback,
             decryptor_remote,
             decryptor_api,
-            decryptor_backwards_compatibility,
             encryptor,
             encryptor_api,
             completion_callback,

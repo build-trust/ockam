@@ -2,29 +2,14 @@ use crate::channel::addresses::Addresses;
 use crate::channel::decryptor::Decryptor;
 use crate::channel::encryptor::Encryptor;
 use crate::channel::Role;
-use crate::credential::{Credential, CredentialExchangeMode};
+use crate::credential::Credential;
 use crate::{Identity, IdentityIdentifier, PublicIdentity, TrustContext, TrustPolicy};
 use alloc::vec::Vec;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, Any, KeyExchanger, Route, Routed};
-use ockam_node::Context;
-
-pub(crate) struct KeyExchangeState {
-    pub(crate) role: Role,
-    pub(crate) identity: Identity,
-    pub(crate) addresses: Addresses,
-    pub(crate) remote_route: Route,
-    pub(crate) key_exchanger: Box<dyn KeyExchanger>,
-    pub(crate) initial_responder_payload: Option<Vec<u8>>,
-    pub(crate) initialization_run: bool,
-
-    // these variables are kept for the next state
-    remote_backwards_compatibility_address: Option<Address>,
-    trust_policy: Arc<dyn TrustPolicy>,
-    credential: Option<Credential>,
-    trust_context: TrustContext,
-}
+use ockam_core::{route, Message};
+use ockam_core::{Address, KeyExchanger, Route};
+use serde::{Deserialize, Serialize};
 
 pub(crate) struct IdentityExchangeState {
     pub(crate) role: Role,
@@ -36,7 +21,6 @@ pub(crate) struct IdentityExchangeState {
     pub(crate) auth_hash: [u8; 32],
     pub(crate) identity_sent: bool,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
-    pub(crate) remote_backwards_compatibility_address: Option<Address>,
 
     pub(crate) credential: Option<Credential>,
     trust_context: TrustContext,
@@ -54,7 +38,6 @@ pub(crate) struct CredentialExchangeState {
     pub(crate) trust_context: TrustContext,
     pub(crate) remote_route: Route,
     pub(crate) encryptor: Option<Encryptor>,
-    pub(crate) remote_backwards_compatibility_address: Option<Address>,
 }
 
 pub(crate) struct InitializedState {
@@ -65,7 +48,21 @@ pub(crate) struct InitializedState {
     pub(crate) their_identity_id: IdentityIdentifier,
 }
 
-impl KeyExchangeState {
+pub(crate) struct InitializerStatus {
+    pub(crate) identity: Identity,
+    pub(crate) addresses: Addresses,
+    pub(crate) remote_route: Route,
+    pub(crate) role: Role,
+    pub(crate) key_exchanger: Box<dyn KeyExchanger>,
+    pub(crate) initialization_run: bool,
+
+    // these variables are kept for the next state
+    trust_policy: Arc<dyn TrustPolicy>,
+    credential: Option<Credential>,
+    trust_context: TrustContext,
+}
+
+impl InitializerStatus {
     pub(crate) fn into_identity_exchange(
         self,
         encryptor: Encryptor,
@@ -78,7 +75,6 @@ impl KeyExchangeState {
             remote_route: self.remote_route,
             addresses: self.addresses,
             trust_policy: self.trust_policy,
-            remote_backwards_compatibility_address: self.remote_backwards_compatibility_address,
             encryptor: Some(encryptor),
             decryptor,
             auth_hash,
@@ -102,7 +98,6 @@ impl IdentityExchangeState {
             trust_context: self.trust_context,
             remote_route: self.remote_route,
             encryptor: self.encryptor,
-            remote_backwards_compatibility_address: self.remote_backwards_compatibility_address,
             their_identity_id,
         }
     }
@@ -122,7 +117,7 @@ impl CredentialExchangeState {
 // false positive: https://github.com/rust-lang/rust-clippy/issues/9798
 #[allow(clippy::large_enum_variant)]
 pub(crate) enum State {
-    KeyExchange(KeyExchangeState),
+    KeyExchange(InitializerStatus),
     IdentityExchange(IdentityExchangeState),
     CredentialExchange(CredentialExchangeState),
     Initialized(InitializedState),
@@ -137,20 +132,16 @@ impl State {
         key_exchanger: Box<dyn KeyExchanger>,
         remote_route: Route,
         trust_policy: Arc<dyn TrustPolicy>,
-        remote_backwards_compatibility_address: Option<Address>,
-        initial_responder_payload: Option<Vec<u8>>,
         credential: Option<Credential>,
         trust_context: TrustContext,
     ) -> Self {
-        Self::KeyExchange(KeyExchangeState {
+        Self::KeyExchange(InitializerStatus {
             role,
             identity,
             addresses,
             remote_route,
             key_exchanger,
             trust_policy,
-            remote_backwards_compatibility_address,
-            initial_responder_payload,
             initialization_run: true,
             credential,
             trust_context,

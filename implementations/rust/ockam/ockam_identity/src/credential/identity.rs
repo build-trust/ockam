@@ -1,16 +1,12 @@
 use crate::alloc::string::ToString;
 use crate::authenticated_storage::{AttributesEntry, IdentityAttributeStorage};
-use crate::credential::worker::CredentialExchangeWorker;
 use crate::credential::{
     Credential, CredentialBuilder, CredentialData, Timestamp, Unverified, Verified,
 };
 use crate::{
-    Identity, IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo,
-    IdentityStateConst, IdentityVault, PublicIdentity, TrustContext,
+    Identity, IdentityError, IdentityIdentifier, IdentityStateConst, IdentityVault, PublicIdentity,
 };
 use core::marker::PhantomData;
-use minicbor::Decoder;
-use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::sync::Arc;
 
 use ockam_core::errcode::{Kind, Origin};
