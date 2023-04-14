@@ -73,5 +73,6 @@ async fn main(ctx: Context) -> Result<()> {
     .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
+    println!("issuer started");
     Ok(())
 }
