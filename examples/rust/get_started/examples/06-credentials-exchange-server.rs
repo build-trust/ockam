@@ -114,5 +114,6 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.listen("127.0.0.1:4000", tcp_listener_options).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
+    println!("server started");
     Ok(())
 }
