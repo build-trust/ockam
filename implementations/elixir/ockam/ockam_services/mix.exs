@@ -56,7 +56,7 @@ defmodule Ockam.Services.MixProject do
       {:ranch, "~> 2.1.0", override: true},
       ## Token lease manager
       {:httpoison, "~> 1.8"},
-      {:poison, "~> 4.0.1"},
+      {:poison, "~> 5.0.0"},
       {:postgrex, "~> 0.17.1"},
 
       ## Used for Ockam.Services.API.Endpoint' dispatch table implementation
