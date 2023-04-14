@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.84.0 - 2023-04-14
+
+### Added
+
+- Add a limited version of the `ockam run` command
+
+### Changed
+
+- Implement custom get_env
+- Update commands that use project path to also accept trust context
+- Improve command help
+- Rename `Sessions` -> `FlowControls`
+- Use cli state for trust context and default trust context
+- Create a dbackground default node on demand
+- Updated dependencies
+
+### Fixed
+
+- Fix project deletion from state
+- Fix `authenticated` command & `Sessions`
+
 ## 0.83.0 - 2023-03-28
 
 ### Added

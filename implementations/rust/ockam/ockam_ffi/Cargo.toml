@@ -1,6 +1,6 @@
 [package]
 name = "ockam-ffi"
-version = "0.69.0"
+version = "0.70.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -29,6 +29,6 @@ default = []
 [dependencies]
 futures = { version = "0.3.28" }
 lazy_static = "1.4"
-ockam_core = { path = "../ockam_core", version = "^0.77.0" }
-ockam_vault = { path = "../ockam_vault", version = "^0.73.0" }
+ockam_core = { path = "../ockam_core", version = "^0.78.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.74.0" }
 tokio = { version = "1.27", features = ["full"] }

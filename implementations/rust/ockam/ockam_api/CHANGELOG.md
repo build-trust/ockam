@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.27.0 - 2023-04-14
+
+### Added
+
+- Add trust context struct and traits
+- Add trust context config and insantiate node manager with trust options
+- Add trust context option to node create, use trust context with credential option
+- Add more bats tests for trust context
+- Add `RpcProxyService`
+- Add a limited version of the `ockam run` command
+- Add config directly to trust context state
+
+### Changed
+
+- Implement custom get_env
+- Use trust context within the creation of ockam_api secure channels
+- Trust context fully dictates cred check on node man
+- Introduce `TrustOptions::insecure()` and `::insecure_test()`
+- Start using `session_id` for outgoing secure channels in `ockam_api` and `ockam_command`
+- Make message flow `Sessions` work with replacement `Sessions`
+- Reduce usage of `::insecure()`
+- Rename `create_tcp_session` -> `multiaddr_to_route`
+- Rename `insecure_test` -> `new`
+- Rename `Sessions` -> `FlowControls`
+- Rename `TrustOptions` -> `Options`
+- Use cli state for trust context and default trust context
+- Disable `FlowControl` for loopback tcp connections and listeners
+- Updated dependencies
+
+### Fixed
+
+- Fix project deletion from state
+- Fix `authenticated` command & `Sessions`
+- Fixes after tough rebase
+- Include trust-context path in ockam reset
+
+### Removed
+
+- Remove few unwraps
+
 ## 0.26.0 - 2023-03-28
 
 ### Added

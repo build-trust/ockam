@@ -1,6 +1,6 @@
 [package]
 name = "ockam_key_exchange_xx"
-version = "0.73.0"
+version = "0.74.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -35,10 +35,10 @@ no_std = ["ockam_core/no_std", "ockam_macros/no_std"]
 alloc = ["ockam_core/alloc", "ockam_macros/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.77.0", default_features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.78.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.28.0", default_features = false }
 
 [dev-dependencies]
 hex = "0.4"
-ockam_node = { path = "../ockam_node", version = "^0.80.0" }
-ockam_vault = { path = "../ockam_vault", version = "^0.73.0" }
+ockam_node = { path = "../ockam_node", version = "^0.81.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.74.0" }
