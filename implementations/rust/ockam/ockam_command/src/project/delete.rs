@@ -93,7 +93,7 @@ async fn run_impl(
             &cmd.project_name
         ))
         .machine(&cmd.project_name)
-        .json(&serde_json::json!({ "project": { "name": &cmd.project_name } }))
+        .json(serde_json::json!({ "project": { "name": &cmd.project_name } }))
         .write_line()?;
 
     Ok(())

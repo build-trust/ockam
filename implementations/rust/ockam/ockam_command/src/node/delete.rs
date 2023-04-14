@@ -49,7 +49,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                 &cmd.node_name
             ))
             .machine(&cmd.node_name)
-            .json(&serde_json::json!({ "node": { "name": &cmd.node_name } }))
+            .json(serde_json::json!({ "node": { "name": &cmd.node_name } }))
             .write_line()?;
     }
     Ok(())

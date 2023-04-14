@@ -255,7 +255,7 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
 
 #[cfg(test)]
 pub mod test {
-    use crate::cli_state::{CliState, IdentityConfig, NodeConfig, VaultConfig};
+    use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::nodes::service::{
         ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
         NodeManagerTransportOptions, NodeManagerTrustOptions,

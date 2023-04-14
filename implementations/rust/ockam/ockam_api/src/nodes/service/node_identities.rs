@@ -1,3 +1,4 @@
+use crate::cli_state::traits::StateTrait;
 use crate::cli_state::CliState;
 use ockam::compat::sync::Arc;
 use ockam::identity::{Identities, IdentitiesCreation, IdentitiesKeys};

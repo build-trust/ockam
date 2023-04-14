@@ -1,6 +1,7 @@
 use crate::CommandGlobalOpts;
 use anyhow::anyhow;
 use clap::Args;
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use ockam_api::cli_state::CliStateError;
 
 /// Set the default vault
@@ -25,18 +26,18 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
     match state.get(&cmd.name) {
         Ok(v) => {
             // If it exists, warn the user and exit
-            if state.is_default(&v.name)? {
+            if state.is_default(v.name())? {
                 Err(anyhow!("Vault '{}' is already the default", &cmd.name).into())
             }
             // Otherwise, set it as default
             else {
-                state.set_default(&v.name)?;
+                state.set_default(v.name())?;
                 println!("Vault '{}' is now the default", &cmd.name,);
                 Ok(())
             }
         }
         Err(err) => match err {
-            CliStateError::NotFound(_) => Err(anyhow!("Vault '{}' not found", &cmd.name).into()),
+            CliStateError::NotFound => Err(anyhow!("Vault '{}' not found", &cmd.name).into()),
             _ => Err(err.into()),
         },
     }

@@ -8,6 +8,7 @@ use anyhow::{anyhow, Context as _};
 use clap::{ArgGroup, Args};
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
+use ockam_api::cli_state::traits::StateTrait;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
@@ -304,7 +305,7 @@ async fn start_authority_node(
     let configuration = authority_node::Configuration {
         identity,
         storage_path: options.state.identities.identities_repository_path()?,
-        vault_path: options.state.vaults.default()?.vault_file_path()?,
+        vault_path: options.state.vaults.default()?.vault_file_path().clone(),
         project_identifier: command.project_identifier.clone(),
         trust_context_identifier: command.project_identifier,
         tcp_listener_address: command.tcp_listener_address.clone(),

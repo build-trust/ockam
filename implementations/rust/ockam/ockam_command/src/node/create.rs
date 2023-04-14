@@ -26,6 +26,7 @@ use crate::{
 };
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
+use ockam_api::cli_state::traits::StateTrait;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::{ApiTransport, NodeManagerTrustOptions};
@@ -513,7 +514,7 @@ async fn start_authority_node(
         let configuration = authority_node::Configuration {
             identity,
             storage_path: options.state.identities.identities_repository_path()?,
-            vault_path: options.state.vaults.default()?.vault_file_path()?,
+            vault_path: options.state.vaults.default()?.vault_file_path().clone(),
             project_identifier: authenticator_config.project.clone(),
             trust_context_identifier: authenticator_config.project,
             tcp_listener_address: command.tcp_listener_address.clone(),

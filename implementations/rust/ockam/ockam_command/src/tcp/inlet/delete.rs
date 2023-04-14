@@ -45,7 +45,7 @@ pub async fn run_impl(
             "✔︎".light_green(),
         ))
         .machine(&alias)
-        .json(&serde_json::json!({ "tcp-inlet": { "alias": alias, "node": node } }))
+        .json(serde_json::json!({ "tcp-inlet": { "alias": alias, "node": node } }))
         .write_line()?;
     Ok(())
 }

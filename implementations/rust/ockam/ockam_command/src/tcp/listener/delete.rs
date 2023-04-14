@@ -43,7 +43,7 @@ async fn run_impl(
             &cmd.id
         ))
         .machine(&cmd.id)
-        .json(&serde_json::json!({ "tcp-listener": { "id": &cmd.id } }))
+        .json(serde_json::json!({ "tcp-listener": { "id": &cmd.id } }))
         .write_line()?;
 
     Ok(())
