@@ -95,6 +95,13 @@ fn output(mut cont: Container) -> TokenStream {
             use core::time::Duration;
             use ockam_core::{Error, errcode::{Origin, Kind}};
             use #ockam_crate::{NodeBuilder, compat::{tokio::time::timeout, futures::FutureExt}};
+            // don't enable logs in tests by default
+            use ockam_core::env::get_env;
+
+            match get_env::<String>("OCKAM_LOG").unwrap() {
+               None => std::env::set_var("OCKAM_LOG", "none"),
+               Some(_) => (),
+            };
 
             let (mut #ctx_ident, mut executor) = NodeBuilder::new().build();
             executor
