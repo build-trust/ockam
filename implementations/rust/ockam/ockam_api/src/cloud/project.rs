@@ -185,7 +185,7 @@ impl OktaConfig<'_> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OktaAuth0 {
     pub tenant_base_url: String,
     pub client_id: String,

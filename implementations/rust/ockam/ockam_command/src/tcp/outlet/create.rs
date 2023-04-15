@@ -1,9 +1,13 @@
 use crate::node::{default_node_name, node_name_parser};
+use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
+use crate::Result;
+use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
+use ockam_abac::Resource;
 use ockam_api::{
     error::ApiError,
     nodes::models::portal::{CreateOutlet, OutletStatus},
@@ -11,7 +15,7 @@ use ockam_api::{
 };
 use ockam_core::api::{Request, RequestBuilder};
 use ockam_core::route;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
@@ -21,11 +25,11 @@ pub struct CreateCommand {
     at: String,
 
     /// Address of the tcp outlet.
-    #[arg(long, display_order = 901, id = "OUTLET_ADDRESS")]
+    #[arg(long, display_order = 901, id = "OUTLET_ADDRESS", default_value_t = default_from_addr())]
     from: String,
 
     /// TCP address to send raw tcp traffic.
-    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS")]
+    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS", value_parser = socket_addr_parser)]
     to: SocketAddr,
 
     /// Assign a name to this outlet.
@@ -39,11 +43,57 @@ impl CreateCommand {
     }
 }
 
+fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
+    let to_address_info: Vec<&str> = input.split(':').collect();
+    if to_address_info.len() > 2 {
+        return Err(anyhow!("Failed to parse to address").into());
+    }
+
+    let port: u16 = if to_address_info.len() == 2 {
+        to_address_info[1]
+            .parse()
+            .map_err(|_| anyhow!("Invalid port number"))?
+    } else {
+        to_address_info[0]
+            .parse()
+            .map_err(|_| anyhow!("Invalid port number"))?
+    };
+
+    let server_ip: Ipv4Addr = if to_address_info.len() < 2 {
+        [127, 0, 0, 1].into()
+    } else {
+        let address_octets: [u8; 4] = {
+            let mut octets = [0; 4];
+            for (i, octet_str) in to_address_info[0].split('.').enumerate() {
+                octets[i] = octet_str
+                    .parse()
+                    .map_err(|_| anyhow!("Invalid IP address"))?;
+            }
+            octets
+        };
+        Ipv4Addr::from(address_octets)
+    };
+
+    Ok(SocketAddr::new(IpAddr::V4(server_ip), port))
+}
+
+fn default_from_addr() -> String {
+    "/service/outlet".to_string()
+}
+
 pub async fn run_impl(
     ctx: Context,
     (options, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     let node = extract_address_value(&cmd.at)?;
+    let project = options.state.nodes.get(&node)?.setup()?.project;
+    let resource = Resource::new("tcp-outlet");
+    if let Some(p) = project {
+        if !has_policy(&node, &ctx, &options, &resource).await? {
+            add_default_project_policy(&node, &ctx, &options, p, &resource).await?;
+        }
+    }
+
     let mut rpc = Rpc::background(&ctx, &options, &node)?;
 
     let cmd = CreateCommand {

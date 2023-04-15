@@ -2,13 +2,18 @@ mod create;
 mod delete;
 mod list;
 mod show;
-use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;
 use crate::policy::list::ListCommand;
 use crate::policy::show::ShowCommand;
-use crate::CommandGlobalOpts;
+use crate::{policy::create::CreateCommand, util::Rpc};
+use crate::{CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
+use ockam::Context;
+use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Resource};
+use ockam_api::nodes::models::policy::PolicyList;
+use ockam_api::{config::lookup::ProjectLookup, nodes::models::policy::Policy};
+use ockam_core::api::Request;
 
 #[derive(Clone, Debug, Args)]
 pub struct PolicyCommand {
@@ -36,6 +41,35 @@ impl PolicyCommand {
     }
 }
 
-fn policy_path(r: &Resource, a: &Action) -> String {
+pub(crate) fn policy_path(r: &Resource, a: &Action) -> String {
     format!("/policy/{r}/{a}")
+}
+
+pub(crate) async fn has_policy(
+    node: &str,
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    resource: &Resource,
+) -> Result<bool> {
+    let req = Request::get(format!("/policy/{resource}"));
+    let mut rpc = Rpc::background(ctx, opts, node)?;
+    rpc.request(req).await?;
+    let pol: PolicyList = rpc.parse_response()?;
+    Ok(!pol.expressions().is_empty())
+}
+
+pub(crate) async fn add_default_project_policy(
+    node: &str,
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    project: ProjectLookup,
+    resource: &Resource,
+) -> Result<()> {
+    let expr = eq([ident("subject.project_id"), str(project.id.to_string())]);
+    let bdy = Policy::new(expr);
+    let req = Request::post(policy_path(resource, &Action::new("handle_message"))).body(bdy);
+
+    let mut rpc = Rpc::background(ctx, opts, node)?;
+    rpc.request(req).await?;
+    rpc.is_ok()
 }

@@ -240,7 +240,7 @@ async fn run_foreground_node(
         .await?;
     }
 
-    add_project_info_to_node_state(&opts, cfg, &cmd.trust_context_opts).await?;
+    add_project_info_to_node_state(&node_name, &opts, cfg, &cmd.trust_context_opts).await?;
 
     let trust_context_config = TrustContextConfigBuilder::new(&cmd.trust_context_opts)
         .with_authority_identity(cmd.authority_identity.as_ref())

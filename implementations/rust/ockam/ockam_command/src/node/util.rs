@@ -51,11 +51,9 @@ pub async fn start_embedded_node_with_vault_and_identity(
     }
 
     if let Some(p) = trust_opts {
-        add_project_info_to_node_state(opts, cfg, p).await?;
-    } else if let Some(path) = &cmd.trust_context_opts.project_path {
-        let s = tokio::fs::read_to_string(path).await?;
-        let p: ProjectInfo = serde_json::from_str(&s)?;
-        project::config::set_project(cfg, &(&p).into()).await?;
+        add_project_info_to_node_state(&cmd.node_name, opts, cfg, p).await?;
+    } else {
+        add_project_info_to_node_state(&cmd.node_name, opts, cfg, &cmd.trust_context_opts).await?;
     };
 
     let trust_context_config = match trust_opts {
@@ -109,6 +107,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
 }
 
 pub async fn add_project_info_to_node_state(
+    node_name: &str,
     opts: &CommandGlobalOpts,
     cfg: &OckamConfig,
     project_opts: &TrustContextOpts,
@@ -130,6 +129,13 @@ pub async fn add_project_info_to_node_state(
             // FIXME What is this doing?.  We need to simplify how this work.
             //       we also need to remove project names from routes, as nodes
             //       are started with _one_  project.
+
+            let mut config = opts.state.nodes.get(node_name)?.config;
+            let setup = config.setup();
+            setup.set_project(proj_lookup.clone());
+
+            opts.state.nodes.update(node_name, config)?;
+
             project::config::set_project(cfg, &(&proj_info).into()).await?;
             Ok(Some(proj_lookup.id))
         }

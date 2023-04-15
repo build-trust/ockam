@@ -1,6 +1,7 @@
 use crate::cloud::project::Project;
 
 use crate::config::cli::TrustContextConfig;
+use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
 use nix::errno::Errno;
@@ -734,6 +735,22 @@ impl NodesState {
         self.get(name)
     }
 
+    pub fn update(&self, name: &str, mut config: NodeConfig) -> Result<NodeState> {
+        config.name = name.to_string();
+
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(name);
+            path
+        };
+
+        let state = NodeState::new(path, config);
+        std::fs::write(state.path.join("version"), state.config.version.to_string())?;
+        state.set_setup(&state.config.setup)?;
+
+        Ok(state)
+    }
+
     pub fn create(&self, name: &str, mut config: NodeConfig) -> Result<NodeState> {
         config.name = name.to_string();
 
@@ -957,6 +974,10 @@ impl NodeConfig {
         })
     }
 
+    pub fn setup(&mut self) -> &mut NodeSetupConfig {
+        &mut self.setup
+    }
+
     pub async fn vault(&self) -> Result<Vault> {
         let state_path = std::fs::canonicalize(&self.default_vault)?;
         let state = VaultState::try_from(&state_path)?;
@@ -1093,7 +1114,7 @@ pub struct NodeSetupConfig {
     /// displayed in print_query_status.
     /// The field might be missing in previous configuration files, hence it is an Option
     pub authority_node: Option<bool>,
-
+    pub project: Option<ProjectLookup>,
     transports: Vec<CreateTransportJson>,
     // TODO
     // secure_channels: ?,
@@ -1110,6 +1131,11 @@ impl NodeSetupConfig {
 
     pub fn set_authority_node(mut self) -> Self {
         self.authority_node = Some(true);
+        self
+    }
+
+    pub fn set_project(&mut self, project: ProjectLookup) -> &mut Self {
+        self.project = Some(project);
         self
     }
 
