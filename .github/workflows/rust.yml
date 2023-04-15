@@ -149,6 +149,9 @@ jobs:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/build-trust/ockam-builder@sha256:0a4c3640f78650e35207a047891e55863d8648a9333ea0bcfe03f09e2d57480c
+    strategy:
+      matrix:
+        partition: [1, 2, 3]
     services:
       ockam_cloud:
         image: ghcr.io/build-trust/ockam-cloud-node@sha256:518314876a5b07c263b88995792335c4426d940c10e5e638a60e66776d86cff5
@@ -163,7 +166,7 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: |
           rustc --version
-          cd implementations/rust && ../../gradlew test
+          cd implementations/rust && ../../gradlew test -Ppartition=count:${{ matrix.partition }}/3
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_no_std:
@@ -265,6 +268,9 @@ jobs:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/build-trust/ockam-builder@sha256:0a4c3640f78650e35207a047891e55863d8648a9333ea0bcfe03f09e2d57480c
+    strategy:
+      matrix:
+        partition: [1, 2, 3]
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
@@ -276,7 +282,7 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: |
           rustc --version
-          cd implementations/rust && ../../gradlew test
+          cd implementations/rust && ../../gradlew test -Ppartition=count:${{ matrix.partition }}/3
         env:
           NIGHTLY_CI: 1
       - uses: ./.github/actions/cargo_target_dir_pre_cache
