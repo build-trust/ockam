@@ -1,4 +1,5 @@
 use crate::node::{default_node_name, node_name_parser};
+use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
@@ -10,6 +11,7 @@ use anyhow::anyhow;
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
+use ockam_abac::Resource;
 use ockam_api::nodes::models::portal::CreateInlet;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_core::api::Request;
@@ -71,6 +73,13 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
 
     let tcp = TcpTransport::create(&ctx).await?;
     let node = extract_address_value(&cmd.at)?;
+    let project = opts.state.nodes.get(&node)?.setup()?.project;
+    let resource = Resource::new("tcp-inlet");
+    if let Some(p) = project {
+        if !has_policy(&node, &ctx, &opts, &resource).await? {
+            add_default_project_policy(&node, &ctx, &opts, p, &resource).await?;
+        }
+    }
 
     let req = {
         let mut payload = if cmd.to.matches(0, &[Project::CODE.into()]) {

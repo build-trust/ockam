@@ -200,7 +200,7 @@ pub struct SpaceLookup {
 }
 
 /// Represents a remote Ockam project lookup
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProjectLookup {
     /// How to reach the node hosting this project
     pub node_route: Option<MultiAddr>,
@@ -246,7 +246,7 @@ impl ProjectLookup {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct ProjectAuthority {
     id: IdentityIdentifier,
     address: MultiAddr,
