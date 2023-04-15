@@ -48,7 +48,7 @@ rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 rust-embed = "6"
 serde = { version = "1.0.160", features = ["derive"] }
-serde_json = "1.0.95"
+serde_json = "1.0.96"
 sysinfo = "0.28"
 tempfile = "3.5.0"
 thiserror = "1.0"
