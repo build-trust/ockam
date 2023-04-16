@@ -5,7 +5,7 @@ use anyhow::{anyhow, Context as _};
 use ockam::identity::credential::OneTimeCode;
 use ockam::Context;
 use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
-use ockam_api::cloud::project::OktaAuth0;
+use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_core::api::{Request, Status};
 use ockam_multiaddr::MultiAddr;
 use tracing::debug;
@@ -67,6 +67,7 @@ async fn run_impl(
     // Read (okta and authority) project parameters from project.json
     let s = tokio::fs::read_to_string(path).await?;
     let proj: ProjectInfo = serde_json::from_str(&s)?;
+    let project: Project = (&proj).into();
 
     // Create secure channel to the project's authority node
     // RPC is in embedded mode
@@ -145,6 +146,11 @@ async fn run_impl(
         )
         .await?,
     );
+
+    opts.state.projects.create(&project.name, project.clone())?;
+    opts.state
+        .trust_contexts
+        .create(&project.name, project.clone().try_into()?)?;
 
     let credential = client2.credential().await?;
     println!("---");
