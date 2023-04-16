@@ -43,6 +43,7 @@ use ockam_api::{
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::{route, AllowAll, LOCAL};
 
+use super::show::is_node_up;
 use super::util::check_default;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -200,6 +201,7 @@ async fn run_impl(
     // TODO: This is a temporary workaround until we have proper
     // support for controling the output of commands
     if opts.global_args.quiet {
+        let _ = is_node_up(&mut rpc, true).await?;
         return Ok(());
     }
 
