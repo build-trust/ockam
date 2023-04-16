@@ -251,7 +251,7 @@ pub async fn print_query_status(
 /// appear to be 'up', retry the test at time intervals up to
 /// a maximum number of retries. A use case for this is to
 /// allow a node time to start up and become ready.
-async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<bool> {
+pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<bool> {
     let attempts = match wait_until_ready {
         true => IS_NODE_UP_MAX_ATTEMPTS,
         false => 1,
