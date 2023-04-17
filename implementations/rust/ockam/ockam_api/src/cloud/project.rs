@@ -70,6 +70,13 @@ pub struct Project<'a> {
     #[serde(borrow)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confluent_config: Option<ConfluentConfigResponse<'a>>,
+
+    #[cbor(b(13))]
+    #[serde(borrow)]
+    pub version: Option<CowStr<'a>>,
+
+    #[cbor(b(14))]
+    pub running: Option<bool>,
 }
 
 impl Clone for Project<'_> {
@@ -95,6 +102,8 @@ impl Project<'_> {
             authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
             okta_config: self.okta_config.as_ref().map(|x| x.to_owned()),
             confluent_config: self.confluent_config.as_ref().map(|x| x.to_owned()),
+            version: self.version.as_ref().map(|x| x.to_owned()),
+            running: self.running,
         }
     }
 
@@ -443,6 +452,8 @@ mod tests {
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
                 okta_config: None,
                 confluent_config: None,
+                version: None,
+                running: None,
             })
         }
     }
