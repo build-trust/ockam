@@ -104,30 +104,6 @@ impl VaultService {
 
         match method {
             Get => match req.path_segments::<3>().as_slice() {
-                ["secrets", key_id] => {
-                    if !req.has_body() {
-                        return Self::response_for_bad_request(req, "empty body", enc);
-                    }
-
-                    let args = dec.decode::<GetSecretRequest>()?;
-
-                    let key_id: KeyId = key_id.to_string();
-
-                    match args.operation() {
-                        GetSecretRequestOperation::GetAttributes => {
-                            let resp = self.vault.secret_attributes_get(&key_id).await?;
-                            let body = GetSecretAttributesResponse::new(resp);
-
-                            Self::ok_response(req, Some(body), enc)
-                        }
-                        GetSecretRequestOperation::GetSecretBytes => {
-                            let resp = self.vault.secret_export(&key_id).await?;
-                            let body = ExportSecretResponse::new(resp);
-
-                            Self::ok_response(req, Some(body), enc)
-                        }
-                    }
-                }
                 ["secrets", key_id, "public_key"] => {
                     let key_id: KeyId = key_id.to_string();
 
