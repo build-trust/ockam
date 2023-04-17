@@ -1,5 +1,5 @@
 use crate::util::output::Output;
-use crate::util::print_output;
+use crate::util::println_output;
 use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
 use anyhow::anyhow;
 use clap::Args;
@@ -51,14 +51,14 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
     if cmd.full {
         let identity = state.config.change_history.export()?;
         if Some(EncodeFormat::Hex) == cmd.encoding {
-            print_output(identity, &opts.global_args.output_format)?;
+            println_output(identity, &opts.global_args.output_format)?;
         } else {
             let output = LongIdentityResponse::new(identity);
-            print_output(output, &opts.global_args.output_format)?;
+            println_output(output, &opts.global_args.output_format)?;
         }
     } else {
         let output = ShortIdentityResponse::new(state.config.identifier.to_string());
-        print_output(output, &opts.global_args.output_format)?;
+        println_output(output, &opts.global_args.output_format)?;
     }
     Ok(())
 }

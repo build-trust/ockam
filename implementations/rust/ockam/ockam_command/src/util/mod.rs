@@ -334,15 +334,6 @@ where
     Ok(b)
 }
 
-pub fn print_output<T>(b: T, output_format: &OutputFormat) -> Result<T>
-where
-    T: Output + serde::Serialize,
-{
-    let o = get_output(&b, output_format)?;
-    print!("{o}");
-    Ok(b)
-}
-
 fn get_output<T>(b: &T, output_format: &OutputFormat) -> Result<String>
 where
     T: Output + serde::Serialize,
