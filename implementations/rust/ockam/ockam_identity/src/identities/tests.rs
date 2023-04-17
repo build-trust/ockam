@@ -15,12 +15,13 @@ use rand::prelude::Distribution;
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
+use crate::Identities;
 
 #[ockam_macros::test]
 async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
     for _ in 0..100 {
         let crazy_vault = Arc::new(CrazyVault::new(0.1, Vault::default()));
-        let identities = identities::builder()
+        let identities = Identities::builder()
             .with_identities_vault(crazy_vault.clone())
             .build();
         let mut identity = identities.identities_creation().create_identity().await?;
@@ -70,7 +71,7 @@ async fn test_eject_signatures(ctx: &mut Context) -> Result<()> {
     let crazy_vault = CrazyVault::new(0.1, Vault::default());
 
     for _ in 0..100 {
-        let identities = crate::identities::builder()
+        let identities = crate::Identities::builder()
             .with_identities_vault(Arc::new(crazy_vault.clone()))
             .build();
         let mut identity = identities.identities_creation().create_identity().await?;

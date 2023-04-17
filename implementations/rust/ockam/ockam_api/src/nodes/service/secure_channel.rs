@@ -24,7 +24,7 @@ use crate::cli_state::CliStateError;
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use crate::nodes::service::NodeIdentities;
 use ockam::identity::{
-    secure_channels, Identities, IdentitiesVault, Identity, IdentityIdentifier,
+    Identities, IdentitiesVault, Identity, IdentityIdentifier,
     SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
@@ -262,7 +262,7 @@ impl NodeManager {
             let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
             let identities = self.get_identities(vault_name, identity).await?;
             let registry = self.secure_channels.secure_channel_registry();
-            secure_channels::builder()
+            SecureChannels::builder()
                 .with_identities_vault(vault)
                 .with_identities(identities)
                 .with_secure_channels_registry(registry)
@@ -412,8 +412,8 @@ impl NodeManagerWorker {
             &node_manager.tcp_transport,
             &node_manager.flow_controls,
         )
-        .await
-        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+            .await
+            .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
         let (sc_address, sc_flow_control_id) = node_manager
             .create_secure_channel_impl(

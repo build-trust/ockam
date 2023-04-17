@@ -7,7 +7,7 @@ use crate::nodes::models::transport::{CreateTransportJson, TransportMode, Transp
 use nix::errno::Errno;
 use ockam::identity::identity::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam::identity::{
-    identities, Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
     IdentityIdentifier,
 };
 use ockam_core::compat::sync::Arc;
@@ -205,14 +205,14 @@ impl CliState {
     }
 
     pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
-        Ok(identities::builder()
+        Ok(Identities::builder()
             .with_identities_vault(Arc::new(vault))
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
     }
 
     pub async fn default_identities(&self) -> Result<Arc<Identities>> {
-        Ok(identities::builder()
+        Ok(Identities::builder()
             .with_identities_vault(self.vaults.default()?.identities_vault().await?)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
@@ -660,7 +660,7 @@ impl IdentityState {
             .identities
             .identities_repository()
             .await?;
-        Ok(identities::builder()
+        Ok(Identities::builder()
             .with_identities_vault(vault)
             .with_identities_repository(repository)
             .build())
@@ -731,7 +731,7 @@ impl PartialEq for IdentityConfig {
     fn eq(&self, other: &Self) -> bool {
         self.identifier == other.identifier
             && self.change_history.compare(&other.change_history)
-                == IdentityHistoryComparison::Equal
+            == IdentityHistoryComparison::Equal
     }
 }
 
@@ -1004,20 +1004,20 @@ impl NodeState {
                     nix::sys::signal::Signal::SIGTERM
                 },
             )
-            .or_else(|e| {
-                if e == Errno::ESRCH {
-                    tracing::warn!(node = %self.config.name, %pid, "No such process");
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            })
-            .map_err(|e| {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("failed to stop PID `{pid}` with error `{e}`"),
-                ))
-            })?;
+                .or_else(|e| {
+                    if e == Errno::ESRCH {
+                        tracing::warn!(node = %self.config.name, %pid, "No such process");
+                        Ok(())
+                    } else {
+                        Err(e)
+                    }
+                })
+                .map_err(|e| {
+                    CliStateError::Io(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("failed to stop PID `{pid}` with error `{e}`"),
+                    ))
+                })?;
             std::fs::remove_file(self.path.join("pid"))?;
         }
         Ok(())
@@ -1633,7 +1633,7 @@ mod tests {
             let name = hex::encode(random::<[u8; 4]>());
             let vault_state = sut.vaults.get(&vault_name).unwrap();
             let vault: Arc<dyn IdentitiesVault> = Arc::new(vault_state.get().await.unwrap());
-            let identities = identities::builder()
+            let identities = Identities::builder()
                 .with_identities_vault(vault)
                 .with_identities_repository(sut.identities.identities_repository().await?)
                 .build();

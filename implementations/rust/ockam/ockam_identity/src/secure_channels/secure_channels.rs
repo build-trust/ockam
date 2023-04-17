@@ -5,6 +5,7 @@ use crate::secure_channel::{
     Addresses, DecryptorWorker, IdentityChannelListener, Role, SecureChannelListenerOptions,
     SecureChannelOptions, SecureChannelRegistry,
 };
+use crate::SecureChannelsBuilder;
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
@@ -44,6 +45,14 @@ impl SecureChannels {
     pub fn secure_channel_registry(&self) -> SecureChannelRegistry {
         self.secure_channel_registry.clone()
     }
+
+    /// Create a builder for secure channels
+    pub fn builder() -> SecureChannelsBuilder {
+        SecureChannelsBuilder {
+            identities_builder: Identities::builder(),
+            registry: SecureChannelRegistry::new(),
+        }
+    }
 }
 
 impl SecureChannels {
@@ -62,7 +71,7 @@ impl SecureChannels {
             address.into(),
             options.into(),
         )
-        .await?;
+            .await?;
 
         Ok(())
     }
@@ -93,7 +102,7 @@ impl SecureChannels {
             access_control.decryptor_outgoing_access_control,
             Duration::from_secs(120),
         )
-        .await
+            .await
     }
 
     /// Extended function to create a SecureChannel with [`SecureChannelOptions`]
@@ -123,7 +132,7 @@ impl SecureChannels {
             access_control.decryptor_outgoing_access_control,
             timeout,
         )
-        .await
+            .await
     }
 
     /// Stop a SecureChannel given an encryptor address

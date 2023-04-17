@@ -261,7 +261,7 @@ pub mod test {
         NodeManagerTransportOptions, NodeManagerTrustOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-    use ockam::identity::{secure_channels, Identity, SecureChannels};
+    use ockam::identity::{Identity, SecureChannels};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
     use ockam_core::AsyncTryClone;
@@ -308,7 +308,7 @@ pub mod test {
             .await?;
 
         let identity_name = hex::encode(rand::random::<[u8; 4]>());
-        let secure_channels = secure_channels::builder()
+        let secure_channels = SecureChannels::builder()
             .with_identities_vault(Arc::new(vault))
             .with_identities_repository(cli_state.identities.identities_repository().await?)
             .build();
@@ -341,7 +341,7 @@ pub mod test {
             ),
             NodeManagerTrustOptions::new(None),
         )
-        .await?;
+            .await?;
 
         let mut node_manager_worker = NodeManagerWorker::new(node_manager);
         let node_manager = node_manager_worker.get().clone();
