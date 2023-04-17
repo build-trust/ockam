@@ -731,7 +731,7 @@ impl PartialEq for IdentityConfig {
     fn eq(&self, other: &Self) -> bool {
         self.identifier == other.identifier
             && self.change_history.compare(&other.change_history)
-            == IdentityHistoryComparison::Equal
+                == IdentityHistoryComparison::Equal
     }
 }
 
@@ -1004,20 +1004,20 @@ impl NodeState {
                     nix::sys::signal::Signal::SIGTERM
                 },
             )
-                .or_else(|e| {
-                    if e == Errno::ESRCH {
-                        tracing::warn!(node = %self.config.name, %pid, "No such process");
-                        Ok(())
-                    } else {
-                        Err(e)
-                    }
-                })
-                .map_err(|e| {
-                    CliStateError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("failed to stop PID `{pid}` with error `{e}`"),
-                    ))
-                })?;
+            .or_else(|e| {
+                if e == Errno::ESRCH {
+                    tracing::warn!(node = %self.config.name, %pid, "No such process");
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            })
+            .map_err(|e| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("failed to stop PID `{pid}` with error `{e}`"),
+                ))
+            })?;
             std::fs::remove_file(self.path.join("pid"))?;
         }
         Ok(())

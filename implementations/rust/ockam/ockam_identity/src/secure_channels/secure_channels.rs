@@ -71,7 +71,7 @@ impl SecureChannels {
             address.into(),
             options.into(),
         )
-            .await?;
+        .await?;
 
         Ok(())
     }
@@ -102,7 +102,7 @@ impl SecureChannels {
             access_control.decryptor_outgoing_access_control,
             Duration::from_secs(120),
         )
-            .await
+        .await
     }
 
     /// Extended function to create a SecureChannel with [`SecureChannelOptions`]
@@ -132,7 +132,7 @@ impl SecureChannels {
             access_control.decryptor_outgoing_access_control,
             timeout,
         )
-            .await
+        .await
     }
 
     /// Stop a SecureChannel given an encryptor address

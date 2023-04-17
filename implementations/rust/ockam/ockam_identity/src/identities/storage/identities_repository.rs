@@ -15,7 +15,7 @@ use ockam_core::Result;
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]
 pub trait IdentitiesRepository:
-IdentityAttributesReader + IdentityAttributesWriter + IdentitiesReader + IdentitiesWriter
+    IdentityAttributesReader + IdentityAttributesWriter + IdentitiesReader + IdentitiesWriter
 {
     /// Restrict this repository as a reader for attributes
     fn as_attributes_reader(&self) -> Arc<dyn IdentityAttributesReader>;

@@ -24,9 +24,8 @@ use crate::cli_state::CliStateError;
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use crate::nodes::service::NodeIdentities;
 use ockam::identity::{
-    Identities, IdentitiesVault, Identity, IdentityIdentifier,
-    SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
-    TrustMultiIdentifiersPolicy,
+    Identities, IdentitiesVault, Identity, IdentityIdentifier, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
 };
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -412,8 +411,8 @@ impl NodeManagerWorker {
             &node_manager.tcp_transport,
             &node_manager.flow_controls,
         )
-            .await
-            .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+        .await
+        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
         let (sc_address, sc_flow_control_id) = node_manager
             .create_secure_channel_impl(

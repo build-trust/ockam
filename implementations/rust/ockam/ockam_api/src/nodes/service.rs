@@ -2,8 +2,8 @@
 
 use minicbor::Decoder;
 use ockam::identity::{
-    Credentials, CredentialsServer, CredentialsServerModule, Identities,
-    IdentitiesRepository, IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
+    Credentials, CredentialsServer, CredentialsServerModule, Identities, IdentitiesRepository,
+    IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
 };
 use ockam::identity::{Identity, IdentityIdentifier, SecureChannels};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
@@ -186,15 +186,15 @@ impl NodeManager {
                     Some(e) => e.clone(),
                     None => and([
                         eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                        /*
-                        * TODO: replace the project_id check for trust_context_id.  For now the
-                        * existing authority deployed doesn't know about trust_context so this is to
-                        * be done after updating deployed authorities.
-                        eq([
-                            ident("resource.trust_context_id"),
-                            ident("subject.trust_context_id"),
-                        ]),
-                        */
+                                                                                         /*
+                                                                                         * TODO: replace the project_id check for trust_context_id.  For now the
+                                                                                         * existing authority deployed doesn't know about trust_context so this is to
+                                                                                         * be done after updating deployed authorities.
+                                                                                         eq([
+                                                                                             ident("resource.trust_context_id"),
+                                                                                             ident("subject.trust_context_id"),
+                                                                                         ]),
+                                                                                         */
                     ]),
                 };
                 self.policies.set_policy(r, a, &fallback).await?
@@ -357,11 +357,11 @@ impl NodeManager {
             skip_defaults: general_options.skip_defaults,
             enable_credential_checks: trust_options.trust_context_config.is_some()
                 && trust_options
-                .trust_context_config
-                .as_ref()
-                .unwrap()
-                .authority()
-                .is_ok(),
+                    .trust_context_config
+                    .as_ref()
+                    .unwrap()
+                    .authority()
+                    .is_ok(),
             identity,
             secure_channels,
             projects: Arc::new(projects_options.projects),
@@ -394,7 +394,7 @@ impl NodeManager {
                 self.secure_channels.clone(),
                 Some(self.tcp_transport.async_try_clone().await?),
             )
-                .await?,
+            .await?,
         );
 
         info!("NodeManager::configure_trust_context: trust context configured");
@@ -421,7 +421,7 @@ impl NodeManager {
             AllowAll, // FIXME: @ac
             AllowAll, // FIXME: @ac
         )
-            .await?;
+        .await?;
 
         self.create_secure_channel_listener_impl(
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
@@ -430,7 +430,7 @@ impl NodeManager {
             None,
             ctx,
         )
-            .await?;
+        .await?;
 
         // If we've been configured with a trust context, we can start Credential Exchange service
         if let Ok(tc) = self.trust_context() {
@@ -440,7 +440,7 @@ impl NodeManager {
                 DefaultAddress::CREDENTIALS_SERVICE.into(),
                 false,
             )
-                .await?;
+            .await?;
         }
 
         Ok(())
@@ -699,7 +699,7 @@ impl NodeManagerWorker {
                     &node_manager.transports.clone(),
                     TransportMode::Listen,
                 )
-                    .to_vec()?
+                .to_vec()?
             }
             (Get, ["node", "tcp", "listener", id]) => {
                 self.get_transport(req, id, TransportType::Tcp, TransportMode::Listen)
@@ -963,7 +963,7 @@ impl Worker for NodeManagerWorker {
             AllowAll,
             AllowAll,
         )
-            .await?;
+        .await?;
 
         Ok(())
     }
