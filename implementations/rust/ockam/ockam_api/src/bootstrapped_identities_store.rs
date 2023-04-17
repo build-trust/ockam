@@ -110,10 +110,6 @@ impl IdentitiesReader for BootstrapedIdentityStore {
 
 #[async_trait]
 impl IdentitiesWriter for BootstrapedIdentityStore {
-    async fn put_identity(&self, identity: &Identity) -> Result<()> {
-        self.repository.put_identity(identity).await
-    }
-
     async fn update_known_identity(&self, identity: &Identity) -> Result<()> {
         self.repository.update_known_identity(identity).await
     }

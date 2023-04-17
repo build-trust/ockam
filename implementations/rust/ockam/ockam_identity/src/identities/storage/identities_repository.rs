@@ -15,7 +15,7 @@ use ockam_core::Result;
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]
 pub trait IdentitiesRepository:
-    IdentityAttributesReader + IdentityAttributesWriter + IdentitiesReader + IdentitiesWriter
+IdentityAttributesReader + IdentityAttributesWriter + IdentitiesReader + IdentitiesWriter
 {
     /// Restrict this repository as a reader for attributes
     fn as_attributes_reader(&self) -> Arc<dyn IdentityAttributesReader>;
@@ -74,9 +74,6 @@ pub trait IdentityAttributesWriter: Send + Sync + 'static {
 /// Trait implementing write access to identities
 #[async_trait]
 pub trait IdentitiesWriter: Send + Sync + 'static {
-    /// Persist an identity
-    async fn put_identity(&self, identity: &Identity) -> Result<()>;
-
     /// Store changes if there are new key changes associated to that identity
     /// Return an error if the current change history conflicts with the persisted one
     async fn update_known_identity(&self, identity: &Identity) -> Result<()>;
@@ -112,6 +109,17 @@ impl IdentitiesStorage {
     /// Create a new storage for attributes
     pub fn create() -> Arc<Self> {
         Arc::new(Self::default())
+    }
+
+    /// Persist an Identity (overrides it)
+    async fn put_identity(&self, identity: &Identity) -> Result<()> {
+        self.storage
+            .set(
+                &identity.identifier().to_string(),
+                IdentityChangeConstants::CHANGE_HISTORY_KEY.to_string(),
+                identity.export()?,
+            )
+            .await
     }
 }
 
@@ -220,16 +228,6 @@ impl IdentityAttributesWriter for IdentitiesStorage {
 
 #[async_trait]
 impl IdentitiesWriter for IdentitiesStorage {
-    async fn put_identity(&self, identity: &Identity) -> Result<()> {
-        self.storage
-            .set(
-                &identity.identifier().to_string(),
-                IdentityChangeConstants::CHANGE_HISTORY_KEY.to_string(),
-                identity.export()?,
-            )
-            .await
-    }
-
     async fn update_known_identity(&self, identity: &Identity) -> Result<()> {
         let should_set = if let Some(known) = self.get_identity(&identity.identifier()).await? {
             match identity.changes().compare(known.changes()) {
