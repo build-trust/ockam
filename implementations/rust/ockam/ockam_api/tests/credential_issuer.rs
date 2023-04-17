@@ -7,7 +7,10 @@ use ockam::route;
 use ockam_api::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
 use ockam_core::compat::rand::random_string;
 use ockam_core::{AllowAll, Result};
-use ockam_identity::{CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels};
+use ockam_identity::{
+    CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels,
+};
 use ockam_node::Context;
 
 #[ockam_macros::test]
@@ -63,14 +66,14 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         auth_identity.clone(),
         "project42".into(),
     )
-        .await?;
+    .await?;
     ctx.start_worker(
         &auth_worker_addr,
         auth,
         AllowAll, // In reality there is ABAC rule here.
         AllowAll,
     )
-        .await?;
+    .await?;
 
     // Connect to the API channel from the member:
     let e2a = secure_channels

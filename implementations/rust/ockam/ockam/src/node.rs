@@ -264,7 +264,6 @@ impl Node {
     pub fn builder() -> NodeBuilder {
         NodeBuilder::new()
     }
-
 }
 
 /// Builder for top level services

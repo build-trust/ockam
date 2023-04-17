@@ -1,6 +1,7 @@
 use crate::identities::{self, IdentitiesKeys};
 use crate::identity::identity_change::IdentitySignedChange;
 use crate::identity::{Identity, IdentityChangeHistory};
+use crate::Identities;
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{
@@ -15,7 +16,6 @@ use rand::prelude::Distribution;
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
-use crate::Identities;
 
 #[ockam_macros::test]
 async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {

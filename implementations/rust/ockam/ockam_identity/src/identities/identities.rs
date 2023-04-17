@@ -1,5 +1,8 @@
 use crate::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
-use crate::{Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation, IdentitiesStorage};
+use crate::{
+    Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation,
+    IdentitiesStorage,
+};
 use ockam_core::compat::sync::Arc;
 use ockam_vault::Vault;
 
@@ -61,5 +64,4 @@ impl Identities {
             repository: IdentitiesStorage::create(),
         }
     }
-
 }
