@@ -100,6 +100,12 @@ impl Output for Project<'_> {
                 .map(|i| i.to_string())
                 .unwrap_or_default()
         )?;
+        write!(
+            w,
+            "\n  Version: {}",
+            self.version.as_deref().unwrap_or("N/A")
+        )?;
+        write!(w, "\n  Running: {}", self.running.unwrap_or(false))?;
         Ok(w)
     }
 }
