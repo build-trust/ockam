@@ -1,6 +1,6 @@
 use crate::cli_state::CliState;
 use ockam::compat::sync::Arc;
-use ockam::identity::{identities, Identities, IdentitiesCreation, IdentitiesKeys};
+use ockam::identity::{Identities, IdentitiesCreation, IdentitiesKeys};
 use ockam::identity::{IdentitiesVault, Identity};
 use ockam::Result;
 
@@ -42,7 +42,7 @@ impl NodeIdentities {
 
     /// Return an identities keys service backed up by the default vault
     pub(crate) async fn get_default_identities_keys(&self) -> Result<Arc<IdentitiesKeys>> {
-        Ok(identities::builder()
+        Ok(Identities::builder()
             .with_identities_vault(self.vault.clone())
             .build()
             .identities_keys())

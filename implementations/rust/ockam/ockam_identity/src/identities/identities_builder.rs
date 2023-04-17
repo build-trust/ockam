@@ -8,21 +8,13 @@ use ockam_vault::Vault;
 /// Builder for Identities services
 #[derive(Clone)]
 pub struct IdentitiesBuilder {
-    vault: Arc<dyn IdentitiesVault>,
-    repository: Arc<dyn IdentitiesRepository>,
+    pub(crate) vault: Arc<dyn IdentitiesVault>,
+    pub(crate) repository: Arc<dyn IdentitiesRepository>,
 }
 
 /// Return a default identities
 pub fn identities() -> Arc<Identities> {
-    builder().build()
-}
-
-/// Return a default builder for identities
-pub fn builder() -> IdentitiesBuilder {
-    IdentitiesBuilder {
-        vault: Vault::create(),
-        repository: IdentitiesStorage::create(),
-    }
+    Identities::builder().build()
 }
 
 impl IdentitiesBuilder {

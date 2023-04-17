@@ -6,7 +6,7 @@ use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, Enroller
 use crate::nodes::authority_node::Configuration;
 use crate::{actions, DefaultAddress};
 use ockam::identity::{
-    secure_channels, Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault,
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault,
     Identity, IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels,
     TrustEveryonePolicy,
 };
@@ -52,7 +52,7 @@ impl Authority {
         info!("configuration {:?}", configuration);
         let vault = Self::create_secure_channels_vault(configuration).await?;
         let repository = Self::create_identities_repository(configuration).await?;
-        let secure_channels = secure_channels::builder()
+        let secure_channels = SecureChannels::builder()
             .with_identities_vault(vault)
             .with_identities_repository(repository)
             .build();
@@ -88,12 +88,12 @@ impl Authority {
             flow_controls,
             &secure_channel_listener_flow_control_id,
         )
-        .with_trust_policy(TrustEveryonePolicy)
-        .as_consumer_with_flow_control_id(
-            flow_controls,
-            &tcp_listener_flow_control_id,
-            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-        );
+            .with_trust_policy(TrustEveryonePolicy)
+            .as_consumer_with_flow_control_id(
+                flow_controls,
+                &tcp_listener_flow_control_id,
+                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+            );
 
         let listener_name = configuration.secure_channel_listener_name();
         self.secure_channels
@@ -130,7 +130,7 @@ impl Authority {
             configuration.clone().trust_context_identifier(),
             self.attributes_writer(),
         )
-        .await?;
+            .await?;
 
         let name = configuration.clone().authenticator_name();
         flow_controls.add_consumer(
@@ -179,7 +179,7 @@ impl Authority {
             EnrollerOnly,
             issuer,
         )
-        .await?;
+            .await?;
 
         // start an enrollment token acceptor allowing any incoming message as long as
         // it comes through a secure channel. We accept any message since the purpose of
@@ -198,8 +198,8 @@ impl Authority {
             acceptor_address.clone(),
             acceptor,
         )
-        .start(ctx)
-        .await?;
+            .start(ctx)
+            .await?;
 
         info!("started an enrollment token issuer at '{issuer_address}'");
         info!("started an enrollment token acceptor at '{acceptor_address}'");
@@ -221,7 +221,7 @@ impl Authority {
             self.identity.clone(),
             configuration.trust_context_identifier(),
         )
-        .await?;
+            .await?;
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
         flow_controls.add_consumer(
@@ -266,7 +266,7 @@ impl Authority {
                 AllowAll, // FIXME: @ac
                 AllowAll,
             )
-            .await?;
+                .await?;
         }
         Ok(())
     }
@@ -364,9 +364,9 @@ impl Authority {
         enroller_check: EnrollerCheck,
         worker: W,
     ) -> Result<()>
-    where
-        M: Message + Send + 'static,
-        W: Worker<Context = Context, Message = M>,
+        where
+            M: Message + Send + 'static,
+            W: Worker<Context=Context, Message=M>,
     {
         let abac = self.create_abac_policy(configuration, address.clone(), enroller_check);
         WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), address.clone(), worker)

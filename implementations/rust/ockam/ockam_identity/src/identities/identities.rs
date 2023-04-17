@@ -1,6 +1,7 @@
 use crate::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
-use crate::{Credentials, CredentialsServer, CredentialsServerModule, IdentitiesCreation};
+use crate::{Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation, IdentitiesStorage};
 use ockam_core::compat::sync::Arc;
+use ockam_vault::Vault;
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
@@ -52,4 +53,13 @@ impl Identities {
             identities_repository,
         }
     }
+
+    /// Return a default builder for identities
+    pub fn builder() -> IdentitiesBuilder {
+        IdentitiesBuilder {
+            vault: Vault::create(),
+            repository: IdentitiesStorage::create(),
+        }
+    }
+
 }

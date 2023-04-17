@@ -34,11 +34,6 @@ pub fn node(ctx: Context) -> Node {
     }
 }
 
-/// Return a new builder for top-level services
-pub fn builder() -> NodeBuilder {
-    NodeBuilder::new()
-}
-
 impl Node {
     /// Return the current context
     pub async fn context(&self) -> Result<Context> {
@@ -264,6 +259,12 @@ impl Node {
     pub fn identities_vault(&self) -> Arc<dyn IdentitiesVault> {
         self.identities().vault()
     }
+
+    /// Return a new builder for top-level services
+    pub fn builder() -> NodeBuilder {
+        NodeBuilder::new()
+    }
+
 }
 
 /// Builder for top level services
@@ -276,7 +277,7 @@ pub struct NodeBuilder {
 impl NodeBuilder {
     fn new() -> NodeBuilder {
         NodeBuilder {
-            builder: secure_channels::builder(),
+            builder: SecureChannels::builder(),
         }
     }
 

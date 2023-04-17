@@ -1,27 +1,19 @@
 use crate::identities::{Identities, IdentitiesRepository, Storage};
 use crate::secure_channel::SecureChannelRegistry;
 use crate::secure_channels::SecureChannels;
-use crate::{identities, IdentitiesBuilder, IdentitiesVault};
+use crate::{IdentitiesBuilder, IdentitiesVault};
 use ockam_core::compat::sync::Arc;
 
 /// This struct supports all the services related to secure channels
 #[derive(Clone)]
 pub struct SecureChannelsBuilder {
-    identities_builder: IdentitiesBuilder,
-    registry: SecureChannelRegistry,
+    pub(crate) identities_builder: IdentitiesBuilder,
+    pub(crate) registry: SecureChannelRegistry,
 }
 
 /// Create default, in-memory, secure channels (mostly for examples and testing)
 pub fn secure_channels() -> Arc<SecureChannels> {
-    builder().build()
-}
-
-/// Create a builder for secure channels
-pub fn builder() -> SecureChannelsBuilder {
-    SecureChannelsBuilder {
-        identities_builder: identities::builder(),
-        registry: SecureChannelRegistry::new(),
-    }
+    SecureChannels::builder().build()
 }
 
 impl SecureChannelsBuilder {
