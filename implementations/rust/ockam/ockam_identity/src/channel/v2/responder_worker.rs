@@ -125,29 +125,29 @@ impl Worker for ResponderWorker {
                     their_identity.identifier().clone(),
                 );
 
-                todo!(mailbox start decryptor worker);
-                context
-                    .wait_for(state.addresses.decryptor_remote.clone())
-                    .await?;
-
-                for message in relay_messages {
-                    context.forward(message).await?;
-                }
-
-                let encryptor = Encryptor::new(
-                    keys.encrypt_key().clone(),
-                    0,
-                    to_symmetric_vault(state.identity.vault()),
-                );
-
-                let encryptor_worker = EncryptorWorker::new(
-                    "responder",
-                    state.addresses,
-                    state.remote_route,
-                    encryptor,
-                );
-
-                todo!(start encryptor mailbox with right permissions);
+                todo!("mailbox start decryptor worker");
+                // context
+                //     .wait_for(state.addresses.decryptor_remote.clone())
+                //     .await?;
+                //
+                // for message in relay_messages {
+                //     context.forward(message).await?;
+                // }
+                //
+                // let encryptor = Encryptor::new(
+                //     keys.encrypt_key().clone(),
+                //     0,
+                //     to_symmetric_vault(state.identity.vault()),
+                // );
+                //
+                // let encryptor_worker = EncryptorWorker::new(
+                //     "responder",
+                //     state.addresses,
+                //     state.remote_route,
+                //     encryptor,
+                // );
+                //
+                // todo!("start encryptor mailbox with right permissions");
 
                 State::Done
             }

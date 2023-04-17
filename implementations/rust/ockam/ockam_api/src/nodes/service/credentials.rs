@@ -1,10 +1,10 @@
 use super::NodeManagerWorker;
 use crate::authenticator::direct::RpcClient;
 use crate::error::ApiError;
+use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
 use crate::nodes::service::map_multiaddr_err;
 use crate::nodes::NodeManager;
-use crate::{create_tcp_session, local_multiaddr_to_route};
 use either::Either;
 use minicbor::Decoder;
 use ockam::Result;

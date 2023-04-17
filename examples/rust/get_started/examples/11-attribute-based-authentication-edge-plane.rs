@@ -89,7 +89,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create a trust context that will be used to authenticate credential exchanges
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
-        Some(AuthorityInfo::new(
+        AuthorityInfo::new(
             project.authority_public_identity(),
             Some(Arc::new(CredentialIssuerRetriever::new(
                 CredentialIssuerInfo::new(

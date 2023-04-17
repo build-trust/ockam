@@ -15,6 +15,7 @@ use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
 use ockam_core::flow_control::FlowControlId;
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::api::CloudOpts;
@@ -141,7 +142,7 @@ pub async fn create_secure_channel_to_authority(
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
     let allowed = vec![authority];
-    let payload = models::secure_channel::CreateSecureChannelRequest::new(
+    let payload = CreateSecureChannelRequest::new(
         addr,
         Some(allowed),
         CredentialExchangeMode::None,

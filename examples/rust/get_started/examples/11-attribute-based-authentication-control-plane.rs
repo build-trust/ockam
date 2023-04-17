@@ -71,9 +71,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         project.authority_public_identifier()
     ]));
     let options = if let Some(_flow_control_id) = tcp_route.flow_control_id {
-        options.as_consumer(&flow_controls).with_trust_policy(project)
+        options.as_consumer(&flow_controls)
     } else {
-        options.with_trust_policy(project)
+        options
     };
 
     // Create a trust context that will be used to authenticate credential exchanges
@@ -96,7 +96,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let secure_channel = control_plane
         .create_secure_channel_extended(
             tcp_route.route,
-            options.with_trust_context(trust_context),
+            options.with_trust_context(trust_context.clone()),
             Duration::from_secs(120),
         )
         .await?;
@@ -136,11 +136,11 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         project_options
             .as_consumer(&flow_controls)
             .with_credential(credential)
-            .with_credential_exchange_mode(CredentialExchangeMode::Oneway);
+            .with_credential_exchange_mode(CredentialExchangeMode::Oneway)
     } else {
         project_options
             .with_credential(credential)
-            .with_credential_exchange_mode(CredentialExchangeMode::Oneway);
+            .with_credential_exchange_mode(CredentialExchangeMode::Oneway)
     };
 
     // create a secure channel to the project first

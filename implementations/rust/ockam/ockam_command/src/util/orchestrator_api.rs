@@ -16,12 +16,12 @@ use ockam::Context;
 use ockam_api::{
     authenticator::direct::{CredentialIssuerClient, RpcClient},
     config::lookup::ProjectLookup,
-    nodes::models::secure_channel::CredentialExchangeMode,
     DefaultAddress,
 };
 use ockam_core::api::RequestBuilder;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::route;
+use ockam_identity::credential::CredentialExchangeMode;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use tracing::info;

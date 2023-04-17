@@ -1,11 +1,10 @@
 mod addresses;
 mod decryptor;
 mod decryptor_state;
-mod decryptor_worker;
 mod encryptor;
 mod encryptor_worker;
-mod listener;
 mod messages;
+mod v2;
 
 mod common;
 mod local_info;
@@ -25,8 +24,6 @@ pub mod access_control;
 pub mod api;
 
 use crate::channel::addresses::Addresses;
-use crate::channel::decryptor_worker::DecryptorWorker;
-use crate::channel::listener::IdentityChannelListener;
 use crate::credential::{Credential, CredentialExchangeMode};
 use crate::error::IdentityError;
 use crate::{Identity, PublicIdentity};
@@ -42,8 +39,13 @@ impl Identity {
     ) -> Result<()> {
         let identity_clone = self.async_try_clone().await?;
 
-        IdentityChannelListener::create(&self.ctx, address.into(), options.into(), identity_clone)
-            .await?;
+        v2::listener::IdentityChannelListener::create(
+            &self.ctx,
+            address.into(),
+            options.into(),
+            identity_clone,
+        )
+        .await?;
 
         Ok(())
     }
@@ -71,19 +73,20 @@ impl Identity {
         options.setup_flow_control(&addresses, next)?;
         let access_control = options.create_access_control();
 
-        DecryptorWorker::create_initiator(
-            &self.ctx,
-            route,
-            identity_clone,
-            addresses,
-            options.trust_policy,
-            access_control.decryptor_outgoing_access_control,
-            Duration::from_secs(120),
-            credential_exchange_mode != CredentialExchangeMode::None,
-            provided_credential.or(self.credential().await),
-            authorities,
-        )
-        .await
+        panic!()
+        // DecryptorWorker::create_initiator(
+        //     &self.ctx,
+        //     route,
+        //     identity_clone,
+        //     addresses,
+        //     options.trust_policy,
+        //     access_control.decryptor_outgoing_access_control,
+        //     Duration::from_secs(120),
+        //     credential_exchange_mode != CredentialExchangeMode::None,
+        //     provided_credential.or(self.credential().await),
+        //     authorities,
+        // )
+        // .await
     }
 
     /// Extended function to create a SecureChannel with [`SecureChannelOptions`]
@@ -103,19 +106,20 @@ impl Identity {
         options.setup_flow_control(&addresses, next)?;
         let access_control = options.create_access_control();
 
-        DecryptorWorker::create_initiator(
-            &self.ctx,
-            route,
-            identity_clone,
-            addresses,
-            options.trust_policy,
-            access_control.decryptor_outgoing_access_control,
-            timeout,
-            credential_exchange_mode != CredentialExchangeMode::None,
-            provided_credential,
-            authorities,
-        )
-        .await
+        panic!()
+        // DecryptorWorker::create_initiator(
+        //     &self.ctx,
+        //     route,
+        //     identity_clone,
+        //     addresses,
+        //     options.trust_policy,
+        //     access_control.decryptor_outgoing_access_control,
+        //     timeout,
+        //     credential_exchange_mode != CredentialExchangeMode::None,
+        //     provided_credential,
+        //     authorities,
+        // )
+        // .await
     }
 
     /// Stop a SecureChannel given an encryptor address

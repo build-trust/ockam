@@ -29,7 +29,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
-        Some(AuthorityInfo::new(authority.to_public().await?, None)),
+        AuthorityInfo::new(authority.to_public().await?, None),
     );
     server
         .create_secure_channel_listener(
@@ -89,15 +89,15 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
 
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
-        Some(AuthorityInfo::new(
+        AuthorityInfo::new(
             authority.to_public().await?,
             Some(Arc::new(CredentialMemoryRetriever::new(credential2))),
-        )),
+        ),
     );
     client2
         .create_secure_channel_listener(
             "listener",
-            SecureChannelListenerOptions::new().with_trust_context(tru),
+            SecureChannelListenerOptions::new().with_trust_context(trust_context.clone()),
         )
         .await?;
 
@@ -161,7 +161,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
-        Some(AuthorityInfo::new(authority.to_public().await?, None)),
+        AuthorityInfo::new(authority.to_public().await?, None),
     );
 
     server

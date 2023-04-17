@@ -14,8 +14,7 @@ use ockam_identity::api::{
 };
 use ockam_identity::credential::CredentialExchangeMode;
 use ockam_identity::{
-    Identity, SecureChannelOptions, SecureChannelRegistryEntry, SecureChannelTrustOptions,
-    TrustContext, TrustEveryonePolicy,
+    Identity, SecureChannelOptions, SecureChannelRegistryEntry, TrustContext, TrustEveryonePolicy,
 };
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::{Context, MessageSendReceiveOptions};

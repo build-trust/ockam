@@ -94,8 +94,6 @@ mod test {
                 .create_secure_channel_listener(
                     KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
                     SecureChannelListenerOptions::new(),
-                    true,
-                    vec![],
                 )
                 .await?;
         }

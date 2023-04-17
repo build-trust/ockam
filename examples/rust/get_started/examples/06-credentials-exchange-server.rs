@@ -64,12 +64,12 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a trust context that will be used to authenticate credential exchanges
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
-        Some(AuthorityInfo::new(
+        AuthorityInfo::new(
             issuer
                 .public_identity(MessageSendReceiveOptions::new().with_flow_control(&flow_controls))
                 .await?,
             Some(Arc::new(CredentialMemoryRetriever::new(credential))),
-        )),
+        ),
     );
 
     // Start an echoer worker that will only accept incoming requests from

@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
-use crate::create_tcp_session;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -18,7 +17,6 @@ use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
-use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{route, CowStr};
 use ockam_identity::credential::{Credential, CredentialExchangeMode};
 
@@ -65,22 +63,21 @@ impl NodeManager {
             None => options,
         };
 
-        let options = match authorized_identifiers.clone() {
-            Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
-            None => options.with_trust_policy(TrustEveryonePolicy),
+        let mut options = match authorized_identifiers.clone() {
+            Some(ids) => options
+                .with_trust_policy(TrustMultiIdentifiersPolicy::new(ids))
+                .with_credential_exchange_mode(exchange_mode),
+            None => options
+                .with_trust_policy(TrustEveryonePolicy)
+                .with_credential_exchange_mode(exchange_mode),
         };
 
+        if let Some(credential) = credential {
+            options = options.with_credential(credential);
+        }
+
         let sc_addr = identity
-            .create_secure_channel_extended(
-                sc_route.clone(),
-                options,
-                exchange_mode,
-                credential,
-                self.trust_context()
-                    .cloned()
-                    .unwrap_or_else(|_| TrustContext::empty()),
-                timeout,
-            )
+            .create_secure_channel_extended(sc_route.clone(), options, timeout)
             .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
@@ -155,15 +152,14 @@ impl NodeManager {
             provided_credential
         };
 
-        let sc_addr = self
+        let (sc_addr, sc_flow_control_id) = self
             .create_secure_channel_internal(
                 &identity,
                 sc_route,
                 authorized_identifiers,
-                timeout,
-                session,
                 actual_exchange_mode,
                 credential,
+                timeout,
             )
             .await?;
         //
@@ -246,11 +242,6 @@ impl NodeManager {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
-
-        let trust_context = self
-            .trust_context()
-            .cloned()
-            .unwrap_or_else(|_| TrustContext::empty());
 
         identity
             .create_secure_channel_listener(addr.clone(), options)

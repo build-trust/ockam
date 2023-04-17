@@ -5,8 +5,7 @@ use crate::channel::v2::responder_state::ResponderState;
 use crate::channel::v2::responder_worker::ResponderWorker;
 use crate::channel::Role;
 use crate::credential::Credential;
-use crate::{Identity, SecureChannelListenerOptions};
-use crate::{Identity, SecureChannelListenerTrustOptions, TrustContext};
+use crate::{Identity, SecureChannelListenerOptions, TrustContext};
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, AllowAll, AsyncTryClone, DenyAll, Result, Routed, Worker};
 use ockam_node::Context;
@@ -95,9 +94,8 @@ impl Worker for IdentityChannelListener {
             addresses,
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
-            self.options.credential.is_some(),
             self.options.credential.clone(),
-            self.authorities.clone(),
+            self.options.trust_context.clone().expect("TODO: fix me"),
         )
         .await?;
 

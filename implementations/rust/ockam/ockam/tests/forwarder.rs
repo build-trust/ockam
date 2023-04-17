@@ -222,9 +222,6 @@ async fn test4(ctx: &mut Context) -> Result<()> {
                 &server_channel_flow_control_id,
             )
             .as_consumer(&server_flow_controls),
-            CredentialExchangeMode::None,
-            None,
-            vec![],
         )
         .await?;
     server_identity
@@ -239,8 +236,6 @@ async fn test4(ctx: &mut Context) -> Result<()> {
                 &server_channel_flow_control_id,
                 FlowControlPolicy::ProducerAllowMultiple,
             ),
-            true,
-            vec![],
         )
         .await?;
 
