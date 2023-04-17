@@ -2,6 +2,13 @@ use crate::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
 use crate::{Credentials, CredentialsServer, CredentialsServerModule, IdentitiesCreation};
 use ockam_core::compat::sync::Arc;
 
+/// This struct supports all the services related to identities
+#[derive(Clone)]
+pub struct Identities {
+    pub(crate) vault: Arc<dyn IdentitiesVault>,
+    pub(crate) identities_repository: Arc<dyn IdentitiesRepository>,
+}
+
 impl Identities {
     /// Return the identities vault
     pub fn vault(&self) -> Arc<dyn IdentitiesVault> {
@@ -32,13 +39,6 @@ impl Identities {
     pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
         Arc::new(CredentialsServerModule::new(self.credentials()))
     }
-}
-
-/// This struct supports all the services related to identities
-#[derive(Clone)]
-pub struct Identities {
-    pub(crate) vault: Arc<dyn IdentitiesVault>,
-    pub(crate) identities_repository: Arc<dyn IdentitiesRepository>,
 }
 
 impl Identities {
