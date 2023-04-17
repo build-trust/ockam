@@ -84,7 +84,7 @@ ockam_core = { path = "../ockam_core", version = "^0.78.0", default_features = f
 ockam_macros = { path = "../ockam_macros", version = "^0.28.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.81.0", default_features = false }
 # ECDSA providers:
-p256 = { version = "0.13.1", default_features = false }
+p256 = { version = "0.13.2", default_features = false }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
