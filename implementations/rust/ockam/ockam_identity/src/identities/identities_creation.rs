@@ -30,7 +30,7 @@ impl IdentitiesCreation {
                 .map_err(|_| IdentityError::ConsistencyError)?
                 .as_slice(),
         )
-        .await
+            .await
     }
 
     /// Import and verify an `Identity` from its change history in a binary format
@@ -45,7 +45,7 @@ impl IdentitiesCreation {
         Ok(Identity::new(identifier, change_history))
     }
 
-    /// Create an identity with a vault initialized with a specific private key
+    /// Create an identity with a vault initialized with a secret key
     /// encoded as a hex string.
     /// Such a key can be obtained by running vault.secret_export and then encoding
     /// the exported secret as a hex string
