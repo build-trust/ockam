@@ -142,7 +142,7 @@ task test {
       // Use 'cargo nextest' in CI
       exec {
         environment environmentVars()
-        commandLine cargo('--locked', 'nextest', 'run')
+        commandLine cargo('--locked', 'nextest', '--config-file', '../../tools/nextest/.config/nextest.toml', 'run')
       }
       // Nextest does not currently support doctests,
       // so run doctests using cargo
