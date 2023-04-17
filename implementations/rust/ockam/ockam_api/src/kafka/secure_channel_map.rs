@@ -58,7 +58,7 @@ pub(crate) trait KafkaSecureChannelController: Send + Sync {
         encrypted_content: Vec<u8>,
     ) -> Result<Vec<u8>>;
 
-    /// Starts forwarders in the orchestrator for each {partition}_{topic_name} combination
+    /// Starts forwarders in the orchestrator for each {topic_name}_{partition} combination
     /// should be used only by the consumer.
     /// does nothing if they were already created, but fails it they already exist.
     async fn start_forwarders_for(
@@ -232,7 +232,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         partition: i32,
     ) -> Result<(UniqueSecureChannelId, SecureChannelRegistryEntry)> {
         //here we should have the orchestrator address and expect forwarders to be
-        // present in the orchestrator with the format "consumer_{partition}_{topic_name}"
+        // present in the orchestrator with the format "consumer_{topic_name}_{partition}"
 
         let topic_partition_key = (topic_name.to_string(), partition);
         //consumer__ prefix is added by the orchestrator
