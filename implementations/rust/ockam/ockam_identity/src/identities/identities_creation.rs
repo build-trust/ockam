@@ -30,7 +30,7 @@ impl IdentitiesCreation {
                 .map_err(|_| IdentityError::ConsistencyError)?
                 .as_slice(),
         )
-            .await
+        .await
     }
 
     /// Import and verify an `Identity` from its change history in a binary format
