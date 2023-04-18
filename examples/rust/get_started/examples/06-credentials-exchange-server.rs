@@ -8,12 +8,14 @@ use ockam::identity::{
     SecureChannelOptions, TrustContext,
 };
 use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpListenerOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport
+    // Create a node with default implementations
     let node = node(ctx);
+    // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity representing the server
@@ -41,7 +43,8 @@ async fn main(ctx: Context) -> Result<()> {
         )
         .await?;
 
-    let issuer_client = CredentialsIssuerClient::new(route![issuer_channel, "issuer"], &node.context().await?).await?;
+    let issuer_client =
+        CredentialsIssuerClient::new(route![issuer_channel, "issuer"], &node.get_context().await?).await?;
     let credential = issuer_client.credential().await?;
     println!("Credential:\n{credential}");
 
@@ -74,7 +77,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a worker which will receive credentials sent by the client and issued by the issuer node
     node.credentials_server()
         .start(
-            &node.context().await?,
+            &node.get_context().await?,
             trust_context,
             server.clone(),
             "credentials".into(),

@@ -2,9 +2,11 @@ use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, route, Context, Result, TcpConnectionOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
+    // Create a node with default implementations
     let node = node(ctx);
     let tcp = node.create_tcp_transport().await?;
 

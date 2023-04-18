@@ -6,11 +6,14 @@
 use hello_ockam::Forwarder;
 use ockam::access_control::AllowAll;
 use ockam::{node, Context, Result, TcpConnectionOptions, TcpListenerOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
+    // Create a node with default implementations
     let node = node(ctx);
+
+    // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 
     // Create a TCP connection to Bob.

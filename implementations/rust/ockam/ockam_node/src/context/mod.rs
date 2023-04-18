@@ -16,8 +16,9 @@ use crate::channel_types::{SmallReceiver, SmallSender};
 use crate::tokio::runtime::Handle;
 use crate::{error::*, NodeMessage};
 use core::sync::atomic::AtomicUsize;
+use ockam_core::compat::boxed::Box;
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
-use ockam_core::{Address, Mailboxes, RelayMessage, Result};
+use ockam_core::{async_trait, Address, Mailboxes, RelayMessage, Result};
 
 #[cfg(feature = "std")]
 use core::fmt::{Debug, Formatter};
@@ -33,6 +34,13 @@ pub struct Context {
     receiver: SmallReceiver<RelayMessage>,
     async_drop_sender: Option<AsyncDropSender>,
     mailbox_count: Arc<AtomicUsize>,
+}
+
+/// This trait can be used to integrate transports into a node
+#[async_trait]
+pub trait HasContext {
+    /// Return a cloned context
+    async fn context(&self) -> Result<Context>;
 }
 
 #[cfg(feature = "std")]

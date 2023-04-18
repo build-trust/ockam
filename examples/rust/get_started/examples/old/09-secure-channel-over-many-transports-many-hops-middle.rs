@@ -15,7 +15,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.connect("127.0.0.1:4000").await?;
 
     // Initialize the WS Transport.
-    let ws = WebSocketTransport::create(&node.context().await?).await?;
+    let ws = WebSocketTransport::create(&node.get_context().await?).await?;
 
     // Create a WS listener and wait for incoming connections.
     ws.listen("127.0.0.1:3000").await?;

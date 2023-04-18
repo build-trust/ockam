@@ -3,6 +3,7 @@ use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, Routed, TcpConnectionOptions, Worker};
 use ockam::{Context, Result};
+use ockam_transport_tcp::TcpTransportExtension;
 
 struct Echoer;
 
@@ -23,8 +24,9 @@ impl Worker for Echoer {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
+    // Create a node with default implementations
     let node = node(ctx);
+    // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 
     // Start a worker, of type Echoer, at address "echoer".

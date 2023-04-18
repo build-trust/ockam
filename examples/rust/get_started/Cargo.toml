@@ -38,6 +38,7 @@ ockam_api = { path = "../../../implementations/rust/ockam/ockam_api" }
 ockam_core = { path = "../../../implementations/rust/ockam/ockam_core" }
 ockam_multiaddr = { path = "../../../implementations/rust/ockam/ockam_multiaddr" }
 ockam_node = { path = "../../../implementations/rust/ockam/ockam_node" }
+ockam_transport_tcp = { path = "../../../implementations/rust/ockam/ockam_transport_tcp" }
 ockam_transport_udp = { path = "../../../implementations/rust/ockam/ockam_transport_udp" }
 ockam_transport_uds = { path = "../../../implementations/rust/ockam/ockam_transport_uds" }
 ockam_transport_websocket = { path = "../../../implementations/rust/ockam/ockam_transport_websocket", optional = true }

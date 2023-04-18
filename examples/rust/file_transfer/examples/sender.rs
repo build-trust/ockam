@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use ockam::identity::SecureChannelOptions;
+use ockam_transport_tcp::TcpTransportExtension;
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;

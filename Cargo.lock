@@ -1997,6 +1997,7 @@ dependencies = [
  "example_test_helper",
  "file_diff",
  "ockam",
+ "ockam_transport_tcp",
  "rand",
  "serde",
  "structopt",
@@ -2370,6 +2371,7 @@ dependencies = [
  "ockam_core",
  "ockam_multiaddr",
  "ockam_node",
+ "ockam_transport_tcp",
  "ockam_transport_udp",
  "ockam_transport_uds",
  "ockam_transport_websocket",
@@ -3461,6 +3463,7 @@ version = "0.1.0"
 dependencies = [
  "example_test_helper",
  "ockam",
+ "ockam_transport_tcp",
 ]
 
 [[package]]
@@ -5134,6 +5137,7 @@ version = "0.1.0"
 dependencies = [
  "example_test_helper",
  "ockam",
+ "ockam_transport_tcp",
 ]
 
 [[package]]

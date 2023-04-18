@@ -1,6 +1,7 @@
 use ockam::access_control::AllowAll;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, route, Context, Result, Routed, TcpConnectionOptions, Worker};
+use ockam_transport_tcp::TcpTransportExtension;
 
 struct Echoer;
 

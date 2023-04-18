@@ -3,11 +3,14 @@
 
 use ockam::identity::SecureChannelOptions;
 use ockam::{node, route, Context, Result, TcpConnectionOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Create an Identity to represent Alice.
+    // Create a node with default implementations
     let mut node = node(ctx);
+
+    // Create an Identity to represent Alice.
     let alice = node.create_identity().await?;
 
     // Create a TCP connection to the middle node.
