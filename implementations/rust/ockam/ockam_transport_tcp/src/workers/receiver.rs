@@ -2,7 +2,9 @@ use crate::workers::Addresses;
 use crate::{TcpRegistry, TcpSendWorkerMsg};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl};
+use ockam_core::{
+    async_trait, AllowOnwardAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl,
+};
 use ockam_core::{Decodable, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::{Context, ProcessorBuilder};
 use ockam_transport_core::TransportError;
@@ -26,7 +28,7 @@ pub(crate) struct TcpRecvProcessor {
 
 impl TcpRecvProcessor {
     /// Create a new `TcpRecvProcessor`
-    pub fn new(
+    fn new(
         registry: TcpRegistry,
         read_half: OwnedReadHalf,
         peer: SocketAddr,
@@ -55,7 +57,14 @@ impl TcpRecvProcessor {
             Arc::new(DenyAll),
             receiver_outgoing_access_control,
         );
-        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
+        let internal = Mailbox::new(
+            addresses.receiver_internal_address().clone(),
+            Arc::new(DenyAll),
+            Arc::new(AllowOnwardAddress(
+                addresses.sender_internal_address().clone(),
+            )),
+        );
+        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![internal]), receiver)
             .start(ctx)
             .await?;
 
@@ -104,9 +113,10 @@ impl Processor for TcpRecvProcessor {
                 );
 
                 // Notify sender tx is closed
-                ctx.send(
-                    self.addresses.sender_internal_addr().clone(),
+                ctx.send_from_address(
+                    self.addresses.sender_internal_address().clone(),
                     TcpSendWorkerMsg::ConnectionClosed,
+                    self.addresses.receiver_internal_address().clone(),
                 )
                 .await?;
 
@@ -147,7 +157,11 @@ impl Processor for TcpRecvProcessor {
         trace!("Message return route: {}", msg.return_route);
 
         // Forward the message to the next hop in the route
-        ctx.forward(LocalMessage::new(msg, vec![])).await?;
+        ctx.forward_from_address(
+            LocalMessage::new(msg, vec![]),
+            self.addresses.receiver_address().clone(),
+        )
+        .await?;
 
         Ok(true)
     }

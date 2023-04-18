@@ -94,8 +94,10 @@ impl TcpSendWorker {
         );
 
         let internal_mailbox = Mailbox::new(
-            addresses.sender_internal_addr().clone(),
-            Arc::new(AllowSourceAddress(addresses.receiver_address().clone())),
+            addresses.sender_internal_address().clone(),
+            Arc::new(AllowSourceAddress(
+                addresses.receiver_internal_address().clone(),
+            )),
             Arc::new(DenyAll),
         );
 
@@ -181,7 +183,7 @@ impl Worker for TcpSendWorker {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let recipient = msg.msg_addr();
-        if &recipient == self.addresses.sender_internal_addr() {
+        if &recipient == self.addresses.sender_internal_address() {
             let msg = TcpSendWorkerMsg::decode(msg.payload())?;
 
             match msg {
