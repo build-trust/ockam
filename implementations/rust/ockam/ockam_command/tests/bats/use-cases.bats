@@ -91,7 +91,7 @@ teardown() {
   CONTROL_OCKAM_HOME=$OCKAM_HOME
   fwd=$(random_str)
   $OCKAM identity create control_identity
-  $OCKAM project authenticate --token "$cp1_token" --project-path "$PROJECT_JSON_PATH" --identity control_identity
+  $OCKAM project authenticate $cp1_token --project-path "$PROJECT_JSON_PATH" --identity control_identity
   $OCKAM node create control_plane1 --project-path "$PROJECT_JSON_PATH" --identity control_identity
   $OCKAM policy create --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
   $OCKAM tcp-outlet create --at /node/control_plane1 --from /service/outlet --to 127.0.0.1:5000
@@ -101,7 +101,7 @@ teardown() {
   # Edge plane
   setup_home_dir
   $OCKAM identity create edge_identity
-  $OCKAM project authenticate --token "$ep1_token" --project-path "$PROJECT_JSON_PATH" --identity edge_identity
+  $OCKAM project authenticate $ep1_token --project-path "$PROJECT_JSON_PATH" --identity edge_identity
   $OCKAM node create edge_plane1 --project-path "$PROJECT_JSON_PATH" --identity edge_identity
   $OCKAM policy create --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
@@ -110,7 +110,7 @@ teardown() {
 
   ## The following is denied
   $OCKAM identity create x_identity
-  $OCKAM project authenticate --token "$x_token" --project-path "$PROJECT_JSON_PATH" --identity x_identity
+  $OCKAM project authenticate $x_token --project-path "$PROJECT_JSON_PATH" --identity x_identity
   $OCKAM node create x --project-path "$PROJECT_JSON_PATH" --identity x_identity
   $OCKAM policy create --at x --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"

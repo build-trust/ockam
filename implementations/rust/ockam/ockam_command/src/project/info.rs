@@ -6,6 +6,7 @@ use ockam::Context;
 use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::project::Project;
 
+use ockam_api::config::lookup::ProjectLookup;
 use ockam_core::CowStr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
@@ -45,6 +46,28 @@ pub struct ProjectInfo<'a> {
     #[serde(borrow)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub okta_config: Option<OktaConfig<'a>>,
+}
+
+impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
+    type Error = ockam::Error;
+    fn try_from(p: ProjectLookup) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: p.id.into(),
+            name: p.name.into(),
+            identity: p.identity_id,
+            access_route: p
+                .node_route
+                .expect("Project access route is missing")
+                .to_string()
+                .into(),
+            authority_access_route: p.authority.as_ref().map(|a| a.address().to_string().into()),
+            authority_identity: p
+                .authority
+                .as_ref()
+                .map(|a| hex::encode(a.identity()).into()),
+            okta_config: p.okta.map(|o| o.into()),
+        })
+    }
 }
 
 impl<'a> From<Project<'a>> for ProjectInfo<'a> {

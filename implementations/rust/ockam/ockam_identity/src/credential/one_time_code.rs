@@ -7,6 +7,7 @@ use ockam_core::compat::string::{String, ToString};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_core::Result;
+use serde::{Deserialize, Serialize};
 
 /// A one-time code can be used to enroll
 /// a node with some authenticated attributes
@@ -65,6 +66,25 @@ impl ToString for OneTimeCode {
     /// It is encoded as hexadecimal
     fn to_string(&self) -> String {
         hex::encode(self.code())
+    }
+}
+
+impl Serialize for OneTimeCode {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for OneTimeCode {
+    fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        OneTimeCode::from_str(s.as_str()).map_err(serde::de::Error::custom)
     }
 }
 

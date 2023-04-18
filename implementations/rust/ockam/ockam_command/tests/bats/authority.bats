@@ -63,7 +63,7 @@ teardown() {
   assert_output --partial "m2_member"
 
   token=$($OCKAM project enroll --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member)
-  run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity m3 --token "$token"
+  run "$OCKAM" project authenticate $token --identity m3
   assert_success
   assert_output --partial "m3_member"
 }

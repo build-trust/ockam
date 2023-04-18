@@ -1,11 +1,11 @@
 use clap::Args;
-use std::str::FromStr;
 
 use anyhow::{anyhow, Context as _};
-use ockam::identity::credential::OneTimeCode;
+
 use ockam::Context;
 use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
 use ockam_api::cloud::project::{OktaAuth0, Project};
+use ockam_api::identity::EnrollmentTicket;
 use ockam_core::api::{Request, Status};
 use ockam_multiaddr::MultiAddr;
 use tracing::debug;
@@ -15,7 +15,7 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::ProjectInfo;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::CommandGlobalOpts;
+use crate::{CommandGlobalOpts, Result};
 
 use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
@@ -32,14 +32,29 @@ pub struct AuthCommand {
     #[arg(long = "okta", group = "authentication_method")]
     okta: bool,
 
-    #[arg(long = "token", group = "authentication_method", value_name = "ENROLLMENT TOKEN", value_parser = OneTimeCode::from_str)]
-    token: Option<OneTimeCode>,
+    #[arg(group = "authentication_method", value_name = "ENROLLMENT TICKET PATH | ENROLLMENT TICKET", value_parser = parse_enroll_ticket)]
+    enroll_ticket: Option<EnrollmentTicket>,
 
     #[command(flatten)]
     cloud_opts: CloudOpts,
 
     #[command(flatten)]
     trust_opts: TrustContextOpts,
+}
+
+fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
+    let ticket: EnrollmentTicket = match std::fs::read_to_string(input) {
+        Ok(s) => {
+            let decoded = hex::decode(s)?;
+            serde_json::from_slice(&decoded)?
+        }
+        Err(_) => {
+            let decoded = hex::decode(input)?;
+            serde_json::from_slice(&decoded)?
+        }
+    };
+
+    Ok(ticket)
 }
 
 impl AuthCommand {
@@ -53,50 +68,43 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, AuthCommand),
 ) -> crate::Result<()> {
     let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.trust_opts)).await?;
+    let project_as_string: String;
 
-    let path = match cmd.trust_opts.project_path {
-        Some(p) => p,
-        None => {
-            let default_project = opts
-                .state
-                .projects
-                .default()
-                .context("A default project or project parameter is required.")?;
-            default_project.path
-        }
+    // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
+    let proj: ProjectInfo = if let Some(ticket) = &cmd.enroll_ticket {
+        let proj = ticket
+            .project()
+            .expect("Enrollment ticket is invalid. Ticket does not contain a project.");
+
+        proj.clone().try_into()?
+    } else {
+        // OKTA AUTHENTICATION FLOW | PREVIOUSLY ENROLLED FLOW
+        // currently okta auth does not use an enrollment token
+        // however, it could be worked to use one in the future
+        //
+        // REQUIRES Project passed or default project
+        let path = match cmd.trust_opts.project_path {
+            Some(p) => p,
+            None => {
+                let default_project = opts
+                    .state
+                    .projects
+                    .default()
+                    .context("A default project or project parameter is required.")?;
+                default_project.path
+            }
+        };
+
+        // Read (okta and authority) project parameters from project.json
+        project_as_string = tokio::fs::read_to_string(path).await?;
+        serde_json::from_str(&project_as_string)?
     };
 
-    // Read (okta and authority) project parameters from project.json
-    let s = tokio::fs::read_to_string(path).await?;
-    let proj: ProjectInfo = serde_json::from_str(&s)?;
     let project: Project = (&proj).into();
 
     // Create secure channel to the project's authority node
     // RPC is in embedded mode
-    let (secure_channel_addr, _secure_channel_flow_control_id) = if let Some(tc) =
-        cmd.trust_opts.trust_context.as_ref()
-    {
-        let cred_retr = tc.authority()?.own_credential()?;
-        let addr = match cred_retr {
-            ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
-                &c.multiaddr
-            }
-            _ => {
-                return Err(
-                    anyhow!("Trust context must be configured with a credential issuer").into(),
-                );
-            }
-        };
-        create_secure_channel_to_authority(
-            &ctx,
-            &opts,
-            &node_name,
-            tc.authority()?.identity().await?.identifier().clone(),
-            addr,
-            Some(cmd.cloud_opts.identity),
-        )
-        .await?
-    } else {
+    let (secure_channel_addr, _secure_channel_flow_control_id) = {
         let authority =
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
@@ -112,10 +120,7 @@ async fn run_impl(
         .await?
     };
 
-    if cmd.okta {
-        authenticate_through_okta(&ctx, &opts, &node_name, proj, secure_channel_addr.clone())
-            .await?
-    } else if let Some(tkn) = cmd.token {
+    if let Some(tkn) = cmd.enroll_ticket {
         // Return address to the authenticator in the authority node
         let token_issuer_route = {
             let service = MultiAddr::try_from(
@@ -131,7 +136,10 @@ async fn run_impl(
         let client = TokenAcceptorClient::new(
             RpcClient::new(route![DefaultAddress::RPC_PROXY, token_issuer_route], &ctx).await?,
         );
-        client.present_token(&tkn).await?
+        client.present_token(tkn.one_time_code()).await?
+    } else if cmd.okta {
+        authenticate_through_okta(&ctx, &opts, &node_name, proj, secure_channel_addr.clone())
+            .await?
     }
 
     let credential_issuer_route = {
