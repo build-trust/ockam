@@ -1,7 +1,6 @@
 use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::echoer::Echoer;
-use crate::lmdb::LmdbStorage;
 use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
 use crate::nodes::authority_node::Configuration;
 use crate::{actions, DefaultAddress};
@@ -15,7 +14,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{Address, AllowAll, Error, Message, Result, Worker};
-use ockam_identity::CredentialsIssuer;
+use ockam_identity::{CredentialsIssuer, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 use ockam_vault::storage::FileStorage;

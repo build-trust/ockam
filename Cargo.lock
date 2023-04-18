@@ -3253,8 +3253,10 @@ name = "ockam_abac"
 version = "0.18.0"
 dependencies = [
  "either",
+ "lmdb-rkv",
  "minicbor",
  "ockam_core",
+ "ockam_executor",
  "ockam_identity",
  "once_cell",
  "quickcheck",
@@ -3263,6 +3265,7 @@ dependencies = [
  "rustyline",
  "rustyline-derive",
  "str-buf 3.0.2",
+ "tokio",
  "tracing",
  "wast",
 ]
@@ -3281,7 +3284,6 @@ dependencies = [
  "hex",
  "indexmap",
  "kafka-protocol",
- "lmdb-rkv",
  "lru",
  "minicbor",
  "mockall",
@@ -3434,6 +3436,7 @@ dependencies = [
  "group",
  "heapless",
  "hex",
+ "lmdb-rkv",
  "minicbor",
  "ockam_core",
  "ockam_key_exchange_xx",
@@ -3453,6 +3456,7 @@ dependencies = [
  "subtle",
  "time",
  "tokio",
+ "tokio-retry",
  "tracing",
  "zeroize",
 ]

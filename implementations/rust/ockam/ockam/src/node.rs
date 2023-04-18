@@ -43,15 +43,15 @@ pub struct Node {
 ///
 /// ```
 /// Here is another example where we specify a local LMDB database to store identity attributes
-/// ```
+/// ```rust
 /// use std::sync::Arc;
 /// use ockam::{Node, Result};
+/// use ockam::LmdbStorage;
 /// use ockam_node::Context;
-/// use ockam_vault::storage::FileStorage;
-/// use ockam_api::lmdb::LmdbStorage;
 ///
 /// async fn make_node(ctx: Context) -> Result<Node> {
-///    let node = Node::builder().with_identities_storage(Arc::new(LmdbStorage::new("identities".into()))).build(ctx).await?;
+///    let lmdb_storage = Arc::new(LmdbStorage::new("identities").await?);
+///    let node = Node::builder().with_identities_storage(lmdb_storage).build(ctx).await?;
 ///    Ok(node)
 /// }
 /// ```
