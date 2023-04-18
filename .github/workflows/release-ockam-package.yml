@@ -11,7 +11,7 @@ on:
       is_release:
         description: 'Indicate If Workflow Is To Release Ockam Package Or Be A Draft'
         type: choice
-        default: false
+        default: 'false'
         options:
         - false
         - true
