@@ -43,8 +43,7 @@ async fn main(ctx: Context) -> Result<()> {
         )
         .await?;
 
-    let issuer_client =
-        CredentialsIssuerClient::new(route![issuer_channel, "issuer"], &node.get_context().await?).await?;
+    let issuer_client = CredentialsIssuerClient::new(route![issuer_channel, "issuer"], node.context()).await?;
     let credential = issuer_client.credential().await?;
     println!("Credential:\n{credential}");
 
@@ -77,7 +76,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a worker which will receive credentials sent by the client and issued by the issuer node
     node.credentials_server()
         .start(
-            &node.get_context().await?,
+            node.context(),
             trust_context,
             server.clone(),
             "credentials".into(),

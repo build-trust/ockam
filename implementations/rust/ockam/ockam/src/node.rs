@@ -1,13 +1,11 @@
 use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use crate::stream::Stream;
 use core::time::Duration;
-use ockam_core::async_trait;
-use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    Address, AsyncTryClone, IncomingAccessControl, Message, OutgoingAccessControl, Processor,
-    Result, Route, Routed, Worker,
+    Address, IncomingAccessControl, Message, OutgoingAccessControl, Processor, Result, Route,
+    Routed, Worker,
 };
 use ockam_identity::{
     secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
@@ -64,13 +62,13 @@ pub fn node(ctx: Context) -> Node {
 
 impl Node {
     /// Return the current context
-    pub async fn get_context(&self) -> Result<Context> {
-        self.context.async_try_clone().await
+    pub fn context(&self) -> &Context {
+        &self.context
     }
 
     /// Create a new stream
     pub async fn create_stream(&self) -> Result<Stream> {
-        Stream::new(&self.context().await?).await
+        Stream::new(self.get_context()).await
     }
 
     /// Create a new forwarder
@@ -79,7 +77,7 @@ impl Node {
         orchestrator_route: impl Into<Route>,
         options: RemoteForwarderOptions,
     ) -> Result<RemoteForwarderInfo> {
-        RemoteForwarder::create(&self.context().await?, orchestrator_route, options).await
+        RemoteForwarder::create(self.get_context(), orchestrator_route, options).await
     }
 
     /// Create a new static forwarder
@@ -89,8 +87,7 @@ impl Node {
         alias: impl Into<String>,
         options: RemoteForwarderOptions,
     ) -> Result<RemoteForwarderInfo> {
-        RemoteForwarder::create_static(&self.context().await?, orchestrator_route, alias, options)
-            .await
+        RemoteForwarder::create_static(self.get_context(), orchestrator_route, alias, options).await
     }
 
     /// Create an Identity
@@ -122,7 +119,7 @@ impl Node {
         options: impl Into<SecureChannelListenerOptions>,
     ) -> Result<()> {
         self.secure_channels()
-            .create_secure_channel_listener(&self.context, identity, address, options)
+            .create_secure_channel_listener(self.get_context(), identity, address, options)
             .await
     }
 
@@ -134,7 +131,7 @@ impl Node {
         options: impl Into<SecureChannelOptions>,
     ) -> Result<Address> {
         self.secure_channels()
-            .create_secure_channel(&self.context, identity, route, options)
+            .create_secure_channel(self.get_context(), identity, route, options)
             .await
     }
 
@@ -147,7 +144,7 @@ impl Node {
         timeout: Duration,
     ) -> Result<Address> {
         self.secure_channels()
-            .create_secure_channel_extended(&self.context, identity, route, options, timeout)
+            .create_secure_channel_extended(self.get_context(), identity, route, options, timeout)
             .await
     }
 
@@ -289,11 +286,10 @@ impl Node {
 }
 
 /// This trait can be used to integrate transports into a node
-#[async_trait]
 impl HasContext for Node {
-    /// Return a cloned context
-    async fn context(&self) -> Result<Context> {
-        self.get_context().await
+    /// Return a context
+    fn get_context(&self) -> &Context {
+        self.context()
     }
 }
 

@@ -34,8 +34,7 @@ async fn main(ctx: Context) -> Result<()> {
         )
         .await?;
 
-    let issuer_client =
-        CredentialsIssuerClient::new(route![issuer_channel, "issuer"], &node.get_context().await?).await?;
+    let issuer_client = CredentialsIssuerClient::new(route![issuer_channel, "issuer"], node.context()).await?;
     let credential = issuer_client.credential().await?;
     println!("Credential:\n{credential}");
 
@@ -62,7 +61,7 @@ async fn main(ctx: Context) -> Result<()> {
     let r = route![channel.clone(), "credentials"];
     node.credentials_server()
         .present_credential_mutual(
-            &node.get_context().await?,
+            node.context(),
             r,
             &[issuer],
             credential,
