@@ -5,12 +5,15 @@ use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
 use nix::errno::Errno;
+use ockam::identity::credential::Credential;
 use ockam::identity::identity::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam::identity::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
     IdentityIdentifier,
 };
 use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env_with_default;
+use ockam_identity::LmdbStorage;
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -19,10 +22,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::SystemTime;
 use sysinfo::{Pid, System, SystemExt};
-
-use crate::lmdb::LmdbStorage;
-use ockam::identity::credential::Credential;
-use ockam_core::env::get_env_with_default;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;

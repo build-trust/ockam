@@ -16,6 +16,7 @@ mod parser;
 pub mod attribute_access_control;
 pub mod expr;
 pub mod mem;
+mod storage;
 
 pub use attribute_access_control::AbacAccessControl;
 pub use env::Env;
@@ -28,3 +29,9 @@ pub use types::{Action, Resource, Subject};
 
 #[cfg(feature = "std")]
 pub use parser::parse;
+
+#[cfg(not(feature = "std"))]
+pub use ockam_executor::tokio;
+
+#[cfg(feature = "std")]
+pub use tokio;

@@ -25,10 +25,8 @@ std = [
 ]
 tag = ["cddl-cat", "once_cell", "ockam_core/tag"]
 vault-storage = ["ockam_vault/storage"]
-lmdb = ["std", "lmdb-rkv"]
 authenticators = ["direct-authenticator"]
-direct-authenticator = ["lmdb", "std"]
-default = ["lmdb"]
+direct-authenticator = ["std"]
 
 [dependencies]
 anyhow = "1"
@@ -39,7 +37,6 @@ dirs = "5.0.0"
 either = { version = "1.8.1", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 kafka-protocol = "0.6.0"
-lmdb-rkv = { version = "0.14.0", optional = true }
 lru = "0.10.0"
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 nix = "0.26"
