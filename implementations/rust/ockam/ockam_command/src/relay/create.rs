@@ -37,7 +37,7 @@ pub struct CreateCommand {
     to: String,
 
     /// Route to the node at which to create the relay (optional)
-    #[arg(long, id = "ROUTE", display_order = 900, default_value_t = default_forwarder_at())]
+    #[arg(long, id = "ROUTE", display_order = 900, value_parser = parse_at, default_value_t = default_forwarder_at())]
     at: MultiAddr,
 
     /// Authorized identity for secure channel connection (optional)
@@ -49,6 +49,17 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
     }
+}
+
+fn parse_at(input: &str) -> Result<MultiAddr> {
+    let mut at = input.to_string();
+    if !input.contains('/') {
+        at = format!("/node/{}", input);
+    }
+
+    let ma = MultiAddr::from_str(&at)?;
+
+    Ok(ma)
 }
 
 pub fn default_forwarder_at() -> MultiAddr {
