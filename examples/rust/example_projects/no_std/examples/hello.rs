@@ -62,7 +62,8 @@ fn entry() -> ! {
 
 // - ockam::node entrypoint ---------------------------------------------------
 
-use ockam::{identity::TrustEveryonePolicy, node, route, Context, Result};
+use ockam::identity::{SecureChannelListenerOptions, SecureChannelOptions};
+use ockam::{node, route, Context, Result};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -71,7 +72,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    node.create_secure_channel_listener(&bob, "bob", TrustEveryonePolicy)
+    node.create_secure_channel_listener(&bob, "bob", SecureChannelListenerOptions::new())
         .await?;
 
     // Create an entity to represent Alice.
@@ -80,7 +81,7 @@ async fn main(ctx: Context) -> Result<()> {
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
     let channel = node
-        .create_secure_channel(&alice, "bob", TrustEveryonePolicy)
+        .create_secure_channel(&alice, "bob", SecureChannelOptions::new())
         .await?;
 
     // Send a message, ** THROUGH ** the secure channel,
@@ -101,5 +102,5 @@ async fn main(ctx: Context) -> Result<()> {
     }
 
     // Stop all workers, stop the node, cleanup and return.
-    node.stop().await;
+    node.stop().await
 }
