@@ -1,10 +1,14 @@
 // This node routes a message, to a worker on a different node, over two tcp transport hops.
 
 use ockam::{node, route, Context, Result, TcpConnectionOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
+    // Create a node with default implementations
     let mut node = node(ctx);
+
+    // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 
     // Create a TCP connection to the middle node.

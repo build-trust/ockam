@@ -14,6 +14,7 @@ use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_core::flow_control::FlowControls;
 use ockam_node::RpcClient;
+use ockam_transport_tcp::TcpTransportExtension;
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
@@ -48,8 +49,9 @@ async fn main(ctx: Context) -> Result<()> {
 
 /// start the edge node
 async fn start_node(ctx: Context, project_information_path: &str, token: OneTimeCode) -> Result<()> {
-    // Use the TCP transport
+    // Create a node with default implementations
     let node = node(ctx);
+    // Use the TCP transport
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity for the edge plane
@@ -87,7 +89,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let token_acceptor = TokenAcceptorClient::new(
         RpcClient::new(
             route![secure_channel.clone(), DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
-            &node.context().await?,
+            &node.get_context().await?,
         )
         .await?,
     );
@@ -117,7 +119,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     let credential = trust_context
         .authority()?
-        .credential(&node.context().await?, &edge_plane)
+        .credential(&node.get_context().await?, &edge_plane)
         .await?;
 
     println!("{credential}");
@@ -126,7 +128,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // later on to exchange credentials with the control node
     node.credentials_server()
         .start(
-            &node.context().await?,
+            &node.get_context().await?,
             trust_context,
             project.authority_identity(),
             "credential_exchange".into(),
@@ -164,7 +166,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4.2 and send this node credential to the project
     node.credentials_server()
         .present_credential(
-            &node.context().await?,
+            &node.get_context().await?,
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
             credential.clone(),
             MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
@@ -187,7 +189,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4.4 exchange credential with the control node
     node.credentials_server()
         .present_credential_mutual(
-            &node.context().await?,
+            &node.get_context().await?,
             route![secure_channel_to_control.clone(), "credential_exchange"],
             &[project.authority_identity()],
             credential,

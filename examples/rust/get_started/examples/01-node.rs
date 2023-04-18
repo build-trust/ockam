@@ -1,9 +1,12 @@
 // This program creates and then immediately stops a node.
 
-use ockam::{Context, Result};
+use ockam::{node, Context, Result};
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
+    // Create a node with default implementations
+    let mut node = node(ctx);
+
     // Stop the node as soon as it starts.
-    ctx.stop().await
+    node.stop().await
 }

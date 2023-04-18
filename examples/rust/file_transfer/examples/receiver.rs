@@ -8,6 +8,7 @@ use ockam::{
     errcode::{Kind, Origin},
     node, Context, Error, Result, Routed, TcpConnectionOptions, Worker,
 };
+use ockam_transport_tcp::TcpTransportExtension;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 

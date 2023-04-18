@@ -1,7 +1,7 @@
 use std::os::unix::net::SocketAddr;
 
-use ockam_core::{Address, AsyncTryClone, Result};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, AsyncTryClone, Result};
+use ockam_node::{Context, HasContext};
 
 use crate::{
     parse_socket_addr,
@@ -110,3 +110,15 @@ impl UdsTransport {
         self.router_handle.bind(sock_addr).await
     }
 }
+
+/// This trait adds a `create_uds_transport` method to any struct returning a Context.
+/// This is the case for an ockam::Node, so you can write `node.create_uds_transport()`
+#[async_trait]
+pub trait UdsTransportExtension: HasContext {
+    /// Create a UDS transport
+    async fn create_uds_transport(&self) -> Result<UdsTransport> {
+        UdsTransport::create(&self.context().await?).await
+    }
+}
+
+impl<A: HasContext> UdsTransportExtension for A {}

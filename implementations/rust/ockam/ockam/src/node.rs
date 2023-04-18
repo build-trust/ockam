@@ -1,6 +1,8 @@
 use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use crate::stream::Stream;
 use core::time::Duration;
+use ockam_core::async_trait;
+use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
@@ -15,9 +17,7 @@ use ockam_identity::{
 use ockam_identity::{
     IdentitiesVault, Identity, SecureChannelListenerOptions, SecureChannelOptions,
 };
-use ockam_node::{Context, MessageReceiveOptions, MessageSendReceiveOptions};
-#[cfg(feature = "std")]
-use ockam_transport_tcp::TcpTransport;
+use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
 
 /// This struct supports all the ockam services for managing identities
 /// and creating secure channels
@@ -27,6 +27,34 @@ pub struct Node {
 }
 
 /// Create a default node (with no persistence)
+/// Persistent implementations are available by using a builder.
+/// For example, you can use a FileStorage backend to support the node vault.
+/// ```rust
+/// use std::sync::Arc;
+/// use ockam::{Node, Result};
+/// use ockam_node::Context;
+/// use ockam_vault::storage::FileStorage;
+///
+/// async fn make_node(ctx: Context) -> Result<Node> {
+///   let node = Node::builder().with_vault_storage(Arc::new(FileStorage::new("vault".into()))).build(ctx).await?;
+///   Ok(node)
+/// }
+///
+///
+/// ```
+/// Here is another example where we specify a local LMDB database to store identity attributes
+/// ```
+/// use std::sync::Arc;
+/// use ockam::{Node, Result};
+/// use ockam_node::Context;
+/// use ockam_vault::storage::FileStorage;
+/// use ockam_api::lmdb::LmdbStorage;
+///
+/// async fn make_node(ctx: Context) -> Result<Node> {
+///    let node = Node::builder().with_identities_storage(Arc::new(LmdbStorage::new("identities".into()))).build(ctx).await?;
+///    Ok(node)
+/// }
+/// ```
 pub fn node(ctx: Context) -> Node {
     Node {
         context: ctx,
@@ -36,14 +64,8 @@ pub fn node(ctx: Context) -> Node {
 
 impl Node {
     /// Return the current context
-    pub async fn context(&self) -> Result<Context> {
+    pub async fn get_context(&self) -> Result<Context> {
         self.context.async_try_clone().await
-    }
-
-    /// Create and return a TCP transport
-    #[cfg(feature = "std")]
-    pub async fn create_tcp_transport(&self) -> Result<TcpTransport> {
-        TcpTransport::create(&self.context).await
     }
 
     /// Create a new stream
@@ -263,6 +285,15 @@ impl Node {
     /// Return a new builder for top-level services
     pub fn builder() -> NodeBuilder {
         NodeBuilder::new()
+    }
+}
+
+/// This trait can be used to integrate transports into a node
+#[async_trait]
+impl HasContext for Node {
+    /// Return a cloned context
+    async fn context(&self) -> Result<Context> {
+        self.get_context().await
     }
 }
 

@@ -7,8 +7,8 @@ mod portals;
 pub use crate::portal::options::*;
 
 use crate::TcpRegistry;
-use ockam_core::AsyncTryClone;
-use ockam_node::Context;
+use ockam_core::{async_trait, AsyncTryClone, Result};
+use ockam_node::{Context, HasContext};
 
 /// High level management interface for TCP transports
 ///
@@ -54,3 +54,15 @@ pub struct TcpTransport {
     ctx: Context,
     registry: TcpRegistry,
 }
+
+/// This trait adds a `create_tcp_transport` method to any struct returning a Context.
+/// This is the case for an ockam::Node, so you can write `node.create_tcp_transport()`
+#[async_trait]
+pub trait TcpTransportExtension: HasContext {
+    /// Create a TCP transport
+    async fn create_tcp_transport(&self) -> Result<TcpTransport> {
+        TcpTransport::create(&self.context().await?).await
+    }
+}
+
+impl<A: HasContext> TcpTransportExtension for A {}

@@ -1,10 +1,12 @@
 use ockam::identity::{CredentialsIssuerClient, SecureChannelOptions};
 use ockam::{node, route, Context, MessageSendReceiveOptions, Result, TcpConnectionOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport
+    // Create a node with default implementations
     let mut node = node(ctx);
+    // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity representing the client
@@ -32,7 +34,8 @@ async fn main(ctx: Context) -> Result<()> {
         )
         .await?;
 
-    let issuer_client = CredentialsIssuerClient::new(route![issuer_channel, "issuer"], &node.context().await?).await?;
+    let issuer_client =
+        CredentialsIssuerClient::new(route![issuer_channel, "issuer"], &node.get_context().await?).await?;
     let credential = issuer_client.credential().await?;
     println!("Credential:\n{credential}");
 
@@ -59,7 +62,7 @@ async fn main(ctx: Context) -> Result<()> {
     let r = route![channel.clone(), "credentials"];
     node.credentials_server()
         .present_credential_mutual(
-            &node.context().await?,
+            &node.get_context().await?,
             r,
             &[issuer],
             credential,

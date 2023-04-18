@@ -3,8 +3,9 @@ use ockam::{node, route, Context, Result};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Create an Identity to represent Bob.
+    // Create a node with default implementations
     let mut node = node(ctx);
+    // Create an Identity to represent Bob
     let bob = node.create_identity().await?;
 
     // Create a secure channel listener for Bob that will wait for requests to

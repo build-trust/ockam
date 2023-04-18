@@ -10,7 +10,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let tcp = node.create_tcp_transport().await?;
 
     // A repeater Context is needed because the node Context has LocalOriginOnly AccessControl.
-    let mut repeater_ctx = node.context().await?.new_repeater(AllowedTransport::single(TCP)).await?;
+    let mut repeater_ctx = node.get_context().await?.new_repeater(AllowedTransport::single(TCP)).await?;
 
     // Send a message to the "echoer" worker, on a different node, over a tcp transport.
     let r = route![(TCP, "localhost:4000"), "echoer"];

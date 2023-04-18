@@ -5,14 +5,17 @@ use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, Context, Result, TcpListenerOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    // Create a node with default implementations
+    let node = node(ctx);
 
     // Initialize the TCP Transport.
-    let node = node(ctx);
     let tcp = node.create_tcp_transport().await?;
+
+    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     let bob = node.create_identity().await?;
 

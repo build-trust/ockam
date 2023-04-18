@@ -1,4 +1,5 @@
 use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpInletOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

@@ -2,8 +2,8 @@ use core::fmt;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-use ockam_core::{Address, Result};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, Result};
+use ockam_node::{Context, HasContext};
 
 use crate::{parse_socket_addr, WebSocketRouter, WebSocketRouterHandle, WS};
 
@@ -101,6 +101,18 @@ impl WebSocketTransport {
         self.router_handle.bind(bind_addr).await
     }
 }
+
+/// This trait adds a `create_web_socket_transport` method to any struct returning a Context.
+/// This is the case for an ockam::Node, so you can write `node.create_web_socket_transport()`
+#[async_trait]
+pub trait WebSocketTransportExtension: HasContext {
+    /// Create a WebSocket transport
+    async fn create_web_socket_transport(&self) -> Result<WebSocketTransport> {
+        WebSocketTransport::create(&self.context().await?).await
+    }
+}
+
+impl<A: HasContext> WebSocketTransportExtension for A {}
 
 #[derive(Clone)]
 pub(crate) struct WebSocketAddress {
