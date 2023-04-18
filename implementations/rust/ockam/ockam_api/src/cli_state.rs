@@ -171,18 +171,10 @@ impl CliState {
         identity_name: Option<String>,
         vault: Vault,
     ) -> Result<IdentityState> {
-        // get the identity name specified in the argument,
-        // and don't try to recreate an identity state if it already exists
-        if let Some(name) = identity_name {
-            if let Ok(identity_state) = self.identities.get(name.as_str()) {
-                Ok(identity_state)
-            } else {
-                self.make_identity_state(vault, Some(name)).await
-            }
-        }
-        // or make a new one with a default name
-        else {
-            self.make_identity_state(vault, None).await
+        if let Ok(identity) = self.identities.get_identity(identity_name.clone()) {
+            Ok(identity)
+        } else {
+            self.make_identity_state(vault, identity_name).await
         }
     }
 
@@ -480,6 +472,14 @@ impl IdentitiesState {
             self.set_default(name)?;
         }
         Ok(state)
+    }
+
+    pub fn get_identity(&self, name: Option<String>) -> Result<IdentityState> {
+        if let Some(identity_name) = name {
+            self.get(identity_name.as_ref())
+        } else {
+            self.default()
+        }
     }
 
     pub fn get(&self, name: &str) -> Result<IdentityState> {
@@ -1606,6 +1606,49 @@ fn file_stem(path: &Path) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn test_create_default_identity_state() {
+        let state = CliState::test().unwrap();
+        let vault = Vault::new(None);
+        let identity1 = state
+            .create_identity_state(None, vault.clone())
+            .await
+            .unwrap();
+        let identity2 = state.create_identity_state(None, vault).await.unwrap();
+
+        let default_identity = state.identities.default().unwrap();
+        assert_eq!(identity1, default_identity);
+
+        // make sure that a default identity is not recreated twice
+        assert_eq!(identity1.name, identity2.name);
+        assert_eq!(identity1.path, identity2.path);
+    }
+
+    #[tokio::test]
+    async fn test_create_named_identity_state() {
+        let state = CliState::test().unwrap();
+        let vault = Vault::new(None);
+        let identity1 = state
+            .create_identity_state(Some("alice".into()), vault.clone())
+            .await
+            .unwrap();
+        let identity2 = state
+            .create_identity_state(Some("alice".into()), vault)
+            .await
+            .unwrap();
+
+        assert_eq!(identity1.name, "alice".to_string());
+        assert!(identity1
+            .path
+            .to_string_lossy()
+            .to_string()
+            .contains("alice.json"));
+
+        // make sure that a named identity is not recreated twice
+        assert_eq!(identity1.name, identity2.name);
+        assert_eq!(identity1.path, identity2.path);
+    }
 
     // This tests way too many different things
     #[ockam_macros::test(crate = "ockam")]
