@@ -195,7 +195,17 @@ jobs:
           rustc --version
           rustup target add thumbv7em-none-eabihf
           cd implementations/rust/ockam/ockam
-          RUSTFLAGS='-Dwarnings' cargo check --target thumbv7em-none-eabihf --no-default-features --features 'no_std alloc software_vault'
+          export RUSTFLAGS='-Dwarnings'
+          cargo check --target thumbv7em-none-eabihf --no-default-features --features 'no_std alloc software_vault'
+
+          # no_std example project
+          cd ../../../../examples/rust/example_projects/no_std
+          cargo check --example hello
+          # RUSTFLAGS='-Dwarnings' cargo check --example hello --no-default-features --features 'alloc no_std'
+          # RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="qemu"
+          # RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="atsame54"
+          # RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="stm32f4"
+
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_tag:
