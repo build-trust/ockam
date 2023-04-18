@@ -1,5 +1,7 @@
 use clap::Args;
 use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
+use ockam_api::config::cli::TrustContextConfig;
+use ockam_api::identity::EnrollmentTicket;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -7,7 +9,7 @@ use anyhow::{anyhow, Context as _};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::{DirectAuthenticatorClient, TokenIssuerClient};
-use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
+use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority, ProjectLookup};
 use ockam_api::DefaultAddress;
 use ockam_core::route;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
@@ -80,8 +82,12 @@ impl Runner {
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let map = self.opts.config.lookup();
+        let mut project: Option<ProjectLookup> = None;
+        let mut trust_context: Option<TrustContextConfig> = None;
+
         let (base_addr, _flow_control_id) =
             if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
+                trust_context = Some(tc.clone());
                 let cred_retr = tc.authority()?.own_credential()?;
                 let addr = match cred_retr {
                     ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
@@ -105,7 +111,7 @@ impl Runner {
                 .await?;
 
                 (sc_addr, Some(sc_flow_control_id))
-            } else if let Some(a) = project_authority(&self.cmd.to, &map)? {
+            } else if let (Some(p), Some(a)) = get_project(&self.cmd.to, &map)? {
                 let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
                     &self.ctx,
                     &self.opts,
@@ -116,6 +122,7 @@ impl Runner {
                 )
                 .await?;
 
+                project = Some(p);
                 (sc_addr, Some(sc_flow_control_id))
             } else {
                 (self.cmd.to.clone(), None)
@@ -167,7 +174,10 @@ impl Runner {
                 .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
             );
             let token = client.create_token(self.cmd.attributes()?).await?;
-            println!("{}", token.to_string())
+
+            let ticket = EnrollmentTicket::new(token, project, trust_context);
+            let ticket_serialized = hex::encode(serde_json::to_vec(&ticket)?);
+            print!("{}", ticket_serialized)
         }
 
         delete_embedded_node(&self.opts, &node_name).await;
@@ -178,16 +188,16 @@ impl Runner {
 /// Get the project authority from the first address protocol.
 ///
 /// If the first protocol is a `/project`, look up the project's config.
-fn project_authority<'a>(
+fn get_project<'a>(
     input: &MultiAddr,
     map: &'a ConfigLookup,
-) -> Result<Option<&'a ProjectAuthority>> {
+) -> Result<(Option<ProjectLookup>, Option<&'a ProjectAuthority>)> {
     if let Some(proto) = input.first() {
         if proto.code() == proto::Project::CODE {
             let proj = proto.cast::<proto::Project>().expect("project protocol");
             if let Some(p) = map.get_project(&proj) {
                 if let Some(a) = &p.authority {
-                    return Ok(Some(a));
+                    return Ok((Some(p.clone()), Some(a)));
                 } else {
                     return Err(anyhow!("missing authority in project {:?}", &*proj).into());
                 }
@@ -196,5 +206,5 @@ fn project_authority<'a>(
             }
         }
     }
-    Ok(None)
+    Ok((None, None))
 }

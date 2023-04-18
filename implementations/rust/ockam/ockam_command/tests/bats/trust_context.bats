@@ -155,11 +155,11 @@ teardown() {
 
     run "$OCKAM" identity create m1
     $OCKAM project enroll >"$OCKAM_HOME/m1.token"
-    run "$OCKAM" project authenticate --identity m1 --trust-context orchestrator-test --token $(cat "$OCKAM_HOME/m1.token")
+    run "$OCKAM" project authenticate $OCKAM_HOME/m1.token --identity m1
 
     run "$OCKAM" identity create m2
     $OCKAM project enroll >"$OCKAM_HOME/m2.token"
-    run "$OCKAM" project authenticate --identity m2 --trust-context orchestrator-test --token $(cat "$OCKAM_HOME/m2.token")
+    run "$OCKAM" project authenticate $OCKAM_HOME/m2.token --identity m2
 
     run "$OCKAM" node create n1 --identity m1 --trust-context orchestrator-test
     assert_success

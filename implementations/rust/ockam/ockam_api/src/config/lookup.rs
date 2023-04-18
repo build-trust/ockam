@@ -205,6 +205,8 @@ pub struct ProjectLookup {
     pub node_route: Option<MultiAddr>,
     /// Identifier of this project
     pub id: String,
+    /// Name of this project within
+    pub name: String,
     /// Identifier of the IDENTITY of the project (for secure-channel)
     pub identity_id: Option<IdentityIdentifier>,
     /// Project authority information.
@@ -238,6 +240,7 @@ impl ProjectLookup {
         Ok(ProjectLookup {
             node_route: Some(node_route),
             id: project.id.to_string(),
+            name: project.name.to_string(),
             identity_id: Some(pid.clone()),
             authority,
             okta,

@@ -174,6 +174,21 @@ impl<'a> OktaConfig<'a> {
                 .collect(),
         }
     }
+
+    pub fn new_empty_attributes<S: Into<CowStr<'a>>>(
+        tenant_base_url: S,
+        certificate: S,
+        client_id: S,
+    ) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            tenant_base_url: tenant_base_url.into(),
+            certificate: certificate.into(),
+            client_id: client_id.into(),
+            attributes: Vec::new(),
+        }
+    }
 }
 
 impl Clone for OktaConfig<'_> {
@@ -208,6 +223,12 @@ impl From<OktaConfig<'_>> for OktaAuth0 {
             client_id: c.client_id.to_string(),
             certificate: c.certificate.to_string(),
         }
+    }
+}
+
+impl<'a> From<OktaAuth0> for OktaConfig<'a> {
+    fn from(val: OktaAuth0) -> Self {
+        OktaConfig::new_empty_attributes(val.tenant_base_url, val.certificate, val.client_id)
     }
 }
 

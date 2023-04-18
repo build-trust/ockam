@@ -344,6 +344,7 @@ pub mod config {
             ProjectLookup {
                 node_route: None,
                 id: project.id.to_string(),
+                name: project.name.to_string(),
                 identity_id: None,
                 authority: None,
                 okta: None,
