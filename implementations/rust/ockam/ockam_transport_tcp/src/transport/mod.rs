@@ -61,7 +61,7 @@ pub struct TcpTransport {
 pub trait TcpTransportExtension: HasContext {
     /// Create a TCP transport
     async fn create_tcp_transport(&self) -> Result<TcpTransport> {
-        TcpTransport::create(&self.context().await?).await
+        TcpTransport::create(self.get_context()).await
     }
 }
 

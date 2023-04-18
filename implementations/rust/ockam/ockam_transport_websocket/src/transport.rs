@@ -108,7 +108,7 @@ impl WebSocketTransport {
 pub trait WebSocketTransportExtension: HasContext {
     /// Create a WebSocket transport
     async fn create_web_socket_transport(&self) -> Result<WebSocketTransport> {
-        WebSocketTransport::create(&self.context().await?).await
+        WebSocketTransport::create(self.get_context()).await
     }
 }
 

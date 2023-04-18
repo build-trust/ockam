@@ -89,7 +89,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let token_acceptor = TokenAcceptorClient::new(
         RpcClient::new(
             route![secure_channel.clone(), DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
-            &node.get_context().await?,
+            node.context(),
         )
         .await?,
     );
@@ -119,7 +119,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     let credential = trust_context
         .authority()?
-        .credential(&node.get_context().await?, &edge_plane)
+        .credential(node.context(), &edge_plane)
         .await?;
 
     println!("{credential}");
@@ -128,7 +128,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // later on to exchange credentials with the control node
     node.credentials_server()
         .start(
-            &node.get_context().await?,
+            node.context(),
             trust_context,
             project.authority_identity(),
             "credential_exchange".into(),
@@ -166,7 +166,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4.2 and send this node credential to the project
     node.credentials_server()
         .present_credential(
-            &node.get_context().await?,
+            node.context(),
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
             credential.clone(),
             MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
@@ -189,7 +189,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4.4 exchange credential with the control node
     node.credentials_server()
         .present_credential_mutual(
-            &node.get_context().await?,
+            node.context(),
             route![secure_channel_to_control.clone(), "credential_exchange"],
             &[project.authority_identity()],
             credential,

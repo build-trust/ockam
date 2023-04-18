@@ -117,7 +117,7 @@ impl UdsTransport {
 pub trait UdsTransportExtension: HasContext {
     /// Create a UDS transport
     async fn create_uds_transport(&self) -> Result<UdsTransport> {
-        UdsTransport::create(&self.context().await?).await
+        UdsTransport::create(self.get_context()).await
     }
 }
 
