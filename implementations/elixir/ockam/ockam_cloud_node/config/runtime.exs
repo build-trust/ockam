@@ -9,25 +9,13 @@ token_manager_cloud_service_module =
     "INFLUXDB" -> Ockam.TokenLeaseManager.CloudService.Influxdb
   end
 
-token_manager_storage_service_module =
-  case System.get_env("TOKEN_MANAGER_STORAGE_SERVICE", "POSTGRES") do
-    "POSTGRES" -> Ockam.TokenLeaseManager.StorageService.Postgres
-  end
-
 config :ockam_services, :token_manager,
   cloud_service_module: token_manager_cloud_service_module,
-  storage_service_module: token_manager_storage_service_module,
+  storage_service_module: Ockam.Services.TokenLeaseManager.StorageService.Memory,
   cloud_service_options: [
     endpoint: System.get_env("TOKEN_MANAGER_INFLUXDB_ENDPOINT"),
     token: System.get_env("TOKEN_MANAGER_INFLUXDB_TOKEN"),
     org: System.get_env("TOKEN_MANAGER_INFLUXDB_ORG")
-  ],
-  storage_service_options: [
-    hostname: System.get_env("TOKEN_MANAGER_POSTGRES_HOST"),
-    port: String.to_integer(System.get_env("TOKEN_MANAGER_POSTGRES_PORT", "5432")),
-    username: System.get_env("TOKEN_MANAGER_POSTGRES_USERNAME"),
-    password: System.get_env("TOKEN_MANAGER_POSTGRES_PASSWORD"),
-    database: System.get_env("TOKEN_MANAGER_POSTGRES_DATABASE")
   ]
 
 ## Transports config
