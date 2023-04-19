@@ -13,7 +13,10 @@ use ockam::identity::{
     IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
 };
 use ockam::identity::{IdentityIdentifier, SecureChannels};
-use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
+use ockam::{
+    Address, Context, ForwardingService, ForwardingServiceOptions, Result, Routed, TcpTransport,
+    Worker,
+};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
@@ -406,8 +409,7 @@ impl NodeManager {
         ForwardingService::create(
             ctx,
             DefaultAddress::FORWARDING_SERVICE,
-            AllowAll, // FIXME: @ac
-            AllowAll, // FIXME: @ac
+            ForwardingServiceOptions::new(),
         )
         .await?;
 
