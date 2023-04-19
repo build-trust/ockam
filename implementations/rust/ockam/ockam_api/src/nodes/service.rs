@@ -389,16 +389,8 @@ impl NodeManager {
     }
 
     async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
-        self.trust_context = Some(
-            tc.to_trust_context(
-                self.secure_channels.clone(),
-                Some(self.tcp_transport.async_try_clone().await?),
-            )
-            .await?,
-        );
-
+        self.trust_context = Some(tc.to_trust_context(self.secure_channels.clone()).await?);
         info!("NodeManager::configure_trust_context: trust context configured");
-
         Ok(())
     }
 

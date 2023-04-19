@@ -16,6 +16,7 @@ mod registry;
 
 pub mod codec;
 pub mod iter;
+pub mod multiaddr_to_route;
 pub mod proto;
 
 use alloc::vec::Vec;
@@ -29,6 +30,8 @@ use tinyvec::{Array, ArrayVec, TinyVec};
 
 use crate::proto::{DnsAddr, Ip4, Ip6, Tcp};
 pub use error::Error;
+pub use multiaddr_to_route::*;
+use ockam_core::compat::string::String;
 use ockam_core::env::FromString;
 pub use registry::{Registry, RegistryBuilder};
 

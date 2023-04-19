@@ -10,14 +10,17 @@ repository = "https://github.com/ockam-network/ockam"
 description = "An implementation of multiformats.io/multiaddr"
 
 [features]
-std = ["ockam_core/std", "unsigned-varint/std", "serde?/std"]
+std = ["ockam_core/std", "ockam_transport_tcp/std", "unsigned-varint/std", "serde?/std"]
+no_std = ["ockam_core/no_std"]
 cbor = ["minicbor"]
+alloc = ["ockam_transport_tcp/alloc"]
 
 [dependencies]
 minicbor = { version = "0.19.0", default-features = false, features = ["alloc"], optional = true }
 once_cell = { version = "1.17.1", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.160", default-features = false, optional = true }
 tinyvec = { version = "1.5.1", features = ["alloc"] }
+tracing = { version = "0.1", default-features = false }
 unsigned-varint = "0.7.1"
 
 [dependencies.ockam_core]
@@ -25,6 +28,18 @@ version = "0.78.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
+
+[dependencies.ockam_node]
+version = "0.81.0"
+path = "../ockam_node"
+default-features = false
+features = ["std", "no_std"]
+
+[dependencies.ockam_transport_tcp]
+version = "0.79.0"
+path = "../ockam_transport_tcp"
+default-features = false
+features = ["std", "alloc"]
 
 [dev-dependencies]
 bincode = "1.1.3"

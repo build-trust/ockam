@@ -4,10 +4,10 @@ use crate::cli_state::{CliStateError, CredentialState};
 use crate::cloud::project::Project;
 use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::error::ApiError;
-use crate::{cli_state, multiaddr_to_route, DefaultAddress, HexByteVec};
+use crate::{cli_state, DefaultAddress, HexByteVec};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{Result, Route};
+use ockam_core::Result;
 use ockam_identity::credential::Credential;
 use ockam_identity::{
     identities, AuthorityService, CredentialsMemoryRetriever, CredentialsRetriever, Identities,
@@ -15,7 +15,6 @@ use ockam_identity::{
     SecureChannels, TrustContext,
 };
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::TcpTransport;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -111,7 +110,6 @@ impl TrustContextConfig {
     pub async fn to_trust_context(
         &self,
         secure_channels: Arc<SecureChannels>,
-        tcp_transport: Option<TcpTransport>,
     ) -> Result<TrustContext> {
         let authority =
             if let Some(authority_config) = self.authority.as_ref() {
@@ -120,7 +118,6 @@ impl TrustContextConfig {
                     if let Some(retriever_type) = &authority_config.own_credential {
                         Some(retriever_type.to_credential_retriever(
                             secure_channels.clone(),
-                            tcp_transport,
                             Default::default(), /* FIXME: Replace with proper shared instance */
                         ).await?)
                     } else {
@@ -274,7 +271,6 @@ impl CredentialRetrieverConfig {
     async fn to_credential_retriever(
         &self,
         secure_channels: Arc<SecureChannels>,
-        tcp_transport: Option<TcpTransport>,
         flow_controls: FlowControls,
     ) -> Result<Arc<dyn CredentialsRetriever>> {
         match self {
@@ -285,12 +281,9 @@ impl CredentialRetrieverConfig {
                 CredentialsMemoryRetriever::new(state.config()?.credential()?),
             )),
             CredentialRetrieverConfig::FromCredentialIssuer(issuer_config) => {
-                let tcp_transport = tcp_transport.ok_or_else(|| ApiError::generic("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
                 let credential_issuer_info = RemoteCredentialsRetrieverInfo::new(
                     issuer_config.resolve_identity().await?,
-                    issuer_config
-                        .resolve_route(tcp_transport, flow_controls.clone())
-                        .await?,
+                    issuer_config.multiaddr.clone(),
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 );
 
@@ -373,19 +366,6 @@ impl CredentialIssuerConfig {
             identity: encoded_identity,
             multiaddr,
         }
-    }
-
-    async fn resolve_route(
-        &self,
-        tcp_transport: TcpTransport,
-        flow_controls: FlowControls,
-    ) -> Result<Route> {
-        let Some(authority_tcp_session) = multiaddr_to_route(&self.multiaddr, &tcp_transport, &flow_controls).await else {
-            let err_msg = format!("Invalid route within trust context: {}", &self.multiaddr);
-            error!("{err_msg}");
-            return Err(ApiError::generic(&err_msg));
-        };
-        Ok(authority_tcp_session.route)
     }
 
     async fn resolve_identity(&self) -> Result<Identity> {

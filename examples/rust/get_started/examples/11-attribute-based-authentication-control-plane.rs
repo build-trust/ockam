@@ -89,10 +89,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     );
     token_acceptor.present_token(&token).await?;
 
-    let tcp_project_session = multiaddr_to_route(&project.authority_route(), &tcp, &flow_controls)
-        .await
-        .unwrap(); // FIXME: Handle error
-
     // Create a trust context that will be used to authenticate credential exchanges
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
@@ -103,7 +99,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
                 node.secure_channels(),
                 RemoteCredentialsRetrieverInfo::new(
                     project.authority_identity(),
-                    tcp_project_session.route,
+                    project.authority_route.clone(),
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 ),
                 flow_controls.clone(),

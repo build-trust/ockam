@@ -3442,6 +3442,7 @@ dependencies = [
  "ockam_core",
  "ockam_key_exchange_xx",
  "ockam_macros",
+ "ockam_multiaddr",
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
@@ -3500,12 +3501,15 @@ dependencies = [
  "multiaddr",
  "ockam_core",
  "ockam_multiaddr",
+ "ockam_node",
+ "ockam_transport_tcp",
  "once_cell",
  "quickcheck",
  "rand",
  "serde",
  "serde_json",
  "tinyvec",
+ "tracing",
  "unsigned-varint",
 ]
 
