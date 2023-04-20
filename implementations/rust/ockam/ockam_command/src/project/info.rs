@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use anyhow::Context as _;
 use clap::Args;
 
@@ -9,6 +10,7 @@ use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_core::CowStr;
 
+use crate::error::Error;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::config;
 use crate::util::api::{self, CloudOpts};
@@ -49,7 +51,7 @@ pub struct ProjectInfo<'a> {
 }
 
 impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
-    type Error = ockam::Error;
+    type Error = Error;
     fn try_from(p: ProjectLookup) -> Result<Self, Self::Error> {
         Ok(Self {
             id: p.id.into(),
@@ -57,7 +59,7 @@ impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
             identity: p.identity_id,
             access_route: p
                 .node_route
-                .expect("Project access route is missing")
+                .map_or(Err(anyhow!("Project access route is missing")), |x| Ok(x))?
                 .to_string()
                 .into(),
             authority_access_route: p.authority.as_ref().map(|a| a.address().to_string().into()),
