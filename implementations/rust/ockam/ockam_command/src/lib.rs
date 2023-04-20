@@ -179,7 +179,7 @@ impl GlobalArgs {
                 "--no-color" => s.no_color = true,
                 "--no-input" => s.no_input = true,
                 "--output" => {
-                    let value = input.clone().into_iter().skip(i).next();
+                    let value = input.clone().into_iter().nth(i);
                     s.output_format = match value {
                         Some(v) => OutputFormat::from_str(&v, true).expect("Invalid output format"),
                         None => OutputFormat::Plain,
