@@ -35,9 +35,16 @@ mod vault;
 mod version;
 mod worker;
 
+use crate::admin::AdminCommand;
+use crate::authority::AuthorityCommand;
+use crate::run::RunCommand;
+use crate::subscription::SubscriptionCommand;
+use crate::terminal::{Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
+use console::Term;
 use credential::CredentialCommand;
 use enroll::EnrollCommand;
 use error::{Error, Result};
@@ -47,6 +54,7 @@ use manpages::ManpagesCommand;
 use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
+use ockam_api::cli_state::CliState;
 use policy::PolicyCommand;
 use project::ProjectCommand;
 use relay::RelayCommand;
@@ -60,20 +68,11 @@ use tcp::{
     outlet::TcpOutletCommand,
 };
 use trust_context::TrustContextCommand;
+use upgrade::check_if_an_upgrade_is_available;
 use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
 use vault::VaultCommand;
 use version::Version;
 use worker::WorkerCommand;
-
-use crate::admin::AdminCommand;
-use crate::authority::AuthorityCommand;
-use crate::run::RunCommand;
-use crate::subscription::SubscriptionCommand;
-use crate::terminal::{Terminal, TerminalStream};
-use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
-use console::Term;
-use ockam_api::cli_state::CliState;
-use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -150,6 +149,53 @@ pub struct GlobalArgs {
     test_argument_parser: bool,
 }
 
+impl GlobalArgs {
+    // Being able to retrieve the global args from anywhere is useful
+    // and presented to be more difficult within clap than expected.
+    //
+    // Clap's value parsers are not able to access the command, or global opts
+    // attempting to wrap the OckamCommand as a singleton, also did not work
+    // due to the fact the parsers are invoked during `OckamCommand::parse_from(input)`
+    // unable to let the parser know about the singleton.
+    //
+    fn parse_from_input() -> Self {
+        let mut s = Self::default();
+        let input = std::env::args()
+            .map(replace_hyphen_with_stdin)
+            .collect::<Vec<_>>();
+
+        let mut i = 0;
+        for arg in input.clone() {
+            match arg.as_str() {
+                "-h" | "--help" => s.help = Some(true),
+                "-q" | "--quiet" => {
+                    s.quiet = true;
+                    s.verbose = 0;
+                }
+                "-v" | "--verbose" => {
+                    s.quiet = false;
+                    s.verbose += 1;
+                }
+                "--no-color" => s.no_color = true,
+                "--no-input" => s.no_input = true,
+                "--output" => {
+                    let value = input.clone().into_iter().skip(i).next();
+                    s.output_format = match value {
+                        Some(v) => OutputFormat::from_str(&v, true).expect("Invalid output format"),
+                        None => OutputFormat::Plain,
+                    }
+                }
+                "--test-argument-parser" => s.test_argument_parser = true,
+                _ => (),
+            }
+
+            i += 1;
+        }
+
+        s
+    }
+}
+
 impl Default for GlobalArgs {
     fn default() -> Self {
         Self {
@@ -202,7 +248,7 @@ impl CommandGlobalOpts {
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 pub enum OckamSubcommand {
     #[command(display_order = 800)]
     Enroll(EnrollCommand),
@@ -248,7 +294,7 @@ pub fn run() {
     let input = std::env::args()
         .map(replace_hyphen_with_stdin)
         .collect::<Vec<_>>();
-    let command: OckamCommand = OckamCommand::parse_from(input);
+    let command = OckamCommand::parse_from(input);
 
     if !command.global_args.test_argument_parser {
         check_if_an_upgrade_is_available();
@@ -257,7 +303,7 @@ pub fn run() {
     if !command.global_args.quiet {
         setup_logging(command.global_args.verbose, command.global_args.no_color);
         tracing::debug!("{}", Version::short());
-        tracing::debug!("Parsed {:?}", &command);
+        tracing::debug!("Parsed {:?}", command);
     }
 
     command.run();
@@ -317,7 +363,7 @@ impl OckamCommand {
     }
 }
 
-fn replace_hyphen_with_stdin(s: String) -> String {
+pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {
     let input_stream = std::io::stdin();
     if s.contains("/-") {
         let mut buffer = String::new();

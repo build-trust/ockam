@@ -4,6 +4,7 @@ mod delete;
 mod list;
 mod show;
 
+use colorful::Colorful;
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
@@ -86,13 +87,37 @@ pub fn identity_name_parser(identity_name: &str) -> Result<String> {
 
 pub fn create_default_identity(identity_name: &str) -> String {
     let config = OckamConfig::load().expect("Failed to load config");
-    let args = GlobalArgs {
-        quiet: true,
-        ..Default::default()
-    };
-    let global_opts = CommandGlobalOpts::new(args, config);
-    let create_command = CreateCommand::new(identity_name.into(), None);
+    let opts = CommandGlobalOpts::new(GlobalArgs::parse_from_input(), config.clone());
+    let quiet_opts = CommandGlobalOpts::new(
+        GlobalArgs {
+            quiet: true,
+            ..Default::default()
+        },
+        config,
+    );
 
-    create_command.run(global_opts);
+    let _ = opts
+        .shell
+        .clone()
+        .stdout()
+        .plain(format!(
+            "{} No default identity found. Creating one...",
+            "!".light_green(),
+        ))
+        .write_line();
+
+    let create_command = CreateCommand::new(identity_name.into(), None);
+    create_command.run(quiet_opts);
+
+    let _ = opts
+        .shell
+        .clone()
+        .stdout()
+        .plain(format!(
+            "{} Created default identity: {}",
+            "!".light_green(),
+            identity_name
+        ))
+        .write_line();
     identity_name.to_string()
 }

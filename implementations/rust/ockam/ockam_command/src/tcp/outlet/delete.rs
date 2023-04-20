@@ -42,7 +42,7 @@ pub async fn run_impl(
         .shell
         .stdout()
         .plain(format!(
-            "{}TCP Outlet with alias {alias} on Node {node} has been deleted.",
+            "{} TCP Outlet with alias {alias} on Node {node} has been deleted.",
             "✔︎".light_green(),
         ))
         .machine(&alias)

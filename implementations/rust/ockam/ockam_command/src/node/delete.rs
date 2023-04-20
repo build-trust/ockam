@@ -44,7 +44,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
         opts.shell
             .stdout()
             .plain(format!(
-                "{}Node with name '{}' has been deleted.",
+                "{} Node with name '{}' has been deleted.",
                 "✔︎".light_green(),
                 &cmd.node_name
             ))

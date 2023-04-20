@@ -2,6 +2,7 @@ use core::fmt;
 use minicbor::decode::{self, Decoder};
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
+use serde::Serialize;
 use zeroize::Zeroize;
 
 /// A type tag represents a type as a unique numeric value.
@@ -37,5 +38,11 @@ impl<'b, C, const N: usize> Decode<'b, C> for TypeTag<N> {
         }
         let msg = format!("type tag mismatch (expected {N}, got {n})");
         Err(decode::Error::message(msg))
+    }
+}
+
+impl<const N: usize> Serialize for TypeTag<N> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_u64(N as u64)
     }
 }

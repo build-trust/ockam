@@ -3,6 +3,7 @@
 use std::net::SocketAddr;
 
 use minicbor::{Decode, Encode};
+use ockam::route;
 use ockam_core::compat::borrow::Cow;
 
 use ockam::identity::IdentityIdentifier;
@@ -12,6 +13,9 @@ use ockam_core::TypeTag;
 use ockam_multiaddr::MultiAddr;
 use serde::ser::SerializeStruct;
 use serde::Serialize;
+
+use crate::error::ApiError;
+use crate::route_to_multiaddr;
 
 /// Request body to create an inlet
 #[derive(Clone, Debug, Decode, Encode)]
@@ -172,7 +176,7 @@ impl<'a> InletStatus<'a> {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Decode, Encode)]
+#[derive(Clone, Debug, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OutletStatus<'a> {
@@ -211,6 +215,11 @@ impl<'a> OutletStatus<'a> {
             alias: alias.into(),
             payload: payload.into(),
         }
+    }
+
+    pub fn worker_address(&self) -> Result<MultiAddr, ockam_core::Error> {
+        route_to_multiaddr(&route![self.worker_addr.to_string()])
+            .ok_or_else(|| ApiError::generic("Invalid Worker Address"))
     }
 }
 

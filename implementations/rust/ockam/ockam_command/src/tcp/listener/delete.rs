@@ -38,7 +38,7 @@ async fn run_impl(
     opts.shell
         .stdout()
         .plain(format!(
-            "{}TCP listener with id '{}' has been deleted.",
+            "{} TCP listener with id '{}' has been deleted.",
             "✔︎".light_green(),
             &cmd.id
         ))

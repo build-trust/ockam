@@ -44,7 +44,7 @@ async fn run_impl(
             opts.shell
                 .stdout()
                 .plain(format!(
-                    "{}Vault with name '{}' has been deleted.",
+                    "{} Vault with name '{}' has been deleted.",
                     "✔︎".light_green(),
                     &name
                 ))

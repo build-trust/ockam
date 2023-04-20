@@ -1,6 +1,7 @@
 use crate::node::{default_node_name, node_name_parser};
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
+use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
@@ -8,13 +9,9 @@ use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
 use ockam_abac::Resource;
-use ockam_api::{
-    error::ApiError,
-    nodes::models::portal::{CreateOutlet, OutletStatus},
-    route_to_multiaddr,
-};
+use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_core::api::{Request, RequestBuilder};
-use ockam_core::route;
+
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 /// Create TCP Outlets
@@ -102,11 +99,19 @@ pub async fn run_impl(
     };
 
     rpc.request(make_api_request(cmd)?).await?;
-    let OutletStatus { worker_addr, .. } = rpc.parse_response()?;
+    let outlet_status: OutletStatus = rpc.parse_response()?;
 
-    let addr = route_to_multiaddr(&route![worker_addr.to_string()])
-        .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;
-    println!("{addr}");
+    let plain = outlet_status.output()?;
+    let machine = outlet_status.worker_address()?;
+    let json = serde_json::to_string_pretty(&outlet_status)?;
+
+    options
+        .shell
+        .stdout()
+        .plain(plain)
+        .machine(machine)
+        .json(json)
+        .write_line()?;
 
     Ok(())
 }

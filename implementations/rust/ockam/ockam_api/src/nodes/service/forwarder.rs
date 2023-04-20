@@ -90,7 +90,7 @@ impl NodeManagerWorker {
 
                 debug!(
                     forwarding_route = %res_body.forwarding_route(),
-                    remote_address = %res_body.remote_address(),
+                    remote_address = %res_body.remote_address_ma()?,
                     "CreateForwarder request processed, sending back response"
                 );
                 Ok(Response::ok(rid).body(res_body).to_vec()?)
