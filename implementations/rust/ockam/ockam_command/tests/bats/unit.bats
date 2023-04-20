@@ -400,11 +400,11 @@ teardown() {
 
   run $OCKAM relay list --at /node/n2
   assert_output --regexp "Relay Route:.* => 0#forward_to_blue"
-  assert_output --partial "Remote Address: forward_to_blue"
-  assert_output --regexp "Worker Address: 0#.*"
+  assert_output --partial "Remote Address: /service/forward_to_blue"
+  assert_output --regexp "Worker Address: /service/.*"
   assert_output --regexp "Relay Route:.* => 0#forward_to_red"
-  assert_output --partial "Remote Address: forward_to_red"
-  assert_output --regexp "Worker Address: 0#.*"
+  assert_output --partial "Remote Address: /service/forward_to_red"
+  assert_output --regexp "Worker Address: /service/.*"
   assert_success
 
   # Test listing node with no relays
@@ -424,8 +424,8 @@ teardown() {
 
   run $OCKAM relay show forward_to_blue --at /node/n2
   assert_output --regexp "Relay Route:.* => 0#forward_to_blue"
-  assert_output --partial "Remote Address: forward_to_blue"
-  assert_output --regexp "Worker Address: 0#.*"
+  assert_output --partial "Remote Address: /service/forward_to_blue"
+  assert_output --regexp "Worker Address: /service/.*"
   assert_success
 
   # Test showing non-existing with no relay
