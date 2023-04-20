@@ -11,7 +11,7 @@ use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::Result;
@@ -33,7 +33,7 @@ pub struct CreateCommand {
     relay_name: String,
 
     /// Node for which to create the relay
-    #[arg(long, id = "NODE", display_order = 900, default_value_t = default_node_name())]
+    #[arg(long, id = "NODE", display_order = 900, default_value_t = default_node_name(), value_parser = node_name_parser)]
     to: String,
 
     /// Route to the node at which to create the relay (optional)
@@ -92,13 +92,38 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 
     let mut rpc = RpcBuilder::new(&ctx, &opts, &api_node).tcp(&tcp)?.build();
     rpc.request(req).await?;
-    rpc.parse_and_print_response::<ForwarderInfo>()?;
+    let relay: ForwarderInfo = rpc.parse_response()?;
+
+    let plain = relay.output()?;
+    let machine = relay.remote_address_ma()?;
+    let json = serde_json::to_string_pretty(&relay)?;
+
+    opts.shell
+        .stdout()
+        .plain(plain)
+        .machine(machine)
+        .json(json)
+        .write_line()?;
 
     Ok(())
 }
 
 impl Output for ForwarderInfo<'_> {
     fn output(&self) -> Result<String> {
-        Ok(format!("/service/{}", self.remote_address()))
+        let output = format!(
+            r#"
+Relay {}:
+    Forwarding Address: {} => {},
+    Remote Address: {},
+    Worker Address: {}
+"#,
+            self.remote_address(),
+            self.worker_address_ma()?,
+            self.remote_address_ma()?,
+            self.remote_address_ma()?,
+            self.worker_address_ma()?
+        );
+
+        Ok(output)
     }
 }

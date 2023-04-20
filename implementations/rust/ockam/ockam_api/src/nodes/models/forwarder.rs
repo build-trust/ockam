@@ -2,11 +2,15 @@ use minicbor::{Decode, Encode};
 
 use ockam::identity::IdentityIdentifier;
 use ockam::remote::RemoteForwarderInfo;
+use ockam::route;
 use ockam_core::CowStr;
 use ockam_multiaddr::MultiAddr;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+
+use crate::error::ApiError;
+use crate::route_to_multiaddr;
 
 /// Request body when instructing a node to create a forwarder
 #[derive(Debug, Clone, Decode, Encode)]
@@ -94,8 +98,14 @@ impl<'a> ForwarderInfo<'a> {
         &self.remote_address
     }
 
-    pub fn worker_address(&'a self) -> &'a str {
-        &self.worker_address
+    pub fn remote_address_ma(&'a self) -> Result<MultiAddr, ockam_core::Error> {
+        route_to_multiaddr(&route![self.remote_address.to_string()])
+            .ok_or_else(|| ApiError::generic("Invalid Remote Address"))
+    }
+
+    pub fn worker_address_ma(&'a self) -> Result<MultiAddr, ockam_core::Error> {
+        route_to_multiaddr(&route![self.worker_address.to_string()])
+            .ok_or_else(|| ApiError::generic("Invalid Worker Address"))
     }
 }
 

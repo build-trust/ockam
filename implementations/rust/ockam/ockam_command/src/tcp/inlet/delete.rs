@@ -41,7 +41,7 @@ pub async fn run_impl(
         .shell
         .stdout()
         .plain(format!(
-            "{}TCP Inlet with alias {alias} on Node {node} has been deleted.",
+            "{} TCP Inlet with alias {alias} on Node {node} has been deleted.",
             "✔︎".light_green(),
         ))
         .machine(&alias)

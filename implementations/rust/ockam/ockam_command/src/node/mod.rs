@@ -1,5 +1,6 @@
 use clap::{Args, Subcommand};
 
+use colorful::Colorful;
 pub(crate) use create::CreateCommand;
 use default::DefaultCommand;
 use delete::DeleteCommand;
@@ -106,14 +107,39 @@ pub fn node_name_parser(node_name: &str) -> Result<String> {
 
 pub fn spawn_default_node(node_name: &str) -> String {
     let config = OckamConfig::load().expect("Failed to load config");
-    let args = GlobalArgs {
-        quiet: true,
-        ..Default::default()
-    };
-    let global_opts = CommandGlobalOpts::new(args, config);
+    let opts = CommandGlobalOpts::new(GlobalArgs::parse_from_input(), config.clone());
+    let quiet_opts = CommandGlobalOpts::new(
+        GlobalArgs {
+            quiet: true,
+            ..Default::default()
+        },
+        config,
+    );
+
+    let _ = opts
+        .shell
+        .clone()
+        .stdout()
+        .plain(format!(
+            "{} No default node found. Creating one...",
+            "!".light_green(),
+        ))
+        .write_line();
+
     let mut create_command = CreateCommand::default();
     create_command.node_name = node_name.to_string();
+    create_command.run(quiet_opts);
 
-    create_command.run(global_opts);
+    let _ = opts
+        .shell
+        .clone()
+        .stdout()
+        .plain(format!(
+            "{} Created default node: {}",
+            "!".light_green(),
+            node_name
+        ))
+        .write_line();
+
     node_name.to_string()
 }

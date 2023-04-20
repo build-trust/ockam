@@ -39,8 +39,14 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -
 
     println!("Relay:");
     println!("  Relay Route: {}", relay_info_response.forwarding_route());
-    println!("  Remote Address: {}", relay_info_response.remote_address());
-    println!("  Worker Address: {}", relay_info_response.worker_address());
+    println!(
+        "  Remote Address: {}",
+        relay_info_response.remote_address_ma()?
+    );
+    println!(
+        "  Worker Address: {}",
+        relay_info_response.worker_address_ma()?
+    );
 
     Ok(())
 }

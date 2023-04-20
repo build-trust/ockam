@@ -79,7 +79,7 @@ async fn run_impl(
     opts.shell
         .stdout()
         .plain(format!(
-            "{}Space with name '{}' has been deleted.",
+            "{} Space with name '{}' has been deleted.",
             "✔︎".light_green(),
             &cmd.name
         ))

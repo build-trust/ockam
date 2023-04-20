@@ -40,8 +40,8 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -
     for relay_info in response.iter() {
         println!("Relay:");
         println!("  Relay Route: {}", relay_info.forwarding_route());
-        println!("  Remote Address: {}", relay_info.remote_address());
-        println!("  Worker Address: {}", relay_info.worker_address());
+        println!("  Remote Address: {}", relay_info.remote_address_ma()?);
+        println!("  Worker Address: {}", relay_info.worker_address_ma()?);
     }
 
     Ok(())

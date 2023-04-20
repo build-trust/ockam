@@ -102,8 +102,7 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
 
     let output = format!(
         r#"
-    Inlet
-        ID: {}
+    Inlet {}
         Address: {}
         Worker: {}
         Outlet: {}

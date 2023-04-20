@@ -4,6 +4,8 @@ use core::fmt::Write;
 use ockam::identity::credential::Credential;
 use ockam_api::cloud::project::Project;
 
+use ockam_api::nodes::models::portal::OutletStatus;
+
 use crate::project::ProjectInfo;
 use crate::util::comma_separated;
 use crate::Result;
@@ -202,6 +204,22 @@ impl Output for ShowSecureChannelResponse<'_> {
     }
 }
 
+impl Output for OutletStatus<'_> {
+    fn output(&self) -> Result<String> {
+        let output = format!(
+            r#"
+Outlet {}:
+    TCP Address:    {}
+    Worker Address: {}
+"#,
+            self.alias,
+            self.tcp_addr,
+            self.worker_address()?
+        );
+
+        Ok(output)
+    }
+}
 impl Output for Credential {
     fn output(&self) -> Result<String> {
         Ok(self.to_string())
