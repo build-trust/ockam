@@ -59,7 +59,7 @@ impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
             identity: p.identity_id,
             access_route: p
                 .node_route
-                .map_or(Err(anyhow!("Project access route is missing")), |x| Ok(x))?
+                .map_or(Err(anyhow!("Project access route is missing")), Ok)?
                 .to_string()
                 .into(),
             authority_access_route: p.authority.as_ref().map(|a| a.address().to_string().into()),
