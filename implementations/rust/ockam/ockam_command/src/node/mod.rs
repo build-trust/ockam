@@ -132,7 +132,6 @@ pub fn spawn_default_node(node_name: &str) -> String {
 
     let _ = opts
         .shell
-        
         .stdout()
         .plain(format!(
             "{} Created default node: {}",
