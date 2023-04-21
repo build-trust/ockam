@@ -164,8 +164,7 @@ impl GlobalArgs {
             .map(replace_hyphen_with_stdin)
             .collect::<Vec<_>>();
 
-        let mut i = 0;
-        for arg in input.clone() {
+        for (i, arg) in input.clone().into_iter().enumerate() {
             match arg.as_str() {
                 "-h" | "--help" => s.help = Some(true),
                 "-q" | "--quiet" => {
@@ -188,8 +187,6 @@ impl GlobalArgs {
                 "--test-argument-parser" => s.test_argument_parser = true,
                 _ => (),
             }
-
-            i += 1;
         }
 
         s
