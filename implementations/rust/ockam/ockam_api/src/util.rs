@@ -2,7 +2,7 @@ use crate::error::ApiError;
 use anyhow::anyhow;
 use ockam::TcpTransport;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
-use ockam_core::{Address, Error, Result, Route, LOCAL};
+use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Tcp, Worker};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_transport_tcp::TcpConnectionOptions;
@@ -152,6 +152,61 @@ pub async fn multiaddr_to_route(
         flow_control_id,
         route: rb.into(),
     })
+}
+
+/// Resolve all the multiaddresses which represent transport addresses
+/// For example /tcp/127.0.0.1/port/4000 is transformed to the Address (TCP, "127.0.0.1:4000")
+/// The creation of a TCP worker and the substitution of that transport address to a worker address
+/// is done later with `context.resolve_transport_route(route)`
+pub fn multiaddr_to_transport_route(ma: &MultiAddr) -> Option<Route> {
+    let mut route = Route::new();
+    let mut it = ma.iter().peekable();
+
+    while let Some(p) = it.next() {
+        match p.code() {
+            Ip4::CODE => {
+                let ip4 = p.cast::<Ip4>()?;
+                let port = it.next()?.cast::<Tcp>()?;
+                let socket_addr = SocketAddrV4::new(*ip4, *port);
+                route = route.append(Address::new(TransportType::new(1), socket_addr.to_string()))
+            }
+            Ip6::CODE => {
+                let ip6 = p.cast::<Ip6>()?;
+                let port = it.next()?.cast::<Tcp>()?;
+                let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
+                route = route.append(Address::new(TransportType::new(1), socket_addr.to_string()))
+            }
+            DnsAddr::CODE => {
+                let host = p.cast::<DnsAddr>()?;
+                if let Some(p) = it.peek() {
+                    if p.code() == Tcp::CODE {
+                        let port = p.cast::<Tcp>()?;
+                        let addr = format!("{}:{}", &*host, *port);
+                        route = route.append(Address::new(TransportType::new(1), addr));
+                        let _ = it.next();
+                        continue;
+                    }
+                }
+            }
+            Worker::CODE => {
+                let local = p.cast::<Worker>()?;
+                route = route.append(Address::new(LOCAL, &*local))
+            }
+            Service::CODE => {
+                let local = p.cast::<Service>()?;
+                route = route.append(Address::new(LOCAL, &*local))
+            }
+            Secure::CODE => {
+                let local = p.cast::<Secure>()?;
+                route = route.append(Address::new(LOCAL, &*local))
+            }
+            other => {
+                error!(target: "ockam_api", code = %other, "unsupported protocol");
+                return None;
+            }
+        }
+    }
+    Some(route.into())
 }
 
 /// Try to convert a multiaddr to an Ockam Address

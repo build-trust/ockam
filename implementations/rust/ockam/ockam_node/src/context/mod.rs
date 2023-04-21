@@ -3,6 +3,7 @@ mod receive_message;
 mod register_router;
 mod send_message;
 mod stop_env;
+mod transports;
 mod worker_lifecycle;
 
 pub use context_lifecycle::*;
@@ -10,17 +11,19 @@ pub use receive_message::*;
 pub use register_router::*;
 pub use send_message::*;
 pub use stop_env::*;
+pub use transports::*;
 pub use worker_lifecycle::*;
 
 use crate::channel_types::{SmallReceiver, SmallSender};
 use crate::tokio::runtime::Handle;
 use crate::{error::*, NodeMessage};
-use core::sync::atomic::AtomicUsize;
-use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
-use ockam_core::{Address, Mailboxes, RelayMessage, Result};
-
 #[cfg(feature = "std")]
 use core::fmt::{Debug, Formatter};
+use core::sync::atomic::AtomicUsize;
+use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::{string::String, sync::Arc, sync::Mutex, vec::Vec};
+use ockam_core::{Address, Mailboxes, RelayMessage, Result, TransportType};
+use ockam_transport_core::Transport;
 
 /// A default timeout in seconds
 pub const DEFAULT_TIMEOUT: u64 = 30;
@@ -33,6 +36,8 @@ pub struct Context {
     receiver: SmallReceiver<RelayMessage>,
     async_drop_sender: Option<AsyncDropSender>,
     mailbox_count: Arc<AtomicUsize>,
+    /// List of transports used to resolve external addresses to local workers in routes
+    transports: Arc<Mutex<HashMap<TransportType, Arc<dyn Transport>>>>,
 }
 
 /// This trait can be used to integrate transports into a node

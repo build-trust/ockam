@@ -5,11 +5,12 @@ use crate::{
 use core::time::Duration;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{async_trait, route, Address, Result, Route};
+use ockam_core::{async_trait, route, Address, Error, Result, Route, TransportType};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
-use tracing::debug;
+use tracing::{debug, trace};
 
 /// Trait for retrieving a credential for a given identity
 #[async_trait]
@@ -63,7 +64,22 @@ impl RemoteCredentialsRetriever {
 #[async_trait]
 impl CredentialsRetriever for RemoteCredentialsRetriever {
     async fn retrieve(&self, ctx: &Context, for_identity: &Identity) -> Result<Credential> {
+        if !ctx.is_transport_registered(TransportType::new(1)) {
+            return Err(Error::new(
+                Origin::Transport,
+                Kind::NotFound,
+                "the TCP transport is required to retrieve remote credentials",
+            ));
+        };
+
         debug!("Getting credential from : {}", &self.issuer.route);
+        let resolved_route = ctx
+            .resolve_transport_route(&self.flow_controls, self.issuer.route.clone())
+            .await?;
+        trace!(
+            "Getting credential from resolved route: {}",
+            resolved_route.clone()
+        );
 
         let allowed = vec![self.issuer.identity.identifier()];
         debug!("Create secure channel to authority");
@@ -78,7 +94,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
             .create_secure_channel_extended(
                 ctx,
                 for_identity,
-                self.issuer.route.clone(),
+                resolved_route.clone(),
                 options,
                 Duration::from_secs(120),
             )

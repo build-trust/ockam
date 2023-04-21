@@ -30,6 +30,7 @@ mod portal;
 mod registry;
 mod transport;
 
+use ockam_core::TransportType;
 pub use options::*;
 pub use portal::*;
 pub use registry::*;
@@ -39,3 +40,6 @@ mod workers;
 pub(crate) use workers::*;
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
+
+/// Transport type for TCP addresses
+pub const TCP: TransportType = TransportType::new(1);
