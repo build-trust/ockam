@@ -4,7 +4,7 @@ use crate::cli_state::{CliStateError, CredentialState};
 use crate::cloud::project::Project;
 use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::error::ApiError;
-use crate::{cli_state, multiaddr_to_route, DefaultAddress, HexByteVec};
+use crate::{cli_state, multiaddr_to_transport_route, DefaultAddress, HexByteVec};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{Result, Route};
@@ -285,12 +285,10 @@ impl CredentialRetrieverConfig {
                 CredentialsMemoryRetriever::new(state.config()?.credential()?),
             )),
             CredentialRetrieverConfig::FromCredentialIssuer(issuer_config) => {
-                let tcp_transport = tcp_transport.ok_or_else(|| ApiError::generic("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
+                let _ = tcp_transport.ok_or_else(|| ApiError::generic("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
                 let credential_issuer_info = RemoteCredentialsRetrieverInfo::new(
                     issuer_config.resolve_identity().await?,
-                    issuer_config
-                        .resolve_route(tcp_transport, flow_controls.clone())
-                        .await?,
+                    issuer_config.resolve_route().await?,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 );
 
@@ -375,17 +373,13 @@ impl CredentialIssuerConfig {
         }
     }
 
-    async fn resolve_route(
-        &self,
-        tcp_transport: TcpTransport,
-        flow_controls: FlowControls,
-    ) -> Result<Route> {
-        let Some(authority_tcp_session) = multiaddr_to_route(&self.multiaddr, &tcp_transport, &flow_controls).await else {
+    async fn resolve_route(&self) -> Result<Route> {
+        let Some(route) = multiaddr_to_transport_route(&self.multiaddr) else {
             let err_msg = format!("Invalid route within trust context: {}", &self.multiaddr);
             error!("{err_msg}");
             return Err(ApiError::generic(&err_msg));
         };
-        Ok(authority_tcp_session.route)
+        Ok(route)
     }
 
     async fn resolve_identity(&self) -> Result<Identity> {

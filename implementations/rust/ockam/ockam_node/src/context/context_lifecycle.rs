@@ -4,12 +4,14 @@ use crate::tokio::{self, runtime::Handle};
 use crate::{debugger, Context};
 use crate::{error::*, relay::CtrlSignal, router::SenderPair, NodeMessage};
 use core::time::Duration;
-use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
+use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::{boxed::Box, sync::Arc, sync::Mutex, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AsyncTryClone, DenyAll, Error, IncomingAccessControl, Mailboxes,
-    OutgoingAccessControl, Result,
+    OutgoingAccessControl, Result, TransportType,
 };
+use ockam_transport_core::Transport;
 
 /// A special type of `Context` that has no worker relay and inherits
 /// the parent `Context`'s access control
@@ -55,6 +57,7 @@ impl Context {
         sender: SmallSender<NodeMessage>,
         mailboxes: Mailboxes,
         async_drop_sender: Option<AsyncDropSender>,
+        transports: Arc<Mutex<HashMap<TransportType, Arc<dyn Transport>>>>,
     ) -> (Self, SenderPair, SmallReceiver<CtrlSignal>) {
         let (mailbox_tx, receiver) = message_channel();
         let (ctrl_tx, ctrl_rx) = small_channel();
@@ -66,12 +69,40 @@ impl Context {
                 receiver,
                 async_drop_sender,
                 mailbox_count: Arc::new(0.into()),
+                transports,
             },
             SenderPair {
                 msgs: mailbox_tx,
                 ctrl: ctrl_tx,
             },
             ctrl_rx,
+        )
+    }
+
+    pub(crate) fn copy_with_mailboxes(
+        &self,
+        mailboxes: Mailboxes,
+    ) -> (Context, SenderPair, SmallReceiver<CtrlSignal>) {
+        Context::new(
+            self.runtime().clone(),
+            self.sender().clone(),
+            mailboxes,
+            None,
+            self.transports.clone(),
+        )
+    }
+
+    pub(crate) fn copy_with_mailboxes_detached(
+        &self,
+        mailboxes: Mailboxes,
+        drop_sender: AsyncDropSender,
+    ) -> (Context, SenderPair, SmallReceiver<CtrlSignal>) {
+        Context::new(
+            self.runtime().clone(),
+            self.sender().clone(),
+            mailboxes,
+            Some(drop_sender),
+            self.transports.clone(),
         )
     }
 
@@ -142,12 +173,7 @@ impl Context {
 
         // Create a new context and get access to the mailbox senders
         let addresses = mailboxes.addresses();
-        let (ctx, sender, _) = Self::new(
-            self.rt.clone(),
-            self.sender.clone(),
-            mailboxes,
-            Some(drop_sender),
-        );
+        let (ctx, sender, _) = self.copy_with_mailboxes_detached(mailboxes, drop_sender);
 
         // Create a "detached relay" and register it with the router
         let (msg, mut rx) =
@@ -161,5 +187,47 @@ impl Context {
             .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
 
         Ok(ctx)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ockam_core::flow_control::FlowControls;
+    use ockam_core::{async_trait, Mailbox, Route};
+
+    #[ockam_macros::test(crate = "crate")]
+    async fn test_copy(ctx: &mut Context) -> Result<()> {
+        let transport = Arc::new(SomeTransport());
+        ctx.register_transport(transport.clone());
+
+        // after a copy with new mailboxes the list of transports should be intact
+        let mailboxes = Mailboxes::new(Mailbox::deny_all("address"), vec![]);
+        let (copy, _, _) = ctx.copy_with_mailboxes(mailboxes.clone());
+        assert!(copy.is_transport_registered(transport.transport_type()));
+
+        // after a detached copy with new mailboxes the list of transports should be intact
+        let (_, drop_sender) = AsyncDrop::new(ctx.sender.clone());
+        let (copy, _, _) = ctx.copy_with_mailboxes_detached(mailboxes, drop_sender);
+        assert!(copy.is_transport_registered(transport.transport_type()));
+
+        ctx.stop().await
+    }
+
+    struct SomeTransport();
+
+    #[async_trait]
+    impl Transport for SomeTransport {
+        fn transport_type(&self) -> TransportType {
+            TransportType::new(0)
+        }
+
+        async fn resolve_route(
+            &self,
+            _flow_controls: &FlowControls,
+            route: Route,
+        ) -> Result<Route> {
+            Ok(route)
+        }
     }
 }

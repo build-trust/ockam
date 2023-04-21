@@ -1,5 +1,7 @@
 use crate::{debugger, Context, Executor};
+use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::sync::Mutex;
 use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
 
 /// A minimal worker implementation that does nothing
@@ -58,6 +60,7 @@ impl NodeBuilder {
                 vec![],
             ),
             None,
+            Arc::new(Mutex::new(HashMap::new())),
         );
 
         debugger::log_inherit_context("NODE", &ctx, &ctx);
