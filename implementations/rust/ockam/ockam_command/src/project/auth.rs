@@ -43,18 +43,12 @@ pub struct AuthCommand {
 }
 
 fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
-    let ticket: EnrollmentTicket = match std::fs::read_to_string(input) {
-        Ok(s) => {
-            let decoded = hex::decode(s)?;
-            serde_json::from_slice(&decoded)?
-        }
-        Err(_) => {
-            let decoded = hex::decode(input)?;
-            serde_json::from_slice(&decoded)?
-        }
+    let decoded = match std::fs::read_to_string(input) {
+        Ok(s) => hex::decode(s)?,
+        Err(_) => hex::decode(input)?,
     };
 
-    Ok(ticket)
+    Ok(serde_json::from_slice(&decoded)?)
 }
 
 impl AuthCommand {
