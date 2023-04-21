@@ -111,7 +111,6 @@ pub fn create_default_identity(identity_name: &str) -> String {
 
     let _ = opts
         .shell
-        
         .stdout()
         .plain(format!(
             "{} Created default identity: {}",
