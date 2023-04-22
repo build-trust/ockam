@@ -53,3 +53,6 @@ name = "echo_server"
 
 [[example]]
 name = "rendezvous_server"
+
+[[example]]
+name = "puncher"
