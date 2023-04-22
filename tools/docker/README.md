@@ -33,6 +33,21 @@ Run the cloud node:
 docker run --rm -it ockam-cloud-node:latest
 ```
 
+## Healthcheck
+
+```
+docker build \
+  --tag ockam-healthcheck:latest \
+  --tag ghcr.io/build-trust/ockam-healthcheck:latest \
+  --file tools/docker/healthcheck/Dockerfile .
+```
+
+Run the healthcheck:
+
+```
+docker run --rm -it ockam-healthcheck:latest
+```
+
 ## Ockam
 
 ```
