@@ -45,7 +45,7 @@ impl UdpRendezvousService {
     }
 }
 
-// TODO: Implement mechanism for removing nodes from internal map, possibly by
+// TODO: Implement mechanism for removing entries from internal map, possibly by
 // deleting 'old' entries on heartbeat events.
 
 /// Worker for the UDP NAT Hole Punching Rendezvous service
@@ -71,6 +71,8 @@ impl RendezvousWorker {
         }
     }
 
+    /// Extract from `return route` everything just before we received the
+    /// message via UDP
     fn parse_route(return_route: &Route) -> Route {
         let addrs = return_route
             .iter()
@@ -86,14 +88,16 @@ impl RendezvousWorker {
 
     // Handle Update request
     fn handle_update(&mut self, puncher_name: &str, return_route: &Route) {
-        // Update map
         let r = Self::parse_route(return_route);
         if !r.is_empty() {
             self.map.insert(puncher_name.to_owned(), r);
         } else {
             // This could happen if a client erroneously contacts this service over TCP not UDP, for example
-            warn!("Return route has no UDP part: {:?}", return_route);
-            // Ignore issue, we don't have a way of informing the sender
+            warn!(
+                "Return route has no UDP part, will not update map: {:?}",
+                return_route
+            );
+            // Ignore issue. There's no (current) way to inform sender.
         }
     }
 
@@ -116,7 +120,11 @@ impl Worker for RendezvousWorker {
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        debug!("Received message: {:?}", msg);
+        debug!(
+            "Received message: {:?} from {}",
+            msg,
+            Self::parse_route(&msg.return_route())
+        );
         let return_route = msg.return_route();
         match msg.as_body() {
             RendezvousRequest::Update { puncher_name } => {
