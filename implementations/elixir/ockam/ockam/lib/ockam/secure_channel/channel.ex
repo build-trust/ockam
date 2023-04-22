@@ -4,10 +4,13 @@ defmodule Ockam.SecureChannel.Channel do
   ## TODO: make that Ockam.Worker
   use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
 
+  alias Ockam.Message
   alias Ockam.Node
+  alias Ockam.Router
   alias Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm, as: EncryptedTransport
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX, as: XXKeyEstablishmentProtocol
   alias Ockam.Telemetry
+  alias Ockam.Wire
 
   @doc false
   def peer(_channel), do: :ok
@@ -103,8 +106,7 @@ defmodule Ockam.SecureChannel.Channel do
          {:ok, data} <- setup_callback_route(options, data),
          {:ok, data} <- setup_extra_init_payload(options, data),
          {:ok, data} <- setup_authorization(options, data),
-         {:ok, initial, data, next_events} <- setup_key_establishment_protocol(options, data),
-         {:ok, initial, data} <- setup_encrypted_transport_protocol(options, initial, data) do
+         {:ok, initial, data, next_events} <- setup_key_establishment_protocol(options, data) do
       return_value = {:ok, initial, data, next_events}
 
       metadata = Map.put(metadata, :return_value, return_value)
@@ -180,7 +182,64 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp handle_message(message, {:encrypted_transport, :ready} = state, data) do
-    EncryptedTransport.handle_message(message, state, data)
+    first_address = message |> Message.onward_route() |> List.first()
+
+    cond do
+      first_address === data.ciphertext_address ->
+        decrypt_and_send_to_router(message, state, data)
+
+      first_address === data.plaintext_address ->
+        encrypt_and_send_to_peer(message, state, data)
+
+      true ->
+        {:next_state, state, data}
+    end
+  end
+
+  defp decrypt_and_send_to_router(envelope, state, data) do
+    %{encrypted_transport: %{decrypt: transport_state} = encrypted_transport} = data
+    payload = Message.payload(envelope)
+
+    ## TODO: optimise double encoding of binaries
+    {:ok, encrypted, ""} = :bare.decode(payload, :data)
+
+    with {:ok, decrypted, new_transport_state} <-
+           EncryptedTransport.decrypt(<<>>, encrypted, transport_state),
+         {:ok, decoded} <- Wire.decode(decrypted, :secure_channel) do
+      message =
+        decoded
+        |> Message.trace(data.plaintext_address)
+
+      Router.route(message)
+
+      {:next_state, state,
+       %{data | encrypted_transport: %{encrypted_transport | decrypt: new_transport_state}}}
+    end
+  end
+
+  defp encrypt_and_send_to_peer(message, state, data) do
+    %{encrypted_transport: %{encrypt: transport_state} = encrypted_transport} = data
+    forwarded_message = Message.forward(message)
+
+    with {:ok, encoded} <- Wire.encode(forwarded_message),
+         {:ok, encrypted, new_transport_state} <-
+           EncryptedTransport.encrypt(<<>>, encoded, transport_state) do
+      ## TODO: optimise double encoding of binaries
+      ## Rust implementation is using implicit encoding,
+      ## which encodes binaries even if it's not necessary
+      payload = :bare.encode(encrypted, :data)
+
+      envelope = %{
+        payload: payload,
+        onward_route: data.peer.route,
+        return_route: [data.ciphertext_address]
+      }
+
+      Router.route(envelope)
+
+      {:next_state, state,
+       %{data | encrypted_transport: %{encrypted_transport | encrypt: new_transport_state}}}
+    end
   end
 
   defp is_authorized(message, data) do
@@ -300,10 +359,5 @@ defmodule Ockam.SecureChannel.Channel do
       unexpected_protocol ->
         {:error, {:unexpected_key_establishment_protocol, unexpected_protocol}}
     end
-  end
-
-  # sets a encrypted transport protocol and calls its setup
-  defp setup_encrypted_transport_protocol(options, initial_state, data) do
-    EncryptedTransport.setup(options, initial_state, data)
   end
 end
