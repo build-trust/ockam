@@ -5,6 +5,9 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
   alias Ockam.Router
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol
 
+  # TODO check for better ways to doing this
+  alias Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm, as: EncryptedTransport
+
   @role :initiator
 
   def setup(_options, data) do
@@ -66,7 +69,16 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
 
   def set_encrypted_transport_state(data) do
     with {:ok, {k1, k2, h}, data} <- Protocol.split(data) do
-      data = Map.put(data, :encrypted_transport, %{h: h, decrypt: {k1, 0}, encrypt: {k2, 0}})
+      decrypt_state = EncryptedTransport.new(data.vault, k1, 0)
+      encrypt_state = EncryptedTransport.new(data.vault, k2, 0)
+
+      data =
+        Map.put(data, :encrypted_transport, %{
+          h: h,
+          decrypt: decrypt_state,
+          encrypt: encrypt_state
+        })
+
       {:ok, data}
     end
   end
