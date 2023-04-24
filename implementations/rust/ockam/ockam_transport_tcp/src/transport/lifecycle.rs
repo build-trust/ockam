@@ -51,19 +51,25 @@ impl Transport for TcpTransport {
     }
 
     async fn resolve_route(&self, flow_controls: &FlowControls, route: Route) -> Result<Route> {
-        let mut result = Route::new();
         let mut number_of_tcp_hops = 0;
-
-        for address in route.iter() {
+        for address in route.clone().iter() {
             if address.transport_type() == TCP {
                 if number_of_tcp_hops >= 1 {
+                    // close the previously opened connection
                     return Err(Error::new(
                         Origin::Transport,
                         Kind::Invalid,
                         "only one TCP hop is allowed in a route",
                     ));
+                } else {
+                    number_of_tcp_hops += 1;
                 }
+            };
+        }
 
+        let mut result = Route::new();
+        for address in route.iter() {
+            if address.transport_type() == TCP {
                 let options = if SocketAddr::from_str(address.address())
                     .map(|socket_addr| socket_addr.ip().is_loopback())
                     .is_ok()
@@ -75,9 +81,8 @@ impl Transport for TcpTransport {
                     TcpConnectionOptions::as_producer(flow_controls, &id)
                 };
 
-                number_of_tcp_hops += 1;
                 let addr = self.connect(address.address().to_string(), options).await?;
-                result = result.append(addr)
+                result = result.append(addr);
             } else {
                 result = result.append(address.clone());
             }
