@@ -27,11 +27,15 @@ use crate::util::output::Output;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts, Result};
 
-const HELP_DETAIL: &str = "";
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
 /// Enroll with Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(HELP_DETAIL))]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct EnrollCommand {
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
