@@ -1,6 +1,5 @@
-use crate::vault::{KeyId, PublicKey};
-use crate::Result;
-use crate::{async_trait, compat::boxed::Box};
+use crate::{KeyId, PublicKey};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// Defines the Vault interface for asymmetric encryption.
 #[async_trait]

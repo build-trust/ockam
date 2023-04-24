@@ -3,8 +3,8 @@ use crate::identity::identity_change::RotateKeyChangeData;
 use crate::identity::identity_change::{ChangeIdentifier, Signature};
 use core::fmt;
 use ockam_core::compat::vec::Vec;
-use ockam_core::vault::PublicKey;
 use ockam_core::Result;
+use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
 /// Possible types of [`crate::SecureChannels`] changes

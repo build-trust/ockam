@@ -1,7 +1,7 @@
 use crate::identity::identity_change::ChangeIdentifier;
 use crate::identity::identity_change::KeyAttributes;
 use core::fmt;
-use ockam_core::vault::PublicKey;
+use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
 /// Key change data creation

@@ -1,10 +1,11 @@
+use crate::traits::types::{
+    Buffer, KeyId, SecretType, AES128_SECRET_LENGTH_U32, AES128_SECRET_LENGTH_USIZE,
+    AES256_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_USIZE,
+};
+use crate::traits::SymmetricVault;
 use crate::{Vault, VaultError};
 use aes_gcm::aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
-use ockam_core::vault::{
-    Buffer, KeyId, SecretType, SymmetricVault, AES128_SECRET_LENGTH_U32,
-    AES128_SECRET_LENGTH_USIZE, AES256_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_USIZE,
-};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[async_trait]
@@ -112,7 +113,9 @@ impl SymmetricVault for Vault {
 
 #[cfg(test)]
 mod tests {
+    use crate as ockam_vault;
     use crate::Vault;
+
     fn new_vault() -> Vault {
         Vault::default()
     }

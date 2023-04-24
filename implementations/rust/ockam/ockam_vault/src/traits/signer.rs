@@ -1,6 +1,5 @@
-use crate::vault::{KeyId, Signature};
-use crate::Result;
-use crate::{async_trait, compat::boxed::Box};
+use crate::{KeyId, Signature};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// Defines the Vault interface for Signing.
 #[async_trait]

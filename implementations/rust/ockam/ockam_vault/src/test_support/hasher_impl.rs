@@ -1,4 +1,4 @@
-use crate::vault::{
+use crate::{
     Hasher, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType, SecretVault,
 };
 use hex::encode;
@@ -17,7 +17,7 @@ pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
     let salt_value = b"hkdf_test";
     let attributes = SecretAttributes::new(
         SecretType::Buffer,
-        crate::vault::SecretPersistence::Ephemeral,
+        SecretPersistence::Ephemeral,
         salt_value.len() as u32,
     );
     let salt = vault

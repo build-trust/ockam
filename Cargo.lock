@@ -2319,6 +2319,7 @@ dependencies = [
  "ockam_transport_udp",
  "ockam_transport_uds",
  "ockam_transport_websocket",
+ "ockam_vault",
  "rand",
  "serde",
  "serde_bare",
@@ -3382,7 +3383,6 @@ dependencies = [
  "rand_pcg",
  "serde",
  "serde_bare",
- "serde_cbor",
  "spin 0.9.8",
  "subtle",
  "tinyvec",
@@ -3624,6 +3624,7 @@ dependencies = [
  "fs2",
  "hex",
  "hkdf",
+ "minicbor",
  "ockam_core",
  "ockam_macros",
  "ockam_node",
@@ -3631,6 +3632,7 @@ dependencies = [
  "rand",
  "rand_pcg",
  "serde",
+ "serde_cbor",
  "serde_json",
  "sha2 0.10.6",
  "thiserror",
@@ -3638,6 +3640,7 @@ dependencies = [
  "tracing",
  "trybuild",
  "x25519-dalek",
+ "zeroize",
 ]
 
 [[package]]

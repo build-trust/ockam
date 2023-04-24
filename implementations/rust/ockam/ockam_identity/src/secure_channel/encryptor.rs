@@ -1,9 +1,10 @@
 use crate::identity::IdentityError;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::vault::{KeyId, Secret, SecretKey};
+use ockam_core::KeyId;
 use ockam_core::Result;
 use ockam_key_exchange_xx::XXInitializedVault;
+use ockam_vault::SymmetricVault;
 
 pub(crate) struct Encryptor {
     key: KeyId,

@@ -6,12 +6,12 @@ use futures::future::join_all;
 use lazy_static::lazy_static;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::{
+use ockam_core::{Error, Result};
+use ockam_vault::Vault;
+use ockam_vault::{
     AsymmetricVault, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretVault,
     SymmetricVault,
 };
-use ockam_core::{Error, Result};
-use ockam_vault::Vault;
 use tokio::{runtime::Runtime, sync::RwLock, task};
 
 #[derive(Default)]

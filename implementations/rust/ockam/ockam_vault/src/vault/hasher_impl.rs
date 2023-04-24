@@ -1,11 +1,9 @@
-use crate::vault::Vault;
-use crate::VaultError;
-use arrayref::array_ref;
-use ockam_core::compat::vec::Vec;
-use ockam_core::vault::{
-    Hasher, KeyId, Secret, SecretAttributes, SecretKey, SecretType, SecretVault,
+use crate::{
+    Hasher, KeyId, Secret, SecretAttributes, SecretKey, SecretType, SecretVault, Vault, VaultError,
     AES128_SECRET_LENGTH_USIZE, AES256_SECRET_LENGTH_USIZE,
 };
+use arrayref::array_ref;
+use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use sha2::{Digest, Sha256};
 
@@ -97,6 +95,7 @@ impl Hasher for Vault {
 
 #[cfg(test)]
 mod tests {
+    use crate as ockam_vault;
     use crate::Vault;
 
     fn new_vault() -> Vault {

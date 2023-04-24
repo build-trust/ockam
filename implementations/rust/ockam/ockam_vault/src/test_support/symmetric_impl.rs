@@ -1,4 +1,4 @@
-use crate::vault::{
+use crate::{
     SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
     AES128_SECRET_LENGTH_U32,
 };

@@ -7,8 +7,8 @@ use core::fmt::{Display, Formatter};
 use ockam_core::compat::fmt;
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
-use ockam_core::vault::PublicKey;
 use ockam_core::Result;
+use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
 /// Identity implementation

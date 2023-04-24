@@ -1,14 +1,9 @@
-use crate::vault::Vault;
-use crate::VaultError;
+use crate::{KeyId, Secret, SecretType, Signature, Signer, Vault, VaultError};
 use cfg_if::cfg_if;
-use ockam_core::vault::{KeyId, SecretType, Signature, Signer};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
-#[cfg(feature = "aws")]
-use ockam_core::vault::Secret;
-
 #[cfg(feature = "rustcrypto")]
-use crate::error::from_pkcs8;
+use crate::from_pkcs8;
 
 #[async_trait]
 impl Signer for Vault {
@@ -25,10 +20,10 @@ impl Signer for Vault {
 
         match entry.key_attributes().stype() {
             SecretType::X25519 => {
-                use crate::xeddsa::XEddsaSigner;
+                use crate::vault::xeddsa::XEddsaSigner;
+                use crate::CURVE25519_SECRET_LENGTH_USIZE;
                 use arrayref::array_ref;
                 use ockam_core::compat::rand::{thread_rng, RngCore};
-                use ockam_core::vault::CURVE25519_SECRET_LENGTH_USIZE;
                 let key = entry.secret().try_as_key()?.as_ref();
                 if key.len() != CURVE25519_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidX25519SecretLength.into());
@@ -87,6 +82,7 @@ impl Signer for Vault {
 
 #[cfg(test)]
 mod tests {
+    use crate as ockam_vault;
     use crate::Vault;
 
     fn new_vault() -> Vault {

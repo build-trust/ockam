@@ -4,8 +4,8 @@ use crate::identity::{Identity, IdentityError, IdentityIdentifier};
 use async_trait::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::vault::SignatureVec;
 use ockam_core::{Error, Result};
+use ockam_vault::SignatureVec;
 
 /// This trait provides functions to issue, accept and verify credentials
 #[async_trait]
@@ -57,7 +57,7 @@ impl Credentials for Identities {
 
         credential_data.verify(subject, &issuer.identifier(), now)?;
 
-        let sig = ockam_core::vault::Signature::new(credential.signature().to_vec());
+        let sig = ockam_vault::Signature::new(credential.signature().to_vec());
 
         if !self
             .identities_keys()

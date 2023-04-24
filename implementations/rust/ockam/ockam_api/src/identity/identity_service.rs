@@ -5,9 +5,9 @@ use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use ockam::identity::IdentityHistoryComparison;
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
-use ockam_core::vault::Signature;
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
+use ockam_vault::Signature;
 use tracing::trace;
 
 /// Vault Service Worker

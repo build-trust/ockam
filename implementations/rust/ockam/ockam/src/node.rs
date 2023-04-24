@@ -316,7 +316,7 @@ impl NodeBuilder {
     /// Set a specific vault storage for identities and secure channels
     pub fn with_vault_storage(
         &mut self,
-        storage: Arc<dyn ockam_core::vault::storage::Storage>,
+        storage: Arc<dyn ockam_vault::storage::Storage>,
     ) -> NodeBuilder {
         self.builder = self.builder.with_vault_storage(storage);
         self.clone()

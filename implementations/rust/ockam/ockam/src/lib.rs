@@ -147,8 +147,8 @@ pub mod key_exchange {
 #[cfg(feature = "ockam_vault")]
 pub mod vault {
     //! Types and traits relating to ockam vaults.
-    pub use ockam_core::vault::*;
     pub use ockam_vault::Vault;
+    pub use ockam_vault::*;
 
     #[cfg(feature = "software_vault_storage")]
     /// Storage

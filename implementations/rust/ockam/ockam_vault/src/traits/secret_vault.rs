@@ -1,8 +1,5 @@
-use crate::vault::{KeyId, PublicKey, SecretAttributes};
-use crate::Result;
-use crate::{async_trait, compat::boxed::Box};
-
-use super::Secret;
+use crate::{KeyId, PublicKey, Secret, SecretAttributes};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// Defines the `Secret` management interface for Ockam Vaults.
 ///

@@ -2,7 +2,7 @@ use crate::identities::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Storage,
 };
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::storage::Storage as VaultStorage;
+use ockam_vault::storage::Storage as VaultStorage;
 use ockam_vault::Vault;
 
 /// Builder for Identities services

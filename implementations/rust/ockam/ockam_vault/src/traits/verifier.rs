@@ -1,6 +1,5 @@
-use crate::vault::{PublicKey, Signature};
-use crate::Result;
-use crate::{async_trait, compat::boxed::Box};
+use crate::{PublicKey, Signature};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// Defines the Vault interface for `Signature` verification.
 #[async_trait]

@@ -1,4 +1,4 @@
-use crate::vault::{
+use crate::{
     AsymmetricVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
     CURVE25519_SECRET_LENGTH_U32,
 };

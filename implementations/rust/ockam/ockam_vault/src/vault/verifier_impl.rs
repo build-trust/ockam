@@ -1,13 +1,11 @@
-use crate::vault::Vault;
-use crate::VaultError;
-use cfg_if::cfg_if;
-use ockam_core::vault::{
-    PublicKey, SecretType, Signature, Verifier, CURVE25519_PUBLIC_LENGTH_USIZE,
+use crate::{
+    PublicKey, SecretType, Signature, Vault, VaultError, Verifier, CURVE25519_PUBLIC_LENGTH_USIZE,
 };
+use cfg_if::cfg_if;
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[cfg(feature = "rustcrypto")]
-use crate::error::{from_ecdsa, from_pkcs8};
+use crate::{from_ecdsa, from_pkcs8};
 
 #[async_trait]
 impl Verifier for Vault {
@@ -26,7 +24,7 @@ impl Verifier for Vault {
                     return Err(VaultError::InvalidPublicKey.into());
                 }
 
-                use crate::xeddsa::XEddsaVerifier;
+                use crate::vault::xeddsa::XEddsaVerifier;
                 use arrayref::array_ref;
 
                 let signature_array = array_ref!(signature.as_ref(), 0, 64);

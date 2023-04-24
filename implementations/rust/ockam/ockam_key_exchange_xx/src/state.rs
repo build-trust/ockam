@@ -1,11 +1,11 @@
 use crate::{XXError, XXVault, AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_USIZE};
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::{
+use ockam_core::CompletedKeyExchange;
+use ockam_core::{compat::vec::Vec, Result};
+use ockam_vault::{
     KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
     CURVE25519_PUBLIC_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_U32,
 };
-use ockam_core::CompletedKeyExchange;
-use ockam_core::{compat::vec::Vec, Result};
 
 mod dh_state;
 pub(crate) use dh_state::*;
@@ -388,14 +388,14 @@ mod tests {
     use crate::{Initiator, Responder, XXVault};
     use hex::{decode, encode};
     use ockam_core::compat::sync::Arc;
-    use ockam_core::vault::{
-        Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
-        CURVE25519_SECRET_LENGTH_U32,
-    };
     use ockam_core::Result;
     use ockam_core::{AsyncTryClone, KeyExchanger};
     use ockam_node::Context;
     use ockam_vault::Vault;
+    use ockam_vault::{
+        Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
+        CURVE25519_SECRET_LENGTH_U32,
+    };
 
     #[ockam_macros::test]
     async fn prologue(ctx: &mut Context) -> Result<()> {

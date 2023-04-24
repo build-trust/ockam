@@ -5,7 +5,6 @@ use tracing::{debug, info, warn};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::vault::Signature;
 use ockam_core::Result;
 use ockam_core::{
     async_trait, route, Address, AllowAll, AllowOnwardAddress, AllowSourceAddress, Any, Decodable,
@@ -14,22 +13,8 @@ use ockam_core::{
 };
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
-
-use crate::secure_channel::decryptor::Decryptor;
-use crate::secure_channel::decryptor_state::{
-    IdentityExchangeState, InitializedState, KeyExchangeState, State,
-};
-use crate::secure_channel::encryptor::Encryptor;
-use crate::secure_channel::encryptor_worker::EncryptorWorker;
-use crate::secure_channel::messages::IdentityChannelMessage;
-use crate::secure_channel::{
-    Addresses, AuthenticationConfirmation, CreateResponderChannelMessage, Role,
-};
-use crate::{
-    to_xx_initialized, to_xx_vault, DecryptionRequest, DecryptionResponse, IdentityError,
-    IdentityIdentifier, IdentitySecureChannelLocalInfo, SecureChannelRegistryEntry,
-    SecureChannelTrustInfo, SecureChannels, TrustPolicy,
-};
+use ockam_vault::Signature;
+use tracing::{debug, info, warn};
 
 pub(crate) struct DecryptorWorker {
     state: Option<State>,

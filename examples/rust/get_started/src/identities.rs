@@ -1,8 +1,8 @@
 use ockam::identity::{IdentityChangeConstants, KeyAttributes};
 use ockam::Node;
-use ockam_core::vault::Secret::Key;
-use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32};
 use ockam_core::Result;
+use ockam_vault::Secret::Key;
+use ockam_vault::{SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32};
 
 /// This function can be used to create a new identity and export both it public and private keys
 pub async fn create_identity(node: &Node) -> Result<()> {

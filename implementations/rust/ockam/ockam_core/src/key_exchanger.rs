@@ -6,7 +6,8 @@
 //!
 //! The main Ockam crate re-exports types defined in this crate.
 use crate::compat::{string::String, vec::Vec};
-use crate::{async_trait, compat::boxed::Box, vault::KeyId, Result};
+use crate::{async_trait, compat::boxed::Box, Result};
+use cfg_if::cfg_if;
 use zeroize::Zeroize;
 
 /// A trait implemented by both Initiator and Responder peers.
@@ -70,5 +71,22 @@ impl CompletedKeyExchange {
             encrypt_key,
             decrypt_key,
         }
+    }
+}
+
+cfg_if! {
+    if #[cfg(not(feature = "alloc"))] {
+        /// ID of a Key.
+        pub type KeyId = heapless::String<64>;
+
+        impl From<&str> for KeyId {
+            fn from(s: &str) -> Self {
+                heapless::String::from(s)
+            }
+        }
+    }
+    else {
+        /// ID of a Key.
+        pub type KeyId = String;
     }
 }

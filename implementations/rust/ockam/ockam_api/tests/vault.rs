@@ -3,7 +3,8 @@ use ockam_core::vault::{
 };
 use ockam_core::Result;
 use ockam_node::Context;
-use ockam_vault::Vault;
+use ockam_vault::{SecretAttributes, SecretPersistence, SecretType};
+use ockam_vault::{Signer, Vault, Verifier};
 
 #[ockam_macros::test]
 async fn full_flow(ctx: &mut Context) -> Result<()> {
@@ -11,14 +12,10 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
     let key_id = vault
-        .secret_generate(SecretAttributes::new(
-            SecretType::Ed25519,
-            SecretPersistence::Ephemeral,
-            0,
-        ))
+        .create_ephemeral_secret(SecretAttributes::new(SecretType::Ed25519, 0))
         .await?;
 
-    let public_key = vault.secret_public_key_get(&key_id).await?;
+    let public_key = vault.get_public_key(&key_id).await?;
 
     // Sign some data
     let signature = vault.sign(&key_id, b"test".as_slice()).await?;

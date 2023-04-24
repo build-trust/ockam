@@ -1,7 +1,11 @@
+use cfg_if::cfg_if;
 use core::fmt;
 
 use cfg_if::cfg_if;
 use minicbor::{Decode, Encode};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{hex_encoding, Error};
+use p256::elliptic_curve::subtle;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 

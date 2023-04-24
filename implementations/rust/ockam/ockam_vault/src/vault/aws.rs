@@ -1,3 +1,4 @@
+use crate::{KeyId, PublicKey, SecretType, Signature};
 use aws_sdk_kms::error::SdkError;
 use aws_sdk_kms::operation::create_key::CreateKeyError;
 use aws_sdk_kms::operation::get_public_key::GetPublicKeyError;
@@ -7,8 +8,6 @@ use aws_sdk_kms::operation::verify::VerifyError;
 use aws_sdk_kms::primitives::Blob;
 use aws_sdk_kms::types::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::Client;
-use ockam_core::vault::SecretType;
-use ockam_core::vault::{KeyId, PublicKey, Signature};
 use ockam_core::Result;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -235,8 +234,7 @@ impl From<Error> for ockam_core::Error {
 #[cfg(test)]
 mod tests {
     use super::Kms;
-    use crate::Vault;
-    use ockam_core::vault::{Signer, Verifier};
+    use crate::{Signer, Vault, Verifier};
     use ockam_node::tokio;
 
     // A key ID that refers to an existing AWS KMS NIST P-256 key.
@@ -262,7 +260,7 @@ mod tests {
         let pky = kms.public_key(&keyid).await.unwrap();
         let vlt = Vault::create();
         {
-            use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
+            use crate::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
             let att = SecretAttributes::new(SecretType::NistP256, SecretPersistence::Ephemeral, 32);
             let kid = vlt.secret_generate(att).await.unwrap();
             let pky = vlt.secret_public_key_get(&kid).await.unwrap();
