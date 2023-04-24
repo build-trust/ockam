@@ -799,11 +799,16 @@ impl NodeManagerWorker {
 
             // ==*== Addons ==*==
             (Get, [project_id, "addons"]) => self.list_addons(ctx, dec, project_id).await?,
-            (Put, [project_id, "addons", addon_id]) => {
+            (Post, ["v1", "projects", project_id, "configure_addon", addon_id]) => {
                 self.configure_addon(ctx, dec, project_id, addon_id).await?
             }
             (Delete, [project_id, "addons", addon_id]) => {
                 self.disable_addon(ctx, dec, project_id, addon_id).await?
+            }
+
+            // ==*== Operations ==*==
+            (Get, ["v1", "operations", operation_id]) => {
+                self.get_operation(ctx, dec, operation_id).await?
             }
 
             // ==*== Messages ==*==

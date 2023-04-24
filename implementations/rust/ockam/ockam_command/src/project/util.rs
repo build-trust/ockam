@@ -180,6 +180,7 @@ pub async fn check_project_readiness(
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;
+
     let spinner_option = opts.terminal.progress_spinner();
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Waiting for project to be ready...");
@@ -209,7 +210,7 @@ pub async fn check_project_readiness(
         .await?;
     }
 
-    {
+        {
         if let Some(spinner) = spinner_option.as_ref() {
             spinner.set_message("Establishing connection to the project...");
         }
