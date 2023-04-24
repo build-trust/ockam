@@ -7,7 +7,7 @@ use ockam_multiaddr::proto::{
     DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
 };
 use ockam_multiaddr::{Code, MultiAddr, Protocol};
-use ockam_transport_tcp::TcpConnectionOptions;
+use ockam_transport_tcp::{TcpConnectionOptions, TCP};
 use std::net::{SocketAddrV4, SocketAddrV6};
 
 /// Try to convert a multi-address to an Ockam route.
@@ -179,7 +179,7 @@ pub fn multiaddr_to_transport_route(ma: &MultiAddr) -> Option<Route> {
                 let ip4 = p.cast::<Ip4>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
-                route = route.append(Address::new(TransportType::new(1), socket_addr.to_string()))
+                route = route.append(Address::new(TCP, socket_addr.to_string()))
             }
             Ip6::CODE => {
                 let ip6 = p.cast::<Ip6>()?;
