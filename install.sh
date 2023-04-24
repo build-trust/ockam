@@ -271,7 +271,7 @@ add_to_path() {
     local _contents
     _contents=$(cat "$_rcpath")
     if [[ "$_contents" == *"$_source_cmd"* ]]; then
-      break
+      continue
     fi
 
     info "Adding source command to $_rcpath"
