@@ -67,8 +67,6 @@ impl ConfluentConfigResponse {
 }
 
 mod node {
-    use std::time::Duration;
-
     use minicbor::{Decode, Decoder, Encode};
     use tracing::trace;
 
@@ -78,9 +76,7 @@ mod node {
 
     use crate::cloud::addon::ConfluentConfig;
     use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
-    use crate::cloud::{
-        BareCloudRequestWrapper, CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT,
-    };
+    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::error::ApiError;
     use crate::nodes::NodeManagerWorker;
 
@@ -155,10 +151,12 @@ mod node {
             let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
 
-            let req_builder =
-                Request::put(format!("/v0/{project_id}/addons/{addon_id}")).body(req_body);
+            let req_builder = Request::post(format!(
+                "/v1/projects/{project_id}/configure_addon/{addon_id}"
+            ))
+            .body(req_body);
 
-            self.request_controller_with_timeout(
+            self.request_controller(
                 ctx,
                 label,
                 None,
@@ -166,7 +164,6 @@ mod node {
                 API_SERVICE,
                 req_builder,
                 None,
-                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
         }

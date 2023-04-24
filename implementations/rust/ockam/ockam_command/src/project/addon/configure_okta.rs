@@ -11,6 +11,7 @@ use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertSt
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
+use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::{OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
@@ -18,7 +19,8 @@ use ockam_core::CowStr;
 
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::delete_embedded_node;
-use crate::project::addon::base_endpoint;
+use crate::operation::util::check_for_completion;
+use crate::project::addon::configure_addon_endpoint;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
@@ -125,21 +127,22 @@ async fn run_impl(
     let addon_id = "okta";
     let endpoint = format!(
         "{}/{}",
-        base_endpoint(&opts.state, &project_name)?,
+        configure_addon_endpoint(&opts.state, &project_name)?,
         addon_id
     );
-    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(
         body,
         controller_route,
         None::<CowStr>,
     ));
     rpc.request(req).await?;
-    rpc.is_ok()?;
+    let res = rpc.parse_response::<CreateOperationResponse>()?;
+    let operation_id = res.operation_id;
+
     println!("Okta addon enabled");
 
-    // Wait until project is ready again
-    println!("Reconfiguring project (this can take a few minutes) ...");
-    tokio::time::sleep(std::time::Duration::from_secs(45)).await;
+    check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
+
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     rpc.request(api::project::show(&project_id, controller_route))
         .await?;

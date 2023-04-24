@@ -331,6 +331,18 @@ pub(crate) mod project {
     }
 }
 
+/// Helpers to create operations API requests
+pub(crate) mod operation {
+    use super::*;
+
+    pub(crate) fn show<'a>(
+        id: &str,
+        cloud_route: &'a MultiAddr,
+    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        Request::get(format!("v1/operations/{id}")).body(CloudRequestWrapper::bare(cloud_route))
+    }
+}
+
 ////////////// !== parsers
 
 pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<Response> {
