@@ -184,6 +184,7 @@ defmodule Ockam.SecureChannel.Channel do
   defp handle_message(message, {:encrypted_transport, :ready} = state, data) do
     first_address = message |> Message.onward_route() |> List.first()
 
+    ## FIXME this shouldn't crash the channel if failing to decrypt for example,
     cond do
       first_address === data.ciphertext_address ->
         decrypt_and_send_to_router(message, state, data)
@@ -204,7 +205,7 @@ defmodule Ockam.SecureChannel.Channel do
     {:ok, encrypted, ""} = :bare.decode(payload, :data)
 
     with {:ok, decrypted, new_transport_state} <-
-           EncryptedTransport.decrypt(<<>>, encrypted, transport_state),
+           EncryptedTransport.Decryptor.decrypt(<<>>, encrypted, transport_state),
          {:ok, decoded} <- Wire.decode(decrypted, :secure_channel) do
       message =
         decoded
@@ -223,7 +224,7 @@ defmodule Ockam.SecureChannel.Channel do
 
     with {:ok, encoded} <- Wire.encode(forwarded_message),
          {:ok, encrypted, new_transport_state} <-
-           EncryptedTransport.encrypt(<<>>, encoded, transport_state) do
+           EncryptedTransport.Encryptor.encrypt(<<>>, encoded, transport_state) do
       ## TODO: optimise double encoding of binaries
       ## Rust implementation is using implicit encoding,
       ## which encodes binaries even if it's not necessary

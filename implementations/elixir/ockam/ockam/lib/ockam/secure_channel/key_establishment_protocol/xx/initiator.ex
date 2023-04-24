@@ -69,8 +69,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
 
   def set_encrypted_transport_state(data) do
     with {:ok, {k1, k2, h}, data} <- Protocol.split(data) do
-      decrypt_state = EncryptedTransport.new(data.vault, k1, 0)
-      encrypt_state = EncryptedTransport.new(data.vault, k2, 0)
+      decrypt_state = EncryptedTransport.Decryptor.new(data.vault, k1, 0)
+      encrypt_state = EncryptedTransport.Encryptor.new(data.vault, k2, 0)
 
       data =
         Map.put(data, :encrypted_transport, %{
