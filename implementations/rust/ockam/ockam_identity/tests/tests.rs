@@ -1,10 +1,10 @@
 use rand::{thread_rng, RngCore};
 
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
 use ockam_core::{Error, Result};
 use ockam_identity::identities;
 use ockam_node::Context;
+use ockam_vault::{SecretAttributes, SecretPersistence, SecretType};
 
 #[ockam_macros::test]
 async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {

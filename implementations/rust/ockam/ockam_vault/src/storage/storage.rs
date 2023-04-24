@@ -1,6 +1,5 @@
-use crate::vault::{KeyId, VaultEntry};
-use crate::Result;
-use crate::{async_trait, compat::boxed::Box};
+use crate::{KeyId, VaultEntry};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// Defines Storage interface for Ockam vaults.
 #[async_trait]

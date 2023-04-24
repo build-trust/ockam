@@ -1,7 +1,7 @@
 #![allow(conflicting_repr_hints)]
 
 use crate::FfiError;
-use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
+use ockam_vault::{SecretAttributes, SecretPersistence, SecretType};
 
 /// Represents a handle id for the secret key
 pub type SecretKeyHandle = u64;

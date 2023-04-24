@@ -1,5 +1,5 @@
 //! Various functions to help with testing implementations of the traits in
-//! [`ockam_core::vault`](crate::vault).
+//! [`ockam_vault`](crate::vault).
 #![allow(missing_docs)]
 
 mod asymmetric_impl;

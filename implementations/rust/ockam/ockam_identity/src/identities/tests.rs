@@ -4,13 +4,13 @@ use crate::identity::{Identity, IdentityChangeHistory};
 use crate::Identities;
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::{
-    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretVault,
-    Signature, Signer, SmallBuffer, SymmetricVault, Verifier,
-};
 use ockam_core::Result;
 use ockam_node::Context;
 use ockam_vault::Vault;
+use ockam_vault::{
+    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretVault,
+    Signature, Signer, SmallBuffer, SymmetricVault, Verifier,
+};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
 use rand::{thread_rng, Rng};

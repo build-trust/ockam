@@ -1,10 +1,9 @@
-use crate::VaultError;
+use crate::storage::Storage;
+use crate::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry, VaultError};
 use cfg_if::cfg_if;
 use fs2::FileExt; //locking
 use ockam_core::compat::boxed::Box;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::vault::storage::Storage;
-use ockam_core::vault::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry};
 use ockam_core::{async_trait, Error, Result};
 use ockam_node::tokio::task::{self, JoinError};
 use serde::{Deserialize, Serialize};
@@ -264,10 +263,9 @@ impl Storage for FileStorage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Vault;
+    use crate::{SecretKey, SecretType, SecretVault, Vault};
     use ockam_core::compat::join;
     use ockam_core::compat::rand::RngCore;
-    use ockam_core::vault::{SecretKey, SecretType, SecretVault};
     use rand::thread_rng;
     use std::sync::Arc;
 

@@ -1,17 +1,15 @@
-use crate::vault::Vault;
-use crate::VaultError;
+use crate::{
+    AsymmetricVault, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
+    SecretType, SecretVault, Vault, VaultEntry, VaultError, AES128_SECRET_LENGTH_U32,
+    AES256_SECRET_LENGTH_U32, CURVE25519_SECRET_LENGTH_USIZE,
+};
 use arrayref::array_ref;
 use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
-use ockam_core::vault::{
-    AsymmetricVault, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
-    SecretType, SecretVault, VaultEntry, AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32,
-    CURVE25519_SECRET_LENGTH_USIZE,
-};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[cfg(feature = "rustcrypto")]
-use crate::error::{from_ecurve, from_pkcs8};
+use crate::{from_ecurve, from_pkcs8};
 
 impl Vault {
     /// Compute key id from secret and attributes. Only Curve25519 and Buffer types are supported
@@ -336,11 +334,11 @@ fn public_key(secret: &[u8]) -> Result<PublicKey> {
 
 #[cfg(test)]
 mod tests {
-    use ockam_core::vault::{Secret, SecretKey};
+    use crate as ockam_vault;
 
     use crate::{
-        ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32},
-        SecretAttributes, SecretVault, Vault,
+        Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType, SecretVault, Vault,
+        CURVE25519_SECRET_LENGTH_U32,
     };
 
     fn new_vault() -> Vault {

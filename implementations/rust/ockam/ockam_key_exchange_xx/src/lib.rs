@@ -58,7 +58,7 @@ mod responder;
 pub use responder::*;
 mod new_key_exchanger;
 pub use new_key_exchanger::*;
-use ockam_core::vault::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
+use ockam_vault::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
 
 #[cfg(test)]
 mod tests {

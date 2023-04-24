@@ -1,7 +1,7 @@
 use core::fmt;
 use ockam_core::compat::string::String;
-use ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32};
 use ockam_vault::SecretAttributes;
+use ockam_vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32};
 use serde::{Deserialize, Serialize};
 
 /// Attributes that are used to identify a key

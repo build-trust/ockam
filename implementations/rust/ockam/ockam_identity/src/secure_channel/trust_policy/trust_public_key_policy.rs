@@ -4,8 +4,8 @@ use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::PublicKey;
 use ockam_core::Result;
+use ockam_vault::PublicKey;
 
 /// `TrustPolicy` based on pre-known `PublicKey` of the other participant
 pub struct TrustPublicKeyPolicy {

@@ -6,8 +6,8 @@ use ockam_api::cli_state;
 use ockam_api::cli_state::identities::IdentityConfig;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 
-use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_identity::{IdentityChangeConstants, KeyAttributes};
+use ockam_vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;

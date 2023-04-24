@@ -1,10 +1,10 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::vault::Secret::Key;
-use ockam_core::vault::{
+use ockam_core::Result;
+use ockam_vault::Secret::Key;
+use ockam_vault::{
     KeyId, SecretAttributes, SecretKey, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32,
 };
-use ockam_core::Result;
 
 use crate::alloc::string::ToString;
 use crate::identity::IdentityError;

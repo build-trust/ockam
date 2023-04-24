@@ -1,10 +1,10 @@
 use crate::{XXError, XXVault, SHA256_SIZE_U32};
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::{
+use ockam_core::Result;
+use ockam_vault::{
     KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
     AES256_SECRET_LENGTH_U32,
 };
-use ockam_core::Result;
 
 #[derive(Clone)]
 pub(crate) struct DhState {

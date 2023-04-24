@@ -9,8 +9,8 @@ use crate::identity::{
 };
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::KeyId;
 use ockam_core::{Encodable, Result};
+use ockam_vault::KeyId;
 
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {
@@ -64,7 +64,7 @@ impl IdentitiesKeys {
         identity: &Identity,
         data: &[u8],
         key_label: Option<&str>,
-    ) -> Result<ockam_core::vault::Signature> {
+    ) -> Result<ockam_vault::Signature> {
         let secret = self.get_secret_key(identity, key_label).await?;
         self.vault.sign(&secret, data).await
     }
@@ -73,7 +73,7 @@ impl IdentitiesKeys {
     pub async fn verify_signature(
         &self,
         identity: &Identity,
-        signature: &ockam_core::vault::Signature,
+        signature: &ockam_vault::Signature,
         data: &[u8],
         key_label: Option<&str>,
     ) -> Result<bool> {

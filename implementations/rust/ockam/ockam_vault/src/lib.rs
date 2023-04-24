@@ -27,37 +27,16 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-pub use ockam_core;
-
-mod asymmetric_impl;
-mod error;
-mod hasher_impl;
-mod secret_impl;
-mod signer_impl;
-
-/// AWS KMS
-#[cfg(feature = "aws")]
-pub mod aws;
+/// Support functions for testing alternative Vault traits implementations
+pub mod test_support;
+/// Traits and types defining the behaviour of a Vault
+pub mod traits;
+/// Default Vault implementation
+pub mod vault;
 
 /// Storage
 #[cfg(feature = "storage")]
 pub mod storage;
 
-mod symmetric_impl;
-mod vault;
-mod verifier_impl;
-mod xeddsa;
-
-// Re-export types commonly used by higher level APIs
-pub use ockam_core::vault::{
-    Hasher, KeyId, PublicKey, SecretAttributes, SecretVault, Signer, Verifier,
-};
-
-pub use asymmetric_impl::*;
-pub use error::*;
-pub use hasher_impl::*;
-pub use secret_impl::*;
-pub use signer_impl::*;
-pub use symmetric_impl::*;
+pub use traits::*;
 pub use vault::*;
-pub use verifier_impl::*;

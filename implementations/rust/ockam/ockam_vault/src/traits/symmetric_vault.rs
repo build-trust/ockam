@@ -1,6 +1,5 @@
-use crate::vault::{Buffer, KeyId};
-use crate::Result;
-use crate::{async_trait, compat::boxed::Box};
+use crate::{Buffer, KeyId};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// Defines the Vault interface for symmetric encryption.
 #[async_trait]

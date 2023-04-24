@@ -1,13 +1,12 @@
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::{AsymmetricVault, KeyId, Signature, Signer};
-use ockam_core::vault::{
-    Buffer, Hasher, PublicKey, Secret, SecretAttributes, SecretVault, SmallBuffer,
-};
-use ockam_core::vault::{SymmetricVault, Verifier};
+use ockam_core::KeyId;
 use ockam_core::Result;
 use ockam_key_exchange_xx::{XXInitializedVault, XXVault};
+use ockam_vault::{AsymmetricVault, Signature, Signer};
+use ockam_vault::{Buffer, Hasher, PublicKey, Secret, SecretAttributes, SecretVault, SmallBuffer};
+use ockam_vault::{SymmetricVault, Verifier};
 
 /// Traits required for a Vault implementation suitable for use in an Identity
 /// Vault with XX required functionality

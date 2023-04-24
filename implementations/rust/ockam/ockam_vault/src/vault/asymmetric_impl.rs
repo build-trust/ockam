@@ -1,12 +1,10 @@
-use crate::{Vault, VaultError};
-use arrayref::array_ref;
-use ockam_core::vault::{
+use crate::{
     AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretKey,
-    SecretPersistence, SecretType, SecretVault, VaultEntry, CURVE25519_PUBLIC_LENGTH_USIZE,
-    CURVE25519_SECRET_LENGTH_USIZE,
+    SecretPersistence, SecretType, SecretVault, Vault, VaultEntry, VaultError,
+    CURVE25519_PUBLIC_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_USIZE,
 };
-use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
+use arrayref::array_ref;
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 impl Vault {
     fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &PublicKey) -> Result<Buffer<u8>> {
@@ -75,6 +73,7 @@ impl AsymmetricVault for Vault {
 
 #[cfg(test)]
 mod tests {
+    use crate as ockam_vault;
     use crate::Vault;
 
     fn new_vault() -> Vault {

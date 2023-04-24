@@ -20,7 +20,7 @@ impl SecureChannelsBuilder {
     /// Set a specific storage for the secure channels vault
     pub fn with_vault_storage(
         &mut self,
-        storage: Arc<dyn ockam_core::vault::storage::Storage>,
+        storage: Arc<dyn ockam_vault::storage::Storage>,
     ) -> SecureChannelsBuilder {
         self.identities_builder = self.identities_builder.with_vault_storage(storage);
         self.clone()

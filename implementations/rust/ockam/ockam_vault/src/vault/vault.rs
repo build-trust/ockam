@@ -1,18 +1,18 @@
+use crate::storage::Storage;
+use crate::vault::aws::Kms;
+use crate::{KeyId, VaultEntry};
 use ockam_core::compat::{collections::BTreeMap, sync::Arc};
-use ockam_core::vault::storage::Storage;
-use ockam_core::vault::{KeyId, VaultEntry};
 use ockam_node::compat::asynchronous::RwLock;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
 ///
 /// # Examples
 /// ```
-/// use ockam_vault::Vault;
+/// use ockam_vault::{CURVE25519_SECRET_LENGTH_U32, SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer, Verifier, Vault};
 /// use ockam_core::Result;
-/// use ockam_core::vault::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH_U32, SecretVault, Signer, Verifier};
 ///
 /// async fn example() -> Result<()> {
-///     let mut vault = Vault::default();
+///     let mut vault: Vault = Vault::default();
 ///
 ///     let mut attributes = SecretAttributes::new(
 ///         SecretType::X25519,
@@ -36,7 +36,7 @@ pub struct Vault {
     pub(crate) data: VaultData,
     pub(crate) storage: Option<Arc<dyn Storage>>,
     #[cfg(feature = "aws")]
-    pub(crate) aws_kms: Option<crate::aws::Kms>,
+    pub(crate) aws_kms: Option<Kms>,
 }
 
 #[derive(Default, Clone)]
@@ -63,7 +63,7 @@ impl Vault {
     /// Enable AWS KMS.
     #[cfg(feature = "aws")]
     pub async fn enable_aws_kms(&mut self) -> Result<(), ockam_core::Error> {
-        let kms = crate::aws::Kms::default().await?;
+        let kms = Kms::default().await?;
         self.aws_kms = Some(kms);
         Ok(())
     }

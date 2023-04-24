@@ -10,23 +10,17 @@
 //!
 //! [`ockam_vault`]: https://docs.rs/ockam_vault/latest
 
-mod asymmetric_vault;
-mod hasher;
-mod secret_vault;
-mod signer;
-mod symmetric_vault;
-mod types;
-mod verifier;
+mod asymmetric_impl;
+mod aws;
+mod error;
+mod hasher_impl;
+mod secret_impl;
+mod signer_impl;
+mod symmetric_impl;
+mod vault;
+mod verifier_impl;
+mod xeddsa;
 
-/// Storage
-pub mod storage;
-
-pub mod test_support;
-
-pub use asymmetric_vault::*;
-pub use hasher::*;
-pub use secret_vault::*;
-pub use signer::*;
-pub use symmetric_vault::*;
-pub use types::*;
-pub use verifier::*;
+pub use aws::*;
+pub use error::*;
+pub use vault::*;

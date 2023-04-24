@@ -33,6 +33,7 @@ std = [
   "ockam_core/std",
   "ockam_macros/std",
   "ockam_node/std",
+  "minicbor/std",
   "aes-gcm/alloc",
   "aes-gcm/std",
   "rand/std",
@@ -81,6 +82,7 @@ ed25519-dalek = { version = "1.0", default-features = false }
 fs2 = { version = "0.4.3", optional = true }
 hex = { version = "0.4", default-features = false }
 hkdf = { version = "0.12", default-features = false }
+minicbor = { version = "0.19.0", features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.80.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.29.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.83.0", default_features = false }
@@ -90,10 +92,12 @@ rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
+serde_cbor = { version = "0.11.2", optional = true }
 sha2 = { version = "0.10", default-features = false }
 thiserror = { version = "1.0.38", optional = true }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 x25519-dalek = { version = "1.0", default_features = false }
+zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 data-encoding = { version = "2.3.3", features = ["alloc"] }

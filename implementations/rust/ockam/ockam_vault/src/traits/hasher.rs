@@ -1,6 +1,5 @@
-use crate::vault::{KeyId, SecretAttributes, SmallBuffer};
-use crate::Result;
-use crate::{async_trait, compat::boxed::Box};
+use crate::{KeyId, SecretAttributes, SmallBuffer};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// A trait for hashing input data into a fixed length output.
 #[async_trait]
