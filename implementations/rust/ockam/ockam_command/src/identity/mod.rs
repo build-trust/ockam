@@ -96,27 +96,19 @@ pub fn create_default_identity(identity_name: &str) -> String {
         config,
     );
 
-    let _ = opts
-        .shell
-        .clone()
-        .stdout()
-        .plain(format!(
-            "{} No default identity found. Creating one...",
-            "!".light_green(),
-        ))
-        .write_line();
+    let _ = opts.shell.write_line(&format!(
+        "{} No default identity found. Creating one...",
+        "!".light_green(),
+    ));
 
     let create_command = CreateCommand::new(identity_name.into(), None);
     create_command.run(quiet_opts);
 
-    let _ = opts
-        .shell
-        .stdout()
-        .plain(format!(
-            "{} Created default identity: {}",
-            "!".light_green(),
-            identity_name
-        ))
-        .write_line();
+    let _ = opts.shell.write_line(&format!(
+        "{} Created default identity: {}",
+        "!".light_green(),
+        identity_name
+    ));
+
     identity_name.to_string()
 }
