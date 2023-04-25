@@ -32,24 +32,18 @@ impl Context {
         // check the number of transport hops, there can be only one
         // we do this first pass over the list of addresses to avoid creating connections
         // and then having to close them if we find several hops
-        let mut number_of_transport_hops = 0;
-        for address in route.iter() {
-            if !address.is_local() {
-                if number_of_transport_hops >= 1 {
-                    return Err(Error::new(
-                        Origin::Transport,
-                        Kind::Invalid,
-                        "only one transport hop is allowed in a route",
-                    ));
-                } else {
-                    number_of_transport_hops += 1;
-                }
-            }
+        let number_of_transport_hops = route.iter().filter(|a| !a.is_local()).count();
+        if number_of_transport_hops > 1 {
+            return Err(Error::new(
+                Origin::Transport,
+                Kind::Invalid,
+                "only one transport hop is allowed in a route",
+            ));
         }
         // return the route if there are no transport hops
-        if number_of_transport_hops == 0 {
+        else if number_of_transport_hops == 0 {
             return Ok(route);
-        }
+        };
 
         // otherwise resolve the hop address
         let mut resolved = Route::new();
