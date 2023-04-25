@@ -387,7 +387,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
 pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
     context: FfiVaultFatPointer,
     secret: SecretKeyHandle,
-    nonce: u16,
+    nonce: u64,
     additional_data: *const u8,
     additional_data_length: u32,
     plaintext: *const u8,
@@ -411,7 +411,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
         block_future(async move {
             let entry = get_vault_entry(context).await?;
             let key_id = entry.get(secret).await?;
-            let mut nonce_vec = vec![0; 12 - 2];
+            let mut nonce_vec = vec![0; 12 - 8];
             nonce_vec.extend_from_slice(&nonce.to_be_bytes());
             let ciphertext = entry
                 .vault
@@ -441,7 +441,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
 pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     context: FfiVaultFatPointer,
     secret: SecretKeyHandle,
-    nonce: u16,
+    nonce: u64,
     additional_data: *const u8,
     additional_data_length: u32,
     ciphertext_and_tag: *const u8,
@@ -466,7 +466,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
         block_future(async move {
             let entry = get_vault_entry(context).await?;
             let key_id = entry.get(secret).await?;
-            let mut nonce_vec = vec![0; 12 - 2];
+            let mut nonce_vec = vec![0; 12 - 8];
             nonce_vec.extend_from_slice(&nonce.to_be_bytes());
             let plain = entry
                 .vault

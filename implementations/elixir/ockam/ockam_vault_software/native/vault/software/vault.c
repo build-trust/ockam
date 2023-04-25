@@ -478,8 +478,8 @@ ERL_NIF_TERM aead_aes_gcm_encrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
         return enif_make_badarg(env);
     }
 
-    unsigned int nonce;
-    if (0 == enif_get_uint(env, argv[2], &nonce)) {
+    ErlNifUInt64 nonce;
+    if (0 == enif_get_uint64(env, argv[2], &nonce)) {
         return enif_make_badarg(env);
     }
 
@@ -542,8 +542,8 @@ ERL_NIF_TERM aead_aes_gcm_decrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
         return enif_make_badarg(env);
     }
 
-    unsigned int nonce;
-    if (0 == enif_get_uint(env, argv[2], &nonce)) {
+    ErlNifUInt64 nonce;
+    if (0 == enif_get_uint64(env, argv[2], &nonce)) {
         return enif_make_badarg(env);
     }
 
