@@ -98,7 +98,7 @@ impl CliState {
 
     pub fn test() -> Result<Self> {
         let tests_dir = dirs::home_dir()
-            .ok_or_else(|| CliStateError::NotFound)?
+            .ok_or(CliStateError::NotFound)?
             .join(".ockam")
             .join(".tests")
             .join(random_name());
@@ -145,7 +145,7 @@ impl CliState {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",
             dirs::home_dir()
-                .ok_or_else(|| CliStateError::NotFound)?
+                .ok_or(CliStateError::NotFound)?
                 .join(".ockam"),
         )?)
     }
@@ -997,7 +997,7 @@ impl NodeSetupConfig {
         self.transports
             .iter()
             .find(|t| t.tt == TransportType::Tcp && t.tm == TransportMode::Listen)
-            .ok_or_else(|| CliStateError::NotFound)
+            .ok_or(CliStateError::NotFound)
     }
 
     pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
@@ -1373,10 +1373,10 @@ pub fn random_name() -> String {
 
 fn file_stem(path: &Path) -> Result<String> {
     path.file_stem()
-        .ok_or_else(|| CliStateError::NotFound)?
+        .ok_or(CliStateError::NotFound)?
         .to_str()
         .map(|name| name.to_string())
-        .ok_or_else(|| CliStateError::NotFound)
+        .ok_or(CliStateError::NotFound)
 }
 
 #[cfg(test)]

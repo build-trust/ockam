@@ -18,11 +18,11 @@ use ockam_core::api::{Request, RequestBuilder, Status};
 use ockam_core::compat::net::{Ipv4Addr, SocketAddr};
 use ockam_multiaddr::MultiAddr;
 
-const KAFKA_DEFAULT_PROJECT_ROUTE: &'static str = "/project/default";
-const KAFKA_DEFAULT_CONSUMER_SERVER: &'static str = "127.0.0.1:4000";
-const KAFKA_DEFAULT_CONSUMER_PORT_RANGE: &'static str = "4001-4100";
-const KAFKA_DEFAULT_PRODUCER_SERVER: &'static str = "127.0.0.1:5000";
-const KAFKA_DEFAULT_PRODUCER_PORT_RANGE: &'static str = "5001-5100";
+const KAFKA_DEFAULT_PROJECT_ROUTE: &str = "/project/default";
+const KAFKA_DEFAULT_CONSUMER_SERVER: &str = "127.0.0.1:4000";
+const KAFKA_DEFAULT_CONSUMER_PORT_RANGE: &str = "4001-4100";
+const KAFKA_DEFAULT_PRODUCER_SERVER: &str = "127.0.0.1:5000";
+const KAFKA_DEFAULT_PRODUCER_PORT_RANGE: &str = "5001-5100";
 
 /// Start a specified service
 #[derive(Clone, Debug, Args)]
