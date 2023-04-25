@@ -45,7 +45,6 @@ std = [
   # required for p256
   "rustcrypto",
   "p256/std",
-  "fs2",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -64,7 +63,7 @@ no_std = [
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc", "p256/ecdsa", "p256/pem"]
 
-storage = ["std", "serde", "serde_json"]
+storage = ["ockam_node/storage", "std", "serde"]
 
 aws = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
 # FIXME: Either remove that feature, or avoid unneccessary dependencies when it's disabled
@@ -79,7 +78,6 @@ aws-sdk-kms = { version = "0.27.0", default-features = false, features = ["nativ
 cfg-if = "1.0.0"
 curve25519-dalek = { version = "3.1", default-features = false }
 ed25519-dalek = { version = "1.0", default-features = false }
-fs2 = { version = "0.4.3", optional = true }
 hex = { version = "0.4", default-features = false }
 hkdf = { version = "0.12", default-features = false }
 minicbor = { version = "0.19.0", features = ["derive"] }
@@ -91,7 +89,6 @@ p256 = { version = "0.13.2", default_features = false }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
-serde_json = { version = "1", optional = true }
 serde_cbor = { version = "0.11.2", optional = true }
 sha2 = { version = "0.10", default-features = false }
 thiserror = { version = "1.0.38", optional = true }

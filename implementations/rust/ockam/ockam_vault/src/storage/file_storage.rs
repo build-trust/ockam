@@ -1,18 +1,23 @@
 use crate::storage::Storage;
 use crate::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry, VaultError};
 use cfg_if::cfg_if;
-use fs2::FileExt; //locking
 use ockam_core::compat::boxed::Box;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error, Result};
 use ockam_node::tokio::task::{self, JoinError};
+use ockam_node::{FileStorage, ValueStorage};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+struct VaultFileStorage {
+    storage: Arc<dyn ValueStorage<FileVault>>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
-struct LegacyVaultEntry {
+struct FileVaultEntry {
     key_id: Option<String>,
     key_attributes: SecretAttributes,
     key: Secret,
@@ -21,199 +26,42 @@ struct LegacyVaultEntry {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "version")]
 #[non_exhaustive]
-enum LegacySerializedVault {
+enum FileVault {
     V1 {
-        entries: Vec<(usize, LegacyVaultEntry)>,
+        entries: Vec<(usize, FileVaultEntry)>,
         next_id: usize,
     },
 }
 
-/// File Storage
-/* There are three files involved
- * - The actual vault file
- * - A temp file used to avoid data lost during writtes:  vault is entirely
- *   written to the temp file, then file renamed.
- * - A "lock" file.  It's used to control inter-process access to the vault.
- *   Before reading or writting to the vault, first need to get a shared or exclusive lock
- *   on this file.  We don't lock over the vault file directly, because doesn't play well with
- *   the file rename we do */
-pub struct FileStorage {
-    path: PathBuf,
-    temp_path: PathBuf,
-    lock_path: PathBuf,
-}
-
-fn map_join_err(err: JoinError) -> Error {
-    Error::new(Origin::Application, Kind::Io, err)
-}
-fn map_io_err(err: std::io::Error) -> Error {
-    Error::new(Origin::Application, Kind::Io, err)
-}
-
-impl FileStorage {
-    /// Create FileStorage using file at given Path
-    /// If file doesn't exist, it will be created
-    pub async fn init(&mut self) -> Result<()> {
-        // This can block, but only when first initializing and just need to write an empty vault.
-        // So didn't bother to do it async
-        let lock_file = Self::open_lock_file(&self.lock_path)?;
-        lock_file.lock_exclusive().map_err(map_io_err)?;
-        if !self.path.exists() {
-            let empty = LegacySerializedVault::V1 {
-                entries: Vec::new(),
-                next_id: 0,
-            };
-            Self::flush_to_file(&self.path, &self.temp_path, &empty)?;
-        }
-        lock_file.unlock().map_err(map_io_err)?;
-        Ok(())
-    }
-
-    fn path_with_suffix(path: &Path, suffix: &str) -> PathBuf {
-        match path.extension() {
-            None => path.with_extension(suffix),
-            Some(e) => path.with_extension(format!("{}{}", e.to_str().unwrap(), suffix)),
-        }
-    }
-
-    fn load(path: &PathBuf) -> Result<LegacySerializedVault> {
-        let file = File::open(path).map_err(map_io_err)?;
-        let reader = BufReader::new(file);
-        Ok(serde_json::from_reader(reader).map_err(|_| VaultError::InvalidStorageData)?)
-    }
-
-    fn open_lock_file(lock_path: &PathBuf) -> Result<File> {
-        std::fs::OpenOptions::new()
-            .write(true)
-            .read(true)
-            .create(true)
-            .open(lock_path)
-            .map_err(map_io_err)
-    }
-
-    /// Constructor.
-    /// NOTE: Doesn't initialize the storage. Call [`FileStorage::init()`] or use [`FileStorage::create()`]
-    pub fn new(path: PathBuf) -> Self {
-        let temp_path = Self::path_with_suffix(&path, ".tmp");
-        let lock_path = Self::path_with_suffix(&path, ".lock");
-        Self {
-            path,
-            temp_path,
-            lock_path,
-        }
-    }
-
-    /// Create and init Storage
-    pub async fn create(path: PathBuf) -> Result<Self> {
-        let mut s = Self::new(path);
-        s.init().await?;
-
-        Ok(s)
-    }
-
-    // Flush vault to target, using temp_path as intermediary file.
-    fn flush_to_file(
-        target: &PathBuf,
-        temp_path: &PathBuf,
-        vault: &LegacySerializedVault,
-    ) -> Result<()> {
-        let data = serde_json::to_vec(vault).map_err(|_| VaultError::StorageError)?;
-        use std::io::prelude::*;
-        cfg_if! {
-            if #[cfg(windows)] {
-                let mut file = std::fs::OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .open(temp_path)
-                    .map_err(|_| VaultError::StorageError)?;
-            } else {
-                use std::os::unix::fs::OpenOptionsExt;
-                let mut file = std::fs::OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .mode(0o600)
-                    .open(temp_path)
-                    .map_err(|_| VaultError::StorageError)?;
-            }
-        }
-        file.write_all(&data)
-            .map_err(|_| VaultError::StorageError)?;
-        file.flush().map_err(|_| VaultError::StorageError)?;
-        file.sync_all().map_err(|_| VaultError::StorageError)?;
-        std::fs::rename(temp_path, target).map_err(|_| VaultError::StorageError)?;
-        Ok(())
-    }
-
-    async fn write_transaction<F, R>(&self, f: F) -> Result<R>
-    where
-        F: FnOnce(LegacySerializedVault) -> Result<(LegacySerializedVault, R)> + Send + 'static,
-        R: Send + 'static,
-    {
-        let lock_path = self.lock_path.clone();
-        let temp_path = self.temp_path.clone();
-        let path = self.path.clone();
-        let tr = move || -> Result<R> {
-            let file = FileStorage::open_lock_file(&lock_path)?;
-            file.lock_exclusive().map_err(map_io_err)?;
-            let vault_data = FileStorage::load(&path)?;
-            let (modified_vault, result) = f(vault_data)?;
-            FileStorage::flush_to_file(&path, &temp_path, &modified_vault)?;
-            // if something goes wrong it will be unlocked once the file handler get closed anyway
-            file.unlock().map_err(map_io_err)?;
-            Ok(result)
-        };
-        task::spawn_blocking(tr).await.map_err(map_join_err)?
-    }
-
-    async fn read_transaction<F, R>(&self, f: F) -> Result<R>
-    where
-        F: FnOnce(LegacySerializedVault) -> Result<R> + Send + 'static,
-        R: Send + 'static,
-    {
-        let path = self.path.clone();
-        let lock_path = self.lock_path.clone();
-        let tr = move || {
-            let file = FileStorage::open_lock_file(&lock_path)?;
-            file.lock_shared().map_err(map_io_err)?;
-            let vault_data = FileStorage::load(&path)?;
-            let r = f(vault_data)?;
-            // if something goes wrong it will be unlocked once the file handler get closed anyway
-            file.unlock().map_err(map_io_err)?;
-            Ok(r)
-        };
-        task::spawn_blocking(tr).await.map_err(map_join_err)?
-    }
-}
-
 #[async_trait]
-impl Storage for FileStorage {
+impl Storage for VaultFileStorage {
     async fn store(&self, key_id: &KeyId, key: &VaultEntry) -> Result<()> {
         let key_id = key_id.clone();
         let attributes = key.key_attributes();
         let key = key.secret().clone();
-        let t = move |v: LegacySerializedVault| {
+        let t = move |v: FileVaultEntry| {
             let new_entry = (
                 0,
-                LegacyVaultEntry {
+                FileVaultEntry {
                     key_id: Some(key_id),
                     key_attributes: attributes,
                     key,
                 },
             );
-            let LegacySerializedVault::V1 {
+            let FileVaultEntry::V1 {
                 mut entries,
                 next_id,
             } = v;
             entries.push(new_entry);
-            Ok((LegacySerializedVault::V1 { entries, next_id }, ()))
+            Ok((FileVaultEntry::V1 { entries, next_id }, ()))
         };
-        self.write_transaction(t).await
+        self.storage.update_value(t).await
     }
 
     async fn load(&self, key_id: &KeyId) -> Result<VaultEntry> {
         let key_id = key_id.clone();
-        let t = move |v: LegacySerializedVault| -> Result<VaultEntry> {
-            let LegacySerializedVault::V1 {
+        let t = move |v: FileVault| -> Result<VaultEntry> {
+            let FileVault::V1 {
                 entries,
                 next_id: _,
             } = v;
@@ -230,13 +78,13 @@ impl Storage for FileStorage {
                 .map(|le| VaultEntry::new(le.1.key_attributes, le.1.key.clone()))
                 .ok_or(VaultError::EntryNotFound(format!("vault entry {key_id:?}")))?)
         };
-        self.read_transaction(t).await
+        self.storage.read_value(t).await
     }
 
     async fn delete(&self, key_id: &KeyId) -> Result<VaultEntry> {
         let key_id = key_id.clone();
-        let t = move |v: LegacySerializedVault| -> Result<(LegacySerializedVault, VaultEntry)> {
-            let LegacySerializedVault::V1 {
+        let t = move |v: FileVault| -> Result<(FileVault, VaultEntry)> {
+            let FileVault::V1 {
                 mut entries,
                 next_id,
             } = v;
@@ -249,14 +97,14 @@ impl Storage for FileStorage {
             }) {
                 let removed = entries.swap_remove(index);
                 let vault_entry = VaultEntry::new(removed.1.key_attributes, removed.1.key);
-                Ok((LegacySerializedVault::V1 { entries, next_id }, vault_entry))
+                Ok((FileVault::V1 { entries, next_id }, vault_entry))
             } else {
                 Err(Error::from(VaultError::EntryNotFound(format!(
                     "vault entry {key_id:?}"
                 ))))
             }
         };
-        self.write_transaction(t).await
+        self.update_value(t).await
     }
 }
 
@@ -284,10 +132,10 @@ NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
         let text = String::from_utf8(data_encoding::BASE64.decode(sample_key.as_bytes()).unwrap())
             .unwrap();
 
-        let vault: LegacySerializedVault = serde_json::from_str(&text).unwrap();
+        let vault: FileVault = serde_json::from_str(&text).unwrap();
 
         #[allow(irrefutable_let_patterns)] //can be removed when we'll have V2
-        let (entries, next_id) = if let LegacySerializedVault::V1 { entries, next_id } = vault {
+        let (entries, next_id) = if let FileVault::V1 { entries, next_id } = vault {
             (entries, next_id)
         } else {
             panic!("legacy deserialization is broken")
@@ -355,7 +203,7 @@ NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
 
     #[tokio::test]
     #[allow(non_snake_case)]
-    async fn vault_syncronization() {
+    async fn vault_synchronization() {
         let mut rng = thread_rng();
         let mut rand_id = [0u8; 32];
 
