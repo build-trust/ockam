@@ -3,7 +3,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
 
   alias Ockam.Vault
   alias __MODULE__
-  @max_nonce trunc(:math.pow(2, 32))
+  @max_nonce trunc(:math.pow(2, 64))-1
 
   defmodule Encryptor do
     @moduledoc false
@@ -168,12 +168,8 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   end
 
   def rekey(vault, k) do
-    {:ok, <<_new_k::binary-size(32), _::binary>>} =
-      Vault.aead_aes_gcm_encrypt(vault, k, 22, <<>>, <<0::32*8>>)
-
     {:ok, <<new_k::binary-size(32), _::binary>>} =
-      Vault.aead_aes_gcm_encrypt(vault, k, @max_nonce - 1, <<>>, <<0::32*8>>)
-
+      Vault.aead_aes_gcm_encrypt(vault, k, @max_nonce , <<>>, <<0::32*8>>)
     Vault.secret_import(vault, [type: :aes], new_k)
   end
 end
