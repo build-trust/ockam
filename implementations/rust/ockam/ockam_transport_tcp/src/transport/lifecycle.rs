@@ -80,7 +80,6 @@ impl Transport for TcpTransport {
                     let id = flow_controls.generate_id();
                     TcpConnectionOptions::as_producer(flow_controls, &id)
                 };
-
                 let addr = self.connect(address.address().to_string(), options).await?;
                 result = result.append(addr);
             } else {
@@ -104,16 +103,17 @@ mod tests {
     #[ockam_macros::test]
     async fn test_resolve_route(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
-        let tcp_address = "127.0.0.1:5001";
-        let _listener = TcpListener::bind(tcp_address).map_err(TransportError::from)?;
+        let tcp_address = "127.0.0.1:0";
         let initial_workers = ctx.list_workers().await?;
+        let listener = TcpListener::bind(tcp_address).map_err(TransportError::from)?;
+        let local_address = listener.local_addr().unwrap().to_string();
 
         let other_transport_type = TransportType::new(10);
         let other_address = (other_transport_type, "other_address");
         let route = tcp
             .resolve_route(
                 &FlowControls::default(),
-                route![(TCP, tcp_address), other_address],
+                route![(TCP, local_address.clone()), other_address],
             )
             .await?;
 
@@ -136,7 +136,7 @@ mod tests {
         let _route = tcp
             .resolve_route(
                 &FlowControls::default(),
-                route![(TCP, tcp_address), other_address],
+                route![(TCP, local_address), other_address],
             )
             .await?;
 
@@ -146,7 +146,7 @@ mod tests {
     #[ockam_macros::test]
     async fn test_resolve_route_only_single_hop_is_allowed(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
-        let tcp_address = "127.0.0.1:5002";
+        let tcp_address = "127.0.0.1:0";
         let _listener = TcpListener::bind(tcp_address).map_err(TransportError::from)?;
 
         let result = tcp

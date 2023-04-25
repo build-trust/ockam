@@ -1,16 +1,18 @@
+use core::time::Duration;
+
+use serde::{Deserialize, Serialize};
+use tracing::{debug, trace};
+
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::sync::Arc;
+use ockam_core::flow_control::FlowControls;
+use ockam_core::{async_trait, route, Address, Result, Route};
+use ockam_node::Context;
+
 use crate::{
     Credential, CredentialsIssuerClient, Identity, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
-use core::time::Duration;
-use ockam_core::compat::boxed::Box;
-use ockam_core::compat::sync::Arc;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControls;
-use ockam_core::{async_trait, route, Address, Error, Result, Route, TransportType};
-use ockam_node::Context;
-use serde::{Deserialize, Serialize};
-use tracing::{debug, trace};
 
 /// Trait for retrieving a credential for a given identity
 #[async_trait]
