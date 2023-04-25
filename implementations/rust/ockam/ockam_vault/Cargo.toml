@@ -98,5 +98,6 @@ zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 data-encoding = { version = "2.3.3", features = ["alloc"] }
+serde_json = { version = "1" }
 tokio = { version = "1.28", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }

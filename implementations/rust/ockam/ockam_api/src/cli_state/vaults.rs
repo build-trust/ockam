@@ -2,7 +2,7 @@ use super::Result;
 use crate::cli_state::traits::StateItemTrait;
 use crate::cli_state::{CliStateError, StateDirTrait};
 use ockam_identity::IdentitiesVault;
-use ockam_vault::storage::FileStorage;
+use ockam_vault::storage::VaultFileStorage;
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -39,7 +39,7 @@ pub struct VaultState {
 
 impl VaultState {
     pub async fn get(&self) -> Result<Vault> {
-        let vault_storage = FileStorage::create(self.vault_file_path().clone()).await?;
+        let vault_storage = VaultFileStorage::create(self.vault_file_path().clone()).await?;
         let mut vault = Vault::new(Some(Arc::new(vault_storage)));
         if self.config.aws_kms {
             vault.enable_aws_kms().await?
@@ -61,7 +61,7 @@ impl VaultState {
     pub async fn identities_vault(&self) -> Result<Arc<dyn IdentitiesVault>> {
         let path = self.vault_file_path().clone();
         Ok(Arc::new(Vault::new(Some(Arc::new(
-            FileStorage::create(path).await?,
+            VaultFileStorage::create(path).await?,
         )))))
     }
 

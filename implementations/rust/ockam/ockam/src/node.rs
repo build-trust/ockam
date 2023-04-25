@@ -33,10 +33,10 @@ pub struct Node {
 /// use std::sync::Arc;
 /// use ockam::{Node, Result};
 /// use ockam_node::Context;
-/// use ockam_vault::storage::FileStorage;
+/// use ockam_vault::storage::VaultFileStorage;
 ///
 /// async fn make_node(ctx: Context) -> Result<Node> {
-///   let node = Node::builder().with_vault_storage(Arc::new(FileStorage::new("vault".into()))).build(ctx).await?;
+///   let node = Node::builder().with_vault_storage(Arc::new(VaultFileStorage::create("vault".into()).await?)).build(ctx).await?;
 ///   Ok(node)
 /// }
 ///
