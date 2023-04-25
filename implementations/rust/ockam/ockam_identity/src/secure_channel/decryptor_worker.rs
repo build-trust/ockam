@@ -9,8 +9,8 @@ use crate::secure_channel::{
     Addresses, AuthenticationConfirmation, CreateResponderChannelMessage, Role,
 };
 use crate::{
-    to_symmetric_vault, to_xx_vault, DecryptionRequest, DecryptionResponse, Identity,
-    IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo, SecureChannelRegistryEntry,
+    to_xx_initialized, to_xx_vault, DecryptionRequest, DecryptionResponse, Identity, IdentityError,
+    IdentityIdentifier, IdentitySecureChannelLocalInfo, SecureChannelRegistryEntry,
     SecureChannelTrustInfo, SecureChannels, TrustPolicy,
 };
 use core::time::Duration;
@@ -270,12 +270,9 @@ impl KeyExchangeState {
             Encryptor::new(
                 keys.encrypt_key().clone(),
                 0,
-                to_symmetric_vault(vault.clone()),
+                to_xx_initialized(vault.clone()),
             ),
-            Decryptor::new(
-                keys.decrypt_key().clone(),
-                to_symmetric_vault(vault.clone()),
-            ),
+            Decryptor::new(keys.decrypt_key().clone(), to_xx_initialized(vault.clone())),
             *keys.h(),
         );
 

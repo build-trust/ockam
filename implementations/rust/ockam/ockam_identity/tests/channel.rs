@@ -78,6 +78,67 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
+async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) -> Result<()> {
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
+
+    let alice = identities_creation.create_identity().await?;
+    let bob = identities_creation.create_identity().await?;
+
+    let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier());
+    let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier());
+
+    secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &bob,
+            "bob_listener",
+            SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy),
+        )
+        .await?;
+
+    let alice_channel = secure_channels
+        .create_secure_channel(
+            ctx,
+            &alice,
+            route!["bob_listener"],
+            SecureChannelOptions::new().with_trust_policy(alice_trust_policy),
+        )
+        .await?;
+
+    let mut child_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            "child",
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
+
+    for n in 0..50 {
+        let payload = format!("Hello, Bob! {}", n);
+        child_ctx
+            .send(
+                route![alice_channel.clone(), child_ctx.address()],
+                payload.clone(),
+            )
+            .await?;
+
+        let message = child_ctx.receive::<String>().await?;
+        assert_eq!(&payload, message.as_body());
+
+        let payload = format!("Hello, Alice! {}", n);
+        child_ctx
+            .send(message.return_route(), payload.clone())
+            .await?;
+
+        let message = child_ctx.receive::<String>().await?;
+        assert_eq!(&payload, message.as_body());
+    }
+
+    ctx.stop().await
+}
+
+#[ockam_macros::test]
 async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
