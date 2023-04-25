@@ -11,6 +11,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::{
+    fmt_info,
     kafka::{
         kafka_consumer_default_addr, kafka_default_consumer_port_range,
         kafka_default_consumer_server, kafka_default_project_route, parse_bootstrap_server,
@@ -64,15 +65,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> c
     let payload = StartServiceRequest::new(payload, &addr);
     let req = Request::post("/node/services/kafka_consumer").body(payload);
 
-    opts.shell.write_line(&format!(
-        "{} Starting KafkaConsumer service at {}",
-        "!".light_green(),
-        &bootstrap_server.to_string(),
+    opts.terminal.write_line(&fmt_info!(
+        "Starting KafkaConsumer service at {}",
+        &bootstrap_server.to_string()
     ))?;
-    opts.shell.write_line(&format!(
-        "{} Brokers port range set to {}",
-        "!".light_green(),
-        &brokers_port_range.to_string(),
+    opts.terminal.write_line(&fmt_info!(
+        "Brokers port range set to {}",
+        &brokers_port_range.to_string()
     ))?;
 
     start_service_impl(

@@ -11,6 +11,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::{
+    fmt_info,
     kafka::{
         kafka_default_producer_port_range, kafka_default_producer_server,
         kafka_default_project_route, kafka_producer_default_addr, parse_bootstrap_server,
@@ -63,16 +64,15 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> c
         StartKafkaProducerRequest::new(bootstrap_server, brokers_port_range, project_route);
     let payload = StartServiceRequest::new(payload, &addr);
     let req = Request::post("/node/services/kafka_producer").body(payload);
-    opts.shell.write_line(&format!(
-        "{} Starting KafkaProducer service at {}",
-        "!".light_green(),
-        &bootstrap_server.to_string(),
+    opts.terminal.write_line(&fmt_info!(
+        "Starting KafkaProducer service at {}",
+        &bootstrap_server.to_string()
     ))?;
-    opts.shell.write_line(&format!(
-        "{} Brokers port range set to {}",
-        "!".light_green(),
-        &brokers_port_range.to_string(),
+    opts.terminal.write_line(&fmt_info!(
+        "Brokers port range set to {}",
+        &brokers_port_range.to_string()
     ))?;
+
     start_service_impl(
         &ctx,
         &opts,
