@@ -116,29 +116,20 @@ pub fn spawn_default_node(node_name: &str) -> String {
         config,
     );
 
-    let _ = opts
-        .shell
-        .clone()
-        .stdout()
-        .plain(format!(
-            "{} No default node found. Creating one...",
-            "!".light_green(),
-        ))
-        .write_line();
+    let _ = opts.shell.write_line(&format!(
+        "{} No default node found. Creating one...",
+        "!".light_green(),
+    ));
 
     let mut create_command = CreateCommand::default();
     create_command.node_name = node_name.to_string();
     create_command.run(quiet_opts);
 
-    let _ = opts
-        .shell
-        .stdout()
-        .plain(format!(
-            "{} Created default node: {}",
-            "!".light_green(),
-            node_name
-        ))
-        .write_line();
+    let _ = opts.shell.write_line(&format!(
+        "{} Created default node: {}",
+        "!".light_green(),
+        node_name
+    ));
 
     node_name.to_string()
 }
