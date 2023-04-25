@@ -21,7 +21,7 @@ use crate::{error::*, NodeMessage};
 use core::fmt::{Debug, Formatter};
 use core::sync::atomic::AtomicUsize;
 use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::{string::String, sync::Arc, sync::Mutex, vec::Vec};
+use ockam_core::compat::{string::String, sync::Arc, sync::RwLock, vec::Vec};
 use ockam_core::{Address, Mailboxes, RelayMessage, Result, TransportType};
 use ockam_transport_core::Transport;
 
@@ -37,7 +37,7 @@ pub struct Context {
     async_drop_sender: Option<AsyncDropSender>,
     mailbox_count: Arc<AtomicUsize>,
     /// List of transports used to resolve external addresses to local workers in routes
-    transports: Arc<Mutex<HashMap<TransportType, Arc<dyn Transport>>>>,
+    transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
 }
 
 /// This trait can be used to integrate transports into a node

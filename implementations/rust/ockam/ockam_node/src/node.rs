@@ -1,4 +1,4 @@
-use ockam_core::compat::sync::{Arc, Mutex};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
 
 use crate::{debugger, Context, Executor};
@@ -59,7 +59,7 @@ impl NodeBuilder {
                 vec![],
             ),
             None,
-            Arc::new(Mutex::new(Default::default())),
+            Default::default(),
         );
 
         debugger::log_inherit_context("NODE", &ctx, &ctx);
