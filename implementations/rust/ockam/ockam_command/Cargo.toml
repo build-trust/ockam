@@ -103,7 +103,7 @@ tempfile = "3.5"
 termcolor = "1.2.0"
 termimad = "0.23"
 thiserror = "1"
-tokio = { version = "1.27.0", features = ["full"] }
+tokio = { version = "1.28.0", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1.31", features = ["attributes"] }
 tracing-error = "0.2"
