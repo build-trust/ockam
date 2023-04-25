@@ -1,8 +1,10 @@
-use crate::Context;
 use ockam_core::compat::sync::Arc;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{Result, Route, TransportType};
+use ockam_core::{Error, Result, Route, TransportType};
 use ockam_transport_core::Transport;
+
+use crate::Context;
 
 impl Context {
     /// Return the list of supported transports
@@ -30,14 +32,26 @@ impl Context {
         for transport in transports.values() {
             resolved = transport.resolve_route(flow_controls, resolved).await?;
         }
-        Ok(resolved)
+        if !resolved.iter().all(|a| a.is_local()) {
+            Err(Error::new(
+                Origin::Transport,
+                Kind::NotFound,
+                format!(
+                    "the route {:?} could not be fully resolved to local addresses",
+                    {}
+                ),
+            ))
+        } else {
+            Ok(resolved)
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use ockam_core::{async_trait, route, Address, LOCAL};
+
     use super::*;
-    use ockam_core::async_trait;
 
     #[ockam_macros::test(crate = "crate")]
     async fn test_transports(ctx: &mut Context) -> Result<()> {
@@ -47,20 +61,56 @@ mod tests {
         ctx.stop().await
     }
 
+    #[ockam_macros::test(crate = "crate")]
+    async fn test_resolve_route(ctx: &mut Context) -> Result<()> {
+        let transport = Arc::new(SomeTransport());
+        ctx.register_transport(transport.clone());
+
+        let flow_controls = FlowControls::default();
+
+        // resolve a route with known transports
+        let result = ctx
+            .resolve_transport_route(
+                &flow_controls,
+                route![(transport.transport_type(), "address")],
+            )
+            .await;
+        assert!(result.is_ok());
+
+        // resolve a route with unknown transports
+        let result = ctx
+            .resolve_transport_route(&flow_controls, route![(TransportType::new(1), "address")])
+            .await;
+
+        assert!(result.is_err());
+        ctx.stop().await
+    }
+
     struct SomeTransport();
 
     #[async_trait]
     impl Transport for SomeTransport {
         fn transport_type(&self) -> TransportType {
-            TransportType::new(0)
+            TransportType::new(10)
         }
 
+        /// This implementation simply marks each address as a local address
         async fn resolve_route(
             &self,
             _flow_controls: &FlowControls,
             route: Route,
         ) -> Result<Route> {
-            Ok(route)
+            let mut result = Route::new();
+            for address in route.iter() {
+                if address.transport_type() == self.transport_type() {
+                    result = result.append(Address::new(LOCAL, address.address()));
+                } else {
+                    result = result.append(address.clone());
+                }
+            }
+
+            let resolved = result.into();
+            Ok(resolved)
         }
     }
 }
