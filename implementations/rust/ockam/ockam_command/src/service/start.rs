@@ -1,9 +1,12 @@
+use std::str::FromStr;
+
 use crate::node::NodeOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 use crate::Result;
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
+use colorful::Colorful;
 use minicbor::Encode;
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::services::{
@@ -14,6 +17,12 @@ use ockam_api::DefaultAddress;
 use ockam_core::api::{Request, RequestBuilder, Status};
 use ockam_core::compat::net::{Ipv4Addr, SocketAddr};
 use ockam_multiaddr::MultiAddr;
+
+const KAFKA_DEFAULT_PROJECT_ROUTE: &'static str = "/project/default";
+const KAFKA_DEFAULT_CONSUMER_SERVER: &'static str = "127.0.0.1:4000";
+const KAFKA_DEFAULT_CONSUMER_PORT_RANGE: &'static str = "4001-4100";
+const KAFKA_DEFAULT_PRODUCER_SERVER: &'static str = "127.0.0.1:5000";
+const KAFKA_DEFAULT_PRODUCER_PORT_RANGE: &'static str = "5001-5100";
 
 /// Start a specified service
 #[derive(Clone, Debug, Args)]
@@ -66,14 +75,14 @@ pub enum StartSubCommand {
         addr: String,
         /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
         /// In case just a port is specified, the default loopback address (127.0.0.1) will be used
-        #[arg(long, value_parser = parse_bootstrap_server)]
+        #[arg(long, default_value_t = kafka_default_consumer_server(), value_parser = parse_bootstrap_server)]
         bootstrap_server: SocketAddr,
         /// Local port range dynamically allocated to kafka brokers, must not overlap with the
         /// bootstrap port
-        #[arg(long)]
+        #[arg(long, default_value_t = kafka_default_consumer_port_range())]
         brokers_port_range: PortRange,
         /// The route to the project in ockam orchestrator, expected something like /project/<name>
-        #[arg(long)]
+        #[arg(long, default_value_t = kafka_default_project_route())]
         project_route: MultiAddr,
     },
     KafkaProducer {
@@ -82,14 +91,14 @@ pub enum StartSubCommand {
         addr: String,
         /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
         /// In case just a port is specified, the default loopback address (127.0.0.1) will be used
-        #[arg(long, value_parser = parse_bootstrap_server)]
+        #[arg(long, default_value_t = kafka_default_producer_server(), value_parser = parse_bootstrap_server)]
         bootstrap_server: SocketAddr,
         /// Local port range dynamically allocated to kafka brokers, must not overlap with the
         /// bootstrap port
-        #[arg(long)]
+        #[arg(long, default_value_t = kafka_default_producer_port_range())]
         brokers_port_range: PortRange,
         /// The route to the project in ockam orchestrator, expected something like /project/<name>
-        #[arg(long)]
+        #[arg(long, default_value_t = kafka_default_project_route())]
         project_route: MultiAddr,
     },
 }
@@ -124,6 +133,30 @@ fn kafka_consumer_default_addr() -> String {
 
 fn kafka_producer_default_addr() -> String {
     DefaultAddress::KAFKA_PRODUCER.to_string()
+}
+
+fn kafka_default_project_route() -> MultiAddr {
+    MultiAddr::from_str(KAFKA_DEFAULT_PROJECT_ROUTE).expect("Failed to parse default project route")
+}
+
+fn kafka_default_consumer_server() -> SocketAddr {
+    SocketAddr::from_str(KAFKA_DEFAULT_CONSUMER_SERVER)
+        .expect("Failed to parse default consumer server")
+}
+
+fn kafka_default_consumer_port_range() -> PortRange {
+    PortRange::from_str(KAFKA_DEFAULT_CONSUMER_PORT_RANGE)
+        .expect("Failed to parse default consumer port range")
+}
+
+fn kafka_default_producer_server() -> SocketAddr {
+    SocketAddr::from_str(KAFKA_DEFAULT_PRODUCER_SERVER)
+        .expect("Failed to parse default producer server")
+}
+
+fn kafka_default_producer_port_range() -> PortRange {
+    PortRange::from_str(KAFKA_DEFAULT_PRODUCER_PORT_RANGE)
+        .expect("Failed to parse default producer port range")
 }
 
 impl StartCommand {
@@ -191,6 +224,17 @@ async fn run_impl(
                 StartKafkaConsumerRequest::new(bootstrap_server, brokers_port_range, project_route);
             let payload = StartServiceRequest::new(payload, &addr);
             let req = Request::post("/node/services/kafka_consumer").body(payload);
+
+            opts.shell.write_line(&format!(
+                "{} Starting KafkaConsumer service at {}",
+                "!".light_green(),
+                &bootstrap_server.to_string(),
+            ))?;
+            opts.shell.write_line(&format!(
+                "{} Brokers port range set to {}",
+                "!".light_green(),
+                &brokers_port_range.to_string(),
+            ))?;
             start_service_impl(
                 ctx,
                 &opts,
@@ -212,6 +256,16 @@ async fn run_impl(
                 StartKafkaProducerRequest::new(bootstrap_server, brokers_port_range, project_route);
             let payload = StartServiceRequest::new(payload, &addr);
             let req = Request::post("/node/services/kafka_producer").body(payload);
+            opts.shell.write_line(&format!(
+                "{} Starting KafkaProducer service at {}",
+                "!".light_green(),
+                &bootstrap_server.to_string(),
+            ))?;
+            opts.shell.write_line(&format!(
+                "{} Brokers port range set to {}",
+                "!".light_green(),
+                &brokers_port_range.to_string(),
+            ))?;
             start_service_impl(
                 ctx,
                 &opts,
