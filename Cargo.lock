@@ -3636,6 +3636,7 @@ dependencies = [
  "rand_pcg",
  "serde",
  "serde_cbor",
+ "serde_json",
  "sha2 0.10.6",
  "thiserror",
  "tokio",

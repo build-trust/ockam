@@ -1,19 +1,23 @@
 use crate::storage::Storage;
 use crate::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry, VaultError};
-use cfg_if::cfg_if;
 use ockam_core::compat::boxed::Box;
-use ockam_core::errcode::{Kind, Origin};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Error, Result};
-use ockam_node::tokio::task::{self, JoinError};
-use ockam_node::{FileStorage, ValueStorage};
+use ockam_node::{FileValueStorage, ValueStorage};
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::BufReader;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::path::PathBuf;
 
-struct VaultFileStorage {
-    storage: Arc<dyn ValueStorage<FileVault>>,
+/// Storage for a Vault backed by a file
+pub struct VaultFileStorage {
+    storage: Arc<FileValueStorage<FileVault, VaultEntry>>,
+}
+
+impl VaultFileStorage {
+    /// Create a new file storage for a Vault
+    pub async fn create(path: PathBuf) -> Result<VaultFileStorage> {
+        let storage = Arc::new(FileValueStorage::create(path).await?);
+        Ok(VaultFileStorage { storage })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,27 +37,36 @@ enum FileVault {
     },
 }
 
+impl Default for FileVault {
+    fn default() -> Self {
+        FileVault::V1 {
+            entries: Default::default(),
+            next_id: Default::default(),
+        }
+    }
+}
+
 #[async_trait]
 impl Storage for VaultFileStorage {
     async fn store(&self, key_id: &KeyId, key: &VaultEntry) -> Result<()> {
         let key_id = key_id.clone();
         let attributes = key.key_attributes();
         let key = key.secret().clone();
-        let t = move |v: FileVaultEntry| {
+        let t = move |v: FileVault| {
             let new_entry = (
                 0,
                 FileVaultEntry {
-                    key_id: Some(key_id),
-                    key_attributes: attributes,
-                    key,
+                    key_id: Some(key_id.clone()),
+                    key_attributes: attributes.clone(),
+                    key: key.clone(),
                 },
             );
-            let FileVaultEntry::V1 {
+            let FileVault::V1 {
                 mut entries,
                 next_id,
             } = v;
             entries.push(new_entry);
-            Ok((FileVaultEntry::V1 { entries, next_id }, ()))
+            Ok(FileVault::V1 { entries, next_id })
         };
         self.storage.update_value(t).await
     }
@@ -104,7 +117,7 @@ impl Storage for VaultFileStorage {
                 ))))
             }
         };
-        self.update_value(t).await
+        self.storage.modify_value(t).await
     }
 }
 
@@ -176,7 +189,7 @@ NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
         rng.fill_bytes(&mut rand_id);
 
         let dir = std::env::temp_dir();
-        let storage = FileStorage::create(dir.join(rand_id1)).await.unwrap();
+        let storage = VaultFileStorage::create(dir.join(rand_id1)).await.unwrap();
         let storage = Arc::new(storage);
         let vault = Vault::new(Some(storage.clone()));
 
@@ -213,7 +226,7 @@ NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
         rng.fill_bytes(&mut rand_id);
 
         let dir = std::env::temp_dir();
-        let storage = FileStorage::create(dir.join(rand_id1)).await.unwrap();
+        let storage = VaultFileStorage::create(dir.join(rand_id1)).await.unwrap();
 
         let storage = Arc::new(storage);
         let vault = Vault::new(Some(storage.clone()));
