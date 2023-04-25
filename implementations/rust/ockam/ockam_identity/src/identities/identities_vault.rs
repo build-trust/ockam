@@ -7,7 +7,7 @@ use ockam_core::vault::{
 };
 use ockam_core::vault::{SymmetricVault, Verifier};
 use ockam_core::Result;
-use ockam_key_exchange_xx::XXVault;
+use ockam_key_exchange_xx::{XXInitializedVault, XXVault};
 
 /// Traits required for a Vault implementation suitable for use in an Identity
 /// Vault with XX required functionality
@@ -138,6 +138,13 @@ pub fn to_symmetric_vault(vault: Arc<dyn IdentitiesVault>) -> Arc<dyn SymmetricV
 
 /// Return this vault as a XX vault
 pub fn to_xx_vault(vault: Arc<dyn IdentitiesVault>) -> Arc<dyn XXVault> {
+    Arc::new(CoercedIdentitiesVault {
+        vault: vault.clone(),
+    })
+}
+
+/// Returns this vault as a XX initialized vault
+pub fn to_xx_initialized(vault: Arc<dyn IdentitiesVault>) -> Arc<dyn XXInitializedVault> {
     Arc::new(CoercedIdentitiesVault {
         vault: vault.clone(),
     })

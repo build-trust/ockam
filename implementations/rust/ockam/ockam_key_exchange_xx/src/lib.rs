@@ -47,6 +47,11 @@ impl<D> XXVault for D where
 {
 }
 
+/// Vault with required functionalities after XX key exchange
+pub trait XXInitializedVault: SecretVault + SymmetricVault + Send + Sync + 'static {}
+
+impl<D> XXInitializedVault for D where D: SecretVault + SymmetricVault + Send + Sync + 'static {}
+
 mod initiator;
 mod state;
 pub use initiator::*;

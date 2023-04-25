@@ -1,14 +1,20 @@
 use crate::identity::IdentityError;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::vault::{KeyId, SymmetricVault};
+use ockam_core::vault::{KeyId, Secret, SecretKey};
 use ockam_core::Result;
+use ockam_key_exchange_xx::XXInitializedVault;
 
 pub(crate) struct Encryptor {
     key: KeyId,
     nonce: u64,
-    vault: Arc<dyn SymmetricVault>,
+    vault: Arc<dyn XXInitializedVault>,
 }
+
+// To simplify the implementation we use the same constant for the size of the message
+// window we accept with the message period used to rekey.
+// This means we only need to keep the current key and the previous one.
+pub(crate) const KEY_RENEWAL_INTERVAL: u64 = 10;
 
 impl Encryptor {
     /// We use u64 nonce since it's convenient to work with it (e.g. increment)
@@ -23,15 +29,37 @@ impl Encryptor {
         (b, n)
     }
 
+    pub async fn rekey(vault: &Arc<dyn XXInitializedVault>, key: &KeyId) -> Result<KeyId> {
+        let nonce_buffer = Self::convert_nonce_from_u64(u64::MAX).1;
+        let zeroes = [0u8; 32];
+
+        let new_key_buffer = vault
+            .aead_aes_gcm_encrypt(key, &zeroes, &nonce_buffer, &[])
+            .await?;
+
+        let attributes = vault.secret_attributes_get(key).await?;
+
+        vault
+            .secret_import(
+                Secret::Key(SecretKey::new(new_key_buffer[0..32].to_vec())),
+                attributes,
+            )
+            .await
+    }
+
     pub async fn encrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
-        let old_nonce = self.nonce;
-        if old_nonce == u64::MAX {
+        let current_nonce = self.nonce;
+        if current_nonce == u64::MAX {
             return Err(IdentityError::NonceOverflow.into());
         }
 
         self.nonce += 1;
 
-        let (small_nonce, nonce) = Self::convert_nonce_from_u64(old_nonce);
+        if current_nonce > 0 && current_nonce % KEY_RENEWAL_INTERVAL == 0 {
+            self.key = Self::rekey(&self.vault, &self.key).await?;
+        }
+
+        let (small_nonce, nonce) = Self::convert_nonce_from_u64(current_nonce);
 
         let mut cipher_text = self
             .vault
@@ -45,7 +73,7 @@ impl Encryptor {
         Ok(res)
     }
 
-    pub fn new(key: KeyId, nonce: u64, vault: Arc<dyn SymmetricVault>) -> Self {
+    pub fn new(key: KeyId, nonce: u64, vault: Arc<dyn XXInitializedVault>) -> Self {
         Self { key, nonce, vault }
     }
 }
