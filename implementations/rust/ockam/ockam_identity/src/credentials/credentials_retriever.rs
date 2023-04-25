@@ -64,14 +64,6 @@ impl RemoteCredentialsRetriever {
 #[async_trait]
 impl CredentialsRetriever for RemoteCredentialsRetriever {
     async fn retrieve(&self, ctx: &Context, for_identity: &Identity) -> Result<Credential> {
-        if !ctx.is_transport_registered(TransportType::new(1)) {
-            return Err(Error::new(
-                Origin::Transport,
-                Kind::NotFound,
-                "the TCP transport is required to retrieve remote credentials",
-            ));
-        };
-
         debug!("Getting credential from : {}", &self.issuer.route);
         let resolved_route = ctx
             .resolve_transport_route(&self.flow_controls, self.issuer.route.clone())
