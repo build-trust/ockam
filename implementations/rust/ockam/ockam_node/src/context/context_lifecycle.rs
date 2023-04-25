@@ -1,9 +1,5 @@
-use crate::async_drop::AsyncDrop;
-use crate::channel_types::{message_channel, small_channel, SmallReceiver, SmallSender};
-use crate::tokio::{self, runtime::Handle};
-use crate::{debugger, Context};
-use crate::{error::*, relay::CtrlSignal, router::SenderPair, NodeMessage};
 use core::time::Duration;
+
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::{boxed::Box, sync::Arc, sync::Mutex, vec::Vec};
 use ockam_core::{
@@ -12,6 +8,12 @@ use ockam_core::{
     OutgoingAccessControl, Result, TransportType,
 };
 use ockam_transport_core::Transport;
+
+use crate::async_drop::AsyncDrop;
+use crate::channel_types::{message_channel, small_channel, SmallReceiver, SmallSender};
+use crate::tokio::{self, runtime::Handle};
+use crate::{debugger, Context};
+use crate::{error::*, relay::CtrlSignal, router::SenderPair, NodeMessage};
 
 /// A special type of `Context` that has no worker relay and inherits
 /// the parent `Context`'s access control
@@ -192,9 +194,10 @@ impl Context {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ockam_core::flow_control::FlowControls;
-    use ockam_core::{async_trait, Mailbox, Route};
+    use ockam_core::{async_trait, Mailbox};
+
+    use super::*;
 
     #[ockam_macros::test(crate = "crate")]
     async fn test_copy(ctx: &mut Context) -> Result<()> {
@@ -222,12 +225,12 @@ mod tests {
             TransportType::new(0)
         }
 
-        async fn resolve_route(
+        async fn resolve_address(
             &self,
             _flow_controls: &FlowControls,
-            route: Route,
-        ) -> Result<Route> {
-            Ok(route)
+            address: Address,
+        ) -> Result<Address> {
+            Ok(address)
         }
     }
 }

@@ -1,13 +1,14 @@
-use crate::{TcpConnectionOptions, TcpRegistry, TcpTransport, TCP};
 use core::str::FromStr;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControls;
-use ockam_core::{async_trait, AsyncTryClone, Error, Result, Route, TransportType};
-use ockam_node::Context;
-use ockam_transport_core::Transport;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::debug;
+
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::flow_control::FlowControls;
+use ockam_core::{async_trait, Address, AsyncTryClone, Error, Result, TransportType};
+use ockam_node::Context;
+use ockam_transport_core::Transport;
+
+use crate::{TcpConnectionOptions, TcpRegistry, TcpTransport, TCP};
 
 impl TcpTransport {
     /// Create a TCP transport
@@ -50,70 +51,54 @@ impl Transport for TcpTransport {
         TCP
     }
 
-    async fn resolve_route(&self, flow_controls: &FlowControls, route: Route) -> Result<Route> {
-        let mut number_of_tcp_hops = 0;
-        for address in route.clone().iter() {
-            if address.transport_type() == TCP {
-                if number_of_tcp_hops >= 1 {
-                    // close the previously opened connection
-                    return Err(Error::new(
-                        Origin::Transport,
-                        Kind::Invalid,
-                        "only one TCP hop is allowed in a route",
-                    ));
-                } else {
-                    number_of_tcp_hops += 1;
-                }
-            };
-        }
-
-        let mut result = Route::new();
-        for address in route.iter() {
-            if address.transport_type() == TCP {
-                let options = if SocketAddr::from_str(address.address())
-                    .map(|socket_addr| socket_addr.ip().is_loopback())
-                    .is_ok()
-                {
-                    // TODO: Enable FlowControl for loopback addresses as well
-                    TcpConnectionOptions::insecure()
-                } else {
-                    let id = flow_controls.generate_id();
-                    TcpConnectionOptions::as_producer(flow_controls, &id)
-                };
-                let addr = self.connect(address.address().to_string(), options).await?;
-                result = result.append(addr);
+    async fn resolve_address(
+        &self,
+        flow_controls: &FlowControls,
+        address: Address,
+    ) -> Result<Address> {
+        if address.transport_type() == TCP {
+            let options = if SocketAddr::from_str(address.address())
+                .map(|socket_addr| socket_addr.ip().is_loopback())
+                .is_ok()
+            {
+                // TODO: Enable FlowControl for loopback addresses as well
+                TcpConnectionOptions::insecure()
             } else {
-                result = result.append(address.clone());
-            }
+                let id = flow_controls.generate_id();
+                TcpConnectionOptions::as_producer(flow_controls, &id)
+            };
+            Ok(self.connect(address.address().to_string(), options).await?)
+        } else {
+            Err(Error::new(
+                Origin::Transport,
+                Kind::NotFound,
+                format!(
+                    "this address can not be resolved by a TCP transport {}",
+                    address
+                ),
+            ))
         }
-
-        let resolved = result.into();
-        debug!("resolved route {} to {}", route, resolved);
-        Ok(resolved)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_core::{route, TransportType, LOCAL};
     use ockam_transport_core::TransportError;
     use std::net::TcpListener;
 
     #[ockam_macros::test]
-    async fn test_resolve_route(ctx: &mut Context) -> Result<()> {
+    async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_address = "127.0.0.1:0";
         let initial_workers = ctx.list_workers().await?;
         let listener = TcpListener::bind(tcp_address).map_err(TransportError::from)?;
         let local_address = listener.local_addr().unwrap().to_string();
 
-        let other_transport_type = TransportType::new(10);
-        let other_address = (other_transport_type, "other_address");
-        let route = tcp
-            .resolve_route(
+        let resolved = tcp
+            .resolve_address(
                 &FlowControls::default(),
-                route![(TCP, local_address.clone()), other_address],
+                Address::new(TCP, local_address.clone()),
             )
             .await?;
 
@@ -123,48 +108,13 @@ mod tests {
         assert_eq!(additional_workers.len(), 2);
 
         // the TCP address is replaced with the TCP sender worker address
-        // the other address is left unchanged
-        assert_eq!(
-            route.iter().map(|a| a.transport_type()).collect::<Vec<_>>(),
-            vec![LOCAL, other_transport_type]
-        );
-
-        let first_address = route.next()?;
-        assert!(additional_workers.contains(first_address));
+        assert!(additional_workers.contains(&resolved));
 
         // trying to resolve the address a second time should still work
         let _route = tcp
-            .resolve_route(
-                &FlowControls::default(),
-                route![(TCP, local_address), other_address],
-            )
+            .resolve_address(&FlowControls::default(), Address::new(TCP, local_address))
             .await?;
 
-        ctx.stop().await
-    }
-
-    #[ockam_macros::test]
-    async fn test_resolve_route_only_single_hop_is_allowed(ctx: &mut Context) -> Result<()> {
-        let tcp = TcpTransport::create(ctx).await?;
-        let tcp_address = "127.0.0.1:0";
-        let _listener = TcpListener::bind(tcp_address).map_err(TransportError::from)?;
-
-        let result = tcp
-            .resolve_route(
-                &FlowControls::default(),
-                route![
-                    (TCP, tcp_address),
-                    (TransportType::new(10), "other_address"),
-                    (TCP, tcp_address)
-                ],
-            )
-            .await
-            .err();
-
-        assert_eq!(
-            result.unwrap().to_string(),
-            "only one TCP hop is allowed in a route"
-        );
         ctx.stop().await
     }
 
@@ -172,9 +122,9 @@ mod tests {
     async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
         let result = tcp
-            .resolve_route(
+            .resolve_address(
                 &FlowControls::default(),
-                route![(TCP, "www.google.com:80"),],
+                Address::new(TCP, "www.google.com:80"),
             )
             .await
             .is_ok();
