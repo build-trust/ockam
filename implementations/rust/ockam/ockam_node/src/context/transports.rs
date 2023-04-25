@@ -31,19 +31,20 @@ impl Context {
         let mut resolved = route;
         for transport in transports.values() {
             resolved = transport.resolve_route(flow_controls, resolved).await?;
+            if resolved.is_local() {
+                return Ok(resolved);
+            }
         }
-        if !resolved.iter().all(|a| a.is_local()) {
-            Err(Error::new(
-                Origin::Transport,
-                Kind::NotFound,
-                format!(
-                    "the route {:?} could not be fully resolved to local addresses",
-                    {}
-                ),
-            ))
-        } else {
-            Ok(resolved)
-        }
+
+        // If eventually some addresses could not be resolved return an error
+        Err(Error::new(
+            Origin::Transport,
+            Kind::NotFound,
+            format!(
+                "the route {:?} could not be fully resolved to local addresses",
+                {}
+            ),
+        ))
     }
 }
 
