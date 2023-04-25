@@ -252,6 +252,11 @@ impl Route {
 
         Ok(false)
     }
+
+    /// Return true if all the addresses composing that route are local addresses
+    pub fn is_local(&self) -> bool {
+        self.iter().all(|a| a.is_local())
+    }
 }
 
 impl Display for Route {
