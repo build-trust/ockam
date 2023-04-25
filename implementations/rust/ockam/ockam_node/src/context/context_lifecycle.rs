@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::{boxed::Box, sync::Arc, sync::Mutex, vec::Vec};
+use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AsyncTryClone, DenyAll, Error, IncomingAccessControl, Mailboxes,
@@ -59,7 +59,7 @@ impl Context {
         sender: SmallSender<NodeMessage>,
         mailboxes: Mailboxes,
         async_drop_sender: Option<AsyncDropSender>,
-        transports: Arc<Mutex<HashMap<TransportType, Arc<dyn Transport>>>>,
+        transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
     ) -> (Self, SenderPair, SmallReceiver<CtrlSignal>) {
         let (mailbox_tx, receiver) = message_channel();
         let (ctrl_tx, ctrl_rx) = small_channel();

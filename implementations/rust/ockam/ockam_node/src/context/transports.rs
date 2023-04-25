@@ -9,13 +9,13 @@ use crate::Context;
 impl Context {
     /// Return the list of supported transports
     pub fn register_transport(&self, transport: Arc<dyn Transport>) {
-        let mut transports = self.transports.lock().unwrap();
+        let mut transports = self.transports.write().unwrap();
         transports.insert(transport.transport_type(), transport);
     }
 
     /// Return true if a given transport has already been registered
     pub fn is_transport_registered(&self, transport_type: TransportType) -> bool {
-        let transports = self.transports.lock().unwrap();
+        let transports = self.transports.read().unwrap();
         transports.contains_key(&transport_type)
     }
 
@@ -27,7 +27,7 @@ impl Context {
         flow_controls: &FlowControls,
         route: Route,
     ) -> Result<Route> {
-        let transports = self.transports.lock().unwrap().clone();
+        let transports = self.transports.read().unwrap().clone();
 
         // check the number of transport hops, there can be only one
         // we do this first pass over the list of addresses to avoid creating connections
@@ -78,8 +78,9 @@ impl Context {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ockam_core::{async_trait, route, Address, LOCAL};
+
+    use super::*;
 
     #[ockam_macros::test(crate = "crate")]
     async fn test_transports(ctx: &mut Context) -> Result<()> {
