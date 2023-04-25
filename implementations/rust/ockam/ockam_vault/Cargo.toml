@@ -96,5 +96,5 @@ x25519-dalek = { version = "1.0", default_features = false }
 
 [dev-dependencies]
 data-encoding = { version = "2.3.3", features = ["alloc"] }
-tokio = { version = "1.27", features = ["full"] }
+tokio = { version = "1.28", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }
