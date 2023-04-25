@@ -276,7 +276,7 @@ jobs:
         ls $GITHUB_WORKSPACE
 
     - name: Install Cosign
-      uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919
+      uses: sigstore/cosign-installer@204a51a57a74d190b284a0ce69b44bc37201f343
       with:
         cosign-release: 'v2.0.0'
 
@@ -384,7 +384,7 @@ jobs:
           ./build-elixir-universal-lib.sh
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919
+        uses: sigstore/cosign-installer@204a51a57a74d190b284a0ce69b44bc37201f343
         with:
           cosign-release: 'v2.0.0'
 
@@ -434,7 +434,7 @@ jobs:
         run: shasum -a 256 ockam.* > sha256sums.txt
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919
+        uses: sigstore/cosign-installer@204a51a57a74d190b284a0ce69b44bc37201f343
         with:
           cosign-release: 'v2.0.0'
 
