@@ -28,31 +28,58 @@ impl Context {
         route: Route,
     ) -> Result<Route> {
         let transports = self.transports.lock().unwrap().clone();
-        let mut resolved = route;
-        for transport in transports.values() {
-            resolved = transport.resolve_route(flow_controls, resolved).await?;
-            if resolved.is_local() {
-                return Ok(resolved);
+
+        // check the number of transport hops, there can be only one
+        // we do this first pass over the list of addresses to avoid creating connections
+        // and then having to close them if we find several hops
+        let mut number_of_transport_hops = 0;
+        for address in route.iter() {
+            if !address.is_local() {
+                if number_of_transport_hops >= 1 {
+                    return Err(Error::new(
+                        Origin::Transport,
+                        Kind::Invalid,
+                        "only one transport hop is allowed in a route",
+                    ));
+                } else {
+                    number_of_transport_hops += 1;
+                }
             }
         }
+        // return the route if there are no transport hops
+        if number_of_transport_hops == 0 {
+            return Ok(route);
+        }
 
-        // If eventually some addresses could not be resolved return an error
-        Err(Error::new(
-            Origin::Transport,
-            Kind::NotFound,
-            format!(
-                "the route {:?} could not be fully resolved to local addresses",
-                {}
-            ),
-        ))
+        // otherwise resolve the hop address
+        let mut resolved = Route::new();
+        for address in route.iter() {
+            if !address.is_local() {
+                if let Some(transport) = transports.get(&address.transport_type()) {
+                    let resolved_address = transport
+                        .resolve_address(flow_controls, address.clone())
+                        .await?;
+                    resolved = resolved.append(resolved_address);
+                } else {
+                    return Err(Error::new(
+                        Origin::Transport,
+                        Kind::NotFound,
+                        format!("the transport is not registered for address {}", address),
+                    ));
+                }
+            } else {
+                resolved = resolved.append(address.clone());
+            };
+        }
+        let result: Route = resolved.into();
+        Ok(result)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ockam_core::{async_trait, route, Address, LOCAL};
-
     use super::*;
+    use ockam_core::{async_trait, route, Address, LOCAL};
 
     #[ockam_macros::test(crate = "crate")]
     async fn test_transports(ctx: &mut Context) -> Result<()> {
@@ -87,6 +114,27 @@ mod tests {
         ctx.stop().await
     }
 
+    #[ockam_macros::test(crate = "crate")]
+    async fn test_resolve_route_only_single_hop_is_allowed(ctx: &mut Context) -> Result<()> {
+        let result = ctx
+            .resolve_transport_route(
+                &FlowControls::default(),
+                route![
+                    (TransportType::new(1), "address1"),
+                    (LOCAL, "address2"),
+                    (TransportType::new(1), "address3")
+                ],
+            )
+            .await
+            .err();
+
+        assert_eq!(
+            result.unwrap().to_string(),
+            "only one transport hop is allowed in a route"
+        );
+        ctx.stop().await
+    }
+
     struct SomeTransport();
 
     #[async_trait]
@@ -96,22 +144,12 @@ mod tests {
         }
 
         /// This implementation simply marks each address as a local address
-        async fn resolve_route(
+        async fn resolve_address(
             &self,
             _flow_controls: &FlowControls,
-            route: Route,
-        ) -> Result<Route> {
-            let mut result = Route::new();
-            for address in route.iter() {
-                if address.transport_type() == self.transport_type() {
-                    result = result.append(Address::new(LOCAL, address.address()));
-                } else {
-                    result = result.append(address.clone());
-                }
-            }
-
-            let resolved = result.into();
-            Ok(resolved)
+            address: Address,
+        ) -> Result<Address> {
+            Ok(Address::new(LOCAL, address.address()))
         }
     }
 }
