@@ -1,7 +1,7 @@
 use crate::node::NodeOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
+use crate::CommandGlobalOpts;
 use crate::Result;
-use crate::{fmt_warn, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
 
