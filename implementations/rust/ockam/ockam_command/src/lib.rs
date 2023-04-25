@@ -11,6 +11,7 @@ mod docs;
 mod enroll;
 mod error;
 mod identity;
+mod kafka;
 mod lease;
 mod manpages;
 mod markdown;
@@ -49,6 +50,8 @@ use credential::CredentialCommand;
 use enroll::EnrollCommand;
 use error::{Error, Result};
 use identity::IdentityCommand;
+use kafka::consumer::KafkaConsumerCommand;
+use kafka::producer::KafkaProducerCommand;
 use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use markdown::MarkdownCommand;
@@ -265,6 +268,9 @@ pub enum OckamSubcommand {
     TcpOutlet(TcpOutletCommand),
     TcpInlet(TcpInletCommand),
 
+    KafkaConsumer(KafkaConsumerCommand),
+    KafkaProducer(KafkaProducerCommand),
+
     SecureChannelListener(SecureChannelListenerCommand),
     SecureChannel(SecureChannelCommand),
 
@@ -335,6 +341,9 @@ impl OckamCommand {
             OckamSubcommand::TcpConnection(c) => c.run(options),
             OckamSubcommand::TcpOutlet(c) => c.run(options),
             OckamSubcommand::TcpInlet(c) => c.run(options),
+
+            OckamSubcommand::KafkaConsumer(c) => c.run(options),
+            OckamSubcommand::KafkaProducer(c) => c.run(options),
 
             OckamSubcommand::SecureChannelListener(c) => c.run(options),
             OckamSubcommand::SecureChannel(c) => c.run(options),
