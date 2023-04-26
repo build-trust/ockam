@@ -300,6 +300,7 @@ pub fn run() {
         [RGB::new(0x52, 0xC7, 0xEA), RGB::new(0xEC, 0xFD, 0xF9)],
     );
 
+    eprintln!();
     eprintln!("{}", colored_header);
     eprintln!();
 
