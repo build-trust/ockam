@@ -12,6 +12,8 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.Telemetry
   alias Ockam.Wire
 
+  require Logger
+
   @doc false
   def peer(_channel), do: :ok
 
@@ -187,7 +189,16 @@ defmodule Ockam.SecureChannel.Channel do
     ## FIXME this shouldn't crash the channel if failing to decrypt for example,
     cond do
       first_address === data.ciphertext_address ->
-        decrypt_and_send_to_router(message, state, data)
+        case decrypt_and_send_to_router(message, state, data) do
+          {:next_state, state, data} ->
+            {:next_state, state, data}
+
+          {:error, reason} ->
+            Logger.warn("packet dropped: #{inspect(reason)}")
+            # Erroneous/Repeated/Malicius packet dropped.
+            # decryptor state is not affected
+            {:next_state, state, data}
+        end
 
       first_address === data.plaintext_address ->
         encrypt_and_send_to_peer(message, state, data)
@@ -197,14 +208,20 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
+  defp decode_payload(payload) do
+    case :bare.decode(payload, :data) do
+      {:ok, encrypted, ""} -> {:ok, encrypted}
+      _other -> {:error, {:bad_payload, payload}}
+    end
+  end
+
   defp decrypt_and_send_to_router(envelope, state, data) do
     %{encrypted_transport: %{decrypt: transport_state} = encrypted_transport} = data
     payload = Message.payload(envelope)
 
     ## TODO: optimise double encoding of binaries
-    {:ok, encrypted, ""} = :bare.decode(payload, :data)
-
-    with {:ok, decrypted, new_transport_state} <-
+    with {:ok, encrypted} <- decode_payload(payload),
+         {:ok, decrypted, new_transport_state} <-
            EncryptedTransport.Decryptor.decrypt(<<>>, encrypted, transport_state),
          {:ok, decoded} <- Wire.decode(decrypted, :secure_channel) do
       message =
