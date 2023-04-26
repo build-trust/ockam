@@ -49,7 +49,7 @@ use crate::subscription::SubscriptionCommand;
 use crate::terminal::{Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
-use colorful::Colorful;
+
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
 use console::Term;
