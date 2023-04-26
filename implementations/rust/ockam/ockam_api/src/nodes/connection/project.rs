@@ -54,10 +54,6 @@ impl Instantiator for ProjectInstantiator {
         let (_before, project_piece, after) =
             ConnectionInstanceBuilder::extract(&builder.current_multiaddr, match_start, 1);
 
-        if builder.flow_control_id.is_some() {
-            return Err(ApiError::message("invalid multiple TCP hops"));
-        }
-
         let project_protocol_value = project_piece
             .first()
             .ok_or_else(|| ApiError::message("missing project protocol in multiaddr"))?;
@@ -87,7 +83,6 @@ impl Instantiator for ProjectInstantiator {
                 self.identity_name.clone(),
                 &self.context,
                 self.credential_name.clone(),
-                tcp.flow_control_id,
             )
             .await?;
 

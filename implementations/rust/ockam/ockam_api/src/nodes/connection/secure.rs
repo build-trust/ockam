@@ -69,7 +69,6 @@ impl Instantiator for SecureChannelInstantiator {
                 None,
                 &self.context,
                 None,
-                builder.flow_control_id.clone(),
             )
             .await?;
 
