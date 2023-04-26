@@ -11,10 +11,10 @@ macro_rules! fmt_ok {
 #[macro_export]
 macro_rules! fmt_info {
     ($input:expr) => {
-        format!("{} {}", ">".light_green(), format!($input))
+        format!("{} {}", "*".light_blue(), format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{} {}", ">".light_green(), format!($input, $($args),+))
+        format!("{} {}", "*".light_blue(), format!($input, $($args),+))
     };
 }
 

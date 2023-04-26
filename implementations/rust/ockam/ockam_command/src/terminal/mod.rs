@@ -239,11 +239,13 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
         self.stderr.clone().rewrite(msg)
     }
 
-    pub fn write_line(&self, msg: &str) -> Result<()> {
+    pub fn write_line(&self, msg: &str) -> Result<&Self> {
         if self.quiet {
-            return Ok(());
+            return Ok(self);
         }
-        self.stderr.write_line(msg)
+        self.stderr.write_line(msg)?;
+        self.stderr.write_line("")?;
+        Ok(self)
     }
 
     pub fn stdout(self) -> Terminal<W, ToStdOut> {
