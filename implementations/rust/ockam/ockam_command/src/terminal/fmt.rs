@@ -1,30 +1,30 @@
 #[macro_export]
 macro_rules! fmt_log {
     ($input:expr) => {
-        format!("{} {}", "      ".bg_rgb(82, 199, 234).bold(), format!($input))
+        format!("{} {}", "      ".bold(), format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{} {}", "      ".bg_rgb(82, 199, 234).bold(), format!($input, $($args),+))
+        format!("{} {}", "      ".bold(), format!($input, $($args),+))
     };
 }
 
 #[macro_export]
 macro_rules! fmt_ok {
     ($input:expr) => {
-        format!("{} {}", "  OK  ".bg_rgb(79, 218, 184).rgb(36, 42, 49).bold(), format!($input))
+        format!("{} {}", "  OK  ".bg_rgb(133, 255, 0).rgb(36, 42, 49).bold(), format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{} {}", "  OK  ".bg_rgb(79, 218, 184).rgb(36, 42, 49).bold(), format!($input, $($args),+))
+        format!("{} {}", "  OK  ".bg_rgb(133, 255, 0).rgb(36, 42, 49).bold(), format!($input, $($args),+))
     };
 }
 
 #[macro_export]
 macro_rules! fmt_info {
     ($input:expr) => {
-        format!("{} {}", " INFO ".bg_rgb(82, 199, 234).rgb(36, 42, 49).bold(), format!($input))
+        format!("{} {}", " INFO ".bg_rgb(82, 199, 234).rgb(255, 255, 255).bold(), format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{} {}", " INFO ".bg_rgb(82, 199, 234).rgb(36, 42, 49).bold(), format!($input, $($args),+))
+        format!("{} {}", " INFO ".bg_rgb(82, 199, 234).rgb(255, 255, 255).bold(), format!($input, $($args),+))
     };
 }
 
