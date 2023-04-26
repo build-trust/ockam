@@ -528,7 +528,7 @@ mod test {
     }
 
     #[allow(non_snake_case)]
-    #[ockam_macros::test(timeout = 60_000)]
+    #[ockam_macros::test(timeout = 5_000)]
     async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_kafka_message_pass(
         context: &mut Context,
     ) -> ockam::Result<()> {
