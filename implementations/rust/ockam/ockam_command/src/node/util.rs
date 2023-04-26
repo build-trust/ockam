@@ -16,6 +16,7 @@ use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::Command;
+use ockam_api::cli_state::StateTrait;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
@@ -110,7 +111,7 @@ pub async fn add_project_info_to_node_state(
     let proj_path = if let Some(path) = project_opts.project_path.clone() {
         Some(path)
     } else if let Ok(proj) = opts.state.projects.default() {
-        Some(proj.path)
+        Some(proj.path().clone())
     } else {
         None
     };
@@ -154,7 +155,7 @@ pub(crate) async fn init_node_state(
     // Create the node with the given vault and identity
     let node_config = cli_state::NodeConfigBuilder::default()
         .vault(vault_state.path().clone())
-        .identity(identity_state.path)
+        .identity(identity_state.path().clone())
         .build(&opts.state)?;
     opts.state.nodes.create(node_name, node_config)?;
 

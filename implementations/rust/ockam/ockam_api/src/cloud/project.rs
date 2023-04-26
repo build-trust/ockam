@@ -14,97 +14,62 @@ use ockam_node::tokio;
 
 use crate::error::ApiError;
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone)]
 #[cbor(map)]
-pub struct Project<'a> {
+pub struct Project {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[cbor(n(0))]
     pub tag: TypeTag<9056532>,
 
-    #[cbor(b(1))]
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+    #[cbor(n(1))]
+    pub id: String,
 
-    #[cbor(b(2))]
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    #[cbor(n(2))]
+    pub name: String,
 
-    #[cbor(b(3))]
-    #[serde(borrow)]
-    pub space_name: CowStr<'a>,
+    #[cbor(n(3))]
+    pub space_name: String,
 
-    #[cbor(b(4))]
-    #[serde(borrow)]
-    pub services: Vec<CowStr<'a>>,
+    #[cbor(n(4))]
+    pub services: Vec<String>,
 
-    #[cbor(b(5))]
-    #[serde(borrow)]
-    pub access_route: CowStr<'a>,
+    #[cbor(n(5))]
+    pub access_route: String,
 
-    #[cbor(b(6))]
-    #[serde(borrow)]
-    pub users: Vec<CowStr<'a>>,
+    #[cbor(n(6))]
+    pub users: Vec<String>,
 
-    #[cbor(b(7))]
-    #[serde(borrow)]
-    pub space_id: CowStr<'a>,
+    #[cbor(n(7))]
+    pub space_id: String,
 
     #[cbor(n(8))]
     pub identity: Option<IdentityIdentifier>,
 
-    #[cbor(b(9))]
-    #[serde(borrow)]
-    pub authority_access_route: Option<CowStr<'a>>,
+    #[cbor(n(9))]
+    pub authority_access_route: Option<String>,
 
-    #[cbor(b(10))]
-    #[serde(borrow)]
-    pub authority_identity: Option<CowStr<'a>>,
+    #[cbor(n(10))]
+    pub authority_identity: Option<String>,
 
-    #[cbor(b(11))]
-    #[serde(borrow)]
+    #[cbor(n(11))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub okta_config: Option<OktaConfig<'a>>,
+    pub okta_config: Option<OktaConfig>,
 
-    #[cbor(b(12))]
-    #[serde(borrow)]
+    #[cbor(n(12))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub confluent_config: Option<ConfluentConfigResponse<'a>>,
+    pub confluent_config: Option<ConfluentConfigResponse>,
 
-    #[cbor(b(13))]
-    #[serde(borrow)]
-    pub version: Option<CowStr<'a>>,
+    #[cbor(n(13))]
+    pub version: Option<String>,
 
-    #[cbor(b(14))]
+    #[cbor(n(14))]
     pub running: Option<bool>,
 }
 
-impl Clone for Project<'_> {
-    fn clone(&self) -> Self {
-        self.to_owned()
-    }
-}
-
-impl Project<'_> {
-    pub fn to_owned<'r>(&self) -> Project<'r> {
-        Project {
-            #[cfg(feature = "tag")]
-            tag: self.tag.to_owned(),
-            id: self.id.to_owned(),
-            name: self.name.to_owned(),
-            space_name: self.space_name.to_owned(),
-            services: self.services.iter().map(|x| x.to_owned()).collect(),
-            access_route: self.access_route.to_owned(),
-            users: self.users.iter().map(|x| x.to_owned()).collect(),
-            space_id: self.space_id.to_owned(),
-            identity: self.identity.clone(),
-            authority_access_route: self.authority_access_route.as_ref().map(|x| x.to_owned()),
-            authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
-            okta_config: self.okta_config.as_ref().map(|x| x.to_owned()),
-            confluent_config: self.confluent_config.as_ref().map(|x| x.to_owned()),
-            version: self.version.as_ref().map(|x| x.to_owned()),
-            running: self.running,
-        }
+impl Project {
+    pub fn to_owned(&self) -> Project {
+        self.clone()
     }
 
     pub fn is_ready(&self) -> bool {
@@ -134,29 +99,25 @@ impl Project<'_> {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct OktaConfig<'a> {
+pub struct OktaConfig {
     #[cfg(feature = "tag")]
     #[serde(skip)]
-    #[cbor(n(0))] pub tag: TypeTag<6434814>,
+    #[cbor(b(0))] pub tag: TypeTag<6434814>,
 
-    #[serde(borrow)]
-    #[cbor(b(1))] pub tenant_base_url: CowStr<'a>,
+    #[cbor(b(1))] pub tenant_base_url: String,
 
-    #[serde(borrow)]
-    #[cbor(b(2))] pub certificate: CowStr<'a>,
+    #[cbor(b(2))] pub certificate: String,
 
-    #[serde(borrow)]
-    #[cbor(b(3))] pub client_id: CowStr<'a>,
+    #[cbor(b(3))] pub client_id: String,
 
-    #[serde(borrow)]
-    #[cbor(b(4))] pub attributes: Vec<CowStr<'a>>,
+    #[cbor(b(4))] pub attributes: Vec<String>,
 }
 
-impl<'a> OktaConfig<'a> {
-    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(
+impl<'a> OktaConfig {
+    pub fn new<S: ToString, T: AsRef<str>>(
         tenant_base_url: S,
         certificate: S,
         client_id: S,
@@ -165,17 +126,14 @@ impl<'a> OktaConfig<'a> {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tenant_base_url: tenant_base_url.into(),
-            certificate: certificate.into(),
-            client_id: client_id.into(),
-            attributes: attributes
-                .iter()
-                .map(|x| CowStr::from(x.as_ref()))
-                .collect(),
+            tenant_base_url: tenant_base_url.to_string(),
+            certificate: certificate.to_string(),
+            client_id: client_id.to_string(),
+            attributes: attributes.iter().map(|x| x.as_ref().to_string()).collect(),
         }
     }
 
-    pub fn new_empty_attributes<S: Into<CowStr<'a>>>(
+    pub fn new_empty_attributes<S: ToString>(
         tenant_base_url: S,
         certificate: S,
         client_id: S,
@@ -183,28 +141,10 @@ impl<'a> OktaConfig<'a> {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tenant_base_url: tenant_base_url.into(),
-            certificate: certificate.into(),
-            client_id: client_id.into(),
+            tenant_base_url: tenant_base_url.to_string(),
+            certificate: certificate.to_string(),
+            client_id: client_id.to_string(),
             attributes: Vec::new(),
-        }
-    }
-}
-
-impl Clone for OktaConfig<'_> {
-    fn clone(&self) -> Self {
-        self.to_owned()
-    }
-}
-impl OktaConfig<'_> {
-    pub fn to_owned<'r>(&self) -> OktaConfig<'r> {
-        OktaConfig {
-            #[cfg(feature = "tag")]
-            tag: self.tag.to_owned(),
-            tenant_base_url: self.tenant_base_url.to_owned(),
-            certificate: self.certificate.to_owned(),
-            client_id: self.client_id.to_owned(),
-            attributes: self.attributes.iter().map(|x| x.to_owned()).collect(),
         }
     }
 }
@@ -216,17 +156,17 @@ pub struct OktaAuth0 {
     pub certificate: String,
 }
 
-impl From<OktaConfig<'_>> for OktaAuth0 {
+impl From<OktaConfig> for OktaAuth0 {
     fn from(c: OktaConfig) -> Self {
         Self {
-            tenant_base_url: c.tenant_base_url.to_string(),
-            client_id: c.client_id.to_string(),
-            certificate: c.certificate.to_string(),
+            tenant_base_url: c.tenant_base_url,
+            client_id: c.client_id,
+            certificate: c.certificate,
         }
     }
 }
 
-impl<'a> From<OktaAuth0> for OktaConfig<'a> {
+impl From<OktaAuth0> for OktaConfig {
     fn from(val: OktaAuth0) -> Self {
         OktaConfig::new_empty_attributes(val.tenant_base_url, val.certificate, val.client_id)
     }
@@ -452,25 +392,25 @@ mod tests {
     use super::*;
 
     #[derive(Debug, Clone)]
-    struct Pr(Project<'static>);
+    struct Pr(Project);
 
     impl Arbitrary for Pr {
         fn arbitrary(g: &mut Gen) -> Self {
             Pr(Project {
                 #[cfg(feature = "tag")]
                 tag: Default::default(),
-                id: String::arbitrary(g).into(),
-                name: String::arbitrary(g).into(),
-                space_name: String::arbitrary(g).into(),
-                services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                access_route: String::arbitrary(g).into(),
-                users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                space_id: String::arbitrary(g).into(),
+                id: String::arbitrary(g),
+                name: String::arbitrary(g),
+                space_name: String::arbitrary(g),
+                services: vec![String::arbitrary(g), String::arbitrary(g)],
+                access_route: String::arbitrary(g),
+                users: vec![String::arbitrary(g), String::arbitrary(g)],
+                space_id: String::arbitrary(g),
                 identity: bool::arbitrary(g)
                     .then(|| IdentityIdentifier::from_key_id(&String::arbitrary(g))),
-                authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g).into()),
+                authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g)),
                 authority_identity: bool::arbitrary(g)
-                    .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
+                    .then(|| hex::encode(<Vec<u8>>::arbitrary(g))),
                 okta_config: None,
                 confluent_config: None,
                 version: None,

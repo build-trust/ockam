@@ -1,18 +1,14 @@
+pub mod identities;
+pub mod projects;
 pub mod traits;
 pub mod vaults;
-use crate::cli_state::traits::{StateItemDirTrait, StateTrait};
-use crate::cli_state::vaults::{VaultState, VaultsState};
-use crate::cloud::project::Project;
+
 use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use nix::errno::Errno;
 use ockam::identity::credential::Credential;
-use ockam::identity::identity::{IdentityChangeHistory, IdentityHistoryComparison};
-use ockam::identity::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
-    IdentityIdentifier,
-};
+use ockam::identity::{Identities, IdentitiesVault, Identity};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
 use ockam_identity::LmdbStorage;
@@ -22,10 +18,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::time::SystemTime;
 use sysinfo::{Pid, System, SystemExt};
 use thiserror::Error;
 
+pub use crate::cli_state::identities::*;
+pub use crate::cli_state::projects::*;
+pub use crate::cli_state::traits::*;
 pub use crate::cli_state::vaults::*;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -65,9 +63,6 @@ impl From<CliStateError> for ockam_core::Error {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CliState {
-    // TODO: Many of the states share very similarities;
-    // the main difference is the type of the state.
-    // We should refactor and abstract this.
     pub vaults: VaultsState,
     pub identities: IdentitiesState,
     pub nodes: NodesState,
@@ -87,9 +82,9 @@ impl CliState {
         std::fs::create_dir_all(dir.join("defaults"))?;
         Ok(Self {
             vaults: VaultsState::load(dir)?,
-            identities: IdentitiesState::new(dir)?,
+            identities: IdentitiesState::load(dir)?,
             nodes: NodesState::new(dir)?,
-            projects: ProjectsState::new(dir)?,
+            projects: ProjectsState::load(dir)?,
             credentials: CredentialsState::new(dir)?,
             trust_contexts: TrustContextsState::new(dir)?,
             dir: dir.to_path_buf(),
@@ -114,9 +109,9 @@ impl CliState {
         let dir = &self.dir;
         for dir in &[
             &self.nodes.dir,
-            &self.identities.dir,
+            self.identities.dir(),
             self.vaults.dir(),
-            &self.projects.dir,
+            self.projects.dir(),
             &self.credentials.dir,
             &self.trust_contexts.dir,
             &dir.join("defaults"),
@@ -165,7 +160,7 @@ impl CliState {
         } else {
             let n = hex::encode(random::<[u8; 4]>());
             let c = VaultConfig::default();
-            self.vaults.create(&n, c).await?
+            self.vaults.create_async(&n, c).await?
         };
         Ok(vault_state)
     }
@@ -175,7 +170,7 @@ impl CliState {
         identity_name: Option<String>,
         vault: Vault,
     ) -> Result<IdentityState> {
-        if let Ok(identity) = self.identities.get_identity(identity_name.clone()) {
+        if let Ok(identity) = self.identities.get_or_default(identity_name.clone()) {
             Ok(identity)
         } else {
             self.make_identity_state(vault, identity_name).await
@@ -211,341 +206,6 @@ impl CliState {
             .with_identities_vault(self.vaults.default()?.identities_vault().await?)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct IdentitiesState {
-    dir: PathBuf,
-}
-
-impl IdentitiesState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("identities");
-        std::fs::create_dir_all(dir.join("data"))?;
-        Ok(Self { dir })
-    }
-
-    pub fn directory(&self) -> String {
-        self.dir.to_string_lossy().into()
-    }
-
-    pub fn create(&self, name: &str, config: IdentityConfig) -> Result<IdentityState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if path.exists() {
-                return Err(CliStateError::AlreadyExists);
-            }
-            path
-        };
-        let contents = serde_json::to_string(&config)?;
-        std::fs::write(&path, contents)?;
-        let state = IdentityState {
-            name: name.to_string(),
-            path,
-            config,
-        };
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
-        }
-        Ok(state)
-    }
-
-    pub fn get_identity(&self, name: Option<String>) -> Result<IdentityState> {
-        if let Some(identity_name) = name {
-            self.get(identity_name.as_ref())
-        } else {
-            self.default()
-        }
-    }
-
-    pub fn get(&self, name: &str) -> Result<IdentityState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-        IdentityState::try_from(&path)
-    }
-
-    pub fn get_by_identifier(&self, identifier: &IdentityIdentifier) -> Result<IdentityState> {
-        let identities = self.list()?;
-
-        let identity_state = identities
-            .into_iter()
-            .find(|ident_state| &ident_state.config.identifier == identifier);
-
-        match identity_state {
-            Some(is) => Ok(is),
-            None => Err(CliStateError::NotFound),
-        }
-    }
-
-    pub fn list(&self) -> Result<Vec<IdentityState>> {
-        let mut identities: Vec<IdentityState> = vec![];
-        for entry in std::fs::read_dir(&self.dir)? {
-            if let Ok(identity) = self.get(&file_stem(&entry?.path())?) {
-                identities.push(identity);
-            }
-        }
-        Ok(identities)
-    }
-
-    pub async fn delete(&self, name: &str) -> Result<()> {
-        // Retrieve identity. If doesn't exist do nothing.
-        let identity = match self.get(name) {
-            Ok(i) => i,
-            Err(CliStateError::NotFound) => return Ok(()),
-            Err(e) => return Err(e),
-        };
-
-        // Abort if identity is being used by some running node.
-        identity.in_use()?;
-
-        // If it's the default, remove link
-        if let Ok(default) = self.default() {
-            if default.path == identity.path {
-                let _ = std::fs::remove_file(self.default_path()?);
-            }
-        }
-
-        // Remove identity file
-        std::fs::remove_file(identity.path)?;
-
-        Ok(())
-    }
-
-    pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(
-            CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?
-                .join("identity"),
-        )
-    }
-
-    pub fn default(&self) -> Result<IdentityState> {
-        let path = std::fs::canonicalize(self.default_path()?)?;
-        IdentityState::try_from(&path)
-    }
-
-    pub fn is_default(&self, name: &str) -> Result<bool> {
-        let _exists = self.get(name)?;
-        let default_name = {
-            let path = std::fs::canonicalize(self.default_path()?)?;
-            file_stem(&path)?
-        };
-        Ok(default_name.eq(name))
-    }
-
-    pub fn set_default(&self, name: &str) -> Result<IdentityState> {
-        let original = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-        let link = self.default_path()?;
-        // Remove link if it exists
-        let _ = std::fs::remove_file(&link);
-        // Create link to the identity
-        std::os::unix::fs::symlink(original, &link)?;
-        self.get(name)
-    }
-
-    pub async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
-        let lmdb_path = self.identities_repository_path()?;
-        Ok(Arc::new(IdentitiesStorage::new(Arc::new(
-            LmdbStorage::new(lmdb_path).await?,
-        ))))
-    }
-
-    pub fn identities_repository_path(&self) -> Result<PathBuf> {
-        let lmdb_path = self.dir.join("data").join("authenticated_storage.lmdb");
-        Ok(lmdb_path)
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct IdentityState {
-    pub name: String,
-    pub path: PathBuf,
-    pub config: IdentityConfig,
-}
-
-impl IdentityState {
-    fn persist(&self) -> Result<()> {
-        let contents = serde_json::to_string(&self.config)?;
-        std::fs::write(&self.path, contents)?;
-        Ok(())
-    }
-
-    fn in_use(&self) -> Result<()> {
-        let cli_state_path = self
-            .path
-            .parent()
-            .expect("Should have identities dir as parent")
-            .parent()
-            .expect("Should have CliState dir as parent");
-        self.in_use_by(&CliState::new(cli_state_path)?.nodes.list()?)
-    }
-
-    fn in_use_by(&self, nodes: &[NodeState]) -> Result<()> {
-        for node in nodes {
-            if node.config.identity_config()?.identifier == self.config.identifier {
-                return Err(CliStateError::Invalid(format!(
-                    "Can't delete identity '{}' because is currently in use by node '{}'",
-                    &self.name, &node.config.name
-                )));
-            }
-        }
-        Ok(())
-    }
-
-    pub fn set_enrollment_status(&mut self) -> Result<()> {
-        self.config.enrollment_status = Some(EnrollmentStatus::enrolled());
-        self.persist()
-    }
-
-    pub async fn get(&self, vault: Arc<dyn IdentitiesVault>) -> Result<Identity> {
-        let data = self.config.change_history.export()?;
-        Ok(self
-            .make_identities(vault)
-            .await?
-            .identities_creation()
-            .import_identity(&data)
-            .await?)
-    }
-
-    pub async fn make_identities(
-        &self,
-        vault: Arc<dyn IdentitiesVault>,
-    ) -> Result<Arc<Identities>> {
-        let cli_state_path = self
-            .path
-            .parent()
-            .expect("Should have identities dir as parent")
-            .parent()
-            .expect("Should have CliState dir as parent");
-        let repository = CliState::new(cli_state_path)?
-            .identities
-            .identities_repository()
-            .await?;
-        Ok(Identities::builder()
-            .with_identities_vault(vault)
-            .with_identities_repository(repository)
-            .build())
-    }
-}
-
-impl TryFrom<&PathBuf> for IdentityState {
-    type Error = CliStateError;
-
-    fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
-        let name = file_stem(path)?;
-        let contents = std::fs::read_to_string(path)?;
-        let config = serde_json::from_str(&contents)?;
-        Ok(IdentityState {
-            name,
-            path: path.clone(),
-            config,
-        })
-    }
-}
-
-impl Display for IdentityState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "Name: {}",
-            self.path.as_path().file_stem().unwrap().to_str().unwrap()
-        )?;
-        writeln!(f, "State Path: {}", self.path.clone().to_str().unwrap())?;
-        writeln!(f, "Config Identifier: {}", self.config.identifier)?;
-        match &self.config.enrollment_status {
-            Some(enrollment) => {
-                writeln!(f, "Enrollment Status:")?;
-                for line in enrollment.to_string().lines() {
-                    writeln!(f, "{:2}{}", "", line)?;
-                }
-            }
-            None => (),
-        }
-        Ok(())
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct IdentityConfig {
-    pub identifier: IdentityIdentifier,
-    pub change_history: IdentityChangeHistory,
-    pub enrollment_status: Option<EnrollmentStatus>,
-}
-
-impl IdentityConfig {
-    pub async fn new(identity: &Identity) -> Self {
-        let identifier = identity.identifier();
-        let change_history = identity.change_history();
-        Self {
-            identifier,
-            change_history,
-            enrollment_status: None,
-        }
-    }
-
-    pub fn identity(&self) -> Identity {
-        Identity::new(self.identifier.clone(), self.change_history.clone())
-    }
-}
-
-impl PartialEq for IdentityConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.identifier == other.identifier
-            && self.change_history.compare(&other.change_history)
-                == IdentityHistoryComparison::Equal
-    }
-}
-
-impl Eq for IdentityConfig {}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct EnrollmentStatus {
-    pub is_enrolled: bool,
-    pub created_at: SystemTime,
-}
-
-impl EnrollmentStatus {
-    pub fn enrolled() -> EnrollmentStatus {
-        EnrollmentStatus {
-            is_enrolled: true,
-            created_at: SystemTime::now(),
-        }
-    }
-}
-
-impl Display for EnrollmentStatus {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.is_enrolled {
-            writeln!(f, "Enrolled: yes")?;
-        } else {
-            writeln!(f, "Enrolled: no")?;
-        }
-
-        // FIX: it fails to compile in some environments
-        // match OffsetDateTime::from(self.created_at).format(&Iso8601::DEFAULT) {
-        //     Ok(time_str) => writeln!(f, "Timestamp: {}", time_str)?,
-        //     Err(err) => writeln!(
-        //         f,
-        //         "Error formatting OffsetDateTime as Iso8601 String: {}",
-        //         err
-        //     )?,
-        // }
-
-        Ok(())
     }
 }
 
@@ -823,7 +483,7 @@ impl NodeConfig {
             name: random_name(),
             version: NodeConfigVersion::latest(),
             default_vault: cli_state.vaults.default()?.path().clone(),
-            default_identity: cli_state.identities.default()?.path,
+            default_identity: cli_state.identities.default()?.path().clone(),
             setup: NodeSetupConfig::default(),
         })
     }
@@ -846,7 +506,7 @@ impl NodeConfig {
     pub async fn default_identity(&self) -> Result<Identity> {
         let vault: Arc<dyn IdentitiesVault> = Arc::new(self.vault().await?);
         let state_path = std::fs::canonicalize(&self.default_identity)?;
-        let state = IdentityState::try_from(&state_path)?;
+        let state = IdentityState::load(state_path)?;
         state.get(vault).await
     }
 }
@@ -859,7 +519,7 @@ impl TryFrom<&CliState> for NodeConfig {
             name: random_name(),
             version: NodeConfigVersion::latest(),
             default_vault: cli_state.vaults.default()?.path().clone(),
-            default_identity: cli_state.identities.default()?.path,
+            default_identity: cli_state.identities.default()?.path().clone(),
             setup: NodeSetupConfig::default(),
         })
     }
@@ -916,7 +576,7 @@ impl NodeConfigBuilder {
         };
         let identity = match self.identity {
             Some(path) => path,
-            None => cli_state.identities.default()?.path,
+            None => cli_state.identities.default()?.path().clone(),
         };
         Ok(NodeConfig {
             default_vault: vault,
@@ -1012,124 +672,6 @@ impl TryFrom<&PathBuf> for NodeSetupConfig {
     fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
         let contents = std::fs::read_to_string(path)?;
         Ok(serde_json::from_str(&contents)?)
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ProjectsState {
-    dir: PathBuf,
-}
-
-impl ProjectsState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("projects");
-        std::fs::create_dir_all(dir.join("data"))?;
-        Ok(Self { dir })
-    }
-
-    pub fn create(&self, name: &str, config: Project<'_>) -> Result<ProjectState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            path
-        };
-        let contents = serde_json::to_string(&config)?;
-        std::fs::write(&path, contents)?;
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
-        }
-
-        Ok(ProjectState { path })
-    }
-
-    pub fn get(&self, name: &str) -> Result<ProjectState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-        Ok(ProjectState { path })
-    }
-
-    pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?.join("project"))
-    }
-
-    pub fn default(&self) -> Result<ProjectState> {
-        let path = std::fs::canonicalize(self.default_path()?)?;
-        Ok(ProjectState { path })
-    }
-
-    pub fn set_default(&self, name: &str) -> Result<ProjectState> {
-        let original = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-        let link = self.default_path()?;
-        std::os::unix::fs::symlink(original, link)?;
-        self.get(name)
-    }
-
-    pub fn list(&self) -> Result<Vec<ProjectState>> {
-        let mut projects = vec![];
-        for entry in std::fs::read_dir(&self.dir)? {
-            if let Ok(project) = self.get(&file_stem(&entry?.path())?) {
-                projects.push(project);
-            }
-        }
-        Ok(projects)
-    }
-
-    pub fn delete(&self, name: &str) -> Result<()> {
-        // Retrieve project. If doesn't exist do nothing.
-        let project = match self.get(name) {
-            Ok(project) => project,
-            Err(CliStateError::NotFound) => return Ok(()),
-            Err(e) => return Err(e),
-        };
-
-        // If it's the default, remove link
-        if let Ok(default) = self.default() {
-            if default.path == project.path {
-                let _ = std::fs::remove_file(self.default_path()?);
-            }
-        }
-
-        // Remove project data
-        project.delete()?;
-
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ProjectState {
-    pub path: PathBuf,
-}
-
-impl ProjectState {
-    pub fn name(&self) -> Result<String> {
-        self.path
-            .file_stem()
-            .and_then(|s| s.to_os_string().into_string().ok())
-            .ok_or_else(|| {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "failed to parse the project name",
-                ))
-            })
-    }
-
-    fn delete(&self) -> Result<()> {
-        let _ = std::fs::remove_file(&self.path);
-        Ok(())
     }
 }
 
@@ -1397,8 +939,8 @@ mod tests {
         assert_eq!(identity1, default_identity);
 
         // make sure that a default identity is not recreated twice
-        assert_eq!(identity1.name, identity2.name);
-        assert_eq!(identity1.path, identity2.path);
+        assert_eq!(identity1.name(), identity2.name());
+        assert_eq!(identity1.path(), identity2.path());
     }
 
     #[tokio::test]
@@ -1414,16 +956,16 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(identity1.name, "alice".to_string());
+        assert_eq!(identity1.name(), "alice");
         assert!(identity1
-            .path
+            .path()
             .to_string_lossy()
             .to_string()
             .contains("alice.json"));
 
         // make sure that a named identity is not recreated twice
-        assert_eq!(identity1.name, identity2.name);
-        assert_eq!(identity1.path, identity2.path);
+        assert_eq!(identity1.name(), identity2.name());
+        assert_eq!(identity1.path(), identity2.path());
     }
 
     // This tests way too many different things
@@ -1436,7 +978,7 @@ mod tests {
             let name = hex::encode(random::<[u8; 4]>());
             let config = VaultConfig::default();
 
-            let state = sut.vaults.create(&name, config).await.unwrap();
+            let state = sut.vaults.create_async(&name, config).await.unwrap();
             let got = sut.vaults.get(&name).unwrap();
             assert_eq!(got, state);
 
@@ -1490,7 +1032,7 @@ mod tests {
         // Projects
         let project_name = {
             let name = hex::encode(random::<[u8; 4]>());
-            let config = Project::default();
+            let config = ProjectConfig::default();
 
             let state = sut.projects.create(&name, config).unwrap();
             let got = sut.projects.get(&name).unwrap();
@@ -1659,8 +1201,8 @@ mod tests {
 
         sut.projects.delete(&project_name).unwrap();
         sut.nodes.delete(&node_name, false).unwrap();
-        sut.identities.delete(&identity_name).await.unwrap();
-        sut.vaults.delete(&vault_name).await.unwrap();
+        sut.identities.delete(&identity_name).unwrap();
+        sut.vaults.delete(&vault_name).unwrap();
 
         ctx.stop().await?;
         Ok(())

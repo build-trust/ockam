@@ -387,7 +387,7 @@ pub mod test {
         let vault_name = hex::encode(rand::random::<[u8; 4]>());
         let vault = cli_state
             .vaults
-            .create(&vault_name.clone(), VaultConfig::default())
+            .create_async(&vault_name.clone(), VaultConfig::default())
             .await?
             .get()
             .await?;

@@ -12,11 +12,11 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create a new identity
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value_t = hex::encode(& random::< [u8; 4] > ()))]
     name: String,
 
     /// Vault name to store the identity key
@@ -52,7 +52,7 @@ impl CreateCommand {
             .state
             .create_identity_state(Some(self.name.clone()), vault_state.get().await?)
             .await?;
-        let identity = identity_state.config.identity();
+        let identity = identity_state.config().identity();
 
         output.push_str(&format!("Identity created: {}", identity.identifier()));
 

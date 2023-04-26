@@ -47,7 +47,10 @@ async fn run_impl(
             "This is the first vault to be created in this environment. It will be set as the default vault"
         ))?;
     }
-    opts.state.vaults.create(&name, config.clone()).await?;
+    opts.state
+        .vaults
+        .create_async(&name, config.clone())
+        .await?;
 
     opts.terminal
         .stdout()

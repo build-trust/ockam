@@ -171,10 +171,10 @@ impl TryFrom<CredentialState> for TrustContextConfig {
     }
 }
 
-impl TryFrom<Project<'_>> for TrustContextConfig {
+impl TryFrom<Project> for TrustContextConfig {
     type Error = CliStateError;
 
-    fn try_from(project_info: Project<'_>) -> std::result::Result<TrustContextConfig, Self::Error> {
+    fn try_from(project_info: Project) -> std::result::Result<TrustContextConfig, Self::Error> {
         let authority = match (
             &project_info.authority_access_route,
             &project_info.authority_identity,
@@ -191,10 +191,7 @@ impl TryFrom<Project<'_>> for TrustContextConfig {
             _ => None,
         };
 
-        Ok(TrustContextConfig::new(
-            project_info.id.to_string(),
-            authority,
-        ))
+        Ok(TrustContextConfig::new(project_info.id, authority))
     }
 }
 

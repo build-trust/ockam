@@ -13,6 +13,7 @@ use anyhow::Context as _;
 use minicbor::{Decode, Encode};
 use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::Context;
+use ockam_api::cli_state::{StateItemDirTrait, StateTrait};
 use ockam_api::{
     config::lookup::ProjectLookup, nodes::models::secure_channel::CredentialExchangeMode,
     DefaultAddress,
@@ -212,7 +213,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     .default()
                     .expect("A default project or project parameter is required.");
 
-                default_project.path
+                default_project.path().clone()
             }
         };
 

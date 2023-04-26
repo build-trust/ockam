@@ -87,7 +87,7 @@ impl Output for Vec<Space<'_>> {
     }
 }
 
-impl Output for Project<'_> {
+impl Output for Project {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Project")?;
@@ -130,7 +130,7 @@ impl Output for ProjectInfo<'_> {
     }
 }
 
-impl Output for Vec<Project<'_>> {
+impl Output for Vec<Project> {
     fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No projects found".to_string());

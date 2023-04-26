@@ -26,7 +26,7 @@ use crate::{
 };
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
-use ockam_api::cli_state::traits::StateTrait;
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::{ApiTransport, NodeManagerTrustOptions};
@@ -500,7 +500,7 @@ async fn start_authority_node(
         // retrieve the authority identity if it has been created before
         // otherwise create a new one
         let identity = match options.state.identities.default().ok() {
-            Some(state) => state.config.identity(),
+            Some(state) => state.config().identity(),
             None => {
                 let cmd = identity::CreateCommand::new("authority".into(), None);
                 cmd.create_identity(options.clone()).await?

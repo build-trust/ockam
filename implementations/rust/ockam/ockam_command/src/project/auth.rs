@@ -19,6 +19,7 @@ use crate::{CommandGlobalOpts, Result};
 
 use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
+use ockam_api::cli_state::{StateItemDirTrait, StateTrait};
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::DefaultAddress;
 use ockam_core::route;
@@ -85,7 +86,7 @@ async fn run_impl(
                     .projects
                     .default()
                     .context("A default project or project parameter is required.")?;
-                default_project.path
+                default_project.path().clone()
             }
         };
 

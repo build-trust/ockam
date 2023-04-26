@@ -13,6 +13,7 @@ use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, info};
 
 use ockam::Context;
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
@@ -134,13 +135,13 @@ async fn default_space<'a>(
     Ok(default_space)
 }
 
-async fn default_project<'a>(
+async fn default_project(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     cloud_opts: &CloudOpts,
     node_name: &str,
     space: &Space<'_>,
-) -> Result<Project<'a>> {
+) -> Result<Project> {
     // Get available project for the given space
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let mut available_projects: Vec<Project> = {
@@ -376,7 +377,7 @@ async fn update_enrolled_identity(opts: &CommandGlobalOpts, node_name: &str) -> 
     let node_identity = node_state.config.default_identity().await?;
 
     for mut identity in identities {
-        if node_identity.identifier() == identity.config.identifier {
+        if node_identity.identifier() == identity.config().identifier {
             identity.set_enrollment_status()?;
         }
     }

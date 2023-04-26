@@ -45,9 +45,8 @@ pub struct ProjectInfo<'a> {
     pub authority_access_route: Option<CowStr<'a>>,
     #[serde(borrow)]
     pub authority_identity: Option<CowStr<'a>>,
-    #[serde(borrow)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub okta_config: Option<OktaConfig<'a>>,
+    pub okta_config: Option<OktaConfig>,
 }
 
 impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
@@ -72,29 +71,29 @@ impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
     }
 }
 
-impl<'a> From<Project<'a>> for ProjectInfo<'a> {
-    fn from(p: Project<'a>) -> Self {
+impl<'a> From<Project> for ProjectInfo<'a> {
+    fn from(p: Project) -> Self {
         Self {
-            id: p.id,
-            name: p.name,
+            id: p.id.into(),
+            name: p.name.into(),
             identity: p.identity,
-            access_route: p.access_route,
-            authority_access_route: p.authority_access_route,
-            authority_identity: p.authority_identity,
+            access_route: p.access_route.into(),
+            authority_access_route: p.authority_access_route.map(|a| a.into()),
+            authority_identity: p.authority_identity.map(|a| a.into()),
             okta_config: p.okta_config,
         }
     }
 }
 
-impl<'a> From<&ProjectInfo<'a>> for Project<'a> {
+impl<'a> From<&ProjectInfo<'a>> for Project {
     fn from(p: &ProjectInfo<'a>) -> Self {
         Project {
-            id: p.id.clone(),
-            name: p.name.clone(),
-            identity: p.identity.clone(),
-            access_route: p.access_route.clone(),
-            authority_access_route: p.authority_access_route.clone(),
-            authority_identity: p.authority_identity.clone(),
+            id: p.id.to_string(),
+            name: p.name.to_string(),
+            identity: p.identity.to_owned(),
+            access_route: p.access_route.to_string(),
+            authority_access_route: p.authority_access_route.as_ref().map(|a| a.to_string()),
+            authority_identity: p.authority_identity.as_ref().map(|a| a.to_string()),
             okta_config: p.okta_config.clone(),
             ..Default::default()
         }

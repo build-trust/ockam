@@ -672,8 +672,9 @@ pub fn random_name() -> String {
 mod tests {
     use super::*;
     use ockam_api::cli_state;
+    use ockam_api::cli_state::identities::IdentityConfig;
     use ockam_api::cli_state::traits::StateTrait;
-    use ockam_api::cli_state::{IdentityConfig, NodeConfig, VaultConfig};
+    use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
     #[test]
@@ -708,7 +709,7 @@ mod tests {
 
         let v_name = cli_state::random_name();
         let v_config = VaultConfig::default();
-        cli_state.vaults.create(&v_name, v_config).await?;
+        cli_state.vaults.create_async(&v_name, v_config).await?;
         let v = cli_state.vaults.get(&v_name)?.get().await?;
         let idt = cli_state
             .get_identities(v)

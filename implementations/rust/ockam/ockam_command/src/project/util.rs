@@ -169,14 +169,14 @@ async fn delete_secure_channel<'a>(
     Ok(())
 }
 
-pub async fn check_project_readiness<'a>(
+pub async fn check_project_readiness(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     cloud_opts: &CloudOpts,
     api_node: &str,
     tcp: Option<&TcpTransport>,
-    mut project: Project<'a>,
-) -> Result<Project<'a>> {
+    mut project: Project,
+) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
     let total_sleep_time_ms = 10 * 60 * 1000;
     let retry_strategy = FixedInterval::from_millis(5000).take(total_sleep_time_ms / 5000);
@@ -323,7 +323,7 @@ pub mod config {
 
     use super::*;
 
-    async fn set(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
+    async fn set(config: &OckamConfig, project: &Project) -> Result<()> {
         if !project.is_ready() {
             trace!("Project is not ready yet {}", project.output()?);
             return Err(
@@ -338,7 +338,7 @@ pub mod config {
         Ok(())
     }
 
-    pub(super) async fn set_project_id(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
+    pub(super) async fn set_project_id(config: &OckamConfig, project: &Project) -> Result<()> {
         config.set_project_alias(
             project.name.to_string(),
             ProjectLookup {
@@ -354,13 +354,13 @@ pub mod config {
         Ok(())
     }
 
-    pub async fn set_project(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
+    pub async fn set_project(config: &OckamConfig, project: &Project) -> Result<()> {
         set(config, project).await?;
         config.persist_config_updates()?;
         Ok(())
     }
 
-    pub async fn set_projects(config: &OckamConfig, projects: &[Project<'_>]) -> Result<()> {
+    pub async fn set_projects(config: &OckamConfig, projects: &[Project]) -> Result<()> {
         config.remove_projects_alias();
         for project in projects.iter() {
             set(config, project).await?;
