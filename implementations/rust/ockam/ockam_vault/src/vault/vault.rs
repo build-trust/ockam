@@ -1,8 +1,9 @@
-use crate::storage::Storage;
-use crate::vault::aws::Kms;
+use crate::storage::VaultFileStorage;
 use crate::{KeyId, VaultEntry};
-use ockam_core::compat::{collections::BTreeMap, sync::Arc};
-use ockam_node::compat::asynchronous::RwLock;
+use ockam_core::compat::sync::Arc;
+use ockam_core::Result;
+use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
+use std::path::Path;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
 ///
@@ -31,79 +32,49 @@ use ockam_node::compat::asynchronous::RwLock;
 ///     Ok(())
 /// }
 /// ```
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Vault {
-    pub(crate) data: VaultData,
-    pub(crate) storage: Option<Arc<dyn Storage>>,
-    #[cfg(feature = "aws")]
-    pub(crate) aws_kms: Option<Kms>,
+    /// Storage for persistent secrets, they are retrieved when the vault
+    /// is created again
+    pub(crate) persistent_storage: VaultStorage,
+    /// Storage for ephemeral secrets, they are lost when the vault is recreated
+    pub(crate) ephemeral_storage: InMemoryKeyValueStorage<KeyId, VaultEntry>,
 }
 
-#[derive(Default, Clone)]
-pub(crate) struct VaultData {
-    pub(crate) entries: Arc<RwLock<BTreeMap<KeyId, VaultEntry>>>,
+impl Default for Vault {
+    fn default() -> Self {
+        Vault {
+            persistent_storage: Arc::new(InMemoryKeyValueStorage::default()),
+            ephemeral_storage: InMemoryKeyValueStorage::default(),
+        }
+    }
 }
+
+/// Type alias for the storage of persistent secrets
+pub type VaultStorage = Arc<dyn KeyValueStorage<KeyId, VaultEntry>>;
 
 impl Vault {
-    /// Create a new SoftwareVault
-    pub fn new(storage: Option<Arc<dyn Storage>>) -> Self {
+    /// Create a new Vault
+    pub fn new(storage: VaultStorage) -> Self {
         Self {
-            data: Default::default(),
-            storage,
-            #[cfg(feature = "aws")]
-            aws_kms: None,
+            persistent_storage: storage,
+            ephemeral_storage: InMemoryKeyValueStorage::create(),
         }
     }
 
-    /// Same as ```Vault::new()```
+    /// Create a new vault with an in memory storage
+    pub fn new_in_memory() -> Vault {
+        Self::new(Arc::new(InMemoryKeyValueStorage::create()))
+    }
+
+    /// Create a new vault with an in memory storage, return as an Arc
     pub fn create() -> Arc<Vault> {
-        Arc::new(Self::new(None))
+        Arc::new(Self::new_in_memory())
     }
 
-    /// Enable AWS KMS.
-    #[cfg(feature = "aws")]
-    pub async fn enable_aws_kms(&mut self) -> Result<(), ockam_core::Error> {
-        let kms = Kms::default().await?;
-        self.aws_kms = Some(kms);
-        Ok(())
-    }
-
-    pub(crate) async fn preload_from_storage(&self, key_id: &KeyId) {
-        // Do nothing if there is no Storage
-        let storage = match &self.storage {
-            Some(s) => s,
-            None => return,
-        };
-
-        // Check if given secret is already loaded into the memory
-        if self.data.entries.read().await.contains_key(key_id) {
-            return;
-        }
-
-        // Try to load secret from the Storage
-        let entry = match storage.load(key_id).await {
-            Ok(e) => e,
-            Err(_) => return,
-        };
-
-        // It's fine if we override the values, since storage is expected to return the same
-        // data for the given key_id
-        let _ = self
-            .data
-            .entries
-            .write()
-            .await
-            .insert(key_id.clone(), entry);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::Vault;
-
-    #[tokio::test]
-    async fn new_vault() {
-        let vault = Vault::create();
-        assert_eq!(vault.data.entries.read().await.len(), 0);
+    /// Create a new vault with a persistent storage
+    pub async fn create_with_path(path: &Path) -> Result<Arc<Vault>> {
+        let vault_storage = VaultFileStorage::create(path).await?;
+        Ok(Arc::new(Self::new(vault_storage)))
     }
 }

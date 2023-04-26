@@ -15,7 +15,6 @@ use ockam_core::{Address, AllowAll, Error, Message, Result, Worker};
 use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
-use ockam_vault::storage::VaultFileStorage;
 use ockam_vault::Vault;
 
 use crate::authenticator::direct::EnrollmentTokenAuthenticator;
@@ -310,8 +309,7 @@ impl Authority {
     ) -> Result<Arc<dyn IdentitiesVault>> {
         let vault_path = &configuration.vault_path;
         Self::create_ockam_directory_if_necessary(vault_path)?;
-        let file_storage = VaultFileStorage::create(vault_path.clone()).await?;
-        let vault = Arc::new(Vault::new(Some(Arc::new(file_storage))));
+        let vault: Arc<dyn IdentitiesVault> = Vault::create_with_path(vault_path).await?;
         Ok(vault)
     }
 

@@ -222,7 +222,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_default_identity_state() {
         let state = CliState::test().unwrap();
-        let vault = Vault::new(None);
+        let vault = Vault::new_in_memory();
         let identity1 = state
             .create_identity_state(None, vault.clone())
             .await
@@ -240,7 +240,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_named_identity_state() {
         let state = CliState::test().unwrap();
-        let vault = Vault::new(None);
+        let vault = Vault::new_in_memory();
         let identity1 = state
             .create_identity_state(Some("alice"), vault.clone())
             .await

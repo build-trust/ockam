@@ -15,6 +15,7 @@ use ockam_identity::{
     IdentitiesVault, Identity, SecureChannelListenerOptions, SecureChannelOptions,
 };
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
+use ockam_vault::VaultStorage;
 
 use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use crate::stream::Stream;
@@ -314,10 +315,7 @@ impl NodeBuilder {
     }
 
     /// Set a specific vault storage for identities and secure channels
-    pub fn with_vault_storage(
-        &mut self,
-        storage: Arc<dyn ockam_vault::storage::Storage>,
-    ) -> NodeBuilder {
+    pub fn with_vault_storage(&mut self, storage: VaultStorage) -> NodeBuilder {
         self.builder = self.builder.with_vault_storage(storage);
         self.clone()
     }

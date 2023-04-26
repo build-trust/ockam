@@ -244,6 +244,11 @@ impl SecretAttributes {
     pub fn length(&self) -> u32 {
         self.length
     }
+
+    /// Return true if the secret is persistent
+    pub(crate) fn is_persistent(&self) -> bool {
+        self.persistence == SecretPersistence::Persistent
+    }
 }
 
 impl SecretAttributes {

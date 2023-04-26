@@ -1,3 +1,4 @@
+use crate::storage::SecretStorage;
 use crate::{
     AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretKey,
     SecretPersistence, SecretType, SecretVault, Vault, VaultEntry, VaultError,
@@ -44,17 +45,10 @@ impl AsymmetricVault for Vault {
         secret: &KeyId,
         peer_public_key: &PublicKey,
     ) -> Result<KeyId> {
-        let entries = self.data.entries.read().await;
-        let entry = entries
-            .get(secret)
-            .ok_or(VaultError::EntryNotFound(format!(
-                "diffie hellman secret {secret:?}"
-            )))?;
-
-        let dh = Self::ecdh_internal(entry, peer_public_key)?;
-
-        // Prevent dead-lock by freeing entries lock, since we don't need it
-        drop(entries);
+        let vault_entry = self
+            .get_ephemeral_secret(secret, "diffie hellman secret")
+            .await?;
+        let dh = Self::ecdh_internal(&vault_entry, peer_public_key)?;
 
         let attributes = SecretAttributes::new(
             SecretType::Buffer,
