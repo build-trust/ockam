@@ -236,15 +236,6 @@ impl ConnectionInstanceBuilder {
                     }
 
                     if changes.flow_control_id.is_some() {
-                        if self.flow_control_id.is_some()
-                            && self.flow_control_id != changes.flow_control_id
-                        {
-                            return Err(ockam_core::Error::new(
-                                Origin::Transport,
-                                Kind::Unsupported,
-                                "multiple flow controls created in a `MultiAddr`",
-                            ));
-                        }
                         self.flow_control_id = changes.flow_control_id;
                     }
                     self.transport_route = self.recalculate_transport_route()?;

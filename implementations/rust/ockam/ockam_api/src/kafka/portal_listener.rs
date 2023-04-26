@@ -3,7 +3,7 @@ use tracing::trace;
 
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{Address, AllowAll, Any, Error, Route, Routed, Worker};
+use ockam_core::{route, Address, AllowAll, Any, Error, Route, Routed, Worker};
 use ockam_node::Context;
 
 use crate::kafka::inlet_controller::KafkaInletController;
@@ -55,6 +55,8 @@ impl Worker for KafkaPortalListener {
             ));
         }
 
+        let inlet_responder_address = message.return_route().next().cloned()?;
+
         let worker_address = KafkaPortalWorker::start_kafka_portal(
             context,
             self.secure_channel_controller.clone(),
@@ -62,6 +64,7 @@ impl Worker for KafkaPortalListener {
             self.inlet_controller.clone(),
             None,
             Some(&(self.flow_controls.clone(), flow_control_id)),
+            route![inlet_responder_address],
         )
         .await?;
 
