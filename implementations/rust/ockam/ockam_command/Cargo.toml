@@ -99,6 +99,7 @@ serde_yaml = "0.9"
 strip-ansi-escapes = "0.1.1"
 syntect = "5"
 sysinfo = { version = "0.28", default-features = false }
+tiny-gradient = "0.1.0"
 tempfile = "3.5"
 termcolor = "1.2.0"
 termimad = "0.23"

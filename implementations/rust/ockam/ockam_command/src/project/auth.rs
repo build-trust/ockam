@@ -174,7 +174,7 @@ async fn authenticate_through_okta(
     // Get auth0 token
     let okta_config: OktaAuth0 = p.okta_config.context("Okta addon not configured")?.into();
     let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config));
-    let token = auth0.token().await?;
+    let token = auth0.token(opts).await?;
 
     // Return address to the "okta_authenticator" worker on the authority node through the secure channel
     let okta_authenticator_addr = {

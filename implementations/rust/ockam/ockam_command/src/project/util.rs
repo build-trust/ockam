@@ -19,7 +19,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
-use crate::{CommandGlobalOpts, OckamConfig, Result};
+use crate::{fmt_info, CommandGlobalOpts, OckamConfig, Result};
 
 pub fn clean_projects_multiaddr(
     input: MultiAddr,
@@ -185,9 +185,9 @@ pub async fn check_project_readiness<'a>(
     config::set_project_id(&opts.config, &project).await?;
 
     // Check if Project and Project Authority info is available
-    println!("Project created!");
     if !project.is_ready() {
-        print!("Waiting for it to be ready...");
+        opts.terminal
+            .write(&fmt_info!("Waiting for project to be ready..."))?;
         let cloud_route = &cloud_opts.route();
         let project_id = project.id.clone();
         project = Retry::spawn(retry_strategy.clone(), || async {
@@ -203,40 +203,40 @@ pub async fn check_project_readiness<'a>(
             {
                 let p = rpc.parse_response::<Project>()?;
                 if p.is_ready() {
-                    println!(" {}", "✔︎".light_green());
+                    opts.terminal
+                        .write_line(&format!("{}", "✔︎".light_green()))?;
                     return Ok(p.to_owned());
                 }
             }
-            print!(".");
+            opts.terminal.write(".")?;
             Err(anyhow!("Project creation timed out. Plaese try again."))
         })
         .await?;
-
-        println!();
     }
 
     {
-        print!("Establishing connection (this can take a few minutes)...");
+        opts.terminal.write(&fmt_info!(
+            "Establishing connection (this can take a few minutes)..."
+        ))?;
         Retry::spawn(retry_strategy.clone(), || async {
             std::io::stdout().flush()?;
 
             // Handle the reachable result, so we can provide better errors in the case a project isn't
             if let Ok(reachable) = project.is_reachable().await {
                 if reachable {
-                    println!(" {}", "✔︎".light_green());
+                    opts.terminal.write_line(&format!(" {}", "✔︎".light_green()))?;
                     return Ok(());
                 }
             }
 
-            print!(".");
+            opts.terminal.write(".")?;
             Err(anyhow!("Timed out while trying to establish a connection to the project. Please try again."))
         }).await?;
-
-        println!();
     }
 
     {
-        print!("Establishing secure channel...");
+        opts.terminal
+            .write(&fmt_info!("Establishing secure channel..."))?;
         std::io::stdout().flush()?;
 
         let project_route = project.access_route()?;
@@ -262,19 +262,18 @@ pub async fn check_project_readiness<'a>(
             {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                println!(" {}", "✔︎".light_green());
+                opts.terminal.write_line(&format!(" {}", "✔︎".light_green()))?;
                 return Ok(());
             }
-            print!(".");
+            opts.terminal.write(".")?;
             Err(anyhow!("Timed out while trying to establish a secure channel to the project. Please try again."))
         })
         .await?;
-
-        println!();
     }
 
     {
-        print!("Establishing secure channel to authority...");
+        opts.terminal
+            .write(&fmt_info!("Establishing secure channel to authority..."))?;
         std::io::stdout().flush()?;
 
         let authority = ProjectAuthority::from_raw(
@@ -298,16 +297,14 @@ pub async fn check_project_readiness<'a>(
             {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                println!(" {}", "✔︎".light_green());
+                opts.terminal.write_line(&format!(" {}", "✔︎".light_green()))?;
                 return Ok(());
             }
 
-            print!(".");
+            opts.terminal.write(".")?;
             Err(anyhow!("Time out while trying to establish a secure channel to the project authority. Please try again."))
         })
         .await?;
-
-        println!();
     }
 
     // Persist project config with all its fields

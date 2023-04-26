@@ -23,9 +23,9 @@ use crate::project::util::check_project_readiness;
 
 use crate::space::util::config;
 use crate::util::api::CloudOpts;
-use crate::util::output::Output;
+
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, fmt_err, fmt_info, fmt_ok, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -62,6 +62,8 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     update_enrolled_identity(&opts, &node_name).await?;
     delete_embedded_node(&opts, &node_name).await;
 
+    opts.terminal
+        .write_line(&fmt_ok!("Enrolled successfully!"))?;
     Ok(())
 }
 
@@ -72,7 +74,7 @@ async fn enroll(
     node_name: &str,
 ) -> Result<()> {
     let auth0 = Auth0Service::new(Auth0Provider::Auth0);
-    let token = auth0.token().await?;
+    let token = auth0.token(opts).await?;
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     rpc.request(api::enroll::auth0(cmd.clone(), token)).await?;
     let (res, dec) = rpc.check_response()?;
@@ -107,15 +109,15 @@ async fn default_space<'a>(
             name: crate::util::random_name(),
             admins: vec![],
         };
-        println!(
-            "\n{}",
+        opts.terminal.write_line(&fmt_info!(
+            "{}",
             "Creating a trial space for you (everything in it will be deleted in 15 days) ..."
                 .light_magenta()
-        );
-        println!(
+        ))?
+        .write_line(&fmt_info!(
             "{}",
             "To learn more about production ready spaces in Ockam Orchestrator, contact us at: hello@ockam.io".light_magenta()
-        );
+        ))?;
 
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
         rpc.request(api::space::create(&cmd)).await?;
@@ -130,7 +132,11 @@ async fn default_space<'a>(
             .to_owned()
     };
     config::set_space(&opts.config, &default_space)?;
-    println!("\n{}\n", default_space.output()?);
+
+    opts.terminal.write_line(&fmt_info!(
+        "Space {} is set as default",
+        default_space.name.to_string().light_magenta()
+    ))?;
     Ok(default_space)
 }
 
@@ -170,7 +176,11 @@ async fn default_project<'a>(
     };
     let project =
         check_project_readiness(ctx, opts, cloud_opts, node_name, None, default_project).await?;
-    println!("{}", project.output()?);
+
+    opts.terminal.write_line(&fmt_info!(
+        "Project {} is set as default",
+        project.name.to_string().light_magenta()
+    ))?;
 
     opts.state.projects.create(&project.name, project.clone())?;
     opts.state
@@ -239,22 +249,28 @@ impl Auth0Service {
         &self.0
     }
 
-    pub(crate) async fn token(&self) -> Result<Auth0Token> {
+    pub(crate) async fn token(&self, opts: &CommandGlobalOpts) -> Result<Auth0Token> {
         let dc = self.device_code().await?;
 
-        eprint!(
-            "\nEnroll Ockam Command's default identity with Ockam Orchestrator:\n\
-             {} First copy your one-time code: {}\n\
-             {} Then press enter to open {} in your browser...",
-            "!".light_yellow(),
-            format!(" {} ", dc.user_code).bg_white().black(),
-            ">".light_green(),
-            dc.verification_uri.to_string().light_green(),
-        );
+        opts.terminal
+            .write_line(&fmt_info!(
+                "Enroll Ockam Command's default identity with Ockam Orchestrator"
+            ))?
+            .write_line(&fmt_info!(
+                "First copy your one-time code: {}",
+                format!(" {} ", dc.user_code).bg_white().black()
+            ))?
+            .write_line(&fmt_info!(
+                "Then press enter to open {} in your browser...",
+                dc.verification_uri.to_string().light_green()
+            ))?;
 
         let mut input = String::new();
         match stdin().read_line(&mut input) {
-            Ok(_) => eprintln!("{} Opening: {}", ">".light_green(), dc.verification_uri),
+            Ok(_) => {
+                opts.terminal
+                    .write_line(&fmt_info!("Opening: {}", dc.verification_uri))?;
+            }
             Err(_e) => {
                 return Err(anyhow!("couldn't read enter from stdin").into());
             }
@@ -268,14 +284,13 @@ impl Auth0Service {
         // rerun the command).
         let uri: &str = dc.verification_uri.borrow();
         if open::that(uri).is_err() {
-            eprintln!(
-                "{} Couldn't open activation url automatically [url={}]",
-                "!".light_red(),
+            opts.terminal.write_line(&fmt_err!(
+                "Couldn't open activation url automatically [url={}]",
                 uri.to_string().light_green()
-            );
+            ))?;
         }
 
-        self.poll_token(dc).await
+        self.poll_token(dc, opts).await
     }
 
     /// Request device code
@@ -314,7 +329,11 @@ impl Auth0Service {
     }
 
     /// Poll for token until it's ready
-    async fn poll_token<'a>(&'a self, dc: DeviceCode<'a>) -> Result<Auth0Token> {
+    async fn poll_token<'a>(
+        &'a self,
+        dc: DeviceCode<'a>,
+        opts: &CommandGlobalOpts,
+    ) -> Result<Auth0Token> {
         let client = self.provider().build_http_client()?;
         let token;
         loop {
@@ -336,7 +355,8 @@ impl Auth0Service {
                         .await
                         .map_err(|e| anyhow!(e.to_string()))?;
                     debug!(?token, "token response received");
-                    eprintln!("{} Token received, processing...", ">".light_green());
+                    opts.terminal
+                        .write_line(&fmt_info!("Token received, processing..."))?;
                     return Ok(token);
                 }
                 _ => {

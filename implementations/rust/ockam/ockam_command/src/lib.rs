@@ -42,6 +42,7 @@ use crate::subscription::SubscriptionCommand;
 use crate::terminal::{Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
+use colorful::Colorful;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
 use console::Term;
@@ -67,6 +68,7 @@ use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
 };
+use tiny_gradient::{GradientStr, RGB};
 use trust_context::TrustContextCommand;
 use upgrade::check_if_an_upgrade_is_available;
 use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
@@ -291,6 +293,16 @@ pub fn run() {
     let input = std::env::args()
         .map(replace_hyphen_with_stdin)
         .collect::<Vec<_>>();
+
+    let ockam_header = include_str!("../static/ockam_ascii.txt").trim();
+    let colored_header = GradientStr::gradient(
+        &ockam_header,
+        [RGB::new(0x52, 0xC7, 0xEA), RGB::new(0xEC, 0xFD, 0xF9)],
+    );
+
+    eprintln!("{}", colored_header);
+    eprintln!();
+
     let command = OckamCommand::parse_from(input);
 
     if !command.global_args.test_argument_parser {
