@@ -1,39 +1,39 @@
 #[macro_export]
 macro_rules! fmt_ok {
     ($input:expr) => {
-        format!("{} {}", "✔".light_green(), format!($input))
+        format!("{} {}", " OK ".bg_light_green().light_gray().bold(), format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{} {}", "✔".light_green(), format!($input, $($args),+))
+        format!("{} {}", " OK ".bg_light_green().light_gray().bold(), format!($input, $($args),+))
     };
 }
 
 #[macro_export]
 macro_rules! fmt_info {
     ($input:expr) => {
-        format!("{} {}", "*".light_blue(), format!($input))
+        format!("{} {}", " INFO ".bg_light_blue().light_gray().bold(), format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{} {}", "*".light_blue(), format!($input, $($args),+))
+        format!("{} {}", " INFO ".bg_light_blue().light_gray().bold(), format!($input, $($args),+))
     };
 }
 
 #[macro_export]
 macro_rules! fmt_warn {
     ($input:expr) => {
-        format!("{} {}", "!".light_yellow(), format!($input))
+        format!("{} {}", " WARN ".bg_light_yellow(), format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{} {}", "!".light_yellow(), format!($input, $($args),+))
+        format!("{} {}", " WARN ".bg_light_yellow(), format!($input, $($args),+))
     };
 }
 
 #[macro_export]
 macro_rules! fmt_err {
     ($input:expr) => {
-        format!("{} {}", "×".light_red(), format!($input))
+        format!("{} {}", " ERROR ".bg_light_red(), format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{} {}", "×".light_red(), format!($input, $($args),+))
+        format!("{} {}", " ERROR ".bg_light_red(), format!($input, $($args),+))
     };
 }
