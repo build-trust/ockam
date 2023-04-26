@@ -2,6 +2,7 @@ defmodule Ockam.SecureChannel.Tests do
   use ExUnit.Case, async: true
   doctest Ockam.SecureChannel
 
+  alias Ockam.Message
   alias Ockam.Node
   alias Ockam.Router
   alias Ockam.SecureChannel
@@ -12,6 +13,167 @@ defmodule Ockam.SecureChannel.Tests do
   setup do
     Node.register_address("test")
     on_exit(fn -> Node.unregister_address("test") end)
+  end
+
+  defp man_in_the_middle(callback) do
+    receive do
+      message ->
+        initiator = Message.return_route(message)
+        message |> Message.forward_trace() |> Router.route()
+        man_in_the_middle(callback, initiator, 1)
+    end
+  end
+
+  defp man_in_the_middle(callback, initiator, n) do
+    receive do
+      %Message{return_route: ^initiator} = message when n >= 3 ->
+        callback.(message, n - 3) |> Enum.each(&Router.route/1)
+
+      %Message{} = message ->
+        message |> Message.forward_trace() |> Router.route()
+    end
+
+    man_in_the_middle(callback, initiator, n + 1)
+  end
+
+  test "secure channel drop packets" do
+    # Drop even messages from initiator -> target (after channel established)
+    # if msgs  a,b,c,d,e,f  are send,  msgs b,d,f are delivered to the secure other
+    # end secure channel.
+    drop_evens = fn message, n ->
+      if rem(n, 2) == 0 do
+        []
+      else
+        [Message.forward_trace(message)]
+      end
+    end
+
+    {:ok, _} =
+      Task.start_link(fn ->
+        Node.register_address("man_in_the_middle")
+        man_in_the_middle(drop_evens)
+      end)
+
+    {:ok, listener} = create_secure_channel_listener()
+    {:ok, channel} = create_secure_channel(["man_in_the_middle", listener])
+
+    # Send 10 messages, only the odd ones are received and decrypted ok, the others
+    # are lost
+    0..9
+    |> Enum.each(fn i ->
+      message = %{
+        payload: :erlang.term_to_binary(i),
+        onward_route: [channel, "test"],
+        return_route: []
+      }
+
+      Router.route(message)
+
+      if rem(i, 2) == 1 do
+        receive do
+          %Message{payload: payload} ->
+            assert i == :erlang.binary_to_term(payload)
+        after
+          1000 ->
+            flunk("Message #{i} didn't arrive")
+        end
+      end
+    end)
+
+    refute_receive(_, 100)
+  end
+
+  test "secure channel replay attack" do
+    replay = fn message, _n ->
+      m = Message.forward_trace(message)
+      [m, m]
+    end
+
+    {:ok, _} =
+      Task.start_link(fn ->
+        Node.register_address("man_in_the_middle")
+        man_in_the_middle(replay)
+      end)
+
+    {:ok, listener} = create_secure_channel_listener()
+    {:ok, channel} = create_secure_channel(["man_in_the_middle", listener])
+
+    # Send 10 messages, all received.  Duplicates ones are discarded and don't
+    # affect the decryptor' state.
+    0..9
+    |> Enum.each(fn i ->
+      message = %{
+        payload: :erlang.term_to_binary(i),
+        onward_route: [channel, "test"],
+        return_route: []
+      }
+
+      Router.route(message)
+
+      receive do
+        %Message{payload: payload} ->
+          assert i == :erlang.binary_to_term(payload)
+      after
+        1000 ->
+          flunk("Message #{i} didn't arrive")
+      end
+    end)
+
+    refute_receive(_, 100)
+  end
+
+  test "secure channel trash packets" do
+    replay = fn %Message{payload: payload} = message, n ->
+      if rem(n, 2) == 0 do
+        # Payload is actually _not_ the raw encrypted bytes..  it's the encrypted bytes encoded with bare.
+        # That means that we can have two different kind of "bad" packets:  things that can't
+        # be decoded from bare,  and things that can be decoded from bare, but then can't be decrypted.
+        # We put both here.
+        trash1 = %Message{message | payload: payload <> "s"} |> Message.forward_trace()
+        [trash1]
+
+        # FIXME: This second form of bad packet crash the nif.  Add to the test once that's fixed.
+        # {:ok, raw, ""} = :bare.decode(payload, :data)
+        # trash2 = trash = %Message{message | payload: :bare.encode(raw <> "s", :data)} |> Message.forward_trace()
+        # [trash1, trash2]
+      else
+        [Message.forward_trace(message)]
+      end
+    end
+
+    {:ok, _} =
+      Task.start_link(fn ->
+        Node.register_address("man_in_the_middle")
+        man_in_the_middle(replay)
+      end)
+
+    {:ok, listener} = create_secure_channel_listener()
+    {:ok, channel} = create_secure_channel(["man_in_the_middle", listener])
+
+    # Send 10 messages, only the odd ones are received and decrypted ok, the others
+    # are dropped because they were modified on the fly, so failed to decrypt
+    0..9
+    |> Enum.each(fn i ->
+      message = %{
+        payload: :erlang.term_to_binary(i),
+        onward_route: [channel, "test"],
+        return_route: []
+      }
+
+      Router.route(message)
+
+      if rem(i, 2) == 1 do
+        receive do
+          %Message{payload: payload} ->
+            assert i == :erlang.binary_to_term(payload)
+        after
+          1000 ->
+            flunk("Message #{i} didn't arrive")
+        end
+      end
+    end)
+
+    refute_receive(_, 100)
   end
 
   test "secure channel works" do
