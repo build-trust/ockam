@@ -104,6 +104,39 @@ impl NodeManagerWorker {
         }
     }
 
+    pub(super) async fn delete_forwarder<'a>(
+        &mut self,
+        ctx: &mut Context,
+        req: &Request<'_>,
+        remote_address: &'a str,
+    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>> {
+        let mut node_manager = self.node_manager.write().await;
+
+        debug!(%remote_address , "Handling DeleteForwarder request");
+
+        if let Some(forwarder_to_delete) = node_manager.registry.forwarders.remove(remote_address) {
+            debug!(%remote_address, "Successfully removed forwarder from node registry");
+
+            let was_stopped = ctx
+                .stop_worker(forwarder_to_delete.worker_address().clone())
+                .await
+                .is_ok();
+
+            if was_stopped {
+                debug!(%remote_address, "Successfully stopped forwarder");
+                Ok(Response::ok(req.id())
+                    .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
+            } else {
+                error!(%remote_address, "Failed to delete forwarder from node registry");
+                Ok(Response::internal_error(req.id())
+                    .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
+            }
+        } else {
+            error!(%remote_address, "Forwarder not found in the node registry");
+            Ok(Response::not_found(req.id()).body(None))
+        }
+    }
+
     pub(super) async fn show_forwarder<'a>(
         &mut self,
         req: &Request<'_>,

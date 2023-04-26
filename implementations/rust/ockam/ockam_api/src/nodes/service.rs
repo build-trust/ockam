@@ -707,6 +707,10 @@ impl NodeManagerWorker {
                     .await
                     .to_vec()?
             }
+            (Delete, ["node", "forwarder", remote_address]) => self
+                .delete_forwarder(ctx, req, remote_address)
+                .await?
+                .to_vec()?,
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
 
             // ==*== Inlets & Outlets ==*==

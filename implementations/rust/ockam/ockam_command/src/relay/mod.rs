@@ -1,12 +1,14 @@
 use clap::{Args, Subcommand};
 
 pub(crate) use create::CreateCommand;
+pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
 use crate::CommandGlobalOpts;
 
 mod create;
+mod delete;
 mod list;
 mod show;
 
@@ -23,6 +25,7 @@ pub enum RelaySubCommand {
     Create(CreateCommand),
     List(ListCommand),
     Show(ShowCommand),
+    Delete(DeleteCommand),
 }
 
 impl RelayCommand {
@@ -31,6 +34,7 @@ impl RelayCommand {
             RelaySubCommand::Create(c) => c.run(opts),
             RelaySubCommand::List(c) => c.run(opts),
             RelaySubCommand::Show(c) => c.run(opts),
+            RelaySubCommand::Delete(c) => c.run(opts),
         }
     }
 }
