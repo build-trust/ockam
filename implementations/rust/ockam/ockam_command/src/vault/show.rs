@@ -1,5 +1,5 @@
 use clap::Args;
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 
 use crate::CommandGlobalOpts;
 

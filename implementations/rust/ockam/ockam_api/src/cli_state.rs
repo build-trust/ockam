@@ -1,13 +1,13 @@
+pub mod credentials;
 pub mod identities;
 pub mod projects;
 pub mod traits;
+pub mod trust_contexts;
 pub mod vaults;
 
-use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use nix::errno::Errno;
-use ockam::identity::credential::Credential;
 use ockam::identity::{Identities, IdentitiesVault, Identity};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
@@ -21,9 +21,11 @@ use std::str::FromStr;
 use sysinfo::{Pid, System, SystemExt};
 use thiserror::Error;
 
+pub use crate::cli_state::credentials::*;
 pub use crate::cli_state::identities::*;
 pub use crate::cli_state::projects::*;
 pub use crate::cli_state::traits::*;
+pub use crate::cli_state::trust_contexts::*;
 pub use crate::cli_state::vaults::*;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -85,8 +87,8 @@ impl CliState {
             identities: IdentitiesState::load(dir)?,
             nodes: NodesState::new(dir)?,
             projects: ProjectsState::load(dir)?,
-            credentials: CredentialsState::new(dir)?,
-            trust_contexts: TrustContextsState::new(dir)?,
+            credentials: CredentialsState::load(dir)?,
+            trust_contexts: TrustContextsState::load(dir)?,
             dir: dir.to_path_buf(),
         })
     }
@@ -112,8 +114,8 @@ impl CliState {
             self.identities.dir(),
             self.vaults.dir(),
             self.projects.dir(),
-            &self.credentials.dir,
-            &self.trust_contexts.dir,
+            self.credentials.dir(),
+            self.trust_contexts.dir(),
             &dir.join("defaults"),
         ] {
             if dir.exists() {
@@ -675,240 +677,6 @@ impl TryFrom<&PathBuf> for NodeSetupConfig {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TrustContextsState {
-    dir: PathBuf,
-}
-
-impl TrustContextsState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("trust_contexts");
-        std::fs::create_dir_all(dir.join("data"))?;
-        Ok(Self { dir })
-    }
-
-    pub fn create(&self, name: &str, config: TrustContextConfig) -> Result<TrustContextState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            path
-        };
-        let contents = serde_json::to_string(&config)?;
-        std::fs::write(&path, contents)?;
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
-        }
-
-        path.try_into()
-    }
-
-    pub fn get(&self, name: &str) -> Result<TrustContextState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-        path.try_into()
-    }
-
-    pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(
-            CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?
-                .join("trust_context"),
-        )
-    }
-
-    pub fn default(&self) -> Result<TrustContextState> {
-        let path = std::fs::canonicalize(self.default_path()?)?;
-        path.try_into()
-    }
-
-    pub fn set_default(&self, name: &str) -> Result<TrustContextState> {
-        let original = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-
-        let link = self.default_path()?;
-        std::os::unix::fs::symlink(original, link)?;
-        self.get(name)
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TrustContextState {
-    pub path: PathBuf,
-    pub config: TrustContextConfig,
-}
-
-impl TryFrom<PathBuf> for TrustContextState {
-    type Error = CliStateError;
-
-    fn try_from(path: PathBuf) -> Result<Self> {
-        let contents = std::fs::read_to_string(&path)?;
-        let config = serde_json::from_str(&contents)?;
-        Ok(TrustContextState { path, config })
-    }
-}
-
-impl TrustContextState {
-    pub fn config(&self) -> Result<TrustContextConfig> {
-        let contents = std::fs::read_to_string(&self.path)?;
-        Ok(serde_json::from_str(&contents)?)
-    }
-
-    pub fn name(&self) -> Result<String> {
-        self.path
-            .file_stem()
-            .and_then(|s| s.to_os_string().into_string().ok())
-            .ok_or_else(|| {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "failed to parse the trust context name",
-                ))
-            })
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CredentialConfig {
-    pub issuer: Identity,
-    pub encoded_credential: String,
-}
-
-impl CredentialConfig {
-    pub fn new(issuer: Identity, encoded_credential: String) -> Result<Self> {
-        Ok(Self {
-            issuer,
-            encoded_credential,
-        })
-    }
-
-    pub fn credential(&self) -> Result<Credential> {
-        let bytes = match hex::decode(&self.encoded_credential) {
-            Ok(b) => b,
-            Err(e) => {
-                return Err(CliStateError::Invalid(format!(
-                    "Unable to hex decode credential. {e}"
-                )));
-            }
-        };
-        minicbor::decode::<Credential>(&bytes)
-            .map_err(|e| CliStateError::Invalid(format!("Unable to decode credential. {e}")))
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CredentialsState {
-    dir: PathBuf,
-}
-
-impl CredentialsState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("credentials");
-        std::fs::create_dir_all(dir.join("data"))?;
-        Ok(Self { dir })
-    }
-
-    pub async fn create(&self, name: &str, cred: CredentialConfig) -> Result<CredentialState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if path.exists() {
-                return Err(CliStateError::AlreadyExists);
-            }
-            path
-        };
-        let contents = serde_json::to_string(&cred)?;
-        std::fs::write(&path, contents)?;
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
-        }
-
-        Ok(CredentialState { path })
-    }
-
-    pub fn get(&self, name: &str) -> Result<CredentialState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-        Ok(CredentialState { path })
-    }
-
-    pub fn list(&self) -> Result<Vec<CredentialState>> {
-        let mut creds = vec![];
-        for entry in std::fs::read_dir(&self.dir)? {
-            if let Ok(cred) = self.get(&file_stem(&entry?.path())?) {
-                creds.push(cred);
-            }
-        }
-
-        Ok(creds)
-    }
-
-    pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(
-            CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?
-                .join("credential"),
-        )
-    }
-
-    pub fn default(&self) -> Result<CredentialState> {
-        let path = std::fs::canonicalize(self.default_path()?)?;
-        Ok(CredentialState { path })
-    }
-
-    pub fn set_default(&self, name: &str) -> Result<CredentialState> {
-        let original = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-        let link = self.default_path()?;
-        std::os::unix::fs::symlink(original, link)?;
-        self.get(name)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-pub struct CredentialState {
-    pub path: PathBuf,
-}
-
-impl CredentialState {
-    pub fn config(&self) -> Result<CredentialConfig> {
-        let string_config = std::fs::read_to_string(&self.path)?;
-        Ok(serde_json::from_str(&string_config)?)
-    }
-
-    pub fn name(&self) -> Result<String> {
-        self.path
-            .file_stem()
-            .and_then(|s| s.to_os_string().into_string().ok())
-            .ok_or_else(|| {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "failed to parse the credentials name",
-                ))
-            })
-    }
-}
-
 pub fn random_name() -> String {
     hex::encode(random::<[u8; 4]>())
 }
@@ -924,6 +692,7 @@ fn file_stem(path: &Path) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::cli::TrustContextConfig;
 
     #[tokio::test]
     async fn test_create_default_identity_state() {
@@ -1065,13 +834,10 @@ mod tests {
             "nodes".to_string(),
             format!("nodes/{node_name}"),
             "projects".to_string(),
-            "projects/data".to_string(),
             format!("projects/{project_name}.json"),
             "trust_contexts".to_string(),
-            "trust_contexts/data".to_string(),
             format!("trust_contexts/{trust_context_name}.json"),
             "credentials".to_string(),
-            "credentials/data".to_string(),
             "defaults".to_string(),
             "defaults/vault".to_string(),
             "defaults/identity".to_string(),
@@ -1156,15 +922,9 @@ mod tests {
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
-                        let entry_name = entry.file_name().into_string().unwrap();
-                        if entry.path().is_dir() {
-                            assert_eq!(entry_name, "data");
-                            found_entries.push(format!("{dir_name}/{entry_name}"));
-                        } else {
-                            assert!(entry.path().is_file());
-                            let file_name = entry.file_name().into_string().unwrap();
-                            found_entries.push(format!("{dir_name}/{file_name}"));
-                        }
+                        assert!(entry.path().is_file());
+                        let file_name = entry.file_name().into_string().unwrap();
+                        found_entries.push(format!("{dir_name}/{file_name}"));
                     });
                 }
                 "credentials" => {
@@ -1182,15 +942,9 @@ mod tests {
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
-                        let entry_name = entry.file_name().into_string().unwrap();
-                        if entry.path().is_dir() {
-                            assert_eq!(entry_name, "data");
-                            found_entries.push(format!("{dir_name}/{entry_name}"));
-                        } else {
-                            assert!(entry.path().is_file());
-                            let file_name = entry.file_name().into_string().unwrap();
-                            found_entries.push(format!("{dir_name}/{file_name}"));
-                        }
+                        assert!(entry.path().is_file());
+                        let file_name = entry.file_name().into_string().unwrap();
+                        found_entries.push(format!("{dir_name}/{file_name}"));
                     });
                 }
                 _ => panic!("unexpected file"),

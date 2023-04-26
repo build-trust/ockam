@@ -11,7 +11,7 @@ use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::identity::CredentialData;
 use ockam::Context;
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_identity::{identities, Identity};
 
 #[derive(Clone, Debug, Args)]

@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cli_state::StateTrait;
+use ockam_api::cli_state::StateDirTrait;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::config;

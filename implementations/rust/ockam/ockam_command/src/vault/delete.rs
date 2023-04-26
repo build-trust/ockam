@@ -3,7 +3,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cli_state::traits::StateTrait;
+use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
 use crate::terminal::ConfirmResult;

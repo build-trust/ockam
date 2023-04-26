@@ -9,7 +9,7 @@ use anyhow::anyhow;
 
 use clap::Args;
 use ockam::Context;
-use ockam_api::cli_state::CredentialConfig;
+use ockam_api::cli_state::{CredentialConfig, StateDirTrait};
 use ockam_identity::{identities, Identity};
 
 #[derive(Clone, Debug, Args)]
@@ -59,13 +59,10 @@ async fn run_impl(
     };
 
     // store
-    opts.state
-        .credentials
-        .create(
-            &cmd.credential_name,
-            CredentialConfig::new(cmd.identity().await?, cred_as_str)?,
-        )
-        .await?;
+    opts.state.credentials.create(
+        &cmd.credential_name,
+        CredentialConfig::new(cmd.identity().await?, cred_as_str)?,
+    )?;
 
     println!("Credential {} stored", &cmd.credential_name);
 

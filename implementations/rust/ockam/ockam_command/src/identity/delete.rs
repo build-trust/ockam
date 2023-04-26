@@ -3,7 +3,7 @@ use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
-use ockam_api::cli_state::traits::StateTrait;
+use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");

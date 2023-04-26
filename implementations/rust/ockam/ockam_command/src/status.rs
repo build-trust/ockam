@@ -6,7 +6,7 @@ use clap::Args;
 use ockam::identity::Identity;
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::NodeState;
 use ockam_api::nodes::models::base::NodeStatus;
 use std::time::Duration;

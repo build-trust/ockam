@@ -2,9 +2,10 @@ use anyhow::{anyhow, Context as _};
 
 use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state;
-use ockam_api::cli_state::traits::StateItemDirTrait;
+use ockam_api::cli_state::traits::StateItemTrait;
 use ockam_api::config::lookup::ProjectLookup;
 
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
@@ -16,7 +17,6 @@ use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::Command;
-use ockam_api::cli_state::StateTrait;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;

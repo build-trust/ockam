@@ -1,6 +1,7 @@
 use clap::{arg, Args};
 
 use ockam::Context;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::{
     credential::show::display_credential, util::node_rpc, vault::default_vault_name,
@@ -26,7 +27,7 @@ async fn run_impl(
     let cred_states = opts.state.credentials.list()?;
 
     for cred_state in cred_states {
-        display_credential(&opts, &cred_state.name()?, &cmd.vault).await?;
+        display_credential(&opts, cred_state.name(), &cmd.vault).await?;
     }
 
     Ok(())

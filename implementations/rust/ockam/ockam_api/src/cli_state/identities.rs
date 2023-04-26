@@ -1,5 +1,5 @@
 use super::Result;
-use crate::cli_state::traits::{StateItemDirTrait, StateTrait};
+use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
 use crate::cli_state::{CliStateError, NodeState};
 use ockam_identity::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
@@ -209,9 +209,8 @@ mod traits {
     use std::path::Path;
 
     #[async_trait]
-    impl StateTrait for IdentitiesState {
-        type ItemDir = IdentityState;
-        type ItemConfig = IdentityConfig;
+    impl StateDirTrait for IdentitiesState {
+        type Item = IdentityState;
 
         fn new(dir: PathBuf) -> Self {
             Self { dir }
@@ -240,26 +239,22 @@ mod traits {
                 Err(CliStateError::NotFound) => return Ok(()),
                 Err(e) => return Err(e),
             };
-
             // Abort if identity is being used by some running node.
             identity.in_use()?;
-
             // If it's the default, remove link
             if let Ok(default) = self.default() {
                 if default.path == identity.path {
                     let _ = std::fs::remove_file(self.default_path()?);
                 }
             }
-
             // Remove identity file
             identity.delete()?;
-
             Ok(())
         }
     }
 
     #[async_trait]
-    impl StateItemDirTrait for IdentityState {
+    impl StateItemTrait for IdentityState {
         type Config = IdentityConfig;
 
         fn new(path: PathBuf, config: Self::Config) -> Result<Self> {
@@ -286,11 +281,6 @@ mod traits {
                 data_path,
                 config,
             })
-        }
-
-        fn delete(&self) -> Result<()> {
-            std::fs::remove_file(&self.path)?;
-            Ok(())
         }
 
         fn name(&self) -> &str {

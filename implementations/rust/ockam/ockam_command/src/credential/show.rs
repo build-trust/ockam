@@ -1,6 +1,7 @@
 use clap::{arg, Args};
 use colorful::Colorful;
 use ockam::Context;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::{
     credential::validate_encoded_cred, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
@@ -35,12 +36,12 @@ pub(crate) async fn display_credential(
     cred_name: &str,
     vault_name: &str,
 ) -> crate::Result<()> {
-    let cred_config = opts.state.credentials.get(cred_name)?.config()?;
+    let cred = opts.state.credentials.get(cred_name)?;
+    let cred_config = cred.config();
 
-    let issuer = &cred_config.issuer;
     let is_verified = match validate_encoded_cred(
         &cred_config.encoded_credential,
-        &issuer.identifier(),
+        &cred_config.issuer.identifier(),
         vault_name,
         opts,
     )

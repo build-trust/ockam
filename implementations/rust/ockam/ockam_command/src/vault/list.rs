@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use clap::Args;
-use ockam_api::cli_state::traits::StateTrait;
+use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::CommandGlobalOpts;
 

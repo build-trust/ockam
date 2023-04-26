@@ -5,7 +5,7 @@ use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use rand::prelude::random;
 
 use ockam::Context;
-use ockam_api::cli_state::StateTrait;
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
