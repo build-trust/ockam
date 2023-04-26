@@ -39,12 +39,14 @@ pub struct VaultState {
 
 impl VaultState {
     pub async fn get(&self) -> Result<Vault> {
-        let vault_storage = VaultFileStorage::create(self.vault_file_path().clone()).await?;
-        let mut vault = Vault::new(Some(Arc::new(vault_storage)));
         if self.config.aws_kms {
-            vault.enable_aws_kms().await?
+            // TODO: provide an AWS implementation
+            let vault_storage = VaultFileStorage::create(self.vault_file_path().as_path()).await?;
+            Ok(Vault::new(vault_storage))
+        } else {
+            let vault_storage = VaultFileStorage::create(self.vault_file_path().as_path()).await?;
+            Ok(Vault::new(vault_storage))
         }
-        Ok(vault)
     }
 
     fn build_data_path(name: &str, path: &Path) -> PathBuf {
@@ -60,9 +62,8 @@ impl VaultState {
 
     pub async fn identities_vault(&self) -> Result<Arc<dyn IdentitiesVault>> {
         let path = self.vault_file_path().clone();
-        Ok(Arc::new(Vault::new(Some(Arc::new(
-            VaultFileStorage::create(path).await?,
-        )))))
+        let vault = Vault::create_with_path(path.as_path()).await?;
+        Ok(vault)
     }
 
     pub fn name(&self) -> &str {

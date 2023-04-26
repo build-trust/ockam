@@ -7,8 +7,9 @@ pub struct InMemoryValueStorage<V> {
     storage: Arc<RwLock<V>>,
 }
 
+/// Trait implementation for ValueStorage
 #[async_trait]
-impl<V: Send + Sync + Clone + 'static> ValueStorage<V, V> for InMemoryValueStorage<V> {
+impl<V: Send + Sync + Clone + 'static> ValueStorage<V> for InMemoryValueStorage<V> {
     async fn update_value(&self, f: impl Fn(V) -> Result<V> + Send + Sync + 'static) -> Result<()> {
         let _ = self
             .modify_value(move |v| {
@@ -19,21 +20,22 @@ impl<V: Send + Sync + Clone + 'static> ValueStorage<V, V> for InMemoryValueStora
         Ok(())
     }
 
-    async fn modify_value(
+    async fn modify_value<R>(
         &self,
-        f: impl Fn(V) -> Result<(V, V)> + Send + Sync + 'static,
-    ) -> Result<V> {
+        f: impl Fn(V) -> Result<(V, R)> + Send + Sync + 'static,
+    ) -> Result<R> {
         let mut value = self.storage.write().unwrap();
         let (updated, result) = f(value.clone())?;
         *value = updated;
         Ok(result)
     }
 
-    async fn read_value(&self, f: impl Fn(V) -> Result<V> + Send + Sync + 'static) -> Result<V> {
+    async fn read_value<R>(&self, f: impl Fn(V) -> Result<R> + Send + Sync + 'static) -> Result<R> {
         f(self.storage.read().unwrap().clone())
     }
 }
 
+/// Default in-memory value storage, starting with a default value for V
 impl<V: Default> InMemoryValueStorage<V> {
     /// Create a new in-memory value storage
     pub fn create() -> InMemoryValueStorage<V> {
@@ -50,8 +52,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[tokio::test]
-    #[allow(non_snake_case)]
-    async fn test_vault_synchronization() -> Result<()> {
+    async fn test_value_storage() -> Result<()> {
         let storage = InMemoryValueStorage::<Value>::create();
 
         let initial = storage.read_value(move |value: Value| Ok(value)).await?;

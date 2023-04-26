@@ -1,33 +1,32 @@
-use crate::storage::Storage;
-use crate::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry, VaultError};
+use crate::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, Error, Result};
-use ockam_node::{FileValueStorage, ValueStorage};
+use ockam_core::{async_trait, Result};
+use ockam_node::{FileValueStorage, KeyValueStorage, ValueStorage};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::Path;
 
 /// Storage for a Vault backed by a file
 pub struct VaultFileStorage {
-    storage: Arc<FileValueStorage<FileVault, VaultEntry>>,
+    storage: Arc<FileValueStorage<FileVault>>,
 }
 
 impl VaultFileStorage {
     /// Create a new file storage for a Vault
-    pub async fn create(path: PathBuf) -> Result<VaultFileStorage> {
+    pub async fn create(path: &Path) -> Result<Arc<dyn KeyValueStorage<KeyId, VaultEntry>>> {
         let storage = Arc::new(FileValueStorage::create(path).await?);
-        Ok(VaultFileStorage { storage })
+        Ok(Arc::new(VaultFileStorage { storage }))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct FileVaultEntry {
     key_id: Option<String>,
     key_attributes: SecretAttributes,
     key: Secret,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "version")]
 #[non_exhaustive]
 enum FileVault {
@@ -47,9 +46,8 @@ impl Default for FileVault {
 }
 
 #[async_trait]
-impl Storage for VaultFileStorage {
-    async fn store(&self, key_id: &KeyId, key: &VaultEntry) -> Result<()> {
-        let key_id = key_id.clone();
+impl KeyValueStorage<KeyId, VaultEntry> for VaultFileStorage {
+    async fn put(&self, key_id: KeyId, key: VaultEntry) -> Result<()> {
         let attributes = key.key_attributes();
         let key = key.secret().clone();
         let t = move |v: FileVault| {
@@ -71,9 +69,9 @@ impl Storage for VaultFileStorage {
         self.storage.update_value(t).await
     }
 
-    async fn load(&self, key_id: &KeyId) -> Result<VaultEntry> {
+    async fn get(&self, key_id: &KeyId) -> Result<Option<VaultEntry>> {
         let key_id = key_id.clone();
-        let t = move |v: FileVault| -> Result<VaultEntry> {
+        let t = move |v: FileVault| -> Result<Option<VaultEntry>> {
             let FileVault::V1 {
                 entries,
                 next_id: _,
@@ -88,19 +86,18 @@ impl Storage for VaultFileStorage {
                         false
                     }
                 })
-                .map(|le| VaultEntry::new(le.1.key_attributes, le.1.key.clone()))
-                .ok_or(VaultError::EntryNotFound(format!("vault entry {key_id:?}")))?)
+                .map(|le| VaultEntry::new(le.1.key_attributes, le.1.key.clone())))
         };
         self.storage.read_value(t).await
     }
 
-    async fn delete(&self, key_id: &KeyId) -> Result<VaultEntry> {
+    async fn delete(&self, key_id: &KeyId) -> Result<Option<VaultEntry>> {
         let key_id = key_id.clone();
-        let t = move |v: FileVault| -> Result<(FileVault, VaultEntry)> {
+        let t = move |v: FileVault| -> Result<(FileVault, Option<VaultEntry>)> {
             let FileVault::V1 {
                 mut entries,
                 next_id,
-            } = v;
+            } = v.clone();
             if let Some(index) = entries.iter_mut().position(|(_, entry)| {
                 if let Some(id) = &entry.key_id {
                     id.eq(&key_id)
@@ -110,11 +107,9 @@ impl Storage for VaultFileStorage {
             }) {
                 let removed = entries.swap_remove(index);
                 let vault_entry = VaultEntry::new(removed.1.key_attributes, removed.1.key);
-                Ok((FileVault::V1 { entries, next_id }, vault_entry))
+                Ok((FileVault::V1 { entries, next_id }, Some(vault_entry)))
             } else {
-                Err(Error::from(VaultError::EntryNotFound(format!(
-                    "vault entry {key_id:?}"
-                ))))
+                Ok((v, None))
             }
         };
         self.storage.modify_value(t).await
@@ -128,11 +123,10 @@ mod tests {
     use ockam_core::compat::join;
     use ockam_core::compat::rand::RngCore;
     use rand::thread_rng;
-    use std::sync::Arc;
+    use std::path::PathBuf;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn parse_legacy_key() {
+    fn test_parse_legacy_key() {
         //it's easier to embed a json formatted as base64 rather than a literal string
         let sample_key =
             "eyJ2ZXJzaW9uIjoiVjEiLCJlbnRyaWVzIjpbWzAseyJrZXlfaWQiOiI1N2ZjOGI3OGNlMzg4OWM1\
@@ -179,19 +173,11 @@ NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
 
     #[tokio::test]
     #[allow(non_snake_case)]
-    async fn secret_persistence__recreate_vault__loads_from_storage() {
-        let mut rng = thread_rng();
-        let mut rand_id = [0u8; 32];
-
-        rng.fill_bytes(&mut rand_id);
-        let rand_id1 = hex::encode(rand_id);
-
-        rng.fill_bytes(&mut rand_id);
-
-        let dir = std::env::temp_dir();
-        let storage = VaultFileStorage::create(dir.join(rand_id1)).await.unwrap();
-        let storage = Arc::new(storage);
-        let vault = Vault::new(Some(storage.clone()));
+    async fn test_secret_persistence__recreate_vault__loads_from_storage() {
+        let storage = VaultFileStorage::create(create_temp_file().as_path())
+            .await
+            .unwrap();
+        let vault = Vault::new(storage.clone());
 
         let attributes10 =
             SecretAttributes::new(SecretType::Ed25519, SecretPersistence::Persistent, 0);
@@ -204,7 +190,7 @@ NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
         let key_id2 = vault.secret_generate(attributes20).await.unwrap();
         let key_id3 = vault.secret_generate(attributes3).await.unwrap();
 
-        let vault = Vault::new(Some(storage.clone()));
+        let vault = Vault::new(storage.clone());
 
         let attributes11 = vault.secret_attributes_get(&key_id1).await.unwrap();
         assert_eq!(attributes10, attributes11);
@@ -215,21 +201,11 @@ NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
     }
 
     #[tokio::test]
-    #[allow(non_snake_case)]
-    async fn vault_synchronization() {
-        let mut rng = thread_rng();
-        let mut rand_id = [0u8; 32];
-
-        rng.fill_bytes(&mut rand_id);
-        let rand_id1 = hex::encode(rand_id);
-
-        rng.fill_bytes(&mut rand_id);
-
-        let dir = std::env::temp_dir();
-        let storage = VaultFileStorage::create(dir.join(rand_id1)).await.unwrap();
-
-        let storage = Arc::new(storage);
-        let vault = Vault::new(Some(storage.clone()));
+    async fn test_vault_synchronization() {
+        let storage = VaultFileStorage::create(create_temp_file().as_path())
+            .await
+            .unwrap();
+        let vault = Vault::new(storage);
 
         let attributes1 =
             SecretAttributes::new(SecretType::Ed25519, SecretPersistence::Persistent, 0);
@@ -257,5 +233,14 @@ NjMsMTY2LDEzMSw0NCwxMjYsMTMzLDIyOSwxMzldfX1dXSwibmV4dF9pZCI6MH0=";
         assert_eq!(attributes1, attributes12.unwrap());
         assert_eq!(attributes2, attributes22.unwrap());
         assert_eq!(attributes3, attributes32.unwrap());
+    }
+
+    pub fn create_temp_file() -> PathBuf {
+        let dir = std::env::temp_dir();
+        let mut rng = thread_rng();
+        let mut bytes = [0u8; 32];
+        rng.fill_bytes(&mut bytes);
+        let file_name = hex::encode(bytes);
+        dir.join(file_name)
     }
 }

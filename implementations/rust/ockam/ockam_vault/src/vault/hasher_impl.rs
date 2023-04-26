@@ -1,3 +1,4 @@
+use crate::storage::SecretStorage;
 use crate::{
     Hasher, KeyId, Secret, SecretAttributes, SecretKey, SecretType, SecretVault, Vault, VaultError,
     AES128_SECRET_LENGTH_USIZE, AES256_SECRET_LENGTH_USIZE,
@@ -24,34 +25,23 @@ impl Hasher for Vault {
         ikm: Option<&KeyId>,
         output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<KeyId>> {
-        self.preload_from_storage(salt).await;
-        if let Some(ikm) = ikm {
-            self.preload_from_storage(ikm).await;
-        }
-
-        let entries = self.data.entries.read().await;
-
-        let ikm: Result<&[u8]> = match ikm {
+        let ikm: Result<SecretKey> = match ikm {
             Some(ikm) => {
-                let ikm = entries
-                    .get(ikm)
-                    .ok_or(VaultError::EntryNotFound(format!("hkdf_sha256 {ikm:?}")))?;
-                if ikm.key_attributes().stype() == SecretType::Buffer {
-                    Ok(ikm.secret().try_as_key()?.as_ref())
+                let vault_entry = self.get_secret(ikm, "hkdf_sha256").await?;
+
+                if vault_entry.key_attributes().stype() == SecretType::Buffer {
+                    let secret_key = vault_entry.secret().try_as_key()?.clone();
+                    Ok(secret_key)
                 } else {
                     Err(VaultError::InvalidKeyType.into())
                 }
             }
-            None => Ok(&[0u8; 0]),
+            None => Ok(SecretKey::new(vec![])),
         };
 
-        let ikm = ikm?;
+        let vault_entry = self.get_secret(salt, "hkdf_sha256 salt").await?;
 
-        let salt = entries.get(salt).ok_or(VaultError::EntryNotFound(format!(
-            "hkdf_sha256 salt {salt:?}"
-        )))?;
-
-        if salt.key_attributes().stype() != SecretType::Buffer {
+        if vault_entry.key_attributes().stype() != SecretType::Buffer {
             return Err(VaultError::InvalidKeyType.into());
         }
 
@@ -60,15 +50,15 @@ impl Hasher for Vault {
 
         let okm = {
             let mut okm = vec![0u8; okm_len];
-            let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.secret().try_as_key()?.as_ref()), ikm);
+            let prk = hkdf::Hkdf::<Sha256>::new(
+                Some(vault_entry.secret().try_as_key()?.as_ref()),
+                ikm?.as_ref(),
+            );
 
             prk.expand(info, okm.as_mut_slice())
                 .map_err(|_| Into::<ockam_core::Error>::into(VaultError::HkdfExpandError))?;
             okm
         };
-
-        // Prevent dead-lock by freeing entries lock, since we don't need it
-        drop(entries);
 
         let mut secrets = Vec::<KeyId>::new();
         let mut index = 0;

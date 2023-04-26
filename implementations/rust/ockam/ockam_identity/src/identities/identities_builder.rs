@@ -2,8 +2,7 @@ use crate::identities::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Storage,
 };
 use ockam_core::compat::sync::Arc;
-use ockam_vault::storage::Storage as VaultStorage;
-use ockam_vault::Vault;
+use ockam_vault::{Vault, VaultStorage};
 
 /// Builder for Identities services
 #[derive(Clone)]
@@ -19,8 +18,8 @@ pub fn identities() -> Arc<Identities> {
 
 impl IdentitiesBuilder {
     /// Set a specific storage for the identities vault
-    pub fn with_vault_storage(&mut self, storage: Arc<dyn VaultStorage>) -> IdentitiesBuilder {
-        self.with_identities_vault(Arc::new(Vault::new(Some(storage))))
+    pub fn with_vault_storage(&mut self, storage: VaultStorage) -> IdentitiesBuilder {
+        self.with_identities_vault(Arc::new(Vault::new(storage)))
     }
 
     /// Set a specific identities vault
