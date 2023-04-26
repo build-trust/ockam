@@ -6,8 +6,6 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
   alias Ockam.Vault
   alias Ockam.Vault.Software, as: SoftwareVault
 
-  # Test aren't very intersting for now,  but will come handy once we add rekey and out-of-order window
-  # handling.  Easy to simulate lost of packets,  replays, etc.
   test "normal flow" do
     # We can't share the _same_ k between encryptor and decryptor on the same vault, as when the encryptor
     # rotate the key, it destroy the old k.  But that might still be used by the decryptor to decrypt yet-to-be
