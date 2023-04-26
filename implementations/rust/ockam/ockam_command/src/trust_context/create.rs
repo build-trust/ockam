@@ -8,6 +8,7 @@ use crate::{
 use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
+use ockam_api::cli_state::StateDirTrait;
 
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = false)]

@@ -1,5 +1,5 @@
 use super::Result;
-use crate::cli_state::traits::StateItemDirTrait;
+use crate::cli_state::traits::StateItemTrait;
 use ockam_identity::IdentitiesVault;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
@@ -90,9 +90,8 @@ mod traits {
     use std::path::Path;
 
     #[async_trait]
-    impl StateTrait for VaultsState {
-        type ItemDir = VaultState;
-        type ItemConfig = VaultConfig;
+    impl StateDirTrait for VaultsState {
+        type Item = VaultState;
 
         fn new(dir: PathBuf) -> Self {
             Self { dir }
@@ -114,23 +113,23 @@ mod traits {
             &self.dir
         }
 
-        fn create(&self, _name: &str, _config: Self::ItemConfig) -> Result<Self::ItemDir> {
+        fn create(
+            &self,
+            _name: &str,
+            _config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
+        ) -> Result<Self::Item> {
             unreachable!()
         }
 
         async fn create_async(
             &self,
             name: &str,
-            config: Self::ItemConfig,
-        ) -> Result<Self::ItemDir> {
-            let path = {
-                let path = self.path(name);
-                if path.exists() {
-                    return Err(CliStateError::AlreadyExists);
-                }
-                path
-            };
-            let state = Self::ItemDir::new(path, config)?;
+            config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
+        ) -> Result<Self::Item> {
+            if self.exists(name) {
+                return Err(CliStateError::AlreadyExists);
+            }
+            let state = Self::Item::new(self.path(name), config)?;
             state.get().await?;
             if !self.default_path()?.exists() {
                 self.set_default(name)?;
@@ -139,29 +138,25 @@ mod traits {
         }
 
         fn delete(&self, name: &str) -> Result<()> {
-            // Retrieve vault. If doesn't exist do nothing.
-            let vault = match self.get(name) {
-                Ok(v) => v,
-                Err(CliStateError::NotFound) => return Ok(()),
-                Err(e) => return Err(e),
-            };
-
+            // If doesn't exist do nothing.
+            if !self.exists(name) {
+                return Ok(());
+            }
+            let vault = self.get(name)?;
             // If it's the default, remove link
             if let Ok(default) = self.default() {
                 if default.path == vault.path {
                     let _ = std::fs::remove_file(self.default_path()?);
                 }
             }
-
             // Remove vault files
             vault.delete()?;
-
             Ok(())
         }
     }
 
     #[async_trait]
-    impl StateItemDirTrait for VaultState {
+    impl StateItemTrait for VaultState {
         type Config = VaultConfig;
 
         fn new(path: PathBuf, config: Self::Config) -> Result<Self> {

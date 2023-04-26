@@ -19,7 +19,7 @@ use crate::{CommandGlobalOpts, Result};
 
 use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
-use ockam_api::cli_state::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::DefaultAddress;
 use ockam_core::route;
@@ -152,10 +152,12 @@ async fn run_impl(
     )
     .await?;
 
-    opts.state.projects.create(&project.name, project.clone())?;
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
     opts.state
         .trust_contexts
-        .create(&project.name, project.clone().try_into()?)?;
+        .overwrite(&project.name, project.clone().try_into()?)?;
 
     let credential = client2.credential().await?;
     println!("---");

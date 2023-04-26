@@ -4,7 +4,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state;
 use ockam_api::cli_state::identities::IdentityConfig;
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 
 use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_identity::{IdentityChangeConstants, KeyAttributes};

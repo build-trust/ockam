@@ -3,7 +3,7 @@ use crate::util::output::Output;
 use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");

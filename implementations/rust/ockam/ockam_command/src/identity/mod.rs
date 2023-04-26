@@ -15,7 +15,7 @@ use crate::util::OckamConfig;
 use crate::{docs, fmt_warn, CommandGlobalOpts, GlobalArgs, Result};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");

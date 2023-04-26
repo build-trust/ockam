@@ -8,7 +8,7 @@ use anyhow::{anyhow, Context as _};
 use clap::{ArgGroup, Args};
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};

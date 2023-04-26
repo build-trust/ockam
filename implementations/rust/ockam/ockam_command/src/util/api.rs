@@ -1,6 +1,6 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
-use ockam_api::cli_state::{CliState, StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::config::cli::TrustContextConfig;
 use regex::Regex;
@@ -455,7 +455,7 @@ impl TrustContextConfigBuilder {
         }
 
         let state = CliState::try_default().ok()?;
-        let tc = state.trust_contexts.default().ok()?.config;
+        let tc = state.trust_contexts.default().ok()?.config().clone();
         Some(tc)
     }
 
@@ -480,8 +480,8 @@ pub fn parse_trust_context(trust_context_input: &str) -> Result<TrustContextConf
                 .ok()
                 .and_then(|state| state.trust_contexts.get(trust_context_input).ok());
             let state = state.context("Invalid Trust Context name or path")?;
-            let mut tcc = state.config;
-            tcc.set_path(state.path);
+            let mut tcc = state.config().clone();
+            tcc.set_path(state.path().clone());
             tcc
         }
     };

@@ -19,8 +19,8 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_core::route;
 
-use crate::cli_state::traits::StateTrait;
-use crate::cli_state::CliStateError;
+use crate::cli_state::traits::StateDirTrait;
+use crate::cli_state::{CliStateError, StateItemTrait};
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use crate::nodes::connection::Connection;
 use crate::nodes::service::invalid_multiaddr_error;
@@ -105,7 +105,7 @@ impl NodeManager {
                 self.cli_state
                     .credentials
                     .get(&credential_name)?
-                    .config()?
+                    .config()
                     .credential()?,
             )
         } else {

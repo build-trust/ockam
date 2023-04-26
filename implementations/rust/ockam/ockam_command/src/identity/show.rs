@@ -5,7 +5,7 @@ use anyhow::anyhow;
 use clap::Args;
 use core::fmt::Write;
 use ockam::identity::identity::IdentityChangeHistory;
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 

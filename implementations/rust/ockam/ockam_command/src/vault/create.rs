@@ -4,7 +4,7 @@ use rand::prelude::random;
 
 use ockam::Context;
 use ockam_api::cli_state;
-use ockam_api::cli_state::traits::StateTrait;
+use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::util::node_rpc;
 use crate::{fmt_info, fmt_ok, CommandGlobalOpts};

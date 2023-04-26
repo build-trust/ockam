@@ -673,7 +673,7 @@ mod tests {
     use super::*;
     use ockam_api::cli_state;
     use ockam_api::cli_state::identities::IdentityConfig;
-    use ockam_api::cli_state::traits::StateTrait;
+    use ockam_api::cli_state::traits::StateDirTrait;
     use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 

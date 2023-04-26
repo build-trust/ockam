@@ -20,7 +20,7 @@ pub(crate) use verify::VerifyCommand;
 
 use crate::{docs, CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
-use ockam_api::cli_state::traits::StateTrait;
+use ockam_api::cli_state::traits::StateDirTrait;
 
 const HELP_DETAIL: &str = "";
 

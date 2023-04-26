@@ -3,7 +3,7 @@ use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam::identity::Identity;
 use ockam::Context;
-use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use rand::prelude::random;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
