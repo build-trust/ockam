@@ -25,7 +25,7 @@ use crate::space::util::config;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{docs, fmt_err, fmt_info, fmt_ok, CommandGlobalOpts, Result};
+use crate::{docs, fmt_err, fmt_info, fmt_log, fmt_ok, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -253,14 +253,14 @@ impl Auth0Service {
         let dc = self.device_code().await?;
 
         opts.terminal
-            .write_line(&fmt_info!(
+            .write_line(&fmt_log!(
                 "Enroll Ockam Command's default identity with Ockam Orchestrator"
             ))?
             .write_line(&fmt_info!(
                 "First copy your one-time code: {}",
                 format!(" {} ", dc.user_code).bg_white().black()
             ))?
-            .write_line(&fmt_info!(
+            .write(&fmt_log!(
                 "Then press enter to open {} in your browser...",
                 dc.verification_uri.to_string().light_green()
             ))?;
@@ -269,7 +269,7 @@ impl Auth0Service {
         match stdin().read_line(&mut input) {
             Ok(_) => {
                 opts.terminal
-                    .write_line(&fmt_info!("Opening: {}", dc.verification_uri))?;
+                    .write_line(&fmt_log!("Opening: {}", dc.verification_uri))?;
             }
             Err(_e) => {
                 return Err(anyhow!("couldn't read enter from stdin").into());
@@ -355,8 +355,7 @@ impl Auth0Service {
                         .await
                         .map_err(|e| anyhow!(e.to_string()))?;
                     debug!(?token, "token response received");
-                    opts.terminal
-                        .write_line(&fmt_info!("Token received, processing..."))?;
+                    opts.terminal.write_line(&fmt_ok!("Token received!"))?;
                     return Ok(token);
                 }
                 _ => {

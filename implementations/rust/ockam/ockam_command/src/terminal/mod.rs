@@ -244,7 +244,6 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
             return Ok(self);
         }
         self.stderr.write_line(msg)?;
-        self.stderr.write_line("")?;
         Ok(self)
     }
 

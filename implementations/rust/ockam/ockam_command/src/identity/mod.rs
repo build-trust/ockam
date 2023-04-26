@@ -12,7 +12,7 @@ use ockam_api::cli_state::CliState;
 pub(crate) use show::ShowCommand;
 
 use crate::util::OckamConfig;
-use crate::{docs, fmt_info, fmt_warn, CommandGlobalOpts, GlobalArgs, Result};
+use crate::{docs, fmt_info, CommandGlobalOpts, GlobalArgs, Result};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
 

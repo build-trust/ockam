@@ -19,7 +19,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
-use crate::{fmt_info, CommandGlobalOpts, OckamConfig, Result};
+use crate::{fmt_log, CommandGlobalOpts, OckamConfig, Result};
 
 pub fn clean_projects_multiaddr(
     input: MultiAddr,
@@ -187,7 +187,7 @@ pub async fn check_project_readiness<'a>(
     // Check if Project and Project Authority info is available
     if !project.is_ready() {
         opts.terminal
-            .write(&fmt_info!("Waiting for project to be ready..."))?;
+            .write(&fmt_log!("Waiting for project to be ready..."))?;
         let cloud_route = &cloud_opts.route();
         let project_id = project.id.clone();
         project = Retry::spawn(retry_strategy.clone(), || async {
@@ -215,7 +215,7 @@ pub async fn check_project_readiness<'a>(
     }
 
     {
-        opts.terminal.write(&fmt_info!(
+        opts.terminal.write(&fmt_log!(
             "Establishing connection (this can take a few minutes)..."
         ))?;
         Retry::spawn(retry_strategy.clone(), || async {
@@ -236,7 +236,7 @@ pub async fn check_project_readiness<'a>(
 
     {
         opts.terminal
-            .write(&fmt_info!("Establishing secure channel..."))?;
+            .write(&fmt_log!("Establishing secure channel..."))?;
         std::io::stdout().flush()?;
 
         let project_route = project.access_route()?;
@@ -273,7 +273,7 @@ pub async fn check_project_readiness<'a>(
 
     {
         opts.terminal
-            .write(&fmt_info!("Establishing secure channel to authority..."))?;
+            .write(&fmt_log!("Establishing secure channel to authority..."))?;
         std::io::stdout().flush()?;
 
         let authority = ProjectAuthority::from_raw(
