@@ -45,34 +45,23 @@ impl<'a> ConfluentConfig<'a> {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ConfluentConfigResponse<'a> {
+pub struct ConfluentConfigResponse {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[cbor(n(0))] pub tag: TypeTag<6434816>,
 
-    #[serde(borrow)]
-    #[cbor(b(1))] pub bootstrap_server: CowStr<'a>,
+    #[cbor(n(1))] pub bootstrap_server: String,
 }
 
-impl<'a> ConfluentConfigResponse<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(bootstrap_server: S) -> Self {
+impl ConfluentConfigResponse {
+    pub fn new<S: ToString>(bootstrap_server: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            bootstrap_server: bootstrap_server.into(),
-        }
-    }
-}
-
-impl ConfluentConfigResponse<'_> {
-    pub fn to_owned<'r>(&self) -> ConfluentConfigResponse<'r> {
-        ConfluentConfigResponse {
-            #[cfg(feature = "tag")]
-            tag: self.tag.to_owned(),
-            bootstrap_server: self.bootstrap_server.to_owned(),
+            bootstrap_server: bootstrap_server.to_string(),
         }
     }
 }

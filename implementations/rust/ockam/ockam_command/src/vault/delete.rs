@@ -46,7 +46,7 @@ async fn run_impl(
                 return Ok(());
             }
 
-            state.delete(&name).await?;
+            state.delete(&name)?;
 
             opts.terminal
                 .stdout()

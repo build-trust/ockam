@@ -5,7 +5,9 @@ use anyhow::anyhow;
 use clap::Args;
 use ockam::identity::Identity;
 use ockam::{Context, TcpTransport};
-use ockam_api::cli_state::{IdentityState, NodeState};
+use ockam_api::cli_state::identities::IdentityState;
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
+use ockam_api::cli_state::NodeState;
 use ockam_api::nodes::models::base::NodeStatus;
 use std::time::Duration;
 
@@ -55,7 +57,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) ->
         if cmd.all {
             status_identities.push(identity)
         } else {
-            match &identity.config.enrollment_status {
+            match &identity.config().enrollment_status {
                 Some(_enrollment) => status_identities.push(identity),
                 None => (),
             }
@@ -104,14 +106,14 @@ async fn print_status(
 
     for (i_idx, identity) in identities.iter().enumerate() {
         println!("Identity[{i_idx}]");
-        if default_identity.config.identifier == identity.config.identifier {
+        if default_identity.config().identifier == identity.config().identifier {
             println!("{:2}Default: yes", "")
         }
         for line in identity.to_string().lines() {
             println!("{:2}{}", "", line);
         }
 
-        node_details.retain(|nd| nd.identity.identifier() == identity.config.identifier);
+        node_details.retain(|nd| nd.identity.identifier() == identity.config().identifier);
         if !node_details.is_empty() {
             println!("{:2}Linked Nodes:", "");
             for (n_idx, node) in node_details.iter().enumerate() {

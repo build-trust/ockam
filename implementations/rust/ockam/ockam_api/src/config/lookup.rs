@@ -4,7 +4,7 @@ use anyhow::Context as _;
 use bytes::Bytes;
 use ockam::identity::{identities, IdentityIdentifier};
 use ockam_core::compat::collections::VecDeque;
-use ockam_core::{CowStr, Result};
+use ockam_core::Result;
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -216,10 +216,10 @@ pub struct ProjectLookup {
 }
 
 impl ProjectLookup {
-    pub async fn from_project(project: &Project<'_>) -> anyhow::Result<Self> {
+    pub async fn from_project(project: &Project) -> anyhow::Result<Self> {
         let node_route: MultiAddr = project
             .access_route
-            .as_ref()
+            .as_str()
             .try_into()
             .context("Invalid project node route")?;
         let pid = project
@@ -264,17 +264,18 @@ impl ProjectAuthority {
         }
     }
 
-    pub async fn from_raw<'a>(
-        route: &'a Option<CowStr<'a>>,
-        identity: &'a Option<CowStr<'a>>,
+    pub async fn from_raw<S: ToString>(
+        route: &Option<S>,
+        identity: &Option<S>,
     ) -> Result<Option<Self>> {
         if let Some(r) = route {
-            let rte = MultiAddr::try_from(&**r)?;
+            let rte = MultiAddr::try_from(r.to_string().as_str())?;
             let a = identity
                 .as_ref()
-                .ok_or_else(|| ApiError::generic("Identity is not set"))?;
-            let a =
-                hex::decode(&**a).map_err(|_| ApiError::generic("Invalid project authority"))?;
+                .ok_or_else(|| ApiError::generic("Identity is not set"))?
+                .to_string();
+            let a = hex::decode(a.as_str())
+                .map_err(|_| ApiError::generic("Invalid project authority"))?;
             let p = identities()
                 .identities_creation()
                 .import_identity(&a)

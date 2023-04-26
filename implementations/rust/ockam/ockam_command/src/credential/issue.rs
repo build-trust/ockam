@@ -11,7 +11,7 @@ use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::identity::CredentialData;
 use ockam::Context;
-use ockam_api::cli_state::traits::StateTrait;
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use ockam_identity::{identities, Identity};
 
 #[derive(Clone, Debug, Args)]
@@ -69,7 +69,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
     let ident_state = opts.state.identities.get(&cmd.as_identity)?;
-    let auth_identity_identifier = ident_state.config.identifier.clone();
+    let auth_identity_identifier = ident_state.config().identifier.clone();
 
     let mut attrs = cmd.attributes()?;
     attrs.insert(

@@ -8,7 +8,7 @@ use anyhow::{anyhow, Context as _};
 use clap::{ArgGroup, Args};
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
-use ockam_api::cli_state::traits::StateTrait;
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
@@ -24,7 +24,7 @@ use tracing::error;
 /// Create a node
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = docs::after_help(HELP_DETAIL))]
-#[clap(group(ArgGroup::new("trusted").required(true).args(&["trusted_identities", "reload_from_trusted_identities_file"])))]
+#[clap(group(ArgGroup::new("trusted").required(true).args(& ["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {
     /// Name of the node
     #[arg(default_value = "authority")]
@@ -56,7 +56,7 @@ pub struct CreateCommand {
 
     /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage.
     /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
-    #[arg(group = "trusted", long, value_name = "JSON_OBJECT", value_parser=parse_trusted_identities)]
+    #[arg(group = "trusted", long, value_name = "JSON_OBJECT", value_parser = parse_trusted_identities)]
     trusted_identities: Option<TrustedIdentities>,
 
     /// Path of a file containing trusted identities and their attributes encoded as a JSON object.
@@ -257,10 +257,10 @@ async fn start_authority_node(
             .get(&identity_name)
             .context("Identity not found")
             .unwrap()
-            .config
+            .config()
             .identity(),
         None => match options.state.identities.default().ok() {
-            Some(state) => state.config.identity(),
+            Some(state) => state.config().identity(),
             None => {
                 let cmd = identity::CreateCommand::new("authority".into(), None);
                 cmd.create_identity(options.clone()).await?

@@ -10,7 +10,11 @@ use super::Result;
 #[async_trait]
 pub trait StateTrait: Sized {
     type ItemDir: StateItemDirTrait;
-    type ItemConfig: StateItemConfigTrait + Serialize + for<'a> Deserialize<'a>;
+    type ItemConfig: Serialize + for<'a> Deserialize<'a> + Send;
+
+    fn cli_state(&self) -> Result<CliState> {
+        CliState::new(self.dir().parent().expect("no parent dir"))
+    }
 
     fn new(dir: PathBuf) -> Self;
     fn default_filename() -> &'static str;
@@ -37,7 +41,28 @@ pub trait StateTrait: Sized {
         self.dir().join(format!("{name}.json"))
     }
 
-    async fn create(&self, name: &str, config: Self::ItemConfig) -> Result<Self::ItemDir>;
+    fn create(
+        &self,
+        name: &str,
+        config: <<Self as StateTrait>::ItemDir as StateItemDirTrait>::Config,
+    ) -> Result<Self::ItemDir> {
+        let path = {
+            let path = self.path(name);
+            if path.exists() {
+                return Err(CliStateError::AlreadyExists);
+            }
+            path
+        };
+        let state = Self::ItemDir::new(path, config)?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+        Ok(state)
+    }
+
+    async fn create_async(&self, _name: &str, _config: Self::ItemConfig) -> Result<Self::ItemDir> {
+        unreachable!()
+    }
 
     fn get(&self, name: &str) -> Result<Self::ItemDir> {
         let path = {
@@ -60,7 +85,7 @@ pub trait StateTrait: Sized {
         Ok(items)
     }
 
-    async fn delete(&self, name: &str) -> Result<()>;
+    fn delete(&self, name: &str) -> Result<()>;
 
     fn default_path(&self) -> Result<PathBuf> {
         let root_path = self.dir().parent().expect("Should have parent");
@@ -106,18 +131,28 @@ pub trait StateTrait: Sized {
 /// The details of the item are defined in the `Config` type.
 #[async_trait]
 pub trait StateItemDirTrait: Sized {
-    type Config: StateItemConfigTrait + Serialize + for<'a> Deserialize<'a>;
+    type Config: Serialize + for<'a> Deserialize<'a> + Send;
+
+    fn cli_state(&self) -> Result<CliState> {
+        CliState::new(
+            self.path()
+                .parent()
+                .expect("no parent dir")
+                .parent()
+                .expect("no parent dir"),
+        )
+    }
 
     fn new(path: PathBuf, config: Self::Config) -> Result<Self>;
     fn load(path: PathBuf) -> Result<Self>;
-    async fn delete(&self) -> Result<()>;
+    fn persist(&self) -> Result<()> {
+        let contents = serde_json::to_string(self.config())?;
+        std::fs::write(self.path(), contents)?;
+        Ok(())
+    }
+    fn delete(&self) -> Result<()>;
     fn name(&self) -> &str;
     fn path(&self) -> &PathBuf;
     fn data_path(&self) -> Option<&PathBuf>;
     fn config(&self) -> &Self::Config;
-}
-
-#[async_trait]
-pub trait StateItemConfigTrait {
-    async fn delete(&self) -> Result<()>;
 }

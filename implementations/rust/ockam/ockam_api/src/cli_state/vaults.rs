@@ -114,7 +114,15 @@ mod traits {
             &self.dir
         }
 
-        async fn create(&self, name: &str, config: Self::ItemConfig) -> Result<Self::ItemDir> {
+        fn create(&self, _name: &str, _config: Self::ItemConfig) -> Result<Self::ItemDir> {
+            unreachable!()
+        }
+
+        async fn create_async(
+            &self,
+            name: &str,
+            config: Self::ItemConfig,
+        ) -> Result<Self::ItemDir> {
             let path = {
                 let path = self.path(name);
                 if path.exists() {
@@ -130,7 +138,7 @@ mod traits {
             Ok(state)
         }
 
-        async fn delete(&self, name: &str) -> Result<()> {
+        fn delete(&self, name: &str) -> Result<()> {
             // Retrieve vault. If doesn't exist do nothing.
             let vault = match self.get(name) {
                 Ok(v) => v,
@@ -146,7 +154,7 @@ mod traits {
             }
 
             // Remove vault files
-            vault.delete().await?;
+            vault.delete()?;
 
             Ok(())
         }
@@ -159,7 +167,6 @@ mod traits {
         fn new(path: PathBuf, config: Self::Config) -> Result<Self> {
             let contents = serde_json::to_string(&config)?;
             std::fs::write(&path, contents)?;
-
             let name = file_stem(&path)?;
             let data_path = VaultState::build_data_path(&name, &path);
             Ok(Self {
@@ -183,7 +190,7 @@ mod traits {
             })
         }
 
-        async fn delete(&self) -> Result<()> {
+        fn delete(&self) -> Result<()> {
             std::fs::remove_file(&self.path)?;
             std::fs::remove_file(&self.data_path)?;
             std::fs::remove_file(self.data_path.with_extension("json.lock"))?;
@@ -204,13 +211,6 @@ mod traits {
 
         fn config(&self) -> &Self::Config {
             &self.config
-        }
-    }
-
-    #[async_trait]
-    impl StateItemConfigTrait for VaultConfig {
-        async fn delete(&self) -> Result<()> {
-            unreachable!()
         }
     }
 }

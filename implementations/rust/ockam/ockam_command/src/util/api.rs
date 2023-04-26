@@ -1,6 +1,6 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
-use ockam_api::cli_state::CliState;
+use ockam_api::cli_state::{CliState, StateItemDirTrait, StateTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::config::cli::TrustContextConfig;
 use regex::Regex;
@@ -463,7 +463,7 @@ impl TrustContextConfigBuilder {
         let state = CliState::try_default().ok()?;
         let proj = state.projects.default().ok()?;
 
-        self.get_from_project_path(&proj.path)
+        self.get_from_project_path(proj.path())
     }
 }
 

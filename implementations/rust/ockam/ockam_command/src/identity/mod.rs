@@ -15,6 +15,7 @@ use crate::util::OckamConfig;
 use crate::{docs, fmt_warn, CommandGlobalOpts, GlobalArgs, Result};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -22,10 +23,10 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 /// Manage identities
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    subcommand_required = true,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+arg_required_else_help = true,
+subcommand_required = true,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct IdentityCommand {
     #[command(subcommand)]
@@ -68,7 +69,7 @@ pub fn default_identity_name() -> String {
     cli_state
         .identities
         .default()
-        .map_or("default".to_string(), |i| i.name)
+        .map_or("default".to_string(), |i| i.name().to_string())
 }
 
 pub fn identity_name_parser(identity_name: &str) -> Result<String> {
