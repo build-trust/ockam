@@ -46,7 +46,7 @@ pub async fn run_impl(
             node
         ))
         .machine(&relay_name)
-        .json(&serde_json::json!({ "forwarder": { "name": relay_name, "node": node } }))
+        .json(serde_json::json!({ "forwarder": { "name": relay_name, "node": node } }))
         .write_line()?;
     Ok(())
 }
