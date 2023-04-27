@@ -1,9 +1,8 @@
 use ockam_core::compat::sync::Arc;
 use tracing::trace;
 
-use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{route, Address, AllowAll, Any, Error, Route, Routed, Worker};
+use ockam_core::{route, Address, AllowAll, Any, Routed, Worker};
 use ockam_node::Context;
 
 use crate::kafka::inlet_controller::KafkaInletController;
@@ -32,30 +31,20 @@ impl Worker for KafkaPortalListener {
     ) -> ockam::Result<()> {
         trace!("received first message!");
 
-        let secure_channel_address = {
-            let onward: Route = message.onward_route().modify().pop_front().into();
-            onward.next()?.clone()
-        };
+        let mut message = message.into_local_message();
 
-        //retrieve the flow id from the source address
-        let flow_control_id;
-        if let Some(producer_info) = self
+        // Remove our address
+        message.transport_mut().onward_route.step()?;
+
+        let next_hop = message.transport().onward_route.next()?;
+
+        // Retrieve the flow id from the next hop if it exists
+        let flow_control_id = self
             .flow_controls
-            .find_flow_control_with_producer_address(&secure_channel_address)
-        {
-            flow_control_id = producer_info.flow_control_id().clone();
-        } else {
-            return Err(Error::new(
-                Origin::Application,
-                Kind::Invalid,
-                format!(
-                    "no flow control id found in worker address {}",
-                    secure_channel_address.address()
-                ),
-            ));
-        }
+            .find_flow_control_with_producer_address(next_hop)
+            .map(|x| x.flow_control_id().clone());
 
-        let inlet_responder_address = message.return_route().next().cloned()?;
+        let inlet_responder_address = message.transport().return_route.next()?.clone();
 
         let worker_address = KafkaPortalWorker::start_kafka_portal(
             context,
@@ -63,19 +52,17 @@ impl Worker for KafkaPortalListener {
             self.uuid_to_name.clone(),
             self.inlet_controller.clone(),
             None,
-            Some(&(self.flow_controls.clone(), flow_control_id)),
+            &self.flow_controls,
+            flow_control_id,
             route![inlet_responder_address],
         )
         .await?;
-
-        //forward to the worker and place its address in the return route
-        let mut message = message.into_local_message();
 
         message
             .transport_mut()
             .onward_route
             .modify()
-            .replace(worker_address.clone());
+            .prepend(worker_address.clone());
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",

@@ -263,13 +263,15 @@ impl KafkaPortalWorker {
 impl KafkaPortalWorker {
     ///returns address used for inlet communications, aka the one facing the client side,
     /// used for requests.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn start_kafka_portal(
         context: &mut Context,
         secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletController,
         max_kafka_message_size: Option<u32>,
-        flow_control: Option<&(FlowControls, FlowControlId)>,
+        flow_controls: &FlowControls,
+        flow_control_id: Option<FlowControlId>,
         inlet_responder_route: Route,
     ) -> ockam_core::Result<Address> {
         let shared_protocol_state = Interceptor::new(secure_channel_controller, uuid_to_name);
@@ -306,10 +308,10 @@ impl KafkaPortalWorker {
             )
             .await?;
 
-        if let Some((flow_controls, flow_control_id)) = flow_control {
+        if let Some(flow_control_id) = flow_control_id {
             flow_controls.add_consumer(
                 &responses_worker_address.clone(),
-                flow_control_id,
+                &flow_control_id,
                 FlowControlPolicy::ProducerAllowMultiple,
             );
         }
@@ -643,6 +645,7 @@ mod test {
             Default::default(),
             inlet_map,
             Some(TEST_MAX_KAFKA_MESSAGE_SIZE),
+            &flow_controls,
             None,
             route![context.address()],
         )
@@ -706,6 +709,7 @@ mod test {
             Default::default(),
             inlet_map.clone(),
             None,
+            &flow_controls,
             None,
             route![context.address()],
         )
