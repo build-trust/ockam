@@ -352,6 +352,7 @@ jobs:
       - name: Install QEMU
         if: matrix.build == 'linux_arm'
         run: |
+          sudo apt-get update
           sudo apt-get install qemu binfmt-support qemu-user-static
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
