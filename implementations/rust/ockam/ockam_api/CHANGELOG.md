@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.28.0 - 2023-04-27
+
+### Changed
+
+- Create a default project policy for a tcp inlet/outlet
+- Extract identity as an entity
+- Moved the builder functions to their respective structs
+- Formatting
+- Move the lmdb storage
+- Ockam enroll outputs a ticket containing code and project
+- Create abstraction for the cli state directories and applies it to the vaults state
+- Allow kafka reconnection when project connection goes down
+- Use the tcp constant for the transport type
+- Updated dependencies
+
+### Fixed
+
+- Do not recreate an identity state if it already exists
+- Resolve transport addresses as a separate step
+
+### Removed
+
+- Remove the vault service endpoint for getting secret data
+- Removed the put_identity function on identities writer
+
 ## 0.27.0 - 2023-04-14
 
 ### Added
