@@ -20,18 +20,15 @@ use crate::util::api::CloudOpts;
 use crate::util::{api, exitcode, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
-const INFLUXDB_HELP_DETAIL: &str = r#"
-About:
-    InfluxDB addon allows you to create, store and retrieve InfluxDB Tokens with expiry times.
-
-Examples:
-    Examples of how to configure and use the InfluxDB Cloud addon can be found within the example documentation.
-    https://docs.ockam.io/guides/examples/influxdb-cloud-token-lease-management
-"#;
+const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_long_help.txt");
 
 /// Configure the InfluxDB Cloud addon for a project
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(INFLUXDB_HELP_DETAIL))]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct AddonConfigureInfluxdbSubcommand {
     /// Ockam Project Name
     #[arg(

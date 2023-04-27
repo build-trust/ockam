@@ -18,18 +18,15 @@ use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
-const CONFLUENT_HELP_DETAIL: &str = r#"
-About:
-    Confluent Cloud addon allows you to enable end-to-end encryption with your Kafka Consumers and Kafka Producers
-
-Examples:
-    Examples of how to configure and use the Confluent Cloud addon can be found within the example documentation.
-    https://docs.ockam.io/guides/examples/end-to-end-encrypted-kafka
-"#;
+const LONG_ABOUT: &str = include_str!("./static/configure_confluent/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/configure_confluent/after_long_help.txt");
 
 /// Configure the Confluent Cloud addon for a project
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(CONFLUENT_HELP_DETAIL))]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct AddonConfigureConfluentSubcommand {
     /// Ockam project name
     #[arg(

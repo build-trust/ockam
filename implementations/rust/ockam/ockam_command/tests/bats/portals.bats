@@ -21,15 +21,15 @@ teardown() {
 
 # ===== TESTS
 
-@test "portals - create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
+@test "portals - create an inlet/outlet pair, a relay in an orchestrator project and move tcp traffic through it" {
   port=7100
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
-  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
   fwd="$(random_str)"
-  $OCKAM relay create "$fwd" --at /project/default --to /node/blue
+  $OCKAM relay create "$fwd" --to /node/blue
 
   run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
   assert_success
@@ -40,15 +40,15 @@ teardown() {
   assert_success
 }
 
-@test "portals - create an inlet using only default arguments / outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
+@test "portals - create an inlet using only default arguments, an outlet, a relay in an orchestrator project and move tcp traffic through it" {
   port=7101
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
 
-  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
-  $OCKAM relay create --at /project/default --to /node/blue
+  $OCKAM relay create --to /node/blue
 
   addr=$($OCKAM tcp-inlet create)
 
@@ -56,15 +56,15 @@ teardown() {
   assert_success
 }
 
-@test "portals - create an inlet (with implicit secure channel creation) / outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
+@test "portals - create an inlet (with implicit secure channel creation), an outlet, a relay in an orchestrator project and move tcp traffic through it" {
   port=7101
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
-  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
   fwd="$(random_str)"
-  $OCKAM relay create "$fwd" --at /project/default --to /node/blue
+  $OCKAM relay create "$fwd" --to /node/blue
 
   run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
   assert_success
@@ -100,11 +100,11 @@ teardown() {
   assert_success
 
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  run "$OCKAM" tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
   assert_success
 
   fwd="$(random_str)"
-  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/blue
+  run "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
   assert_success
 
@@ -142,11 +142,11 @@ teardown() {
   assert_success
 
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  run "$OCKAM" tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
   assert_success
 
   fwd="$(random_str)"
-  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/blue
+  run "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
   assert_success
 
@@ -180,11 +180,11 @@ teardown() {
   assert_success
 
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  run "$OCKAM" tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
   assert_success
 
   fwd="$(random_str)"
-  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/blue
+  run "$OCKAM" relay create "$fwd" --to /node/blue
   assert_success
   assert_output --partial "forward_to_$fwd"
 
@@ -225,11 +225,11 @@ teardown() {
   run "$OCKAM" policy create --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
   assert_success
 
-  run "$OCKAM" tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
   assert_success
 
   fwd="$(random_str)"
-  run "$OCKAM" relay create "$fwd" --at /project/default --to /node/blue
+  run "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
   assert_success
 

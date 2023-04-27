@@ -364,7 +364,7 @@ teardown() {
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
-  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
   fwd="$(random_str)"
   run "$OCKAM" relay create $fwd
@@ -459,7 +459,7 @@ teardown() {
   assert_success
 
   # Create inlet/outlet pair
-  run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$outlet_port" --alias "test-outlet"
+  run $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$outlet_port" --alias "test-outlet"
   assert_output --partial "/service/outlet"
   assert_success
 
@@ -486,7 +486,7 @@ teardown() {
   run "$OCKAM" node create n1
   assert_success
 
-  run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
+  run $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
   assert_output --partial "/service/outlet"
   assert_success
 
@@ -524,7 +524,7 @@ teardown() {
   port=6105
   run "$OCKAM" node create n1
 
-  run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
+  run $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
   assert_output --partial "/service/outlet"
   assert_success
 
@@ -558,7 +558,7 @@ teardown() {
   run "$OCKAM" node create n1
   assert_success
 
-  run $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to "127.0.0.1:$port" --alias "test-outlet"
+  run $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
   assert_output --partial "/service/outlet"
   assert_success
 
@@ -577,7 +577,7 @@ teardown() {
   run "$OCKAM" node create n2
   assert_success
 
-  $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-outlet create --at /node/n1 --to 127.0.0.1:5000
   $OCKAM tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
 
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
@@ -591,7 +591,7 @@ teardown() {
   run "$OCKAM" node create blue
   assert_success
 
-  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
   $OCKAM relay create blue --at /node/relay --to /node/blue
 
   run "$OCKAM" node create green
