@@ -75,7 +75,7 @@ teardown() {
   # Create node for the non-enrolled identity using the exported project information
   run "$OCKAM" node create green --project-path "$ENROLLED_OCKAM_HOME/project.json"
 
-  # Node can't create forwarder as it isn't a member
+  # Node can't create relay as it isn't a member
   fwd=$(random_str)
   run "$OCKAM" relay create "$fwd"
   assert_failure
