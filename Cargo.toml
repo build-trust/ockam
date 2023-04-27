@@ -5,6 +5,7 @@ members = [
   "examples/rust/get_started",
   "examples/rust/ockam_kafka",
   "examples/rust/tcp_inlet_and_outlet",
+  "examples/rust/mitm_node",
   "implementations/rust/ockam/ockam",
   "implementations/rust/ockam/ockam_abac",
   "implementations/rust/ockam/ockam_api",
