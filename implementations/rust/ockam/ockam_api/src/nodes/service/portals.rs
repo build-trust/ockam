@@ -551,14 +551,14 @@ fn replacer(
 
                 let node_manager = node_manager_arc.write().await;
 
+                let options = TcpInletOptions::new()
+                    .with_incoming_access_control(access)
+                    .as_consumer(&flow_controls);
+
                 // Finally attempt to create a new inlet using the new route:
                 let new_inlet_address = node_manager
                     .tcp_transport
-                    .create_inlet(
-                        bind,
-                        normalized_route,
-                        TcpInletOptions::new().with_incoming_access_control(access),
-                    )
+                    .create_inlet(bind, normalized_route, options)
                     .await?
                     .1;
                 *inlet_address_arc.lock().unwrap() = new_inlet_address;
