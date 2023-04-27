@@ -10,15 +10,17 @@ use ockam_core::{route, Address, AllowAll, Decodable, DenyAll, Encodable, Error,
 use ockam_node::tokio;
 use ockam_node::tokio::sync::mpsc;
 use ockam_node::tokio::task::JoinSet;
-use ockam_node::tokio::time::{timeout, Duration};
+use ockam_node::tokio::time::{sleep, timeout, Duration};
 use ockam_node::Context;
 use tracing as log;
 
 const MAX_FAILURES: usize = 3;
+const RETRY_DELAY: Duration = Duration::from_secs(15);
 const DELAY: Duration = Duration::from_secs(3);
 
 #[derive(Debug)]
 pub struct Medic {
+    retry_delay: Duration,
     delay: Duration,
     sessions: Arc<Mutex<Sessions>>,
     pings: JoinSet<(Key, Result<(), Error>)>,
@@ -36,6 +38,7 @@ pub struct Message {
 impl Medic {
     pub fn new(flow_controls: FlowControls) -> Self {
         Self {
+            retry_delay: RETRY_DELAY,
             delay: DELAY,
             sessions: Arc::new(Mutex::new(Sessions::new())),
             pings: JoinSet::new(),
@@ -117,7 +120,11 @@ impl Medic {
                                 let f = session.replacement(session.ping_route().clone());
                                 session.set_status(Status::Down);
                                 log::info!(%key, "replacing session");
-                                self.replacements.spawn(async move { (key, f.await) });
+                                self.replacements.spawn(async move {
+                                    let replacement = (key, f.await);
+                                    sleep(self.retry_delay).await;
+                                    replacement
+                                });
                             }
                             Status::Down => {
                                 log::warn!(%key, "session is down");
