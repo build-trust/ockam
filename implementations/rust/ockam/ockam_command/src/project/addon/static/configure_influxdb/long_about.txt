@@ -1,0 +1,1 @@
+InfluxDB addon allows you to create, store and retrieve InfluxDB Tokens with expiry times.
