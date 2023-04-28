@@ -105,7 +105,7 @@ termimad = "0.23"
 thiserror = "1"
 tokio = { version = "1.28.0", features = ["full"] }
 tokio-retry = "0.3"
-tracing = { version = "0.1.31", features = ["attributes"] }
+tracing = { version = "0.1.38", features = ["attributes"] }
 tracing-error = "0.2"
 tracing-subscriber = "0.3.9"
 validator = "0.16"
