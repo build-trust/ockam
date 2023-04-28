@@ -13,7 +13,7 @@ ERL_NIF_TERM ok_void(ErlNifEnv *env);
 
 ERL_NIF_TERM ok(ErlNifEnv *env, ERL_NIF_TERM result);
 
-ERL_NIF_TERM err(ErlNifEnv *env, const char* msg);
+ERL_NIF_TERM error_tuple(ErlNifEnv *env, const char* msg);
 
 int parse_vault_handle(ErlNifEnv *env, ERL_NIF_TERM argv, ockam_vault_t* vault);
 
