@@ -147,7 +147,7 @@ ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
 
     ockam_vault_extern_error_t error = ockam_vault_default_init(&vault);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to create vault connection");
+        return error_tuple(env, "failed to create vault connection");
     }
 
     ERL_NIF_TERM handle = enif_make_uint64(env, vault.handle);
@@ -177,14 +177,14 @@ ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     uint8_t* digest = enif_make_new_binary(env, 32, &term);
 
     if (NULL == digest) {
-        return err(env, "failed to create buffer for hash");
+        return error_tuple(env, "failed to create buffer for hash");
     }
 
     memset(digest, 0, 32);
 
     ockam_vault_extern_error_t error = ockam_vault_sha256(vault, input.data, input.size, digest);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env,  "failed to compute sha256 digest");
+        return error_tuple(env,  "failed to compute sha256 digest");
     }
 
     return ok(env, term);
@@ -208,7 +208,7 @@ ERL_NIF_TERM secret_generate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]
     ockam_vault_secret_t secret;
     ockam_vault_extern_error_t error = ockam_vault_secret_generate(vault, &secret, attributes);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "unable to generate the secret");
+        return error_tuple(env, "unable to generate the secret");
     }
 
     ERL_NIF_TERM secret_handle = enif_make_uint64(env, secret);
@@ -239,7 +239,7 @@ ERL_NIF_TERM secret_import(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) 
     ockam_vault_secret_t secret;
     ockam_vault_extern_error_t error = ockam_vault_secret_import(vault, &secret, attributes, input.data, input.size);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "unable to import the secret");
+        return error_tuple(env, "unable to import the secret");
     }
 
     ERL_NIF_TERM secret_handle = enif_make_uint64(env, secret);
@@ -267,14 +267,14 @@ ERL_NIF_TERM secret_export(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) 
 
     ockam_vault_extern_error_t error = ockam_vault_secret_export(vault, secret_handle, buffer, MAX_SECRET_EXPORT_SIZE, &length);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to ockam_vault_secret_export");
+        return error_tuple(env, "failed to ockam_vault_secret_export");
     }
 
     ERL_NIF_TERM output;
     uint8_t* bytes = enif_make_new_binary(env, length, &output);
 
     if (0 == bytes) {
-        return err(env, "failed to create buffer for secret export");
+        return error_tuple(env, "failed to create buffer for secret export");
     }
     memcpy(bytes, buffer, length);
 
@@ -301,14 +301,14 @@ ERL_NIF_TERM secret_publickey_get(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
 
     ockam_vault_extern_error_t error = ockam_vault_secret_publickey_get(vault, secret_handle, buffer, MAX_SECRET_EXPORT_SIZE, &length);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to ockam_vault_secret_publickey_get");
+        return error_tuple(env, "failed to ockam_vault_secret_publickey_get");
     }
 
     ERL_NIF_TERM output;
     uint8_t* bytes = enif_make_new_binary(env, length, &output);
 
     if (0 == bytes) {
-        return err(env, "failed to create buffer for secret_publickey_get");
+        return error_tuple(env, "failed to create buffer for secret_publickey_get");
     }
     memcpy(bytes, buffer, length);
 
@@ -333,7 +333,7 @@ ERL_NIF_TERM secret_attributes_get(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     ockam_vault_secret_attributes_t attributes;
     ockam_vault_extern_error_t error = ockam_vault_secret_attributes_get(vault, secret_handle, &attributes);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to secret_attributes_get");
+        return error_tuple(env, "failed to secret_attributes_get");
     }
 
     return create_term_from_secret_attributes(env, &attributes);
@@ -356,7 +356,7 @@ ERL_NIF_TERM secret_destroy(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 
     ockam_vault_extern_error_t error = ockam_vault_secret_destroy(vault, secret_handle);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to secret_destroy");
+        return error_tuple(env, "failed to secret_destroy");
     }
 
     return ok_void(env);
@@ -385,7 +385,7 @@ ERL_NIF_TERM ecdh(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     ockam_vault_secret_t shared_secret;
     ockam_vault_extern_error_t error = ockam_vault_ecdh(vault, secret_handle, input.data,  input.size, &shared_secret);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to ecdh");
+        return error_tuple(env, "failed to ecdh");
     }
 
     ERL_NIF_TERM shared_secret_term = enif_make_uint64(env, shared_secret);
@@ -450,7 +450,7 @@ ERL_NIF_TERM hkdf_sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     ockam_vault_secret_t shared_secrets[MAX_DERIVED_OUTPUT_COUNT];
     ockam_vault_extern_error_t error = ockam_vault_hkdf_sha256(vault, salt_handle, ikm_handle_ptr, attributes, derived_outputs_count, shared_secrets);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to hkdf_sha256");
+        return error_tuple(env, "failed to hkdf_sha256");
     }
 
     ERL_NIF_TERM output_array[MAX_DERIVED_OUTPUT_COUNT];
@@ -499,7 +499,7 @@ ERL_NIF_TERM aead_aes_gcm_encrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
     uint8_t* cipher_text = enif_make_new_binary(env, size, &term);
 
     if (NULL == cipher_text) {
-        return err(env, "failed to create buffer for aead_aes_gcm_encrypt");
+        return error_tuple(env, "failed to create buffer for aead_aes_gcm_encrypt");
     }
 
     memset(cipher_text, 0, size);
@@ -517,11 +517,11 @@ ERL_NIF_TERM aead_aes_gcm_encrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
                                                                         size,
                                                                         &length);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to aead_aes_gcm_encrypt");
+        return error_tuple(env, "failed to aead_aes_gcm_encrypt");
     }
 
     if (length != size) {
-        return err(env, "buffer size is invalid during aead_aes_gcm_encrypt");
+        return error_tuple(env, "buffer size is invalid during aead_aes_gcm_encrypt");
     }
 
     return ok(env, term);
@@ -567,7 +567,7 @@ ERL_NIF_TERM aead_aes_gcm_decrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
     uint8_t* plain_text = enif_make_new_binary(env, size, &term);
 
     if (NULL == plain_text) {
-        return err(env, "failed to create buffer for aead_aes_gcm_decrypt");
+        return error_tuple(env, "failed to create buffer for aead_aes_gcm_decrypt");
     }
 
     memset(plain_text, 0, size);
@@ -585,11 +585,11 @@ ERL_NIF_TERM aead_aes_gcm_decrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
                                                                         size,
                                                                         &length);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to aead_aes_gcm_decrypt");
+        return error_tuple(env, "failed to aead_aes_gcm_decrypt");
     }
 
     if (length != size) {
-        return err(env, "buffer size is invalid during aead_aes_gcm_decrypt");
+        return error_tuple(env, "buffer size is invalid during aead_aes_gcm_decrypt");
     }
 
     return ok(env, term);
@@ -607,7 +607,7 @@ ERL_NIF_TERM deinit(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
 
     ockam_vault_extern_error_t error = ockam_vault_deinit(vault);
     if (extern_error_check_and_free_error(&error)) {
-        return err(env, "failed to deinit vault");
+        return error_tuple(env, "failed to deinit vault");
     }
 
     return ok_void(env);

@@ -20,9 +20,9 @@ ERL_NIF_TERM ok(ErlNifEnv *env, ERL_NIF_TERM result) {
     return enif_make_tuple2(env, id, result);
 }
 
-ERL_NIF_TERM err(ErlNifEnv *env, const char* msg) {
+ERL_NIF_TERM error_tuple(ErlNifEnv *env, const char* msg) {
     ERL_NIF_TERM e = enif_make_atom(env, "error");
-    ERL_NIF_TERM m = enif_make_string(env, msg, 0);
+    ERL_NIF_TERM m = enif_make_string(env, msg, ERL_NIF_LATIN1);
     return enif_make_tuple2(env, e, m);
 }
 
