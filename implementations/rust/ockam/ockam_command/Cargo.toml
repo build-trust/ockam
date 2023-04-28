@@ -54,7 +54,7 @@ test = false
 anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
-clap = { version = "4.2.4", features = ["derive", "cargo", "wrap_help"] }
+clap = { version = "4.2.5", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.2.1"
 clap_mangen = "0.2.9"
 cli-table = "0.4"
