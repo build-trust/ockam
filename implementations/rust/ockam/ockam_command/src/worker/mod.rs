@@ -5,14 +5,14 @@ use list::ListCommand;
 
 mod list;
 
-const HELP_DETAIL: &str = "";
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
 /// Manage Workers
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    subcommand_required = true,
-    after_long_help = docs::after_help(HELP_DETAIL)
+arg_required_else_help = true,
+subcommand_required = true,
+long_about = docs::about(LONG_ABOUT),
 )]
 pub struct WorkerCommand {
     #[command(subcommand)]

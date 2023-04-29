@@ -1,0 +1,1 @@
+When creating a new node, a set of default services are started. This command lists all the available workers on a given node, which can be helpful to check if all the services are running, or to check the workers' addresses associated to secure channels or relays created by the node.

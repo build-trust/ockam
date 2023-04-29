@@ -1,0 +1,7 @@
+```sh
+# Create a node
+$ ockam node create n1
+
+# List the workers available in the node
+$ ockam worker list --at n1
+```
