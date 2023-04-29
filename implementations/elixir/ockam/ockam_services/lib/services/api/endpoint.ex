@@ -125,6 +125,12 @@ defmodule Ockam.Services.API.Endpoint do
           {:ok, body, new_endpoint_state} ->
             {:reply, :ok, body, %{state | endpoint_state: new_endpoint_state}}
 
+          :noreply ->
+            {:noreply, state}
+
+          {:noreply, new_endpoint_state} ->
+            {:noreply, %{state | endpoint_state: new_endpoint_state}}
+
           {:error, reason} ->
             {:error, reason}
         end

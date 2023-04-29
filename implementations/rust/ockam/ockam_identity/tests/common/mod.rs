@@ -1,13 +1,13 @@
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::{
-    Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy,
+    secure_channels, Identity, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
 };
 use ockam_node::{Context, MessageReceiveOptions};
-use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
-use ockam_vault::Vault;
+use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use rand::random;
+use std::sync::Arc;
 
 #[allow(dead_code)]
 pub async fn message_should_pass(ctx: &Context, address: &Address) -> Result<()> {
@@ -91,7 +91,7 @@ async fn check_message_flow_with_ctx(
 pub struct TcpListenerInfo {
     pub tcp: TcpTransport,
     pub socket_addr: SocketAddr,
-    pub session: Option<(Sessions, SessionId)>,
+    pub flow_control: Option<(FlowControls, FlowControlId)>,
 }
 
 impl TcpListenerInfo {
@@ -102,15 +102,17 @@ impl TcpListenerInfo {
 
         let sender = senders.first().unwrap().clone();
 
-        let session = match &self.session {
-            Some((sessions, _session_id)) => {
+        let flow_control = match &self.flow_control {
+            Some((flow_controls, _flow_control_id)) => {
                 let receivers = self.tcp.registry().get_all_receiver_processors();
                 assert_eq!(receivers.len(), 1);
                 let receiver = receivers.first().unwrap();
-                let session_id = sessions.get_session_with_producer(receiver);
+                let flow_control_id = flow_controls.get_flow_control_with_producer(receiver);
                 Some((
-                    sessions.clone(),
-                    session_id.map(|x| x.session_id().clone()).unwrap(),
+                    flow_controls.clone(),
+                    flow_control_id
+                        .map(|x| x.flow_control_id().clone())
+                        .unwrap(),
                 ))
             }
             None => None,
@@ -118,40 +120,38 @@ impl TcpListenerInfo {
 
         TcpConnectionInfo {
             address: sender,
-            session,
+            flow_control,
         }
     }
 }
 
 #[allow(dead_code)]
-pub async fn create_tcp_listener_with_session(ctx: &Context) -> Result<TcpListenerInfo> {
+pub async fn create_tcp_listener_with_flow_control(ctx: &Context) -> Result<TcpListenerInfo> {
     create_tcp_listener(ctx, true).await
 }
 
 #[allow(dead_code)]
-pub async fn create_tcp_listener_without_session(ctx: &Context) -> Result<TcpListenerInfo> {
+pub async fn create_tcp_listener_without_flow_control(ctx: &Context) -> Result<TcpListenerInfo> {
     create_tcp_listener(ctx, false).await
 }
 
-async fn create_tcp_listener(ctx: &Context, with_session: bool) -> Result<TcpListenerInfo> {
+async fn create_tcp_listener(ctx: &Context, with_flow_control: bool) -> Result<TcpListenerInfo> {
     let tcp = TcpTransport::create(ctx).await?;
-    let (socket_addr, session) = if with_session {
-        let sessions = Sessions::default();
-        let session_id = sessions.generate_session_id();
-        let trust_options = TcpListenerTrustOptions::new().as_spawner(&sessions, &session_id);
-        let (socket_addr, _) = tcp.listen("127.0.0.1:0", trust_options).await?;
-        (socket_addr, Some((sessions, session_id)))
+    let (socket_addr, flow_control) = if with_flow_control {
+        let flow_controls = FlowControls::default();
+        let flow_control_id = flow_controls.generate_id();
+        let options = TcpListenerOptions::as_spawner(&flow_controls, &flow_control_id);
+        let (socket_addr, _) = tcp.listen("127.0.0.1:0", options).await?;
+        (socket_addr, Some((flow_controls, flow_control_id)))
     } else {
-        let (socket_addr, _) = tcp
-            .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
-            .await?;
+        let (socket_addr, _) = tcp.listen("127.0.0.1:0", TcpListenerOptions::new()).await?;
         (socket_addr, None)
     };
 
     let info = TcpListenerInfo {
         tcp,
         socket_addr,
-        session,
+        flow_control,
     };
 
     Ok(info)
@@ -160,11 +160,11 @@ async fn create_tcp_listener(ctx: &Context, with_session: bool) -> Result<TcpLis
 #[allow(dead_code)]
 pub struct TcpConnectionInfo {
     pub address: Address,
-    pub session: Option<(Sessions, SessionId)>,
+    pub flow_control: Option<(FlowControls, FlowControlId)>,
 }
 
 #[allow(dead_code)]
-pub async fn create_tcp_connection_with_session(
+pub async fn create_tcp_connection_with_flow_control(
     ctx: &Context,
     socket_addr: &SocketAddr,
 ) -> Result<TcpConnectionInfo> {
@@ -172,7 +172,7 @@ pub async fn create_tcp_connection_with_session(
 }
 
 #[allow(dead_code)]
-pub async fn create_tcp_connection_without_session(
+pub async fn create_tcp_connection_without_flow_control(
     ctx: &Context,
     socket_addr: &SocketAddr,
 ) -> Result<TcpConnectionInfo> {
@@ -182,23 +182,26 @@ pub async fn create_tcp_connection_without_session(
 async fn create_tcp_connection(
     ctx: &Context,
     socket_addr: &SocketAddr,
-    with_session: bool,
+    with_flow_control: bool,
 ) -> Result<TcpConnectionInfo> {
     let tcp = TcpTransport::create(ctx).await?;
-    let (address, session) = if with_session {
-        let sessions = Sessions::default();
-        let session_id = sessions.generate_session_id();
-        let trust_options = TcpConnectionTrustOptions::new().as_producer(&sessions, &session_id);
-        let address = tcp.connect(socket_addr.to_string(), trust_options).await?;
-        (address, Some((sessions, session_id)))
+    let (address, flow_control) = if with_flow_control {
+        let flow_controls = FlowControls::default();
+        let flow_control_id = flow_controls.generate_id();
+        let options = TcpConnectionOptions::as_producer(&flow_controls, &flow_control_id);
+        let address = tcp.connect(socket_addr.to_string(), options).await?;
+        (address, Some((flow_controls, flow_control_id)))
     } else {
         let address = tcp
-            .connect(socket_addr.to_string(), TcpConnectionTrustOptions::new())
+            .connect(socket_addr.to_string(), TcpConnectionOptions::new())
             .await?;
         (address, None)
     };
 
-    let info = TcpConnectionInfo { address, session };
+    let info = TcpConnectionInfo {
+        address,
+        flow_control,
+    };
 
     Ok(info)
 }
@@ -206,12 +209,13 @@ async fn create_tcp_connection(
 #[allow(dead_code)]
 pub struct SecureChannelListenerInfo {
     pub identity: Identity,
+    pub secure_channels: Arc<SecureChannels>,
 }
 
 impl SecureChannelListenerInfo {
     #[allow(dead_code)]
     pub fn get_channel(&self) -> Address {
-        self.identity
+        self.secure_channels
             .secure_channel_registry()
             .get_channel_list()
             .first()
@@ -224,36 +228,42 @@ impl SecureChannelListenerInfo {
 #[allow(dead_code)]
 pub async fn create_secure_channel_listener(
     ctx: &Context,
-    session: &Option<(Sessions, SessionId)>,
+    flow_control: &Option<(FlowControls, FlowControlId)>,
     with_tcp_listener: bool,
 ) -> Result<SecureChannelListenerInfo> {
-    let identity = Identity::create(ctx, Vault::create()).await?;
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
 
-    let trust_options =
-        SecureChannelListenerTrustOptions::new().with_trust_policy(TrustEveryonePolicy);
-    let trust_options = if let Some((sessions, session_id)) = session {
+    let identity = identities_creation.create_identity().await?;
+
+    let options = SecureChannelListenerOptions::new();
+    let options = if let Some((flow_controls, flow_control_id)) = flow_control {
         let policy = if with_tcp_listener {
-            SessionPolicy::SpawnerAllowOnlyOneMessage
+            FlowControlPolicy::SpawnerAllowOnlyOneMessage
         } else {
-            SessionPolicy::ProducerAllowMultiple
+            FlowControlPolicy::ProducerAllowMultiple
         };
 
-        trust_options.as_consumer(sessions, session_id, policy)
+        options.as_consumer_with_flow_control_id(flow_controls, flow_control_id, policy)
     } else {
-        trust_options
+        options
     };
 
-    identity
-        .create_secure_channel_listener("listener", trust_options)
+    secure_channels
+        .create_secure_channel_listener(ctx, &identity, "listener", options)
         .await?;
 
-    let info = SecureChannelListenerInfo { identity };
+    let info = SecureChannelListenerInfo {
+        secure_channels,
+        identity,
+    };
 
     Ok(info)
 }
 
 #[allow(dead_code)]
 pub struct SecureChannelInfo {
+    pub secure_channels: Arc<SecureChannels>,
     pub identity: Identity,
     pub address: Address,
 }
@@ -263,23 +273,32 @@ pub async fn create_secure_channel(
     ctx: &Context,
     connection: &TcpConnectionInfo,
 ) -> Result<SecureChannelInfo> {
-    let identity = Identity::create(ctx, Vault::create()).await?;
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
 
-    let trust_options = SecureChannelTrustOptions::new();
-    let trust_options = if let Some((sessions, session_id)) = &connection.session {
-        trust_options.as_consumer(sessions, session_id)
+    let identity = identities_creation.create_identity().await?;
+
+    let options = SecureChannelOptions::new();
+    let options = if let Some((flow_controls, _flow_control_id)) = &connection.flow_control {
+        options.as_consumer(flow_controls)
     } else {
-        trust_options
+        options
     };
 
-    let address = identity
+    let address = secure_channels
         .create_secure_channel(
+            ctx,
+            &identity,
             route![connection.address.clone(), "listener"],
-            trust_options,
+            options,
         )
         .await?;
 
-    let info = SecureChannelInfo { identity, address };
+    let info = SecureChannelInfo {
+        secure_channels,
+        identity,
+        address,
+    };
 
     Ok(info)
 }

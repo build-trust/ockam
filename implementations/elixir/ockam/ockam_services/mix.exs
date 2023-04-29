@@ -55,9 +55,8 @@ defmodule Ockam.Services.MixProject do
       {:ockam_abac, path: "../ockam_abac"},
       {:ranch, "~> 2.1.0", override: true},
       ## Token lease manager
-      {:httpoison, "~> 1.8"},
-      {:poison, "~> 4.0.1"},
-      {:postgrex, "~> 0.15.10"},
+      {:httpoison, "~> 2.1"},
+      {:poison, "~> 5.0.0"},
 
       ## Used for Ockam.Services.API.Endpoint' dispatch table implementation
       {:cowboy, "~> 2.9.0"}
@@ -87,7 +86,6 @@ defmodule Ockam.Services.MixProject do
   defp aliases do
     [
       docs: "docs --output _build/docs --formatter html",
-      run: "run --no-halt",
       "lint.format": "format --check-formatted",
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",

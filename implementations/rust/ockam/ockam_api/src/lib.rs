@@ -12,6 +12,7 @@ pub mod kafka;
 pub mod nodes;
 pub mod okta;
 pub mod port_range;
+pub mod rpc_proxy;
 pub mod uppercase;
 pub mod vault;
 pub mod verifier;
@@ -19,10 +20,8 @@ pub mod verifier;
 mod schema;
 mod session;
 mod util;
-pub use util::*;
 
-#[cfg(feature = "lmdb")]
-pub mod lmdb;
+pub use util::*;
 
 #[macro_use]
 extern crate tracing;
@@ -48,15 +47,18 @@ impl DefaultAddress {
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
     pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
     pub const KAFKA_DEFAULT_PROJECT_ROUTE: &'static str = "/project/default";
+    pub const RPC_PROXY: &'static str = "rpc_proxy_service";
 }
 
 pub mod actions {
     use ockam_abac::Action;
+
     pub const HANDLE_MESSAGE: Action = Action::assert_inline("handle_message");
 }
 
 pub mod resources {
     use ockam_abac::Resource;
+
     pub const INLET: Resource = Resource::assert_inline("tcp-inlet");
     pub const OUTLET: Resource = Resource::assert_inline("tcp-outlet");
 }

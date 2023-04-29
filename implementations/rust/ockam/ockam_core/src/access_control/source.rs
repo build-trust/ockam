@@ -1,6 +1,6 @@
 use crate::compat::boxed::Box;
 use crate::compat::vec::Vec;
-use crate::{Address, IncomingAccessControl, RelayMessage, Result};
+use crate::{async_trait, Address, IncomingAccessControl, RelayMessage, Result};
 
 /// An Access Control type that allows messages from the given source address to go through
 /// Note that it's based on source address, not a first hop of return_route, which may be different

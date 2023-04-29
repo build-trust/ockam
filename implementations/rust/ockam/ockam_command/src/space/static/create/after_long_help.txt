@@ -3,5 +3,6 @@
 $ ockam space create
 
 # To create a new space with a specific name
+# Names must be unique across all Ockam Orchestrator users
 $ ockam space create s
 ```

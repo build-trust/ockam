@@ -31,11 +31,6 @@ extern crate tracing;
 
 pub use async_trait::async_trait;
 
-#[allow(unused_imports)]
-#[macro_use]
-/// Re-export of the `async_trait` macro crate.
-pub extern crate async_trait;
-
 /// Mark an Ockam Worker implementation.
 #[doc(inline)]
 pub use async_trait::async_trait as worker;
@@ -55,7 +50,7 @@ pub mod compat;
 
 /// Debugger
 pub mod debugger;
-pub mod sessions;
+pub mod flow_control;
 pub mod vault;
 
 /// Encoding

@@ -13,9 +13,9 @@ $ ockam enroll
 ```
 
 You can also create encrypted relays outside the orchestrator.
-See `ockam forwarder --help`.
+See `ockam relay --help`.
 
-Application Service:
+#### Application Service
 
 Next let's prepare the service side of our application.
 
@@ -29,13 +29,13 @@ $ python3 -m http.server --bind 127.0.0.1 5000
 $ ockam node create blue
 
 # Create a tcp outlet on the blue node to send raw tcp traffic to the application service.
-$ ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+$ ockam tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
-# Then create a forwarding relay at your default orchestrator project to blue.
-$ ockam forwarder create blue --at /project/default --to /node/blue
+# Then create a relay at your default orchestrator project to blue.
+$ ockam relay create blue --to /node/blue
 ```
 
-Application Client:
+#### Application Client
 
 Now on the client side
 

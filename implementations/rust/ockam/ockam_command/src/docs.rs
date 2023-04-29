@@ -23,10 +23,33 @@ Feedback:
 
 If you have any questions or feedback, please start a discussion
 on Github https://github.com/build-trust/ockam/discussions/new
+
+Environment Variables:
+
+System
+- COLORFGBG: a `string` that defines the foreground and background colors of the terminal.
+ If it's not set it has no effect in the Ockam CLI.
+
+CLI Behavior
+- NO_COLOR: a `boolean` that, if set, the colors will be stripped out from output messages.
+ Otherwise, let the terminal decide.
+- NO_INPUT: a `boolean` that, if set, the CLI won't ask the user for input.
+ Otherwise, let the terminal decide based the terminal features (tty).
+- OCKAM_DISABLE_UPGRADE_CHECK: a `boolean` that, if set, the CLI won't check for ockam upgrades.
+- OCKAM_HOME: a `string` that sets the home directory. Defaults to `~/.ockam`.
+- OCKAM_LOG: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed.
+
+Devs Usage
+- OCKAM_HELP_SHOW_HIDDEN: a `boolean` to control the visibility of hidden commands.
+- OCKAM_CONTROLLER_ADDR: a `string` that overrides the default address of the controller.
+- OCKAM_CONTROLLER_IDENTITY_ID: a `string` that overrides the default identifier of the controller.
+
+Internal (to enable some special behavior in the logic)
+- OCKAM_HELP_RENDER_MARKDOWN: a `boolean` to control the markdown rendering of the commands documentation.
 ";
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
-static RE: Lazy<Regex> = Lazy::new(|| Regex::new("^[A-Za-z][A-Za-z0-9 ]+:$".into()));
+static HEADER_RE: Lazy<Regex> = Lazy::new(|| Regex::new("^[A-Za-z][A-Za-z0-9 ]+:$".into()));
 static THEME: Lazy<Option<Theme>> = Lazy::new(|| {
     let theme_name = match TerminalBackground::detect_background_color() {
         TerminalBackground::Light => "base16-ocean.light",
@@ -43,7 +66,7 @@ fn is_markdown() -> bool {
 }
 
 pub(crate) fn hide() -> bool {
-    get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", false).unwrap_or(false)
+    get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", true).unwrap_or(true)
 }
 
 pub(crate) fn about(body: &str) -> &'static str {
@@ -69,56 +92,88 @@ pub(crate) fn after_help(body: &str) -> &'static str {
 }
 
 /// Render the string if the document should be displayed in a terminal
-/// Otherwise, if it is a Mardown document just return a static string
+/// Otherwise, if it is a Markdown document just return a static string
 pub(crate) fn render(body: &str) -> &'static str {
     if is_markdown() {
         Box::leak(body.to_string().into_boxed_str())
     } else {
-        let syntax_highlighted = highlight_syntax(body.to_string());
+        let syntax_highlighted = process_terminal_docs(body.to_string());
         Box::leak(syntax_highlighted.into_boxed_str())
     }
 }
 
 /// Use a shell syntax highlighter to render the code in terminals
-fn highlight_syntax(input: String) -> String {
-    let mut highlighted: Vec<String> = Vec::new();
-    let mut in_fenced_block = false;
+fn process_terminal_docs(input: String) -> String {
+    let mut output: Vec<String> = Vec::new();
+    let mut code_highlighter = FencedCodeBlockHighlighter::new();
+    for line in LinesWithEndings::from(input.as_str()) {
+        // Try to process fenced code blocks
+        if code_highlighter.process_line(line, &mut output) {
+            continue;
+        }
+        // Replace headers with bold and underline text
+        if HEADER_RE.is_match(line) {
+            output.push(line.to_string().bold().underlined().to_string());
+        }
+        // Replace subheaders with underlined text
+        else if line.starts_with("#### ") {
+            output.push(line.replace("#### ", "").underlined().to_string());
+        }
+        // Catch all
+        else {
+            output.push(line.to_string());
+        }
+    }
+    output.join("")
+}
 
-    if let Some(theme) = &*THEME {
-        let syntax_reference = SYNTAX_SET.find_syntax_by_extension("sh").unwrap();
+struct FencedCodeBlockHighlighter<'a> {
+    inner: Option<HighlightLines<'a>>,
+    in_fenced_block: bool,
+}
 
-        let mut highlighter = HighlightLines::new(syntax_reference, theme);
-        for line in LinesWithEndings::from(input.as_str()) {
+impl FencedCodeBlockHighlighter<'_> {
+    fn new() -> Self {
+        let inner = match &*THEME {
+            Some(theme) => {
+                let syntax = SYNTAX_SET.find_syntax_by_extension("sh").unwrap();
+                Some(HighlightLines::new(syntax, theme))
+            }
+            None => None,
+        };
+        Self {
+            inner,
+            in_fenced_block: false,
+        }
+    }
+
+    fn process_line(&mut self, line: &str, output: &mut Vec<String>) -> bool {
+        if let Some(highlighter) = &mut self.inner {
             if line == "```sh\n" {
-                in_fenced_block = true;
-                continue;
+                self.in_fenced_block = true;
+                return true;
             }
 
-            if !in_fenced_block {
-                if RE.is_match(line) {
-                    highlighted.push(line.to_string().bold().underlined().to_string());
-                } else {
-                    highlighted.push(line.to_string());
-                }
-                continue;
+            if !self.in_fenced_block {
+                return false;
             }
 
             if line == "```\n" {
                 // Push a reset to clear the coloring.
-                highlighted.push("\x1b[0m".to_string());
-                in_fenced_block = false;
-                continue;
+                output.push("\x1b[0m".to_string());
+                self.in_fenced_block = false;
+                return true;
             }
 
+            // Highlight the code line
             let ranges: Vec<(Style, &str)> = highlighter
                 .highlight_line(line, &SYNTAX_SET)
                 .unwrap_or_default();
-            highlighted.push(as_24_bit_terminal_escaped(&ranges[..], false));
+            output.push(as_24_bit_terminal_escaped(&ranges[..], false));
+            true
+        } else {
+            false
         }
-
-        highlighted.join("")
-    } else {
-        input
     }
 }
 

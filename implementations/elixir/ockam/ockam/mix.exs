@@ -86,7 +86,7 @@ defmodule Ockam.MixProject do
     [
       credo: "credo --strict",
       docs: "docs --output _build/docs --formatter html",
-      "test.cover": "test --no-start --cover",
+      "test.cover": "test --cover",
       "lint.format": "format --check-formatted",
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",

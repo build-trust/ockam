@@ -76,15 +76,15 @@ async fn run_impl(
     delete_embedded_node(&opts, rpc.node_name()).await;
 
     // log the deletion
-    opts.shell
+    opts.terminal
         .stdout()
         .plain(format!(
-            "{}Space with name '{}' has been deleted.",
+            "{} Space with name '{}' has been deleted.",
             "✔︎".light_green(),
             &cmd.name
         ))
         .machine(&cmd.name)
-        .json(&serde_json::json!({ "space": { "name": &cmd.name } }))
+        .json(serde_json::json!({ "space": { "name": &cmd.name } }))
         .write_line()?;
 
     Ok(())

@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.73.0 - 2023-04-27
+
+### Changed
+
+- Extract identity as an entity
+- Updated dependencies
+
+## 0.72.0 - 2023-04-14
+
+### Added
+
+- Add trust context struct and traits
+- Add trust context config and insantiate node manager with trust options
+
+### Changed
+
+- Implement custom get_env
+- Update credential exchange worker to use trust context
+- Use trust context within the creation of ockam_api secure channels
+- Introduce `TrustOptions::insecure()` and `::insecure_test()`
+- Improve `SecureChannelListener` `TrustOptions` for better support of consumer use case
+- Simplify `TrustOptions` for outgoing negotations
+- Rename `insecure_test` -> `new`
+- Rename `Sessions` -> `FlowControls`
+- Rename `TrustOptions` -> `Options`
+- Use `FlowControls` for `CredentialIssuer`
+- Updated dependencies
+
+### Fixed
+
+- Fixes after tough rebase
+
 ## 0.71.0 - 2023-03-28
 
 ### Added
@@ -440,7 +472,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Create worker builder for cleaner worker access control initialisation
 - Identity updates
-- `AuthenticatedTable` -> `AuthenticatedStorage`
+- `AuthenticatedTable` -> `AttributesStorage`
 
 ## 0.49.0 - 2022-06-14
 
@@ -824,4 +856,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.1.0 - 2021-05-17
 
 - Initial release.
-

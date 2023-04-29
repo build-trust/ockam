@@ -1,12 +1,10 @@
 use clap::Args;
 use colorful::Colorful;
-use ockam_identity::PublicIdentity;
-use ockam_multiaddr::MultiAddr;
-use ockam_vault::Vault;
 use rand::prelude::random;
 use tokio::time::{sleep, Duration};
 
 use anyhow::{anyhow, Context as _};
+use minicbor::{Decoder, Encode};
 use std::io::{self, Read};
 use std::{
     net::{IpAddr, SocketAddr},
@@ -15,28 +13,25 @@ use std::{
 };
 use tracing::error;
 
-use crate::project::ProjectInfo;
+use crate::node::util::{add_project_info_to_node_state, init_node_state, spawn_node};
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
-use crate::service::start;
+use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use crate::util::node_rpc;
+use crate::util::{api, parse_node_name, RpcBuilder};
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
-    docs, identity, node::show::print_query_status, project, util::find_available_port,
-    CommandGlobalOpts, Result,
+    docs, identity, node::show::print_query_status, util::find_available_port, CommandGlobalOpts,
+    Result,
 };
-use crate::{node::util::spawn_node, util::parse_node_name};
-use crate::{
-    node::util::{add_project_authority_from_project_info, init_node_state},
-    util::RpcBuilder,
-};
-use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
+use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
+use ockam_api::cli_state::traits::StateTrait;
 use ockam_api::nodes::authority_node;
-use ockam_api::nodes::service::ApiTransport;
+use ockam_api::nodes::models::transport::CreateTransportJson;
+use ockam_api::nodes::service::{ApiTransport, NodeManagerTrustOptions};
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
-    config::cli::Authority,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{
         service::{
@@ -45,9 +40,10 @@ use ockam_api::{
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
-use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
-use ockam_core::{AllowAll, LOCAL};
+use ockam_core::api::{RequestBuilder, Response, Status};
+use ockam_core::{route, AllowAll, LOCAL};
 
+use super::show::is_node_up;
 use super::util::check_default;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -56,12 +52,12 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create a new node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     /// Name of the node (Optional).
-    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value_t = hex::encode(& random::< [u8; 4] > ()))]
     pub node_name: String,
 
     /// Run the node in foreground.
@@ -91,7 +87,7 @@ pub struct CreateCommand {
     /// This argument is currently ignored on background nodes.  Node
     /// configuration is run asynchronously and may take several
     /// seconds to complete.
-    #[arg(long, hide = true, value_parser=parse_launch_config)]
+    #[arg(long, hide = true, value_parser = parse_launch_config)]
     pub launch_config: Option<Config>,
 
     #[arg(long, group = "trusted")]
@@ -101,20 +97,20 @@ pub struct CreateCommand {
     #[arg(long, group = "trusted")]
     pub reload_from_trusted_identities_file: Option<PathBuf>,
 
-    #[arg(long, hide = true)]
-    pub project: Option<PathBuf>,
-
     #[arg(long = "vault", value_name = "VAULT")]
     vault: Option<String>,
 
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
 
-    #[arg(long = "authority-identity", value_parser = parse_identity_authority)]
-    pub authority_identities: Option<Vec<Authority>>,
+    #[arg(long)]
+    pub authority_identity: Option<String>,
 
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
+
+    #[command(flatten)]
+    pub trust_context_opts: TrustContextOpts,
 }
 
 impl Default for CreateCommand {
@@ -126,14 +122,14 @@ impl Default for CreateCommand {
             foreground: false,
             child_process: false,
             launch_config: None,
-            project: None,
             vault: None,
             identity: None,
             trusted_identities: None,
             trusted_identities_file: None,
             reload_from_trusted_identities_file: None,
-            authority_identities: None,
+            authority_identity: None,
             credential: None,
+            trust_context_opts: TrustContextOpts::default(),
         }
     }
 }
@@ -195,12 +191,20 @@ async fn run_impl(
     let cmd = cmd.overwrite_addr()?;
     let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
 
-    spawn_background_node(&ctx, &opts, &cmd, addr).await?;
+    spawn_background_node(&opts, &cmd, addr).await?;
 
     // Print node status
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, node_name);
+
+    // TODO: This is a temporary workaround until we have proper
+    // support for controling the output of commands
+    if opts.global_args.quiet {
+        let _ = is_node_up(&mut rpc, true).await?;
+        return Ok(());
+    }
+
     print_query_status(&mut rpc, node_name, true, is_default).await?;
 
     Ok(())
@@ -208,14 +212,13 @@ async fn run_impl(
 
 fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crate::Result<()> {
     let cmd = cmd.overwrite_addr()?;
-    let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
-    embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd, addr))?;
+    embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd))?;
     Ok(())
 }
 
 async fn run_foreground_node(
     mut ctx: Context,
-    (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     let cfg = &opts.config;
     let node_name = parse_node_name(&cmd.node_name)?;
@@ -229,44 +232,21 @@ async fn run_foreground_node(
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
     if !cmd.child_process && opts.state.nodes.get(&node_name).is_err() {
-        init_node_state(
-            &ctx,
-            &opts,
-            &node_name,
-            cmd.vault.as_ref(),
-            cmd.identity.as_ref(),
-        )
-        .await?;
+        init_node_state(&opts, &node_name, cmd.vault.clone(), cmd.identity.clone()).await?;
     }
 
-    if let Some(authority_identities) = &cmd.authority_identities {
-        for auth in authority_identities.iter() {
-            let vault = Vault::create();
-            let i = PublicIdentity::import(auth.identity(), vault).await?;
-            cfg.authorities(&node_name)?
-                .add_authority(i.identifier().clone(), auth.clone())?;
-        }
-    }
+    add_project_info_to_node_state(&node_name, &opts, cfg, &cmd.trust_context_opts).await?;
 
-    let project_id = match &cmd.project {
-        Some(path) => {
-            let s = tokio::fs::read_to_string(path).await?;
-            let p: ProjectInfo = serde_json::from_str(&s)?;
-            let project_id = p.id.to_string();
-            project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority_from_project_info(p, &node_name, cfg).await?;
-            Some(project_id)
-        }
-        None => None,
-    };
+    let trust_context_config = TrustContextConfigBuilder::new(&cmd.trust_context_opts)
+        .with_authority_identity(cmd.authority_identity.as_ref())
+        .with_credential_name(cmd.credential.as_ref())
+        .build();
 
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = &cmd.tcp_listener_address;
 
-    // This listener gives exclusive access to our node, make sure this is intended
-    // + make sure this tcp address is only reachable from the local loopback and/or intended
-    // network
-    let (socket_addr, listener_addr) = tcp.listen(&bind, TcpListenerTrustOptions::new()).await?;
+    // TODO: This is only listening on loopback address, but should use FlowControls anyways
+    let (socket_addr, listener_addr) = tcp.listen(&bind, TcpListenerOptions::insecure()).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     let setup_config = node_state.setup()?;
@@ -281,19 +261,6 @@ async fn run_foreground_node(
     )?;
 
     let projects = cfg.inner().lookup().projects().collect();
-
-    let credential = match &cmd.credential {
-        Some(cred_name) => Some(
-            opts.state
-                .credentials
-                .get(cred_name)?
-                .config()
-                .await?
-                .credential()?,
-        ),
-        None => None,
-    };
-
     let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
 
     let node_man = NodeManager::create(
@@ -304,51 +271,38 @@ async fn run_foreground_node(
             cmd.launch_config.is_some(),
             pre_trusted_identities,
         ),
-        NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&node_name)?.snapshot()),
-            project_id,
-            projects,
-            credential,
-        ),
+        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
             ApiTransport {
                 tt: TransportType::Tcp,
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listener_addr,
+                flow_control_id: None, // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
             },
             tcp.async_try_clone().await?,
         ),
+        NodeManagerTrustOptions::new(trust_context_config),
     )
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.start_worker(
-        NODEMANAGER_ADDR,
-        node_manager_worker,
-        AllowAll, // FIXME: @ac
-        AllowAll, // FIXME: @ac
-    )
-    .await?;
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
+        .await?;
 
-    if let Some(path) = &cmd.launch_config {
-        let node_opts = super::NodeOpts {
-            api_node: node_name.clone(),
-        };
-        if start_services(&ctx, &tcp, path, addr, node_opts, &opts)
-            .await
-            .is_err()
-        {
+    if let Some(config) = &cmd.launch_config {
+        if start_services(&ctx, config).await.is_err() {
             //TODO: Process should terminate on any error during its setup phase,
             //      not just during the start_services.
             //TODO: This sleep here is a workaround on some orchestrated environment,
-            //      the lmdb db, that is used for policy storage, failes to be re-opened
+            //      the lmdb db, that is used for policy storage, fails to be re-opened
             //      if it's still opened from another docker container, where they share
             //      the same pid. By sleeping for a while we let this container be promoted
             //      and the other being terminated, so when restarted it works.  This is
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
-            std::process::exit(exitcode::SOFTWARE);
+            ctx.stop().await?;
+            return Err(anyhow!("Failed to start services".to_string()).into());
         }
     }
 
@@ -361,7 +315,7 @@ async fn run_foreground_node(
     ctrlc::set_handler(move || {
         let _ = tx_clone.blocking_send(());
         let _ = opts_clone
-            .shell
+            .terminal
             .write_line(format!("{} Ctrl+C signal received", "!".light_yellow()).as_str());
     })
     .expect("Error setting Ctrl+C handler");
@@ -378,7 +332,7 @@ async fn run_foreground_node(
                 .expect("Error reading from stdin");
             let _ = tx_clone.blocking_send(());
             let _ = opts_clone
-                .shell
+                .terminal
                 .write_line(format!("{} EOF received", "!".light_yellow()).as_str());
         });
     }
@@ -387,7 +341,7 @@ async fn run_foreground_node(
     if rx.recv().await.is_some() {
         opts.state.nodes.get(&node_name)?.kill_process(false)?;
         ctx.stop().await?;
-        opts.shell
+        opts.terminal
             .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
             .unwrap();
     }
@@ -410,14 +364,7 @@ pub fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrus
     Ok(pre_trusted_identities)
 }
 
-async fn start_services(
-    ctx: &Context,
-    tcp: &TcpTransport,
-    cfg: &Config,
-    addr: SocketAddr,
-    node_opts: super::NodeOpts,
-    opts: &CommandGlobalOpts,
-) -> Result<()> {
+async fn start_services(ctx: &Context, cfg: &Config) -> Result<()> {
     let config = {
         if let Some(sc) = &cfg.startup_services {
             sc.clone()
@@ -426,25 +373,18 @@ async fn start_services(
         }
     };
 
-    // Checking if node accepts connections
-    // Connection without a Session gives exclusive access to the node
-    // that runs that connection, make sure it's intended
-    let addr = tcp
-        .connect(addr.to_string(), TcpConnectionTrustOptions::new())
-        .await?;
-
     if let Some(cfg) = config.vault {
         if !cfg.disabled {
             println!("starting vault service ...");
-            start::start_vault_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
-                .await?
+            let req = api::start_vault_service(&cfg.address);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
     if let Some(cfg) = config.identity {
         if !cfg.disabled {
             println!("starting identity service ...");
-            start::start_identity_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
-                .await?
+            let req = api::start_identity_service(&cfg.address);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
     if let Some(cfg) = config.secure_channel_listener {
@@ -452,45 +392,51 @@ async fn start_services(
             let adr = Address::from((LOCAL, cfg.address));
             let ids = cfg.authorized_identifiers;
             let identity = cfg.identity;
-            let rte = addr.clone().into();
             println!("starting secure-channel listener ...");
-            secure_channel_listener::create_listener(ctx, adr, ids, identity, rte).await?;
+            secure_channel_listener::create_listener(ctx, adr, ids, identity, route![]).await?;
         }
     }
     if let Some(cfg) = config.verifier {
         if !cfg.disabled {
             println!("starting verifier service ...");
-            start::start_verifier_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
-                .await?
+            let req = api::start_verifier_service(&cfg.address);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
     if let Some(cfg) = config.authenticator {
         if !cfg.disabled {
             println!("starting authenticator service ...");
-            start::start_authenticator_service(
-                ctx,
-                opts,
-                &node_opts.api_node,
-                &cfg.address,
-                &cfg.project,
-                Some(tcp),
-            )
-            .await?
+            let req = api::start_authenticator_service(&cfg.address, &cfg.project);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
     if let Some(cfg) = config.okta_identity_provider {
         if !cfg.disabled {
             println!("starting okta identity provider service ...");
-            start::start_okta_identity_provider(ctx, opts, &node_opts.api_node, &cfg, Some(tcp))
-                .await?
+            let req = api::start_okta_service(&cfg);
+            send_req_to_node_manager(ctx, req).await?;
         }
     }
 
     Ok(())
 }
 
+async fn send_req_to_node_manager<T>(ctx: &Context, req: RequestBuilder<'_, T>) -> Result<()>
+where
+    T: Encode<()>,
+{
+    let buf: Vec<u8> = ctx
+        .send_and_receive(NODEMANAGER_ADDR, req.to_vec()?)
+        .await?;
+    let mut dec = Decoder::new(&buf);
+    let hdr = dec.decode::<Response>()?;
+    if hdr.status() != Some(Status::Ok) {
+        return Err(anyhow!("Request failed with status: {:?}", hdr.status()).into());
+    }
+    Ok(())
+}
+
 async fn spawn_background_node(
-    ctx: &Context,
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
     addr: SocketAddr,
@@ -506,14 +452,7 @@ async fn spawn_background_node(
     let node_name = parse_node_name(&cmd.node_name)?;
 
     // Create node state, including the vault and identity if don't exist
-    init_node_state(
-        ctx,
-        opts,
-        &node_name,
-        cmd.vault.as_ref(),
-        cmd.identity.as_ref(),
-    )
-    .await?;
+    init_node_state(opts, &node_name, cmd.vault.clone(), cmd.identity.clone()).await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
@@ -522,30 +461,23 @@ async fn spawn_background_node(
         opts.global_args.verbose,
         &node_name,
         &cmd.tcp_listener_address,
-        cmd.project.as_deref(),
+        cmd.trust_context_opts.project_path.as_ref(),
         cmd.trusted_identities.as_ref(),
         cmd.trusted_identities_file.as_ref(),
         cmd.reload_from_trusted_identities_file.as_ref(),
         cmd.launch_config
             .as_ref()
             .map(|config| serde_json::to_string(config).unwrap()),
-        cmd.authority_identities.as_ref(),
+        cmd.authority_identity.as_ref(),
         cmd.credential.as_ref(),
+        cmd.trust_context_opts
+            .trust_context
+            .as_ref()
+            .map(|tc| tc.path().unwrap()),
+        cmd.trust_context_opts.project.as_ref(),
     )?;
 
     Ok(())
-}
-
-pub fn parse_identity_authority(identity: &str) -> Result<Authority> {
-    let identity_as_bytes = match hex::decode(identity) {
-        Ok(b) => b,
-        Err(e) => return Err(anyhow!(e).into()),
-    };
-
-    // TODO: FIXME - Identity Authorities do not have an address `/secure` is being used as a placeholder
-    //        -  Oakley
-    let a = cli::Authority::new(identity_as_bytes, MultiAddr::from_str("/secure")?);
-    Ok(a)
 }
 
 async fn start_authority_node(
@@ -567,12 +499,11 @@ async fn start_authority_node(
 
         // retrieve the authority identity if it has been created before
         // otherwise create a new one
-        let public_identity = match options.state.identities.default().ok() {
-            Some(state) => state.config.public_identity(),
+        let identity = match options.state.identities.default().ok() {
+            Some(state) => state.config.identity(),
             None => {
                 let cmd = identity::CreateCommand::new("authority".into(), None);
-                cmd.create_identity(ctx.async_try_clone().await?, options.clone())
-                    .await?
+                cmd.create_identity(options.clone()).await?
             }
         };
 
@@ -581,10 +512,11 @@ async fn start_authority_node(
             .map_err(|e| crate::Error::new(exitcode::CONFIG, anyhow!("{e}")))?;
 
         let configuration = authority_node::Configuration {
-            identity: public_identity,
-            storage_path: options.state.identities.authenticated_storage_path()?,
-            vault_path: options.state.vaults.default()?.vault_file_path()?,
-            project_identifier: authenticator_config.project,
+            identity,
+            storage_path: options.state.identities.identities_repository_path()?,
+            vault_path: options.state.vaults.default()?.vault_file_path().clone(),
+            project_identifier: authenticator_config.project.clone(),
+            trust_context_identifier: authenticator_config.project,
             tcp_listener_address: command.tcp_listener_address.clone(),
             secure_channel_listener_name: Some(secure_channel_config.address),
             authenticator_name: Some(authenticator_config.address),

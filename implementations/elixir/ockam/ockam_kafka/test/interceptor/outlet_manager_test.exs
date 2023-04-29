@@ -67,29 +67,29 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
     ssl = false
     ssl_options = []
 
-    base_port = 7000
+    base_port = 11_000
     allowed_ports = 10
     base_route = []
 
     start_supervised!({InletManager, [base_port, allowed_ports, base_route, outlet_prefix]})
     start_supervised!({OutletManager, [outlet_prefix, ssl, ssl_options]})
 
-    Ockam.Transport.TCP.start(listen: [port: 4000])
+    Ockam.Transport.TCP.start(listen: [port: 12_000])
 
     InletManager.set_inlets(InletManager, [1])
 
-    ## Configure outlet to connect to ockam port 4000
+    ## Configure outlet to connect to ockam port 12_000
     OutletManager.set_outlets(OutletManager, [
       %Outlet{
         outlet_prefix: outlet_prefix,
         node_id: "1",
         target_host: "localhost",
-        target_port: 4000
+        target_port: 12_000
       }
     ])
 
     ## Connect to inlet port
-    {:ok, client} = Ockam.Transport.TCP.Client.create(destination: {"localhost", 7001})
+    {:ok, client} = Ockam.Transport.TCP.Client.create(destination: {"localhost", 11_001})
 
     {:ok, "echo"} = Ockam.Services.Echo.create(address: "echo")
 

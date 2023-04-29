@@ -38,14 +38,14 @@ pub async fn run_impl(
     rpc.is_ok()?;
 
     options
-        .shell
+        .terminal
         .stdout()
         .plain(format!(
-            "{}TCP Inlet with alias {alias} on Node {node} has been deleted.",
+            "{} TCP Inlet with alias {alias} on Node {node} has been deleted.",
             "✔︎".light_green(),
         ))
         .machine(&alias)
-        .json(&serde_json::json!({ "tcp-inlet": { "alias": alias, "node": node } }))
+        .json(serde_json::json!({ "tcp-inlet": { "alias": alias, "node": node } }))
         .write_line()?;
     Ok(())
 }

@@ -15,6 +15,7 @@ use crate::vault::show::ShowCommand;
 use crate::CommandGlobalOpts;
 
 use clap::{Args, Subcommand};
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use ockam_api::cli_state::CliState;
 
 /// Manage vaults
@@ -70,5 +71,5 @@ pub fn default_vault_name() -> String {
     cli_state
         .vaults
         .default()
-        .map_or("default".to_string(), |v| v.name)
+        .map_or("default".to_string(), |v| v.name().to_string())
 }

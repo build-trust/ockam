@@ -30,7 +30,7 @@ jobs:
       tag_name: ${{ steps.release_version.outputs.tag_name }}
     steps:
       - name: Checkout Ockam
-        uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.release_branch }}
@@ -224,7 +224,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
+      uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       with:
         ref: ${{ github.event.inputs.release_branch }}
 
@@ -276,7 +276,7 @@ jobs:
         ls $GITHUB_WORKSPACE
 
     - name: Install Cosign
-      uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65
+      uses: sigstore/cosign-installer@204a51a57a74d190b284a0ce69b44bc37201f343
       with:
         cosign-release: 'v2.0.0'
 
@@ -338,7 +338,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.release_branch }}
 
@@ -352,6 +352,7 @@ jobs:
       - name: Install QEMU
         if: matrix.build == 'linux_arm'
         run: |
+          sudo apt-get update
           sudo apt-get install qemu binfmt-support qemu-user-static
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
@@ -384,7 +385,7 @@ jobs:
           ./build-elixir-universal-lib.sh
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65
+        uses: sigstore/cosign-installer@204a51a57a74d190b284a0ce69b44bc37201f343
         with:
           cosign-release: 'v2.0.0'
 
@@ -434,7 +435,7 @@ jobs:
         run: shasum -a 256 ockam.* > sha256sums.txt
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65
+        uses: sigstore/cosign-installer@204a51a57a74d190b284a0ce69b44bc37201f343
         with:
           cosign-release: 'v2.0.0'
 

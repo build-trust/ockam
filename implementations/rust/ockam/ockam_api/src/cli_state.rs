@@ -1,14 +1,22 @@
+pub mod traits;
+pub mod vaults;
+use crate::cli_state::traits::{StateItemDirTrait, StateTrait};
+use crate::cli_state::vaults::{VaultState, VaultsState};
 use crate::cloud::project::Project;
-
+use crate::config::cli::TrustContextConfig;
+use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
-
 use nix::errno::Errno;
-use ockam_core::compat::sync::Arc;
-use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use ockam_identity::{
-    Identity, IdentityIdentifier, IdentityVault, PublicIdentity, SecureChannelRegistry,
+use ockam::identity::credential::Credential;
+use ockam::identity::identity::{IdentityChangeHistory, IdentityHistoryComparison};
+use ockam::identity::{
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
+    IdentityIdentifier,
 };
-use ockam_vault::{storage::FileStorage, Vault};
+use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env_with_default;
+use ockam_identity::LmdbStorage;
+use ockam_vault::Vault;
 use rand::random;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -16,12 +24,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::SystemTime;
 use sysinfo::{Pid, System, SystemExt};
-
-use crate::lmdb::LmdbStorage;
-use ockam_core::env::get_env_with_default;
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
-use ockam_identity::credential::Credential;
 use thiserror::Error;
+
+pub use crate::cli_state::vaults::*;
 
 type Result<T> = std::result::Result<T, CliStateError>;
 
@@ -33,10 +38,10 @@ pub enum CliStateError {
     Serde(#[from] serde_json::Error),
     #[error("ockam error")]
     Ockam(#[from] ockam_core::Error),
-    #[error("already exists: {0}")]
-    AlreadyExists(String),
-    #[error("not found: {0}")]
-    NotFound(String),
+    #[error("already exists")]
+    AlreadyExists,
+    #[error("not found")]
+    NotFound,
     #[error("{0}")]
     Invalid(String),
     #[error("invalid state version {0}")]
@@ -60,11 +65,15 @@ impl From<CliStateError> for ockam_core::Error {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CliState {
+    // TODO: Many of the states share very similarities;
+    // the main difference is the type of the state.
+    // We should refactor and abstract this.
     pub vaults: VaultsState,
     pub identities: IdentitiesState,
     pub nodes: NodesState,
     pub projects: ProjectsState,
     pub credentials: CredentialsState,
+    pub trust_contexts: TrustContextsState,
     pub dir: PathBuf,
 }
 
@@ -77,18 +86,19 @@ impl CliState {
     pub fn new(dir: &Path) -> Result<Self> {
         std::fs::create_dir_all(dir.join("defaults"))?;
         Ok(Self {
-            vaults: VaultsState::new(dir)?,
+            vaults: VaultsState::load(dir)?,
             identities: IdentitiesState::new(dir)?,
             nodes: NodesState::new(dir)?,
             projects: ProjectsState::new(dir)?,
             credentials: CredentialsState::new(dir)?,
+            trust_contexts: TrustContextsState::new(dir)?,
             dir: dir.to_path_buf(),
         })
     }
 
     pub fn test() -> Result<Self> {
         let tests_dir = dirs::home_dir()
-            .ok_or_else(|| CliStateError::NotFound("home dir".to_string()))?
+            .ok_or(CliStateError::NotFound)?
             .join(".ockam")
             .join(".tests")
             .join(random_name());
@@ -105,9 +115,10 @@ impl CliState {
         for dir in &[
             &self.nodes.dir,
             &self.identities.dir,
-            &self.vaults.dir,
+            self.vaults.dir(),
             &self.projects.dir,
             &self.credentials.dir,
+            &self.trust_contexts.dir,
             &dir.join("defaults"),
         ] {
             if dir.exists() {
@@ -134,7 +145,7 @@ impl CliState {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",
             dirs::home_dir()
-                .ok_or_else(|| CliStateError::NotFound("home dir".to_string()))?
+                .ok_or(CliStateError::NotFound)?
                 .join(".ockam"),
         )?)
     }
@@ -143,224 +154,63 @@ impl CliState {
     fn defaults_dir(dir: &Path) -> Result<PathBuf> {
         Ok(dir.join("defaults"))
     }
-}
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct VaultsState {
-    dir: PathBuf,
-}
-
-impl VaultsState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("vaults");
-        std::fs::create_dir_all(dir.join("data"))?;
-        Ok(Self { dir })
-    }
-
-    pub fn directory(&self) -> String {
-        self.dir.to_string_lossy().into()
-    }
-
-    pub async fn create(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if path.exists() {
-                return Err(CliStateError::AlreadyExists(format!("vault `{name}`")));
-            }
-            path
-        };
-        let contents = serde_json::to_string(&config)?;
-        std::fs::write(&path, contents)?;
-        let state = VaultState {
-            name: name.to_string(),
-            path,
-            config,
-        };
-        state.get().await?;
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
+    pub async fn create_vault_state(&self, vault_name: Option<String>) -> Result<VaultState> {
+        let vault_state = if let Some(v) = vault_name {
+            self.vaults.get(v.as_str())?
         }
-        Ok(state)
-    }
-
-    pub fn get(&self, name: &str) -> Result<VaultState> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound(format!("vault `{name}`")));
-            }
-            path
+        // Or get the default
+        else if let Ok(v) = self.vaults.default() {
+            v
+        } else {
+            let n = hex::encode(random::<[u8; 4]>());
+            let c = VaultConfig::default();
+            self.vaults.create(&n, c).await?
         };
-        VaultState::try_from(&path)
+        Ok(vault_state)
     }
 
-    pub fn list(&self) -> Result<Vec<VaultState>> {
-        let mut vaults = Vec::default();
-        for entry in std::fs::read_dir(&self.dir)? {
-            if let Ok(vault) = self.get(&file_stem(&entry?.path())?) {
-                vaults.push(vault);
-            }
+    pub async fn create_identity_state(
+        &self,
+        identity_name: Option<String>,
+        vault: Vault,
+    ) -> Result<IdentityState> {
+        if let Ok(identity) = self.identities.get_identity(identity_name.clone()) {
+            Ok(identity)
+        } else {
+            self.make_identity_state(vault, identity_name).await
         }
-        Ok(vaults)
     }
 
-    pub async fn delete(&self, name: &str) -> Result<()> {
-        // Retrieve vault. If doesn't exist do nothing.
-        let vault = match self.get(name) {
-            Ok(v) => v,
-            Err(CliStateError::NotFound(_)) => return Ok(()),
-            Err(e) => return Err(e),
-        };
-
-        // If it's the default, remove link
-        if let Ok(default) = self.default() {
-            if default.path == vault.path {
-                let _ = std::fs::remove_file(self.default_path()?);
-            }
-        }
-
-        // Remove vault files
-        vault.delete()?;
-
-        Ok(())
+    async fn make_identity_state(
+        &self,
+        vault: Vault,
+        name: Option<String>,
+    ) -> Result<IdentityState> {
+        let identity = self
+            .get_identities(vault)
+            .await?
+            .identities_creation()
+            .create_identity()
+            .await?;
+        let identity_config = IdentityConfig::new(&identity).await;
+        let identity_name = name.unwrap_or_else(|| hex::encode(random::<[u8; 4]>()));
+        self.identities
+            .create(identity_name.as_str(), identity_config)
     }
 
-    pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?.join("vault"))
+    pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
+        Ok(Identities::builder()
+            .with_identities_vault(Arc::new(vault))
+            .with_identities_repository(self.identities.identities_repository().await?)
+            .build())
     }
 
-    pub fn default(&self) -> Result<VaultState> {
-        let path = std::fs::canonicalize(self.default_path()?)?;
-        VaultState::try_from(&path)
-    }
-
-    pub fn set_default(&self, name: &str) -> Result<VaultState> {
-        let original = {
-            let mut path = self.dir.clone();
-            path.push(format!("{name}.json"));
-            if !path.exists() {
-                return Err(CliStateError::NotFound(format!("vault `{name}`")));
-            }
-            path
-        };
-        let link = self.default_path()?;
-        // Remove link if it exists
-        let _ = std::fs::remove_file(&link);
-        // Create link to the identity
-        std::os::unix::fs::symlink(original, link)?;
-        self.get(name)
-    }
-
-    pub fn is_default(&self, name: &str) -> Result<bool> {
-        let _exists = self.get(name)?;
-        let default_name = {
-            let path = std::fs::canonicalize(self.default_path()?)?;
-            file_stem(&path)?
-        };
-        Ok(default_name.eq(name))
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct VaultState {
-    pub name: String,
-    pub path: PathBuf,
-    pub config: VaultConfig,
-}
-
-impl VaultState {
-    pub fn name(&self) -> Result<String> {
-        self.path
-            .file_stem()
-            .and_then(|s| s.to_os_string().into_string().ok())
-            .ok_or_else(|| {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "failed to parse the vault name",
-                ))
-            })
-    }
-
-    fn data_path(&self, name: &str) -> Result<PathBuf> {
-        Ok(self
-            .path
-            .parent()
-            .expect("Should have parent")
-            .join("data")
-            .join(format!("{name}-storage.json")))
-    }
-
-    pub async fn get(&self) -> Result<Vault> {
-        let vault_storage = FileStorage::create(self.vault_file_path()?).await?;
-        let mut vault = Vault::new(Some(Arc::new(vault_storage)));
-        if self.config.aws_kms {
-            vault.enable_aws_kms().await?
-        }
-        Ok(vault)
-    }
-
-    pub fn vault_file_path(&self) -> Result<PathBuf> {
-        self.data_path(&self.name)
-    }
-
-    pub fn delete(&self) -> Result<()> {
-        std::fs::remove_file(&self.path)?;
-        let data_path = self.data_path(&self.name)?;
-        std::fs::remove_file(&data_path)?;
-        std::fs::remove_file(data_path.with_extension("json.lock"))?;
-        Ok(())
-    }
-}
-
-impl Display for VaultState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "Name: {}",
-            self.path.as_path().file_stem().unwrap().to_str().unwrap()
-        )?;
-        writeln!(
-            f,
-            "Type: {}",
-            match self.config.is_aws() {
-                true => "AWS KMS",
-                false => "OCKAM",
-            }
-        )?;
-        Ok(())
-    }
-}
-
-impl TryFrom<&PathBuf> for VaultState {
-    type Error = CliStateError;
-
-    fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
-        let name = file_stem(path)?;
-        let contents = std::fs::read_to_string(path)?;
-        let config = serde_json::from_str(&contents)?;
-        Ok(Self {
-            name,
-            path: path.clone(),
-            config,
-        })
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Default)]
-pub struct VaultConfig {
-    #[serde(default)]
-    aws_kms: bool,
-}
-
-impl VaultConfig {
-    pub fn new(aws_kms: bool) -> Result<Self> {
-        Ok(Self { aws_kms })
-    }
-
-    pub fn is_aws(&self) -> bool {
-        self.aws_kms
+    pub async fn default_identities(&self) -> Result<Arc<Identities>> {
+        Ok(Identities::builder()
+            .with_identities_vault(self.vaults.default()?.identities_vault().await?)
+            .with_identities_repository(self.identities.identities_repository().await?)
+            .build())
     }
 }
 
@@ -385,7 +235,7 @@ impl IdentitiesState {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
             if path.exists() {
-                return Err(CliStateError::AlreadyExists(format!("identity `{name}`")));
+                return Err(CliStateError::AlreadyExists);
             }
             path
         };
@@ -402,12 +252,20 @@ impl IdentitiesState {
         Ok(state)
     }
 
+    pub fn get_identity(&self, name: Option<String>) -> Result<IdentityState> {
+        if let Some(identity_name) = name {
+            self.get(identity_name.as_ref())
+        } else {
+            self.default()
+        }
+    }
+
     pub fn get(&self, name: &str) -> Result<IdentityState> {
         let path = {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
             if !path.exists() {
-                return Err(CliStateError::NotFound(format!("identity `{name}`")));
+                return Err(CliStateError::NotFound);
             }
             path
         };
@@ -423,9 +281,7 @@ impl IdentitiesState {
 
         match identity_state {
             Some(is) => Ok(is),
-            None => Err(CliStateError::NotFound(format!(
-                "identity with identifier `{identifier}`"
-            ))),
+            None => Err(CliStateError::NotFound),
         }
     }
 
@@ -443,7 +299,7 @@ impl IdentitiesState {
         // Retrieve identity. If doesn't exist do nothing.
         let identity = match self.get(name) {
             Ok(i) => i,
-            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(CliStateError::NotFound) => return Ok(()),
             Err(e) => return Err(e),
         };
 
@@ -489,7 +345,7 @@ impl IdentitiesState {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
             if !path.exists() {
-                return Err(CliStateError::NotFound(format!("identity `{name}`")));
+                return Err(CliStateError::NotFound);
             }
             path
         };
@@ -501,12 +357,14 @@ impl IdentitiesState {
         self.get(name)
     }
 
-    pub async fn authenticated_storage(&self) -> Result<Arc<dyn AuthenticatedStorage>> {
-        let lmdb_path = self.authenticated_storage_path()?;
-        Ok(Arc::new(LmdbStorage::new(lmdb_path).await?))
+    pub async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
+        let lmdb_path = self.identities_repository_path()?;
+        Ok(Arc::new(IdentitiesStorage::new(Arc::new(
+            LmdbStorage::new(lmdb_path).await?,
+        ))))
     }
 
-    pub fn authenticated_storage_path(&self) -> Result<PathBuf> {
+    pub fn identities_repository_path(&self) -> Result<PathBuf> {
         let lmdb_path = self.dir.join("data").join("authenticated_storage.lmdb");
         Ok(lmdb_path)
     }
@@ -553,30 +411,34 @@ impl IdentityState {
         self.persist()
     }
 
-    pub async fn get(
-        &self,
-        ctx: &ockam::Context,
-        vault: Arc<dyn IdentityVault>,
-    ) -> Result<Identity> {
+    pub async fn get(&self, vault: Arc<dyn IdentitiesVault>) -> Result<Identity> {
         let data = self.config.change_history.export()?;
+        Ok(self
+            .make_identities(vault)
+            .await?
+            .identities_creation()
+            .import_identity(&data)
+            .await?)
+    }
+
+    pub async fn make_identities(
+        &self,
+        vault: Arc<dyn IdentitiesVault>,
+    ) -> Result<Arc<Identities>> {
         let cli_state_path = self
             .path
             .parent()
             .expect("Should have identities dir as parent")
             .parent()
             .expect("Should have CliState dir as parent");
-        let storage = CliState::new(cli_state_path)?
+        let repository = CliState::new(cli_state_path)?
             .identities
-            .authenticated_storage()
+            .identities_repository()
             .await?;
-        Ok(Identity::import_ext(
-            ctx,
-            &data,
-            storage,
-            &SecureChannelRegistry::new(),
-            vault.clone(),
-        )
-        .await?)
+        Ok(Identities::builder()
+            .with_identities_vault(vault)
+            .with_identities_repository(repository)
+            .build())
     }
 }
 
@@ -626,8 +488,8 @@ pub struct IdentityConfig {
 
 impl IdentityConfig {
     pub async fn new(identity: &Identity) -> Self {
-        let identifier = identity.identifier().clone();
-        let change_history = identity.change_history().await;
+        let identifier = identity.identifier();
+        let change_history = identity.change_history();
         Self {
             identifier,
             change_history,
@@ -635,8 +497,8 @@ impl IdentityConfig {
         }
     }
 
-    pub fn public_identity(&self) -> PublicIdentity {
-        PublicIdentity::new(self.identifier.clone(), self.change_history.clone())
+    pub fn identity(&self) -> Identity {
+        Identity::new(self.identifier.clone(), self.change_history.clone())
     }
 }
 
@@ -715,7 +577,7 @@ impl NodesState {
             let mut path = self.dir.clone();
             path.push(name);
             if !path.exists() {
-                return Err(CliStateError::NotFound(format!("node `{name}`")));
+                return Err(CliStateError::NotFound);
             }
             path
         };
@@ -727,12 +589,28 @@ impl NodesState {
         self.get(name)
     }
 
+    pub fn update(&self, name: &str, mut config: NodeConfig) -> Result<NodeState> {
+        config.name = name.to_string();
+
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(name);
+            path
+        };
+
+        let state = NodeState::new(path, config);
+        std::fs::write(state.path.join("version"), state.config.version.to_string())?;
+        state.set_setup(&state.config.setup)?;
+
+        Ok(state)
+    }
+
     pub fn create(&self, name: &str, mut config: NodeConfig) -> Result<NodeState> {
         config.name = name.to_string();
 
         // check if node name already exists
         if self.get_node_path(name).exists() {
-            return Err(CliStateError::AlreadyExists(format!("node `{name}`")));
+            return Err(CliStateError::AlreadyExists);
         }
 
         let path = {
@@ -778,10 +656,18 @@ impl NodesState {
         Ok(nodes)
     }
 
+    pub fn exists(&self, name: &str) -> Result<bool> {
+        match self.get(name) {
+            Ok(_) => Ok(true),
+            Err(CliStateError::NotFound) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn get(&self, name: &str) -> Result<NodeState> {
         let path = self.get_node_path(name);
         if !path.exists() {
-            return Err(CliStateError::NotFound(format!("node `{name}`")));
+            return Err(CliStateError::NotFound);
         }
 
         let config = NodeConfig::try_from(&path)?;
@@ -796,7 +682,7 @@ impl NodesState {
         // Retrieve node. If doesn't exist do nothing.
         let node = match self.get(name) {
             Ok(node) => node,
-            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(CliStateError::NotFound) => return Ok(()),
             Err(e) => return Err(e),
         };
 
@@ -936,15 +822,19 @@ impl NodeConfig {
         Ok(Self {
             name: random_name(),
             version: NodeConfigVersion::latest(),
-            default_vault: cli_state.vaults.default()?.path,
+            default_vault: cli_state.vaults.default()?.path().clone(),
             default_identity: cli_state.identities.default()?.path,
             setup: NodeSetupConfig::default(),
         })
     }
 
+    pub fn setup(&mut self) -> &mut NodeSetupConfig {
+        &mut self.setup
+    }
+
     pub async fn vault(&self) -> Result<Vault> {
         let state_path = std::fs::canonicalize(&self.default_vault)?;
-        let state = VaultState::try_from(&state_path)?;
+        let state = VaultState::load(state_path)?;
         state.get().await
     }
 
@@ -953,11 +843,11 @@ impl NodeConfig {
         Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 
-    pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity> {
-        let vault: Arc<dyn IdentityVault> = Arc::new(self.vault().await?);
+    pub async fn default_identity(&self) -> Result<Identity> {
+        let vault: Arc<dyn IdentitiesVault> = Arc::new(self.vault().await?);
         let state_path = std::fs::canonicalize(&self.default_identity)?;
         let state = IdentityState::try_from(&state_path)?;
-        state.get(ctx, vault).await
+        state.get(vault).await
     }
 }
 
@@ -968,7 +858,7 @@ impl TryFrom<&CliState> for NodeConfig {
         Ok(Self {
             name: random_name(),
             version: NodeConfigVersion::latest(),
-            default_vault: cli_state.vaults.default()?.path,
+            default_vault: cli_state.vaults.default()?.path().clone(),
             default_identity: cli_state.identities.default()?.path,
             setup: NodeSetupConfig::default(),
         })
@@ -1022,7 +912,7 @@ impl NodeConfigBuilder {
     pub fn build(self, cli_state: &CliState) -> Result<NodeConfig> {
         let vault = match self.vault {
             Some(path) => path,
-            None => cli_state.vaults.default()?.path,
+            None => cli_state.vaults.default()?.path().clone(),
         };
         let identity = match self.identity {
             Some(path) => path,
@@ -1078,7 +968,7 @@ pub struct NodeSetupConfig {
     /// displayed in print_query_status.
     /// The field might be missing in previous configuration files, hence it is an Option
     pub authority_node: Option<bool>,
-
+    pub project: Option<ProjectLookup>,
     transports: Vec<CreateTransportJson>,
     // TODO
     // secure_channels: ?,
@@ -1098,11 +988,16 @@ impl NodeSetupConfig {
         self
     }
 
+    pub fn set_project(&mut self, project: ProjectLookup) -> &mut Self {
+        self.project = Some(project);
+        self
+    }
+
     pub fn default_tcp_listener(&self) -> Result<&CreateTransportJson> {
         self.transports
             .iter()
             .find(|t| t.tt == TransportType::Tcp && t.tm == TransportMode::Listen)
-            .ok_or_else(|| CliStateError::NotFound("default tcp transport".to_string()))
+            .ok_or(CliStateError::NotFound)
     }
 
     pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
@@ -1152,7 +1047,7 @@ impl ProjectsState {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
             if !path.exists() {
-                return Err(CliStateError::NotFound(format!("project `{name}`")));
+                return Err(CliStateError::NotFound);
             }
             path
         };
@@ -1173,7 +1068,7 @@ impl ProjectsState {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
             if !path.exists() {
-                return Err(CliStateError::NotFound(format!("project `{name}`")));
+                return Err(CliStateError::NotFound);
             }
             path
         };
@@ -1196,7 +1091,7 @@ impl ProjectsState {
         // Retrieve project. If doesn't exist do nothing.
         let project = match self.get(name) {
             Ok(project) => project,
-            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(CliStateError::NotFound) => return Ok(()),
             Err(e) => return Err(e),
         };
 
@@ -1238,14 +1133,116 @@ impl ProjectState {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TrustContextsState {
+    dir: PathBuf,
+}
+
+impl TrustContextsState {
+    fn new(cli_path: &Path) -> Result<Self> {
+        let dir = cli_path.join("trust_contexts");
+        std::fs::create_dir_all(dir.join("data"))?;
+        Ok(Self { dir })
+    }
+
+    pub fn create(&self, name: &str, config: TrustContextConfig) -> Result<TrustContextState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            path
+        };
+        let contents = serde_json::to_string(&config)?;
+        std::fs::write(&path, contents)?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+
+        path.try_into()
+    }
+
+    pub fn get(&self, name: &str) -> Result<TrustContextState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            if !path.exists() {
+                return Err(CliStateError::NotFound);
+            }
+            path
+        };
+        path.try_into()
+    }
+
+    pub fn default_path(&self) -> Result<PathBuf> {
+        Ok(
+            CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?
+                .join("trust_context"),
+        )
+    }
+
+    pub fn default(&self) -> Result<TrustContextState> {
+        let path = std::fs::canonicalize(self.default_path()?)?;
+        path.try_into()
+    }
+
+    pub fn set_default(&self, name: &str) -> Result<TrustContextState> {
+        let original = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            if !path.exists() {
+                return Err(CliStateError::NotFound);
+            }
+            path
+        };
+
+        let link = self.default_path()?;
+        std::os::unix::fs::symlink(original, link)?;
+        self.get(name)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TrustContextState {
+    pub path: PathBuf,
+    pub config: TrustContextConfig,
+}
+
+impl TryFrom<PathBuf> for TrustContextState {
+    type Error = CliStateError;
+
+    fn try_from(path: PathBuf) -> Result<Self> {
+        let contents = std::fs::read_to_string(&path)?;
+        let config = serde_json::from_str(&contents)?;
+        Ok(TrustContextState { path, config })
+    }
+}
+
+impl TrustContextState {
+    pub fn config(&self) -> Result<TrustContextConfig> {
+        let contents = std::fs::read_to_string(&self.path)?;
+        Ok(serde_json::from_str(&contents)?)
+    }
+
+    pub fn name(&self) -> Result<String> {
+        self.path
+            .file_stem()
+            .and_then(|s| s.to_os_string().into_string().ok())
+            .ok_or_else(|| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "failed to parse the trust context name",
+                ))
+            })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialConfig {
-    pub issuer: String,
+    pub issuer: Identity,
     pub encoded_credential: String,
 }
 
 impl CredentialConfig {
-    pub fn new(issuer: String, encoded_credential: String) -> Result<Self> {
+    pub fn new(issuer: Identity, encoded_credential: String) -> Result<Self> {
         Ok(Self {
             issuer,
             encoded_credential,
@@ -1258,7 +1255,7 @@ impl CredentialConfig {
             Err(e) => {
                 return Err(CliStateError::Invalid(format!(
                     "Unable to hex decode credential. {e}"
-                )))
+                )));
             }
         };
         minicbor::decode::<Credential>(&bytes)
@@ -1283,7 +1280,7 @@ impl CredentialsState {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
             if path.exists() {
-                return Err(CliStateError::AlreadyExists(format!("credential `{name}`")));
+                return Err(CliStateError::AlreadyExists);
             }
             path
         };
@@ -1301,7 +1298,7 @@ impl CredentialsState {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
             if !path.exists() {
-                return Err(CliStateError::NotFound(format!("credential `{name}`")));
+                return Err(CliStateError::NotFound);
             }
             path
         };
@@ -1336,7 +1333,7 @@ impl CredentialsState {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
             if !path.exists() {
-                return Err(CliStateError::NotFound(format!("credential `{name}`")));
+                return Err(CliStateError::NotFound);
             }
             path
         };
@@ -1346,13 +1343,13 @@ impl CredentialsState {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct CredentialState {
     pub path: PathBuf,
 }
 
 impl CredentialState {
-    pub async fn config(&self) -> Result<CredentialConfig> {
+    pub fn config(&self) -> Result<CredentialConfig> {
         let string_config = std::fs::read_to_string(&self.path)?;
         Ok(serde_json::from_str(&string_config)?)
     }
@@ -1376,15 +1373,58 @@ pub fn random_name() -> String {
 
 fn file_stem(path: &Path) -> Result<String> {
     path.file_stem()
-        .ok_or_else(|| CliStateError::NotFound(format!("name for {path:?}")))?
+        .ok_or(CliStateError::NotFound)?
         .to_str()
         .map(|name| name.to_string())
-        .ok_or_else(|| CliStateError::NotFound(format!("name for {path:?}")))
+        .ok_or(CliStateError::NotFound)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn test_create_default_identity_state() {
+        let state = CliState::test().unwrap();
+        let vault = Vault::new(None);
+        let identity1 = state
+            .create_identity_state(None, vault.clone())
+            .await
+            .unwrap();
+        let identity2 = state.create_identity_state(None, vault).await.unwrap();
+
+        let default_identity = state.identities.default().unwrap();
+        assert_eq!(identity1, default_identity);
+
+        // make sure that a default identity is not recreated twice
+        assert_eq!(identity1.name, identity2.name);
+        assert_eq!(identity1.path, identity2.path);
+    }
+
+    #[tokio::test]
+    async fn test_create_named_identity_state() {
+        let state = CliState::test().unwrap();
+        let vault = Vault::new(None);
+        let identity1 = state
+            .create_identity_state(Some("alice".into()), vault.clone())
+            .await
+            .unwrap();
+        let identity2 = state
+            .create_identity_state(Some("alice".into()), vault)
+            .await
+            .unwrap();
+
+        assert_eq!(identity1.name, "alice".to_string());
+        assert!(identity1
+            .path
+            .to_string_lossy()
+            .to_string()
+            .contains("alice.json"));
+
+        // make sure that a named identity is not recreated twice
+        assert_eq!(identity1.name, identity2.name);
+        assert_eq!(identity1.path, identity2.path);
+    }
 
     // This tests way too many different things
     #[ockam_macros::test(crate = "ockam")]
@@ -1410,11 +1450,16 @@ mod tests {
         let identity_name = {
             let name = hex::encode(random::<[u8; 4]>());
             let vault_state = sut.vaults.get(&vault_name).unwrap();
-            let vault: Arc<dyn IdentityVault> = Arc::new(vault_state.get().await.unwrap());
-            let identity =
-                Identity::create_ext(ctx, sut.identities.authenticated_storage().await?, vault)
-                    .await
-                    .unwrap();
+            let vault: Arc<dyn IdentitiesVault> = Arc::new(vault_state.get().await.unwrap());
+            let identities = Identities::builder()
+                .with_identities_vault(vault)
+                .with_identities_repository(sut.identities.identities_repository().await?)
+                .build();
+            let identity = identities
+                .identities_creation()
+                .create_identity()
+                .await
+                .unwrap();
             let config = IdentityConfig::new(&identity).await;
 
             let state = sut.identities.create(&name, config).unwrap();
@@ -1454,6 +1499,18 @@ mod tests {
             name
         };
 
+        // Trust
+        let trust_context_name = {
+            let name = hex::encode(random::<[u8; 4]>());
+            let config = TrustContextConfig::new(name.to_string(), None);
+
+            let state = sut.trust_contexts.create(&name, config).unwrap();
+            let got = sut.trust_contexts.get(&name).unwrap();
+            assert_eq!(got, state);
+
+            name
+        };
+
         // Check structure
         let mut expected_entries = vec![
             "vaults".to_string(),
@@ -1468,6 +1525,9 @@ mod tests {
             "projects".to_string(),
             "projects/data".to_string(),
             format!("projects/{project_name}.json"),
+            "trust_contexts".to_string(),
+            "trust_contexts/data".to_string(),
+            format!("trust_contexts/{trust_context_name}.json"),
             "credentials".to_string(),
             "credentials/data".to_string(),
             "defaults".to_string(),
@@ -1475,6 +1535,7 @@ mod tests {
             "defaults/identity".to_string(),
             "defaults/node".to_string(),
             "defaults/project".to_string(),
+            "defaults/trust_context".to_string(),
         ];
         expected_entries.sort();
         let mut found_entries = vec![];
@@ -1572,6 +1633,22 @@ mod tests {
                         assert!(entry.path().is_dir());
                         let file_name = entry.file_name().into_string().unwrap();
                         found_entries.push(format!("{dir_name}/{file_name}"));
+                    });
+                }
+                "trust_contexts" => {
+                    assert!(entry.path().is_dir());
+                    found_entries.push(dir_name.clone());
+                    entry.path().read_dir().unwrap().for_each(|entry| {
+                        let entry = entry.unwrap();
+                        let entry_name = entry.file_name().into_string().unwrap();
+                        if entry.path().is_dir() {
+                            assert_eq!(entry_name, "data");
+                            found_entries.push(format!("{dir_name}/{entry_name}"));
+                        } else {
+                            assert!(entry.path().is_file());
+                            let file_name = entry.file_name().into_string().unwrap();
+                            found_entries.push(format!("{dir_name}/{file_name}"));
+                        }
                     });
                 }
                 _ => panic!("unexpected file"),

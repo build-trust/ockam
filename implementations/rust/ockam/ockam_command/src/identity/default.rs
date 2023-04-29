@@ -44,7 +44,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
             }
         }
         Err(err) => match err {
-            CliStateError::NotFound(_) => Err(anyhow!("Identity '{}' not found", &cmd.name).into()),
+            CliStateError::NotFound => Err(anyhow!("Identity '{}' not found", &cmd.name).into()),
             _ => Err(err.into()),
         },
     }

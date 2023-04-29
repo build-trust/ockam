@@ -57,6 +57,8 @@ pub mod workers;
 #[cfg(feature = "std")]
 pub use ockam_abac as abac;
 pub use ockam_identity as identity;
+#[cfg(feature = "std")]
+pub use ockam_identity::storage::lmdb_storage::*;
 
 pub use ockam_core::{
     allow, deny, errcode, route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage,
@@ -67,12 +69,12 @@ pub use ockam_core::{
 /// Access Control
 pub mod access_control {
     pub use ockam_core::access_control::*;
-    pub use ockam_identity::access_control::*;
+    pub use ockam_identity::secure_channel::access_control::*;
 }
 
-/// Sessions
-pub mod sessions {
-    pub use ockam_core::sessions::*;
+/// Flow Controls
+pub mod flow_control {
+    pub use ockam_core::flow_control::*;
 }
 
 /// Mark an Ockam Worker implementation.
@@ -122,14 +124,12 @@ pub mod vault {
     }
 }
 
-/// Authenticated Storage
-pub mod authenticated_storage {
-    pub use ockam_identity::authenticated_storage::mem::*;
-    pub use ockam_identity::authenticated_storage::*;
-}
-
 #[cfg(feature = "ockam_transport_tcp")]
 pub use ockam_transport_tcp::{
-    TcpConnectionTrustOptions, TcpInletTrustOptions, TcpListenerTrustOptions,
-    TcpOutletTrustOptions, TcpTransport,
+    TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
 };
+
+/// List of all top-level services
+pub mod node;
+
+pub use node::*;

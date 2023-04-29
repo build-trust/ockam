@@ -4,19 +4,18 @@ use crate::node::util::run_ockam;
 use crate::util::node_rpc;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::{docs, identity, CommandGlobalOpts, Result};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context as _};
 use clap::{ArgGroup, Args};
-use ockam::AsyncTryClone;
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
+use ockam_api::cli_state::traits::StateTrait;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
-use ockam_identity::authenticated_storage::AttributesEntry;
-use ockam_identity::IdentityIdentifier;
+use ockam_identity::{AttributesEntry, IdentityIdentifier};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
@@ -74,23 +73,33 @@ pub struct CreateCommand {
     certificate: Option<String>,
 
     /// Okta: name of the attributes which can be retrieved from Okta (optional)
-    #[arg(long, value_name = "COMMA_SEPARATED_LIST", default_value = None)]
+    #[arg(long, value_name = "ATTRIBUTE_NAMES", default_value = None)]
     attributes: Option<Vec<String>>,
 
     /// Run the node in foreground.
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
     foreground: bool,
+
+    /// Vault that authority will use
+    #[arg(long = "vault", value_name = "VAULT")]
+    vault: Option<String>,
+
+    /// Authority Identity
+    #[arg(long = "identity", value_name = "IDENTITY")]
+    identity: Option<String>,
 }
 
 /// Start an authority node by calling the `ockam` executable with the current command-line
 /// arguments
-async fn spawn_background_node(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    cmd: &CreateCommand,
-) -> crate::Result<()> {
+async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crate::Result<()> {
     // Create node state, including the vault and identity if they don't exist
-    init_node_state(ctx, opts, &cmd.node_name, None, None).await?;
+    init_node_state(
+        opts,
+        &cmd.node_name,
+        cmd.vault.clone(),
+        cmd.identity.clone(),
+    )
+    .await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
@@ -102,6 +111,11 @@ async fn spawn_background_node(
         "--tcp-listener-address".to_string(),
         cmd.tcp_listener_address.clone(),
         "--foreground".to_string(),
+        match opts.global_args.verbose {
+            0 => "-vv".to_string(),
+            v => format!("-{}", "v".repeat(v as usize)),
+        },
+        "--no-color".to_string(),
     ];
 
     if cmd.no_direct_authentication {
@@ -137,8 +151,20 @@ async fn spawn_background_node(
     }
 
     if let Some(attributes) = &cmd.attributes {
-        args.push("--attributes".to_string());
-        args.push(attributes.join(","));
+        attributes.iter().for_each(|attr| {
+            args.push("--attributes".to_string());
+            args.push(attr.clone());
+        });
+    }
+
+    if let Some(vault) = &cmd.vault {
+        args.push("--vault".to_string());
+        args.push(vault.clone());
+    }
+
+    if let Some(identity) = &cmd.identity {
+        args.push("--identity".to_string());
+        args.push(identity.clone());
     }
     args.push(cmd.node_name.to_string());
 
@@ -188,11 +214,11 @@ impl CreateCommand {
 
 /// Given a Context start a node in a new OS process
 async fn create_background_node(
-    ctx: Context,
+    _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     // Spawn node in another, new process
-    spawn_background_node(&ctx, &opts, &cmd).await
+    spawn_background_node(&opts, &cmd).await
 }
 
 /// Start an authority node:
@@ -213,18 +239,33 @@ async fn start_authority_node(
         .get_node_path(&command.node_name)
         .exists()
     {
-        init_node_state(&ctx, &options, &command.node_name, None, None).await?;
+        init_node_state(
+            &options,
+            &command.node_name,
+            cmd.vault,
+            cmd.identity.clone(),
+        )
+        .await?;
     };
 
     // retrieve the authority identity if it has been created before
     // otherwise create a new one
-    let public_identity = match options.state.identities.default().ok() {
-        Some(state) => state.config.public_identity(),
-        None => {
-            let cmd = identity::CreateCommand::new("authority".into(), None);
-            cmd.create_identity(ctx.async_try_clone().await?, options.clone())
-                .await?
-        }
+    let identity = match cmd.identity {
+        Some(identity_name) => options
+            .state
+            .identities
+            .get(&identity_name)
+            .context("Identity not found")
+            .unwrap()
+            .config
+            .identity(),
+        None => match options.state.identities.default().ok() {
+            Some(state) => state.config.identity(),
+            None => {
+                let cmd = identity::CreateCommand::new("authority".into(), None);
+                cmd.create_identity(options.clone()).await?
+            }
+        },
     };
 
     let okta_configuration = match (
@@ -258,16 +299,15 @@ async fn start_authority_node(
             )?),
     )?;
 
-    let trusted_identities = &command.trusted_identities(
-        &command.project_identifier.clone(),
-        public_identity.identifier(),
-    )?;
+    let trusted_identities =
+        &command.trusted_identities(&command.project_identifier.clone(), &identity.identifier())?;
 
     let configuration = authority_node::Configuration {
-        identity: public_identity,
-        storage_path: options.state.identities.authenticated_storage_path()?,
-        vault_path: options.state.vaults.default()?.vault_file_path()?,
-        project_identifier: command.project_identifier,
+        identity,
+        storage_path: options.state.identities.identities_repository_path()?,
+        vault_path: options.state.vaults.default()?.vault_file_path().clone(),
+        project_identifier: command.project_identifier.clone(),
+        trust_context_identifier: command.project_identifier,
         tcp_listener_address: command.tcp_listener_address.clone(),
         secure_channel_listener_name: None,
         authenticator_name: None,
@@ -309,15 +349,17 @@ mod tests {
         )
         .unwrap();
 
-        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"project_id\": \"1\"}}, \"{identity2}\": {{\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
+        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"project_id\": \"1\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"project_id\" : \"1\", \"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
 
         let attributes1 = HashMap::from([
             ("name".into(), "value".into()),
             ("project_id".into(), "1".into()),
+            ("trust_context_id".into(), "1".into()),
         ]);
         let attributes2 = HashMap::from([
             ("project_id".into(), "1".into()),
+            ("trust_context_id".into(), "1".into()),
             ("ockam-role".into(), "enroller".into()),
         ]);
         let expected = vec![

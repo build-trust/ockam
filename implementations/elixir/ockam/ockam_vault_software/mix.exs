@@ -90,7 +90,7 @@ defmodule Ockam.Vault.Software.MixProject do
       compile: ["check.native", "compile"],
       clean: ["clean", "clean.native"],
       docs: "docs --output _build/docs --formatter html",
-      "test.cover": "test --no-start --cover",
+      "test.cover": "test --cover",
       "lint.format": "format --check-formatted",
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",

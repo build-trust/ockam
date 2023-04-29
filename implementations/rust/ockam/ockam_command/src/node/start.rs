@@ -2,9 +2,9 @@ use clap::Args;
 
 use ockam::TcpTransport;
 
-use crate::node::default_node_name;
 use crate::node::show::print_query_status;
 use crate::node::util::{check_default, spawn_node};
+use crate::node::{default_node_name, node_name_parser};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 
@@ -20,7 +20,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt")
 )]
 pub struct StartCommand {
     /// Name of the node.
-    #[arg(default_value_t = default_node_name())]
+    #[arg(default_value_t = default_node_name(), value_parser = node_name_parser)]
     node_name: String,
 
     #[arg(long, default_value = "false")]
@@ -64,9 +64,11 @@ async fn run_impl(
         None,               // No trusted identities
         None,               // "
         None,               // "
-        None,
-        None, // No launch config available
-        None,
+        None,               // Launch config
+        None,               // Authoritiy Identity
+        None,               // Credential
+        None,               // Trust Context
+        None,               // Project Name
     )?;
 
     // Print node status

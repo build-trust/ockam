@@ -8,41 +8,41 @@ unlicensed = "deny"
 copyleft = "deny"
 confidence-threshold = 0.95
 allow = [
-    "Apache-2.0",
-    "MIT",
-    "BSD-3-Clause",
-    "BSD-2-Clause",
-    "0BSD",
-    "ISC",
-    "BlueOak-1.0.0",
-    "BSL-1.0"
+  "Apache-2.0",
+  "MIT",
+  "BSD-3-Clause",
+  "BSD-2-Clause",
+  "0BSD",
+  "ISC",
+  "BlueOak-1.0.0",
+  "BSL-1.0",
 ]
 exceptions = [
-    { allow = ["LicenseRef-Ring-ISC-OpenSSL"], name = "ring", version = "*" },
-    { allow = ["Unicode-DFS-2016"], name = "unicode-ident", version = "*" },
-    { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
-    { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
+  { allow = ["LicenseRef-Ring-ISC-OpenSSL"], name = "ring", version = "*" },
+  { allow = ["Unicode-DFS-2016"], name = "unicode-ident", version = "*" },
+  { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
+  { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
 ]
 
 [[licenses.clarify]]
 name = "ring"
 expression = "LicenseRef-Ring-ISC-OpenSSL"
 license-files = [
-    { path = "LICENSE", hash = 0xbd0eed23 },
+  { path = "LICENSE", hash = 0xbd0eed23 },
 ]
 
 [[licenses.clarify]]
 name = "webpki"
 expression = "ISC"
 license-files = [
-    { path = "LICENSE", hash = 0x001c7e6c },
+  { path = "LICENSE", hash = 0x001c7e6c },
 ]
 
 [[licenses.clarify]]
 name = "rustls-webpki"
 expression = "ISC"
 license-files = [
-    { path = "LICENSE", hash = 0x001c7e6c },
+  { path = "LICENSE", hash = 0x001c7e6c },
 ]
 
 [advisories]
@@ -50,17 +50,17 @@ unmaintained = "deny"
 vulnerability = "deny"
 yanked = "warn"
 ignore = [
-    # `serde_cbor` is unmaintained
-    # (https://rustsec.org/advisories/RUSTSEC-2021-0127.html)
-    #
-    # Pulled-in by `cddl-cat` which is used for validating
-    # CDDL schema conformance in tests.
-    "RUSTSEC-2021-0127",
+  # `serde_cbor` is unmaintained
+  # (https://rustsec.org/advisories/RUSTSEC-2021-0127.html)
+  #
+  # Pulled-in by `cddl-cat` which is used for validating
+  # CDDL schema conformance in tests.
+  "RUSTSEC-2021-0127",
 
-    # `xml-rs` is unmaintained, pulled in from a transitive
-    # dependency `serde-xml`
-    # (https://rustsec.org/advisories/RUSTSEC-2022-0048.html)
-    "RUSTSEC-2022-0048",
+  # `xml-rs` is unmaintained, pulled in from a transitive
+  # dependency `serde-xml`
+  # (https://rustsec.org/advisories/RUSTSEC-2022-0048.html)
+  "RUSTSEC-2022-0048",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still

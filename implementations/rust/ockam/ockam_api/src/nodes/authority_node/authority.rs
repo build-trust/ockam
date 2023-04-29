@@ -1,25 +1,22 @@
-use crate::authenticator::direct::{CredentialIssuer, EnrollmentTokenAuthenticator};
+use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::echoer::Echoer;
-use crate::lmdb::LmdbStorage;
 use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
 use crate::nodes::authority_node::Configuration;
 use crate::{actions, DefaultAddress};
+use ockam::identity::{
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
+    IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
-use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Message, Result, Worker};
-use ockam_identity::authenticated_storage::{
-    AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
-};
-use ockam_identity::{
-    Identity, IdentityVault, PublicIdentity, SecureChannelListenerTrustOptions,
-    SecureChannelRegistry, TrustEveryonePolicy,
-};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
+use ockam_core::{Address, AllowAll, Error, Message, Result, Worker};
+use ockam_identity::{CredentialsIssuer, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
-use ockam_transport_tcp::{TcpListenerTrustOptions, TcpTransport};
+use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 use std::path::Path;
@@ -34,20 +31,7 @@ use tracing::info;
 //   - an enrollment token acceptor
 pub struct Authority {
     identity: Identity,
-    attributes_storage: Arc<dyn IdentityAttributeStorage>,
-}
-
-impl Authority {
-    /// Create a new Authority with a given identity
-    /// The list of trusted identities is used to pre-populate an attributes storage
-    /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
-    pub(crate) fn new(identity: Identity, configuration: &Configuration) -> Self {
-        let attributes_storage = Self::make_attributes_storage(&identity, configuration);
-        Self {
-            identity,
-            attributes_storage,
-        }
-    }
+    secure_channels: Arc<SecureChannels>,
 }
 
 /// Public functions to:
@@ -55,27 +39,33 @@ impl Authority {
 ///   - start services
 impl Authority {
     /// Return the public identity for this authority
-    pub async fn public_identity(&self) -> Result<PublicIdentity> {
-        self.identity.to_public().await
+    pub fn identity(&self) -> Identity {
+        self.identity.clone()
     }
 
     /// Create an identity for an authority from the configured public identity and configured vault
-    pub async fn create(ctx: &Context, configuration: &Configuration) -> Result<Authority> {
+    /// The list of trusted identities in the configuration is used to pre-populate an attributes storage
+    /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
+    pub async fn create(configuration: &Configuration) -> Result<Authority> {
         info!("configuration {:?}", configuration);
-        let vault = Self::create_identity_vault(configuration).await?;
-        let storage = Self::create_authenticated_storage(configuration).await?;
+        let vault = Self::create_secure_channels_vault(configuration).await?;
+        let repository = Self::create_identities_repository(configuration).await?;
+        let secure_channels = SecureChannels::builder()
+            .with_identities_vault(vault)
+            .with_identities_repository(repository)
+            .build();
 
-        let identity = Identity::import_ext(
-            ctx,
-            configuration.identity.export()?.as_slice(),
-            storage.clone(),
-            &SecureChannelRegistry::new(),
-            vault,
-        )
-        .await?;
+        let identity = secure_channels
+            .identities()
+            .identities_creation()
+            .import_identity(configuration.identity.export()?.as_slice())
+            .await?;
         info!("retrieved the authority identity {}", identity.identifier());
 
-        Ok(Authority::new(identity, configuration))
+        Ok(Authority {
+            identity,
+            secure_channels,
+        })
     }
 
     /// Start the secure channel listener service, using TCP as a transport
@@ -84,51 +74,50 @@ impl Authority {
     pub async fn start_secure_channel_listener(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
+        flow_controls: &FlowControls,
         configuration: &Configuration,
-    ) -> Result<SessionId> {
+    ) -> Result<FlowControlId> {
         // Start a secure channel listener that only allows channels with
         // authenticated identities.
-        let tcp_listener_session_id = sessions.generate_session_id();
-        let secure_channel_listener_session_id = sessions.generate_session_id();
+        let tcp_listener_flow_control_id = flow_controls.generate_id();
+        let secure_channel_listener_flow_control_id = flow_controls.generate_id();
 
-        let trust_options = SecureChannelListenerTrustOptions::new()
-            .with_trust_policy(TrustEveryonePolicy)
-            .as_consumer(
-                sessions,
-                &tcp_listener_session_id,
-                SessionPolicy::SpawnerAllowOnlyOneMessage,
-            )
-            .as_spawner(sessions, &secure_channel_listener_session_id);
+        let options = SecureChannelListenerOptions::as_spawner(
+            flow_controls,
+            &secure_channel_listener_flow_control_id,
+        )
+        .with_trust_policy(TrustEveryonePolicy)
+        .as_consumer_with_flow_control_id(
+            flow_controls,
+            &tcp_listener_flow_control_id,
+            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+        );
 
         let listener_name = configuration.secure_channel_listener_name();
-        self.identity
-            .create_secure_channel_listener(listener_name.clone(), trust_options)
+        self.secure_channels
+            .create_secure_channel_listener(ctx, &self.identity, listener_name.clone(), options)
             .await?;
         info!("started a secure channel listener with name '{listener_name}'");
 
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
-        let tcp_listener_trust_options =
-            TcpListenerTrustOptions::new().as_spawner(sessions, &tcp_listener_session_id);
+        let tcp_listener_options =
+            TcpListenerOptions::as_spawner(flow_controls, &tcp_listener_flow_control_id);
 
         let (address, _) = tcp
-            .listen(
-                configuration.tcp_listener_address(),
-                tcp_listener_trust_options,
-            )
+            .listen(configuration.tcp_listener_address(), tcp_listener_options)
             .await?;
 
         info!("started a TCP listener at {address:?}");
-        Ok(secure_channel_listener_session_id)
+        Ok(secure_channel_listener_flow_control_id)
     }
 
     /// Start the authenticator service to enroll project members
     pub async fn start_direct_authenticator(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
-        secure_channel_session_id: &SessionId,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if configuration.no_direct_authentication {
@@ -136,16 +125,16 @@ impl Authority {
         }
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
-            configuration.clone().project_identifier(),
-            self.attributes_storage().clone(),
+            configuration.clone().trust_context_identifier(),
+            self.attributes_writer(),
         )
         .await?;
 
         let name = configuration.clone().authenticator_name();
-        sessions.add_consumer(
+        flow_controls.add_consumer(
             &Address::from_string(name.clone()),
-            secure_channel_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         self.start(ctx, configuration, name.clone(), EnrollerOnly, direct)
@@ -159,8 +148,8 @@ impl Authority {
     pub async fn start_enrollment_services(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
-        secure_channel_session_id: &SessionId,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if configuration.no_token_enrollment {
@@ -168,17 +157,17 @@ impl Authority {
         }
 
         let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
-            configuration.project_identifier(),
-            self.attributes_storage(),
+            configuration.trust_context_identifier(),
+            self.attributes_writer(),
         );
 
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
-        sessions.add_consumer(
+        flow_controls.add_consumer(
             &Address::from_string(issuer_address.clone()),
-            secure_channel_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         self.start(
@@ -195,10 +184,10 @@ impl Authority {
         // that service is to access a one-time token stating that the sender of the message
         // is a project member
         let acceptor_address: String = DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into();
-        sessions.add_consumer(
+        flow_controls.add_consumer(
             &Address::from_string(acceptor_address.clone()),
-            secure_channel_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         WorkerBuilder::with_access_control(
@@ -220,25 +209,23 @@ impl Authority {
     pub async fn start_credential_issuer(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
-        secure_channel_session_id: &SessionId,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         // create and start a credential issuer worker
-        let issuer = CredentialIssuer::new(
-            configuration.project_identifier(),
-            self.attributes_storage()
-                .clone()
-                .as_identity_attribute_storage_reader(),
-            Arc::new(self.identity.async_try_clone().await?),
+        let issuer = CredentialsIssuer::new(
+            self.identities(),
+            self.identity.clone(),
+            configuration.trust_context_identifier(),
         )
         .await?;
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
-        sessions.add_consumer(
+        flow_controls.add_consumer(
             &Address::from_string(address.clone()),
-            secure_channel_session_id,
-            SessionPolicy::SpawnerAllowMultipleMessages,
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         self.start(ctx, configuration, address.clone(), AnyMember, issuer)
@@ -252,24 +239,23 @@ impl Authority {
     pub async fn start_okta(
         &self,
         ctx: &Context,
-        sessions: &Sessions,
-        secure_channel_session_id: &SessionId,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if let Some(okta) = configuration.clone().okta {
             let okta_worker = crate::okta::Server::new(
+                self.attributes_writer(),
                 configuration.project_identifier(),
-                self.attributes_storage()
-                    .as_identity_attribute_storage_writer(),
                 okta.tenant_base_url(),
                 okta.certificate(),
                 okta.attributes().as_slice(),
             )?;
 
-            sessions.add_consumer(
+            flow_controls.add_consumer(
                 &Address::from_string(okta.address.clone()),
-                secure_channel_session_id,
-                SessionPolicy::SpawnerAllowMultipleMessages,
+                secure_channel_flow_control_id,
+                FlowControlPolicy::SpawnerAllowMultipleMessages,
             );
 
             ctx.start_worker(
@@ -284,23 +270,45 @@ impl Authority {
     }
 
     /// Start an echo service
-    pub async fn start_echo_service(&self, ctx: &Context) -> Result<()> {
-        ctx.start_worker(DefaultAddress::ECHO_SERVICE, Echoer, AllowAll, AllowAll)
-            .await
+    pub async fn start_echo_service(
+        &self,
+        ctx: &Context,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: &FlowControlId,
+    ) -> Result<()> {
+        let address = DefaultAddress::ECHO_SERVICE;
+
+        flow_controls.add_consumer(
+            &Address::from_string(address),
+            secure_channel_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
+
+        ctx.start_worker(address, Echoer, AllowAll, AllowAll).await
     }
 }
 
 /// Private Authority functions
 impl Authority {
-    /// Return the attribute storage used by the authority
-    fn attributes_storage(&self) -> Arc<dyn IdentityAttributeStorage> {
-        self.attributes_storage.clone()
+    /// Return the identities storage used by the authority
+    fn identities(&self) -> Arc<Identities> {
+        self.secure_channels.identities()
+    }
+
+    /// Return the identities repository used by the authority
+    fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
+        self.identities().repository().clone()
+    }
+
+    /// Return the identities repository used by the authority
+    fn attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
+        self.identities_repository().as_attributes_writer().clone()
     }
 
     /// Create an identity vault backed by a FileStorage
-    async fn create_identity_vault(
+    async fn create_secure_channels_vault(
         configuration: &Configuration,
-    ) -> Result<Arc<dyn IdentityVault>> {
+    ) -> Result<Arc<dyn IdentitiesVault>> {
         let vault_path = &configuration.vault_path;
         Self::create_ockam_directory_if_necessary(vault_path)?;
         let mut file_storage = FileStorage::new(vault_path.clone());
@@ -310,13 +318,14 @@ impl Authority {
     }
 
     /// Create an authenticated storage backed by a Lmdb database
-    async fn create_authenticated_storage(
+    async fn create_identities_repository(
         configuration: &Configuration,
-    ) -> Result<Arc<dyn AuthenticatedStorage>> {
+    ) -> Result<Arc<dyn IdentitiesRepository>> {
         let storage_path = &configuration.storage_path;
         Self::create_ockam_directory_if_necessary(storage_path)?;
         let storage = Arc::new(LmdbStorage::new(&storage_path).await?);
-        Ok(storage)
+        let repository = Arc::new(IdentitiesStorage::new(storage));
+        Ok(Self::bootstrap_repository(repository, configuration))
     }
 
     /// Create a directory to save storage files if they haven't been  created before
@@ -328,19 +337,17 @@ impl Authority {
         Ok(())
     }
 
-    /// Make an identity attributes storage pre-populated with the attributes of some trusted
+    /// Make an identities repository pre-populated with the attributes of some trusted
     /// identities. The values either come from the command line or are read directly from a file
-    /// every time the IdentityAttributeStorage tries to retrieve some attributes
-    fn make_attributes_storage(
-        authority: &Identity,
+    /// every time we try to retrieve some attributes
+    fn bootstrap_repository(
+        repository: Arc<dyn IdentitiesRepository>,
         configuration: &Configuration,
-    ) -> Arc<dyn IdentityAttributeStorage> {
+    ) -> Arc<dyn IdentitiesRepository> {
         let trusted_identities = &configuration.trusted_identities;
         Arc::new(BootstrapedIdentityStore::new(
             Arc::new(trusted_identities.clone()),
-            Arc::new(AuthenticatedAttributeStorage::new(
-                authority.authenticated_storage(),
-            )),
+            repository.clone(),
         ))
     }
 
@@ -381,11 +388,21 @@ impl Authority {
         // the same project id as the authority
         let rule = if enroller_check == EnrollerOnly {
             and([
-                eq([ident("resource.project_id"), ident("subject.project_id")]),
+                eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
+                eq([
+                    ident("resource.trust_context_id"),
+                    ident("subject.trust_context_id"),
+                ]),
                 eq([ident("subject.ockam-role"), str("enroller")]),
             ])
         } else {
-            eq([ident("resource.project_id"), ident("subject.project_id")])
+            and([
+                eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
+                eq([
+                    ident("resource.trust_context_id"),
+                    ident("subject.trust_context_id"),
+                ]),
+            ])
         };
         let mut env = Env::new();
         env.put("resource.id", str(address.as_str()));
@@ -394,7 +411,15 @@ impl Authority {
             "resource.project_id",
             str(configuration.clone().project_identifier),
         );
-        let abac = Arc::new(AbacAccessControl::new(self.attributes_storage(), rule, env));
+        env.put(
+            "resource.trust_context_id",
+            str(configuration.clone().trust_context_identifier),
+        );
+        let abac = Arc::new(AbacAccessControl::new(
+            self.identities_repository(),
+            rule,
+            env,
+        ));
         abac
     }
 }

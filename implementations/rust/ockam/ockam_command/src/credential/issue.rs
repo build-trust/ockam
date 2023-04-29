@@ -7,10 +7,12 @@ use crate::{
     vault::default_vault_name,
     CommandGlobalOpts, EncodeFormat, Result,
 };
-use anyhow::Context as _;
+use anyhow::{anyhow, Context as _};
 use clap::Args;
+use ockam::identity::CredentialData;
 use ockam::Context;
-use ockam_identity::{credential::CredentialBuilder, IdentityIdentifier};
+use ockam_api::cli_state::traits::StateTrait;
+use ockam_identity::{identities, Identity};
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
@@ -18,7 +20,7 @@ pub struct IssueCommand {
     pub as_identity: String,
 
     #[arg(long = "for", value_name = "IDENTITY_ID")]
-    pub for_identity: IdentityIdentifier,
+    pub for_identity: String,
 
     /// Attributes in `key=value` format to be attached to the member
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
@@ -47,21 +49,51 @@ impl IssueCommand {
         }
         Ok(attributes)
     }
+
+    pub async fn identity(&self) -> Result<Identity> {
+        let identity_as_bytes = match hex::decode(&self.for_identity) {
+            Ok(b) => b,
+            Err(e) => return Err(anyhow!(e).into()),
+        };
+
+        let identity = identities()
+            .identities_creation()
+            .import_identity(&identity_as_bytes)
+            .await?;
+        Ok(identity)
+    }
 }
 
 async fn run_impl(
-    ctx: Context,
+    _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
-    let attrs = cmd.attributes()?;
-    let cred_builder = CredentialBuilder::from_attributes(cmd.for_identity.clone(), attrs);
-
-    let vault = opts.state.vaults.get(&cmd.vault)?.get().await?;
     let ident_state = opts.state.identities.get(&cmd.as_identity)?;
+    let auth_identity_identifier = ident_state.config.identifier.clone();
 
-    let ident = ident_state.get(&ctx, Arc::new(vault)).await?;
+    let mut attrs = cmd.attributes()?;
+    attrs.insert(
+        "project_id".to_string(), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
+        auth_identity_identifier.to_string(),
+    );
+    attrs.insert(
+        "trust_context_id".to_string(),
+        auth_identity_identifier.to_string(),
+    );
 
-    let credential = ident.issue_credential(cred_builder).await?;
+    let vault = Arc::new(opts.state.vaults.get(&cmd.vault)?.get().await?);
+    let issuer = ident_state.get(vault.clone()).await?;
+    let identities = ident_state.make_identities(vault).await?;
+
+    let credential_data = CredentialData::from_attributes(
+        cmd.identity().await?.identifier(),
+        issuer.identifier(),
+        attrs,
+    )?;
+    let credential = identities
+        .credentials()
+        .issue_credential(&issuer, credential_data)
+        .await?;
 
     print_encodable(credential, &cmd.encode_format)?;
 

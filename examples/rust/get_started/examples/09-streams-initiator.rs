@@ -1,17 +1,19 @@
-use ockam::{route, stream::Stream, Context, MessageReceiveOptions, Result, TcpConnectionTrustOptions, TcpTransport};
+use ockam::{node, route, Context, MessageReceiveOptions, Result, TcpConnectionOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
-    let tcp = TcpTransport::create(&ctx).await?;
+async fn main(ctx: Context) -> Result<()> {
+    // Create a node with default implementations
+    let mut node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
-    let node_in_hub = tcp
-        .connect(hub_node_tcp_address, TcpConnectionTrustOptions::new())
-        .await?;
+    let node_in_hub = tcp.connect(hub_node_tcp_address, TcpConnectionOptions::new()).await?;
 
     // Create a stream client
-    let (sender, _receiver) = Stream::new(&ctx)
+    let (sender, _receiver) = node
+        .create_stream()
         .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
@@ -24,7 +26,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Send a message
-    ctx.send(
+    node.send(
         route![
             sender.clone(), // via the "initiator-to-responder" stream
             "echoer"        // to the "echoer" worker
@@ -34,10 +36,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     .await?;
 
     // Receive a message from the "responder-to-initiator" stream
-    let reply = ctx
+    let reply = node
         .receive_extended::<String>(MessageReceiveOptions::new().without_timeout())
         .await?;
     println!("Reply via stream: {}", reply);
 
-    ctx.stop().await
+    node.stop().await
 }

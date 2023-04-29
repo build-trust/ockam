@@ -1,11 +1,10 @@
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::DefaultAddress;
+use ockam::identity::credential::Timestamp;
+use ockam::identity::{AttributesEntry, Identity, IdentityIdentifier};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::{Display, Formatter};
-use ockam_identity::authenticated_storage::AttributesEntry;
-use ockam_identity::credential::Timestamp;
-use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -14,7 +13,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
     /// Authority identity or identity associated with the newly created node
-    pub identity: PublicIdentity,
+    pub identity: Identity,
 
     /// path where the storage for identity attributes should be persisted
     pub storage_path: PathBuf,
@@ -24,6 +23,9 @@ pub struct Configuration {
 
     /// Project identifier on the Orchestrator node
     pub project_identifier: String,
+
+    /// Trust context identifier on the Orchestrator node
+    pub trust_context_identifier: String,
 
     /// listener address for the TCP listener, for example "127.0.0.1:4000"
     pub tcp_listener_address: String,
@@ -52,8 +54,13 @@ pub struct Configuration {
 /// Local and private functions for the authority configuration
 impl Configuration {
     /// Return the project identifier as bytes
-    pub(crate) fn project_identifier(&self) -> Vec<u8> {
-        self.project_identifier.as_bytes().to_vec()
+    pub(crate) fn project_identifier(&self) -> String {
+        self.project_identifier.clone()
+    }
+
+    /// Return the trust context identifier as bytes
+    pub(crate) fn trust_context_identifier(&self) -> String {
+        self.trust_context_identifier.clone()
     }
 
     /// Return the address for the TCP listener
@@ -150,7 +157,12 @@ impl TrustedIdentity {
         // Since the authority node is started for a given project
         // add the project_id attribute to the trusted identities
         map.insert(
-            "project_id".to_string(),
+            "project_id".to_string(), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
+            project_identifier.as_bytes().to_vec(),
+        );
+
+        map.insert(
+            "trust_context_id".to_string(),
             project_identifier.as_bytes().to_vec(),
         );
         AttributesEntry::new(

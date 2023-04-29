@@ -9,7 +9,7 @@ use ockam_core::compat::format;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, RelayMessage};
 use ockam_core::{IncomingAccessControl, Result};
-use ockam_identity::authenticated_storage::IdentityAttributeStorage;
+use ockam_identity::IdentitiesRepository;
 use tracing as log;
 
 /// Evaluates a policy expression against an environment of attributes.
@@ -20,7 +20,7 @@ pub struct PolicyAccessControl {
     resource: Resource,
     action: Action,
     policies: Arc<dyn PolicyStorage>,
-    attributes: Arc<dyn IdentityAttributeStorage>,
+    repository: Arc<dyn IdentitiesRepository>,
     environment: Env,
 }
 
@@ -44,7 +44,7 @@ impl PolicyAccessControl {
     /// which may already contain other resource, action or subject attributes.
     pub fn new(
         policies: Arc<dyn PolicyStorage>,
-        store: Arc<dyn IdentityAttributeStorage>,
+        repository: Arc<dyn IdentitiesRepository>,
         r: Resource,
         a: Action,
         env: Env,
@@ -53,7 +53,7 @@ impl PolicyAccessControl {
             resource: r,
             action: a,
             policies,
-            attributes: store,
+            repository,
             environment: env,
         }
     }
@@ -85,7 +85,7 @@ impl IncomingAccessControl for PolicyAccessControl {
             return Ok(false);
         };
 
-        AbacAccessControl::new(self.attributes.clone(), expr, self.environment.clone())
+        AbacAccessControl::new(self.repository.clone(), expr, self.environment.clone())
             .is_authorized(msg)
             .await
     }

@@ -1,12 +1,12 @@
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{
-    route, vault::Vault, Context, Result, Route, TcpConnectionTrustOptions, TcpInletTrustOptions, TcpTransport,
-};
+use ockam::identity::SecureChannelOptions;
+use ockam::{node, route, Context, Result, Route, TcpConnectionOptions, TcpInletOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create a Vault to store our cryptographic keys and an Identity to represent this Node.
     // Then initiate a handshake with the secure channel listener on the node that has the
@@ -15,16 +15,15 @@ async fn main(ctx: Context) -> Result<()> {
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
     // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
     // points to secure channel listener.
-    let vault = Vault::create();
-    let e = Identity::create(&ctx, vault).await?;
+    let e = node.create_identity().await?;
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
     let r = route![node_in_hub, forwarding_address, "secure_channel_listener"];
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
+    let channel = node.create_secure_channel(&e, r, SecureChannelOptions::new()).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
@@ -45,7 +44,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to q connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route_to_outlet, TcpInletTrustOptions::new())
+    tcp.create_inlet(inlet_address, route_to_outlet, TcpInletOptions::new())
         .await?;
 
     // We won't call ctx.stop() here,

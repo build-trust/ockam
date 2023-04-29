@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use error::TransportError;
-
 mod error;
+mod transport;
+
+pub use error::TransportError;
+pub use transport::*;

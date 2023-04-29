@@ -1,78 +1,67 @@
 use anyhow::{anyhow, Context as _};
 
-use ockam_api::config::lookup::ProjectLookup;
-use rand::random;
-use std::env::current_exe;
-use std::fs::OpenOptions;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
-use ockam::identity::{Identity, PublicIdentity};
-use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
+use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state;
-use ockam_api::config::cli::{self, Authority};
+use ockam_api::cli_state::traits::StateItemDirTrait;
+use ockam_api::config::lookup::ProjectLookup;
+
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
-    NodeManagerTransportOptions,
+    NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-use ockam_core::compat::sync::Arc;
 use ockam_core::AllowAll;
-use ockam_multiaddr::MultiAddr;
-use ockam_vault::Vault;
+use std::env::current_exe;
+use std::fs::OpenOptions;
+use std::path::PathBuf;
+use std::process::Command;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
-use crate::util::api::ProjectOpts;
+use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use crate::{project, CommandGlobalOpts, OckamConfig, Result};
 
 pub async fn start_embedded_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    project_opts: Option<&ProjectOpts>,
+    trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
-    start_embedded_node_with_vault_and_identity(ctx, opts, None, None, project_opts).await
+    start_embedded_node_with_vault_and_identity(ctx, opts, None, None, trust_opts).await
 }
 
 pub async fn start_embedded_node_with_vault_and_identity(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    vault: Option<&String>,
-    identity: Option<&String>,
-    project_opts: Option<&ProjectOpts>,
+    vault: Option<String>,
+    identity: Option<String>,
+    trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
     let cfg = &opts.config;
     let cmd = CreateCommand::default();
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
+        init_node_state(opts, &cmd.node_name, vault, identity).await?;
     }
 
-    let project_id = if let Some(p) = project_opts {
-        add_project_info_to_node_state(opts, &cmd.node_name, cfg, p).await?
+    if let Some(p) = trust_opts {
+        add_project_info_to_node_state(&cmd.node_name, opts, cfg, p).await?;
     } else {
-        match &cmd.project {
-            Some(path) => {
-                let s = tokio::fs::read_to_string(path).await?;
-                let p: ProjectInfo = serde_json::from_str(&s)?;
-                let project_id = p.id.to_string();
-                project::config::set_project(cfg, &(&p).into()).await?;
-                add_project_authority_from_project_info(p, &cmd.node_name, cfg).await?;
-                Some(project_id)
-            }
-            None => None,
-        }
+        add_project_info_to_node_state(&cmd.node_name, opts, cfg, &cmd.trust_context_opts).await?;
+    };
+
+    let trust_context_config = match trust_opts {
+        Some(t) => TrustContextConfigBuilder::new(t).build(),
+        None => None,
     };
 
     let tcp = TcpTransport::create(ctx).await?;
     let bind = cmd.tcp_listener_address;
-    // This listener gives exclusive access to our node, make sure this is intended
-    // + make sure this tcp address is only reachable from the local loopback and/or intended
-    // network
+
+    // TODO: This is only listening on loopback address, but should use FlowControls anyways
     let (socket_addr, listened_worker_address) =
-        tcp.listen(&bind, TcpListenerTrustOptions::new()).await?;
+        tcp.listen(&bind, TcpListenerOptions::insecure()).await?;
 
     let projects = cfg.inner().lookup().projects().collect();
 
@@ -84,21 +73,18 @@ pub async fn start_embedded_node_with_vault_and_identity(
             cmd.launch_config.is_some(),
             None,
         ),
-        NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
-            project_id,
-            projects,
-            None,
-        ),
+        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
             ApiTransport {
                 tt: TransportType::Tcp,
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listened_worker_address,
+                flow_control_id: None, // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
             },
             tcp,
         ),
+        NodeManagerTrustOptions::new(trust_context_config),
     )
     .await?;
 
@@ -116,10 +102,10 @@ pub async fn start_embedded_node_with_vault_and_identity(
 }
 
 pub async fn add_project_info_to_node_state(
-    opts: &CommandGlobalOpts,
     node_name: &str,
+    opts: &CommandGlobalOpts,
     cfg: &OckamConfig,
-    project_opts: &ProjectOpts,
+    project_opts: &TrustContextOpts,
 ) -> Result<Option<String>> {
     let proj_path = if let Some(path) = project_opts.project_path.clone() {
         Some(path)
@@ -138,99 +124,41 @@ pub async fn add_project_info_to_node_state(
             // FIXME What is this doing?.  We need to simplify how this work.
             //       we also need to remove project names from routes, as nodes
             //       are started with _one_  project.
-            project::config::set_project(cfg, &(&proj_info).into()).await?;
 
-            if let Some(a) = proj_lookup.authority {
-                add_project_authority(a.identity().to_vec(), a.address().clone(), node_name, cfg)
-                    .await?;
-            }
+            let mut config = opts.state.nodes.get(node_name)?.config;
+            let setup = config.setup();
+            setup.set_project(proj_lookup.clone());
+
+            opts.state.nodes.update(node_name, config)?;
+
+            project::config::set_project(cfg, &(&proj_info).into()).await?;
             Ok(Some(proj_lookup.id))
         }
         None => Ok(None),
     }
 }
+
 pub(crate) async fn init_node_state(
-    ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
-    vault: Option<&String>,
-    identity: Option<&String>,
+    vault_name: Option<String>,
+    identity_name: Option<String>,
 ) -> Result<()> {
     // Get vault specified in the argument, or get the default
-    let vault_state = if let Some(v) = vault {
-        opts.state.vaults.get(v)?
-    }
-    // Or get the default
-    else if let Ok(v) = opts.state.vaults.default() {
-        v
-    } else {
-        let n = hex::encode(random::<[u8; 4]>());
-        let c = cli_state::VaultConfig::default();
-        opts.state.vaults.create(&n, c).await?
-    };
-
-    // Get identity specified in the argument
-    let identity_state = if let Some(idt) = identity {
-        opts.state.identities.get(idt)?
-    }
-    // Or get the default
-    else if let Ok(idt) = opts.state.identities.default() {
-        idt
-    } else {
-        let vault = vault_state.get().await?;
-        let identity_name = hex::encode(random::<[u8; 4]>());
-        let identity = Identity::create_ext(
-            ctx,
-            opts.state.identities.authenticated_storage().await?,
-            Arc::new(vault),
-        )
+    let vault_state = opts.state.create_vault_state(vault_name).await?;
+    let identity_state = opts
+        .state
+        .create_identity_state(identity_name, vault_state.get().await?)
         .await?;
-        let identity_config = cli_state::IdentityConfig::new(&identity).await;
-        opts.state
-            .identities
-            .create(&identity_name, identity_config)?
-    };
 
     // Create the node with the given vault and identity
     let node_config = cli_state::NodeConfigBuilder::default()
-        .vault(vault_state.path)
+        .vault(vault_state.path().clone())
         .identity(identity_state.path)
         .build(&opts.state)?;
     opts.state.nodes.create(node_name, node_config)?;
 
     Ok(())
-}
-
-pub(super) async fn add_project_authority(
-    authority_identity: Vec<u8>,
-    authority_access_route: MultiAddr,
-    node: &str,
-    cfg: &OckamConfig,
-) -> Result<()> {
-    let i = PublicIdentity::import(&authority_identity, Vault::create()).await?;
-    let a = cli::Authority::new(authority_identity, authority_access_route);
-    cfg.authorities(node)?
-        .add_authority(i.identifier().clone(), a)
-}
-
-pub(super) async fn add_project_authority_from_project_info(
-    p: ProjectInfo<'_>,
-    node: &str,
-    cfg: &OckamConfig,
-) -> Result<()> {
-    let m = p
-        .authority_access_route
-        .map(|a| MultiAddr::try_from(&*a))
-        .transpose()?;
-    let a = p
-        .authority_identity
-        .map(|a| hex::decode(a.as_bytes()))
-        .transpose()?;
-    if let Some((a, m)) = a.zip(m) {
-        add_project_authority(a, m, node, cfg).await
-    } else {
-        Err(anyhow!("missing authority in project info").into())
-    }
 }
 
 pub async fn delete_embedded_node(opts: &CommandGlobalOpts, name: &str) {
@@ -275,13 +203,15 @@ pub fn spawn_node(
     verbose: u8,
     name: &str,
     address: &str,
-    project: Option<&Path>,
+    project: Option<&PathBuf>,
     trusted_identities: Option<&String>,
     trusted_identities_file: Option<&PathBuf>,
     reload_from_trusted_identities_file: Option<&PathBuf>,
     launch_config: Option<String>,
-    authority_identities: Option<&Vec<Authority>>,
+    authority_identity: Option<&String>,
     credential: Option<&String>,
+    trust_context: Option<&PathBuf>,
+    project_name: Option<&String>,
 ) -> crate::Result<()> {
     let mut args = vec![
         match verbose {
@@ -298,7 +228,7 @@ pub fn spawn_node(
     ];
 
     if let Some(path) = project {
-        args.push("--project".to_string());
+        args.push("--project-path".to_string());
         let p = path
             .to_str()
             .unwrap_or_else(|| panic!("unsupported path {path:?}"));
@@ -329,17 +259,29 @@ pub fn spawn_node(
         );
     }
 
-    if let Some(authority_identities) = authority_identities {
-        for authority in authority_identities.iter() {
-            let identity = hex::encode(authority.identity());
-            args.push("--authority-identity".to_string());
-            args.push(identity);
-        }
+    if let Some(ai) = authority_identity {
+        args.push("--authority-identity".to_string());
+        args.push(ai.to_string());
     }
 
     if let Some(credential) = credential {
         args.push("--credential".to_string());
         args.push(credential.to_string());
+    }
+
+    if let Some(trust_context) = trust_context {
+        args.push("--trust-context".to_string());
+        args.push(
+            trust_context
+                .to_str()
+                .unwrap_or_else(|| panic!("unsupported path {trust_context:?}"))
+                .to_string(),
+        );
+    }
+
+    if let Some(project_name) = project_name {
+        args.push("--project".to_string());
+        args.push(project_name.to_string());
     }
 
     args.push(name.to_owned());

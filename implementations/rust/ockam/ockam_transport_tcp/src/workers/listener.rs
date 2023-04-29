@@ -1,5 +1,5 @@
 use crate::workers::{Addresses, ConnectionRole, TcpRecvProcessor};
-use crate::{TcpListenerTrustOptions, TcpRegistry, TcpSendWorker};
+use crate::{TcpListenerOptions, TcpRegistry, TcpSendWorker};
 use ockam_core::{async_trait, compat::net::SocketAddr, DenyAll};
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
@@ -15,7 +15,7 @@ use tracing::debug;
 pub(crate) struct TcpListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
-    trust_options: TcpListenerTrustOptions,
+    options: TcpListenerOptions,
 }
 
 impl TcpListenProcessor {
@@ -23,20 +23,25 @@ impl TcpListenProcessor {
         ctx: &Context,
         registry: TcpRegistry,
         addr: SocketAddr,
-        trust_options: TcpListenerTrustOptions,
+        options: TcpListenerOptions,
     ) -> Result<(SocketAddr, Address)> {
         debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr)
             .await
             .map_err(TransportError::from)?;
         let saddr = inner.local_addr().map_err(TransportError::from)?;
+
+        let address = Address::random_tagged("TcpListenProcessor");
+        if let Some((flow_controls, flow_control_id)) = &options.spawner_flow_controls {
+            flow_controls.add_spawner(&address, flow_control_id);
+        }
+
         let processor = Self {
             registry,
             inner,
-            trust_options,
+            options,
         };
 
-        let address = Address::random_tagged("TcpListenProcessor");
         ctx.start_processor(address.clone(), processor, DenyAll, DenyAll)
             .await?;
 
@@ -71,12 +76,10 @@ impl Processor for TcpListenProcessor {
 
         let addresses = Addresses::generate(ConnectionRole::Responder);
 
-        let session_id = self
-            .trust_options
-            .setup_session(addresses.receiver_address());
+        let flow_control_id = self.options.setup_flow_control(&addresses);
         let access_control = self
-            .trust_options
-            .create_access_control(session_id.clone())?;
+            .options
+            .create_access_control(flow_control_id.clone())?;
 
         let (read_half, write_half) = stream.into_split();
 

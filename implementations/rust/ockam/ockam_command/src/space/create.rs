@@ -20,7 +20,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the space.
+    /// Name of the space - must be unique across all Ockam Orchestrator users.
     #[arg(display_order = 1001, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_space_name)]
     pub name: String,
 

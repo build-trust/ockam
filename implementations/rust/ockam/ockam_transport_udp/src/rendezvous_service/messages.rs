@@ -1,20 +1,22 @@
 use ockam_core::{Message, Result, Route};
 use serde::{Deserialize, Serialize};
 
+// TODO: Change this Request/Response protocol to use CBOR encoding for messages.
+
 /// Request type for UDP Hole Punching Rendezvous service
 #[derive(Serialize, Deserialize, Debug, Message)]
 pub enum RendezvousRequest {
     /// Update service's internal table with the
-    /// return route of the sending node.
+    /// details of the sending node.
     Update {
-        /// Name of sending node
-        node_name: String,
+        /// Name of sending node's puncher
+        puncher_name: String,
     },
     /// Query service's internal table for the public
     /// route to the named node.
     Query {
-        /// Name of node to lookup
-        node_name: String,
+        /// Name of puncher to lookup
+        puncher_name: String,
     },
     /// Ping service to see if it is reachable and working.
     Ping,
@@ -23,7 +25,6 @@ pub enum RendezvousRequest {
 /// Response type for UDP Hole Punching Rendezvous service
 #[derive(Serialize, Deserialize, Debug, Message)]
 pub enum RendezvousResponse {
-    Update(Result<Route>),
     Query(Result<Route>),
     Pong,
 }

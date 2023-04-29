@@ -14,26 +14,29 @@ use minicbor::{Decode, Encode};
 use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::Context;
 use ockam_api::{
-    authenticator::direct::{CredentialIssuerClient, RpcClient},
-    config::lookup::ProjectLookup,
-    nodes::models::secure_channel::CredentialExchangeMode,
+    config::lookup::ProjectLookup, nodes::models::secure_channel::CredentialExchangeMode,
     DefaultAddress,
 };
 use ockam_core::api::RequestBuilder;
+use ockam_core::flow_control::FlowControlId;
+use ockam_core::route;
+use ockam_identity::CredentialsIssuerClient;
+use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use tracing::info;
 
-use super::{api::ProjectOpts, RpcBuilder};
+use super::{api::TrustContextOpts, RpcBuilder};
 
 pub enum OrchestratorEndpoint {
     Authenticator,
     Project,
 }
+
 /// Helps build an Orchestrator API Request
 pub struct OrchestratorApiBuilder<'a> {
     ctx: &'a Context,
     opts: &'a CommandGlobalOpts,
-    project_opts: &'a ProjectOpts,
+    trust_context_opts: &'a TrustContextOpts,
     node_name: Option<String>,
     destination: OrchestratorEndpoint,
     identity: Option<String>,
@@ -54,12 +57,12 @@ impl<'a> OrchestratorApiBuilder<'a> {
     pub fn new(
         ctx: &'a Context,
         opts: &'a CommandGlobalOpts,
-        project_opts: &'a ProjectOpts,
+        trust_context_opts: &'a TrustContextOpts,
     ) -> Self {
         OrchestratorApiBuilder {
             ctx,
             opts,
-            project_opts,
+            trust_context_opts,
             node_name: None,
             destination: OrchestratorEndpoint::Project,
             identity: None,
@@ -79,8 +82,8 @@ impl<'a> OrchestratorApiBuilder<'a> {
             self.ctx,
             self.opts,
             None,
-            self.identity.as_ref(),
-            Some(self.project_opts),
+            self.identity.clone(),
+            Some(self.trust_context_opts),
         )
         .await?;
         self.node_name = Some(node_name);
@@ -132,8 +135,8 @@ impl<'a> OrchestratorApiBuilder<'a> {
         self
     }
 
-    pub fn as_identity(&mut self, identity: Option<String>) -> &mut Self {
-        self.identity = identity;
+    pub fn as_identity(&mut self, identity: String) -> &mut Self {
+        self.identity = Some(identity);
         self
     }
 
@@ -145,7 +148,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
     }
 
     pub async fn authenticate(&self) -> Result<Credential> {
-        let sc_addr = self
+        let (sc_addr, _sc_flow_control_id) = self
             .secure_channel_to(&OrchestratorEndpoint::Authenticator)
             .await?;
 
@@ -158,8 +161,11 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 .context(format!("Invalid MultiAddr {addr}"))?
         };
 
-        let client =
-            CredentialIssuerClient::new(RpcClient::new(authenticator_route, self.ctx).await?);
+        let client = CredentialsIssuerClient::new(
+            route![DefaultAddress::RPC_PROXY, authenticator_route],
+            self.ctx,
+        )
+        .await?;
 
         let credential = client.credential().await?;
 
@@ -173,13 +179,15 @@ impl<'a> OrchestratorApiBuilder<'a> {
         let _ = self.authenticate().await?;
 
         //  Establish a secure channel
-        let sc_addr = self.secure_channel_to(&self.destination).await?;
+        let (sc_addr, _sc_flow_control_id) = self.secure_channel_to(&self.destination).await?;
 
-        let to = sc_addr.concat(service_address)?;
+        let mut to = sc_addr.concat(service_address)?;
         info!(
             "creating an rpc client to service: {} over secure channel {}",
             service_address, to
         );
+
+        to.push_front(Service::new(DefaultAddress::RPC_PROXY))?;
 
         let node_name = self.node_name.as_ref().context("Node is required")?;
         let rpc = RpcBuilder::new(self.ctx, self.opts, node_name)
@@ -194,7 +202,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             return Ok(());
         }
 
-        let project_path = match &self.project_opts.project_path {
+        let project_path = match &self.trust_context_opts.project_path {
             Some(p) => p.clone(),
             None => {
                 let default_project = self
@@ -213,25 +221,29 @@ impl<'a> OrchestratorApiBuilder<'a> {
         Ok(())
     }
 
-    async fn secure_channel_to(&self, endpoint: &OrchestratorEndpoint) -> Result<MultiAddr> {
+    async fn secure_channel_to(
+        &self,
+        endpoint: &OrchestratorEndpoint,
+    ) -> Result<(MultiAddr, FlowControlId)> {
         let node_name = self.node_name.as_ref().context("Node is required")?;
         let project = self
             .project_lookup
             .as_ref()
             .context("Project is required")?;
 
-        let addr = match endpoint {
+        let (sc_addr, sc_flow_control_id) = match endpoint {
             OrchestratorEndpoint::Authenticator => {
                 let authority = project
                     .authority
                     .as_ref()
                     .context("Project Authority is required")?;
-
+                // TODO: When we --project-path is fully deprecated
+                // use the trust context authority here
                 create_secure_channel_to_authority(
                     self.ctx,
                     self.opts,
                     node_name,
-                    authority,
+                    authority.identity_id().clone(),
                     authority.address(),
                     self.identity.clone(),
                 )
@@ -261,7 +273,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             }
         };
 
-        Ok(addr)
+        Ok((sc_addr, sc_flow_control_id))
     }
 }
 

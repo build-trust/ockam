@@ -1,19 +1,19 @@
 [package]
 name = "ockam_transport_core"
-version = "0.50.0"
+version = "0.52.0"
 authors = ["Ockam Developers"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://github.com/build-trust/ockam"
-repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_transport_core"
-readme = "README.md"
-keywords = ["ockam", "ockam-transport"]
 categories = ["network-programming", "asynchronous"]
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
+keywords = ["ockam", "ockam-transport"]
+license = "Apache-2.0"
+publish = true
+readme = "README.md"
+repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_transport_core"
+rust-version = "1.56.0"
 description = """
 Generic Transport primitives.
 """
-publish = true
-rust-version = "1.56.0"
 
 [features]
 default = ["std"]
@@ -31,5 +31,5 @@ no_std = ["ockam_core/no_std"]
 alloc = ["ockam_core/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.77.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.79.0", default_features = false }
 tracing = { version = "0.1", default-features = false }

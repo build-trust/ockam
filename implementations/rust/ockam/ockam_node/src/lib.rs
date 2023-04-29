@@ -52,6 +52,7 @@ mod parser;
 mod processor_builder;
 mod relay;
 mod router;
+mod rpc_client;
 mod worker_builder;
 
 pub use context::*;
@@ -60,6 +61,7 @@ pub use error::*;
 pub use executor::*;
 pub use messages::*;
 pub use processor_builder::ProcessorBuilder;
+pub use rpc_client::*;
 pub use worker_builder::WorkerBuilder;
 
 pub use node::{NodeBuilder, NullWorker};

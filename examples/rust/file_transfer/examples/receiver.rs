@@ -2,14 +2,13 @@
 
 use file_transfer::FileData;
 use ockam::access_control::AllowAll;
-use ockam::remote::RemoteForwarderTrustOptions;
+use ockam::identity::SecureChannelListenerOptions;
+use ockam::remote::RemoteForwarderOptions;
 use ockam::{
     errcode::{Kind, Origin},
-    identity::{Identity, TrustEveryonePolicy},
-    remote::RemoteForwarder,
-    vault::Vault,
-    Context, Error, Result, Routed, TcpConnectionTrustOptions, TcpTransport, Worker,
+    node, Context, Error, Result, Routed, TcpConnectionOptions, Worker,
 };
+use ockam_transport_tcp::TcpTransportExtension;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
@@ -81,19 +80,15 @@ impl Worker for FileReception {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a Vault to safely store secret keys for Receiver.
-    let vault = Vault::create();
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Receiver.
-    let receiver = Identity::create(&ctx, vault).await?;
+    let receiver = node.create_identity().await?;
 
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    receiver
-        .create_secure_channel_listener("listener", TrustEveryonePolicy)
+    node.create_secure_channel_listener(&receiver, "listener", SecureChannelListenerOptions::new())
         .await?;
 
     // The computer that is running this program is likely within a private network and
@@ -106,15 +101,17 @@ async fn main(ctx: Context) -> Result<()> {
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderTrustOptions::new()).await?;
+    let forwarder = node
+        .create_forwarder(node_in_hub, RemoteForwarderOptions::new())
+        .await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Receiver is:");
     println!("{}", forwarder.remote_address());
 
     // Start a worker, of type FileReception, at address "receiver".
-    ctx.start_worker("receiver", FileReception::default(), AllowAll, AllowAll)
+    node.start_worker("receiver", FileReception::default(), AllowAll, AllowAll)
         .await?;
 
     // We won't call ctx.stop() here, this program will quit when the file will be entirely received

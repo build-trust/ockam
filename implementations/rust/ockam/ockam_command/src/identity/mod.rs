@@ -4,13 +4,15 @@ mod delete;
 mod list;
 mod show;
 
+use colorful::Colorful;
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 use ockam_api::cli_state::CliState;
 pub(crate) use show::ShowCommand;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::util::OckamConfig;
+use crate::{docs, fmt_warn, CommandGlobalOpts, GlobalArgs, Result};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
 
@@ -67,4 +69,42 @@ pub fn default_identity_name() -> String {
         .identities
         .default()
         .map_or("default".to_string(), |i| i.name)
+}
+
+pub fn identity_name_parser(identity_name: &str) -> Result<String> {
+    if identity_name == "default"
+        && CliState::try_default()
+            .unwrap()
+            .identities
+            .default()
+            .is_err()
+    {
+        return Ok(create_default_identity(identity_name));
+    }
+
+    Ok(identity_name.to_string())
+}
+
+pub fn create_default_identity(identity_name: &str) -> String {
+    let config = OckamConfig::load().expect("Failed to load config");
+    let opts = CommandGlobalOpts::new(GlobalArgs::parse_from_input(), config.clone());
+    let quiet_opts = CommandGlobalOpts::new(
+        GlobalArgs {
+            quiet: true,
+            ..Default::default()
+        },
+        config,
+    );
+
+    let _ = opts
+        .terminal
+        .write_line(&fmt_warn!("No default identity found. Creating one..."));
+
+    let create_command = CreateCommand::new(identity_name.into(), None);
+    create_command.run(quiet_opts);
+
+    let _ = opts
+        .terminal
+        .write_line(&fmt_warn!("Created default identity: {}", identity_name));
+    identity_name.to_string()
 }

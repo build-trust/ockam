@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use anyhow::Context as _;
 use clap::Args;
 
@@ -5,8 +6,11 @@ use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::project::Project;
+
+use ockam_api::config::lookup::ProjectLookup;
 use ockam_core::CowStr;
 
+use crate::error::Error;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::config;
 use crate::util::api::{self, CloudOpts};
@@ -22,6 +26,9 @@ pub struct InfoCommand {
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
+
+    #[arg(long, default_value = "false")]
+    pub as_trust_context: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,6 +48,28 @@ pub struct ProjectInfo<'a> {
     #[serde(borrow)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub okta_config: Option<OktaConfig<'a>>,
+}
+
+impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
+    type Error = Error;
+    fn try_from(p: ProjectLookup) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: p.id.into(),
+            name: p.name.into(),
+            identity: p.identity_id,
+            access_route: p
+                .node_route
+                .map_or(Err(anyhow!("Project access route is missing")), Ok)?
+                .to_string()
+                .into(),
+            authority_access_route: p.authority.as_ref().map(|a| a.address().to_string().into()),
+            authority_identity: p
+                .authority
+                .as_ref()
+                .map(|a| hex::encode(a.identity()).into()),
+            okta_config: p.okta.map(|o| o.into()),
+        })
+    }
 }
 
 impl<'a> From<Project<'a>> for ProjectInfo<'a> {
@@ -105,7 +134,9 @@ async fn run_impl(
     rpc.request(api::project::show(&id, controller_route))
         .await?;
     let info: ProjectInfo = rpc.parse_response::<Project>()?.into();
+
     rpc.print_response(&info)?;
+
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

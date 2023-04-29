@@ -1,22 +1,19 @@
 use crate::node::NodeOpts;
-use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 use crate::Result;
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
+
 use minicbor::Encode;
 use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::services::{
-    StartKafkaConsumerRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
-    StartServiceRequest,
-};
-use ockam_api::port_range::PortRange;
+
 use ockam_api::DefaultAddress;
 use ockam_core::api::{Request, RequestBuilder, Status};
 use ockam_core::compat::net::Ipv4Addr;
 use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
+use ockam_core::api::{RequestBuilder, Status};
 
 /// Start a specified service
 #[derive(Clone, Debug, Args)]
@@ -47,6 +44,9 @@ pub enum StartSubCommand {
         addr: String,
     },
     Credentials {
+        #[arg(long)]
+        identity: String,
+
         #[arg(long, default_value_t = credentials_default_addr())]
         addr: String,
 
@@ -126,14 +126,6 @@ fn authenticator_default_addr() -> String {
     DefaultAddress::DIRECT_AUTHENTICATOR.to_string()
 }
 
-fn kafka_consumer_default_addr() -> String {
-    DefaultAddress::KAFKA_CONSUMER.to_string()
-}
-
-fn kafka_producer_default_addr() -> String {
-    DefaultAddress::KAFKA_PRODUCER.to_string()
-}
-
 impl StartCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
@@ -177,64 +169,17 @@ async fn run_impl(
         StartSubCommand::Verifier { addr, .. } => {
             start_verifier_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?
         }
-        StartSubCommand::Credentials { addr, oneway, .. } => {
-            let req = api::start_credentials_service(&addr, oneway);
+        StartSubCommand::Credentials {
+            identity,
+            addr,
+            oneway,
+            ..
+        } => {
+            let req = api::start_credentials_service(&identity, &addr, oneway);
             start_service_impl(ctx, &opts, node_name, &addr, "Credentials", req, Some(&tcp)).await?
         }
         StartSubCommand::Authenticator { addr, project, .. } => {
             start_authenticator_service(ctx, &opts, node_name, &addr, &project, Some(&tcp)).await?
-        }
-        StartSubCommand::KafkaConsumer {
-            addr,
-            bootstrap_server_ip,
-            bootstrap_server_port,
-            brokers_port_range,
-            project_route,
-        } => {
-            let payload = StartKafkaConsumerRequest::new(
-                bootstrap_server_ip,
-                bootstrap_server_port,
-                brokers_port_range,
-                project_route,
-            );
-            let payload = StartServiceRequest::new(payload, &addr);
-            let req = Request::post("/node/services/kafka_consumer").body(payload);
-            start_service_impl(
-                ctx,
-                &opts,
-                node_name,
-                &addr,
-                "KafkaConsumer",
-                req,
-                Some(&tcp),
-            )
-            .await?
-        }
-        StartSubCommand::KafkaProducer {
-            addr,
-            bootstrap_server_ip,
-            bootstrap_server_port,
-            brokers_port_range,
-            project_route,
-        } => {
-            let payload = StartKafkaProducerRequest::new(
-                bootstrap_server_ip,
-                bootstrap_server_port,
-                brokers_port_range,
-                project_route,
-            );
-            let payload = StartServiceRequest::new(payload, &addr);
-            let req = Request::post("/node/services/kafka_producer").body(payload);
-            start_service_impl(
-                ctx,
-                &opts,
-                node_name,
-                &addr,
-                "KafkaProducer",
-                req,
-                Some(&tcp),
-            )
-            .await?
         }
     }
 
@@ -242,7 +187,7 @@ async fn run_impl(
 }
 
 /// Helper function.
-async fn start_service_impl<T>(
+pub(crate) async fn start_service_impl<T>(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
@@ -318,36 +263,4 @@ pub async fn start_authenticator_service(
 ) -> Result<()> {
     let req = api::start_authenticator_service(serv_addr, project);
     start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req, tcp).await
-}
-
-/// Public so `ockam_command::node::create` can use it.
-pub async fn start_okta_identity_provider(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-    cfg: &OktaIdentityProviderConfig,
-    tcp: Option<&'_ TcpTransport>,
-) -> Result<()> {
-    let payload = StartOktaIdentityProviderRequest::new(
-        &cfg.address,
-        &cfg.tenant_base_url,
-        &cfg.certificate,
-        cfg.attributes.iter().map(|s| s as &str).collect(),
-        cfg.project.as_bytes(),
-    );
-    let req = Request::post(format!(
-        "/node/services/{}",
-        DefaultAddress::OKTA_IDENTITY_PROVIDER
-    ))
-    .body(payload);
-    start_service_impl(
-        ctx,
-        opts,
-        node_name,
-        &cfg.address,
-        "Okta Identity Provider",
-        req,
-        tcp,
-    )
-    .await
 }

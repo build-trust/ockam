@@ -1,11 +1,13 @@
 use crate::error::ApiError;
 use anyhow::anyhow;
 use ockam::TcpTransport;
-use ockam_core::sessions::{SessionId, Sessions};
-use ockam_core::{Address, Error, Result, Route, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Tcp, Worker};
-use ockam_multiaddr::{MultiAddr, Protocol};
-use ockam_transport_tcp::TcpConnectionTrustOptions;
+use ockam_core::flow_control::{FlowControlId, FlowControls};
+use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
+use ockam_multiaddr::proto::{
+    DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
+};
+use ockam_multiaddr::{Code, MultiAddr, Protocol};
+use ockam_transport_tcp::{TcpConnectionOptions, TCP};
 use std::net::{SocketAddrV4, SocketAddrV6};
 
 /// Try to convert a multi-address to an Ockam route.
@@ -42,69 +44,95 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
     Some(rb.into())
 }
 
-pub struct TcpSession {
-    pub session: Option<(Sessions, SessionId)>,
+pub struct MultiAddrToRouteResult {
+    pub flow_control_id: Option<FlowControlId>,
     pub route: Route,
+    pub tcp_worker: Option<Address>,
 }
 
-pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<TcpSession> {
+pub async fn multiaddr_to_route(
+    ma: &MultiAddr,
+    tcp: &TcpTransport,
+    flow_controls: &FlowControls,
+) -> Option<MultiAddrToRouteResult> {
     let mut rb = Route::new();
     let mut it = ma.iter().peekable();
-    let sessions = Sessions::default();
-    let session_id = sessions.generate_session_id();
 
-    let mut trust_options =
-        Some(TcpConnectionTrustOptions::new().as_producer(&sessions, &session_id));
+    let mut flow_control_id = None;
+    let mut number_of_tcp_hops = 0;
+    let mut tcp_worker = None;
 
     while let Some(p) = it.next() {
         match p.code() {
             Ip4::CODE => {
+                if number_of_tcp_hops >= 1 {
+                    return None; // Only 1 TCP hop is allowed
+                }
+
                 let ip4 = p.cast::<Ip4>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
 
-                let trust_options = match trust_options.take() {
-                    Some(trust_options) => trust_options,
-                    None => return None, // Only 1 TCP hop is allowed
+                let options = if socket_addr.ip().is_loopback() {
+                    // TODO: Enable FlowControl for loopback addresses as well
+                    TcpConnectionOptions::insecure()
+                } else {
+                    let id = flow_controls.generate_id();
+                    flow_control_id = Some(id.clone());
+                    TcpConnectionOptions::as_producer(flow_controls, &id)
                 };
 
-                let addr = tcp
-                    .connect(socket_addr.to_string(), trust_options)
-                    .await
-                    .ok()?;
+                let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                tcp_worker = Some(addr.clone());
+
+                number_of_tcp_hops += 1;
                 rb = rb.append(addr)
             }
             Ip6::CODE => {
+                if number_of_tcp_hops >= 1 {
+                    return None; // Only 1 TCP hop is allowed
+                }
+
                 let ip6 = p.cast::<Ip6>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
 
-                let trust_options = match trust_options.take() {
-                    Some(trust_options) => trust_options,
-                    None => return None, // Only 1 TCP hop is allowed
+                let options = if socket_addr.ip().is_loopback() {
+                    // TODO: Enable FlowControl for loopback addresses as well
+                    TcpConnectionOptions::insecure()
+                } else {
+                    let id = flow_controls.generate_id();
+                    flow_control_id = Some(id.clone());
+                    TcpConnectionOptions::as_producer(flow_controls, &id)
                 };
 
-                let addr = tcp
-                    .connect(socket_addr.to_string(), trust_options)
-                    .await
-                    .ok()?;
+                let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                tcp_worker = Some(addr.clone());
+
+                number_of_tcp_hops += 1;
                 rb = rb.append(addr)
             }
             DnsAddr::CODE => {
+                if number_of_tcp_hops >= 1 {
+                    return None; // Only 1 TCP hop is allowed
+                }
+
                 let host = p.cast::<DnsAddr>()?;
                 if let Some(p) = it.peek() {
                     if p.code() == Tcp::CODE {
                         let port = p.cast::<Tcp>()?;
 
-                        let trust_options = match trust_options.take() {
-                            Some(trust_options) => trust_options,
-                            None => return None, // Only 1 TCP hop is allowed
-                        };
+                        let id = flow_controls.generate_id();
+                        flow_control_id = Some(id.clone());
+                        let options = TcpConnectionOptions::as_producer(flow_controls, &id);
 
                         let addr = tcp
-                            .connect(format!("{}:{}", &*host, *port), trust_options)
+                            .connect(format!("{}:{}", &*host, *port), options)
                             .await
                             .ok()?;
+                        tcp_worker = Some(addr.clone());
+
+                        number_of_tcp_hops += 1;
                         rb = rb.append(addr);
                         let _ = it.next();
                         continue;
@@ -130,56 +158,42 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
         }
     }
 
-    match trust_options {
-        Some(_) => Some(TcpSession {
-            session: None,
-            route: rb.into(),
-        }),
-        None => Some(TcpSession {
-            session: Some((sessions, session_id)),
-            route: rb.into(),
-        }),
-    }
+    Some(MultiAddrToRouteResult {
+        flow_control_id,
+        tcp_worker,
+        route: rb.into(),
+    })
 }
 
-/// Try to convert a multi-address to an Ockam route.
-pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Route> {
-    // Guaranteed to be called when we use Tcp connection without a secure channel
-    let trust_options = TcpConnectionTrustOptions::new();
-    let mut rb = Route::new();
+/// Resolve all the multiaddresses which represent transport addresses
+/// For example /tcp/127.0.0.1/port/4000 is transformed to the Address (TCP, "127.0.0.1:4000")
+/// The creation of a TCP worker and the substitution of that transport address to a worker address
+/// is done later with `context.resolve_transport_route(route)`
+pub fn multiaddr_to_transport_route(ma: &MultiAddr) -> Option<Route> {
+    let mut route = Route::new();
     let mut it = ma.iter().peekable();
+
     while let Some(p) = it.next() {
         match p.code() {
             Ip4::CODE => {
                 let ip4 = p.cast::<Ip4>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
-                let addr = tcp
-                    .connect(socket_addr.to_string(), trust_options.clone())
-                    .await
-                    .ok()?;
-                rb = rb.append(addr)
+                route = route.append(Address::new(TCP, socket_addr.to_string()))
             }
             Ip6::CODE => {
                 let ip6 = p.cast::<Ip6>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
-                let addr = tcp
-                    .connect(socket_addr.to_string(), trust_options.clone())
-                    .await
-                    .ok()?;
-                rb = rb.append(addr)
+                route = route.append(Address::new(TransportType::new(1), socket_addr.to_string()))
             }
             DnsAddr::CODE => {
                 let host = p.cast::<DnsAddr>()?;
                 if let Some(p) = it.peek() {
                     if p.code() == Tcp::CODE {
                         let port = p.cast::<Tcp>()?;
-                        let addr = tcp
-                            .connect(format!("{}:{}", &*host, *port), trust_options.clone())
-                            .await
-                            .ok()?;
-                        rb = rb.append(addr);
+                        let addr = format!("{}:{}", &*host, *port);
+                        route = route.append(Address::new(TransportType::new(1), addr));
                         let _ = it.next();
                         continue;
                     }
@@ -187,15 +201,15 @@ pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Ro
             }
             Worker::CODE => {
                 let local = p.cast::<Worker>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                route = route.append(Address::new(LOCAL, &*local))
             }
             Service::CODE => {
                 let local = p.cast::<Service>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                route = route.append(Address::new(LOCAL, &*local))
             }
             Secure::CODE => {
                 let local = p.cast::<Secure>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                route = route.append(Address::new(LOCAL, &*local))
             }
             other => {
                 error!(target: "ockam_api", code = %other, "unsupported protocol");
@@ -203,7 +217,7 @@ pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Ro
             }
         }
     }
-    Some(rb.into())
+    Some(route.into())
 }
 
 /// Try to convert a multiaddr to an Ockam Address
@@ -305,18 +319,36 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
     }
 }
 
+/// Tells whether the input [`Code`] references a local worker.
+pub fn local_worker(code: &Code) -> Result<bool> {
+    match *code {
+        Node::CODE
+        | Space::CODE
+        | Project::CODE
+        | DnsAddr::CODE
+        | Ip4::CODE
+        | Ip6::CODE
+        | Tcp::CODE
+        | Secure::CODE => Ok(false),
+        Worker::CODE | Service::CODE => Ok(true),
+
+        _ => Err(ApiError::message(format!("unknown transport type: {code}"))),
+    }
+}
+
 #[cfg(test)]
 pub mod test {
-    use crate::cli_state::{CliState, IdentityConfig, NodeConfig, VaultConfig};
+    use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::nodes::service::{
         ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
-        NodeManagerTransportOptions,
+        NodeManagerTransportOptions, NodeManagerTrustOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+    use ockam::identity::{Identity, SecureChannels};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
+    use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
-    use ockam_identity::{Identity, IdentityVault};
     use ockam_node::compat::asynchronous::RwLock;
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
@@ -330,7 +362,9 @@ pub mod test {
         pub cli_state: CliState,
         pub node_manager: Arc<RwLock<NodeManager>>,
         pub tcp: TcpTransport,
-        pub identity: Arc<Identity>,
+        pub secure_channels: Arc<SecureChannels>,
+        pub identity: Identity,
+        pub flow_controls: FlowControls,
     }
 
     impl Drop for NodeManagerHandle {
@@ -359,14 +393,19 @@ pub mod test {
             .await?;
 
         let identity_name = hex::encode(rand::random::<[u8; 4]>());
-        let vault: Arc<dyn IdentityVault> = Arc::new(vault);
-        let identity = Identity::create_ext(
-            context,
-            cli_state.identities.authenticated_storage().await?,
-            vault,
-        )
-        .await
-        .unwrap();
+        let secure_channels = SecureChannels::builder()
+            .with_identities_vault(Arc::new(vault))
+            .with_identities_repository(cli_state.identities.identities_repository().await?)
+            .build();
+
+        let identity = secure_channels
+            .identities()
+            .identities_creation()
+            .create_identity()
+            .await
+            .unwrap();
+
+        drop(secure_channels);
         let config = IdentityConfig::new(&identity).await;
         cli_state.identities.create(&identity_name, config).unwrap();
 
@@ -377,21 +416,25 @@ pub mod test {
         let node_manager = NodeManager::create(
             context,
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None),
-            NodeManagerProjectsOptions::new(None, None, Default::default(), None),
+            NodeManagerProjectsOptions::new(Default::default()),
             NodeManagerTransportOptions::new(
                 ApiTransport {
                     tt: crate::nodes::models::transport::TransportType::Tcp,
                     tm: crate::nodes::models::transport::TransportMode::Listen,
                     socket_address: "127.0.0.1:123".parse().unwrap(),
                     worker_address: "".into(),
+                    flow_control_id: None,
                 },
                 tcp.async_try_clone().await?,
             ),
+            NodeManagerTrustOptions::new(None),
         )
         .await?;
 
         let mut node_manager_worker = NodeManagerWorker::new(node_manager);
         let node_manager = node_manager_worker.get().clone();
+        let flow_controls = node_manager.read().await.flow_controls.clone();
+        let secure_channels = node_manager.read().await.secure_channels.clone();
         context
             .start_worker(
                 NODEMANAGER_ADDR,
@@ -405,7 +448,9 @@ pub mod test {
             cli_state,
             node_manager,
             tcp: tcp.async_try_clone().await?,
-            identity: Arc::new(identity),
+            secure_channels: secure_channels.clone(),
+            identity: identity.clone(),
+            flow_controls,
         })
     }
 }

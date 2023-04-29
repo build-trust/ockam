@@ -8,11 +8,12 @@ publish = false
 rust-version = "1.56.0"
 
 [dependencies]
-ockam = { path = "../../../implementations/rust/ockam/ockam" }
-structopt = { version = "0.3.25", default-features = false }
-tokio = { version = "1.27.0", features = ["fs", "io-util"] }
-serde = { version = "1.0", default-features = false, features = ["derive"] }
 anyhow = "1.0.69"
+ockam = { path = "../../../implementations/rust/ockam/ockam" }
+ockam_transport_tcp = { path = "../../../implementations/rust/ockam/ockam_transport_tcp" }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+structopt = { version = "0.3.25", default-features = false }
+tokio = { version = "1.28.0", features = ["fs", "io-util"] }
 
 [dev-dependencies]
 example_test_helper = { path = "../../../tools/docs/example_test_helper" }

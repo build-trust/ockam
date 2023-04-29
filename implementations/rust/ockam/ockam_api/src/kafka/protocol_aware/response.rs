@@ -14,9 +14,9 @@ use kafka_protocol::records::{
 };
 use minicbor::decode::Decoder;
 use ockam_node::Context;
-use tracing::{info, trace, warn};
+use tracing::{trace, warn};
 
-use crate::kafka::inlet_map::KafkaInletMap;
+use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::portal_worker::InterceptError;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_response, string_to_str_bytes};
 use crate::kafka::protocol_aware::{Interceptor, MessageWrapper, RequestInfo};
@@ -26,7 +26,7 @@ impl Interceptor {
         &self,
         context: &mut Context,
         mut original: BytesMut,
-        inlet_map: &KafkaInletMap,
+        inlet_map: &KafkaInletController,
     ) -> Result<BytesMut, InterceptError> {
         //let's clone the view of the buffer without cloning the content
         let mut buffer = original.peek_bytes(0..original.len());
@@ -60,7 +60,7 @@ impl Interceptor {
                 }
             };
 
-            info!(
+            debug!(
                 "response: length: {}, correlation {}, version {}, api {:?}",
                 buffer.len(),
                 correlation_id,
@@ -101,7 +101,7 @@ impl Interceptor {
                 _ => {}
             }
         } else {
-            info!(
+            debug!(
                 "response unmapped: length: {}, correlation {}",
                 buffer.len(),
                 correlation_id,
@@ -117,7 +117,7 @@ impl Interceptor {
         &self,
         context: &mut Context,
         buffer: &mut Bytes,
-        inlet_map: &KafkaInletMap,
+        inlet_map: &KafkaInletController,
         request_info: RequestInfo,
         header: &ResponseHeader,
     ) -> Result<BytesMut, InterceptError> {
@@ -170,7 +170,7 @@ impl Interceptor {
         &self,
         context: &mut Context,
         buffer: &mut Bytes,
-        inlet_map: &KafkaInletMap,
+        inlet_map: &KafkaInletController,
         request_info: &RequestInfo,
         header: &ResponseHeader,
     ) -> Result<BytesMut, InterceptError> {

@@ -41,6 +41,12 @@ for crate in implementations/rust/ockam/*; do
     continue
   fi
 
+  # Check if there is a Cargo.toml file in dir
+  if [[ ! -f "$crate/Cargo.toml" ]]; then
+    echo "echo "$crate is not a crate.""
+    continue
+  fi
+
   # There are some crates that differ from their folder name, e.g. ockam_ffi
   # so we need the crate name source of truth from Cargo.toml.
   name=$(eval "tomlq package.name -f $crate/Cargo.toml")

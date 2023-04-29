@@ -38,8 +38,8 @@ pub enum TransportError {
     PortalInvalidState,
     /// InvalidRouterResponseType
     InvalidRouterResponseType,
-    /// Session Inconsistency
-    SessionInconsistency,
+    /// FlowControl Inconsistency
+    FlowControlInconsistency,
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -61,7 +61,7 @@ impl core::fmt::Display for TransportError {
             Self::GenericIo => write!(f, "generic I/O failure"),
             Self::PortalInvalidState => write!(f, "portal entered invalid state"),
             Self::InvalidRouterResponseType => write!(f, "router responded with invalid type"),
-            Self::SessionInconsistency => write!(f, "session inconsistency"),
+            Self::FlowControlInconsistency => write!(f, "flow control inconsistency"),
         }
     }
 }
@@ -86,7 +86,7 @@ impl From<TransportError> for Error {
             GenericIo => Kind::Io,
             PortalInvalidState => Kind::Invalid,
             InvalidRouterResponseType => Kind::Invalid,
-            SessionInconsistency => Kind::Misuse,
+            FlowControlInconsistency => Kind::Misuse,
         };
 
         Error::new(Origin::Transport, kind, err)

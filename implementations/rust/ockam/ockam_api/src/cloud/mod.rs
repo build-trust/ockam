@@ -74,19 +74,18 @@ impl<'a> BareCloudRequestWrapper<'a> {
 
 mod node {
     use std::str::FromStr;
-    use std::sync::Arc;
     use std::time::Duration;
 
     use minicbor::Encode;
     use rust_embed::EmbeddedFile;
 
+    use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_core::api::RequestBuilder;
     use ockam_core::env::get_env;
     use ockam_core::{self, route, CowStr, Result};
-    use ockam_identity::{IdentityIdentifier, SecureChannelTrustOptions, TrustIdentifierPolicy};
     use ockam_multiaddr::MultiAddr;
-    use ockam_node::api::request_with_timeout;
-    use ockam_node::{Context, DEFAULT_TIMEOUT};
+    use ockam_node::api::request;
+    use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
@@ -166,50 +165,57 @@ mod node {
         where
             T: Encode<()>,
         {
+            let identity_name = ident.map(|i| i.to_string()).clone();
             let identity = {
                 let node_manager = self.get().read().await;
-                match &ident {
-                    Some(existing_identity_name) => {
-                        let identity_state = node_manager
-                            .cli_state
-                            .identities
-                            .get(existing_identity_name.as_ref())?;
-                        match identity_state.get(ctx, node_manager.vault()?).await {
-                            Ok(idt) => Arc::new(idt),
-                            Err(_) => {
-                                let vault_state = node_manager.cli_state.vaults.default()?;
-                                Arc::new(
-                                    identity_state
-                                        .get(ctx, Arc::new(vault_state.get().await?))
-                                        .await?,
-                                )
-                            }
-                        }
-                    }
-                    None => node_manager.identity.clone(),
-                }
-            };
-            let sc = {
-                let node_manager = self.get().read().await;
-                let cloud_session =
-                    crate::create_tcp_session(cloud_multiaddr, &node_manager.tcp_transport)
-                        .await
-                        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
-                let trust_options = SecureChannelTrustOptions::new().with_trust_policy(
-                    TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
-                );
-                let trust_options = if let Some((sessions, session_id)) = cloud_session.session {
-                    trust_options.as_consumer(&sessions, &session_id)
-                } else {
-                    trust_options
-                };
-                identity
-                    .create_secure_channel(cloud_session.route, trust_options)
+                node_manager
+                    .get_identity(None, identity_name.clone())
                     .await?
             };
-            let route = route![&sc.to_string(), api_service];
-            let res = request_with_timeout(ctx, label, schema, route, req, timeout).await;
-            ctx.stop_worker(sc).await?;
+
+            let secure_channels = {
+                let mut node_manager = self.get().write().await;
+                node_manager
+                    .get_secure_channels(None, identity_name.clone())
+                    .await?
+            };
+
+            let (sc_address, flow_controls, _sc_flow_control_id) = {
+                let node_manager = self.get().read().await;
+                let cloud_route = crate::multiaddr_to_route(
+                    cloud_multiaddr,
+                    &node_manager.tcp_transport,
+                    &node_manager.flow_controls,
+                )
+                .await
+                .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+
+                let sc_flow_control_id = node_manager.flow_controls.generate_id();
+                let options = SecureChannelOptions::as_producer(
+                    &node_manager.flow_controls,
+                    &sc_flow_control_id,
+                )
+                .with_trust_policy(TrustIdentifierPolicy::new(
+                    node_manager.controller_identity_id(),
+                ))
+                .as_consumer(&node_manager.flow_controls);
+                let sc_address = secure_channels
+                    .create_secure_channel(ctx, &identity, cloud_route.route, options)
+                    .await?;
+
+                (
+                    sc_address,
+                    &node_manager.flow_controls.clone(),
+                    sc_flow_control_id,
+                )
+            };
+
+            let route = route![sc_address.clone(), api_service];
+            let options = MessageSendReceiveOptions::new()
+                .with_timeout(timeout)
+                .with_flow_control(flow_controls);
+            let res = request(ctx, label, schema, route, req, options).await;
+            ctx.stop_worker(sc_address).await?;
             res
         }
     }

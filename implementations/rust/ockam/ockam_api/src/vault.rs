@@ -5,23 +5,23 @@ use core::convert::Infallible;
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use models::*;
+use ockam::identity::IdentitiesVault;
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{KeyId, Signature};
 use ockam_core::CowStr;
 use ockam_core::{Result, Routed, Worker};
-use ockam_identity::IdentityVault;
 use ockam_node::Context;
 use tracing::trace;
 
 /// Vault Service Worker
 pub struct VaultService {
-    vault: Arc<dyn IdentityVault>,
+    vault: Arc<dyn IdentitiesVault>,
 }
 
 impl VaultService {
     /// Constructor
-    pub fn new(vault: Arc<dyn IdentityVault>) -> Self {
+    pub fn new(vault: Arc<dyn IdentitiesVault>) -> Self {
         Self {
             vault: vault.clone(),
         }
@@ -104,30 +104,6 @@ impl VaultService {
 
         match method {
             Get => match req.path_segments::<3>().as_slice() {
-                ["secrets", key_id] => {
-                    if !req.has_body() {
-                        return Self::response_for_bad_request(req, "empty body", enc);
-                    }
-
-                    let args = dec.decode::<GetSecretRequest>()?;
-
-                    let key_id: KeyId = key_id.to_string();
-
-                    match args.operation() {
-                        GetSecretRequestOperation::GetAttributes => {
-                            let resp = self.vault.secret_attributes_get(&key_id).await?;
-                            let body = GetSecretAttributesResponse::new(resp);
-
-                            Self::ok_response(req, Some(body), enc)
-                        }
-                        GetSecretRequestOperation::GetSecretBytes => {
-                            let resp = self.vault.secret_export(&key_id).await?;
-                            let body = ExportSecretResponse::new(resp);
-
-                            Self::ok_response(req, Some(body), enc)
-                        }
-                    }
-                }
                 ["secrets", key_id, "public_key"] => {
                     let key_id: KeyId = key_id.to_string();
 

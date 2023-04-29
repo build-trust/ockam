@@ -1,41 +1,23 @@
-use crate::cli_state::CliState;
 use crate::identity::models::*;
+use crate::nodes::service::NodeIdentities;
 use core::convert::Infallible;
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
+use ockam::identity::IdentityHistoryComparison;
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
-use ockam_core::compat::sync::Arc;
 use ockam_core::vault::Signature;
-use ockam_core::{Address, DenyAll, Result, Routed, Worker};
-use ockam_identity::change_history::IdentityHistoryComparison;
-use ockam_identity::{Identity, IdentityVault, PublicIdentity};
+use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 use tracing::trace;
 
 /// Vault Service Worker
 pub struct IdentityService {
-    ctx: Context,
-    vault: Arc<dyn IdentityVault>,
-    cli_state: CliState,
+    node_identities: NodeIdentities,
 }
 
 impl IdentityService {
-    pub async fn new(
-        ctx: &Context,
-        vault: Arc<dyn IdentityVault>,
-        cli_state: CliState,
-    ) -> Result<Self> {
-        Ok(Self {
-            ctx: ctx
-                .new_detached(
-                    Address::random_tagged("IdentityService.root"),
-                    DenyAll,
-                    DenyAll,
-                )
-                .await?,
-            vault,
-            cli_state,
-        })
+    pub async fn new(node_identities: NodeIdentities) -> Result<Self> {
+        Ok(Self { node_identities })
     }
 }
 
@@ -116,22 +98,33 @@ impl IdentityService {
         match method {
             Get => match req.path_segments::<2>().as_slice() {
                 [identity_name] => {
-                    let identity = self.cli_state.identities.get(identity_name)?;
-                    let body = CreateResponse::new(
-                        identity.config.change_history.export()?,
-                        String::from(identity.config.identifier),
-                    );
-                    Self::ok_response(req, Some(body), enc)
+                    match self
+                        .node_identities
+                        .get_identity(identity_name.to_string(), None)
+                        .await?
+                    {
+                        Some(identity) => {
+                            let body = CreateResponse::new(
+                                identity.export()?,
+                                identity.identifier().to_string(),
+                            );
+                            Self::ok_response(req, Some(body), enc)
+                        }
+                        None => Self::response_for_bad_request(req, "unknown identity", enc),
+                    }
                 }
                 _ => Self::response_for_bad_request(req, "unknown path", enc),
             },
             Post => match req.path_segments::<2>().as_slice() {
                 [""] => {
-                    let identity = Identity::create(&self.ctx, self.vault.clone()).await?;
-                    let identifier = identity.identifier();
-
+                    let identity = self
+                        .node_identities
+                        .get_default_identities_creation()
+                        .await?
+                        .create_identity()
+                        .await?;
                     let body =
-                        CreateResponse::new(identity.export().await?, String::from(identifier));
+                        CreateResponse::new(identity.export()?, identity.identifier().to_string());
 
                     Self::ok_response(req, Some(body), enc)
                 }
@@ -141,8 +134,11 @@ impl IdentityService {
                     }
 
                     let args = dec.decode::<ValidateIdentityChangeHistoryRequest>()?;
-                    let identity =
-                        Identity::import(&self.ctx, args.identity(), self.vault.clone()).await?;
+                    let identities_creation = self
+                        .node_identities
+                        .get_default_identities_creation()
+                        .await?;
+                    let identity = identities_creation.import_identity(args.identity()).await?;
 
                     let body = ValidateIdentityChangeHistoryResponse::new(String::from(
                         identity.identifier(),
@@ -156,18 +152,18 @@ impl IdentityService {
                     }
 
                     let args = dec.decode::<CreateSignatureRequest>()?;
-                    let identity = match args.vault_name() {
-                        None => {
-                            Identity::import(&self.ctx, args.identity(), self.vault.clone()).await?
-                        }
-
-                        Some(vault_name) => {
-                            let vault = self.cli_state.vaults.get(&vault_name)?.get().await?;
-                            Identity::import(&self.ctx, args.identity(), Arc::new(vault)).await?
-                        }
-                    };
-
-                    let signature = identity.create_signature(args.data(), None).await?;
+                    let identities_creation = self
+                        .node_identities
+                        .get_identities_creation(args.vault_name())
+                        .await?;
+                    let identity = identities_creation.import_identity(args.identity()).await?;
+                    let identities_keys = self
+                        .node_identities
+                        .get_identities_keys(args.vault_name())
+                        .await?;
+                    let signature = identities_keys
+                        .create_signature(&identity, args.data(), None)
+                        .await?;
 
                     let body = CreateSignatureResponse::new(signature.as_ref());
 
@@ -179,15 +175,22 @@ impl IdentityService {
                     }
 
                     let args = dec.decode::<VerifySignatureRequest>()?;
-                    let peer_identity =
-                        PublicIdentity::import(args.signer_identity(), self.vault.clone()).await?;
+                    let identities_creation = self
+                        .node_identities
+                        .get_default_identities_creation()
+                        .await?;
+                    let peer_identity = identities_creation
+                        .import_identity(args.signer_identity())
+                        .await?;
 
-                    let verified = peer_identity
+                    let identities_keys =
+                        self.node_identities.get_default_identities_keys().await?;
+                    let verified = identities_keys
                         .verify_signature(
+                            &peer_identity,
                             &Signature::new(args.signature().to_vec()),
                             args.data(),
                             None,
-                            self.vault.clone(),
                         )
                         .await?;
 
@@ -202,16 +205,21 @@ impl IdentityService {
 
                     let args = dec.decode::<CompareIdentityChangeHistoryRequest>()?;
 
-                    let current_identity =
-                        PublicIdentity::import(args.current_identity(), self.vault.clone()).await?;
+                    let identities_creation = self
+                        .node_identities
+                        .get_default_identities_creation()
+                        .await?;
+
+                    let current_identity = identities_creation
+                        .import_identity(args.current_identity())
+                        .await?;
 
                     let body = if args.known_identity().is_empty() {
                         IdentityHistoryComparison::Newer
                     } else {
-                        let known_identity =
-                            PublicIdentity::import(args.known_identity(), self.vault.clone())
-                                .await?;
-
+                        let known_identity = identities_creation
+                            .import_identity(args.known_identity())
+                            .await?;
                         current_identity.compare(&known_identity)
                     };
 

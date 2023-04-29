@@ -85,7 +85,7 @@ async fn run_impl(
     delete_embedded_node(&opts, rpc.node_name()).await;
 
     // log the deletion
-    opts.shell
+    opts.terminal
         .stdout()
         .plain(format!(
             "{}Project with name '{}' has been deleted.",
@@ -93,7 +93,7 @@ async fn run_impl(
             &cmd.project_name
         ))
         .machine(&cmd.project_name)
-        .json(&serde_json::json!({ "project": { "name": &cmd.project_name } }))
+        .json(serde_json::json!({ "project": { "name": &cmd.project_name } }))
         .write_line()?;
 
     Ok(())

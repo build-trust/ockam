@@ -1,6 +1,7 @@
 use anyhow::Context as _;
 use clap::Args;
 
+use core::time::Duration;
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::service::message::SendMessage;
@@ -8,7 +9,7 @@ use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
-use crate::util::api::{CloudOpts, ProjectOpts};
+use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
 use crate::Result;
 use crate::{docs, CommandGlobalOpts};
@@ -19,9 +20,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/send/after_long_help.txt");
 /// Send messages
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct SendCommand {
     /// The node to send messages from
@@ -33,8 +34,8 @@ pub struct SendCommand {
     pub to: MultiAddr,
 
     /// Override Default Timeout
-    #[arg(long, value_name = "TIMEOUT")]
-    pub timeout: Option<u64>,
+    #[arg(long, value_name = "TIMEOUT", default_value = "10")]
+    pub timeout: u64,
 
     pub message: String,
 
@@ -42,7 +43,7 @@ pub struct SendCommand {
     cloud_opts: CloudOpts,
 
     #[command(flatten)]
-    project_opts: ProjectOpts,
+    pub trust_context_opts: TrustContextOpts,
 }
 
 impl SendCommand {
@@ -63,8 +64,8 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
                 ctx,
                 opts,
                 None,
-                cmd.cloud_opts.identity.as_ref(),
-                Some(&cmd.project_opts),
+                Some(cmd.cloud_opts.identity.clone()),
+                Some(&cmd.trust_context_opts),
             )
             .await?;
             (api_node, None)
@@ -90,7 +91,8 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         let mut rpc = RpcBuilder::new(ctx, opts, &api_node)
             .tcp(tcp.as_ref())?
             .build();
-        rpc.request(req(&to, &cmd.message)).await?;
+        rpc.request_with_timeout(req(&to, &cmd.message), Duration::from_secs(cmd.timeout))
+            .await?;
         let res = rpc.parse_response::<Vec<u8>>()?;
         println!(
             "{}",

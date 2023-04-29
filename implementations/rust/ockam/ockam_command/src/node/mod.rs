@@ -1,5 +1,6 @@
 use clap::{Args, Subcommand};
 
+use colorful::Colorful;
 pub(crate) use create::CreateCommand;
 use default::DefaultCommand;
 use delete::DeleteCommand;
@@ -10,7 +11,7 @@ use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, fmt_warn, util::OckamConfig, CommandGlobalOpts, GlobalArgs, Result};
 
 mod create;
 mod default;
@@ -42,7 +43,7 @@ pub struct NodeCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
     #[command(display_order = 800)]
-    Create(CreateCommand),
+    Create(Box<CreateCommand>),
     #[command(display_order = 800)]
     Delete(DeleteCommand),
     #[command(display_order = 800)]
@@ -82,7 +83,7 @@ pub struct NodeOpts {
         value_name = "NODE",
         short,
         long,
-        default_value_t = default_node_name()
+        default_value_t = default_node_name(), value_parser = node_name_parser
     )]
     pub api_node: String,
 }
@@ -94,4 +95,38 @@ pub fn default_node_name() -> String {
         .default()
         .map(|n| n.config.name)
         .unwrap_or_else(|_| "default".to_string())
+}
+
+pub fn node_name_parser(node_name: &str) -> Result<String> {
+    if node_name == "default" && CliState::try_default().unwrap().nodes.default().is_err() {
+        return Ok(spawn_default_node(node_name));
+    }
+
+    Ok(node_name.to_string())
+}
+
+pub fn spawn_default_node(node_name: &str) -> String {
+    let config = OckamConfig::load().expect("Failed to load config");
+    let opts = CommandGlobalOpts::new(GlobalArgs::parse_from_input(), config.clone());
+    let quiet_opts = CommandGlobalOpts::new(
+        GlobalArgs {
+            quiet: true,
+            ..Default::default()
+        },
+        config,
+    );
+
+    let _ = opts
+        .terminal
+        .write_line(&fmt_warn!("No default node found. Creating one..."));
+
+    let mut create_command = CreateCommand::default();
+    create_command.node_name = node_name.to_string();
+    create_command.run(quiet_opts);
+
+    let _ = opts
+        .terminal
+        .write_line(&fmt_warn!("Created default node: {}", node_name));
+
+    node_name.to_string()
 }

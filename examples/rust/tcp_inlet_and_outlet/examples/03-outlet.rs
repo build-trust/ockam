@@ -1,20 +1,19 @@
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{vault::Vault, Context, Result, TcpListenerTrustOptions, TcpOutletTrustOptions, TcpTransport};
+use ockam::identity::SecureChannelListenerOptions;
+use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create:
-    //   1. A Vault to store our cryptographic keys
-    //   2. An Identity to represent this Node
-    //   3. A Secure Channel Listener at Worker address - secure_channel_listener
+    //   1. An Identity to represent this Node
+    //   2. A Secure Channel Listener at Worker address - secure_channel_listener
     //      that will wait for requests to start an Authenticated Key Exchange.
-
-    let vault = Vault::create();
-    let e = Identity::create(&ctx, vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+    let e = node.create_identity().await?;
+    node.create_secure_channel_listener(&e, "secure_channel_listener", SecureChannelListenerOptions::new())
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
@@ -34,7 +33,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, TcpOutletTrustOptions::new())
+    tcp.create_outlet("outlet", outlet_target, TcpOutletOptions::new())
         .await?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
@@ -42,7 +41,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Use port 4000, unless otherwise specified by second command line argument.
 
     let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    tcp.listen(format!("127.0.0.1:{port}"), TcpListenerTrustOptions::new())
+    tcp.listen(format!("127.0.0.1:{port}"), TcpListenerOptions::new())
         .await?;
 
     // We won't call ctx.stop() here,

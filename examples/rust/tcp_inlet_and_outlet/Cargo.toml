@@ -9,6 +9,7 @@ rust-version = "1.56.0"
 
 [dependencies]
 ockam = { path = "../../../implementations/rust/ockam/ockam" }
+ockam_transport_tcp = { path = "../../../implementations/rust/ockam/ockam_transport_tcp" }
 
 [dev-dependencies]
 example_test_helper = { path = "../../../tools/docs/example_test_helper" }

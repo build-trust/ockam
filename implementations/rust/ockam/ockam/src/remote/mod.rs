@@ -4,11 +4,11 @@
 mod addresses;
 mod info;
 mod lifecycle;
-mod trust_options;
+mod options;
 mod worker;
 
 pub use info::*;
-pub use trust_options::*;
+pub use options::*;
 
 use crate::remote::addresses::Addresses;
 use core::time::Duration;

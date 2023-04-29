@@ -1,6 +1,6 @@
 use crate::transport::common::parse_socket_addr;
 use crate::workers::TcpListenProcessor;
-use crate::{TcpListenerTrustOptions, TcpTransport};
+use crate::{TcpListenerOptions, TcpTransport};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result};
 
@@ -13,23 +13,22 @@ impl TcpTransport {
     /// which port was actually bound.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpListenerTrustOptions, TcpTransport};
+    /// use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::new()).await?;
+    /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?;
     /// # Ok(()) }
     pub async fn listen(
         &self,
         bind_addr: impl AsRef<str>,
-        trust_options: TcpListenerTrustOptions,
+        options: TcpListenerOptions,
     ) -> Result<(SocketAddr, Address)> {
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
         // Could be different from the bind_addr, e.g., if binding to port 0\
         let (socket_addr, address) =
-            TcpListenProcessor::start(&self.ctx, self.registry.clone(), bind_addr, trust_options)
-                .await?;
+            TcpListenProcessor::start(&self.ctx, self.registry.clone(), bind_addr, options).await?;
 
         Ok((socket_addr, address))
     }

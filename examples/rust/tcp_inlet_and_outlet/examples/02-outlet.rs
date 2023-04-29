@@ -1,9 +1,11 @@
-use ockam::{Context, Result, TcpListenerTrustOptions, TcpOutletTrustOptions, TcpTransport};
+use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:4002
@@ -22,7 +24,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, TcpOutletTrustOptions::new())
+    tcp.create_outlet("outlet", outlet_target, TcpOutletOptions::new())
         .await?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
@@ -30,7 +32,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Use port 4000, unless otherwise specified by second command line argument.
 
     let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    tcp.listen(format!("127.0.0.1:{port}"), TcpListenerTrustOptions::new())
+    tcp.listen(format!("127.0.0.1:{port}"), TcpListenerOptions::new())
         .await?;
 
     // We won't call ctx.stop() here,

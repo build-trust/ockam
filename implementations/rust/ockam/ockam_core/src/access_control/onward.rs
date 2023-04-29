@@ -1,6 +1,6 @@
 use crate::compat::boxed::Box;
 use crate::compat::vec::Vec;
-use crate::{Address, OutgoingAccessControl, RelayMessage, Result};
+use crate::{async_trait, Address, OutgoingAccessControl, RelayMessage, Result};
 
 /// An Access Control type that allows messages to the given onward address to go through
 /// Note that onward and destination addresses are different in some cases

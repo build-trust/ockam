@@ -2,19 +2,19 @@ pub mod types;
 
 use core::fmt;
 use minicbor::Decoder;
+use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityIdentifier};
 use ockam_core::api::decode_option;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
-use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageReader};
-use ockam_identity::IdentityIdentifier;
 use ockam_node::api::request;
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 use tracing::trace;
 
 /// Auth API server.
 pub struct Server {
-    store: Arc<dyn IdentityAttributeStorageReader>,
+    store: Arc<dyn IdentityAttributesReader>,
 }
 
 #[ockam_core::worker]
@@ -33,7 +33,7 @@ impl Worker for Server {
 }
 
 impl Server {
-    pub fn new(s: Arc<dyn IdentityAttributeStorageReader>) -> Self {
+    pub fn new(s: Arc<dyn IdentityAttributesReader>) -> Self {
         Server { store: s }
     }
 
@@ -77,6 +77,7 @@ pub struct Client {
     ctx: Context,
     route: Route,
     buf: Vec<u8>,
+    flow_controls: Option<FlowControls>,
 }
 
 impl fmt::Debug for Client {
@@ -100,19 +101,50 @@ impl Client {
             ctx,
             route: r,
             buf: Vec::new(),
+            flow_controls: None,
         })
+    }
+
+    pub fn with_flow_control(mut self, flow_controls: &FlowControls) -> Self {
+        self.flow_controls = Some(flow_controls.clone());
+        self
+    }
+
+    fn options(&self) -> MessageSendReceiveOptions {
+        let options = MessageSendReceiveOptions::new();
+
+        match &self.flow_controls {
+            None => options,
+            Some(flow_controls) => options.with_flow_control(flow_controls),
+        }
     }
 
     pub async fn get(&mut self, id: &str) -> ockam_core::Result<Option<AttributesEntry>> {
         let label = "get attribute";
         let req = Request::get(format!("/{id}"));
-        self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
+        self.buf = request(
+            &self.ctx,
+            label,
+            None,
+            self.route.clone(),
+            req,
+            self.options(),
+        )
+        .await?;
         decode_option(label, "attribute", &self.buf)
     }
     pub async fn list(&mut self) -> ockam_core::Result<Vec<(IdentityIdentifier, AttributesEntry)>> {
         let label = "list known identities";
         let req = Request::get("/");
-        self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
+        self.buf = request(
+            &self.ctx,
+            label,
+            None,
+            self.route.clone(),
+            req,
+            self.options(),
+        )
+        .await?;
         let a: Option<Vec<(IdentityIdentifier, AttributesEntry)>> =
             decode_option(label, "attribute", &self.buf)?;
         Ok(a.unwrap())

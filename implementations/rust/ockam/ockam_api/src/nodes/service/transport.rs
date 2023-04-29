@@ -6,7 +6,7 @@ use crate::nodes::service::{random_alias, Alias, ApiTransport, Transports};
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions};
+use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions};
 use std::net::{AddrParseError, SocketAddr};
 
 use super::NodeManagerWorker;
@@ -71,21 +71,46 @@ impl NodeManagerWorker {
         );
         let socket_addr = addr.to_string();
 
+        // TODO: Support FlowControls from ockam_command CLI
+        let flow_control_id = {
+            let s_addr: SocketAddr = socket_addr
+                .parse()
+                .map_err(|_| ApiError::generic("InvalidAddress tcp address"))?;
+
+            if s_addr.ip().is_loopback() {
+                // TODO: Enable FlowControl for loopback addresses as well
+                None
+            } else {
+                Some(node_manager.flow_controls.generate_id())
+            }
+        };
         let res = match (tt, tm) {
-            (Tcp, Listen) => node_manager
-                .tcp_transport
-                // We don't use Sessions for listeners and connections created manually
-                // TODO: Add that functionality
-                .listen(&addr, TcpListenerTrustOptions::new())
-                .await
-                .map(|(socket, worker_address)| (socket.to_string(), worker_address)),
-            (Tcp, Connect) => node_manager
-                .tcp_transport
-                // We don't use Sessions for listeners and connections created manually
-                // TODO: Add that functionality
-                .connect(&socket_addr, TcpConnectionTrustOptions::new())
-                .await
-                .map(|worker_address| (socket_addr, worker_address)),
+            (Tcp, Listen) => {
+                let options = if let Some(flow_control_id) = flow_control_id {
+                    TcpListenerOptions::as_spawner(&node_manager.flow_controls, &flow_control_id)
+                } else {
+                    TcpListenerOptions::insecure()
+                };
+
+                node_manager
+                    .tcp_transport
+                    .listen(&addr, options)
+                    .await
+                    .map(|(socket, worker_address)| (socket.to_string(), worker_address))
+            }
+            (Tcp, Connect) => {
+                let options = if let Some(flow_control_id) = flow_control_id {
+                    TcpConnectionOptions::as_producer(&node_manager.flow_controls, &flow_control_id)
+                } else {
+                    TcpConnectionOptions::insecure()
+                };
+
+                node_manager
+                    .tcp_transport
+                    .connect(&socket_addr, options)
+                    .await
+                    .map(|worker_address| (socket_addr, worker_address))
+            }
             _ => unimplemented!(),
         };
 
@@ -95,24 +120,17 @@ impl NodeManagerWorker {
                 let socket_address: SocketAddr = socket_address
                     .parse()
                     .map_err(|err: AddrParseError| ApiError::generic(&err.to_string()))?;
-                node_manager.transports.insert(
-                    tid.clone(),
-                    ApiTransport {
-                        tt,
-                        tm,
-                        socket_address,
-                        worker_address: worker_address.address().into(),
-                    },
-                );
-                Response::ok(req.id()).body(TransportStatus::new(
-                    ApiTransport {
-                        tt,
-                        tm,
-                        socket_address,
-                        worker_address: worker_address.address().into(),
-                    },
-                    tid,
-                ))
+                let api_transport = ApiTransport {
+                    tt,
+                    tm,
+                    socket_address,
+                    worker_address: worker_address.address().into(),
+                    flow_control_id: None,
+                };
+                node_manager
+                    .transports
+                    .insert(tid.clone(), api_transport.clone());
+                Response::ok(req.id()).body(TransportStatus::new(api_transport, tid))
             }
             Err(msg) => {
                 error!("{}", msg.to_string());
@@ -122,6 +140,7 @@ impl NodeManagerWorker {
                         tm,
                         socket_address: "0.0.0.0:0000".parse().unwrap(),
                         worker_address: "<none>".into(),
+                        flow_control_id: None,
                     },
                     "<none>".to_string(),
                 ))

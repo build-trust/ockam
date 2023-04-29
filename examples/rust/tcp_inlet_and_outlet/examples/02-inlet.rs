@@ -1,9 +1,11 @@
-use ockam::{route, Context, Result, TcpConnectionTrustOptions, TcpInletTrustOptions, TcpTransport};
+use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpInletOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // We know that the Outlet node is listening for Ockam Routing Messages
     // over TCP and is running at Ockam Worker address "outlet".
@@ -13,7 +15,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let outlet_connection = tcp
-        .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionTrustOptions::new())
+        .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionOptions::new())
         .await?;
     let route_to_outlet = route![outlet_connection, "outlet"];
 
@@ -32,7 +34,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to q connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route_to_outlet, TcpInletTrustOptions::new())
+    tcp.create_inlet(inlet_address, route_to_outlet, TcpInletOptions::new())
         .await?;
 
     // We won't call ctx.stop() here,

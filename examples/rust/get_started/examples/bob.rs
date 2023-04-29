@@ -1,8 +1,9 @@
 use ockam::access_control::AllowAll;
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::remote::RemoteForwarderTrustOptions;
-use ockam::{remote::RemoteForwarder, Routed, TcpConnectionTrustOptions, TcpTransport, Worker};
-use ockam::{vault::Vault, Context, Result};
+use ockam::identity::SecureChannelListenerOptions;
+use ockam::remote::RemoteForwarderOptions;
+use ockam::{node, Routed, TcpConnectionOptions, Worker};
+use ockam::{Context, Result};
+use ockam_transport_tcp::TcpTransportExtension;
 
 struct Echoer;
 
@@ -23,22 +24,21 @@ impl Worker for Echoer {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    // Create a node with default implementations
+    let node = node(ctx);
+    // Initialize the TCP Transport
+    let tcp = node.create_tcp_transport().await?;
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
-
-    // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create();
+    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Create an Identity to represent Bob.
-    let bob = Identity::create(&ctx, vault).await?;
+    let bob = node.create_identity().await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
+    node.create_secure_channel_listener(&bob, "listener", SecureChannelListenerOptions::new())
         .await?;
 
     // The computer that is running this program is likely within a private network and
@@ -51,9 +51,11 @@ async fn main(ctx: Context) -> Result<()> {
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderTrustOptions::new()).await?;
+    let forwarder = node
+        .create_forwarder(node_in_hub, RemoteForwarderOptions::new())
+        .await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
     println!("{}", forwarder.remote_address());

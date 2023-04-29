@@ -1,4 +1,4 @@
-use crate::node::default_node_name;
+use crate::node::{default_node_name, node_name_parser};
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
@@ -14,7 +14,7 @@ const HELP_DETAIL: &str = "";
 #[command(after_long_help = docs::after_help(HELP_DETAIL))]
 pub struct ListCommand {
     /// Node at which to lookup workers (required)
-    #[arg(value_name = "NODE", long, default_value_t = default_node_name(), display_order = 800)]
+    #[arg(value_name = "NODE", long, default_value_t = default_node_name(), value_parser = node_name_parser, display_order = 800)]
     at: String,
 }
 

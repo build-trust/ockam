@@ -4,11 +4,11 @@ use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::cloud::addon::ConfluentConfigResponse;
+use ockam::identity::IdentityIdentifier;
 use ockam_core::CowStr;
 use ockam_core::Result;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 
@@ -70,6 +70,13 @@ pub struct Project<'a> {
     #[serde(borrow)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confluent_config: Option<ConfluentConfigResponse<'a>>,
+
+    #[cbor(b(13))]
+    #[serde(borrow)]
+    pub version: Option<CowStr<'a>>,
+
+    #[cbor(b(14))]
+    pub running: Option<bool>,
 }
 
 impl Clone for Project<'_> {
@@ -95,6 +102,8 @@ impl Project<'_> {
             authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
             okta_config: self.okta_config.as_ref().map(|x| x.to_owned()),
             confluent_config: self.confluent_config.as_ref().map(|x| x.to_owned()),
+            version: self.version.as_ref().map(|x| x.to_owned()),
+            running: self.running,
         }
     }
 
@@ -165,6 +174,21 @@ impl<'a> OktaConfig<'a> {
                 .collect(),
         }
     }
+
+    pub fn new_empty_attributes<S: Into<CowStr<'a>>>(
+        tenant_base_url: S,
+        certificate: S,
+        client_id: S,
+    ) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            tenant_base_url: tenant_base_url.into(),
+            certificate: certificate.into(),
+            client_id: client_id.into(),
+            attributes: Vec::new(),
+        }
+    }
 }
 
 impl Clone for OktaConfig<'_> {
@@ -185,7 +209,7 @@ impl OktaConfig<'_> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OktaAuth0 {
     pub tenant_base_url: String,
     pub client_id: String,
@@ -199,6 +223,12 @@ impl From<OktaConfig<'_>> for OktaAuth0 {
             client_id: c.client_id.to_string(),
             certificate: c.certificate.to_string(),
         }
+    }
+}
+
+impl<'a> From<OktaAuth0> for OktaConfig<'a> {
+    fn from(val: OktaAuth0) -> Self {
+        OktaConfig::new_empty_attributes(val.tenant_base_url, val.certificate, val.client_id)
     }
 }
 
@@ -443,6 +473,8 @@ mod tests {
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
                 okta_config: None,
                 confluent_config: None,
+                version: None,
+                running: None,
             })
         }
     }

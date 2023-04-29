@@ -1,5 +1,14 @@
 #[cfg(test)]
 mod test {
+    use crate::hop::Hop;
+    use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
+    use crate::kafka::secure_channel_map::ForwarderCreator;
+    use crate::kafka::{
+        KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
+    };
+    use crate::nodes::registry::KafkaServiceKind;
+    use crate::test::NodeManagerHandle;
+    use crate::DefaultAddress;
     use bytes::{Buf, BufMut, BytesMut};
     use indexmap::IndexMap;
     use kafka_protocol::messages::produce_request::{PartitionProduceData, TopicProduceData};
@@ -22,10 +31,14 @@ mod test {
     use ockam::Context;
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
-    use ockam_core::{route, Address, AllowAll, Route};
-    use ockam_identity::TrustEveryonePolicy;
+    use ockam_core::flow_control::FlowControlPolicy;
+    use ockam_core::route;
+    use ockam_core::{Address, AllowAll};
+    use ockam_identity::SecureChannelListenerOptions;
+    use ockam_multiaddr::proto::Service;
+    use ockam_multiaddr::MultiAddr;
     use ockam_node::compat::tokio;
-    use ockam_transport_tcp::{TcpInletTrustOptions, TcpOutletTrustOptions};
+    use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -34,16 +47,6 @@ mod test {
     use tokio::sync::Mutex;
     use tokio::task::JoinHandle;
     use uuid::Uuid;
-
-    use crate::hop::Hop;
-    use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
-    use crate::kafka::secure_channel_map::ForwarderCreator;
-    use crate::kafka::{
-        KafkaPortalListener, KafkaSecureChannelControllerImpl,
-        KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
-    };
-    use crate::nodes::registry::KafkaServiceKind;
-    use crate::test::NodeManagerHandle;
 
     //TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
@@ -71,13 +74,27 @@ mod test {
         context: &Context,
         handle: &NodeManagerHandle,
         listener_address: Address,
-        outlet_route: Route,
+        outlet_address: Address,
         kind: KafkaServiceKind,
     ) -> ockam::Result<u16> {
+        let flow_controls = &handle.flow_controls;
+        let flow_control_id = flow_controls.generate_id();
+
+        //a producer flow is expected
+        flow_controls.add_producer(&outlet_address, &flow_control_id, None, vec![]);
+
+        //adds context itself as consumer
+        flow_controls.add_consumer(
+            &context.address(),
+            &flow_control_id,
+            FlowControlPolicy::ProducerAllowMultiple,
+        );
+
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
-            handle.identity.clone(),
-            route![],
+            handle.secure_channels.clone(),
+            MultiAddr::try_from("/service/api")?,
             HopForwarderCreator {},
+            flow_controls,
         );
 
         //the possibility to accept secure channels is the only real
@@ -86,31 +103,49 @@ mod test {
             secure_channel_controller
                 .create_consumer_listener(context)
                 .await?;
+
+            // in a normal setup the secure channel listener is already created
             handle
-                .identity
+                .secure_channels
                 .create_secure_channel_listener(
-                    KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
-                    TrustEveryonePolicy,
+                    context,
+                    &handle.identity,
+                    DefaultAddress::SECURE_CHANNEL_LISTENER,
+                    SecureChannelListenerOptions::new().as_consumer_with_flow_control_id(
+                        flow_controls,
+                        &flow_control_id,
+                        FlowControlPolicy::ProducerAllowMultiple,
+                    ),
                 )
                 .await?;
         }
 
+        let mut interceptor_multiaddr = MultiAddr::default();
+        interceptor_multiaddr.push_back(Service::new(listener_address.address()))?;
+
+        let inlet_controller = KafkaInletController::new(
+            interceptor_multiaddr,
+            route![],
+            route![],
+            "127.0.0.1".parse().unwrap(),
+            (0, 0).try_into().unwrap(),
+        );
+
         let (socket_address, _) = handle
             .tcp
             .create_inlet(
-                "127.0.0.1:0".to_string(),
-                route![listener_address.clone(), outlet_route.clone()],
-                TcpInletTrustOptions::new(),
+                "127.0.0.1:0",
+                route![listener_address.clone(), outlet_address.clone()],
+                TcpInletOptions::new().as_consumer(flow_controls),
             )
             .await?;
 
         KafkaPortalListener::create(
             context,
+            inlet_controller,
             secure_channel_controller.into_trait(),
-            outlet_route,
             listener_address,
-            "127.0.0.1".parse().unwrap(),
-            (0, 0).try_into().unwrap(),
+            flow_controls.clone(),
         )
         .await?;
 
@@ -128,7 +163,7 @@ mod test {
             context,
             &handler,
             Address::from_string("kafka_consumer_listener"),
-            route!["kafka_consumer_outlet"],
+            Address::from_string("kafka_consumer_outlet"),
             KafkaServiceKind::Consumer,
         )
         .await?;
@@ -137,7 +172,7 @@ mod test {
             context,
             &handler,
             Address::from_string("kafka_producer_listener"),
-            route!["kafka_producer_outlet"],
+            Address::from_string("kafka_producer_outlet"),
             KafkaServiceKind::Producer,
         )
         .await?;
@@ -151,7 +186,7 @@ mod test {
                 .create_outlet(
                     "kafka_consumer_outlet",
                     format!("127.0.0.1:{}", consumer_mock_kafka.port),
-                    TcpOutletTrustOptions::new(),
+                    TcpOutletOptions::new(),
                 )
                 .await?;
 
@@ -171,7 +206,7 @@ mod test {
             .create_outlet(
                 "kafka_producer_outlet",
                 format!("127.0.0.1:{}", producer_mock_kafka.port),
-                TcpOutletTrustOptions::new(),
+                TcpOutletOptions::new(),
             )
             .await?;
         let request = simulate_kafka_producer_and_read_request(
@@ -208,7 +243,7 @@ mod test {
             .create_outlet(
                 "kafka_consumer_outlet",
                 format!("127.0.0.1:{}", consumer_mock_kafka.port),
-                TcpOutletTrustOptions::new(),
+                TcpOutletOptions::new(),
             )
             .await?;
         let plain_fetch_response = simulate_kafka_consumer_and_read_response(

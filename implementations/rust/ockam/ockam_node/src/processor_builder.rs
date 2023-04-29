@@ -76,12 +76,7 @@ where
         let main_address = mailboxes.main_address().clone();
 
         // Pass it to the context
-        let (ctx, sender, ctrl_rx) = Context::new(
-            context.runtime().clone(),
-            context.sender().clone(),
-            mailboxes,
-            None,
-        );
+        let (ctx, sender, ctrl_rx) = context.copy_with_mailboxes(mailboxes);
 
         debugger::log_inherit_context("PROCESSOR", context, &ctx);
 

@@ -1,10 +1,9 @@
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
+use ockam::identity::Identity;
 use ockam::Context;
-use ockam_api::cli_state::{self, VaultConfig};
-use ockam_core::compat::sync::Arc;
-use ockam_identity::{Identity, PublicIdentity};
+use ockam_api::cli_state::traits::{StateItemDirTrait, StateTrait};
 use rand::prelude::random;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -35,44 +34,35 @@ impl CreateCommand {
     }
 
     async fn run_impl(
-        ctx: Context,
+        _ctx: Context,
         (options, cmd): (CommandGlobalOpts, CreateCommand),
     ) -> crate::Result<()> {
-        cmd.create_identity(ctx, options).await.map(|_| ())
+        cmd.create_identity(options).await.map(|_| ())
     }
 
-    pub async fn create_identity(
-        &self,
-        ctx: Context,
-        options: CommandGlobalOpts,
-    ) -> crate::Result<PublicIdentity> {
-        let vault_state = if let Some(vault_name) = self.vault.clone() {
-            options.state.vaults.get(&vault_name)?
-        } else if options.state.vaults.default().is_err() {
-            let vault_name = hex::encode(random::<[u8; 4]>());
-            let state = options
-                .state
-                .vaults
-                .create(&vault_name, VaultConfig::default())
-                .await?;
-            println!("Default vault created: {}", &vault_name);
-            state
-        } else {
-            options.state.vaults.default()?
-        };
-        let vault = vault_state.get().await?;
-        let identity = Identity::create_ext(
-            &ctx,
-            options.state.identities.authenticated_storage().await?,
-            Arc::new(vault),
-        )
-        .await?;
-        let identity_config = cli_state::IdentityConfig::new(&identity).await;
+    pub async fn create_identity(&self, options: CommandGlobalOpts) -> crate::Result<Identity> {
+        let default_vault_created = self.vault.is_none() && options.state.vaults.default().is_err();
+        let vault_state = options.state.create_vault_state(self.vault.clone()).await?;
+        let mut output = String::new();
+        if default_vault_created {
+            output.push_str(&format!("Default vault created: {}\n", &vault_state.name()));
+        }
+
         let identity_state = options
             .state
-            .identities
-            .create(&self.name, identity_config)?;
-        println!("Identity created: {}", identity.identifier());
-        Ok(identity_state.config.public_identity())
+            .create_identity_state(Some(self.name.clone()), vault_state.get().await?)
+            .await?;
+        let identity = identity_state.config.identity();
+
+        output.push_str(&format!("Identity created: {}", identity.identifier()));
+
+        options
+            .terminal
+            .stdout()
+            .plain(output)
+            .machine(identity.identifier())
+            .json(serde_json::json!({ "identity": { "identifier": &identity.identifier() } }))
+            .write_line()?;
+        Ok(identity)
     }
 }

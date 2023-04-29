@@ -6,7 +6,7 @@ So the simplest example of creating a secure channel would be:
 
 ```sh
 $ ockam node create n1
-$ ockam node create n1
+$ ockam node create n2
 
 $ ockam secure-channel create --from /node/n1 --to /node/n2/service/api
 /service/09738b73c54b81d48531f659aaa22533
@@ -48,12 +48,12 @@ HELLO
 ```
 
 
-Combining Secure Channels and Forwarders
+Combining Secure Channels and Relays
 ------
 
-We can also create a secure channel through Ockam Forwarders.
+We can also create a secure channel through Ockam Relays.
 
-Forwarders enable an ockam node to register a forwarding address on another node.
+Relays enable an ockam node to register a forwarding address on another node.
 Any message that arrives at this forwarding address is immediately dispatched
 to the node that registered the forwarding address.
 
@@ -61,25 +61,25 @@ to the node that registered the forwarding address.
 # Create three nodes
 $ ockam node create relay
 
-# Create a forwarder to node n2 at node relay
-$ ockam forwarder create blue --at /node/relay --to /node/n2
+# Create a relay to node n2 at node relay
+$ ockam relay create blue --at /node/relay --to /node/n2
 /service/forward_to_n2
 
 # Create an end-to-end secure channel between n1 and n2.
-# This secure channel is created through n2's forwarder at relay and we can
+# This secure channel is created through n2's relay to the relay node and we can
 # send end-to-end encrypted messages through it.
 $ ockam secure-channel create --from /node/n1 --to /node/relay/service/forward_to_n2/service/api \\
     | ockam message send hello --from /node/n1 --to -/service/uppercase
 ```
 
-In this topology `relay` acts an an encrypted relay between n1 and n2. n1 and
+In this topology `relay` acts an encrypted relay between n1 and n2. n1 and
 n2 can be running in completely separate private networks. The relay only sees encrypted
 traffic and needs to be reachable from both n1 and n2.
 
 This can be very useful in establishing end-to-end trustful communication between
 applications that cannot otherwise reach each other over the network.
 
-For instance, we can use forwarders to create an end-to-end secure channel between
+For instance, we can use relays to create an end-to-end secure channel between
 two nodes that are behind private NATs.
 
 

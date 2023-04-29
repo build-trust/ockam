@@ -5,7 +5,7 @@ use futures_util::StreamExt;
 use ockam_core::{async_trait, route, Address, AllowAll, LocalMessage, Processor, Result};
 use ockam_node::Context;
 use tokio_util::udp::UdpFramed;
-use tracing::{debug, error, info};
+use tracing::{debug, warn};
 
 /// A listener for the UDP transport
 ///
@@ -56,7 +56,7 @@ impl Processor for UdpListenProcessor {
             Some(res) => match res {
                 Ok((msg, addr)) => (msg, addr),
                 Err(e) => {
-                    error!(
+                    warn!(
                         "Failed to read message, will wait for next message: {:?}",
                         e
                     );
@@ -64,7 +64,7 @@ impl Processor for UdpListenProcessor {
                 }
             },
             None => {
-                info!("No message read, will wait for next message.");
+                debug!("No message read, will wait for next message.");
                 return Ok(true);
             }
         };

@@ -7,7 +7,7 @@ use regex::Regex;
 use std::fs::create_dir_all;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::{env, io, str};
+use std::{cmp, env, io, str};
 use tracing::error;
 
 const LONG_HELP: &str = "\
@@ -36,7 +36,17 @@ impl MarkdownCommand {
         };
         env::set_var("OCKAM_HELP_RENDER_MARKDOWN", "1");
         let clap_command = <OckamCommand as CommandFactory>::command();
-        generate_markdown_pages(mark_dir.as_path(), &clap_command, None, Vec::new());
+
+        let mut summary: String = String::from("# Summary\n\n");
+        generate_markdown_pages(
+            mark_dir.as_path(),
+            &clap_command,
+            None,
+            Vec::new(),
+            &mut summary,
+        );
+
+        std::fs::write(mark_dir.join("SUMMARY.md"), summary).expect("Error creating SUMMARY.md.");
     }
 }
 
@@ -64,11 +74,21 @@ fn generate_markdown_pages(
     cmd: &Command,
     name: Option<&str>,
     parent_cmd: Vec<String>,
+    summary: &mut String,
 ) {
     let cmd_name = match name {
         None => cmd.get_name(),
         Some(name) => name,
     };
+
+    let indent = cmp::max(parent_cmd.len(), 1) - 1;
+    let summary_line = format!(
+        "{} - [{}](./{}.md)\n",
+        "    ".repeat(indent),
+        cmd.get_name(),
+        cmd_name
+    );
+    summary.push_str(summary_line.as_str());
 
     // generate markdown page for command
     match generate_markdown_page(mark_dir, cmd_name, cmd, &parent_cmd) {
@@ -87,14 +107,21 @@ fn generate_markdown_pages(
 
     // generate markdown page for sub commands
     for s_cmd in cmd.get_subcommands() {
+        let sub_cmd_name = [cmd_name, "-", s_cmd.get_name()].concat();
+
         // skip in case subcommand is hidden within help
         if s_cmd.is_hide_set() {
             continue;
         }
 
         // recurse to cover all subcommand levels
-        let sub_cmd_name = [cmd_name, "-", s_cmd.get_name()].concat();
-        generate_markdown_pages(mark_dir, s_cmd, Some(&sub_cmd_name), parent_cmd.clone());
+        generate_markdown_pages(
+            mark_dir,
+            s_cmd,
+            Some(&sub_cmd_name),
+            parent_cmd.clone(),
+            summary,
+        );
     }
 }
 

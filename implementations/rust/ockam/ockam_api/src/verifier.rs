@@ -2,19 +2,19 @@ pub mod types;
 
 use either::Either;
 use minicbor::Decoder;
+use ockam::identity::credential::{Credential, CredentialData, Verified};
+use ockam::identity::Identities;
 use ockam_core::api::{self, Id, ResponseBuilder};
 use ockam_core::api::{Error, Method, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
-use ockam_identity::credential::{Credential, CredentialData, Verified};
-use ockam_identity::{IdentityVault, PublicIdentity};
 use ockam_node::Context;
 use tracing::trace;
 
 use self::types::{VerifyRequest, VerifyResponse};
 
 pub struct Verifier {
-    vault: Arc<dyn IdentityVault>,
+    identities: Arc<Identities>,
 }
 
 #[ockam_core::worker]
@@ -29,8 +29,8 @@ impl Worker for Verifier {
 }
 
 impl Verifier {
-    pub fn new(vault: Arc<dyn IdentityVault>) -> Self {
-        Self { vault }
+    pub fn new(identities: Arc<Identities>) -> Self {
+        Self { identities }
     }
 
     async fn on_request(&mut self, data: &[u8]) -> Result<Vec<u8>> {
@@ -85,17 +85,22 @@ impl Verifier {
         req: &'a VerifyRequest<'a>,
         cre: &Credential,
     ) -> Result<Either<ResponseBuilder<Error<'_>>, CredentialData<Verified>>> {
-        let data = CredentialData::try_from(cre)?;
+        let data = CredentialData::try_from(cre.data.as_slice())?;
 
-        let ident = if let Some(ident) = req.authority(data.unverified_issuer()) {
-            PublicIdentity::import(ident, self.vault.clone()).await?
+        let authority = if let Some(ident) = req.authority(data.unverified_issuer()) {
+            self.identities
+                .identities_creation()
+                .import_identity(ident)
+                .await?
         } else {
             let err = Error::new("/verify").with_message("unauthorised issuer");
             return Ok(Either::Left(Response::unauthorized(id).body(err)));
         };
 
-        let data = match ident
-            .verify_credential(cre, req.subject(), self.vault.clone())
+        let data = match self
+            .identities
+            .credentials()
+            .verify_credential(req.subject(), &[authority], cre.clone())
             .await
         {
             Ok(data) => data,

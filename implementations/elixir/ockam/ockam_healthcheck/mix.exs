@@ -75,12 +75,11 @@ defmodule Ockam.Healthcheck.MixProject do
   defp aliases do
     [
       docs: "docs --output _build/docs --formatter html",
-      run: "run --no-halt",
       "lint.format": "format --check-formatted",
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",
       lint: ["lint.format", "lint.credo"],
-      "test.cover": "test --no-start --cover"
+      "test.cover": "test --cover"
     ]
   end
 end

@@ -1,33 +1,31 @@
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
+use ockam::identity::SecureChannelListenerOptions;
+use ockam::{node, route, Context, Result, TcpConnectionOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let tcp = TcpTransport::create(&ctx).await?;
+    // Create a node with default implementations
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Start an echoer worker
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
-    let node_in_hub = tcp
-        .connect(hub_node_tcp_address, TcpConnectionTrustOptions::new())
-        .await?;
-
-    // Create a vault
-    let vault = Vault::create();
+    let node_in_hub = tcp.connect(hub_node_tcp_address, TcpConnectionOptions::new()).await?;
 
     // Create an Identity
-    let bob = Identity::create(&ctx, vault).await?;
+    let bob = node.create_identity().await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+    node.create_secure_channel_listener(&bob, "secure_channel_listener", SecureChannelListenerOptions::new())
         .await?;
 
     // Create a stream client
-    Stream::new(&ctx)
+    node.create_stream()
         .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
@@ -39,6 +37,6 @@ async fn main(ctx: Context) -> Result<()> {
         )
         .await?;
 
-    // Don't call ctx.stop() here so this node runs forever.
+    // Don't call node.stop() here so this node runs forever.
     Ok(())
 }

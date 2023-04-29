@@ -33,7 +33,7 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
   end
 
   test "inlet internals" do
-    base_port = 9000
+    base_port = 10_000
     allowed_ports = 10
     base_route = ["outlets"]
     outlet_prefix = "outlet_"

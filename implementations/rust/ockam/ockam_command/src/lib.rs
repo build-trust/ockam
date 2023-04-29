@@ -10,8 +10,8 @@ mod credential;
 mod docs;
 mod enroll;
 mod error;
-mod forwarder;
 mod identity;
+mod kafka;
 mod lease;
 mod manpages;
 mod markdown;
@@ -19,7 +19,9 @@ mod message;
 mod node;
 mod policy;
 mod project;
+mod relay;
 mod reset;
+mod run;
 mod secure_channel;
 mod service;
 mod space;
@@ -27,27 +29,38 @@ mod status;
 mod subscription;
 mod tcp;
 mod terminal;
+mod trust_context;
 mod upgrade;
 mod util;
 mod vault;
 mod version;
 mod worker;
 
+use crate::admin::AdminCommand;
+use crate::authority::AuthorityCommand;
+use crate::run::RunCommand;
+use crate::subscription::SubscriptionCommand;
+use crate::terminal::{Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
+use console::Term;
 use credential::CredentialCommand;
 use enroll::EnrollCommand;
 use error::{Error, Result};
-use forwarder::ForwarderCommand;
 use identity::IdentityCommand;
+use kafka::consumer::KafkaConsumerCommand;
+use kafka::producer::KafkaProducerCommand;
 use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
+use ockam_api::cli_state::CliState;
 use policy::PolicyCommand;
 use project::ProjectCommand;
+use relay::RelayCommand;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
@@ -57,19 +70,12 @@ use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
 };
+use trust_context::TrustContextCommand;
+use upgrade::check_if_an_upgrade_is_available;
 use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
 use vault::VaultCommand;
 use version::Version;
 use worker::WorkerCommand;
-
-use crate::admin::AdminCommand;
-use crate::authority::AuthorityCommand;
-use crate::subscription::SubscriptionCommand;
-use crate::terminal::{Terminal, TerminalStream};
-use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
-use console::Term;
-use ockam_api::cli_state::CliState;
-use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -146,6 +152,64 @@ pub struct GlobalArgs {
     test_argument_parser: bool,
 }
 
+impl GlobalArgs {
+    // Being able to retrieve the global args from anywhere is useful
+    // and presented to be more difficult within clap than expected.
+    //
+    // Clap's value parsers are not able to access the command, or global opts
+    // attempting to wrap the OckamCommand as a singleton, also did not work
+    // due to the fact the parsers are invoked during `OckamCommand::parse_from(input)`
+    // unable to let the parser know about the singleton.
+    //
+    fn parse_from_input() -> Self {
+        let mut s = Self::default();
+        let input = std::env::args()
+            .map(replace_hyphen_with_stdin)
+            .collect::<Vec<_>>();
+
+        for (i, arg) in input.clone().into_iter().enumerate() {
+            match arg.as_str() {
+                "-h" | "--help" => s.help = Some(true),
+                "-q" | "--quiet" => {
+                    s.quiet = true;
+                    s.verbose = 0;
+                }
+                "-v" | "--verbose" => {
+                    s.quiet = false;
+                    s.verbose += 1;
+                }
+                "--no-color" => s.no_color = true,
+                "--no-input" => s.no_input = true,
+                "--output" => {
+                    let value = input.clone().into_iter().nth(i);
+                    s.output_format = match value {
+                        Some(v) => OutputFormat::from_str(&v, true).expect("Invalid output format"),
+                        None => OutputFormat::Plain,
+                    }
+                }
+                "--test-argument-parser" => s.test_argument_parser = true,
+                _ => (),
+            }
+        }
+
+        s
+    }
+}
+
+impl Default for GlobalArgs {
+    fn default() -> Self {
+        Self {
+            help: None,
+            quiet: false,
+            verbose: 0,
+            no_color: false,
+            no_input: false,
+            output_format: OutputFormat::Plain,
+            test_argument_parser: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
@@ -163,7 +227,7 @@ pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     pub config: OckamConfig,
     pub state: CliState,
-    pub shell: Terminal<TerminalStream<Term>>,
+    pub terminal: Terminal<TerminalStream<Term>>,
 }
 
 impl CommandGlobalOpts {
@@ -179,71 +243,61 @@ impl CommandGlobalOpts {
             global_args,
             config,
             state,
-            shell: terminal,
+            terminal,
         }
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 pub enum OckamSubcommand {
     #[command(display_order = 800)]
     Enroll(EnrollCommand),
-    #[command(display_order = 801)]
     Space(SpaceCommand),
-    #[command(display_order = 802)]
     Project(ProjectCommand),
-    #[command(display_order = 803)]
-    Status(StatusCommand),
-    #[command(display_order = 804)]
-    Reset(ResetCommand),
+    Admin(AdminCommand),
+    Subscription(SubscriptionCommand),
 
-    #[command(display_order = 810)]
-    Authority(AuthorityCommand),
-    #[command(display_order = 811)]
-    Node(NodeCommand),
-    #[command(display_order = 812)]
-    Identity(IdentityCommand),
-    #[command(display_order = 813)]
-    TcpListener(TcpListenerCommand),
-    #[command(display_order = 814)]
-    TcpConnection(TcpConnectionCommand),
-    #[command(display_order = 815)]
-    TcpOutlet(TcpOutletCommand),
-    #[command(display_order = 816)]
-    TcpInlet(TcpInletCommand),
-    #[command(display_order = 817)]
-    SecureChannelListener(SecureChannelListenerCommand),
-    #[command(display_order = 818)]
-    SecureChannel(SecureChannelCommand),
-    #[command(display_order = 819)]
-    Forwarder(ForwarderCommand),
-    #[command(display_order = 820)]
-    Message(MessageCommand),
-    #[command(display_order = 821)]
-    Policy(PolicyCommand),
-    #[command(display_order = 821)]
+    Node(Box<NodeCommand>),
     Worker(WorkerCommand),
+    Service(ServiceCommand),
+    Message(MessageCommand),
+    Relay(RelayCommand),
 
-    #[command(display_order = 900)]
-    Completion(CompletionCommand),
+    TcpListener(TcpListenerCommand),
+    TcpConnection(TcpConnectionCommand),
+    TcpOutlet(TcpOutletCommand),
+    TcpInlet(TcpInletCommand),
 
+    KafkaConsumer(KafkaConsumerCommand),
+    KafkaProducer(KafkaProducerCommand),
+
+    SecureChannelListener(SecureChannelListenerCommand),
+    SecureChannel(SecureChannelCommand),
+
+    Vault(VaultCommand),
+    Identity(IdentityCommand),
+    Credential(CredentialCommand),
+    Authority(AuthorityCommand),
+    Policy(PolicyCommand),
+    Lease(LeaseCommand),
+
+    Run(RunCommand),
+    Status(StatusCommand),
+    Reset(ResetCommand),
     Authenticated(AuthenticatedCommand),
     Configuration(ConfigurationCommand),
-    Credential(CredentialCommand),
-    Service(ServiceCommand),
-    Vault(VaultCommand),
-    Subscription(SubscriptionCommand),
-    Admin(AdminCommand),
-    Manpages(ManpagesCommand),
-    Lease(LeaseCommand),
+
+    Completion(CompletionCommand),
     Markdown(MarkdownCommand),
+    Manpages(ManpagesCommand),
+    TrustContext(TrustContextCommand),
 }
 
 pub fn run() {
     let input = std::env::args()
         .map(replace_hyphen_with_stdin)
         .collect::<Vec<_>>();
-    let command: OckamCommand = OckamCommand::parse_from(input);
+    let command = OckamCommand::parse_from(input);
 
     if !command.global_args.test_argument_parser {
         check_if_an_upgrade_is_available();
@@ -252,7 +306,7 @@ pub fn run() {
     if !command.global_args.quiet {
         setup_logging(command.global_args.verbose, command.global_args.no_color);
         tracing::debug!("{}", Version::short());
-        tracing::debug!("Parsed {:?}", &command);
+        tracing::debug!("Parsed {:?}", command);
     }
 
     command.run();
@@ -274,40 +328,48 @@ impl OckamCommand {
             OckamSubcommand::Enroll(c) => c.run(options),
             OckamSubcommand::Space(c) => c.run(options),
             OckamSubcommand::Project(c) => c.run(options),
-            OckamSubcommand::Status(c) => c.run(options),
-            OckamSubcommand::Reset(c) => c.run(options),
+            OckamSubcommand::Admin(c) => c.run(options),
+            OckamSubcommand::Subscription(c) => c.run(options),
 
-            OckamSubcommand::Authority(c) => c.run(options),
             OckamSubcommand::Node(c) => c.run(options),
-            OckamSubcommand::Identity(c) => c.run(options),
+            OckamSubcommand::Worker(c) => c.run(options),
+            OckamSubcommand::Service(c) => c.run(options),
+            OckamSubcommand::Message(c) => c.run(options),
+            OckamSubcommand::Relay(c) => c.run(options),
+
             OckamSubcommand::TcpListener(c) => c.run(options),
             OckamSubcommand::TcpConnection(c) => c.run(options),
             OckamSubcommand::TcpOutlet(c) => c.run(options),
             OckamSubcommand::TcpInlet(c) => c.run(options),
+
+            OckamSubcommand::KafkaConsumer(c) => c.run(options),
+            OckamSubcommand::KafkaProducer(c) => c.run(options),
+
             OckamSubcommand::SecureChannelListener(c) => c.run(options),
             OckamSubcommand::SecureChannel(c) => c.run(options),
-            OckamSubcommand::Forwarder(c) => c.run(options),
-            OckamSubcommand::Message(c) => c.run(options),
+
+            OckamSubcommand::Vault(c) => c.run(options),
+            OckamSubcommand::Identity(c) => c.run(options),
+            OckamSubcommand::Credential(c) => c.run(options),
+            OckamSubcommand::Authority(c) => c.run(options),
             OckamSubcommand::Policy(c) => c.run(options),
-            OckamSubcommand::Worker(c) => c.run(options),
+            OckamSubcommand::Lease(c) => c.run(options),
 
-            OckamSubcommand::Completion(c) => c.run(),
-
+            OckamSubcommand::Run(c) => c.run(options),
+            OckamSubcommand::Status(c) => c.run(options),
+            OckamSubcommand::Reset(c) => c.run(options),
             OckamSubcommand::Authenticated(c) => c.run(),
             OckamSubcommand::Configuration(c) => c.run(options),
-            OckamSubcommand::Credential(c) => c.run(options),
-            OckamSubcommand::Service(c) => c.run(options),
-            OckamSubcommand::Vault(c) => c.run(options),
-            OckamSubcommand::Subscription(c) => c.run(options),
-            OckamSubcommand::Admin(c) => c.run(options),
-            OckamSubcommand::Manpages(c) => c.run(),
-            OckamSubcommand::Lease(c) => c.run(options),
+
+            OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Markdown(c) => c.run(),
+            OckamSubcommand::Manpages(c) => c.run(),
+            OckamSubcommand::TrustContext(c) => c.run(options),
         }
     }
 }
 
-fn replace_hyphen_with_stdin(s: String) -> String {
+pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {
     let input_stream = std::io::stdin();
     if s.contains("/-") {
         let mut buffer = String::new();

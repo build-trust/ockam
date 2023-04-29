@@ -1,14 +1,22 @@
+#[cfg(feature = "tag")]
+use crate::TypeTag;
 use crate::{
     compat::{collections::VecDeque, string::String, vec::Vec},
     Address, Result, RouteError, TransportType,
 };
 use core::fmt::{self, Display};
+use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// A full route to a peer.
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Decode, Encode, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[rustfmt::skip]
+#[cbor(map)]
 pub struct Route {
-    inner: VecDeque<Address>,
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[n(0)] tag: TypeTag<2409749>,
+    #[n(1)] inner: VecDeque<Address>,
 }
 
 impl Route {
@@ -160,10 +168,6 @@ impl Route {
 
     /// Return the final recipient address.
     ///
-    /// # Panics
-    ///
-    /// This function will panic if passed an empty route.
-    ///
     /// # Examples
     ///
     /// ```
@@ -180,10 +184,9 @@ impl Route {
     /// #     Ok(())
     /// # }
     /// ```
-    ///
-    /// `TODO` For consistency we should not panic and return a
-    /// Result<&Address> instead of an Address.clone().
     pub fn recipient(&self) -> Result<Address> {
+        // `TODO` For consistency we should return a
+        // Result<&Address> instead of an Address.clone().
         self.inner
             .back()
             .cloned()
@@ -203,6 +206,56 @@ impl Route {
     /// Returns true if the route is empty.
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
+    }
+
+    /// Returns `true` if route contains `needle`.
+    ///
+    /// Returns `Err(_)` if `needle` is an empty route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Route, Result};
+    /// # fn main() -> Result<()> {
+    /// let r: Route = route!["a", "b", "c", "d"];
+    ///
+    /// // true
+    /// let res = r.contains_route(&route!["b", "c"])?;
+    ///
+    /// // false
+    /// let res = r.contains_route(&route!["a", "c"])?;
+    ///
+    /// // false
+    /// let res = r.contains_route(&route!["a", "b", "c", "d", "e"])?;
+    /// #     Ok(())
+    /// # }
+    /// ```
+    pub fn contains_route(&self, needle: &Route) -> Result<bool> {
+        if needle.is_empty() {
+            return Err(RouteError::IncompleteRoute.into());
+        }
+
+        let hl = self.len();
+        let nl = needle.len();
+        if nl > hl {
+            return Ok(false);
+        }
+
+        // The below uses many iterators.
+        // An alternative might be to use `VecDeque::make_contiguous()` and slices.
+        for i in 0..=(hl - nl) {
+            let tmp = self.inner.iter().skip(i).take(nl);
+            if tmp.eq(needle.iter()) {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
+    /// Return true if all the addresses composing that route are local addresses
+    pub fn is_local(&self) -> bool {
+        self.iter().all(|a| a.is_local())
     }
 }
 
@@ -224,6 +277,8 @@ impl Display for Route {
 impl From<RouteBuilder<'_>> for Route {
     fn from(RouteBuilder { ref inner, .. }: RouteBuilder) -> Self {
         Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
             inner: inner.clone(),
         }
     }
@@ -430,6 +485,8 @@ impl Drop for RouteBuilder<'_> {
     fn drop(&mut self) {
         if self.write_back.is_some() {
             **self.write_back.as_mut().unwrap() = Route {
+                #[cfg(feature = "tag")]
+                tag: TypeTag,
                 inner: self.inner.clone(),
             };
         }
@@ -506,5 +563,26 @@ mod tests {
 
         r1.modify().prepend_route(r2);
         assert_eq!(r1, route!["1", "2", "3", "a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_route_contains_route() {
+        let r = route!["a", "b", "c", "d", "e"];
+
+        assert!(matches!(r.contains_route(&route!["a"]), Ok(true)));
+        assert!(matches!(r.contains_route(&route!["a", "b"]), Ok(true)));
+        assert!(matches!(r.contains_route(&route!["b", "c"]), Ok(true)));
+        assert!(matches!(r.contains_route(&route!["c", "d"]), Ok(true)));
+        assert!(matches!(r.contains_route(&route!["e"]), Ok(true)));
+
+        assert!(matches!(r.contains_route(&route![]), Err(_)));
+
+        assert!(matches!(
+            r.contains_route(&route!["a", "b", "c", "d", "e", "f"]),
+            Ok(false)
+        ));
+
+        assert!(matches!(r.contains_route(&route!["a", "c"]), Ok(false)));
+        assert!(matches!(r.contains_route(&route!["x"]), Ok(false)));
     }
 }

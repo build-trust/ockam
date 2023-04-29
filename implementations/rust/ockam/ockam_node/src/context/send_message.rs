@@ -4,17 +4,17 @@ use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
 use crate::{error::*, NodeMessage};
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
-use ockam_core::sessions::{SessionId, SessionPolicy, Sessions};
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
-    RelayMessage, Result, Route, TransportMessage,
+    RelayMessage, Result, Route, Routed, TransportMessage,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
 /// Full set of options to `send_and_receive_extended` function
 pub struct MessageSendReceiveOptions {
-    session: Option<(Sessions, SessionId, SessionPolicy)>,
+    flow_controls: Option<FlowControls>,
     message_wait: MessageWait,
 }
 
@@ -25,10 +25,10 @@ impl Default for MessageSendReceiveOptions {
 }
 
 impl MessageSendReceiveOptions {
-    /// Default options with [`DEFAULT_TIMEOUT`] and no session
+    /// Default options with [`DEFAULT_TIMEOUT`] and no flow control
     pub fn new() -> Self {
         Self {
-            session: None,
+            flow_controls: None,
             message_wait: MessageWait::Timeout(Duration::from_secs(DEFAULT_TIMEOUT)),
         }
     }
@@ -45,21 +45,16 @@ impl MessageSendReceiveOptions {
         self
     }
 
-    /// Set session to be able to receive a resposne
-    pub fn with_session(
-        mut self,
-        sessions: &Sessions,
-        session_id: &SessionId,
-        policy: SessionPolicy,
-    ) -> Self {
-        self.session = Some((sessions.clone(), session_id.clone(), policy));
+    /// Set flow_controls to be able to receive a response
+    pub fn with_flow_control(mut self, flow_controls: &FlowControls) -> Self {
+        self.flow_controls = Some(flow_controls.clone());
         self
     }
 }
 
 impl Context {
     /// Using a temporary new context, send a message and then receive a message
-    /// with default timeout and no session
+    /// with default timeout and no flow control
     ///
     /// This helper function uses [`new_detached`], [`send`], and
     /// [`receive`] internally. See their documentation for more
@@ -68,16 +63,14 @@ impl Context {
     /// [`new_detached`]: Self::new_detached
     /// [`send`]: Self::send
     /// [`receive`]: Self::receive
-    pub async fn send_and_receive<M>(
-        &self,
-        route: impl Into<Route>,
-        msg: impl Message + Send + 'static,
-    ) -> Result<M>
+    pub async fn send_and_receive<M>(&self, route: impl Into<Route>, msg: impl Message) -> Result<M>
     where
         M: Message,
     {
-        self.send_and_receive_extended(route, msg, MessageSendReceiveOptions::new())
-            .await
+        Ok(self
+            .send_and_receive_extended::<M>(route, msg, MessageSendReceiveOptions::new())
+            .await?
+            .body())
     }
 
     /// Using a temporary new context, send a message and then receive a message
@@ -94,7 +87,7 @@ impl Context {
         route: impl Into<Route>,
         msg: impl Message,
         options: MessageSendReceiveOptions,
-    ) -> Result<M>
+    ) -> Result<Routed<M>>
     where
         M: Message,
     {
@@ -106,25 +99,33 @@ impl Context {
             Mailbox::new(
                 address.clone(),
                 Arc::new(AllowAll),
-                Arc::new(AllowOnwardAddress(next)),
+                Arc::new(AllowOnwardAddress(next.clone())),
             ),
             vec![],
         );
 
-        if let Some((sessions, session_id, policy)) = options.session {
-            // To be able to receive the response
-            sessions.add_consumer(&address, &session_id, policy);
+        if let Some(flow_controls) = options.flow_controls {
+            if let Some(flow_control_id) = flow_controls
+                .find_flow_control_with_producer_address(&next)
+                .map(|x| x.flow_control_id().clone())
+            {
+                // To be able to receive the response
+                flow_controls.add_consumer(
+                    &address,
+                    &flow_control_id,
+                    FlowControlPolicy::ProducerAllowMultiple,
+                );
+            }
         }
 
         let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
 
         child_ctx.send(route, msg).await?;
-        Ok(child_ctx
+        child_ctx
             .receive_extended::<M>(
                 MessageReceiveOptions::new().with_message_wait(options.message_wait),
             )
-            .await?
-            .body())
+            .await
     }
 
     /// Send a message to another address associated with this worker

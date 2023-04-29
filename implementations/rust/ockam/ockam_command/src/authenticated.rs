@@ -5,11 +5,11 @@ use anyhow::{anyhow, Context as _};
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use ockam::compat::collections::HashMap;
+use ockam::identity::{AttributesEntry, IdentityIdentifier};
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
 use ockam_api::is_local_node;
-use ockam_identity::authenticated_storage::AttributesEntry;
-use ockam_identity::IdentityIdentifier;
+use ockam_core::flow_control::FlowControls;
 use ockam_multiaddr::MultiAddr;
 use termimad::{minimad::TextTemplate, MadSkin};
 
@@ -123,9 +123,12 @@ fn print_entries(entries: &[(IdentityIdentifier, AttributesEntry)]) {
 }
 
 async fn client(ctx: &Context, tcp: &TcpTransport, addr: &MultiAddr) -> Result<auth::Client> {
-    let to = ockam_api::multiaddr_to_route(addr, tcp)
+    let flow_controls = FlowControls::default();
+    let route = ockam_api::multiaddr_to_route(addr, tcp, &flow_controls)
         .await
         .ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
-    let cl = auth::Client::new(to, ctx).await?;
+    let cl = auth::Client::new(route.route, ctx)
+        .await?
+        .with_flow_control(&flow_controls);
     Ok(cl)
 }

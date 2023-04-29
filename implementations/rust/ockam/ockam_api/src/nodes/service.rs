@@ -1,10 +1,14 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
 use minicbor::Decoder;
-
-use ockam::identity::{Identity, IdentityIdentifier, PublicIdentity};
+use ockam::identity::{
+    Credentials, CredentialsServer, CredentialsServerModule, Identities, IdentitiesRepository,
+    IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
+};
+use ockam::identity::{Identity, IdentityIdentifier, SecureChannels};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
-use ockam_abac::PolicyStorage;
+use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{
     boxed::Box,
@@ -12,13 +16,10 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, AllowAll, AsyncTryClone};
-use ockam_identity::authenticated_storage::{
-    AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
-};
-use ockam_identity::credential::Credential;
-use ockam_identity::IdentityVault;
-use ockam_multiaddr::proto::{Project, Secure};
+use ockam_core::flow_control::{FlowControlId, FlowControls};
+use ockam_core::IncomingAccessControl;
+use ockam_core::{AllowAll, AsyncTryClone, LOCAL};
+use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::tokio;
@@ -28,34 +29,37 @@ use std::error::Error as _;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::CliState;
-use crate::config::cli::AuthoritiesConfig;
+use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
-use crate::nodes::connection::Connection;
+use crate::nodes::connection::{
+    Connection, ConnectionInstance, ConnectionInstanceBuilder, PlainTcpInstantiator,
+    ProjectInstantiator, SecureChannelInstantiator,
+};
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
-use crate::session::util::{starts_with_host_tcp, starts_with_secure};
-use crate::session::{Medic, Sessions};
-use crate::{
-    create_tcp_session, local_multiaddr_to_route, multiaddr_to_route, route_to_multiaddr,
-    try_address_to_multiaddr, DefaultAddress,
-};
-
-pub mod message;
+use crate::rpc_proxy::RpcProxyService;
+use crate::session::sessions::Sessions;
+use crate::session::Medic;
+use crate::{local_worker, DefaultAddress};
 
 mod credentials;
 mod forwarder;
+pub mod message;
+mod node_identities;
+mod node_services;
 mod policy;
 mod portals;
 mod secure_channel;
-mod services;
 mod transport;
+
+pub use node_identities::*;
+use ockam_identity::TrustContext;
 
 const TARGET: &str = "ockam_api::nodemanager::service";
 
@@ -77,30 +81,6 @@ pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Err
     invalid_multiaddr_error()
 }
 
-pub(crate) struct Authorities(Vec<AuthorityInfo>);
-
-impl Authorities {
-    pub fn new(authorities: Vec<AuthorityInfo>) -> Self {
-        Self(authorities)
-    }
-
-    pub fn public_identities(&self) -> Vec<PublicIdentity> {
-        self.0.iter().map(|x| x.identity.clone()).collect()
-    }
-}
-
-impl AsRef<[AuthorityInfo]> for Authorities {
-    fn as_ref(&self) -> &[AuthorityInfo] {
-        self.0.as_ref()
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct AuthorityInfo {
-    identity: PublicIdentity,
-    addr: MultiAddr,
-}
-
 type Transports = BTreeMap<Alias, ApiTransport>;
 
 /// Node manager provides a messaging API to interact with the current node
@@ -112,16 +92,53 @@ pub struct NodeManager {
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
-    vault: Arc<dyn IdentityVault>,
-    pub(crate) identity: Arc<Identity>,
-    project_id: Option<String>,
+    identity: Identity,
+    pub(crate) secure_channels: Arc<SecureChannels>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
-    authorities: Option<Authorities>,
+    trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: Arc<dyn PolicyStorage>,
-    attributes_storage: Arc<dyn IdentityAttributeStorage>,
+    pub(crate) flow_controls: FlowControls,
+}
+
+impl NodeManager {
+    pub(super) fn identity(&self) -> Identity {
+        self.identity.clone()
+    }
+
+    pub(super) fn identities(&self) -> Arc<Identities> {
+        self.secure_channels.identities()
+    }
+
+    pub(super) fn identities_vault(&self) -> Arc<dyn IdentitiesVault> {
+        self.identities().vault()
+    }
+
+    pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
+        self.identities().repository().clone()
+    }
+
+    pub(super) fn attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
+        self.identities_repository().as_attributes_writer()
+    }
+
+    pub(super) fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
+        self.identities_repository().as_attributes_reader()
+    }
+
+    pub(super) fn credentials(&self) -> Arc<dyn Credentials> {
+        self.identities().credentials()
+    }
+
+    pub(super) fn credentials_service(&self) -> Arc<dyn CredentialsServer> {
+        Arc::new(CredentialsServerModule::new(self.credentials()))
+    }
+
+    pub(super) fn secure_channels_vault(&self) -> Arc<dyn IdentitiesVault> {
+        self.secure_channels.vault().clone()
+    }
 }
 
 pub struct NodeManagerWorker {
@@ -146,21 +163,63 @@ pub struct IdentityOverride {
 }
 
 impl NodeManager {
-    pub(crate) fn vault(&self) -> Result<Arc<dyn IdentityVault>> {
-        Ok(self.vault.clone())
+    async fn access_control(
+        &self,
+        r: &Resource,
+        a: &Action,
+        trust_context_id: Option<&str>,
+        custom_default: Option<&Expr>,
+    ) -> Result<Arc<dyn IncomingAccessControl>> {
+        if let Some(tcid) = trust_context_id {
+            // Populate environment with known attributes:
+            let mut env = Env::new();
+            env.put("resource.id", str(r.as_str()));
+            env.put("action.id", str(a.as_str()));
+            env.put("resource.project_id", str(tcid.to_string()));
+            env.put("resource.trust_context_id", str(tcid));
+
+            // Check if a policy exists for (resource, action) and if not, then
+            // create or use a default entry:
+            if self.policies.get_policy(r, a).await?.is_none() {
+                let fallback = match custom_default {
+                    Some(e) => e.clone(),
+                    None => and([
+                        eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
+                                                                                         /*
+                                                                                         * TODO: replace the project_id check for trust_context_id.  For now the
+                                                                                         * existing authority deployed doesn't know about trust_context so this is to
+                                                                                         * be done after updating deployed authorities.
+                                                                                         eq([
+                                                                                             ident("resource.trust_context_id"),
+                                                                                             ident("subject.trust_context_id"),
+                                                                                         ]),
+                                                                                         */
+                    ]),
+                };
+                self.policies.set_policy(r, a, &fallback).await?
+            }
+            let policies = self.policies.clone();
+            Ok(Arc::new(PolicyAccessControl::new(
+                policies,
+                self.identities_repository(),
+                r.clone(),
+                a.clone(),
+                env,
+            )))
+        } else {
+            // TODO: @ac allow passing this as a cli argument
+            Ok(Arc::new(AllowAll))
+        }
     }
 
-    pub(crate) fn authorities(&self) -> Result<&Authorities> {
-        self.authorities
+    pub(crate) fn trust_context(&self) -> Result<&TrustContext> {
+        self.trust_context
             .as_ref()
-            .ok_or_else(|| ApiError::generic("Authorities don't exist"))
+            .ok_or_else(|| ApiError::generic("Trust context doesn't exist"))
     }
 
-    /// Available only for member nodes
-    pub(crate) fn project_id(&self) -> Result<&str> {
-        self.project_id
-            .as_deref()
-            .ok_or_else(|| ApiError::generic("Project id is not set"))
+    pub fn flow_controls(&self) -> &FlowControls {
+        &self.flow_controls
     }
 }
 
@@ -187,26 +246,13 @@ impl NodeManagerGeneralOptions {
     }
 }
 
-pub struct NodeManagerProjectsOptions<'a> {
-    ac: Option<&'a AuthoritiesConfig>,
-    project_id: Option<String>,
+pub struct NodeManagerProjectsOptions {
     projects: BTreeMap<String, ProjectLookup>,
-    credential: Option<Credential>,
 }
 
-impl<'a> NodeManagerProjectsOptions<'a> {
-    pub fn new(
-        ac: Option<&'a AuthoritiesConfig>,
-        project_id: Option<String>,
-        projects: BTreeMap<String, ProjectLookup>,
-        credential: Option<Credential>,
-    ) -> Self {
-        Self {
-            ac,
-            project_id,
-            projects,
-            credential,
-        }
+impl NodeManagerProjectsOptions {
+    pub fn new(projects: BTreeMap<String, ProjectLookup>) -> Self {
+        Self { projects }
     }
 }
 
@@ -221,6 +267,8 @@ pub struct ApiTransport {
     pub socket_address: SocketAddr,
     /// Worker address
     pub worker_address: Address,
+    /// FlowControlId
+    pub flow_control_id: Option<FlowControlId>,
 }
 
 pub struct NodeManagerTransportOptions {
@@ -237,13 +285,26 @@ impl NodeManagerTransportOptions {
     }
 }
 
+pub struct NodeManagerTrustOptions {
+    trust_context_config: Option<TrustContextConfig>,
+}
+
+impl NodeManagerTrustOptions {
+    pub fn new(trust_context_config: Option<TrustContextConfig>) -> Self {
+        Self {
+            trust_context_config,
+        }
+    }
+}
+
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,
-        projects_options: NodeManagerProjectsOptions<'_>,
+        projects_options: NodeManagerProjectsOptions,
         transport_options: NodeManagerTransportOptions,
+        trust_options: NodeManagerTrustOptions,
     ) -> Result<Self> {
         let api_transport_id = random_alias();
         let mut transports = BTreeMap::new();
@@ -252,36 +313,32 @@ impl NodeManager {
         let cli_state = general_options.cli_state;
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
-        let authenticated_storage: Arc<dyn AuthenticatedStorage> =
-            cli_state.identities.authenticated_storage().await?;
+        let repository: Arc<dyn IdentitiesRepository> =
+            cli_state.identities.identities_repository().await?;
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
-        let attributes_storage: Arc<dyn IdentityAttributeStorage> =
+        let vault: Arc<dyn IdentitiesVault> = Arc::new(node_state.config.vault().await?);
+        let identities_repository: Arc<dyn IdentitiesRepository> =
             Arc::new(match general_options.pre_trusted_identities {
                 None => BootstrapedIdentityStore::new(
                     Arc::new(PreTrustedIdentities::new_from_string("{}")?),
-                    Arc::new(AuthenticatedAttributeStorage::new(
-                        authenticated_storage.clone(),
-                    )),
+                    repository.clone(),
                 ),
-                Some(f) => BootstrapedIdentityStore::new(
-                    Arc::new(f),
-                    Arc::new(AuthenticatedAttributeStorage::new(
-                        authenticated_storage.clone(),
-                    )),
-                ),
+                Some(f) => BootstrapedIdentityStore::new(Arc::new(f), repository.clone()),
             });
+
+        let secure_channels = SecureChannels::builder()
+            .with_identities_vault(vault)
+            .with_identities_repository(identities_repository)
+            .build();
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
-        let vault: Arc<dyn IdentityVault> = Arc::new(node_state.config.vault().await?);
-        let identity = Arc::new(node_state.config.identity(ctx).await?);
-        if let Some(cred) = projects_options.credential {
-            identity.set_credential(cred.to_owned()).await;
-        }
+        let identity = node_state.config.default_identity().await?;
 
-        let medic = Medic::new();
+        let flow_controls = FlowControls::default();
+        let medic = Medic::new(flow_controls.clone());
         let sessions = medic.sessions();
 
         let mut s = Self {
@@ -291,13 +348,17 @@ impl NodeManager {
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults: general_options.skip_defaults,
-            enable_credential_checks: projects_options.ac.is_some()
-                && projects_options.project_id.is_some(),
-            vault,
+            enable_credential_checks: trust_options.trust_context_config.is_some()
+                && trust_options
+                    .trust_context_config
+                    .as_ref()
+                    .unwrap()
+                    .authority()
+                    .is_ok(),
             identity,
+            secure_channels,
             projects: Arc::new(projects_options.projects),
-            project_id: projects_options.project_id,
-            authorities: None,
+            trust_context: None,
             registry: Default::default(),
             medic: {
                 let ctx = ctx.async_try_clone().await?;
@@ -305,36 +366,31 @@ impl NodeManager {
             },
             sessions,
             policies,
-            attributes_storage,
+            flow_controls,
         };
 
+        info!("NodeManager::create: {}", s.node_name);
         if !general_options.skip_defaults {
-            if let Some(ac) = projects_options.ac {
-                s.configure_authorities(ac).await?;
+            info!("NodeManager::create: starting default services");
+            if let Some(tc) = trust_options.trust_context_config {
+                info!("NodeManager::create: configuring trust context");
+                s.configure_trust_context(&tc).await?;
             }
         }
-
-        // Always start the echoer service as ockam_api::Medic assumes it will be
-        // started unconditionally on every node. It's used for liveness checks.
-        s.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
-            .await?;
 
         Ok(s)
     }
 
-    async fn configure_authorities(&mut self, ac: &AuthoritiesConfig) -> Result<()> {
-        let vault = self.vault()?;
+    async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
+        self.trust_context = Some(
+            tc.to_trust_context(
+                self.secure_channels.clone(),
+                Some(self.tcp_transport.async_try_clone().await?),
+            )
+            .await?,
+        );
 
-        let mut v = Vec::new();
-
-        for a in ac.authorities() {
-            v.push(AuthorityInfo {
-                identity: PublicIdentity::import(a.1.identity(), vault.clone()).await?,
-                addr: a.1.access_route().clone(),
-            })
-        }
-
-        self.authorities = Some(Authorities::new(v));
+        info!("NodeManager::configure_trust_context: trust context configured");
 
         Ok(())
     }
@@ -369,129 +425,89 @@ impl NodeManager {
         )
         .await?;
 
-        // If we've been configured with authorities, we can start Credential Exchange service
-        if self.authorities().is_ok() {
-            self.start_credentials_service_impl(DefaultAddress::CREDENTIALS_SERVICE.into(), false)
-                .await?;
+        // If we've been configured with a trust context, we can start Credential Exchange service
+        if let Ok(tc) = self.trust_context() {
+            self.start_credentials_service_impl(
+                ctx,
+                tc.clone(),
+                DefaultAddress::CREDENTIALS_SERVICE.into(),
+                false,
+            )
+            .await?;
         }
 
         Ok(())
     }
 
     /// Resolve project ID (if any), create secure channel (if needed) and create a tcp connection
-    ///
-    /// Returns the secure channel worker address (if any) and the remainder
-    /// of the address argument.
+    /// Returns [`ConnectionInstance`]
     pub(crate) async fn connect(
-        &mut self,
+        node_manager: Arc<RwLock<NodeManager>>,
         connection: Connection<'_>,
-    ) -> Result<(MultiAddr, MultiAddr)> {
-        let Connection {
-            ctx,
-            addr,
-            identity_name,
-            credential_name,
-            authorized_identities,
-            timeout,
-        } = connection;
+    ) -> Result<ConnectionInstance> {
+        debug!("connecting to {}", &connection.addr);
+        let context = Arc::new(connection.ctx.async_try_clone().await?);
 
-        let transport = &self.tcp_transport;
+        let mut intermediary_services = vec![];
+        for protocol_value in connection.addr.iter() {
+            if protocol_value.code() == Service::CODE {
+                let local = protocol_value
+                    .cast::<Service>()
+                    .ok_or_else(|| ApiError::generic("invalid service address"))?;
+                intermediary_services.push(Address::new(LOCAL, &*local));
+            }
 
-        if let Some(p) = addr.first() {
-            if p.code() == Project::CODE {
-                let p = p
-                    .cast::<Project>()
-                    .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
-                let (a, i) = self.resolve_project(&p)?;
-                debug!(addr = %a, "creating secure channel");
-                let tcp_session = create_tcp_session(&a, transport)
-                    .await
-                    .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                let i = Some(vec![i]);
-                let m = CredentialExchangeMode::Oneway;
-                let w = self
-                    .create_secure_channel_impl(
-                        tcp_session.route,
-                        i,
-                        m,
-                        timeout,
-                        identity_name,
-                        ctx,
-                        credential_name,
-                        tcp_session.session,
-                    )
-                    .await?;
-                let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
-                return Ok((try_address_to_multiaddr(&w)?, a));
+            if !local_worker(&protocol_value.code())? {
+                break;
             }
         }
 
-        if let Some(pos1) = starts_with_host_tcp(addr) {
-            debug!(%addr, "creating a tcp connection");
-            let (a1, b1) = addr.split(pos1);
-            return match starts_with_secure(&b1) {
-                Some(pos2) => {
-                    let tcp_session = create_tcp_session(&a1, transport)
-                        .await
-                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                    debug!(%addr, "creating a secure channel");
-                    let (a2, b2) = b1.split(pos2);
-                    let m = CredentialExchangeMode::Mutual;
-                    let r2 = local_multiaddr_to_route(&a2)
-                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                    let w = self
-                        .create_secure_channel_impl(
-                            route![tcp_session.route, r2],
-                            authorized_identities.clone(),
-                            m,
-                            timeout,
-                            identity_name,
-                            ctx,
-                            credential_name,
-                            tcp_session.session,
-                        )
-                        .await?;
+        let tcp_transport = node_manager
+            .clone()
+            .read()
+            .await
+            .tcp_transport
+            .async_try_clone()
+            .await?;
 
-                    Ok((try_address_to_multiaddr(&w)?, b2))
-                }
-                None => {
-                    // We don't use a secure channel here, should be safe without sessions
-                    let route = multiaddr_to_route(addr, transport)
-                        .await
-                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                    Ok((
-                        route_to_multiaddr(&route)
-                            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?,
-                        MultiAddr::default(),
-                    ))
-                }
-            };
+        let connection_instance =
+            ConnectionInstanceBuilder::new(connection.addr.clone(), connection.flow_controls)
+                .instantiate(ProjectInstantiator::new(
+                    context.clone(),
+                    node_manager.clone(),
+                    connection.timeout,
+                    connection.credential_name.map(|x| x.to_string()),
+                    connection.identity_name.map(|x| x.to_string()),
+                ))
+                .await?
+                .instantiate(PlainTcpInstantiator::new(tcp_transport))
+                .await?
+                .instantiate(SecureChannelInstantiator::new(
+                    context.clone(),
+                    node_manager.clone(),
+                    connection.timeout,
+                    connection.authorized_identities,
+                ))
+                .await?
+                .build();
+
+        debug!("connected to {connection_instance:?}");
+
+        // Every piece of the chain must be part of the session to allow communication
+        for service in intermediary_services {
+            connection_instance.add_consumer(&service);
         }
 
-        if Some(Secure::CODE) == addr.last().map(|p| p.code()) {
-            debug!(%addr, "creating secure channel");
-            let r = local_multiaddr_to_route(addr)
-                .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-            let m = CredentialExchangeMode::Mutual;
-            let w = self
-                .create_secure_channel_impl(
-                    r,
-                    authorized_identities.clone(),
-                    m,
-                    timeout,
-                    None,
-                    ctx,
-                    None,
-                    None,
-                )
-                .await?;
-            return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));
+        if connection.add_default_consumers {
+            connection_instance.add_consumer(&DefaultAddress::SECURE_CHANNEL_LISTENER.into());
+            connection_instance.add_consumer(&DefaultAddress::UPPERCASE_SERVICE.into());
+            connection_instance.add_consumer(&DefaultAddress::ECHO_SERVICE.into());
         }
 
-        Ok((MultiAddr::default(), addr.clone()))
+        Ok(connection_instance)
     }
 
-    fn resolve_project(&self, name: &str) -> Result<(MultiAddr, IdentityIdentifier)> {
+    pub(crate) fn resolve_project(&self, name: &str) -> Result<(MultiAddr, IdentityIdentifier)> {
         if let Some(info) = self.projects.get(name) {
             let node_route = info
                 .node_route
@@ -594,7 +610,7 @@ impl NodeManagerWorker {
                 .await?
                 .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
             (Post, ["node", "credentials", "actions", "present"]) => {
-                self.present_credential(req, dec).await?.to_vec()?
+                self.present_credential(req, dec, ctx).await?.to_vec()?
             }
 
             // ==*== Secure channels ==*==
@@ -613,7 +629,7 @@ impl NodeManagerWorker {
                 self.create_secure_channel(req, dec, ctx).await?.to_vec()?
             }
             (Delete, ["node", "secure_channel"]) => {
-                self.delete_secure_channel(req, dec).await?.to_vec()?
+                self.delete_secure_channel(req, dec, ctx).await?.to_vec()?
             }
             (Get, ["node", "show_secure_channel"]) => {
                 self.show_secure_channel(req, dec).await?.to_vec()?
@@ -691,6 +707,10 @@ impl NodeManagerWorker {
                     .await
                     .to_vec()?
             }
+            (Delete, ["node", "forwarder", remote_address]) => self
+                .delete_forwarder(ctx, req, remote_address)
+                .await?
+                .to_vec()?,
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
 
             // ==*== Inlets & Outlets ==*==
@@ -828,6 +848,20 @@ impl Worker for NodeManagerWorker {
         if !node_manager.skip_defaults {
             node_manager.initialize_defaults(ctx).await?;
         }
+
+        // Always start the echoer service as ockam_api::Medic assumes it will be
+        // started unconditionally on every node. It's used for liveness checks.
+        node_manager
+            .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
+            .await?;
+
+        ctx.start_worker(
+            DefaultAddress::RPC_PROXY,
+            RpcProxyService::new(node_manager.flow_controls.clone()),
+            AllowAll,
+            AllowAll,
+        )
+        .await?;
 
         Ok(())
     }

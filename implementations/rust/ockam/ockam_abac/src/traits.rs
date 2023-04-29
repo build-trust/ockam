@@ -1,5 +1,4 @@
-use crate::expr::Expr;
-use crate::types::{Action, Resource};
+use crate::{Action, Expr, Resource};
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::vec::Vec;

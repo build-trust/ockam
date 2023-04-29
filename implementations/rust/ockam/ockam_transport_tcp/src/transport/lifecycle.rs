@@ -1,6 +1,14 @@
-use crate::{TcpRegistry, TcpTransport};
-use ockam_core::{AsyncTryClone, Result};
+use core::str::FromStr;
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::flow_control::FlowControls;
+use ockam_core::{async_trait, Address, AsyncTryClone, Error, Result, TransportType};
 use ockam_node::Context;
+use ockam_transport_core::Transport;
+
+use crate::{TcpConnectionOptions, TcpRegistry, TcpTransport, TCP};
 
 impl TcpTransport {
     /// Create a TCP transport
@@ -14,10 +22,15 @@ impl TcpTransport {
     /// # Ok(()) }
     /// ```
     pub async fn create(ctx: &Context) -> Result<Self> {
-        Ok(Self {
+        let tcp = Self {
             ctx: ctx.async_try_clone().await?,
             registry: TcpRegistry::default(),
-        })
+        };
+        // make the TCP transport available in the list of supported transports for
+        // later address resolution when socket addresses will need to be instantiated as TCP
+        // worker addresses
+        ctx.register_transport(Arc::new(tcp.async_try_clone().await?));
+        Ok(tcp)
     }
 }
 
@@ -29,5 +42,94 @@ impl TcpTransport {
     /// Registry of all active connections
     pub fn registry(&self) -> &TcpRegistry {
         &self.registry
+    }
+}
+
+#[async_trait]
+impl Transport for TcpTransport {
+    fn transport_type(&self) -> TransportType {
+        TCP
+    }
+
+    async fn resolve_address(
+        &self,
+        flow_controls: &FlowControls,
+        address: Address,
+    ) -> Result<Address> {
+        if address.transport_type() == TCP {
+            let options = if SocketAddr::from_str(address.address())
+                .map(|socket_addr| socket_addr.ip().is_loopback())
+                .is_ok()
+            {
+                // TODO: Enable FlowControl for loopback addresses as well
+                TcpConnectionOptions::insecure()
+            } else {
+                let id = flow_controls.generate_id();
+                TcpConnectionOptions::as_producer(flow_controls, &id)
+            };
+            Ok(self.connect(address.address().to_string(), options).await?)
+        } else {
+            Err(Error::new(
+                Origin::Transport,
+                Kind::NotFound,
+                format!(
+                    "this address can not be resolved by a TCP transport {}",
+                    address
+                ),
+            ))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ockam_transport_core::TransportError;
+    use std::net::TcpListener;
+
+    #[ockam_macros::test]
+    async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
+        let tcp = TcpTransport::create(ctx).await?;
+        let tcp_address = "127.0.0.1:0";
+        let initial_workers = ctx.list_workers().await?;
+        let listener = TcpListener::bind(tcp_address).map_err(TransportError::from)?;
+        let local_address = listener.local_addr().unwrap().to_string();
+
+        let resolved = tcp
+            .resolve_address(
+                &FlowControls::default(),
+                Address::new(TCP, local_address.clone()),
+            )
+            .await?;
+
+        // there are 2 additional workers
+        let mut additional_workers = ctx.list_workers().await?;
+        additional_workers.retain(|w| !initial_workers.contains(w));
+        assert_eq!(additional_workers.len(), 2);
+
+        // the TCP address is replaced with the TCP sender worker address
+        assert!(additional_workers.contains(&resolved));
+
+        // trying to resolve the address a second time should still work
+        let _route = tcp
+            .resolve_address(&FlowControls::default(), Address::new(TCP, local_address))
+            .await?;
+
+        ctx.stop().await
+    }
+
+    #[ockam_macros::test]
+    async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
+        let tcp = TcpTransport::create(ctx).await?;
+        let result = tcp
+            .resolve_address(
+                &FlowControls::default(),
+                Address::new(TCP, "www.google.com:80"),
+            )
+            .await
+            .is_ok();
+
+        assert!(result);
+        ctx.stop().await
     }
 }

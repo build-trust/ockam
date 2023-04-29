@@ -11,7 +11,7 @@ use termimad::{minimad::TextTemplate, MadSkin};
 use crate::{
     docs,
     util::{
-        api::{CloudOpts, ProjectOpts},
+        api::{CloudOpts, TrustContextOpts},
         node_rpc,
         orchestrator_api::OrchestratorApiBuilder,
     },
@@ -41,16 +41,21 @@ ${token
 pub struct ListCommand;
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts, cloud_opts: CloudOpts, project_opts: ProjectOpts) {
-        node_rpc(run_impl, (options, cloud_opts, project_opts));
+    pub fn run(
+        self,
+        options: CommandGlobalOpts,
+        cloud_opts: CloudOpts,
+        trust_opts: TrustContextOpts,
+    ) {
+        node_rpc(run_impl, (options, cloud_opts, trust_opts));
     }
 }
 
 async fn run_impl(
     ctx: Context,
-    (opts, cloud_opts, project_opts): (CommandGlobalOpts, CloudOpts, ProjectOpts),
+    (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustContextOpts),
 ) -> crate::Result<()> {
-    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &project_opts)
+    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
         .as_identity(cloud_opts.identity.clone())
         .with_new_embbeded_node()
         .await?

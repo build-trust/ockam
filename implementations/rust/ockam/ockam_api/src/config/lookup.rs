@@ -2,11 +2,10 @@ use crate::cloud::project::{OktaAuth0, Project};
 use crate::error::ApiError;
 use anyhow::Context as _;
 use bytes::Bytes;
+use ockam::identity::{identities, IdentityIdentifier};
 use ockam_core::compat::collections::VecDeque;
 use ockam_core::{CowStr, Result};
-use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -200,12 +199,14 @@ pub struct SpaceLookup {
 }
 
 /// Represents a remote Ockam project lookup
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProjectLookup {
     /// How to reach the node hosting this project
     pub node_route: Option<MultiAddr>,
     /// Identifier of this project
     pub id: String,
+    /// Name of this project within
+    pub name: String,
     /// Identifier of the IDENTITY of the project (for secure-channel)
     pub identity_id: Option<IdentityIdentifier>,
     /// Project authority information.
@@ -239,6 +240,7 @@ impl ProjectLookup {
         Ok(ProjectLookup {
             node_route: Some(node_route),
             id: project.id.to_string(),
+            name: project.name.to_string(),
             identity_id: Some(pid.clone()),
             authority,
             okta,
@@ -246,7 +248,7 @@ impl ProjectLookup {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct ProjectAuthority {
     id: IdentityIdentifier,
     address: MultiAddr,
@@ -273,8 +275,11 @@ impl ProjectAuthority {
                 .ok_or_else(|| ApiError::generic("Identity is not set"))?;
             let a =
                 hex::decode(&**a).map_err(|_| ApiError::generic("Invalid project authority"))?;
-            let p = PublicIdentity::import(&a, Vault::create()).await?;
-            Ok(Some(ProjectAuthority::new(p.identifier().clone(), rte, a)))
+            let p = identities()
+                .identities_creation()
+                .import_identity(&a)
+                .await?;
+            Ok(Some(ProjectAuthority::new(p.identifier(), rte, a)))
         } else {
             Ok(None)
         }

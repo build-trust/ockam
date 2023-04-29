@@ -3,11 +3,12 @@ use std::time::Duration;
 use minicbor::{Decode, Encode};
 
 use crate::nodes::registry::SecureChannelInfo;
+use ockam::identity::IdentityIdentifier;
 use ockam_core::compat::borrow::Cow;
+use ockam_core::flow_control::FlowControlId;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{route, Address, CowStr, Result};
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use serde::Serialize;
 
@@ -64,27 +65,34 @@ impl<'a> CreateSecureChannelRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateSecureChannelResponse<'a> {
+pub struct CreateSecureChannelResponse<'a, 'b> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6056513>,
     #[b(1)] pub addr: CowStr<'a>,
+    #[b(2)] pub flow_control_id: CowStr<'b>
 }
 
-impl<'a> CreateSecureChannelResponse<'a> {
-    pub fn new(addr: &Address) -> Self {
+impl<'a, 'b> CreateSecureChannelResponse<'a, 'b> {
+    pub fn new(addr: &Address, flow_control_id: &FlowControlId) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.to_string().into(),
+            flow_control_id: flow_control_id.to_string().into(),
         }
     }
 
-    pub fn to_owned<'r>(&self) -> CreateSecureChannelResponse<'r> {
+    pub fn to_owned<'r>(&self) -> CreateSecureChannelResponse<'r, 'r> {
         CreateSecureChannelResponse {
             #[cfg(feature = "tag")]
             tag: self.tag.to_owned(),
             addr: self.addr.to_owned(),
+            flow_control_id: self.flow_control_id.to_owned(),
         }
+    }
+
+    pub fn flow_control_id(&self) -> FlowControlId {
+        FlowControlId::new(self.flow_control_id.as_ref())
     }
 
     pub fn addr(&self) -> Result<MultiAddr> {

@@ -1,5 +1,5 @@
-use crate::node::default_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
+use crate::node::{default_node_name, node_name_parser};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
@@ -15,7 +15,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 )]
 pub struct DeleteCommand {
     /// Name of the node.
-    #[arg(default_value_t = default_node_name(), group = "nodes")]
+    #[arg(default_value_t = default_node_name(), value_parser = node_name_parser, group = "nodes")]
     node_name: String,
 
     /// Terminate all node processes and delete all node configurations
@@ -41,15 +41,15 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
         delete_all_nodes(opts, cmd.force)?;
     } else {
         delete_node(&opts, &cmd.node_name, cmd.force)?;
-        opts.shell
+        opts.terminal
             .stdout()
             .plain(format!(
-                "{}Node with name '{}' has been deleted.",
+                "{} Node with name '{}' has been deleted.",
                 "✔︎".light_green(),
                 &cmd.node_name
             ))
             .machine(&cmd.node_name)
-            .json(&serde_json::json!({ "node": { "name": &cmd.node_name } }))
+            .json(serde_json::json!({ "node": { "name": &cmd.node_name } }))
             .write_line()?;
     }
     Ok(())

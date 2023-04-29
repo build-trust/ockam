@@ -1,18 +1,24 @@
-use core::any::Any;
 use core::fmt;
 use core::future::Future;
 use core::pin::Pin;
+use std::time::Duration;
+
 use minicbor::bytes::ByteArray;
 use minicbor::{Decode, Encode};
-use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::rand;
-use ockam_core::Error;
-use ockam_multiaddr::MultiAddr;
-use std::sync::{Arc, Mutex};
 use tracing as log;
 
-pub type Replacement = Pin<Box<dyn Future<Output = Result<MultiAddr, Error>> + Send>>;
-pub type Replacer = Box<dyn FnMut(MultiAddr) -> Replacement + Send>;
+use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::rand;
+use ockam_core::{Error, Route};
+
+//most sessions replacer are dependent on the node manager, if many session
+//fails concurrently, which is the common scenario we need extra time
+//to account for the lock contention
+pub const MAX_RECOVERY_TIME: Duration = Duration::from_secs(30);
+pub const MAX_CONNECT_TIME: Duration = Duration::from_secs(5);
+
+pub type Replacement = Pin<Box<dyn Future<Output = Result<Route, Error>> + Send>>;
+pub type Replacer = Box<dyn FnMut(Route) -> Replacement + Send>;
 
 #[derive(Debug)]
 pub struct Sessions {
@@ -21,15 +27,11 @@ pub struct Sessions {
 
 pub struct Session {
     key: Key,
-    addr: MultiAddr,
-    data: Data,
+    ping_route: Route,
     status: Status,
     replace: Replacer,
     pings: Vec<Ping>,
 }
-
-#[derive(Debug, Clone)]
-pub struct Data(Arc<Mutex<HashMap<&'static str, Box<dyn Any + Send>>>>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
@@ -41,7 +43,7 @@ impl fmt::Debug for Session {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Session")
             .field("key", &self.key)
-            .field("addr", &self.addr)
+            .field("ping_route", &self.ping_route)
             .field("status", &self.status)
             .field("pings", &self.pings)
             .finish()
@@ -60,7 +62,7 @@ impl Sessions {
         log::debug! {
             target: "ockam_api::session",
             key = %k,
-            addr = %s.ping_address(),
+            addr = %s.ping_route(),
             "session added"
         }
         self.map.insert(k, s);
@@ -87,11 +89,10 @@ impl Sessions {
 }
 
 impl Session {
-    pub fn new(addr: MultiAddr) -> Self {
+    pub fn new(ping_route: Route) -> Self {
         Self {
             key: Key::new(),
-            addr,
-            data: Data(Arc::new(Mutex::new(HashMap::new()))),
+            ping_route,
             status: Status::Up,
             replace: Box::new(move |r| Box::pin(async move { Ok(r) })),
             pings: Vec::new(),
@@ -102,12 +103,12 @@ impl Session {
         self.key
     }
 
-    pub fn ping_address(&self) -> &MultiAddr {
-        &self.addr
+    pub fn ping_route(&self) -> &Route {
+        &self.ping_route
     }
 
-    pub fn set_ping_address(&mut self, a: MultiAddr) {
-        self.addr = a
+    pub fn set_ping_address(&mut self, ping_route: Route) {
+        self.ping_route = ping_route;
     }
 
     pub fn status(&self) -> Status {
@@ -118,16 +119,12 @@ impl Session {
         self.status = s
     }
 
-    pub fn replacement(&mut self, a: MultiAddr) -> Replacement {
-        (self.replace)(a)
+    pub fn replacement(&mut self, ping_route: Route) -> Replacement {
+        (self.replace)(ping_route)
     }
 
     pub fn set_replacer(&mut self, f: Replacer) {
         self.replace = f
-    }
-
-    pub fn data(&self) -> Data {
-        self.data.clone()
     }
 
     pub fn pings(&self) -> &[Ping] {
@@ -140,21 +137,6 @@ impl Session {
 
     pub fn clear_pings(&mut self) {
         self.pings.clear()
-    }
-}
-
-impl Data {
-    pub fn put<T: Send + 'static>(&self, key: &'static str, data: T) {
-        self.0.lock().unwrap().insert(key, Box::new(data));
-    }
-
-    pub fn get<T: Clone + 'static>(&self, key: &str) -> Option<T> {
-        self.0
-            .lock()
-            .unwrap()
-            .get(key)
-            .and_then(|data| data.downcast_ref())
-            .cloned()
     }
 }
 

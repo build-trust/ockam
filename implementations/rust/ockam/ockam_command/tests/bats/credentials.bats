@@ -17,11 +17,11 @@ teardown() {
 @test "credential - issue, verify, store, show and list" {
   run "$OCKAM" identity create i1
   assert_success
-  idt1=$($OCKAM identity show i1)
+  idt1=$($OCKAM identity show i1 --full --encoding hex)
 
   run "$OCKAM" identity create i2
   assert_success
-  idt2=$($OCKAM identity show i2)
+  idt2=$($OCKAM identity show i2 --full --encoding hex)
 
   # No "run" here since it won't redirect the output to a file if we do so.
   "$OCKAM" credential issue --as i1 --for "$idt2" --attribute application="Smart Factory" --attribute city="New York" --encoding hex >"$OCKAM_HOME/credential"
@@ -37,10 +37,10 @@ teardown() {
   run "$OCKAM" credential show smart_nyc_cred
   assert_success
   assert_output --partial "Credential: smart_nyc_cred"
-  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\"}"
+  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\""
 
   run "$OCKAM" credential list
   assert_success
   assert_output --partial "Credential: smart_nyc_cred"
-  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\"}"
+  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\""
 }

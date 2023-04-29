@@ -16,6 +16,14 @@ Linux:
 npm install -g bats bats-support bats-assert
 ```
 
+### How to format the tests scripts
+
+We use the `shfmt` tool, which can be download from https://github.com/mvdan/sh.
+
+```bash
+shfmt -w ./implementations/rust/ockam/ockam_command/tests/bats/
+```
+
 ### Bats tests can also be run using our Builder Docker image
 
 docker run --rm -it -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ghcr.io/build-trust/ockam-builder:latest bash

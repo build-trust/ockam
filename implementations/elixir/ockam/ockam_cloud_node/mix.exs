@@ -52,7 +52,6 @@ defmodule Ockam.CloudNode.MixProject do
       {:ockam_kafka, path: "../ockam_kafka"},
       {:telemetry, "~> 1.0", override: true},
       {:telemetry_poller, "~> 1.0"},
-      {:telemetry_influxdb, "~> 0.2.0"},
       {:telemetry_metrics, "~> 0.6.1"},
       {:telemetry_metrics_prometheus, "~> 1.1.0"},
       # Needed to avoid conflic on ranch version used by cowboy (telemetry_metrics_prometheus dep)
@@ -81,7 +80,6 @@ defmodule Ockam.CloudNode.MixProject do
   defp aliases do
     [
       docs: "docs --output _build/docs --formatter html",
-      run: "run --no-halt",
       "lint.format": "format --check-formatted",
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",

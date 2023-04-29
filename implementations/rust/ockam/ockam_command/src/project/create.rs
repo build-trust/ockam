@@ -16,11 +16,11 @@ use crate::{space, CommandGlobalOpts};
 /// Create projects
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
-    /// Name of the space the project belongs to.
+    /// Name of the Space the project belongs to.
     #[arg(display_order = 1001)]
     pub space_name: String,
 
-    /// Name of the project.
+    /// Name of the project - must be unique within parent Space
     #[arg(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_project_name)]
     pub project_name: String,
 
@@ -63,6 +63,9 @@ async fn run_impl(
     let project =
         check_project_readiness(ctx, &opts, &cmd.cloud_opts, &node_name, None, project).await?;
     opts.state.projects.create(&project.name, project.clone())?;
+    opts.state
+        .trust_contexts
+        .create(&project.name, project.clone().try_into()?)?;
     rpc.print_response(project)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

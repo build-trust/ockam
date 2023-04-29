@@ -20,13 +20,13 @@ impl ListCommand {
 }
 
 async fn run_impl(
-    ctx: Context,
+    _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
     let cred_states = opts.state.credentials.list()?;
 
     for cred_state in cred_states {
-        display_credential(&opts, &ctx, &cred_state.name()?, &cmd.vault).await?;
+        display_credential(&opts, &cred_state.name()?, &cmd.vault).await?;
     }
 
     Ok(())

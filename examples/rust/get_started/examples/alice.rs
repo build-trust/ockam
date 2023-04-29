@@ -1,17 +1,17 @@
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
+use ockam::identity::SecureChannelOptions;
+use ockam::{node, route, Context, Result, TcpConnectionOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 use std::io;
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a Vault to safely store secret keys for Alice.
-    let vault = Vault::create();
+async fn main(ctx: Context) -> Result<()> {
+    // Create a node with default implementations
+    let mut node = node(ctx);
+    // Initialize the TCP Transport
+    let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Alice.
-    let alice = Identity::create(&ctx, vault).await?;
+    let alice = node.create_identity().await?;
 
     // This program expects that Bob has setup a forwarding address,
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.
@@ -25,14 +25,14 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Combine the tcp address of the node and the forwarding_address to get a route
     // to Bob's secure channel listener.
     let node_in_hub = tcp
-        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
     let route_to_bob_listener = route![node_in_hub, forwarding_address, "listener"];
 
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
-    let channel = alice
-        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy)
+    let channel = node
+        .create_secure_channel(&alice, route_to_bob_listener, SecureChannelOptions::new())
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
@@ -45,10 +45,11 @@ async fn main(mut ctx: Context) -> Result<()> {
         let message = message.trim();
 
         // Send the provided message, through the channel, to Bob's echoer.
-        ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
+        node.send(route![channel.clone(), "echoer"], message.to_string())
+            .await?;
 
         // Wait to receive an echo and print it.
-        let reply = ctx.receive::<String>().await?;
+        let reply = node.receive::<String>().await?;
         println!("Alice received an echo: {}\n", reply); // should print "Hello Ockam!"
     }
 

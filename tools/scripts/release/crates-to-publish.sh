@@ -26,6 +26,12 @@ for crate in implementations/rust/ockam/*; do
     continue
   fi
 
+  # Ensure that folder contains rust crate.
+  if [[ ! -f "$crate/Cargo.toml" ]]; then
+    echo "$crate is not a crate, skipping"
+    continue
+  fi
+
   is_publish=$(tomlq package.publish -f "$crate"/Cargo.toml)
   if [[ $is_publish == false ]]; then
     echo "$crate indicate as not-publish"

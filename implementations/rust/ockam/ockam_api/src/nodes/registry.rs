@@ -1,8 +1,9 @@
 use crate::nodes::service::Alias;
+use ockam::identity::IdentityIdentifier;
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Route};
-use ockam_identity::IdentityIdentifier;
 
 #[derive(Default)]
 pub(crate) struct SecureChannelRegistry {
@@ -22,10 +23,15 @@ impl SecureChannelRegistry {
         &mut self,
         addr: Address,
         route: Route,
+        sc_flow_control_id: FlowControlId,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) {
-        self.channels
-            .push(SecureChannelInfo::new(route, addr, authorized_identifiers))
+        self.channels.push(SecureChannelInfo::new(
+            route,
+            addr,
+            sc_flow_control_id,
+            authorized_identifiers,
+        ))
     }
 
     pub fn remove_by_addr(&mut self, addr: &Address) {
@@ -43,6 +49,7 @@ pub struct SecureChannelInfo {
     route: Route,
     // Local address of the created channel
     addr: Address,
+    flow_control_id: FlowControlId,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 }
 
@@ -50,11 +57,13 @@ impl SecureChannelInfo {
     pub fn new(
         route: Route,
         addr: Address,
+        flow_control_id: FlowControlId,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) -> Self {
         Self {
             addr,
             route,
+            flow_control_id,
             authorized_identifiers,
         }
     }
@@ -67,13 +76,32 @@ impl SecureChannelInfo {
         &self.addr
     }
 
+    pub fn flow_control_id(&self) -> &FlowControlId {
+        &self.flow_control_id
+    }
+
     pub fn authorized_identifiers(&self) -> Option<&Vec<IdentityIdentifier>> {
         self.authorized_identifiers.as_ref()
     }
 }
 
-#[derive(Default)]
-pub(crate) struct SecureChannelListenerInfo {}
+#[derive(Clone)]
+pub(crate) struct SecureChannelListenerInfo {
+    _flow_control_id: FlowControlId,
+}
+
+impl SecureChannelListenerInfo {
+    pub fn new(flow_control_id: FlowControlId) -> Self {
+        Self {
+            _flow_control_id: flow_control_id,
+        }
+    }
+
+    #[allow(unused)]
+    pub fn flow_control_id(&self) -> &FlowControlId {
+        &self._flow_control_id
+    }
+}
 
 #[derive(Default)]
 pub(crate) struct VaultServiceInfo {}

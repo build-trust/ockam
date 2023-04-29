@@ -18,6 +18,12 @@ on:
       - "gradlew.bat"
 
 jobs:
+  lint-cargo-toml:
+    name: Rust - lint-cargo-toml
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - lint-cargo-toml"'
+
   lint_cargo_fmt_check:
     name: Rust - lint_cargo_fmt_check
     runs-on: ubuntu-20.04

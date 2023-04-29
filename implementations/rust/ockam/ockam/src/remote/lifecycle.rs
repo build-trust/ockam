@@ -1,4 +1,4 @@
-use crate::remote::{Addresses, RemoteForwarder, RemoteForwarderInfo, RemoteForwarderTrustOptions};
+use crate::remote::{Addresses, RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use crate::Context;
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
@@ -86,7 +86,7 @@ impl RemoteForwarder {
         ctx: &Context,
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
-        trust_options: RemoteForwarderTrustOptions,
+        options: RemoteForwarderOptions,
     ) -> Result<RemoteForwarderInfo> {
         let addresses = Addresses::generate(ForwardType::Static);
 
@@ -103,8 +103,8 @@ impl RemoteForwarder {
         let heartbeat = DelayedEvent::create(ctx, addresses.heartbeat.clone(), vec![]).await?;
         let heartbeat_source_address = heartbeat.address();
 
-        trust_options.setup_session(&addresses);
-        let outgoing_access_control = trust_options.create_access_control();
+        let flow_control_id = options.setup_flow_control(&addresses, registration_route.next()?);
+        let outgoing_access_control = options.create_access_control(flow_control_id);
 
         let forwarder = Self::new(
             addresses.clone(),
@@ -136,7 +136,7 @@ impl RemoteForwarder {
     pub async fn create(
         ctx: &Context,
         hub_route: impl Into<Route>,
-        trust_options: RemoteForwarderTrustOptions,
+        options: RemoteForwarderOptions,
     ) -> Result<RemoteForwarderInfo> {
         let addresses = Addresses::generate(ForwardType::Ephemeral);
 
@@ -150,8 +150,8 @@ impl RemoteForwarder {
 
         let registration_route = route![hub_route, "forwarding_service"];
 
-        trust_options.setup_session(&addresses);
-        let outgoing_access_control = trust_options.create_access_control();
+        let flow_control_id = options.setup_flow_control(&addresses, registration_route.next()?);
+        let outgoing_access_control = options.create_access_control(flow_control_id);
 
         let forwarder = Self::new(
             addresses.clone(),
@@ -183,7 +183,7 @@ impl RemoteForwarder {
         ctx: &Context,
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
-        trust_options: RemoteForwarderTrustOptions,
+        options: RemoteForwarderOptions,
     ) -> Result<RemoteForwarderInfo> {
         let addresses = Addresses::generate(ForwardType::StaticWithoutHeartbeats);
 
@@ -197,8 +197,8 @@ impl RemoteForwarder {
 
         let registration_route = route![hub_route.into(), "forwarding_service"];
 
-        trust_options.setup_session(&addresses);
-        let outgoing_access_control = trust_options.create_access_control();
+        let flow_control_id = options.setup_flow_control(&addresses, registration_route.next()?);
+        let outgoing_access_control = options.create_access_control(flow_control_id);
 
         let forwarder = Self::new(
             addresses.clone(),

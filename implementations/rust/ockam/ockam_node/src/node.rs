@@ -1,6 +1,7 @@
-use crate::{debugger, Context, Executor};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
+
+use crate::{debugger, Context, Executor};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -58,6 +59,7 @@ impl NodeBuilder {
                 vec![],
             ),
             None,
+            Default::default(),
         );
 
         debugger::log_inherit_context("NODE", &ctx, &ctx);

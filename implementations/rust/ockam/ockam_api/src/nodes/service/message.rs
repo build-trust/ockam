@@ -46,9 +46,9 @@ mod node {
     use crate::nodes::connection::Connection;
     use ockam_core::api::{Request, Response, Status};
     use ockam_core::{self, Result};
-    use ockam_node::Context;
+    use ockam_node::{Context, MessageSendReceiveOptions};
 
-    use crate::nodes::NodeManagerWorker;
+    use crate::nodes::{NodeManager, NodeManagerWorker};
 
     const TARGET: &str = "ockam_api::message";
 
@@ -64,18 +64,28 @@ mod node {
             let msg = req_body.message.to_vec();
             let msg_length = msg.len();
 
-            let mut node_manager = self.node_manager.write().await;
-            let connection = Connection::new(ctx, &multiaddr);
-            let (sc, suffix) = node_manager.connect(connection).await?;
-            let full = sc.try_with(&suffix)?;
-            let route =
-                local_multiaddr_to_route(&full).ok_or(ApiError::generic("Invalid route"))?;
+            let flow_controls = self.node_manager.read().await.flow_controls.clone();
 
-            trace!(target: TARGET, route = %req_body.route, msg_l = %msg_length, "sending message");
+            let connection = Connection::new(ctx, &multiaddr, &flow_controls);
+            let connection_instance =
+                NodeManager::connect(self.node_manager.clone(), connection).await?;
 
-            let res: Result<Vec<u8>> = ctx.send_and_receive(route, msg).await;
+            let route = local_multiaddr_to_route(&connection_instance.normalized_addr)
+                .ok_or_else(|| ApiError::generic("Invalid route"))?;
+
+            trace!(target: TARGET, route = %route, msg_l = %msg_length, "sending message");
+
+            let res = ctx
+                .send_and_receive_extended::<Vec<u8>>(
+                    route,
+                    msg,
+                    MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
+                )
+                .await;
             match res {
-                Ok(r) => Ok(Response::builder(req.id(), Status::Ok).body(r).to_vec()?),
+                Ok(r) => Ok(Response::builder(req.id(), Status::Ok)
+                    .body(r.body())
+                    .to_vec()?),
                 Err(err) => {
                     error!(target: TARGET, ?err, "Failed to send message");
                     Ok(Response::builder(req.id(), Status::InternalServerError)

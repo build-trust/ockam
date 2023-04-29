@@ -35,15 +35,15 @@ async fn run_impl(
     rpc.request(req).await?;
     rpc.is_ok()?;
 
-    opts.shell
+    opts.terminal
         .stdout()
         .plain(format!(
-            "{}TCP listener with id '{}' has been deleted.",
+            "{} TCP listener with id '{}' has been deleted.",
             "✔︎".light_green(),
             &cmd.id
         ))
         .machine(&cmd.id)
-        .json(&serde_json::json!({ "tcp-listener": { "id": &cmd.id } }))
+        .json(serde_json::json!({ "tcp-listener": { "id": &cmd.id } }))
         .write_line()?;
 
     Ok(())
