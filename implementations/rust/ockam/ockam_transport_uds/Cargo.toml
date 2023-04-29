@@ -34,4 +34,4 @@ ockam_transport_core = { path = "../ockam_transport_core", version = "^0.52.0" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 socket2 = "0.5.2"
 tokio = { version = "1.28", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
-tracing = "0.1.38"
+tracing = "0.1"
