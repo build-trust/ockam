@@ -7,11 +7,15 @@ use ockam_api::nodes::models::workers::WorkerList;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
-const HELP_DETAIL: &str = "";
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
-/// List workers
+/// List workers on a node
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(HELP_DETAIL))]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ListCommand {
     /// Node at which to lookup workers (required)
     #[arg(value_name = "NODE", long, default_value_t = default_node_name(), value_parser = node_name_parser, display_order = 800)]
