@@ -295,7 +295,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
             ))
         } else {
             let secure_channel_response: CreateSecureChannelResponse = decoder.decode()?;
-            Ok(Address::from(secure_channel_response.addr.as_ref()))
+            Ok(secure_channel_response.addr)
         }
     }
 

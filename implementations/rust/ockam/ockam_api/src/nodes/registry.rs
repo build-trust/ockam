@@ -87,19 +87,24 @@ impl SecureChannelInfo {
 
 #[derive(Clone)]
 pub(crate) struct SecureChannelListenerInfo {
-    _flow_control_id: FlowControlId,
+    addr: Address,
+    flow_control_id: FlowControlId,
 }
 
 impl SecureChannelListenerInfo {
-    pub fn new(flow_control_id: FlowControlId) -> Self {
+    pub fn new(addr: Address, flow_control_id: FlowControlId) -> Self {
         Self {
-            _flow_control_id: flow_control_id,
+            addr,
+            flow_control_id,
         }
     }
 
-    #[allow(unused)]
+    pub fn addr(&self) -> &Address {
+        &self.addr
+    }
+
     pub fn flow_control_id(&self) -> &FlowControlId {
-        &self._flow_control_id
+        &self.flow_control_id
     }
 }
 
