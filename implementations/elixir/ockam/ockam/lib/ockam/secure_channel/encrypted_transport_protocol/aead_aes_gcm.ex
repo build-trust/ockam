@@ -10,7 +10,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
     alias __MODULE__
     defstruct [:vault, :k, :nonce, :rekey_each]
 
-    def new(vault, k, nonce), do: new(vault, k, nonce, 10)
+    def new(vault, k, nonce), do: new(vault, k, nonce, 32)
 
     def new(vault, k, nonce, rekey_each) do
       %Encryptor{vault: vault, k: k, nonce: nonce, rekey_each: rekey_each}
@@ -46,7 +46,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
     alias __MODULE__
     defstruct [:vault, :k, :expected_nonce, :rekey_each, :prev_k, :seen, :prev_seen]
 
-    def new(vault, k, nonce), do: new(vault, k, nonce, 10)
+    def new(vault, k, nonce), do: new(vault, k, nonce, 32)
 
     def new(vault, k, nonce, rekey_each) do
       %Decryptor{
