@@ -41,6 +41,7 @@ use ockam_api::{
     },
 };
 use ockam_core::api::{RequestBuilder, Response, Status};
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, AllowAll, LOCAL};
 
 use super::show::is_node_up;
@@ -252,7 +253,7 @@ async fn run_foreground_node(
     let bind = &cmd.tcp_listener_address;
 
     let options = TcpListenerOptions::new();
-    let flow_control_id = options.spawner_flow_control_id();
+    let tcp_listener_flow_control_id = options.spawner_flow_control_id();
     let (socket_addr, listener_addr) = tcp.listen(&bind, options).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
@@ -286,7 +287,7 @@ async fn run_foreground_node(
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listener_addr,
-                flow_control_id,
+                flow_control_id: tcp_listener_flow_control_id.clone(),
             },
             tcp.async_try_clone().await?,
         ),
@@ -295,6 +296,11 @@ async fn run_foreground_node(
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
+    ctx.flow_controls().add_consumer(
+        NODEMANAGER_ADDR,
+        &tcp_listener_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
         .await?;
 

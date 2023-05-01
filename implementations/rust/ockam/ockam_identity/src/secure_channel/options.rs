@@ -1,6 +1,7 @@
 use crate::secure_channel::Addresses;
 use crate::{TrustEveryonePolicy, TrustPolicy};
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{
     FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
 };
@@ -90,7 +91,7 @@ pub(crate) struct CiphertextFlowControl {
 
 /// Trust options for a Secure Channel Listener
 pub struct SecureChannelListenerOptions {
-    pub(crate) consumer_flow_control: Option<CiphertextFlowControl>,
+    pub(crate) consumer_flow_control: Vec<CiphertextFlowControl>,
     pub(crate) spawner_flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
 }
@@ -102,7 +103,7 @@ impl SecureChannelListenerOptions {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            consumer_flow_control: None,
+            consumer_flow_control: vec![],
             spawner_flow_control_id: FlowControls::generate_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
         }
@@ -116,7 +117,7 @@ impl SecureChannelListenerOptions {
         flow_control_id: &FlowControlId,
         flow_control_policy: FlowControlPolicy,
     ) -> Self {
-        self.consumer_flow_control = Some(CiphertextFlowControl {
+        self.consumer_flow_control.push(CiphertextFlowControl {
             id: flow_control_id.clone(),
             policy: flow_control_policy,
         });
@@ -142,7 +143,7 @@ impl SecureChannelListenerOptions {
         flow_controls: &FlowControls,
         address: &Address,
     ) {
-        if let Some(consumer_flow_control) = &self.consumer_flow_control {
+        for consumer_flow_control in &self.consumer_flow_control {
             flow_controls.add_consumer(
                 address.clone(),
                 &consumer_flow_control.id,

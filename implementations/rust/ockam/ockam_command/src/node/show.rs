@@ -108,6 +108,7 @@ fn print_node_info(
             println!("      Mode: {}", e.tm);
             println!("      Socket: {}", e.socket_addr);
             println!("      Worker: {}", e.worker_addr);
+            println!("      FlowControlId: {}", e.flow_control_id);
         }
     }
 

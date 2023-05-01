@@ -1,5 +1,6 @@
 use minicbor::{Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{CowStr, Error, Result};
 use std::fmt::{self, Display};
 use std::net::SocketAddrV4;
@@ -154,11 +155,13 @@ pub struct TransportStatus<'a> {
     #[b(4)] pub socket_addr: CowStr<'a>,
     /// Corresponding worker address
     #[b(5)] pub worker_addr: CowStr<'a>,
+    /// Corresponding flow control id
+    #[n(6)] pub flow_control_id: FlowControlId,
     /// Transport ID inside the node manager
     ///
     /// We use this as a kind of URI to be able to address a transport
     /// by a unique value for specific updates and deletion events.
-    #[b(6)] pub tid: CowStr<'a>,
+    #[b(7)] pub tid: CowStr<'a>,
 }
 
 impl<'a> TransportStatus<'a> {
@@ -170,6 +173,7 @@ impl<'a> TransportStatus<'a> {
             tm: api_transport.tm,
             socket_addr: CowStr::from(api_transport.socket_address.to_string()),
             worker_addr: CowStr::from(api_transport.worker_address.to_string()),
+            flow_control_id: api_transport.flow_control_id,
             tid: tid.into(),
         }
     }
