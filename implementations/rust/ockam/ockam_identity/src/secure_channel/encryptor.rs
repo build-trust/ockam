@@ -14,7 +14,7 @@ pub(crate) struct Encryptor {
 // To simplify the implementation we use the same constant for the size of the message
 // window we accept with the message period used to rekey.
 // This means we only need to keep the current key and the previous one.
-pub(crate) const KEY_RENEWAL_INTERVAL: u64 = 10;
+pub(crate) const KEY_RENEWAL_INTERVAL: u64 = 32;
 
 impl Encryptor {
     /// We use u64 nonce since it's convenient to work with it (e.g. increment)
