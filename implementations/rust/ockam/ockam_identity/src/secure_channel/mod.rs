@@ -46,7 +46,7 @@ mod tests {
             SecretPersistence::Ephemeral,
             ockam_core::vault::AES256_SECRET_LENGTH_U32,
         );
-        let key_on_v1 = vault1.secret_generate(secret_attrs.clone()).await.unwrap();
+        let key_on_v1 = vault1.secret_generate(secret_attrs).await.unwrap();
         let secret = vault1.secret_export(&key_on_v1).await.unwrap();
 
         let key_on_v2 = vault2.secret_import(secret, secret_attrs).await.unwrap();
@@ -76,7 +76,7 @@ mod tests {
             SecretPersistence::Ephemeral,
             ockam_core::vault::AES256_SECRET_LENGTH_U32,
         );
-        let key_on_v1 = vault1.secret_generate(secret_attrs.clone()).await.unwrap();
+        let key_on_v1 = vault1.secret_generate(secret_attrs).await.unwrap();
         let secret = vault1.secret_export(&key_on_v1).await.unwrap();
 
         let key_on_v2 = vault2.secret_import(secret, secret_attrs).await.unwrap();
@@ -105,7 +105,7 @@ mod tests {
             SecretPersistence::Ephemeral,
             ockam_core::vault::AES256_SECRET_LENGTH_U32,
         );
-        let key_on_v1 = vault1.secret_generate(secret_attrs.clone()).await.unwrap();
+        let key_on_v1 = vault1.secret_generate(secret_attrs).await.unwrap();
         let secret = vault1.secret_export(&key_on_v1).await.unwrap();
 
         let key_on_v2 = vault2.secret_import(secret, secret_attrs).await.unwrap();
@@ -157,7 +157,7 @@ mod tests {
             SecretPersistence::Ephemeral,
             ockam_core::vault::AES256_SECRET_LENGTH_U32,
         );
-        let key_on_v1 = vault1.secret_generate(secret_attrs.clone()).await.unwrap();
+        let key_on_v1 = vault1.secret_generate(secret_attrs).await.unwrap();
         let secret = vault1.secret_export(&key_on_v1).await.unwrap();
 
         let key_on_v2 = vault2.secret_import(secret, secret_attrs).await.unwrap();
