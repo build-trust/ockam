@@ -186,7 +186,6 @@ defmodule Ockam.SecureChannel.Channel do
   defp handle_message(message, {:encrypted_transport, :ready} = state, data) do
     first_address = message |> Message.onward_route() |> List.first()
 
-    ## FIXME this shouldn't crash the channel if failing to decrypt for example,
     cond do
       first_address === data.ciphertext_address ->
         case decrypt_and_send_to_router(message, state, data) do
