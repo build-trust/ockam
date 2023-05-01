@@ -67,7 +67,7 @@ pub(super) struct ConsumerFlowControl {
 
 /// Trust Options for an Outlet
 pub struct TcpOutletOptions {
-    pub(super) consumer_flow_control: Option<ConsumerFlowControl>,
+    pub(super) consumer_flow_control: Vec<ConsumerFlowControl>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
 
@@ -75,7 +75,7 @@ impl TcpOutletOptions {
     /// Default constructor without flow control and Incoming Access Control
     pub fn new() -> Self {
         Self {
-            consumer_flow_control: None,
+            consumer_flow_control: vec![],
             incoming_access_control: Arc::new(AllowAll),
         }
     }
@@ -106,7 +106,7 @@ impl TcpOutletOptions {
         flow_control_id: &FlowControlId,
         flow_control_policy: FlowControlPolicy,
     ) -> Self {
-        self.consumer_flow_control = Some(ConsumerFlowControl {
+        self.consumer_flow_control.push(ConsumerFlowControl {
             flow_control_id: flow_control_id.clone(),
             flow_control_policy,
         });
@@ -119,7 +119,7 @@ impl TcpOutletOptions {
         flow_controls: &FlowControls,
         address: &Address,
     ) {
-        if let Some(consumer_flow_control) = &self.consumer_flow_control {
+        for consumer_flow_control in &self.consumer_flow_control {
             flow_controls.add_consumer(
                 address.clone(),
                 &consumer_flow_control.flow_control_id,

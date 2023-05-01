@@ -65,34 +65,34 @@ impl<'a> CreateSecureChannelRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateSecureChannelResponse<'a, 'b> {
+pub struct CreateSecureChannelResponse<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6056513>,
     #[b(1)] pub addr: CowStr<'a>,
-    #[b(2)] pub flow_control_id: CowStr<'b>
+    #[b(2)] pub flow_control_id: FlowControlId
 }
 
-impl<'a, 'b> CreateSecureChannelResponse<'a, 'b> {
+impl<'a> CreateSecureChannelResponse<'a> {
     pub fn new(addr: &Address, flow_control_id: &FlowControlId) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.to_string().into(),
-            flow_control_id: flow_control_id.to_string().into(),
+            flow_control_id: flow_control_id.clone(),
         }
     }
 
-    pub fn to_owned<'r>(&self) -> CreateSecureChannelResponse<'r, 'r> {
+    pub fn to_owned<'r>(&self) -> CreateSecureChannelResponse<'r> {
         CreateSecureChannelResponse {
             #[cfg(feature = "tag")]
             tag: self.tag.to_owned(),
             addr: self.addr.to_owned(),
-            flow_control_id: self.flow_control_id.to_owned(),
+            flow_control_id: self.flow_control_id.clone(),
         }
     }
 
     pub fn flow_control_id(&self) -> FlowControlId {
-        FlowControlId::new(self.flow_control_id.as_ref())
+        self.flow_control_id.clone()
     }
 
     pub fn addr(&self) -> Result<MultiAddr> {
