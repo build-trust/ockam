@@ -19,7 +19,7 @@ use ockam_identity::{AttributesEntry, IdentityIdentifier};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
-use tracing::error;
+use tracing::{debug, error};
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
@@ -96,8 +96,8 @@ async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) ->
     init_node_state(
         opts,
         &cmd.node_name,
-        cmd.vault.clone(),
-        cmd.identity.clone(),
+        cmd.vault.as_deref(),
+        cmd.identity.as_deref(),
     )
     .await?;
 
@@ -192,7 +192,6 @@ impl CreateCommand {
     /// or an explicit list of identities passed on the command line
     pub(crate) fn trusted_identities(
         &self,
-        project_identifier: &str,
         authority_identifier: &IdentityIdentifier,
     ) -> Result<PreTrustedIdentities> {
         match (
@@ -201,7 +200,7 @@ impl CreateCommand {
         ) {
             (Some(path), None) => Ok(PreTrustedIdentities::ReloadFrom(path.clone())),
             (None, Some(trusted)) => Ok(PreTrustedIdentities::Fixed(trusted.to_map(
-                project_identifier.to_string(),
+                self.project_identifier.to_string(),
                 authority_identifier,
             ))),
             _ => Err(crate::Error::new(
@@ -227,47 +226,48 @@ async fn create_background_node(
 ///   - start the node services
 async fn start_authority_node(
     ctx: Context,
-    opts: (CommandGlobalOpts, CreateCommand),
+    args: (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let (options, cmd) = opts;
-    let command = cmd.clone();
+    let (opts, cmd) = args;
 
     // Create node state, including the vault and identity if they don't exist
-    if !options.state.nodes.exists(&command.node_name) {
+    if !opts.state.nodes.exists(&cmd.node_name) {
         init_node_state(
-            &options,
-            &command.node_name,
-            cmd.vault,
-            cmd.identity.clone(),
+            &opts,
+            &cmd.node_name,
+            cmd.vault.as_deref(),
+            cmd.identity.as_deref(),
         )
         .await?;
     };
 
-    // retrieve the authority identity if it has been created before
+    // Retrieve the authority identity if it has been created before
     // otherwise create a new one
-    let identity = match cmd.identity {
-        Some(identity_name) => options
-            .state
-            .identities
-            .get(&identity_name)
-            .context("Identity not found")
-            .unwrap()
-            .config()
-            .identity(),
-        None => match options.state.identities.default().ok() {
-            Some(state) => state.config().identity(),
-            None => {
-                let cmd = identity::CreateCommand::new("authority".into(), None);
-                cmd.create_identity(options.clone()).await?
+    let identity = match &cmd.identity {
+        Some(identity_name) => {
+            debug!(name=%identity_name, "getting identity from state");
+            opts.state
+                .identities
+                .get(identity_name)
+                .context("Identity not found")?
+                .config()
+                .identity()
+        }
+        None => {
+            debug!("getting default identity from state");
+            match opts.state.identities.default() {
+                Ok(state) => state.config().identity(),
+                Err(_) => {
+                    debug!("creating default identity");
+                    let cmd = identity::CreateCommand::new("authority".into(), None);
+                    cmd.create_identity(opts.clone()).await?
+                }
             }
-        },
+        }
     };
+    debug!(identifier=%identity.identifier(), "authority identifier");
 
-    let okta_configuration = match (
-        &command.tenant_base_url,
-        &command.certificate,
-        &command.attributes,
-    ) {
+    let okta_configuration = match (&cmd.tenant_base_url, &cmd.certificate, &cmd.attributes) {
         (Some(tenant_base_url), Some(certificate), Some(attributes)) => Some(OktaConfiguration {
             address: DefaultAddress::OKTA_IDENTITY_PROVIDER.to_string(),
             tenant_base_url: tenant_base_url.clone(),
@@ -281,35 +281,35 @@ async fn start_authority_node(
     // That flag allows the node to be seen as UP when listing the nodes with the
     // the `ockam node list` command, without having to send a TCP query to open a connection
     // because this would fail if there is no intention to create a secure channel
-    let node_state = options.state.nodes.get(&command.node_name)?;
+    debug!("updating node state's setup config");
+    let node_state = opts.state.nodes.get(&cmd.node_name)?;
     node_state.set_setup(
         &node_state
             .config()
             .setup_mut()
-            .set_verbose(options.global_args.verbose)
+            .set_verbose(opts.global_args.verbose)
             .set_authority_node()
             .add_transport(CreateTransportJson::new(
                 TransportType::Tcp,
                 TransportMode::Listen,
-                command.tcp_listener_address.as_str(),
+                cmd.tcp_listener_address.as_str(),
             )?),
     )?;
 
-    let trusted_identities =
-        &command.trusted_identities(&command.project_identifier.clone(), &identity.identifier())?;
+    let trusted_identities = cmd.trusted_identities(&identity.identifier())?;
 
     let configuration = authority_node::Configuration {
         identity,
-        storage_path: options.state.identities.identities_repository_path()?,
-        vault_path: options.state.vaults.default()?.vault_file_path().clone(),
-        project_identifier: command.project_identifier.clone(),
-        trust_context_identifier: command.project_identifier,
-        tcp_listener_address: command.tcp_listener_address.clone(),
+        storage_path: opts.state.identities.identities_repository_path()?,
+        vault_path: opts.state.vaults.default()?.vault_file_path().clone(),
+        project_identifier: cmd.project_identifier.clone(),
+        trust_context_identifier: cmd.project_identifier,
+        tcp_listener_address: cmd.tcp_listener_address,
         secure_channel_listener_name: None,
         authenticator_name: None,
-        trusted_identities: trusted_identities.clone(),
-        no_direct_authentication: command.no_direct_authentication,
-        no_token_enrollment: command.no_token_enrollment,
+        trusted_identities,
+        no_direct_authentication: cmd.no_direct_authentication,
+        no_token_enrollment: cmd.no_token_enrollment,
         okta: okta_configuration,
     };
     authority_node::start_node(&ctx, &configuration).await?;

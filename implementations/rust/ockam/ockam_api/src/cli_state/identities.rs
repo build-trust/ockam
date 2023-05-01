@@ -20,9 +20,9 @@ pub struct IdentitiesState {
 }
 
 impl IdentitiesState {
-    pub fn get_or_default(&self, name: Option<String>) -> Result<IdentityState> {
+    pub fn get_or_default(&self, name: Option<&str>) -> Result<IdentityState> {
         if let Some(identity_name) = name {
-            self.get(identity_name.as_ref())
+            self.get(identity_name)
         } else {
             self.default()
         }

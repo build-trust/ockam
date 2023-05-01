@@ -29,7 +29,7 @@ use ockam_node::RpcClient;
 
 /// Authenticate with a project node
 #[derive(Clone, Debug, Args)]
-pub struct AuthCommand {
+pub struct AuthenticateCommand {
     #[arg(long = "okta", group = "authentication_method")]
     okta: bool,
 
@@ -52,7 +52,7 @@ fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
     Ok(serde_json::from_slice(&decoded)?)
 }
 
-impl AuthCommand {
+impl AuthenticateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(run_impl, (opts, self));
     }
@@ -60,7 +60,7 @@ impl AuthCommand {
 
 async fn run_impl(
     ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, AuthCommand),
+    (opts, cmd): (CommandGlobalOpts, AuthenticateCommand),
 ) -> crate::Result<()> {
     let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.trust_opts)).await?;
     let project_as_string: String;

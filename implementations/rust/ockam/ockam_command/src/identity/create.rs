@@ -42,7 +42,10 @@ impl CreateCommand {
 
     pub async fn create_identity(&self, options: CommandGlobalOpts) -> crate::Result<Identity> {
         let default_vault_created = self.vault.is_none() && options.state.vaults.default().is_err();
-        let vault_state = options.state.create_vault_state(self.vault.clone()).await?;
+        let vault_state = options
+            .state
+            .create_vault_state(self.vault.as_deref())
+            .await?;
         let mut output = String::new();
         if default_vault_created {
             output.push_str(&format!("Default vault created: {}\n", &vault_state.name()));
@@ -50,7 +53,7 @@ impl CreateCommand {
 
         let identity_state = options
             .state
-            .create_identity_state(Some(self.name.clone()), vault_state.get().await?)
+            .create_identity_state(Some(self.name.as_str()), vault_state.get().await?)
             .await?;
         let identity = identity_state.config().identity();
 

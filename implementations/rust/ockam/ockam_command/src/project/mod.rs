@@ -1,5 +1,5 @@
 mod addon;
-mod auth;
+mod authenticate;
 mod create;
 mod delete;
 mod enroll;
@@ -22,7 +22,7 @@ pub use info::InfoCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
 
-use crate::project::auth::AuthCommand;
+use crate::project::authenticate::AuthenticateCommand;
 use crate::CommandGlobalOpts;
 
 /// Manage Projects in Ockam Orchestrator
@@ -42,7 +42,7 @@ pub enum ProjectSubcommand {
     Information(InfoCommand),
     Enroll(EnrollCommand),
     Addon(AddonCommand),
-    Authenticate(AuthCommand),
+    Authenticate(AuthenticateCommand),
 }
 
 impl ProjectCommand {
