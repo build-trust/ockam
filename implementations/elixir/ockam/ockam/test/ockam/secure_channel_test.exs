@@ -57,9 +57,9 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, listener} = create_secure_channel_listener()
     {:ok, channel} = create_secure_channel(["man_in_the_middle", listener])
 
-    # Send 10 messages, only the odd ones are received and decrypted ok, the others
+    # Send 50 messages, only the odd ones are received and decrypted ok, the others
     # are lost
-    0..9
+    0..50
     |> Enum.each(fn i ->
       message = %{
         payload: :erlang.term_to_binary(i),
@@ -98,9 +98,9 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, listener} = create_secure_channel_listener()
     {:ok, channel} = create_secure_channel(["man_in_the_middle", listener])
 
-    # Send 10 messages, all received.  Duplicates ones are discarded and don't
+    # Send 50 messages, all received.  Duplicates ones are discarded and don't
     # affect the decryptor' state.
-    0..9
+    0..50
     |> Enum.each(fn i ->
       message = %{
         payload: :erlang.term_to_binary(i),
@@ -151,9 +151,9 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, listener} = create_secure_channel_listener()
     {:ok, channel} = create_secure_channel(["man_in_the_middle", listener])
 
-    # Send 10 messages, only the odd ones are received and decrypted ok, the others
+    # Send 50 messages, only the odd ones are received and decrypted ok, the others
     # are dropped because they were modified on the fly, so failed to decrypt
-    0..9
+    0..50
     |> Enum.each(fn i ->
       message = %{
         payload: :erlang.term_to_binary(i),

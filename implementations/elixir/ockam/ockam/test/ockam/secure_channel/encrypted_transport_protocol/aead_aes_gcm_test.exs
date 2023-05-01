@@ -18,7 +18,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     encryptor = Encryptor.new(encryptor_vault, ke, 0)
     decryptor = Decryptor.new(decryptor_vault, kd, 0)
 
-    Enum.reduce(0..100, {encryptor, decryptor}, fn _i, {encryptor, decryptor} ->
+    Enum.reduce(0..200, {encryptor, decryptor}, fn _i, {encryptor, decryptor} ->
       plain = :crypto.strong_rand_bytes(64)
       {:ok, ciphertext, encryptor} = Encryptor.encrypt(<<>>, plain, encryptor)
       {:ok, ^plain, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
@@ -32,14 +32,14 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     shared_k = :crypto.strong_rand_bytes(32)
     {:ok, ke} = Vault.secret_import(encryptor_vault, [type: :aes], shared_k)
     {:ok, kd} = Vault.secret_import(decryptor_vault, [type: :aes], shared_k)
-    encryptor = Encryptor.new(encryptor_vault, ke, 0, 10)
-    decryptor = Decryptor.new(decryptor_vault, kd, 0, 10)
+    encryptor = Encryptor.new(encryptor_vault, ke, 0, 32)
+    decryptor = Decryptor.new(decryptor_vault, kd, 0, 32)
 
-    Enum.reduce(0..100, {encryptor, decryptor}, fn i, {encryptor, decryptor} ->
+    Enum.reduce(0..200, {encryptor, decryptor}, fn i, {encryptor, decryptor} ->
       plain = :crypto.strong_rand_bytes(64)
       {:ok, ciphertext, encryptor} = Encryptor.encrypt(<<>>, plain, encryptor)
 
-      if rem(i, 8) == 0 do
+      if rem(i, 18) == 0 do
         {:ok, ^plain, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
         {encryptor, decryptor}
       else
@@ -57,8 +57,8 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     shared_k = :crypto.strong_rand_bytes(32)
     {:ok, ke} = Vault.secret_import(encryptor_vault, [type: :aes], shared_k)
     {:ok, kd} = Vault.secret_import(decryptor_vault, [type: :aes], shared_k)
-    encryptor = Encryptor.new(encryptor_vault, ke, 0, 10)
-    decryptor = Decryptor.new(decryptor_vault, kd, 0, 10)
+    encryptor = Encryptor.new(encryptor_vault, ke, 0, 32)
+    decryptor = Decryptor.new(decryptor_vault, kd, 0, 32)
 
     {msgs, encryptor} =
       Enum.reduce(0..1000, {[], encryptor}, fn i, {acc, encryptor} ->
@@ -69,7 +69,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
 
     # msgs, elements up-to 10 position out of order
     msgs =
-      msgs |> Enum.reverse() |> Enum.chunk_every(10) |> Enum.map(&Enum.shuffle/1) |> Enum.concat()
+      msgs |> Enum.reverse() |> Enum.chunk_every(30) |> Enum.map(&Enum.shuffle/1) |> Enum.concat()
 
     # msgs can be decrypted
     decryptor =
