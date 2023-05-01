@@ -7,6 +7,7 @@ use colorful::Colorful;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
+use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
 use ockam_api::{addr_to_multiaddr, cli_state, route_to_multiaddr};
@@ -65,7 +66,7 @@ fn print_node_info(
     default_id: Option<&str>,
     services: Option<&ServiceList>,
     tcp_listeners: Option<&TransportList>,
-    secure_channel_listeners: Option<&Vec<String>>,
+    secure_channel_listeners: Option<&SecureChannelListenersList>,
     inlets_outlets: Option<(&InletList, &OutletList)>,
 ) {
     println!();
@@ -114,10 +115,11 @@ fn print_node_info(
 
     if let Some(list) = secure_channel_listeners {
         println!("  Secure Channel Listeners:");
-        for e in list {
+        for e in &list.list {
             println!("    Listener:");
-            if let Some(ma) = addr_to_multiaddr(e) {
+            if let Some(ma) = addr_to_multiaddr(e.addr.clone()) {
                 println!("      Address: {ma}");
+                println!("      FlowControlId: {}", &e.flow_control_id);
             }
         }
     }
@@ -207,7 +209,7 @@ pub async fn print_query_status(
         // Get list of Secure Channel Listeners
         let mut rpc = rpc.clone();
         rpc.request(api::list_secure_channel_listener()).await?;
-        let secure_channel_listeners = rpc.parse_response::<Vec<String>>()?;
+        let secure_channel_listeners = rpc.parse_response::<SecureChannelListenersList>()?;
 
         // Get list of inlets
         let mut rpc = rpc.clone();

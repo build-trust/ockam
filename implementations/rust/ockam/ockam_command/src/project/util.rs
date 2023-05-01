@@ -126,7 +126,7 @@ pub async fn create_secure_channel_to_project(
     rpc.request(req).await?;
 
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
-    Ok((sc.addr()?, sc.flow_control_id()))
+    Ok((sc.multiaddr()?, sc.flow_control_id()))
 }
 
 pub async fn create_secure_channel_to_authority(
@@ -150,7 +150,7 @@ pub async fn create_secure_channel_to_authority(
     let req = Request::post("/node/secure_channel").body(payload);
     rpc.request(req).await?;
     let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
-    let addr = res.addr()?;
+    let addr = res.multiaddr()?;
     Ok((addr, res.flow_control_id()))
 }
 
