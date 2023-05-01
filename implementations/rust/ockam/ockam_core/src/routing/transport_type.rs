@@ -2,7 +2,7 @@ use core::fmt::{self, Debug, Display};
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-/// The transport type of an [`Address`].
+/// The transport type of an [`Address`](crate::Address).
 #[derive(
     Serialize, Deserialize, Decode, Encode, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]

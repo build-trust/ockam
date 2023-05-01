@@ -14,7 +14,7 @@
 //!     Secure Channel Listener is an example of Spawner that spawns both Producers and Consumers.
 //!
 //! Each Flow Control is identified by a unique random [`FlowControlId`].
-//! Producers, Consumers and Spawners are identified by their messaging [`Address`].
+//! Producers, Consumers and Spawners are identified by their messaging [`Address`](crate::Address).
 //! [`FlowControls`] object is used to store all Flow Control-related data, as well as setup interactions
 //! between Producers, Consumers and Spawners.
 

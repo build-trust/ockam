@@ -1,10 +1,12 @@
+use core::sync::atomic::Ordering;
+use core::time::Duration;
+
+use ockam_core::{Message, RelayMessage, Result, Routed};
+
 use crate::debugger;
 use crate::tokio::time::timeout;
 use crate::{error::*, parser};
 use crate::{Context, DEFAULT_TIMEOUT};
-use core::sync::atomic::Ordering;
-use core::time::Duration;
-use ockam_core::{Message, RelayMessage, Result, Routed};
 
 pub(super) enum MessageWait {
     Timeout(Duration),
@@ -115,9 +117,9 @@ impl Context {
     ///
     /// This function may return a `Err(FailedLoadData)` if the
     /// underlying worker was shut down, or `Err(Timeout)` if the call
-    /// was waiting for longer than the `default timeout`.  Use
-    /// [`receive_timeout`](Context::receive_timeout) to adjust the
-    /// timeout period.
+    /// was waiting for longer than the `default timeout`.
+    ///
+    /// Use [`receive_extended()`](Self::receive_extended) to use a specific timeout period.
     ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.

@@ -11,13 +11,13 @@ use std::env::VarError;
 #[cfg(feature = "std")]
 use std::path::PathBuf;
 
-/// Get environmental value [var_name]. If value is not found returns Ok(None)
+/// Get environmental value `var_name`. If value is not found returns Ok(None)
 #[cfg(feature = "std")]
 pub fn get_env<T: FromString>(var_name: &str) -> Result<Option<T>> {
     get_env_impl::<Option<T>>(var_name, None)
 }
 
-/// Get environmental value [var_name]. If value is not found returns [default_value]
+/// Get environmental value `var_name`. If value is not found returns `default_value`
 #[cfg(feature = "std")]
 pub fn get_env_with_default<T: FromString>(var_name: &str, default_value: T) -> Result<T> {
     get_env_impl::<T>(var_name, default_value)
