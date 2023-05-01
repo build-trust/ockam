@@ -11,6 +11,7 @@ mod encryptor_worker;
 mod listener;
 mod local_info;
 mod messages;
+mod nonce_tracker;
 mod options;
 mod registry;
 /// List of trust policies to setup ABAC controls
