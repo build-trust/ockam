@@ -50,7 +50,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
     }
     let state = opts.state.identities.get(&cmd.name)?;
     if cmd.full {
-        let identity = state.config().change_history.export()?;
+        let identity = state.config().identity.export()?;
         if Some(EncodeFormat::Hex) == cmd.encoding {
             println_output(identity, &opts.global_args.output_format)?;
         } else {
@@ -58,7 +58,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
             println_output(output, &opts.global_args.output_format)?;
         }
     } else {
-        let output = ShortIdentityResponse::new(state.config().identifier.to_string());
+        let output = ShortIdentityResponse::new(state.config().identity.identifier().to_string());
         println_output(output, &opts.global_args.output_format)?;
     }
     Ok(())
