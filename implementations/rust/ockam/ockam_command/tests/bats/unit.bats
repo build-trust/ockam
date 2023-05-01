@@ -382,14 +382,14 @@ teardown() {
   # In two separate commands
   $OCKAM relay create n2 --at /node/n1 --to /node/n2
   msg=$(random_str)
-  run "$OCKAM" message send --timeout 5 "$msg" --to /node/n1/service/hop/service/forward_to_n2/service/uppercase
+  run "$OCKAM" message send --timeout 5 "$msg" --to /node/n1/service/forward_to_n2/service/uppercase
   assert_success
   assert_output "$(to_uppercase "$msg")"
 
   # Piping the output of the first command into the second
   msg=$(random_str)
   output=$($OCKAM relay create --at /node/n2 --to /node/n1 |
-    $OCKAM message send "$msg" --to /node/n2/service/hop/-/service/uppercase)
+    $OCKAM message send "$msg" --to /node/n2/-/service/uppercase)
   assert [ "$output" == "$(to_uppercase "$msg")" ]
 }
 
@@ -600,7 +600,7 @@ teardown() {
 
   run "$OCKAM" node create green
   assert_success
-  $OCKAM secure-channel create --from /node/green --to /node/relay/service/hop/service/forward_to_blue/service/api |
+  $OCKAM secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api |
     $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
 
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
