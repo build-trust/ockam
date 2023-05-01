@@ -3,7 +3,7 @@ use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam::{Context, TcpTransport};
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::workers::WorkerList;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;

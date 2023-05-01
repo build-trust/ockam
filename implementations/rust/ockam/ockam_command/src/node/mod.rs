@@ -6,7 +6,7 @@ use default::DefaultCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait};
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;

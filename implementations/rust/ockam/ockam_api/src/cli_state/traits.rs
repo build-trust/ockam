@@ -5,22 +5,30 @@ use std::path::{Path, PathBuf};
 
 use super::Result;
 
-/// Represents the directory of a type of state and contains
-/// all the data related to that type.
+/// Represents the directory of a type of state. This directory contains a list of items, uniquely
+/// identified by a name, and represented by the same `Item` type.
+///
+/// One item can be set as the "default" item, which is used in some CLI commands when no
+/// argument is provided for that type of `Item`.
 #[async_trait]
 pub trait StateDirTrait: Sized {
     type Item: StateItemTrait;
-
-    fn cli_state(&self) -> Result<CliState> {
-        CliState::new(self.dir().parent().expect("no parent dir"))
-    }
+    const DEFAULT_FILENAME: &'static str;
+    const DIR_NAME: &'static str;
+    const HAS_DATA_DIR: bool;
 
     fn new(dir: PathBuf) -> Self;
-    fn default_filename() -> &'static str;
-    fn build_dir(root_path: &Path) -> PathBuf;
-    fn has_data_dir() -> bool;
 
-    #[allow(clippy::new_ret_no_self)]
+    fn default_filename() -> &'static str {
+        Self::DEFAULT_FILENAME
+    }
+    fn build_dir(root_path: &Path) -> PathBuf {
+        root_path.join(Self::DIR_NAME)
+    }
+    fn has_data_dir() -> bool {
+        Self::HAS_DATA_DIR
+    }
+
     fn load(root_path: &Path) -> Result<Self> {
         let dir = Self::build_dir(root_path);
         if Self::has_data_dir() {
@@ -68,14 +76,6 @@ pub trait StateDirTrait: Sized {
         Ok(state)
     }
 
-    async fn create_async(
-        &self,
-        _name: &str,
-        _config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
-    ) -> Result<Self::Item> {
-        unreachable!()
-    }
-
     fn get(&self, name: &str) -> Result<Self::Item> {
         if !self.exists(name) {
             return Err(CliStateError::NotFound);
@@ -109,8 +109,7 @@ pub trait StateDirTrait: Sized {
             }
         }
         // Remove state data
-        s.delete()?;
-        Ok(())
+        s.delete()
     }
 
     fn default_path(&self) -> Result<PathBuf> {
@@ -147,8 +146,14 @@ pub trait StateDirTrait: Sized {
         Ok(default_name.eq(name))
     }
 
-    fn has_default(&self) -> Result<bool> {
-        Ok(self.default_path()?.exists())
+    fn is_empty(&self) -> Result<bool> {
+        for entry in std::fs::read_dir(self.dir())? {
+            let name = file_stem(&entry?.path())?;
+            if self.get(&name).is_ok() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     fn exists(&self, name: &str) -> bool {
@@ -172,8 +177,13 @@ pub trait StateItemTrait: Sized {
         )
     }
 
+    /// Create a new item with the given config.
     fn new(path: PathBuf, config: Self::Config) -> Result<Self>;
+
+    /// Load an item from the given path.
     fn load(path: PathBuf) -> Result<Self>;
+
+    /// Persist the item to disk after updating the config.
     fn persist(&self) -> Result<()> {
         let contents = serde_json::to_string(self.config())?;
         std::fs::write(self.path(), contents)?;
@@ -183,8 +193,6 @@ pub trait StateItemTrait: Sized {
         std::fs::remove_file(self.path())?;
         Ok(())
     }
-    fn name(&self) -> &str;
     fn path(&self) -> &PathBuf;
-    fn data_path(&self) -> Option<&PathBuf>;
     fn config(&self) -> &Self::Config;
 }

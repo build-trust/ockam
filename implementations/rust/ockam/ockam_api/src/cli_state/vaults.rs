@@ -1,5 +1,6 @@
 use super::Result;
 use crate::cli_state::traits::StateItemTrait;
+use crate::cli_state::{CliStateError, StateDirTrait};
 use ockam_identity::IdentitiesVault;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
@@ -11,6 +12,20 @@ use std::sync::Arc;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultsState {
     dir: PathBuf,
+}
+
+impl VaultsState {
+    pub async fn create_async(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
+        if self.exists(name) {
+            return Err(CliStateError::AlreadyExists);
+        }
+        let state = VaultState::new(self.path(name), config)?;
+        state.get().await?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+        Ok(state)
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -40,7 +55,7 @@ impl VaultState {
     }
 
     pub fn vault_file_path(&self) -> &PathBuf {
-        self.data_path().expect("Should have data path")
+        &self.data_path
     }
 
     pub async fn identities_vault(&self) -> Result<Arc<dyn IdentitiesVault>> {
@@ -48,6 +63,10 @@ impl VaultState {
         Ok(Arc::new(Vault::new(Some(Arc::new(
             FileStorage::create(path).await?,
         )))))
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -84,29 +103,19 @@ impl VaultConfig {
 
 mod traits {
     use super::*;
+    use crate::cli_state::file_stem;
     use crate::cli_state::traits::*;
-    use crate::cli_state::{file_stem, CliStateError};
     use ockam_core::async_trait;
-    use std::path::Path;
 
     #[async_trait]
     impl StateDirTrait for VaultsState {
         type Item = VaultState;
+        const DEFAULT_FILENAME: &'static str = "vault";
+        const DIR_NAME: &'static str = "vaults";
+        const HAS_DATA_DIR: bool = true;
 
         fn new(dir: PathBuf) -> Self {
             Self { dir }
-        }
-
-        fn default_filename() -> &'static str {
-            "vault"
-        }
-
-        fn build_dir(root_path: &Path) -> PathBuf {
-            root_path.join("vaults")
-        }
-
-        fn has_data_dir() -> bool {
-            true
         }
 
         fn dir(&self) -> &PathBuf {
@@ -119,22 +128,6 @@ mod traits {
             _config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
         ) -> Result<Self::Item> {
             unreachable!()
-        }
-
-        async fn create_async(
-            &self,
-            name: &str,
-            config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
-        ) -> Result<Self::Item> {
-            if self.exists(name) {
-                return Err(CliStateError::AlreadyExists);
-            }
-            let state = Self::Item::new(self.path(name), config)?;
-            state.get().await?;
-            if !self.default_path()?.exists() {
-                self.set_default(name)?;
-            }
-            Ok(state)
         }
 
         fn delete(&self, name: &str) -> Result<()> {
@@ -192,16 +185,8 @@ mod traits {
             Ok(())
         }
 
-        fn name(&self) -> &str {
-            &self.name
-        }
-
         fn path(&self) -> &PathBuf {
             &self.path
-        }
-
-        fn data_path(&self) -> Option<&PathBuf> {
-            Some(&self.data_path)
         }
 
         fn config(&self) -> &Self::Config {

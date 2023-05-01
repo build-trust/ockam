@@ -15,7 +15,7 @@ use crate::vault::show::ShowCommand;
 use crate::CommandGlobalOpts;
 
 use clap::{Args, Subcommand};
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliState;
 
 /// Manage vaults
