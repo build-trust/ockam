@@ -56,7 +56,9 @@ impl Encryptor {
         self.nonce += 1;
 
         if current_nonce > 0 && current_nonce % KEY_RENEWAL_INTERVAL == 0 {
-            self.key = Self::rekey(&self.vault, &self.key).await?;
+            let new_key = Self::rekey(&self.vault, &self.key).await?;
+            let old_key = core::mem::replace(&mut self.key, new_key);
+            self.vault.secret_destroy(old_key).await?;
         }
 
         let (small_nonce, nonce) = Self::convert_nonce_from_u64(current_nonce);
