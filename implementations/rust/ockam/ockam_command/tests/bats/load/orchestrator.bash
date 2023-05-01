@@ -25,5 +25,9 @@ function load_orchestrator_data() {
     cp -a $OCKAM_HOME_BASE $OCKAM_HOME
     export PROJECT_JSON_PATH="$OCKAM_HOME/project.json"
     $OCKAM project information --output json >"$PROJECT_JSON_PATH"
+    if [ ! -s "${PROJECT_JSON_PATH}" ]; then
+      echo "Project json file is empty" >&3
+      exit 1
+    fi
   fi
 }

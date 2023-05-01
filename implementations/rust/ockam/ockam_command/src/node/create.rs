@@ -232,7 +232,13 @@ async fn run_foreground_node(
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
     if !cmd.child_process && opts.state.nodes.get(&node_name).is_err() {
-        init_node_state(&opts, &node_name, cmd.vault.clone(), cmd.identity.clone()).await?;
+        init_node_state(
+            &opts,
+            &node_name,
+            cmd.vault.as_deref(),
+            cmd.identity.as_deref(),
+        )
+        .await?;
     }
 
     add_project_info_to_node_state(&node_name, &opts, cfg, &cmd.trust_context_opts).await?;
@@ -453,7 +459,13 @@ async fn spawn_background_node(
     let node_name = parse_node_name(&cmd.node_name)?;
 
     // Create node state, including the vault and identity if don't exist
-    init_node_state(opts, &node_name, cmd.vault.clone(), cmd.identity.clone()).await?;
+    init_node_state(
+        opts,
+        &node_name,
+        cmd.vault.as_deref(),
+        cmd.identity.as_deref(),
+    )
+    .await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
@@ -485,9 +497,11 @@ async fn start_authority_node(
     ctx: Context,
     opts: (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let (options, cmd) = opts;
-    let command = cmd.clone();
-    let launch_config = cmd.clone().launch_config.unwrap();
+    let (opts, cmd) = opts;
+    let launch_config = cmd
+        .launch_config
+        .clone()
+        .expect("launch config is required for an authority node");
     if let Some(services) = launch_config.startup_services {
         let authenticator_config = services.authenticator.ok_or(crate::Error::new(
             exitcode::CONFIG,
@@ -500,25 +514,25 @@ async fn start_authority_node(
 
         // retrieve the authority identity if it has been created before
         // otherwise create a new one
-        let identity = match options.state.identities.default().ok() {
-            Some(state) => state.config().identity(),
-            None => {
+        let identity = match opts.state.identities.default() {
+            Ok(state) => state.config().identity(),
+            Err(_) => {
                 let cmd = identity::CreateCommand::new("authority".into(), None);
-                cmd.create_identity(options.clone()).await?
+                cmd.create_identity(opts.clone()).await?
             }
         };
 
-        let trusted_identities = load_pre_trusted_identities(&command)
+        let trusted_identities = load_pre_trusted_identities(&cmd)
             .map(|ts| ts.unwrap_or(PreTrustedIdentities::Fixed(Default::default())))
             .map_err(|e| crate::Error::new(exitcode::CONFIG, anyhow!("{e}")))?;
 
         let configuration = authority_node::Configuration {
             identity,
-            storage_path: options.state.identities.identities_repository_path()?,
-            vault_path: options.state.vaults.default()?.vault_file_path().clone(),
+            storage_path: opts.state.identities.identities_repository_path()?,
+            vault_path: opts.state.vaults.default()?.vault_file_path().clone(),
             project_identifier: authenticator_config.project.clone(),
             trust_context_identifier: authenticator_config.project,
-            tcp_listener_address: command.tcp_listener_address.clone(),
+            tcp_listener_address: cmd.tcp_listener_address,
             secure_channel_listener_name: Some(secure_channel_config.address),
             authenticator_name: Some(authenticator_config.address),
             trusted_identities,
