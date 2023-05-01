@@ -63,19 +63,17 @@ impl Decryptor {
         } else {
             let key = if nonce >= self.current_key_nonce {
                 &self.current_key
+            } else if let Some(key) = &self.previous_key {
+                key
             } else {
-                if let Some(key) = &self.previous_key {
-                    key
-                } else {
-                    // shouldn't happen since nonce_tracker should reject such messages
-                    warn!("invalid nonce for previous key");
-                    return Err(IdentityError::InvalidNonce.into());
-                }
+                // shouldn't happen since nonce_tracker should reject such messages
+                warn!("invalid nonce for previous key");
+                return Err(IdentityError::InvalidNonce.into());
             };
 
             let result = self
                 .vault
-                .aead_aes_gcm_decrypt(&key, &payload[8..], &nonce_buffer, &[])
+                .aead_aes_gcm_decrypt(key, &payload[8..], &nonce_buffer, &[])
                 .await;
 
             if result.is_ok() {
