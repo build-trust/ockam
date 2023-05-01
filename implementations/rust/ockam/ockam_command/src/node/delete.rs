@@ -1,8 +1,10 @@
 use crate::node::util::{delete_all_nodes, delete_node};
 use crate::node::{default_node_name, node_name_parser};
 use crate::{docs, CommandGlobalOpts};
+use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::cli_state::{CliStateError, StateDirTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -40,17 +42,30 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
     if cmd.all {
         delete_all_nodes(opts, cmd.force)?;
     } else {
-        delete_node(&opts, &cmd.node_name, cmd.force)?;
-        opts.terminal
-            .stdout()
-            .plain(format!(
-                "{} Node with name '{}' has been deleted.",
-                "✔︎".light_green(),
-                &cmd.node_name
-            ))
-            .machine(&cmd.node_name)
-            .json(serde_json::json!({ "node": { "name": &cmd.node_name } }))
-            .write_line()?;
+        let state = &opts.state.nodes;
+        match state.get(&cmd.node_name) {
+            // If it exists, proceed
+            Ok(_) => {
+                delete_node(&opts, &cmd.node_name, cmd.force)?;
+                opts.terminal
+                    .stdout()
+                    .plain(format!(
+                        "{} Node with name '{}' has been deleted.",
+                        "✔︎".light_green(),
+                        &cmd.node_name
+                    ))
+                    .machine(&cmd.node_name)
+                    .json(serde_json::json!({ "node": { "name": &cmd.node_name } }))
+                    .write_line()?;
+            }
+            // Else, return the appropriate error
+            Err(err) => match err {
+                CliStateError::NotFound => {
+                    return Err(anyhow!("Node '{}' not found", &cmd.node_name).into())
+                }
+                _ => return Err(err.into()),
+            },
+        }
     }
     Ok(())
 }
