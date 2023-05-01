@@ -54,7 +54,7 @@ mod tests {
         let mut encryptor = Encryptor::new(key_on_v1, 0, vault1);
         let mut decryptor = Decryptor::new(key_on_v2, vault2);
 
-        for n in 0..50 {
+        for n in 0..100 {
             let msg = vec![n];
             assert_eq!(
                 msg,
@@ -84,7 +84,7 @@ mod tests {
         let mut encryptor = Encryptor::new(key_on_v1, 0, vault1);
         let mut decryptor = Decryptor::new(key_on_v2, vault2);
 
-        for n in 0..50 {
+        for n in 0..100 {
             let msg = vec![n];
             let ciphertext = encryptor.encrypt(&msg).await.unwrap();
             if n % 3 == 0 {
@@ -115,9 +115,9 @@ mod tests {
 
         // Vec<(plaintext, ciphertext)>
         let mut all_msgs: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
-        for n in 0..50 {
+        for n in 0..100 {
             let mut batch: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
-            for m in 0..8 {
+            for m in 0..30 {
                 let msg = vec![n, m];
                 let ciphertext = encryptor.encrypt(&msg).await.unwrap();
                 batch.push((msg, ciphertext));
@@ -165,7 +165,7 @@ mod tests {
         let mut encryptor = Encryptor::new(key_on_v1, 0, vault1);
         let mut decryptor = Decryptor::new(key_on_v2, vault2);
 
-        for n in 0..50 {
+        for n in 0..100 {
             let msg = vec![n];
             let ciphertext = encryptor.encrypt(&msg).await.unwrap();
             let mut trash_packet = ciphertext.clone();
