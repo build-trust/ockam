@@ -106,14 +106,17 @@ async fn print_status(
 
     for (i_idx, identity) in identities.iter().enumerate() {
         println!("Identity[{i_idx}]");
-        if default_identity.config().identifier == identity.config().identifier {
+        if default_identity.config().identity.identifier()
+            == identity.config().identity.identifier()
+        {
             println!("{:2}Default: yes", "")
         }
         for line in identity.to_string().lines() {
             println!("{:2}{}", "", line);
         }
 
-        node_details.retain(|nd| nd.identity.identifier() == identity.config().identifier);
+        node_details
+            .retain(|nd| nd.identity.identifier() == identity.config().identity.identifier());
         if !node_details.is_empty() {
             println!("{:2}Linked Nodes:", "");
             for (n_idx, node) in node_details.iter().enumerate() {

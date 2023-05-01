@@ -47,11 +47,12 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ListCommand) -> crate::Result<()> {
         println!("Identity[{idx}]:");
         println!("{:2}Name: {}{}", "", &identity.name(), default);
         if cmd.full {
-            let identity = state.config().change_history.export()?;
+            let identity = state.config().identity.export()?;
             let output = LongIdentityResponse::new(identity);
             println!("{:2}{}", "", &output.output()?);
         } else {
-            let output = ShortIdentityResponse::new(state.config().identifier.to_string());
+            let output =
+                ShortIdentityResponse::new(state.config().identity.identifier().to_string());
             println!("{:2}Identifier: {}", "", &output.output()?);
         };
         if idx < idts.len() - 1 {

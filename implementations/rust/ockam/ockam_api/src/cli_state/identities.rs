@@ -4,7 +4,7 @@ use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
 use crate::cli_state::CliStateError;
 use ockam_identity::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
-    IdentityChangeHistory, IdentityHistoryComparison, IdentityIdentifier, LmdbStorage,
+    IdentityHistoryComparison, IdentityIdentifier, LmdbStorage,
 };
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -33,7 +33,7 @@ impl IdentitiesState {
 
         let identity_state = identities
             .into_iter()
-            .find(|ident_state| &ident_state.config.identifier == identifier);
+            .find(|ident_state| &ident_state.config.identity.identifier() == identifier);
 
         match identity_state {
             Some(is) => Ok(is),
@@ -65,7 +65,7 @@ pub struct IdentityState {
 
 impl IdentityState {
     pub async fn get(&self, vault: Arc<dyn IdentitiesVault>) -> Result<Identity> {
-        let data = self.config.change_history.export()?;
+        let data = self.config.identity.export()?;
         Ok(self
             .make_identities(vault)
             .await?
@@ -100,7 +100,9 @@ impl IdentityState {
 
     fn in_use_by(&self, nodes: &[NodeState]) -> Result<()> {
         for node in nodes {
-            if node.config().identity_config()?.identifier == self.config.identifier {
+            if node.config().identity_config()?.identity.identifier()
+                == self.config.identity.identifier()
+            {
                 return Err(CliStateError::Invalid(format!(
                     "Can't delete identity '{}' because is currently in use by node '{}'",
                     &self.name,
@@ -120,7 +122,11 @@ impl Display for IdentityState {
             self.path.as_path().file_stem().unwrap().to_str().unwrap()
         )?;
         writeln!(f, "State Path: {}", self.path.clone().to_str().unwrap())?;
-        writeln!(f, "Config Identifier: {}", self.config.identifier)?;
+        writeln!(
+            f,
+            "Config Identifier: {}",
+            self.config.identity.identifier()
+        )?;
         match &self.config.enrollment_status {
             Some(enrollment) => {
                 writeln!(f, "Enrollment Status:")?;
@@ -136,32 +142,26 @@ impl Display for IdentityState {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IdentityConfig {
-    pub identifier: IdentityIdentifier,
-    pub change_history: IdentityChangeHistory,
+    pub identity: Identity,
     pub enrollment_status: Option<EnrollmentStatus>,
 }
 
 impl IdentityConfig {
     pub async fn new(identity: &Identity) -> Self {
-        let identifier = identity.identifier();
-        let change_history = identity.change_history();
         Self {
-            identifier,
-            change_history,
+            identity: identity.clone(),
             enrollment_status: None,
         }
     }
 
     pub fn identity(&self) -> Identity {
-        Identity::new(self.identifier.clone(), self.change_history.clone())
+        self.identity.clone()
     }
 }
 
 impl PartialEq for IdentityConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.identifier == other.identifier
-            && self.change_history.compare(&other.change_history)
-                == IdentityHistoryComparison::Equal
+        self.identity.compare(&other.identity) == IdentityHistoryComparison::Equal
     }
 }
 

@@ -69,7 +69,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
     let ident_state = opts.state.identities.get(&cmd.as_identity)?;
-    let auth_identity_identifier = ident_state.config().identifier.clone();
+    let auth_identity_identifier = ident_state.config().identity.identifier().clone();
 
     let mut attrs = cmd.attributes()?;
     attrs.insert(
