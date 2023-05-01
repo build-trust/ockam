@@ -131,7 +131,11 @@ defmodule Ockam.SecureChannel.Tests do
         # We put both here.
         trash1 = %Message{message | payload: payload <> "s"} |> Message.forward_trace()
         {:ok, raw, ""} = :bare.decode(payload, :data)
-        trash2 = trash = %Message{message | payload: :bare.encode(raw <> "s", :data)} |> Message.forward_trace()
+
+        trash2 =
+          trash =
+          %Message{message | payload: :bare.encode(raw <> "s", :data)} |> Message.forward_trace()
+
         [trash1, trash2]
       else
         [Message.forward_trace(message)]
