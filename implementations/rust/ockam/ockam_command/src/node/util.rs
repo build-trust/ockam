@@ -12,6 +12,7 @@ use ockam_api::nodes::service::{
     NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::AllowAll;
 use std::env::current_exe;
 use std::fs::OpenOptions;
@@ -62,7 +63,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let bind = cmd.tcp_listener_address;
 
     let options = TcpListenerOptions::new();
-    let flow_control_id = options.spawner_flow_control_id();
+    let tcp_listener_flow_control_id = options.spawner_flow_control_id();
     let (socket_addr, listened_worker_address) = tcp.listen(&bind, options).await?;
 
     let projects = cfg.inner().lookup().projects().collect();
@@ -82,7 +83,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listened_worker_address,
-                flow_control_id,
+                flow_control_id: tcp_listener_flow_control_id.clone(),
             },
             tcp,
         ),
@@ -92,13 +93,14 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.start_worker(
+    ctx.flow_controls().add_consumer(
         NODEMANAGER_ADDR,
-        node_manager_worker,
-        AllowAll, // FIXME: @ac
-        AllowAll, // FIXME: @ac
-    )
-    .await?;
+        &tcp_listener_flow_control_id,
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
+
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
+        .await?;
 
     Ok(cmd.node_name.clone())
 }
