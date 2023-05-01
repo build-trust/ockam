@@ -212,7 +212,6 @@ impl NodeManager {
                 env,
             )))
         } else {
-            // TODO: @ac allow passing this as a cli argument
             Ok(Arc::new(AllowAll))
         }
     }
@@ -446,7 +445,6 @@ impl NodeManager {
             None,
             None,
             ctx,
-            Some(api_flow_control_id.clone()),
         )
         .await?;
 
@@ -667,10 +665,9 @@ impl NodeManagerWorker {
                 .delete_secure_channel_listener(req, dec)
                 .await?
                 .to_vec()?,
-            (Get, ["node", "show_secure_channel_listener"]) => self
-                .show_secure_channel_listener(req, dec)
-                .await?
-                .to_vec()?,
+            (Get, ["node", "show_secure_channel_listener"]) => {
+                self.show_secure_channel_listener(req, dec).await?
+            }
 
             // ==*== Services ==*==
             (Post, ["node", "services", DefaultAddress::IDENTITY_SERVICE]) => {

@@ -339,7 +339,16 @@ impl NodeManagerWorker {
         let access_control = node_manager
             .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
             .await?;
+
         let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
+        let options = if !check_credential {
+            options.as_consumer(
+                &node_manager.api_transport.flow_control_id,
+                FlowControlPolicy::SpawnerAllowMultipleMessages,
+            )
+        } else {
+            options
+        };
 
         // Accept messages from the default secure channel listener
         let options = if let Some(flow_control_id) = ctx
