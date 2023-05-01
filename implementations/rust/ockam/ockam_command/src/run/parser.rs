@@ -1,6 +1,6 @@
 use crate::Result;
 use duct::Expression;
-use ockam_api::cli_state::CliState;
+use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_core::compat::collections::HashMap;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
@@ -158,7 +158,7 @@ impl NodeConfig {
         };
 
         // Check if the node already exists. If it doesn't, create it.
-        if !cli_state.nodes.exists(node_name)? {
+        if !cli_state.nodes.exists(node_name) {
             let args = {
                 let mut args = vec!["node", "create", node_name];
                 if let Some(enrollment_token) = &self.enrollment_token {

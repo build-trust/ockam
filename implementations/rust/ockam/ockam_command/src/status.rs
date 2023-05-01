@@ -45,7 +45,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) ->
     let tcp = TcpTransport::create(ctx).await?;
     for node_state in &node_states {
         let node_infos = NodeDetails {
-            identity: node_state.config.default_identity().await?,
+            identity: node_state.config().identity().await?,
             state: node_state.clone(),
             status: get_node_status(ctx, &opts, node_state, &tcp).await?,
         };
@@ -76,7 +76,7 @@ async fn get_node_status(
     tcp: &TcpTransport,
 ) -> Result<String> {
     let mut node_status: String = "Stopped".to_string();
-    let mut rpc = RpcBuilder::new(ctx, opts, &node_state.config.name)
+    let mut rpc = RpcBuilder::new(ctx, opts, node_state.name())
         .tcp(tcp)?
         .build();
     if rpc
@@ -118,7 +118,7 @@ async fn print_status(
             println!("{:2}Linked Nodes:", "");
             for (n_idx, node) in node_details.iter().enumerate() {
                 println!("{:4}Node[{}]:", "", n_idx);
-                println!("{:6}Name: {}", "", node.state.config.name);
+                println!("{:6}Name: {}", "", node.state.name());
                 println!("{:6}Status: {}", "", node.status)
             }
         }

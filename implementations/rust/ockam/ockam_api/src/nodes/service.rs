@@ -32,7 +32,7 @@ use std::path::PathBuf;
 use super::registry::Registry;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
-use crate::cli_state::CliState;
+use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
@@ -318,7 +318,7 @@ impl NodeManager {
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
-        let vault: Arc<dyn IdentitiesVault> = Arc::new(node_state.config.vault().await?);
+        let vault: Arc<dyn IdentitiesVault> = Arc::new(node_state.config().vault().await?);
         let identities_repository: Arc<dyn IdentitiesRepository> =
             Arc::new(match general_options.pre_trusted_identities {
                 None => BootstrapedIdentityStore::new(
@@ -335,7 +335,7 @@ impl NodeManager {
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
-        let identity = node_state.config.default_identity().await?;
+        let identity = node_state.config().identity().await?;
 
         let flow_controls = FlowControls::default();
         let medic = Medic::new(flow_controls.clone());

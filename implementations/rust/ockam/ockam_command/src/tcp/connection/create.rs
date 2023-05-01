@@ -6,6 +6,7 @@ use crate::{
 };
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models;
 use ockam_multiaddr::proto::{DnsAddr, Tcp, Worker};
 use ockam_multiaddr::MultiAddr;
@@ -74,7 +75,8 @@ impl CreateCommand {
                     .state
                     .nodes
                     .get(node_name)?
-                    .setup()?
+                    .config()
+                    .setup()
                     .default_tcp_listener()?
                     .addr
                     .port();

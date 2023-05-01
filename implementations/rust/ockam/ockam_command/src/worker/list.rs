@@ -3,6 +3,7 @@ use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam::{Context, TcpTransport};
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::workers::WorkerList;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
@@ -30,7 +31,7 @@ async fn run_impl(
 ) -> crate::Result<()> {
     if let Ok(node_state) = opts.state.nodes.get(&cmd.at) {
         let tcp = TcpTransport::create(&ctx).await?;
-        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_state.config.name)
+        let mut rpc = RpcBuilder::new(&ctx, &opts, node_state.name())
             .tcp(&tcp)?
             .build();
         if rpc
@@ -39,7 +40,7 @@ async fn run_impl(
             .is_ok()
         {
             let workers = rpc.parse_response::<WorkerList>()?;
-            println!("Node: {}", &node_state.config.name);
+            println!("Node: {}", &node_state.name());
             print!("{}", WorkerDisplay(workers))
         }
     }

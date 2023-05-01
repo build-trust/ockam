@@ -3,6 +3,7 @@ use crate::util::Rpc;
 use crate::util::{node_rpc, parse_node_name};
 use crate::CommandGlobalOpts;
 use clap::Args;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::transport::{CreateTransport, TransportMode, TransportType};
 use ockam_core::api::Request;
@@ -45,7 +46,8 @@ async fn run_impl(
         .state
         .nodes
         .get(&node_name)?
-        .setup()?
+        .config()
+        .setup()
         .default_tcp_listener()?
         .addr
         .port();

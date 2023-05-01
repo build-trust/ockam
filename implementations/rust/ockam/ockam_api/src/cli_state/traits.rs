@@ -86,7 +86,8 @@ pub trait StateDirTrait: Sized {
     fn list(&self) -> Result<Vec<Self::Item>> {
         let mut items = Vec::default();
         for entry in std::fs::read_dir(self.dir())? {
-            if let Ok(item) = self.get(&file_stem(&entry?.path())?) {
+            let name = file_stem(&entry?.path())?;
+            if let Ok(item) = self.get(&name) {
                 items.push(item);
             }
         }
@@ -137,7 +138,7 @@ pub trait StateDirTrait: Sized {
 
     fn is_default(&self, name: &str) -> Result<bool> {
         if !self.exists(name) {
-            return Err(CliStateError::NotFound);
+            return Ok(false);
         }
         let default_name = {
             let path = std::fs::canonicalize(self.default_path()?)?;

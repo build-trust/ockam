@@ -233,12 +233,7 @@ async fn start_authority_node(
     let command = cmd.clone();
 
     // Create node state, including the vault and identity if they don't exist
-    if !options
-        .state
-        .nodes
-        .get_node_path(&command.node_name)
-        .exists()
-    {
+    if !options.state.nodes.exists(&command.node_name) {
         init_node_state(
             &options,
             &command.node_name,
@@ -287,9 +282,10 @@ async fn start_authority_node(
     // the `ockam node list` command, without having to send a TCP query to open a connection
     // because this would fail if there is no intention to create a secure channel
     let node_state = options.state.nodes.get(&command.node_name)?;
-    let setup_config = node_state.setup()?;
     node_state.set_setup(
-        &setup_config
+        &node_state
+            .config()
+            .setup_mut()
             .set_verbose(options.global_args.verbose)
             .set_authority_node()
             .add_transport(CreateTransportJson::new(

@@ -1,5 +1,6 @@
 use crate::CommandGlobalOpts;
 use clap::Args;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 #[derive(Clone, Debug, Args)]
 pub struct GetCommand {
@@ -17,8 +18,8 @@ impl GetCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: GetCommand) -> crate::Result<()> {
-    let node_setup = opts.state.nodes.get(&cmd.alias)?.setup()?;
-    let addr = &node_setup.default_tcp_listener()?.addr;
+    let node_state = opts.state.nodes.get(&cmd.alias)?;
+    let addr = &node_state.config().setup().default_tcp_listener()?.addr;
     println!("Address: {addr}");
     Ok(())
 }

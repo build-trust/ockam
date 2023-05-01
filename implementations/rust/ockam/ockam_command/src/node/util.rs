@@ -122,15 +122,8 @@ pub async fn add_project_info_to_node_state(
             let proj_info: ProjectInfo = serde_json::from_str(&s)?;
             let proj_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
 
-            // FIXME What is this doing?.  We need to simplify how this work.
-            //       we also need to remove project names from routes, as nodes
-            //       are started with _one_  project.
-
-            let mut config = opts.state.nodes.get(node_name)?.config;
-            let setup = config.setup();
-            setup.set_project(proj_lookup.clone());
-
-            opts.state.nodes.update(node_name, config)?;
+            let state = opts.state.nodes.get(node_name)?;
+            state.set_setup(state.config().setup_mut().set_project(proj_lookup.clone()))?;
 
             project::config::set_project(cfg, &(&proj_info).into()).await?;
             Ok(Some(proj_lookup.id))
@@ -167,7 +160,7 @@ pub async fn delete_embedded_node(opts: &CommandGlobalOpts, name: &str) {
 }
 
 pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> Result<()> {
-    opts.state.nodes.delete(name, force)?;
+    opts.state.nodes.delete_sigkill(name, force)?;
     Ok(())
 }
 
@@ -175,8 +168,8 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> Result<()> {
     let nodes_states = opts.state.nodes.list()?;
     let mut deletion_errors = Vec::new();
     for s in nodes_states {
-        if let Err(e) = opts.state.nodes.delete(&s.config.name, force) {
-            deletion_errors.push((s.config.name.clone(), e));
+        if let Err(e) = opts.state.nodes.delete_sigkill(s.name(), force) {
+            deletion_errors.push((s.name().to_string(), e));
         }
     }
     if !deletion_errors.is_empty() {
@@ -192,7 +185,7 @@ pub fn set_default_node(opts: &CommandGlobalOpts, name: &str) -> anyhow::Result<
 
 pub fn check_default(opts: &CommandGlobalOpts, name: &str) -> bool {
     if let Ok(default) = opts.state.nodes.default() {
-        return default.config.name == name;
+        return default.name() == name;
     }
     false
 }

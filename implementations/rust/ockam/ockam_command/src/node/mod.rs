@@ -6,7 +6,7 @@ use default::DefaultCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
-use ockam_api::cli_state::CliState;
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
@@ -93,7 +93,7 @@ pub fn default_node_name() -> String {
         .unwrap()
         .nodes
         .default()
-        .map(|n| n.config.name)
+        .map(|n| n.name().to_string())
         .unwrap_or_else(|_| "default".to_string())
 }
 
