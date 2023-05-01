@@ -69,6 +69,7 @@ impl NodeState {
         self.kill_process(sikgill)?;
         std::fs::remove_dir_all(&self.path)?;
         let _ = std::fs::remove_dir(&self.path); // Make sure the dir is gone
+        info!(name=%self.name, "node deleted");
         Ok(())
     }
 
@@ -102,12 +103,14 @@ impl NodeState {
             })?;
             std::fs::remove_file(self.paths.pid())?;
         }
+        info!(name = %self.name(), "node process killed");
         Ok(())
     }
 
     pub fn set_setup(&self, setup: &NodeSetupConfig) -> Result<()> {
         let contents = serde_json::to_string(setup)?;
         std::fs::write(self.paths.setup(), contents)?;
+        info!(name = %self.name(), "setup config updated");
         Ok(())
     }
 
@@ -183,9 +186,12 @@ impl NodeConfig {
         self.setup.clone()
     }
 
+    pub fn vault_path(&self) -> Result<PathBuf> {
+        Ok(std::fs::canonicalize(&self.default_vault)?)
+    }
+
     pub async fn vault(&self) -> Result<Vault> {
-        let state_path = std::fs::canonicalize(&self.default_vault)?;
-        let state = VaultState::load(state_path)?;
+        let state = VaultState::load(self.vault_path()?)?;
         state.get().await
     }
 

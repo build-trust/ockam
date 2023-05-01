@@ -343,15 +343,15 @@ teardown() {
 }
 
 @test "secure channel - send message directly using secure multiaddr" {
-    run "$OCKAM" node create n1
-    assert_success
-    run "$OCKAM" node create n2
-    assert_success
+  run "$OCKAM" node create n1
+  assert_success
+  run "$OCKAM" node create n2
+  assert_success
 
-    msg=$(random_str)
-    run "$OCKAM" message send "$msg" --timeout 5 --from /node/n1 --to "/node/n2/secure/api/service/uppercase"
-    assert_success
-    assert_output "$(to_uppercase "$msg")"
+  msg=$(random_str)
+  run "$OCKAM" message send "$msg" --timeout 5 --from /node/n1 --to "/node/n2/secure/api/service/uppercase"
+  assert_success
+  assert_output "$(to_uppercase "$msg")"
 }
 
 # ===== RELAY
@@ -360,7 +360,7 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
   load_orchestrator_data
 
-    port=7100
+  port=7100
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success

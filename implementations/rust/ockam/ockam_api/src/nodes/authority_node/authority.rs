@@ -47,7 +47,7 @@ impl Authority {
     /// The list of trusted identities in the configuration is used to pre-populate an attributes storage
     /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
     pub async fn create(configuration: &Configuration) -> Result<Authority> {
-        info!("configuration {:?}", configuration);
+        debug!(?configuration, "creating the authority");
         let vault = Self::create_secure_channels_vault(configuration).await?;
         let repository = Self::create_identities_repository(configuration).await?;
         let secure_channels = SecureChannels::builder()
@@ -60,7 +60,7 @@ impl Authority {
             .identities_creation()
             .import_identity(configuration.identity.export()?.as_slice())
             .await?;
-        info!("retrieved the authority identity {}", identity.identifier());
+        info!(identifier=%identity.identifier(), "retrieved the authority identifier");
 
         Ok(Authority {
             identity,

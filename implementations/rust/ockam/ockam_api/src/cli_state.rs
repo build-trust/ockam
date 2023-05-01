@@ -145,9 +145,9 @@ impl CliState {
         Ok(dir.join("defaults"))
     }
 
-    pub async fn create_vault_state(&self, vault_name: Option<String>) -> Result<VaultState> {
+    pub async fn create_vault_state(&self, vault_name: Option<&str>) -> Result<VaultState> {
         let vault_state = if let Some(v) = vault_name {
-            self.vaults.get(v.as_str())?
+            self.vaults.get(v)?
         }
         // Or get the default
         else if let Ok(v) = self.vaults.default() {
@@ -162,21 +162,17 @@ impl CliState {
 
     pub async fn create_identity_state(
         &self,
-        identity_name: Option<String>,
+        identity_name: Option<&str>,
         vault: Vault,
     ) -> Result<IdentityState> {
-        if let Ok(identity) = self.identities.get_or_default(identity_name.clone()) {
+        if let Ok(identity) = self.identities.get_or_default(identity_name) {
             Ok(identity)
         } else {
             self.make_identity_state(vault, identity_name).await
         }
     }
 
-    async fn make_identity_state(
-        &self,
-        vault: Vault,
-        name: Option<String>,
-    ) -> Result<IdentityState> {
+    async fn make_identity_state(&self, vault: Vault, name: Option<&str>) -> Result<IdentityState> {
         let identity = self
             .get_identities(vault)
             .await?
@@ -184,9 +180,10 @@ impl CliState {
             .create_identity()
             .await?;
         let identity_config = IdentityConfig::new(&identity).await;
-        let identity_name = name.unwrap_or_else(|| hex::encode(random::<[u8; 4]>()));
-        self.identities
-            .create(identity_name.as_str(), identity_config)
+        let identity_name = name
+            .map(|x| x.to_string())
+            .unwrap_or_else(|| hex::encode(random::<[u8; 4]>()));
+        self.identities.create(&identity_name, identity_config)
     }
 
     pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
@@ -245,11 +242,11 @@ mod tests {
         let state = CliState::test().unwrap();
         let vault = Vault::new(None);
         let identity1 = state
-            .create_identity_state(Some("alice".into()), vault.clone())
+            .create_identity_state(Some("alice"), vault.clone())
             .await
             .unwrap();
         let identity2 = state
-            .create_identity_state(Some("alice".into()), vault)
+            .create_identity_state(Some("alice"), vault)
             .await
             .unwrap();
 

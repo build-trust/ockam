@@ -17,6 +17,7 @@ use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::Command;
+use tracing::{debug, info};
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
@@ -43,7 +44,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        init_node_state(opts, &cmd.node_name, vault, identity).await?;
+        init_node_state(opts, &cmd.node_name, vault.as_deref(), identity.as_deref()).await?;
     }
 
     if let Some(p) = trust_opts {
@@ -135,9 +136,10 @@ pub async fn add_project_info_to_node_state(
 pub(crate) async fn init_node_state(
     opts: &CommandGlobalOpts,
     node_name: &str,
-    vault_name: Option<String>,
-    identity_name: Option<String>,
+    vault_name: Option<&str>,
+    identity_name: Option<&str>,
 ) -> Result<()> {
+    debug!(name=%node_name, "initializing node state");
     // Get vault specified in the argument, or get the default
     let vault_state = opts.state.create_vault_state(vault_name).await?;
     let identity_state = opts
@@ -152,6 +154,7 @@ pub(crate) async fn init_node_state(
         .build(&opts.state)?;
     opts.state.nodes.create(node_name, node_config)?;
 
+    info!(name=%node_name, "node state initialized");
     Ok(())
 }
 
