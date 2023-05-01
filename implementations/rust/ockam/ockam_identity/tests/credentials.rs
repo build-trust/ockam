@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicI8, Ordering};
 use std::time::Duration;
 
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{async_trait, Any, DenyAll};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::secure_channels::secure_channels;
@@ -25,14 +25,10 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let server = identities_creation.create_identity().await?;
     let client = identities_creation.create_identity().await?;
 
-    let sc_flow_control_id = FlowControls::generate_id();
+    let options = SecureChannelListenerOptions::new();
+    let sc_flow_control_id = options.spawner_flow_control_id();
     secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &server.identifier(),
-            "listener",
-            SecureChannelListenerOptions::new(&sc_flow_control_id),
-        )
+        .create_secure_channel_listener(ctx, &server.identifier(), "listener", options)
         .await?;
 
     let trust_context = TrustContext::new(
@@ -114,14 +110,10 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .issue_credential(&authority.identifier(), credential_data)
         .await?;
 
-    let sc_flow_control_id = FlowControls::generate_id();
+    let options = SecureChannelListenerOptions::new();
+    let sc_flow_control_id = options.spawner_flow_control_id();
     secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &client1.identifier(),
-            "listener",
-            SecureChannelListenerOptions::new(&sc_flow_control_id),
-        )
+        .create_secure_channel_listener(ctx, &client1.identifier(), "listener", options)
         .await?;
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
@@ -203,14 +195,10 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let server = identities_creation.create_identity().await?;
     let client = identities_creation.create_identity().await?;
 
-    let sc_flow_control_id = FlowControls::generate_id();
+    let options = SecureChannelListenerOptions::new();
+    let sc_flow_control_id = options.spawner_flow_control_id();
     secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &server.identifier(),
-            "listener",
-            SecureChannelListenerOptions::new(&sc_flow_control_id),
-        )
+        .create_secure_channel_listener(ctx, &server.identifier(), "listener", options)
         .await?;
 
     let trust_context = TrustContext::new(

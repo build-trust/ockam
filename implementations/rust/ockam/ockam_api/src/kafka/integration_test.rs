@@ -29,7 +29,6 @@ mod test {
     use uuid::Uuid;
 
     use ockam::compat::tokio::io::DuplexStream;
-    use ockam::flow_control::FlowControls;
     use ockam::Context;
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
@@ -94,10 +93,10 @@ mod test {
                 .create_consumer_listener(context)
                 .await?;
 
-            let sc_flow_control_id = FlowControls::generate_id();
+            let options = SecureChannelListenerOptions::new();
             context.flow_controls().add_consumer(
                 crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS,
-                &sc_flow_control_id,
+                &options.spawner_flow_control_id(),
                 FlowControlPolicy::SpawnerAllowMultipleMessages,
             );
 
@@ -108,7 +107,7 @@ mod test {
                     context,
                     &handle.identifier,
                     DefaultAddress::SECURE_CHANNEL_LISTENER,
-                    SecureChannelListenerOptions::new(&sc_flow_control_id),
+                    options,
                 )
                 .await?;
         }

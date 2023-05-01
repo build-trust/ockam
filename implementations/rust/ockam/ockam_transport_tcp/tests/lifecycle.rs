@@ -1,6 +1,6 @@
 use core::time::Duration;
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
@@ -20,10 +20,10 @@ impl Worker for Echoer {
 #[allow(non_snake_case)]
 #[ockam_macros::test]
 async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> Result<()> {
-    let listener_flow_control_id = FlowControls::generate_id();
+    let options = TcpListenerOptions::new();
     ctx.flow_controls().add_consumer(
         "echoer",
-        &listener_flow_control_id,
+        &options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
     ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
@@ -31,10 +31,7 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
 
     let transport = TcpTransport::create(ctx).await?;
     let listener_address = transport
-        .listen(
-            "127.0.0.1:0",
-            TcpListenerOptions::new(&listener_flow_control_id),
-        )
+        .listen("127.0.0.1:0", options)
         .await?
         .0
         .to_string();
@@ -77,10 +74,10 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
 #[allow(non_snake_case)]
 #[ockam_macros::test]
 async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Result<()> {
-    let listener_flow_control_id = FlowControls::generate_id();
+    let options = TcpListenerOptions::new();
     ctx.flow_controls().add_consumer(
         "echoer",
-        &listener_flow_control_id,
+        &options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
     ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
@@ -88,10 +85,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
 
     let transport = TcpTransport::create(ctx).await?;
     let listener_address = transport
-        .listen(
-            "127.0.0.1:0",
-            TcpListenerOptions::new(&listener_flow_control_id),
-        )
+        .listen("127.0.0.1:0", options)
         .await?
         .0
         .to_string();
@@ -158,10 +152,10 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
 async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
     ctx: &mut Context,
 ) -> Result<()> {
-    let listener_flow_control_id = FlowControls::generate_id();
+    let options = TcpListenerOptions::new();
     ctx.flow_controls().add_consumer(
         "echoer",
-        &listener_flow_control_id,
+        &options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
@@ -169,12 +163,7 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
         .await?;
 
     let transport = TcpTransport::create(ctx).await?;
-    let (listener_socket, listener_worker) = transport
-        .listen(
-            "127.0.0.1:0",
-            TcpListenerOptions::new(&listener_flow_control_id),
-        )
-        .await?;
+    let (listener_socket, listener_worker) = transport.listen("127.0.0.1:0", options).await?;
     let listener_address = listener_socket.to_string();
 
     let msg1: String = rand::thread_rng()

@@ -4,7 +4,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 use ockam_core::compat::rand::random;
-use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::{
@@ -125,16 +125,12 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
     let payload1 = generate_binary();
     let payload2 = generate_binary();
 
-    let outlet_flow_control_id = FlowControls::generate_id();
+    let options = TcpListenerOptions::new();
+    let outlet_flow_control_id = options.spawner_flow_control_id();
 
     let tcp = TcpTransport::create(ctx).await?;
 
-    let (socket_address, _) = tcp
-        .listen(
-            "127.0.0.1:0",
-            TcpListenerOptions::new(&outlet_flow_control_id),
-        )
-        .await?;
+    let (socket_address, _) = tcp.listen("127.0.0.1:0", options).await?;
 
     let tcp_connection = tcp
         .connect(socket_address.to_string(), TcpConnectionOptions::new())
@@ -191,16 +187,11 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
 ) -> Result<()> {
     let payload = generate_binary();
 
-    let outlet_flow_control_id = FlowControls::generate_id();
+    let options = TcpListenerOptions::new();
 
     let tcp = TcpTransport::create(ctx).await?;
 
-    let (socket_address, _) = tcp
-        .listen(
-            "127.0.0.1:0",
-            TcpListenerOptions::new(&outlet_flow_control_id),
-        )
-        .await?;
+    let (socket_address, _) = tcp.listen("127.0.0.1:0", options).await?;
 
     let tcp_connection = tcp
         .connect(socket_address.to_string(), TcpConnectionOptions::new())

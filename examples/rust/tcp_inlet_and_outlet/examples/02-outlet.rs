@@ -1,4 +1,4 @@
-use ockam::flow_control::{FlowControlPolicy, FlowControls};
+use ockam::flow_control::FlowControlPolicy;
 use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions};
 use ockam_transport_tcp::TcpTransportExtension;
 
@@ -24,13 +24,16 @@ async fn main(ctx: Context) -> Result<()> {
     //    its onward_route be set to the route to an Inlet that is knows about because of
     //    a previous message from the Inlet.
 
-    let tcp_flow_control_id = FlowControls::generate_id();
+    let tcp_listener_options = TcpListenerOptions::new();
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
     tcp.create_outlet(
         "outlet",
         outlet_target,
-        TcpOutletOptions::new().as_consumer(&tcp_flow_control_id, FlowControlPolicy::SpawnerAllowMultipleMessages),
+        TcpOutletOptions::new().as_consumer(
+            &tcp_listener_options.spawner_flow_control_id(),
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        ),
     )
     .await?;
 
@@ -39,11 +42,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Use port 4000, unless otherwise specified by second command line argument.
 
     let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    tcp.listen(
-        format!("127.0.0.1:{port}"),
-        TcpListenerOptions::new(&tcp_flow_control_id),
-    )
-    .await?;
+    tcp.listen(format!("127.0.0.1:{port}"), tcp_listener_options).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
