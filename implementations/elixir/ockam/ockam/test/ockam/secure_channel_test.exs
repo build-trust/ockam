@@ -130,12 +130,9 @@ defmodule Ockam.SecureChannel.Tests do
         # be decoded from bare,  and things that can be decoded from bare, but then can't be decrypted.
         # We put both here.
         trash1 = %Message{message | payload: payload <> "s"} |> Message.forward_trace()
-        [trash1]
-
-        # FIXME: This second form of bad packet crash the nif.  Add to the test once that's fixed.
-        # {:ok, raw, ""} = :bare.decode(payload, :data)
-        # trash2 = trash = %Message{message | payload: :bare.encode(raw <> "s", :data)} |> Message.forward_trace()
-        # [trash1, trash2]
+        {:ok, raw, ""} = :bare.decode(payload, :data)
+        trash2 = trash = %Message{message | payload: :bare.encode(raw <> "s", :data)} |> Message.forward_trace()
+        [trash1, trash2]
       else
         [Message.forward_trace(message)]
       end
