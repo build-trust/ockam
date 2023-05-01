@@ -40,7 +40,7 @@ teardown() {
   # Client
   run "$OCKAM" node create client_sidecar
   assert_success
-  run bash -c "$OCKAM secure-channel create --from /node/client_sidecar --to /node/relay/service/hop/service/forward_to_server_sidecar/service/api \
+  run bash -c "$OCKAM secure-channel create --from /node/client_sidecar --to /node/relay/service/forward_to_server_sidecar/service/api \
               | $OCKAM tcp-inlet create --at /node/client_sidecar --from 127.0.0.1:$port --to -/service/outlet"
   assert_success
 
