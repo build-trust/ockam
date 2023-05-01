@@ -26,7 +26,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControlId;
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone, LOCAL};
 use ockam_identity::TrustContext;
@@ -92,6 +92,7 @@ type Transports = BTreeMap<Alias, ApiTransport>;
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
     node_name: String,
+    api_transport: ApiTransport,
     transports: Transports,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
@@ -308,7 +309,10 @@ impl NodeManager {
     ) -> Result<Self> {
         let api_transport_id = random_alias();
         let mut transports = BTreeMap::new();
-        transports.insert(api_transport_id.clone(), transport_options.api_transport);
+        transports.insert(
+            api_transport_id.clone(),
+            transport_options.api_transport.clone(),
+        );
 
         let cli_state = general_options.cli_state;
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
@@ -345,6 +349,7 @@ impl NodeManager {
         let mut s = Self {
             cli_state,
             node_name: general_options.node_name,
+            api_transport: transport_options.api_transport,
             transports,
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
@@ -395,12 +400,26 @@ impl NodeManager {
         Ok(())
     }
 
-    async fn initialize_defaults(&mut self, ctx: &Context) -> Result<()> {
+    async fn initialize_defaults(
+        &mut self,
+        ctx: &Context,
+        api_flow_control_id: &FlowControlId,
+    ) -> Result<()> {
         // Start services
+        ctx.flow_controls().add_consumer(
+            DefaultAddress::IDENTITY_SERVICE,
+            api_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
         self.start_identity_service_impl(ctx, DefaultAddress::IDENTITY_SERVICE.into())
             .await?;
         self.start_authenticated_service_impl(ctx, DefaultAddress::AUTHENTICATED_SERVICE.into())
             .await?;
+        ctx.flow_controls().add_consumer(
+            DefaultAddress::UPPERCASE_SERVICE,
+            api_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
         self.start_hop_service_impl(ctx, DefaultAddress::HOP_SERVICE.into())
@@ -409,7 +428,15 @@ impl NodeManager {
         ForwardingService::create(
             ctx,
             DefaultAddress::FORWARDING_SERVICE,
-            ForwardingServiceOptions::new(),
+            ForwardingServiceOptions::new()
+                .service_as_consumer(
+                    api_flow_control_id,
+                    FlowControlPolicy::SpawnerAllowMultipleMessages,
+                )
+                .forwarder_as_consumer(
+                    api_flow_control_id,
+                    FlowControlPolicy::SpawnerAllowMultipleMessages,
+                ),
         )
         .await?;
 
@@ -419,6 +446,7 @@ impl NodeManager {
             None,
             None,
             ctx,
+            Some(api_flow_control_id.clone()),
         )
         .await?;
 
@@ -839,16 +867,30 @@ impl Worker for NodeManagerWorker {
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let mut node_manager = self.node_manager.write().await;
+        let api_flow_control_id = node_manager.api_transport.flow_control_id.clone();
+
         if !node_manager.skip_defaults {
-            node_manager.initialize_defaults(ctx).await?;
+            node_manager
+                .initialize_defaults(ctx, &api_flow_control_id)
+                .await?;
         }
 
         // Always start the echoer service as ockam_api::Medic assumes it will be
         // started unconditionally on every node. It's used for liveness checks.
+        ctx.flow_controls().add_consumer(
+            DefaultAddress::ECHO_SERVICE,
+            &api_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
         node_manager
             .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
 
+        ctx.flow_controls().add_consumer(
+            DefaultAddress::RPC_PROXY,
+            &api_flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
         ctx.start_worker(
             DefaultAddress::RPC_PROXY,
             RpcProxyService::new(),

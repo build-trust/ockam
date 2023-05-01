@@ -185,6 +185,7 @@ impl NodeManager {
         vault_name: Option<String>,
         identity_name: Option<String>,
         ctx: &Context,
+        api_flow_control_id: Option<FlowControlId>,
     ) -> Result<FlowControlId> {
         info!(
             "Handling request to create a new secure channel listener: {}",
@@ -201,6 +202,13 @@ impl NodeManager {
         let options = SecureChannelListenerOptions::new();
         let flow_control_id = options.spawner_flow_control_id();
 
+        let options = match api_flow_control_id {
+            Some(flow_control_id) => options.as_consumer(
+                &flow_control_id,
+                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+            ),
+            None => options,
+        };
         let options = match authorized_identifiers {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
@@ -369,7 +377,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_, '_>>> {
+    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_>>> {
         let CreateSecureChannelRequest {
             addr,
             authorized_identifiers,
@@ -513,6 +521,7 @@ impl NodeManagerWorker {
                 vault.map(|v| v.to_string()),
                 identity.map(|v| v.to_string()),
                 ctx,
+                None,
             )
             .await?;
 
