@@ -1,32 +1,25 @@
 pub mod credentials;
 pub mod identities;
+pub mod nodes;
 pub mod projects;
 pub mod traits;
 pub mod trust_contexts;
 pub mod vaults;
 
-use crate::config::lookup::ProjectLookup;
-use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
-use nix::errno::Errno;
-use ockam::identity::{Identities, IdentitiesVault, Identity};
-use ockam_core::compat::sync::Arc;
-use ockam_core::env::get_env_with_default;
-use ockam_identity::LmdbStorage;
-use ockam_vault::Vault;
-use rand::random;
-use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use sysinfo::{Pid, System, SystemExt};
-use thiserror::Error;
-
 pub use crate::cli_state::credentials::*;
 pub use crate::cli_state::identities::*;
+pub use crate::cli_state::nodes::*;
 pub use crate::cli_state::projects::*;
 pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
 pub use crate::cli_state::vaults::*;
+use ockam::identity::Identities;
+use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env_with_default;
+use ockam_vault::Vault;
+use rand::random;
+use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
 
@@ -85,7 +78,7 @@ impl CliState {
         Ok(Self {
             vaults: VaultsState::load(dir)?,
             identities: IdentitiesState::load(dir)?,
-            nodes: NodesState::new(dir)?,
+            nodes: NodesState::load(dir)?,
             projects: ProjectsState::load(dir)?,
             credentials: CredentialsState::load(dir)?,
             trust_contexts: TrustContextsState::load(dir)?,
@@ -105,12 +98,12 @@ impl CliState {
     pub fn delete(&self, force: bool) -> Result<()> {
         // Delete all nodes
         for n in self.nodes.list()? {
-            let _ = n.delete(force);
+            let _ = n.delete_sigkill(force);
         }
 
         let dir = &self.dir;
         for dir in &[
-            &self.nodes.dir,
+            (self.nodes.dir()),
             self.identities.dir(),
             self.vaults.dir(),
             self.projects.dir(),
@@ -211,472 +204,6 @@ impl CliState {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NodesState {
-    pub dir: PathBuf,
-}
-
-impl NodesState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("nodes");
-        std::fs::create_dir_all(&dir)?;
-        Ok(Self { dir })
-    }
-
-    /// Returns the path to the default node
-    pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?.join("node"))
-    }
-
-    pub fn default(&self) -> Result<NodeState> {
-        let path = std::fs::canonicalize(self.default_path()?)?;
-        let name = file_stem(&path)?;
-        self.get(&name)
-    }
-
-    pub fn set_default(&self, name: &str) -> Result<NodeState> {
-        let original = {
-            let mut path = self.dir.clone();
-            path.push(name);
-            if !path.exists() {
-                return Err(CliStateError::NotFound);
-            }
-            path
-        };
-        let link = self.default_path()?;
-        // Remove file link if it exists
-        let _ = std::fs::remove_file(&link);
-        // Create link to new default node
-        std::os::unix::fs::symlink(original, link)?;
-        self.get(name)
-    }
-
-    pub fn update(&self, name: &str, mut config: NodeConfig) -> Result<NodeState> {
-        config.name = name.to_string();
-
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(name);
-            path
-        };
-
-        let state = NodeState::new(path, config);
-        std::fs::write(state.path.join("version"), state.config.version.to_string())?;
-        state.set_setup(&state.config.setup)?;
-
-        Ok(state)
-    }
-
-    pub fn create(&self, name: &str, mut config: NodeConfig) -> Result<NodeState> {
-        config.name = name.to_string();
-
-        // check if node name already exists
-        if self.get_node_path(name).exists() {
-            return Err(CliStateError::AlreadyExists);
-        }
-
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(name);
-            std::fs::create_dir_all(&path)?;
-            path
-        };
-        let state = NodeState::new(path, config);
-        std::fs::write(state.path.join("version"), state.config.version.to_string())?;
-        state.set_setup(&state.config.setup)?;
-        std::fs::File::create(state.socket())?;
-        std::fs::File::create(state.stdout_log())?;
-        std::fs::File::create(state.stderr_log())?;
-        std::os::unix::fs::symlink(
-            &state.config.default_vault,
-            state.path.join("default_vault"),
-        )?;
-        std::os::unix::fs::symlink(
-            &state.config.default_identity,
-            state.path.join("default_identity"),
-        )?;
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
-        }
-        Ok(state)
-    }
-
-    pub fn list(&self) -> Result<Vec<NodeState>> {
-        let mut nodes = vec![];
-        for entry in std::fs::read_dir(&self.dir)? {
-            let entry = entry?;
-            if entry.file_type()?.is_dir() {
-                let name = entry.file_name().into_string().map_err(|_| {
-                    CliStateError::Io(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "node's directory has an invalid name",
-                    ))
-                })?;
-                nodes.push(self.get(&name)?);
-            }
-        }
-        Ok(nodes)
-    }
-
-    pub fn exists(&self, name: &str) -> Result<bool> {
-        match self.get(name) {
-            Ok(_) => Ok(true),
-            Err(CliStateError::NotFound) => Ok(false),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn get(&self, name: &str) -> Result<NodeState> {
-        let path = self.get_node_path(name);
-        if !path.exists() {
-            return Err(CliStateError::NotFound);
-        }
-
-        let config = NodeConfig::try_from(&path)?;
-        Ok(NodeState::new(path, config))
-    }
-
-    pub fn get_node_path(&self, name: &str) -> PathBuf {
-        self.dir.join(name)
-    }
-
-    pub fn delete(&self, name: &str, sigkill: bool) -> Result<()> {
-        // Retrieve node. If doesn't exist do nothing.
-        let node = match self.get(name) {
-            Ok(node) => node,
-            Err(CliStateError::NotFound) => return Ok(()),
-            Err(e) => return Err(e),
-        };
-
-        // Set default to another node if it's the default
-        if let Ok(default) = self.default() {
-            if default.path == node.path {
-                let _ = std::fs::remove_file(self.default_path()?);
-                let mut nodes = self.list()?;
-                nodes.retain(|n| n.path != node.path);
-                if let Some(node) = nodes.first() {
-                    self.set_default(&node.config.name)?;
-                }
-            }
-        }
-
-        // Remove node directory
-        node.delete(sigkill)?;
-
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NodeState {
-    pub path: PathBuf,
-    pub config: NodeConfig,
-}
-
-impl NodeState {
-    fn new(path: PathBuf, config: NodeConfig) -> Self {
-        Self { path, config }
-    }
-
-    pub fn socket(&self) -> PathBuf {
-        self.path.join("socket")
-    }
-
-    pub fn setup(&self) -> Result<NodeSetupConfig> {
-        NodeSetupConfig::try_from(&self.path.join("setup.json"))
-    }
-
-    pub fn set_setup(&self, setup: &NodeSetupConfig) -> Result<()> {
-        let contents = serde_json::to_string(setup)?;
-        std::fs::write(self.path.join("setup.json"), contents)?;
-        Ok(())
-    }
-
-    pub fn pid(&self) -> Result<Option<i32>> {
-        let path = self.path.join("pid");
-        if self.path.join("pid").exists() {
-            let pid = std::fs::read_to_string(path)?
-                .parse::<i32>()
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-            Ok(Some(pid))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn set_pid(&self, pid: i32) -> Result<()> {
-        std::fs::write(self.path.join("pid"), pid.to_string())?;
-        Ok(())
-    }
-
-    pub fn is_running(&self) -> bool {
-        if let Ok(Some(pid)) = self.pid() {
-            let mut sys = System::new();
-            sys.refresh_processes();
-            sys.process(Pid::from(pid as usize)).is_some()
-        } else {
-            false
-        }
-    }
-
-    pub fn stdout_log(&self) -> PathBuf {
-        self.path.join("stdout.log")
-    }
-
-    pub fn stderr_log(&self) -> PathBuf {
-        self.path.join("stderr.log")
-    }
-
-    pub async fn policies_storage(&self) -> Result<LmdbStorage> {
-        Ok(LmdbStorage::new(self.path.join("policies_storage.lmdb")).await?)
-    }
-
-    pub fn kill_process(&self, sigkill: bool) -> Result<()> {
-        if let Some(pid) = self.pid()? {
-            nix::sys::signal::kill(
-                nix::unistd::Pid::from_raw(pid),
-                if sigkill {
-                    nix::sys::signal::Signal::SIGKILL
-                } else {
-                    nix::sys::signal::Signal::SIGTERM
-                },
-            )
-            .or_else(|e| {
-                if e == Errno::ESRCH {
-                    tracing::warn!(node = %self.config.name, %pid, "No such process");
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            })
-            .map_err(|e| {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("failed to stop PID `{pid}` with error `{e}`"),
-                ))
-            })?;
-            std::fs::remove_file(self.path.join("pid"))?;
-        }
-        Ok(())
-    }
-
-    fn delete(&self, sigkill: bool) -> Result<()> {
-        self.kill_process(sigkill)?;
-        std::fs::remove_dir_all(&self.path)?;
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NodeConfig {
-    pub name: String,
-    version: NodeConfigVersion,
-    default_vault: PathBuf,
-    default_identity: PathBuf,
-    setup: NodeSetupConfig,
-    // TODO
-    // authorities: AuthoritiesConfig,
-}
-
-impl NodeConfig {
-    pub fn try_default() -> Result<Self> {
-        let cli_state = CliState::try_default()?;
-        Ok(Self {
-            name: random_name(),
-            version: NodeConfigVersion::latest(),
-            default_vault: cli_state.vaults.default()?.path().clone(),
-            default_identity: cli_state.identities.default()?.path().clone(),
-            setup: NodeSetupConfig::default(),
-        })
-    }
-
-    pub fn setup(&mut self) -> &mut NodeSetupConfig {
-        &mut self.setup
-    }
-
-    pub async fn vault(&self) -> Result<Vault> {
-        let state_path = std::fs::canonicalize(&self.default_vault)?;
-        let state = VaultState::load(state_path)?;
-        state.get().await
-    }
-
-    pub fn identity_config(&self) -> Result<IdentityConfig> {
-        let path = std::fs::canonicalize(&self.default_identity)?;
-        Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
-    }
-
-    pub async fn default_identity(&self) -> Result<Identity> {
-        let vault: Arc<dyn IdentitiesVault> = Arc::new(self.vault().await?);
-        let state_path = std::fs::canonicalize(&self.default_identity)?;
-        let state = IdentityState::load(state_path)?;
-        state.get(vault).await
-    }
-}
-
-impl TryFrom<&CliState> for NodeConfig {
-    type Error = CliStateError;
-
-    fn try_from(cli_state: &CliState) -> std::result::Result<Self, Self::Error> {
-        Ok(Self {
-            name: random_name(),
-            version: NodeConfigVersion::latest(),
-            default_vault: cli_state.vaults.default()?.path().clone(),
-            default_identity: cli_state.identities.default()?.path().clone(),
-            setup: NodeSetupConfig::default(),
-        })
-    }
-}
-
-impl TryFrom<&PathBuf> for NodeConfig {
-    type Error = CliStateError;
-
-    fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
-        let name = {
-            let err = || {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "node's directory has an invalid name",
-                ))
-            };
-            path.file_name()
-                .ok_or_else(err)?
-                .to_str()
-                .ok_or_else(err)?
-                .to_string()
-        };
-        Ok(Self {
-            name,
-            version: NodeConfigVersion::load(path)?,
-            default_vault: std::fs::canonicalize(path.join("default_vault"))?,
-            default_identity: std::fs::canonicalize(path.join("default_identity"))?,
-            setup: NodeSetupConfig::try_from(&path.join("setup.json"))?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct NodeConfigBuilder {
-    vault: Option<PathBuf>,
-    identity: Option<PathBuf>,
-}
-
-impl NodeConfigBuilder {
-    pub fn vault(mut self, path: PathBuf) -> Self {
-        self.vault = Some(path);
-        self
-    }
-
-    pub fn identity(mut self, path: PathBuf) -> Self {
-        self.identity = Some(path);
-        self
-    }
-
-    pub fn build(self, cli_state: &CliState) -> Result<NodeConfig> {
-        let vault = match self.vault {
-            Some(path) => path,
-            None => cli_state.vaults.default()?.path().clone(),
-        };
-        let identity = match self.identity {
-            Some(path) => path,
-            None => cli_state.identities.default()?.path().clone(),
-        };
-        Ok(NodeConfig {
-            default_vault: vault,
-            default_identity: identity,
-            ..NodeConfig::try_default()?
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum NodeConfigVersion {
-    V1,
-}
-
-impl NodeConfigVersion {
-    fn latest() -> Self {
-        Self::V1
-    }
-
-    fn load(_path: &Path) -> Result<Self> {
-        Ok(Self::V1)
-    }
-}
-
-impl Display for NodeConfigVersion {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            NodeConfigVersion::V1 => "1",
-        })
-    }
-}
-
-impl FromStr for NodeConfigVersion {
-    type Err = CliStateError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s {
-            "1" => Ok(Self::V1),
-            _ => Err(CliStateError::InvalidVersion(s.to_string())),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
-pub struct NodeSetupConfig {
-    pub verbose: u8,
-
-    /// This flag is used to determine how the node status should be
-    /// displayed in print_query_status.
-    /// The field might be missing in previous configuration files, hence it is an Option
-    pub authority_node: Option<bool>,
-    pub project: Option<ProjectLookup>,
-    transports: Vec<CreateTransportJson>,
-    // TODO
-    // secure_channels: ?,
-    // inlets: ?,
-    // outlets: ?,
-    // services: ?,
-}
-
-impl NodeSetupConfig {
-    pub fn set_verbose(mut self, verbose: u8) -> Self {
-        self.verbose = verbose;
-        self
-    }
-
-    pub fn set_authority_node(mut self) -> Self {
-        self.authority_node = Some(true);
-        self
-    }
-
-    pub fn set_project(&mut self, project: ProjectLookup) -> &mut Self {
-        self.project = Some(project);
-        self
-    }
-
-    pub fn default_tcp_listener(&self) -> Result<&CreateTransportJson> {
-        self.transports
-            .iter()
-            .find(|t| t.tt == TransportType::Tcp && t.tm == TransportMode::Listen)
-            .ok_or(CliStateError::NotFound)
-    }
-
-    pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
-        self.transports.push(transport);
-        self
-    }
-}
-
-impl TryFrom<&PathBuf> for NodeSetupConfig {
-    type Error = CliStateError;
-
-    fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
-        let contents = std::fs::read_to_string(path)?;
-        Ok(serde_json::from_str(&contents)?)
-    }
-}
-
 pub fn random_name() -> String {
     hex::encode(random::<[u8; 4]>())
 }
@@ -693,6 +220,7 @@ fn file_stem(path: &Path) -> Result<String> {
 mod tests {
     use super::*;
     use crate::config::cli::TrustContextConfig;
+    use ockam_identity::IdentitiesVault;
 
     #[tokio::test]
     async fn test_create_default_identity_state() {
@@ -737,7 +265,6 @@ mod tests {
         assert_eq!(identity1.path(), identity2.path());
     }
 
-    // This tests way too many different things
     #[ockam_macros::test(crate = "ockam")]
     async fn integration(ctx: &mut ockam::Context) -> ockam::Result<()> {
         let sut = CliState::test()?;
@@ -954,7 +481,7 @@ mod tests {
         assert_eq!(expected_entries, found_entries);
 
         sut.projects.delete(&project_name).unwrap();
-        sut.nodes.delete(&node_name, false).unwrap();
+        sut.nodes.delete(&node_name).unwrap();
         sut.identities.delete(&identity_name).unwrap();
         sut.vaults.delete(&vault_name).unwrap();
 

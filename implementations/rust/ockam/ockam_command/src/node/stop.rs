@@ -1,6 +1,7 @@
 use crate::node::{default_node_name, node_name_parser};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
+use ockam_api::cli_state::StateDirTrait;
 
 const LONG_ABOUT: &str = include_str!("./static/stop/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/stop/after_long_help.txt");

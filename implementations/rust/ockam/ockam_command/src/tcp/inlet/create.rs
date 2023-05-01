@@ -12,6 +12,7 @@ use clap::Args;
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
 use ockam_abac::Resource;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::CreateInlet;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_core::api::Request;
@@ -74,7 +75,14 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
 
     let tcp = TcpTransport::create(&ctx).await?;
     let node = extract_address_value(&cmd.at)?;
-    let project = opts.state.nodes.get(&node)?.setup()?.project;
+    let project = opts
+        .state
+        .nodes
+        .get(&node)?
+        .config()
+        .setup()
+        .project
+        .to_owned();
     let resource = Resource::new("tcp-inlet");
     if let Some(p) = project {
         if !has_policy(&node, &ctx, &opts, &resource).await? {

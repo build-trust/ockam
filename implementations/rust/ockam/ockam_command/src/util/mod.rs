@@ -16,7 +16,7 @@ use ockam::{
     Address, Context, MessageSendReceiveOptions, NodeBuilder, Route, TcpConnectionOptions,
     TcpTransport,
 };
-use ockam_api::cli_state::{CliState, NodeState};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
@@ -45,10 +45,7 @@ pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp
 #[derive(Clone)]
 pub enum RpcMode<'a> {
     Embedded,
-    Background {
-        node_state: NodeState,
-        tcp: Option<&'a TcpTransport>,
-    },
+    Background { tcp: Option<&'a TcpTransport> },
 }
 
 pub struct RpcBuilder<'a> {
@@ -83,10 +80,7 @@ impl<'a> RpcBuilder<'a> {
     /// TcpTransport per Context.
     pub fn tcp<T: Into<Option<&'a TcpTransport>>>(mut self, tcp: T) -> Result<Self> {
         if let Some(tcp) = tcp.into() {
-            self.mode = RpcMode::Background {
-                node_state: self.opts.state.nodes.get(&self.node_name)?,
-                tcp: Some(tcp),
-            };
+            self.mode = RpcMode::Background { tcp: Some(tcp) };
         }
         Ok(self)
     }
@@ -136,17 +130,13 @@ impl<'a> Rpc<'a> {
         opts: &'a CommandGlobalOpts,
         node_name: &str,
     ) -> Result<Rpc<'a>> {
-        let cfg = opts.state.nodes.get(node_name)?;
         Ok(Rpc {
             ctx,
             buf: Vec::new(),
             opts,
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
-            mode: RpcMode::Background {
-                node_state: cfg,
-                tcp: None,
-            },
+            mode: RpcMode::Background { tcp: None },
             flow_controls: Default::default(),
         })
     }
@@ -199,11 +189,14 @@ impl<'a> Rpc<'a> {
         let mut to = self.to.clone();
         let route = match self.mode {
             RpcMode::Embedded => to,
-            RpcMode::Background {
-                ref node_state,
-                ref tcp,
-            } => {
-                let port = node_state.setup()?.default_tcp_listener()?.addr.port();
+            RpcMode::Background { ref tcp } => {
+                let node_state = self.opts.state.nodes.get(&self.node_name)?;
+                let port = node_state
+                    .config()
+                    .setup()
+                    .default_tcp_listener()?
+                    .addr
+                    .port();
                 let addr_str = format!("localhost:{port}");
                 let addr = match tcp {
                     None => {
@@ -596,7 +589,8 @@ pub fn process_nodes_multiaddr(
                 let alias = proto
                     .cast::<Node>()
                     .ok_or_else(|| anyhow!("invalid node address protocol"))?;
-                let node_setup = cli_state.nodes.get(&alias)?.setup()?;
+                let node_state = cli_state.nodes.get(&alias)?;
+                let node_setup = node_state.config().setup();
                 let addr = node_setup.default_tcp_listener()?.maddr()?;
                 processed_addr.try_extend(&addr)?
             }
@@ -620,7 +614,8 @@ pub fn clean_nodes_multiaddr(
         match p.code() {
             Node::CODE => {
                 let alias = p.cast::<Node>().expect("Failed to parse node name");
-                let node_setup = cli_state.nodes.get(&alias)?.setup()?;
+                let node_state = cli_state.nodes.get(&alias)?;
+                let node_setup = node_state.config().setup();
                 let addr = &node_setup.default_tcp_listener()?.addr;
                 match addr {
                     InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
@@ -726,12 +721,9 @@ mod tests {
         let n_state = cli_state
             .nodes
             .create("n1", NodeConfig::try_from(&cli_state)?)?;
-        let n_setup = n_state.setup()?;
-        n_state.set_setup(&n_setup.add_transport(CreateTransportJson::new(
-            TransportType::Tcp,
-            TransportMode::Listen,
-            "127.0.0.0:4000",
-        )?))?;
+        n_state.set_setup(&n_state.config().setup_mut().add_transport(
+            CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, "127.0.0.0:4000")?,
+        ))?;
 
         let test_cases = vec![
             (

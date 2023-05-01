@@ -1,6 +1,7 @@
 use clap::Args;
 
 use ockam::TcpTransport;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::node::show::print_query_status;
 use crate::node::util::{check_default, spawn_node};
@@ -47,12 +48,12 @@ async fn run_impl(
     if node_state.is_running() && !cmd.force {
         println!(
             "Restart aborted, node: {} already running",
-            node_state.config.name
+            node_state.name()
         );
         return Ok(());
     }
     node_state.kill_process(false)?;
-    let node_setup = node_state.setup()?;
+    let node_setup = node_state.config().setup();
 
     // Restart node
     spawn_node(

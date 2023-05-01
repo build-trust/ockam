@@ -5,6 +5,7 @@ use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
 use ockam::TcpTransport;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
@@ -13,7 +14,7 @@ use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
 use tokio_retry::strategy::FixedInterval;
-use tracing::debug;
+use tracing::{info, trace, warn};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -24,8 +25,8 @@ const IS_NODE_UP_MAX_ATTEMPTS: usize = 20; // 1 second
 /// Show the details of a node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
     /// Name of the node.
@@ -161,22 +162,18 @@ pub async fn print_query_status(
     is_default: bool,
 ) -> Result<()> {
     let cli_state = cli_state::CliState::try_default()?;
-    let node_state = cli_state.nodes.get(node_name)?;
     if !is_node_up(rpc, wait_until_ready).await? {
-        let node_port = node_state.setup().ok().and_then(|setup| {
-            setup
-                .default_tcp_listener()
-                .ok()
-                .map(|listener| listener.addr.port())
-        });
+        let node_state = cli_state.nodes.get(node_name)?;
+        let node_port = node_state
+            .config()
+            .setup()
+            .default_tcp_listener()
+            .ok()
+            .map(|listener| listener.addr.port());
 
         // it is expected to not be able to open an arbitrary TCP connection on an authority node
         // so in that case we display an UP status
-        let is_authority_node = node_state
-            .setup()
-            .ok()
-            .map(|setup| setup.authority_node.unwrap_or(false))
-            .unwrap_or_default();
+        let is_authority_node = node_state.config().setup().authority_node.unwrap_or(false);
         print_node_info(
             node_port,
             node_name,
@@ -189,8 +186,9 @@ pub async fn print_query_status(
             None,
         );
     } else {
+        let node_state = cli_state.nodes.get(node_name)?;
         // Get short id for the node
-        let default_id = match node_state.config.identity_config() {
+        let default_id = match node_state.config().identity_config() {
             Ok(resp) => resp.identifier.to_string(),
             Err(_) => String::from("None"),
         };
@@ -221,12 +219,12 @@ pub async fn print_query_status(
         let outlets = rpc.parse_response::<OutletList>()?;
 
         let node_state = cli_state.nodes.get(node_name)?;
-        let node_port = node_state.setup().ok().and_then(|setup| {
-            setup
-                .default_tcp_listener()
-                .ok()
-                .map(|listener| listener.addr.port())
-        });
+        let node_port = node_state
+            .config()
+            .setup()
+            .default_tcp_listener()
+            .ok()
+            .map(|listener| listener.addr.port());
 
         print_node_info(
             node_port,
@@ -261,16 +259,13 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
         FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
 
     let cli_state = cli_state::CliState::try_default()?;
+    let node_name = rpc.node_name().to_owned();
     let now = std::time::Instant::now();
     for t in timeout {
+        let node_state = cli_state.nodes.get(&node_name)?;
         // The node is down if it has not stored its default tcp listener in its state file.
-        if cli_state
-            .nodes
-            .get(rpc.node_name())?
-            .setup()?
-            .default_tcp_listener()
-            .is_err()
-        {
+        if node_state.config().setup().default_tcp_listener().is_err() {
+            trace!(%node_name, "node has not been initialized");
             tokio::time::sleep(t).await;
             continue;
         }
@@ -284,11 +279,14 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
             .is_ok()
             && rpc.is_ok().is_ok()
         {
-            debug!("Node is up. Took {:?}", now.elapsed());
+            let elapsed = now.elapsed();
+            info!(%node_name, ?elapsed, "node is up");
             return Ok(true);
         } else {
+            trace!(%node_name, "node is initializing");
             tokio::time::sleep(t).await;
         }
     }
+    warn!(%node_name, "node didn't respond in time");
     Ok(false)
 }

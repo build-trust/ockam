@@ -249,9 +249,10 @@ async fn run_foreground_node(
     let (socket_addr, listener_addr) = tcp.listen(&bind, TcpListenerOptions::insecure()).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
-    let setup_config = node_state.setup()?;
     node_state.set_setup(
-        &setup_config
+        &node_state
+            .config()
+            .setup_mut()
             .set_verbose(opts.global_args.verbose)
             .add_transport(CreateTransportJson::new(
                 TransportType::Tcp,

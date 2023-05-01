@@ -3,6 +3,7 @@ use crate::{docs, node::show::print_query_status, CommandGlobalOpts};
 use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::{Context, TcpTransport};
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::base::NodeStatus;
 use std::time::Duration;
 
@@ -44,9 +45,9 @@ async fn run_impl(
         }
         // default node
         if let Ok(state) = opts.state.nodes.default() {
-            default = state.config.name;
+            default = state.name().to_string();
         }
-        nodes_states.iter().map(|s| s.config.name.clone()).collect()
+        nodes_states.iter().map(|s| s.name().to_string()).collect()
     };
     let tcp = TcpTransport::create(&ctx).await?;
     verify_pids(&ctx, &opts, &tcp, &node_names).await?;

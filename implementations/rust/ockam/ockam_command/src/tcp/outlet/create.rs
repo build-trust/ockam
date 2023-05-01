@@ -12,6 +12,7 @@ use ockam_abac::Resource;
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_core::api::{Request, RequestBuilder};
 
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 /// Create TCP Outlets
@@ -80,18 +81,25 @@ fn default_from_addr() -> String {
 
 pub async fn run_impl(
     ctx: Context,
-    (options, cmd): (CommandGlobalOpts, CreateCommand),
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     let node = extract_address_value(&cmd.at)?;
-    let project = options.state.nodes.get(&node)?.setup()?.project;
+    let project = opts
+        .state
+        .nodes
+        .get(&node)?
+        .config()
+        .setup()
+        .project
+        .to_owned();
     let resource = Resource::new("tcp-outlet");
     if let Some(p) = project {
-        if !has_policy(&node, &ctx, &options, &resource).await? {
-            add_default_project_policy(&node, &ctx, &options, p, &resource).await?;
+        if !has_policy(&node, &ctx, &opts, &resource).await? {
+            add_default_project_policy(&node, &ctx, &opts, p, &resource).await?;
         }
     }
 
-    let mut rpc = Rpc::background(&ctx, &options, &node)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node)?;
 
     let cmd = CreateCommand {
         from: extract_address_value(&cmd.from)?,
@@ -105,8 +113,7 @@ pub async fn run_impl(
     let machine = outlet_status.worker_address()?;
     let json = serde_json::to_string_pretty(&outlet_status)?;
 
-    options
-        .terminal
+    opts.terminal
         .stdout()
         .plain(plain)
         .machine(machine)

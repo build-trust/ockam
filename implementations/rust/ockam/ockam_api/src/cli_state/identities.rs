@@ -1,6 +1,7 @@
 use super::Result;
+use crate::cli_state::nodes::NodeState;
 use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
-use crate::cli_state::{CliStateError, NodeState};
+use crate::cli_state::CliStateError;
 use ockam_identity::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
     IdentityChangeHistory, IdentityHistoryComparison, IdentityIdentifier, LmdbStorage,
@@ -99,10 +100,11 @@ impl IdentityState {
 
     fn in_use_by(&self, nodes: &[NodeState]) -> Result<()> {
         for node in nodes {
-            if node.config.identity_config()?.identifier == self.config.identifier {
+            if node.config().identity_config()?.identifier == self.config.identifier {
                 return Err(CliStateError::Invalid(format!(
                     "Can't delete identity '{}' because is currently in use by node '{}'",
-                    &self.name, &node.config.name
+                    &self.name,
+                    &node.name()
                 )));
             }
         }
