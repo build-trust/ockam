@@ -10,7 +10,7 @@ use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_core::{AllowAll, Error, Message, Result, Worker};
 use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
@@ -77,15 +77,16 @@ impl Authority {
     ) -> Result<FlowControlId> {
         // Start a secure channel listener that only allows channels with
         // authenticated identities.
-        let tcp_listener_flow_control_id = FlowControls::generate_id();
-        let secure_channel_listener_flow_control_id = FlowControls::generate_id();
+        let tcp_listener_options = TcpListenerOptions::new();
+        let tcp_listener_flow_control_id = tcp_listener_options.spawner_flow_control_id().clone();
 
-        let options = SecureChannelListenerOptions::new(&secure_channel_listener_flow_control_id)
+        let options = SecureChannelListenerOptions::new()
             .with_trust_policy(TrustEveryonePolicy)
             .as_consumer(
                 &tcp_listener_flow_control_id,
                 FlowControlPolicy::SpawnerAllowOnlyOneMessage,
             );
+        let secure_channel_listener_flow_control_id = options.spawner_flow_control_id().clone();
 
         let listener_name = configuration.secure_channel_listener_name();
         self.secure_channels
@@ -95,7 +96,6 @@ impl Authority {
 
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
-        let tcp_listener_options = TcpListenerOptions::new(&tcp_listener_flow_control_id);
 
         let (address, _) = tcp
             .listen(configuration.tcp_listener_address(), tcp_listener_options)

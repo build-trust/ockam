@@ -1,5 +1,5 @@
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
@@ -18,22 +18,17 @@ impl Worker for Echoer {
 
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
-    let listener_flow_control_id = FlowControls::generate_id();
+    let options = TcpListenerOptions::new();
     ctx.flow_controls().add_consumer(
         "echoer",
-        &listener_flow_control_id,
+        &options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
     ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
         .await?;
 
     let transport = TcpTransport::create(ctx).await?;
-    let (listener_address, _) = transport
-        .listen(
-            "127.0.0.1:0",
-            TcpListenerOptions::new(&listener_flow_control_id),
-        )
-        .await?;
+    let (listener_address, _) = transport.listen("127.0.0.1:0", options).await?;
 
     let addr = transport
         .connect(listener_address.to_string(), TcpConnectionOptions::new())

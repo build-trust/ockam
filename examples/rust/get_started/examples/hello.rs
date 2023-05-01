@@ -1,4 +1,3 @@
-use ockam::flow_control::FlowControls;
 use ockam::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use ockam::{node, route, Context, Result};
 use ockam_core::flow_control::FlowControlPolicy;
@@ -12,9 +11,9 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    let sc_flow_control_id = FlowControls::generate_id();
-    node.create_secure_channel_listener(&bob, "bob", SecureChannelListenerOptions::new(&sc_flow_control_id))
-        .await?;
+    let options = SecureChannelListenerOptions::new();
+    let sc_flow_control_id = options.spawner_flow_control_id();
+    node.create_secure_channel_listener(&bob, "bob", options).await?;
 
     // Create an entity to represent Alice.
     let alice = node.create_identity().await?;

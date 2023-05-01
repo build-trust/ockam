@@ -3,7 +3,7 @@ use std::net::{SocketAddrV4, SocketAddrV6};
 use anyhow::anyhow;
 
 use ockam::TcpTransport;
-use ockam_core::flow_control::{FlowControlId, FlowControls};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
 use ockam_multiaddr::proto::{
     DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
@@ -75,9 +75,8 @@ pub async fn multiaddr_to_route(
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
 
-                let id = FlowControls::generate_id();
-                flow_control_id = Some(id.clone());
-                let options = TcpConnectionOptions::as_producer(&id);
+                let options = TcpConnectionOptions::new();
+                flow_control_id = Some(options.producer_flow_control_id().clone());
 
                 let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
                 tcp_worker = Some(addr.clone());
@@ -94,9 +93,8 @@ pub async fn multiaddr_to_route(
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
 
-                let id = FlowControls::generate_id();
-                flow_control_id = Some(id.clone());
-                let options = TcpConnectionOptions::as_producer(&id);
+                let options = TcpConnectionOptions::new();
+                flow_control_id = Some(options.producer_flow_control_id().clone());
 
                 let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
                 tcp_worker = Some(addr.clone());
@@ -114,9 +112,8 @@ pub async fn multiaddr_to_route(
                     if p.code() == Tcp::CODE {
                         let port = p.cast::<Tcp>()?;
 
-                        let id = FlowControls::generate_id();
-                        flow_control_id = Some(id.clone());
-                        let options = TcpConnectionOptions::as_producer(&id);
+                        let options = TcpConnectionOptions::new();
+                        flow_control_id = Some(options.producer_flow_control_id().clone());
 
                         let addr = tcp
                             .connect(format!("{}:{}", &*host, *port), options)
@@ -333,6 +330,7 @@ pub mod test {
     use ockam::identity::SecureChannels;
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
+    use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
     use ockam_identity::IdentityIdentifier;
     use ockam_node::compat::asynchronous::RwLock;
@@ -415,7 +413,7 @@ pub mod test {
                     tm: crate::nodes::models::transport::TransportMode::Listen,
                     socket_address: "127.0.0.1:123".parse().unwrap(),
                     worker_address: "".into(),
-                    flow_control_id: None,
+                    flow_control_id: FlowControls::generate_id(), // FIXME
                 },
                 tcp.async_try_clone().await?,
             ),

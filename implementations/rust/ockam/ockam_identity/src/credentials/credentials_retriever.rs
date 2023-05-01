@@ -5,7 +5,6 @@ use tracing::{debug, trace};
 
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{async_trait, route, Address, Result, Route};
 use ockam_node::Context;
 
@@ -87,8 +86,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
         let allowed = vec![self.issuer.identifier.clone()];
         debug!("Create secure channel to authority");
 
-        let flow_control_id = FlowControls::generate_id();
-        let options = SecureChannelOptions::as_producer(&flow_control_id)
+        let options = SecureChannelOptions::new()
             .with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed));
 
         let sc = self

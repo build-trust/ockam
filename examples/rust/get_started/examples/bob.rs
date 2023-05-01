@@ -3,7 +3,7 @@ use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, Routed, TcpConnectionOptions, Worker};
 use ockam::{Context, Result};
-use ockam_core::flow_control::FlowControls;
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_transport_tcp::TcpTransportExtension;
 
 struct Echoer;
@@ -32,15 +32,20 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
+    let sc_options = SecureChannelListenerOptions::new();
     node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.flow_controls().add_consumer(
+        "echoer",
+        &sc_options.spawner_flow_control_id(),
+        FlowControlPolicy::SpawnerAllowMultipleMessages,
+    );
 
     // Create an Identity to represent Bob.
     let bob = node.create_identity().await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    let sc_flow_control_id = FlowControls::generate_id();
-    node.create_secure_channel_listener(&bob, "listener", SecureChannelListenerOptions::new(&sc_flow_control_id))
+    node.create_secure_channel_listener(&bob, "listener", sc_options)
         .await?;
 
     // The computer that is running this program is likely within a private network and

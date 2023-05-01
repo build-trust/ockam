@@ -2,7 +2,7 @@
 
 use file_transfer::FileData;
 use ockam::access_control::AllowAll;
-use ockam::flow_control::{FlowControlPolicy, FlowControls};
+use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{
@@ -87,28 +87,22 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an Identity to represent Receiver.
     let receiver = node.create_identity().await?;
 
-    let secure_channel_flow_control_id = FlowControls::generate_id();
-    let tcp_flow_control_id = FlowControls::generate_id();
-
-    node.flow_controls().add_consumer(
-        "listener",
-        &tcp_flow_control_id,
+    let tcp_options = TcpConnectionOptions::new();
+    let secure_channel_listener_options = SecureChannelListenerOptions::new().as_consumer(
+        &tcp_options.producer_flow_control_id(),
         FlowControlPolicy::ProducerAllowMultiple,
     );
+
     node.flow_controls().add_consumer(
         "receiver",
-        &secure_channel_flow_control_id,
+        &secure_channel_listener_options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    node.create_secure_channel_listener(
-        &receiver,
-        "listener",
-        SecureChannelListenerOptions::new(&secure_channel_flow_control_id),
-    )
-    .await?;
+    node.create_secure_channel_listener(&receiver, "listener", secure_channel_listener_options)
+        .await?;
 
     // The computer that is running this program is likely within a private network and
     // not accessible over the internet.
@@ -119,12 +113,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
-    let node_in_hub = tcp
-        .connect(
-            "1.node.ockam.network:4000",
-            TcpConnectionOptions::as_producer(&tcp_flow_control_id),
-        )
-        .await?;
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000", tcp_options).await?;
     let forwarder = node
         .create_forwarder(node_in_hub, RemoteForwarderOptions::new())
         .await?;
