@@ -5,7 +5,7 @@ use crate::IdentityError;
 ///
 /// the +1 is needed since the current nonce is also marked as received, taking an extra bit
 /// even though we could check `current_nonce`, this compromise is for the sake of simplicity
-const _: [(); ((KEY_RENEWAL_INTERVAL + 1 > BitmapType::BITS as u64) as usize)] = [];
+const _: [(); (KEY_RENEWAL_INTERVAL + 1 > BitmapType::BITS as u64) as usize] = [];
 type BitmapType = u64;
 
 #[derive(Debug)]
