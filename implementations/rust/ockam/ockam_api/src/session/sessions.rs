@@ -36,6 +36,7 @@ pub struct Session {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
     Down,
+    Degraded,
     Up,
 }
 

@@ -6,7 +6,9 @@ use minicbor::{Decode, Encode};
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
 use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
-use ockam_core::{route, Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
+use ockam_core::{
+    route, Address, AllowAll, Decodable, DenyAll, Encodable, Error, Result, Routed, LOCAL,
+};
 use ockam_node::tokio;
 use ockam_node::tokio::sync::mpsc;
 use ockam_node::tokio::task::JoinSet;
@@ -15,7 +17,7 @@ use ockam_node::Context;
 use tracing as log;
 
 const MAX_FAILURES: usize = 3;
-const RETRY_DELAY: Duration = Duration::from_secs(15);
+const RETRY_DELAY: Duration = Duration::from_secs(5);
 const DELAY: Duration = Duration::from_secs(3);
 
 #[derive(Debug)]
@@ -115,19 +117,18 @@ impl Medic {
                             .spawn(async move { (key, sender.forward(l).await) });
                     } else {
                         match session.status() {
-                            Status::Up => {
+                            Status::Up | Status::Down => {
                                 log::warn!(%key, "session unresponsive");
                                 let f = session.replacement(session.ping_route().clone());
-                                session.set_status(Status::Down);
+                                session.set_status(Status::Degraded);
                                 log::info!(%key, "replacing session");
                                 self.replacements.spawn(async move {
-                                    let replacement = (key, f.await);
                                     sleep(self.retry_delay).await;
-                                    replacement
+                                    (key, f.await)
                                 });
                             }
-                            Status::Down => {
-                                log::warn!(%key, "session is down");
+                            Status::Degraded => {
+                                log::warn!(%key, "session is being replaced");
                             }
                         }
                     }
@@ -151,12 +152,10 @@ impl Medic {
                     None                  => log::debug!("no replacements"),
                     Some(Err(e))          => log::error!("task failed: {e:?}"),
                     Some(Ok((k, Err(e)))) => {
+                        log::warn!(key = %k, err = %e, "replacing session failed");
                         let mut sessions = self.sessions.lock().unwrap();
                         if let Some(s) = sessions.session_mut(&k) {
-                            log::warn!(key = %k, err = %e, "replacing session failed");
-                            let f = s.replacement(s.ping_route().clone());
-                            log::info!(key = %k, "replacing session");
-                            self.replacements.spawn(async move { (k, f.await) });
+                           s.set_status(Status::Down);
                         }
                     }
                     Some(Ok((k, Ok(ping_route)))) => {
