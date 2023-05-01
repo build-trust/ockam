@@ -3,12 +3,12 @@
 //!
 //! When importing from the standard library:
 //!
-//!   1. always prefer core::<mod> over std::<mod> where it's
-//!      available. (e.g. std::fmt::Result -> core::fmt::Result)
-//!   2. use ockam_core::compat::<mod> equivalents where
-//!      possible. (e.g. std::sync::Arc -> ockam_core::compat::sync::Arc)
+//!   1. always prefer `core::<mod>` over `std::<mod>` where it's
+//!      available. (e.g. `std::fmt::Result` -> `core::fmt::Result`)
+//!   2. use `ockam_core::compat::<mod>` equivalents where
+//!      possible. (e.g. `std::sync::Arc` -> `ockam_core::compat::sync::Arc`)
 //!   3. if you need to add new items to compat, follow the originating
-//!      namespace. (e.g. compat::vec::Vec and not compat::Vec)
+//!      namespace. (e.g. `compat::vec::Vec` and not `compat::Vec`)
 
 /// Provides `std::borrow` for `alloc` targets.
 #[cfg(feature = "alloc")]

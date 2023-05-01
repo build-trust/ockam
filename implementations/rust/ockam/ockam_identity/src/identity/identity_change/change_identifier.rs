@@ -2,7 +2,7 @@ use core::fmt::{Display, Formatter};
 use ockam_core::compat::string::String;
 use serde::{Deserialize, Serialize};
 
-/// Unique [`crate::change::IdentityChange`] identifier, computed as SHA256 of the change data
+/// Unique [`IdentityChange`](crate::IdentityChange) identifier, computed as SHA256 of the change data
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct ChangeIdentifier([u8; 32]);
 

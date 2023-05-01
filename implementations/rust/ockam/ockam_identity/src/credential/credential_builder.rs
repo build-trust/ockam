@@ -14,7 +14,7 @@ use crate::identity::IdentityIdentifier;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
-/// Convenience structure to create [`Credential`]s.
+/// Convenience structure to create [`Credential`](crate::Credential)s.
 pub struct CredentialBuilder {
     pub(crate) schema: Option<SchemaId>,
     pub(crate) attrs: Attributes,

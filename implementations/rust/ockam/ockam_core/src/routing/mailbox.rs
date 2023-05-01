@@ -5,7 +5,7 @@ use core::cmp::Ordering;
 use core::fmt::{self, Debug};
 
 /// A `Mailbox` controls the dispatch of incoming messages for a particular [`Address`]
-/// Note that [`Worker`], [`Processor`] and `Context` may have multiple Mailboxes (with different
+/// Note that [`Worker`](crate::Worker), [`Processor`](crate::Processor) and `Context` may have multiple Mailboxes (with different
 /// addresses), but they always have exactly one mpsc receiver (message queue)
 #[derive(Clone)]
 pub struct Mailbox {
@@ -83,7 +83,7 @@ impl Mailbox {
     }
 }
 
-/// A collection of [`Mailbox`]es for a specific [`Worker`], [`Processor`] or `Context`
+/// A collection of [`Mailbox`]es for a specific [`Worker`](crate::Worker), [`Processor`](crate::Processor) or `Context`
 #[derive(Clone)]
 pub struct Mailboxes {
     main_mailbox: Mailbox,

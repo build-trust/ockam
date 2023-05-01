@@ -5,7 +5,7 @@ use ockam_core::flow_control::{
 };
 use ockam_core::{Address, AllowAll, OutgoingAccessControl};
 
-/// Trust options for [`RemoteForwarder`]
+/// Trust options for [`RemoteForwarder`](super::RemoteForwarder)
 pub struct RemoteForwarderOptions {
     pub(super) flow_controls: Option<FlowControls>,
 }
@@ -27,6 +27,8 @@ impl RemoteForwarderOptions {
     /// context, it's just a Message Routing helper. Therefore, workers that are allowed to receive
     /// messages from the corresponding Secure Channel should as well be allowed to receive messages
     /// through the [`RemoteForwarder`] through the same Secure Channel.
+    ///
+    /// [`RemoteForwarder`]: super::RemoteForwarder
     pub fn as_consumer_and_producer(flow_controls: &FlowControls) -> Self {
         Self {
             flow_controls: Some(flow_controls.clone()),

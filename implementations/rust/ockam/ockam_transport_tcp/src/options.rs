@@ -17,7 +17,7 @@ pub struct TcpConnectionOptions {
 
 impl TcpConnectionOptions {
     /// This constructor is insecure, because outgoing messages from such connections will not be
-    /// restricted and can reach any [`Address`] on this node.
+    /// restricted and can reach any [`Address`](ockam_core::Address) on this node.
     /// Should only be used for testing purposes
     pub fn insecure() -> Self {
         Self {
@@ -26,7 +26,7 @@ impl TcpConnectionOptions {
     }
 
     /// This constructor is insecure, because outgoing messages from such connection will not be
-    /// restricted and can reach any [`Address`] on this node.
+    /// restricted and can reach any [`Address`](ockam_core::Address) on this node.
     /// Should only be used for testing purposes
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -79,7 +79,7 @@ pub struct TcpListenerOptions {
 
 impl TcpListenerOptions {
     /// This constructor is insecure, because outgoing messages from such connections will not be
-    /// restricted and can reach any [`Address`] on this node.
+    /// restricted and can reach any [`Address`](ockam_core::Address) on this node.
     /// Should only be used for testing purposes
     pub fn insecure() -> Self {
         Self {
@@ -88,7 +88,7 @@ impl TcpListenerOptions {
     }
 
     /// This constructor is insecure, because outgoing messages from such connections will not be
-    /// restricted and can reach any [`Address`] on this node.
+    /// restricted and can reach any [`Address`](ockam_core::Address) on this node.
     /// Should only be used for testing purposes
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
