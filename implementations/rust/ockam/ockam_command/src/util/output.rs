@@ -165,7 +165,7 @@ impl Output for Vec<Project> {
     }
 }
 
-impl Output for CreateSecureChannelResponse<'_> {
+impl Output for CreateSecureChannelResponse {
     fn output(&self) -> Result<String> {
         let addr = route_to_multiaddr(&route![self.addr.to_string()])
             .context("Invalid Secure Channel Address")?

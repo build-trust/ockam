@@ -18,8 +18,8 @@ use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
     CredentialExchangeMode, DeleteSecureChannelListenerRequest,
     DeleteSecureChannelListenerResponse, DeleteSecureChannelRequest, DeleteSecureChannelResponse,
-    ShowSecureChannelListenerRequest, ShowSecureChannelListenerResponse, ShowSecureChannelRequest,
-    ShowSecureChannelResponse,
+    SecureChannelListenersList, ShowSecureChannelListenerRequest,
+    ShowSecureChannelListenerResponse, ShowSecureChannelRequest, ShowSecureChannelResponse,
 };
 use crate::nodes::registry::{Registry, SecureChannelListenerInfo};
 use crate::nodes::service::invalid_multiaddr_error;
@@ -172,7 +172,6 @@ impl NodeManager {
         vault_name: Option<String>,
         identity_name: Option<String>,
         ctx: &Context,
-        api_flow_control_id: Option<FlowControlId>,
     ) -> Result<FlowControlId> {
         info!(
             "Handling request to create a new secure channel listener: {}",
@@ -182,16 +181,12 @@ impl NodeManager {
         let secure_channels = self.get_secure_channels(vault_name.clone()).await?;
         let identifier = self.get_identifier(identity_name.clone()).await?;
 
-        let options = SecureChannelListenerOptions::new();
+        let options = SecureChannelListenerOptions::new().as_consumer(
+            &self.api_transport.flow_control_id,
+            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+        );
         let flow_control_id = options.spawner_flow_control_id();
 
-        let options = match api_flow_control_id {
-            Some(flow_control_id) => options.as_consumer(
-                &flow_control_id,
-                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-            ),
-            None => options,
-        };
         let options = match authorized_identifiers {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
@@ -208,8 +203,8 @@ impl NodeManager {
             .await?;
 
         self.registry.secure_channel_listeners.insert(
-            address,
-            SecureChannelListenerInfo::new(flow_control_id.clone()),
+            address.clone(),
+            SecureChannelListenerInfo::new(address, flow_control_id.clone()),
         );
 
         // TODO: Clean
@@ -327,14 +322,14 @@ impl NodeManagerWorker {
         &self,
         req: &Request<'_>,
         registry: &Registry,
-    ) -> ResponseBuilder<Vec<String>> {
-        Response::ok(req.id()).body(
+    ) -> ResponseBuilder<SecureChannelListenersList> {
+        Response::ok(req.id()).body(SecureChannelListenersList::new(
             registry
                 .secure_channel_listeners
-                .keys()
-                .map(|addr| addr.to_string())
+                .values()
+                .map(ShowSecureChannelListenerResponse::new)
                 .collect(),
-        )
+        ))
     }
 
     pub(super) async fn create_secure_channel(
@@ -342,7 +337,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_>>> {
+    ) -> Result<ResponseBuilder<CreateSecureChannelResponse>> {
         let CreateSecureChannelRequest {
             addr,
             authorized_identifiers,
@@ -478,7 +473,6 @@ impl NodeManagerWorker {
             return Ok(Response::bad_request(req.id()));
         }
 
-        // TODO: Return to the client side flow_control_id
         node_manager
             .create_secure_channel_listener_impl(
                 addr,
@@ -486,7 +480,6 @@ impl NodeManagerWorker {
                 vault.map(|v| v.to_string()),
                 identity.map(|v| v.to_string()),
                 ctx,
-                None,
             )
             .await?;
 
@@ -524,7 +517,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<ShowSecureChannelListenerResponse<'a>>> {
+    ) -> Result<Vec<u8>> {
         let node_manager = self.node_manager.read().await;
         let body: ShowSecureChannelListenerRequest = dec.decode()?;
 
@@ -532,8 +525,11 @@ impl NodeManagerWorker {
 
         debug!(%address, "On show secure channel listener");
 
-        let _info = node_manager.registry.secure_channel_listeners.get(&address);
-
-        Ok(Response::ok(req.id()).body(ShowSecureChannelListenerResponse::new(&address)))
+        match node_manager.registry.secure_channel_listeners.get(&address) {
+            Some(info) => Ok(Response::ok(req.id())
+                .body(ShowSecureChannelListenerResponse::new(info))
+                .to_vec()?),
+            None => Ok(Response::not_found(req.id()).to_vec()?),
+        }
     }
 }

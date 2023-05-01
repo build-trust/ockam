@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use minicbor::{Decode, Encode};
 
-use crate::nodes::registry::SecureChannelInfo;
+use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
 use ockam::identity::IdentityIdentifier;
 use ockam_core::compat::borrow::Cow;
 use ockam_core::flow_control::FlowControlId;
@@ -65,14 +65,14 @@ impl<'a> CreateSecureChannelRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateSecureChannelResponse<'a> {
+pub struct CreateSecureChannelResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6056513>,
-    #[b(1)] pub addr: CowStr<'a>,
-    #[b(2)] pub flow_control_id: FlowControlId
+    #[n(1)] pub addr: Address,
+    #[n(2)] pub flow_control_id: FlowControlId
 }
 
-impl<'a> CreateSecureChannelResponse<'a> {
+impl CreateSecureChannelResponse {
     pub fn new(addr: &Address, flow_control_id: &FlowControlId) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -82,20 +82,11 @@ impl<'a> CreateSecureChannelResponse<'a> {
         }
     }
 
-    pub fn to_owned<'r>(&self) -> CreateSecureChannelResponse<'r> {
-        CreateSecureChannelResponse {
-            #[cfg(feature = "tag")]
-            tag: self.tag.to_owned(),
-            addr: self.addr.to_owned(),
-            flow_control_id: self.flow_control_id.clone(),
-        }
-    }
-
     pub fn flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
     }
 
-    pub fn addr(&self) -> Result<MultiAddr> {
+    pub fn multiaddr(&self) -> Result<MultiAddr> {
         route_to_multiaddr(&route![self.addr.to_string()])
             .ok_or_else(|| ApiError::generic(&format!("Invalid route: {}", self.addr)))
     }
@@ -197,18 +188,20 @@ impl<'a> ShowSecureChannelListenerRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ShowSecureChannelListenerResponse<'a> {
+pub struct ShowSecureChannelListenerResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9365445>,
-    #[b(1)] pub addr: CowStr<'a>,
+    #[n(1)] pub addr: Address,
+    #[n(2)] pub flow_control_id: FlowControlId,
 }
 
-impl<'a> ShowSecureChannelListenerResponse<'a> {
-    pub fn new(addr: &Address) -> Self {
+impl ShowSecureChannelListenerResponse {
+    pub(crate) fn new(info: &SecureChannelListenerInfo) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.to_string().into(),
+            addr: info.addr().to_string().into(),
+            flow_control_id: info.flow_control_id().clone(),
         }
     }
 }
@@ -280,6 +273,7 @@ pub struct ShowSecureChannelResponse<'a> {
     #[b(1)] pub channel: Option<Cow<'a, str>>,
     #[b(2)] pub route: Option<Cow<'a, str>>,
     #[b(4)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
+    #[b(5)] pub flow_control_id: Option<FlowControlId>,
 }
 
 impl<'a> ShowSecureChannelResponse<'a> {
@@ -295,6 +289,26 @@ impl<'a> ShowSecureChannelResponse<'a> {
                         .map(|ids| ids.iter().map(|iid| iid.to_string().into()).collect())
                 })
                 .unwrap_or(None),
+            flow_control_id: info.map(|info| info.flow_control_id().clone()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct SecureChannelListenersList {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<5141124>,
+    #[b(1)] pub list: Vec<ShowSecureChannelListenerResponse>
+}
+
+impl SecureChannelListenersList {
+    pub fn new(list: Vec<ShowSecureChannelListenerResponse>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            list,
         }
     }
 }
