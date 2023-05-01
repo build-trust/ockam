@@ -3,7 +3,7 @@ use crate::{docs, node::show::print_query_status, CommandGlobalOpts};
 use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::{Context, TcpTransport};
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
 use std::time::Duration;
 

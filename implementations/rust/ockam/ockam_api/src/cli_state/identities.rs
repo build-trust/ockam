@@ -112,6 +112,10 @@ impl IdentityState {
         }
         Ok(())
     }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 impl Display for IdentityState {
@@ -208,26 +212,16 @@ mod traits {
     use crate::cli_state::traits::*;
     use crate::cli_state::{file_stem, CliStateError};
     use ockam_core::async_trait;
-    use std::path::Path;
 
     #[async_trait]
     impl StateDirTrait for IdentitiesState {
         type Item = IdentityState;
+        const DEFAULT_FILENAME: &'static str = "identity";
+        const DIR_NAME: &'static str = "identities";
+        const HAS_DATA_DIR: bool = true;
 
         fn new(dir: PathBuf) -> Self {
             Self { dir }
-        }
-
-        fn default_filename() -> &'static str {
-            "identity"
-        }
-
-        fn build_dir(root_path: &Path) -> PathBuf {
-            root_path.join("identities")
-        }
-
-        fn has_data_dir() -> bool {
-            true
         }
 
         fn dir(&self) -> &PathBuf {
@@ -285,16 +279,8 @@ mod traits {
             })
         }
 
-        fn name(&self) -> &str {
-            &self.name
-        }
-
         fn path(&self) -> &PathBuf {
             &self.path
-        }
-
-        fn data_path(&self) -> Option<&PathBuf> {
-            Some(&self.data_path)
         }
 
         fn config(&self) -> &Self::Config {

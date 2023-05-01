@@ -1,7 +1,7 @@
 use clap::{arg, Args};
 
 use ockam::Context;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::StateDirTrait;
 
 use crate::{
     credential::show::display_credential, util::node_rpc, vault::default_vault_name,

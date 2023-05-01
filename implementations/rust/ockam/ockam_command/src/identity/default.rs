@@ -1,7 +1,7 @@
 use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");

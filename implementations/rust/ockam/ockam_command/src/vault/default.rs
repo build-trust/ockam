@@ -2,7 +2,7 @@ use crate::{fmt_ok, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
 /// Set the default vault

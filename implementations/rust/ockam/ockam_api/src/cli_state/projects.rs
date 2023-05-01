@@ -13,6 +13,12 @@ pub struct ProjectState {
     path: PathBuf,
 }
 
+impl ProjectState {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
 pub type ProjectConfig = Project;
 
 mod traits {
@@ -20,26 +26,16 @@ mod traits {
     use crate::cli_state::file_stem;
     use crate::cli_state::traits::*;
     use ockam_core::async_trait;
-    use std::path::Path;
 
     #[async_trait]
     impl StateDirTrait for ProjectsState {
         type Item = ProjectState;
+        const DEFAULT_FILENAME: &'static str = "project";
+        const DIR_NAME: &'static str = "projects";
+        const HAS_DATA_DIR: bool = false;
 
         fn new(dir: PathBuf) -> Self {
             Self { dir }
-        }
-
-        fn default_filename() -> &'static str {
-            "project"
-        }
-
-        fn build_dir(root_path: &Path) -> PathBuf {
-            root_path.join("projects")
-        }
-
-        fn has_data_dir() -> bool {
-            false
         }
 
         fn dir(&self) -> &PathBuf {
@@ -63,16 +59,8 @@ mod traits {
             Ok(Self { name, path })
         }
 
-        fn name(&self) -> &str {
-            &self.name
-        }
-
         fn path(&self) -> &PathBuf {
             &self.path
-        }
-
-        fn data_path(&self) -> Option<&PathBuf> {
-            unreachable!()
         }
 
         fn config(&self) -> &Self::Config {

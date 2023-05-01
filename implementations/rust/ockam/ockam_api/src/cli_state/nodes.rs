@@ -149,6 +149,10 @@ impl NodeState {
     pub async fn policies_storage(&self) -> Result<LmdbStorage> {
         Ok(LmdbStorage::new(self.paths.policies_storage()).await?)
     }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -381,26 +385,16 @@ mod traits {
     use crate::cli_state::traits::*;
     use crate::cli_state::{file_stem, CliStateError};
     use ockam_core::async_trait;
-    use std::path::Path;
 
     #[async_trait]
     impl StateDirTrait for NodesState {
         type Item = NodeState;
+        const DEFAULT_FILENAME: &'static str = "node";
+        const DIR_NAME: &'static str = "nodes";
+        const HAS_DATA_DIR: bool = false;
 
         fn new(dir: PathBuf) -> Self {
             Self { dir }
-        }
-
-        fn default_filename() -> &'static str {
-            "node"
-        }
-
-        fn build_dir(root_path: &Path) -> PathBuf {
-            root_path.join("nodes")
-        }
-
-        fn has_data_dir() -> bool {
-            false
         }
 
         fn dir(&self) -> &PathBuf {
@@ -483,16 +477,8 @@ mod traits {
             self._delete(false)
         }
 
-        fn name(&self) -> &str {
-            &self.name
-        }
-
         fn path(&self) -> &PathBuf {
             &self.path
-        }
-
-        fn data_path(&self) -> Option<&PathBuf> {
-            unreachable!()
         }
 
         fn config(&self) -> &Self::Config {
