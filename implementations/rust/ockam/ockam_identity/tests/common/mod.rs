@@ -92,6 +92,7 @@ async fn check_message_flow_with_ctx(
 pub struct SecureChannelListenerInfo {
     pub identifier: IdentityIdentifier,
     pub secure_channels: Arc<SecureChannels>,
+    pub flow_control_id: FlowControlId,
 }
 
 impl SecureChannelListenerInfo {
@@ -118,13 +119,14 @@ pub async fn create_secure_channel_listener(
 
     let identity = identities_creation.create_identity().await?;
 
-    let options = SecureChannelListenerOptions::new(flow_control_id);
+    let options = SecureChannelListenerOptions::new();
     let policy = if with_tcp_listener {
         FlowControlPolicy::SpawnerAllowOnlyOneMessage
     } else {
         FlowControlPolicy::ProducerAllowMultiple
     };
     let options = options.as_consumer(flow_control_id, policy);
+    let flow_control_id = options.spawner_flow_control_id();
 
     let identifier = identity.identifier();
     secure_channels
@@ -134,6 +136,7 @@ pub async fn create_secure_channel_listener(
     let info = SecureChannelListenerInfo {
         secure_channels,
         identifier,
+        flow_control_id,
     };
 
     Ok(info)

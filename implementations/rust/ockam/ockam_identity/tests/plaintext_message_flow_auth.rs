@@ -1,7 +1,7 @@
 use crate::common::{
     message_should_not_pass, message_should_not_pass_with_ctx, message_should_pass_with_ctx,
 };
-use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, AllowAll, Result};
 use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::Context;
@@ -14,8 +14,11 @@ mod common;
 // Bob: Secure Channel listener
 #[ockam_macros::test]
 async fn test1(ctx: &mut Context) -> Result<()> {
-    let flow_control_id_alice_channel = FlowControls::generate_id();
-    let flow_control_id_bob_channel = FlowControls::generate_id();
+    let alice_options = SecureChannelOptions::new();
+    let flow_control_id_alice_channel = alice_options.producer_flow_control_id();
+
+    let bob_options = SecureChannelListenerOptions::new();
+    let flow_control_id_bob_channel = bob_options.spawner_flow_control_id();
 
     let alice_secure_channels = secure_channels();
     let bob_secure_channels = secure_channels();
@@ -32,21 +35,11 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .await?;
 
     bob_secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &bob.identifier(),
-            "listener",
-            SecureChannelListenerOptions::new(&flow_control_id_bob_channel),
-        )
+        .create_secure_channel_listener(ctx, &bob.identifier(), "listener", bob_options)
         .await?;
 
     let channel_to_bob = alice_secure_channels
-        .create_secure_channel(
-            ctx,
-            &alice.identifier(),
-            route!["listener"],
-            SecureChannelOptions::as_producer(&flow_control_id_alice_channel),
-        )
+        .create_secure_channel(ctx, &alice.identifier(), route!["listener"], alice_options)
         .await?;
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
@@ -83,20 +76,13 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 // Bob: TCP listener + Secure Channel listener
 #[ockam_macros::test]
 async fn test2(ctx: &mut Context) -> Result<()> {
-    let flow_control_id_alice_plaintext = FlowControls::generate_id();
-
-    let flow_control_id_bob_tcp = FlowControls::generate_id();
-    let flow_control_id_bob_plaintext = FlowControls::generate_id();
+    let bob_tcp_options = TcpListenerOptions::new();
+    let flow_control_id_bob_tcp = bob_tcp_options.spawner_flow_control_id();
 
     let tcp_alice = TcpTransport::create(ctx).await?;
     let tcp_bob = TcpTransport::create(ctx).await?;
 
-    let (socket_addr, _) = tcp_bob
-        .listen(
-            "127.0.0.1:0",
-            TcpListenerOptions::new(&flow_control_id_bob_tcp),
-        )
-        .await?;
+    let (socket_addr, _) = tcp_bob.listen("127.0.0.1:0", bob_tcp_options).await?;
 
     let connection_to_bob = tcp_alice
         .connect(socket_addr.to_string(), TcpConnectionOptions::new())
@@ -125,24 +111,25 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .create_identity()
         .await?;
 
+    let bob_options = SecureChannelListenerOptions::new().as_consumer(
+        &flow_control_id_bob_tcp,
+        FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+    );
+    let flow_control_id_bob_plaintext = bob_options.spawner_flow_control_id();
+
     bob_secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &bob.identifier(),
-            "listener",
-            SecureChannelListenerOptions::new(&flow_control_id_bob_plaintext).as_consumer(
-                &flow_control_id_bob_tcp,
-                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-            ),
-        )
+        .create_secure_channel_listener(ctx, &bob.identifier(), "listener", bob_options)
         .await?;
+
+    let alice_options = SecureChannelOptions::new();
+    let flow_control_id_alice_plaintext = alice_options.producer_flow_control_id();
 
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
             &alice.identifier(),
             route![connection_to_bob, "listener"],
-            SecureChannelOptions::as_producer(&flow_control_id_alice_plaintext),
+            alice_options,
         )
         .await?;
 

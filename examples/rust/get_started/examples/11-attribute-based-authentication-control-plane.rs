@@ -9,10 +9,9 @@ use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, route, Context, Result, TcpOutletOptions};
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
-use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::FlowControls;
 use ockam_node::RpcClient;
 use ockam_transport_tcp::TcpTransportExtension;
+use std::sync::Arc;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///
@@ -161,13 +160,8 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 6. create a secure channel listener which will allow the edge node to
     //    start a secure channel when it is ready
-    let sc_flow_control_id = FlowControls::generate_id();
-    node.create_secure_channel_listener(
-        &control_plane,
-        "untrusted",
-        SecureChannelListenerOptions::new(&sc_flow_control_id),
-    )
-    .await?;
+    node.create_secure_channel_listener(&control_plane, "untrusted", SecureChannelListenerOptions::new())
+        .await?;
     println!("created a secure channel listener");
 
     // don't stop the node

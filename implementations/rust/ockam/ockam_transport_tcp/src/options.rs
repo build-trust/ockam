@@ -23,13 +23,13 @@ impl TcpConnectionOptions {
         }
     }
 
-    /// Mark this Tcp Receiver as a Producer for a given [`FlowControlId`]
-    pub fn as_producer(flow_control_id: &FlowControlId) -> Self {
-        Self {
-            producer_flow_control_id: flow_control_id.clone(),
-        }
+    /// Getter for freshly generated [`FlowControlId`]
+    pub fn producer_flow_control_id(&self) -> FlowControlId {
+        self.producer_flow_control_id.clone()
     }
+}
 
+impl TcpConnectionOptions {
     pub(crate) fn setup_flow_control(&self, flow_controls: &FlowControls, addresses: &Addresses) {
         flow_controls.add_producer(
             addresses.receiver_address().clone(),
@@ -64,12 +64,20 @@ impl TcpListenerOptions {
     /// Mark this Tcp Listener as a Spawner with given [`FlowControlId`].
     /// NOTE: Spawned connections get fresh random [`FlowControlId`], however they are still marked
     /// with Spawner's [`FlowControlId`]
-    pub fn new(flow_control_id: &FlowControlId) -> Self {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
         Self {
-            spawner_flow_control_id: flow_control_id.clone(),
+            spawner_flow_control_id: FlowControls::generate_id(),
         }
     }
 
+    /// Getter for freshly generated [`FlowControlId`]
+    pub fn spawner_flow_control_id(&self) -> FlowControlId {
+        self.spawner_flow_control_id.clone()
+    }
+}
+
+impl TcpListenerOptions {
     pub(crate) fn setup_flow_control_for_listener(
         &self,
         flow_controls: &FlowControls,

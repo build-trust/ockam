@@ -6,7 +6,7 @@ use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -55,8 +55,8 @@ impl NodeManager {
         // Else, create it.
 
         debug!(%sc_route, "Creating secure channel");
-        let sc_flow_control_id = FlowControls::generate_id();
-        let options = SecureChannelOptions::as_producer(&sc_flow_control_id);
+        let options = SecureChannelOptions::new();
+        let sc_flow_control_id = options.producer_flow_control_id();
 
         let options = if let Some(timeout) = timeout {
             options.with_timeout(timeout)
@@ -181,8 +181,8 @@ impl NodeManager {
         let secure_channels = self.get_secure_channels(vault_name.clone()).await?;
         let identifier = self.get_identifier(identity_name.clone()).await?;
 
-        let flow_control_id = FlowControls::generate_id();
-        let options = SecureChannelListenerOptions::new(&flow_control_id);
+        let options = SecureChannelListenerOptions::new();
+        let flow_control_id = options.spawner_flow_control_id();
 
         let options = match authorized_identifiers {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
