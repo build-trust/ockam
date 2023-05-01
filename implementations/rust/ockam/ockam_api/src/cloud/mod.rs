@@ -83,7 +83,6 @@ mod node {
     use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_core::api::RequestBuilder;
     use ockam_core::env::get_env;
-    use ockam_core::flow_control::FlowControls;
     use ockam_core::{self, route, CowStr, Result};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::api::request_with_options;
@@ -189,11 +188,10 @@ mod node {
                         .await
                         .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-                let sc_flow_control_id = FlowControls::generate_id();
-                let options = SecureChannelOptions::as_producer(&sc_flow_control_id)
-                    .with_trust_policy(TrustIdentifierPolicy::new(
-                        node_manager.controller_identity_id(),
-                    ));
+                let options = SecureChannelOptions::new().with_trust_policy(
+                    TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
+                );
+                let sc_flow_control_id = options.producer_flow_control_id().clone();
                 let sc_address = secure_channels
                     .create_secure_channel(ctx, &identifier, cloud_route.route, options)
                     .await?;

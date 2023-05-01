@@ -1,4 +1,4 @@
-use ockam::flow_control::{FlowControlPolicy, FlowControls};
+use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions};
 use ockam_transport_tcp::TcpTransportExtension;
@@ -14,15 +14,16 @@ async fn main(ctx: Context) -> Result<()> {
     //   2. A Secure Channel Listener at Worker address - secure_channel_listener
     //      that will wait for requests to start an Authenticated Key Exchange.
     let e = node.create_identity().await?;
-    let secure_channel_flow_control_id = FlowControls::generate_id();
-    let tcp_flow_control_id = FlowControls::generate_id();
-    node.create_secure_channel_listener(
-        &e,
-        "secure_channel_listener",
-        SecureChannelListenerOptions::new(&secure_channel_flow_control_id)
-            .as_consumer(&tcp_flow_control_id, FlowControlPolicy::SpawnerAllowMultipleMessages),
-    )
-    .await?;
+
+    let tcp_listener_options = TcpListenerOptions::new();
+
+    let secure_channel_listener_options = SecureChannelListenerOptions::new().as_consumer(
+        &tcp_listener_options.spawner_flow_control_id(),
+        FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+    );
+    let secure_channel_flow_control_id = secure_channel_listener_options.spawner_flow_control_id();
+    node.create_secure_channel_listener(&e, "secure_channel_listener", secure_channel_listener_options)
+        .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:4002
@@ -56,11 +57,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Use port 4000, unless otherwise specified by second command line argument.
 
     let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    tcp.listen(
-        format!("127.0.0.1:{port}"),
-        TcpListenerOptions::new(&tcp_flow_control_id),
-    )
-    .await?;
+    tcp.listen(format!("127.0.0.1:{port}"), tcp_listener_options).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.

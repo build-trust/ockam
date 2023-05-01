@@ -41,7 +41,6 @@ use ockam_api::{
     },
 };
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{route, AllowAll, LOCAL};
 
 use super::show::is_node_up;
@@ -252,11 +251,9 @@ async fn run_foreground_node(
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = &cmd.tcp_listener_address;
 
-    // TODO: This is only listening on loopback address, but should use FlowControls anyways
-    let flow_control_id = FlowControls::generate_id();
-    let (socket_addr, listener_addr) = tcp
-        .listen(&bind, TcpListenerOptions::new(&flow_control_id))
-        .await?;
+    let options = TcpListenerOptions::new();
+    let flow_control_id = options.spawner_flow_control_id();
+    let (socket_addr, listener_addr) = tcp.listen(&bind, options).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     node_state.set_setup(
@@ -289,7 +286,7 @@ async fn run_foreground_node(
                 tm: TransportMode::Listen,
                 socket_address: socket_addr,
                 worker_address: listener_addr,
-                flow_control_id: None, // TODO: Replace with proper value when loopbck TCP listener starts using FlowControls
+                flow_control_id,
             },
             tcp.async_try_clone().await?,
         ),

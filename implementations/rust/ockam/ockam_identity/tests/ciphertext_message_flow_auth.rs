@@ -1,6 +1,5 @@
 use core::time::Duration;
 
-use ockam_core::flow_control::FlowControls;
 use ockam_core::{route, Result};
 use ockam_identity::SecureChannelOptions;
 use ockam_node::Context;
@@ -18,8 +17,8 @@ mod common;
 async fn test1(ctx: &mut Context) -> Result<()> {
     let tcp_bob = TcpTransport::create(ctx).await?;
     let (socket_addr, bob_flow_control_id) = {
-        let flow_control_id = FlowControls::generate_id();
-        let options = TcpListenerOptions::new(&flow_control_id);
+        let options = TcpListenerOptions::new();
+        let flow_control_id = options.spawner_flow_control_id();
         let (socket_addr, _) = tcp_bob.listen("127.0.0.1:0", options).await?;
         (socket_addr, flow_control_id)
     };
@@ -73,19 +72,16 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 async fn test2(ctx: &mut Context) -> Result<()> {
     let tcp_bob = TcpTransport::create(ctx).await?;
     let socket_addr = {
-        let flow_control_id = FlowControls::generate_id();
-        let options = TcpListenerOptions::new(&flow_control_id);
+        let options = TcpListenerOptions::new();
         let (socket_addr, _) = tcp_bob.listen("127.0.0.1:0", options).await?;
         socket_addr
     };
 
     let tcp_alice = TcpTransport::create(ctx).await?;
-    let alice_flow_control_id = FlowControls::generate_id();
+    let alice_tcp_options = TcpConnectionOptions::new();
+    let alice_flow_control_id = alice_tcp_options.producer_flow_control_id();
     let connection_to_bob = tcp_alice
-        .connect(
-            socket_addr.to_string(),
-            TcpConnectionOptions::as_producer(&alice_flow_control_id),
-        )
+        .connect(socket_addr.to_string(), alice_tcp_options)
         .await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
     let connection_to_alice = tcp_bob

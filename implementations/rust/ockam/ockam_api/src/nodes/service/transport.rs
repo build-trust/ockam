@@ -73,26 +73,30 @@ impl NodeManagerWorker {
         let socket_addr = addr.to_string();
 
         // TODO: Support FlowControls from ockam_command CLI
-        let flow_control_id = FlowControls::generate_id();
         let res = match (tt, tm) {
-            (Tcp, Listen) => node_manager
-                .tcp_transport
-                .listen(&addr, TcpListenerOptions::new(&flow_control_id))
-                .await
-                .map(|(socket, worker_address)| (socket.to_string(), worker_address)),
-            (Tcp, Connect) => node_manager
-                .tcp_transport
-                .connect(
-                    &socket_addr,
-                    TcpConnectionOptions::as_producer(&flow_control_id),
+            (Tcp, Listen) => {
+                let options = TcpListenerOptions::new();
+                let flow_control_id = options.spawner_flow_control_id();
+                node_manager.tcp_transport.listen(&addr, options).await.map(
+                    |(socket, worker_address)| {
+                        (socket.to_string(), worker_address, flow_control_id)
+                    },
                 )
-                .await
-                .map(|worker_address| (socket_addr, worker_address)),
+            }
+            (Tcp, Connect) => {
+                let options = TcpConnectionOptions::new();
+                let flow_control_id = options.producer_flow_control_id();
+                node_manager
+                    .tcp_transport
+                    .connect(&socket_addr, options)
+                    .await
+                    .map(|worker_address| (socket_addr, worker_address, flow_control_id))
+            }
             _ => unimplemented!(),
         };
 
         let response = match res {
-            Ok((socket_address, worker_address)) => {
+            Ok((socket_address, worker_address, flow_control_id)) => {
                 let tid = random_alias();
                 let socket_address: SocketAddr = socket_address
                     .parse()
@@ -102,7 +106,7 @@ impl NodeManagerWorker {
                     tm,
                     socket_address,
                     worker_address: worker_address.address().into(),
-                    flow_control_id: None,
+                    flow_control_id,
                 };
                 node_manager
                     .transports
@@ -117,7 +121,7 @@ impl NodeManagerWorker {
                         tm,
                         socket_address: "0.0.0.0:0000".parse().unwrap(),
                         worker_address: "<none>".into(),
-                        flow_control_id: None,
+                        flow_control_id: FlowControls::generate_id(), // FIXME
                     },
                     "<none>".to_string(),
                 ))

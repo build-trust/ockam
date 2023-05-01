@@ -268,7 +268,7 @@ pub struct ApiTransport {
     /// Worker address
     pub worker_address: Address,
     /// FlowControlId
-    pub flow_control_id: Option<FlowControlId>,
+    pub flow_control_id: FlowControlId,
 }
 
 pub struct NodeManagerTransportOptions {

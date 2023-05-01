@@ -26,20 +26,19 @@ impl SecureChannelOptions {
         }
     }
 
-    /// Mark this Secure Channel Decryptor as a Producer for a given [`FlowControlId`]
-    pub fn as_producer(flow_control_id: &FlowControlId) -> Self {
-        Self {
-            producer_flow_control_id: flow_control_id.clone(),
-            trust_policy: Arc::new(TrustEveryonePolicy),
-        }
-    }
-
     /// Set Trust Policy
     pub fn with_trust_policy(mut self, trust_policy: impl TrustPolicy) -> Self {
         self.trust_policy = Arc::new(trust_policy);
         self
     }
 
+    /// Freshly generated [`FlowControlId`]
+    pub fn producer_flow_control_id(&self) -> FlowControlId {
+        self.producer_flow_control_id.clone()
+    }
+}
+
+impl SecureChannelOptions {
     pub(crate) fn setup_flow_control(
         &self,
         flow_controls: &FlowControls,
@@ -100,10 +99,11 @@ impl SecureChannelListenerOptions {
     /// Mark spawned Secure Channel Decryptors as Producers for a given Spawner's [`FlowControlId`]
     /// NOTE: Spawned connections get fresh random [`FlowControlId`], however they are still marked
     /// with Spawner's [`FlowControlId`]
-    pub fn new(flow_control_id: &FlowControlId) -> Self {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
         Self {
             consumer_flow_control: None,
-            spawner_flow_control_id: flow_control_id.clone(),
+            spawner_flow_control_id: FlowControls::generate_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
         }
     }
@@ -130,6 +130,13 @@ impl SecureChannelListenerOptions {
         self
     }
 
+    /// Freshly generated [`FlowControlId`]
+    pub fn spawner_flow_control_id(&self) -> FlowControlId {
+        self.spawner_flow_control_id.clone()
+    }
+}
+
+impl SecureChannelListenerOptions {
     pub(crate) fn setup_flow_control_for_listener(
         &self,
         flow_controls: &FlowControls,

@@ -3,7 +3,7 @@
 use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
-use ockam::flow_control::{FlowControlPolicy, FlowControls};
+use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::{
     AuthorityService, CredentialsIssuerClient, CredentialsMemoryRetriever, SecureChannelListenerOptions,
     SecureChannelOptions, TrustContext,
@@ -72,10 +72,15 @@ async fn main(ctx: Context) -> Result<()> {
     // identities that have authenticated credentials issued by the above credential
     // issuer. These credentials must also attest that requesting identity is
     // a member of the production cluster.
-    let secure_channel_listener_flow_control_id = FlowControls::generate_id();
+    let tcp_listener_options = TcpListenerOptions::new();
+    let sc_listener_options = SecureChannelListenerOptions::new().as_consumer(
+        &tcp_listener_options.spawner_flow_control_id(),
+        FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+    );
+
     node.flow_controls().add_consumer(
         "echoer",
-        &secure_channel_listener_flow_control_id,
+        &sc_listener_options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
     let allow_production = AbacAccessControl::create(node.repository(), "cluster", "production");
@@ -84,7 +89,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a worker which will receive credentials sent by the client and issued by the issuer node
     node.flow_controls().add_consumer(
         "credentials",
-        &secure_channel_listener_flow_control_id,
+        &sc_listener_options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
     node.credentials_server()
@@ -99,16 +104,10 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
-    let tcp_listener_flow_control_id = FlowControls::generate_id();
-    let options = SecureChannelListenerOptions::new(&secure_channel_listener_flow_control_id).as_consumer(
-        &tcp_listener_flow_control_id,
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
-    node.create_secure_channel_listener(&server.identifier(), "secure", options)
+    node.create_secure_channel_listener(&server.identifier(), "secure", sc_listener_options)
         .await?;
 
     // Create a TCP listener and wait for incoming connections
-    let tcp_listener_options = TcpListenerOptions::new(&tcp_listener_flow_control_id);
     tcp.listen("127.0.0.1:4000", tcp_listener_options).await?;
 
     // Don't call node.stop() here so this node runs forever.
