@@ -1,6 +1,8 @@
-use crate::CommandGlobalOpts;
+use crate::terminal::ConfirmResult;
+use crate::{fmt_ok, CommandGlobalOpts};
+use anyhow::anyhow;
 use clap::Args;
-use std::io::{self, BufReader, Read, Write};
+use colorful::Colorful;
 
 /// Full Ockam Reset
 #[derive(Clone, Debug, Args)]
@@ -11,33 +13,32 @@ pub struct ResetCommand {
 
 impl ResetCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if self.yes || get_user_confirmation() {
-            if let Err(e) = run_impl(opts) {
-                eprintln!("{e}");
-                std::process::exit(e.code());
-            }
+        if let Err(e) = run_impl(opts, self) {
+            eprintln!("{e}");
+            std::process::exit(e.code());
         }
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts) -> crate::Result<()> {
-    opts.state.delete(true)?;
-    Ok(())
-}
-
-fn get_user_confirmation() -> bool {
-    let prompt = "Please confirm the you really want a full reset (y/N) ";
-    print!("{prompt}");
-    if io::stdout().flush().is_err() {
-        // If stdout wasn't flushed properly, fallback to println
-        println!("{prompt}");
+fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> crate::Result<()> {
+    match opts
+        .terminal
+        .confirm("This will delete the local Ockam configuration. Are you sure?")?
+    {
+        ConfirmResult::Yes => {}
+        ConfirmResult::No => {
+            return Ok(());
+        }
+        ConfirmResult::NonTTY => {
+            if !cmd.yes {
+                return Err(anyhow!("Use --yes to confirm").into());
+            }
+        }
     }
-    let stdin = BufReader::new(io::stdin());
-    stdin
-        .bytes()
-        .next()
-        .and_then(|c| c.ok())
-        .map(|c| c as char)
-        .map(|c| (c == 'y' || c == 'Y'))
-        .unwrap_or(false)
+    opts.state.delete(true)?;
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!("Local CLI state deleted"))
+        .write_line()?;
+    Ok(())
 }
