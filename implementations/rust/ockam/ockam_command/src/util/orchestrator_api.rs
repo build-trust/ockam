@@ -1,9 +1,12 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use crate::{
     node::util::{delete_node, start_embedded_node_with_vault_and_identity},
     project::{
-        util::{create_secure_channel_to_authority, create_secure_channel_to_project},
+        util::{
+            create_secure_channel_to_authority, create_secure_channel_to_project,
+            create_secure_channel_to_project_api,
+        },
         ProjectInfo,
     },
     util::Rpc,
@@ -20,16 +23,18 @@ use ockam_api::{
 use ockam_core::api::RequestBuilder;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::route;
-use ockam_identity::CredentialsIssuerClient;
+use ockam_identity::{CredentialsIssuerClient, IdentityIdentifier};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use tracing::info;
 
 use super::{api::TrustContextOpts, RpcBuilder};
 
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum OrchestratorEndpoint {
     Authenticator,
     Project,
+    Controller,
 }
 
 /// Helps build an Orchestrator API Request
@@ -43,6 +48,7 @@ pub struct OrchestratorApiBuilder<'a> {
     credential_exchange_mode: CredentialExchangeMode,
     project_lookup: Option<ProjectLookup>,
     one_time_code: Option<OneTimeCode>,
+    trusted_identities: Option<Vec<IdentityIdentifier>>,
 }
 
 impl<'a> Drop for OrchestratorApiBuilder<'a> {
@@ -69,6 +75,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             credential_exchange_mode: CredentialExchangeMode::Oneway,
             project_lookup: None,
             one_time_code: None,
+            trusted_identities: None,
         }
     }
 
@@ -122,7 +129,6 @@ impl<'a> OrchestratorApiBuilder<'a> {
     }
 
     // TODO oa: will be used within enroll & auth flow
-    #[allow(dead_code)]
     pub fn with_endpoint(&mut self, destination: OrchestratorEndpoint) -> &mut Self {
         self.destination = destination;
         self
@@ -144,6 +150,14 @@ impl<'a> OrchestratorApiBuilder<'a> {
     #[allow(dead_code)]
     pub fn use_one_time_code(&mut self, otc: OneTimeCode) -> &mut Self {
         self.one_time_code = Some(otc);
+        self
+    }
+
+    pub fn with_trusted_identities(
+        &mut self,
+        trusted_identities: Vec<IdentityIdentifier>,
+    ) -> &mut Self {
+        self.trusted_identities = Some(trusted_identities);
         self
     }
 
@@ -172,9 +186,11 @@ impl<'a> OrchestratorApiBuilder<'a> {
         Ok(credential)
     }
 
-    /// Sends the request and returns  the response
+    /// Builds an orchestrator API with a secure channel to the specified endpoint
     pub async fn build(&mut self, service_address: &MultiAddr) -> Result<OrchestratorApi<'a>> {
+        // Retrieve project info
         self.retrieve_project_info().await?;
+
         // Authenticate with the project authority node
         let _ = self.authenticate().await?;
 
@@ -271,6 +287,27 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 )
                 .await?
             }
+            OrchestratorEndpoint::Controller => {
+                // TODO: IF Controller ROUTE IS STORED ON PROJECT LOOK UP THIS WOULD BE THE PLACE TO USE IT
+                // let api_route = project
+                //     .api_route
+                //     .as_ref()
+                //     .context("Invalid project api route")?;
+
+                // TODO: Instead just using hard coded dev address
+                // TODO: REMOVED FOR CHECKIN
+                let ma = MultiAddr::from_str("")?;
+
+                create_secure_channel_to_project_api(
+                    self.ctx,
+                    self.opts,
+                    node_name,
+                    &ma,
+                    self.trusted_identities.clone(),
+                    self.identity.clone(),
+                )
+                .await?
+            }
         };
 
         Ok((sc_addr, sc_flow_control_id))
@@ -282,6 +319,7 @@ pub struct OrchestratorApi<'a> {
 }
 
 impl<'a> OrchestratorApi<'a> {
+    /// Sends the request and returns  the response
     pub async fn request_with_response<T, R>(&'a mut self, req: RequestBuilder<'_, T>) -> Result<R>
     where
         T: Encode<()>,

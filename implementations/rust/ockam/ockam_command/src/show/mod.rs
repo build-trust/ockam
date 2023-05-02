@@ -1,4 +1,5 @@
 use clap::Args;
+use ockam_multiaddr::MultiAddr;
 
 use std::str::FromStr;
 use std::time::Duration;
@@ -10,7 +11,10 @@ use ockam_core::CowStr;
 
 use minicbor::{Decode, Decoder, Encode};
 
-use crate::util::node_rpc;
+use crate::node::util::start_embedded_node;
+use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::orchestrator_api::{OrchestratorApiBuilder, OrchestratorEndpoint};
+use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 use crate::Result;
@@ -36,15 +40,22 @@ pub struct VersionInfo<'a> {
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true)]
 pub struct ShowCommand {
-    /// Node tcp address
-    #[arg(long, required = true, value_name = "TCP_ADDRESS")]
-    pub tcp_address: String,
+    // TODO: Can make this optional param if wanted
+    // #[arg(long, required = true, value_name = "TCP_ADDRESS")]
+    // pub tcp_address: String,
     /// Node identity id
     #[arg(long, value_name = "REMOTE_IDENTITY_ID")]
-    pub remote_identity_id: Option<String>,
+    pub remote_identity_id: Option<IdentityIdentifier>,
+
     /// Override Default Timeout
     #[arg(long, value_name = "TIMEOUT", default_value = "10000")]
     pub timeout: u64,
+
+    #[command(flatten)]
+    pub trust_context_opts: TrustContextOpts,
+
+    #[command(flatten)]
+    pub cloud_opts: CloudOpts,
 }
 
 impl ShowCommand {
@@ -55,66 +66,28 @@ impl ShowCommand {
 
 async fn get_orchestrator_version(
     ctx: Context,
-    (_opts, cmd): (CommandGlobalOpts, ShowCommand),
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> Result<()> {
-    let tcp = TcpTransport::create(&ctx).await?;
-    let connection = tcp
-        .connect(cmd.tcp_address, TcpConnectionOptions::new())
+    let mut orchestrator_api_builder =
+        OrchestratorApiBuilder::new(&ctx, &opts, &cmd.trust_context_opts);
+
+    if let Some(identity_id) = cmd.remote_identity_id {
+        orchestrator_api_builder.with_trusted_identities(vec![identity_id]);
+    }
+
+    let mut api = orchestrator_api_builder
+        .as_identity(cmd.cloud_opts.identity.clone())
+        .with_endpoint(OrchestratorEndpoint::Controller)
+        .with_new_embbeded_node()
+        .await?
+        .build(&MultiAddr::from_str("/service/version_info")?)
         .await?;
 
-    let node = node(ctx);
-    let identity = node.create_identity().await?;
+    let resp: VersionInfo = api.request_with_response(Request::get("")).await?;
 
-    let r = route![connection, "api"];
-
-    let secure_channel_timeout = Duration::from_millis(50_000);
-
-    let channel = match cmd.remote_identity_id {
-        Some(identity_id) => {
-            node.create_secure_channel_extended(
-                &identity,
-                r,
-                SecureChannelOptions::new().with_trust_policy(TrustIdentifierPolicy::new(
-                    IdentityIdentifier::from_str(&identity_id)?,
-                )),
-                secure_channel_timeout,
-            )
-            .await?
-        }
-        None => {
-            node.create_secure_channel_extended(
-                &identity,
-                r,
-                SecureChannelOptions::new().with_trust_policy(TrustEveryonePolicy),
-                secure_channel_timeout,
-            )
-            .await?
-        }
-    };
-
-    let req = Request::get("");
-
-    let buf: Vec<u8> = node
-        .send_and_receive_extended::<Vec<u8>>(
-            route![channel, "version_info"],
-            req.to_vec()?,
-            MessageSendReceiveOptions::new().with_timeout(Duration::from_millis(cmd.timeout)),
-        )
-        .await?
-        .body();
-
-    let mut dec = Decoder::new(&buf);
-
-    let hdr = dec.decode::<Response>()?;
-
-    if hdr.status() == Some(Status::Ok) {
-        let node_info = dec.decode::<VersionInfo>()?;
-        println!(
-            "{{\"version\":\"{}\",\"project_version\":\"{}\"}}",
-            node_info.version, node_info.project_version
-        );
-        Ok(())
-    } else {
-        Err(anyhow!("Request status not 200: {:?}", hdr.status()).into())
-    }
+    println!(
+        "{{\"version\":\"{}\",\"project_version\":\"{}\"}}",
+        resp.version, resp.project_version
+    );
+    Ok(())
 }

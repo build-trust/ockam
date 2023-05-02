@@ -155,6 +155,32 @@ pub async fn create_secure_channel_to_authority(
     Ok((addr, res.flow_control_id()))
 }
 
+// TODO: REWORK SECURE CHANNEL CREATION
+pub async fn create_secure_channel_to_project_api(
+    ctx: &ockam::Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    api_route: &MultiAddr,
+    allowed_identities: Option<Vec<IdentityIdentifier>>,
+    identity: Option<String>,
+) -> crate::Result<(MultiAddr, FlowControlId)> {
+    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
+    debug!(%api_route, "establishing secure channel to project api");
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(
+        api_route,
+        allowed_identities,
+        CredentialExchangeMode::None,
+        identity,
+        None,
+    );
+
+    let req = Request::post("/node/secure_channel").body(payload);
+    rpc.request(req).await?;
+    let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
+    let addr = res.addr()?;
+    Ok((addr, res.flow_control_id()))
+}
+
 async fn delete_secure_channel<'a>(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
