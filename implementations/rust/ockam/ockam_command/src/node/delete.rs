@@ -48,19 +48,21 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
             Ok(_) => {
                 delete_node(&opts, &cmd.node_name, cmd.force)?;
                 opts.terminal
-                .stdout()
-                .plain(format!(
-                    "{} Node with name '{}' has been deleted.",
-                    "✔︎".light_green(),
-                    &cmd.node_name
-                ))
-                .machine(&cmd.node_name)
-                .json(serde_json::json!({ "node": { "name": &cmd.node_name } }))
-                .write_line()?;
+                    .stdout()
+                    .plain(format!(
+                        "{} Node with name '{}' has been deleted.",
+                        "✔︎".light_green(),
+                        &cmd.node_name
+                    ))
+                    .machine(&cmd.node_name)
+                    .json(serde_json::json!({ "node": { "name": &cmd.node_name } }))
+                    .write_line()?;
             }
             // Else, return the appropriate error
             Err(err) => match err {
-                CliStateError::NotFound => return Err(anyhow!("Node '{}' not found", &cmd.node_name).into()),
+                CliStateError::NotFound => {
+                    return Err(anyhow!("Node '{}' not found", &cmd.node_name).into())
+                }
                 _ => return Err(err.into()),
             },
         }
