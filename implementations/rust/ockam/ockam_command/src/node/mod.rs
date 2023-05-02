@@ -37,7 +37,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 )]
 pub struct NodeCommand {
     #[command(subcommand)]
-    subcommand: NodeSubcommand,
+    pub subcommand: NodeSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
