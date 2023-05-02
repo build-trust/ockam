@@ -65,7 +65,7 @@ crossbeam-channel = "0.5"
 ctrlc = { version = "3.2.5", features = ["termination"] }
 dialoguer = "0.10"
 directories = "5"
-dirs = "5.0.0"
+dirs = "5.0.1"
 duct = "0.13"
 flate2 = "1.0.25"
 hex = "0.4"
