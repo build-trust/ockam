@@ -87,7 +87,7 @@ impl CliState {
     }
 
     pub fn test() -> Result<Self> {
-        let tests_dir = dirs::home_dir()
+        let tests_dir = home::home_dir()
             .ok_or(CliStateError::NotFound)?
             .join(".ockam")
             .join(".tests")
@@ -134,7 +134,7 @@ impl CliState {
     pub fn default_dir() -> Result<PathBuf> {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",
-            dirs::home_dir()
+            home::home_dir()
                 .ok_or(CliStateError::NotFound)?
                 .join(".ockam"),
         )?)
