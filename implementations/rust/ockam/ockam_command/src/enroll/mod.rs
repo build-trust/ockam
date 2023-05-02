@@ -22,6 +22,7 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::check_project_readiness;
 
 use crate::space::util::config;
+use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, RpcBuilder};
@@ -52,6 +53,15 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> R
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
+    let ockam_header = include_str!("../../static/ockam_ascii.txt").trim();
+    let colored_header = ockam_header.gradient_with_color(
+        OckamColor::OckamBlue.color(),
+        OckamColor::PrimaryGradient.color(),
+    );
+
+    opts.terminal
+        .write_line(&format!("\n{}\n", colored_header))?;
+
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     enroll(ctx, &opts, &cmd, &node_name).await?;
@@ -114,7 +124,7 @@ async fn default_space<'a>(
             "Creating a trial space for you (everything in it will be deleted in 15 days) ..."
                 .light_magenta()
         ))?
-        .write_line(&fmt_info!(
+        .write_line(&fmt_log!(
             "{}",
             "To learn more about production ready spaces in Ockam Orchestrator, contact us at: hello@ockam.io".light_magenta()
         ))?;
@@ -336,6 +346,10 @@ impl Auth0Service {
     ) -> Result<Auth0Token> {
         let client = self.provider().build_http_client()?;
         let token;
+        let spinner_option = opts.terminal.progress_spinner();
+        if let Some(spinner) = spinner_option.as_ref() {
+            spinner.set_message("Waiting for token...");
+        }
         loop {
             let res = client
                 .post(self.provider().token_request_url())
@@ -355,7 +369,10 @@ impl Auth0Service {
                         .await
                         .map_err(|e| anyhow!(e.to_string()))?;
                     debug!(?token, "token response received");
-                    opts.terminal.write_line(&fmt_ok!("Token received!"))?;
+                    if let Some(spinner) = spinner_option.as_ref() {
+                        spinner.finish_and_clear();
+                    }
+                    opts.terminal.write_line(&fmt_log!("Token received!"))?;
                     return Ok(token);
                 }
                 _ => {

@@ -1,8 +1,7 @@
-use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context as _};
-use colorful::Colorful;
+
 use ockam_core::api::Request;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
@@ -183,15 +182,16 @@ pub async fn check_project_readiness<'a>(
 
     // Persist project config prior to checking readiness which might take a while
     config::set_project_id(&opts.config, &project).await?;
+    let spinner_option = opts.terminal.progress_spinner();
+    if let Some(spinner) = spinner_option.as_ref() {
+        spinner.set_message("Waiting for project to be ready...");
+    }
 
     // Check if Project and Project Authority info is available
     if !project.is_ready() {
-        opts.terminal
-            .write(&fmt_log!("Waiting for project to be ready..."))?;
         let cloud_route = &cloud_opts.route();
         let project_id = project.id.clone();
         project = Retry::spawn(retry_strategy.clone(), || async {
-            std::io::stdout().flush()?;
             let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
 
             // Handle the project show request result
@@ -203,41 +203,35 @@ pub async fn check_project_readiness<'a>(
             {
                 let p = rpc.parse_response::<Project>()?;
                 if p.is_ready() {
-                    opts.terminal
-                        .write_line(&format!("{}", "✔︎".light_green()))?;
                     return Ok(p.to_owned());
                 }
             }
-            opts.terminal.write(".")?;
             Err(anyhow!("Project creation timed out. Plaese try again."))
         })
         .await?;
     }
 
     {
-        opts.terminal.write(&fmt_log!(
-            "Establishing connection (this can take a few minutes)..."
-        ))?;
-        Retry::spawn(retry_strategy.clone(), || async {
-            std::io::stdout().flush()?;
+        if let Some(spinner) = spinner_option.as_ref() {
+            spinner.set_message("Establishing connection to the project...");
+        }
 
+        Retry::spawn(retry_strategy.clone(), || async {
             // Handle the reachable result, so we can provide better errors in the case a project isn't
             if let Ok(reachable) = project.is_reachable().await {
                 if reachable {
-                    opts.terminal.write_line(&format!(" {}", "✔︎".light_green()))?;
                     return Ok(());
                 }
             }
 
-            opts.terminal.write(".")?;
             Err(anyhow!("Timed out while trying to establish a connection to the project. Please try again."))
         }).await?;
     }
 
     {
-        opts.terminal
-            .write(&fmt_log!("Establishing secure channel..."))?;
-        std::io::stdout().flush()?;
+        if let Some(spinner) = spinner_option.as_ref() {
+            spinner.set_message("Establishing secure channel to project...");
+        }
 
         let project_route = project.access_route()?;
         let project_identity = project
@@ -247,7 +241,6 @@ pub async fn check_project_readiness<'a>(
             .to_string();
 
         Retry::spawn(retry_strategy.clone(), || async {
-            std::io::stdout().flush()?;
             if let Ok((sc_addr, _sc_flow_control_id)) = create_secure_channel_to_project(
                 ctx,
                 opts,
@@ -262,19 +255,18 @@ pub async fn check_project_readiness<'a>(
             {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                opts.terminal.write_line(&format!(" {}", "✔︎".light_green()))?;
                 return Ok(());
             }
-            opts.terminal.write(".")?;
+
             Err(anyhow!("Timed out while trying to establish a secure channel to the project. Please try again."))
         })
         .await?;
     }
 
     {
-        opts.terminal
-            .write(&fmt_log!("Establishing secure channel to authority..."))?;
-        std::io::stdout().flush()?;
+        if let Some(spinner) = spinner_option.as_ref() {
+            spinner.set_message("Establishing secure channel to project authority...");
+        }
 
         let authority = ProjectAuthority::from_raw(
             &project.authority_access_route,
@@ -284,7 +276,6 @@ pub async fn check_project_readiness<'a>(
         .context("Project does not have an authority defined.")?;
 
         Retry::spawn(retry_strategy.clone(), || async {
-            std::io::stdout().flush()?;
             if let Ok((sc_addr, _)) = create_secure_channel_to_authority(
                 ctx,
                 opts,
@@ -297,15 +288,19 @@ pub async fn check_project_readiness<'a>(
             {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                opts.terminal.write_line(&format!(" {}", "✔︎".light_green()))?;
                 return Ok(());
             }
 
-            opts.terminal.write(".")?;
             Err(anyhow!("Time out while trying to establish a secure channel to the project authority. Please try again."))
         })
         .await?;
     }
+
+    if let Some(spinner) = spinner_option.as_ref() {
+        spinner.finish_and_clear();
+    }
+
+    opts.terminal.write_line(&fmt_log!("Project is ready!"))?;
 
     // Persist project config with all its fields
     config::set_project(&opts.config, &project).await?;

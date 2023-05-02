@@ -12,7 +12,7 @@ use ockam_api::cli_state::CliState;
 pub(crate) use show::ShowCommand;
 
 use crate::util::OckamConfig;
-use crate::{docs, fmt_info, CommandGlobalOpts, GlobalArgs, Result};
+use crate::{docs, fmt_info, fmt_log, CommandGlobalOpts, GlobalArgs, Result};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
 
@@ -105,6 +105,6 @@ pub fn create_default_identity(identity_name: &str) -> String {
 
     let _ = opts
         .terminal
-        .write_line(&fmt_info!("Created default identity: {}", identity_name));
+        .write_line(&fmt_log!("Created default identity: {}", identity_name));
     identity_name.to_string()
 }
