@@ -160,14 +160,13 @@ impl GlobalArgs {
     // attempting to wrap the OckamCommand as a singleton, also did not work
     // due to the fact the parsers are invoked during `OckamCommand::parse_from(input)`
     // unable to let the parser know about the singleton.
-    //
     fn parse_from_input() -> Self {
         let mut s = Self::default();
         let input = std::env::args()
             .map(replace_hyphen_with_stdin)
             .collect::<Vec<_>>();
-
-        for (i, arg) in input.clone().into_iter().enumerate() {
+        let mut iter = input.iter().peekable();
+        while let Some(arg) = iter.next() {
             match arg.as_str() {
                 "-h" | "--help" => s.help = Some(true),
                 "-q" | "--quiet" => {
@@ -181,9 +180,8 @@ impl GlobalArgs {
                 "--no-color" => s.no_color = true,
                 "--no-input" => s.no_input = true,
                 "--output" => {
-                    let value = input.clone().into_iter().nth(i);
-                    s.output_format = match value {
-                        Some(v) => OutputFormat::from_str(&v, true).expect("Invalid output format"),
+                    s.output_format = match iter.peek() {
+                        Some(v) => OutputFormat::from_str(v, true).expect("Invalid output format"),
                         None => OutputFormat::Plain,
                     }
                 }
@@ -191,7 +189,6 @@ impl GlobalArgs {
                 _ => (),
             }
         }
-
         s
     }
 }
