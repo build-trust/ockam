@@ -73,7 +73,7 @@ aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
 arrayref = "0.3"
 # AWS KMS specific:
 aws-config = { version = "0.55.2", default-features = false, features = ["native-tls"], optional = true }
-aws-sdk-kms = { version = "0.26.0", default-features = false, features = ["native-tls"], optional = true }
+aws-sdk-kms = { version = "0.27.0", default-features = false, features = ["native-tls"], optional = true }
 cfg-if = "1.0.0"
 curve25519-dalek = { version = "3.1", default-features = false }
 ed25519-dalek = { version = "1.0", default-features = false }
