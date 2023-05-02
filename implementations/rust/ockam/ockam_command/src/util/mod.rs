@@ -1,4 +1,5 @@
 use core::time::Duration;
+
 use std::{
     net::{SocketAddr, TcpListener},
     path::Path,
@@ -8,8 +9,6 @@ use std::{
 use anyhow::{anyhow, Context as _};
 use minicbor::{data::Type, Decode, Decoder, Encode};
 use tracing::{debug, error, trace};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub use config::*;
 use ockam::{
@@ -20,7 +19,7 @@ use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_core::env::get_env;
+
 use ockam_core::flow_control::FlowControls;
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
@@ -448,47 +447,6 @@ pub fn find_available_port() -> Result<u16> {
         .local_addr()
         .context("Unable to get local address")?;
     Ok(address.port())
-}
-
-pub fn setup_logging(verbose: u8, no_color: bool) {
-    let ockam_crates = [
-        "ockam",
-        "ockam_node",
-        "ockam_core",
-        "ockam_command",
-        "ockam_identity",
-        "ockam_transport_tcp",
-        "ockam_vault",
-        "ockam_vault_sync_core",
-    ];
-    let builder = EnvFilter::builder();
-    // If `verbose` is not set, try to read the log level from the OCKAM_LOG env variable.
-    // If both `verbose` and OCKAM_LOG are not set, logging will not be enabled.
-    // Otherwise, use `verbose` to define the log level.
-    let filter = match verbose {
-        0 => match get_env::<String>("OCKAM_LOG") {
-            Ok(Some(s)) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
-            _ => return,
-        },
-        1 => builder
-            .with_default_directive(LevelFilter::INFO.into())
-            .parse_lossy(ockam_crates.map(|c| format!("{c}=info")).join(",")),
-        2 => builder
-            .with_default_directive(LevelFilter::DEBUG.into())
-            .parse_lossy(ockam_crates.map(|c| format!("{c}=debug")).join(",")),
-        _ => builder
-            .with_default_directive(LevelFilter::TRACE.into())
-            .parse_lossy(ockam_crates.map(|c| format!("{c}=trace")).join(",")),
-    };
-    let fmt = fmt::Layer::default().with_ansi(!no_color);
-    let result = tracing_subscriber::registry()
-        .with(filter)
-        .with(tracing_error::ErrorLayer::default())
-        .with(fmt)
-        .try_init();
-    if result.is_err() {
-        eprintln!("Failed to initialise tracing logging.");
-    }
 }
 
 #[allow(unused)]

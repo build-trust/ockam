@@ -38,6 +38,8 @@ CLI Behavior
 - OCKAM_DISABLE_UPGRADE_CHECK: a `boolean` that, if set, the CLI won't check for ockam upgrades.
 - OCKAM_HOME: a `string` that sets the home directory. Defaults to `~/.ockam`.
 - OCKAM_LOG: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed.
+- OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB.
+- OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node.
 
 Devs Usage
 - OCKAM_HELP_SHOW_HIDDEN: a `boolean` to control the visibility of hidden commands.
