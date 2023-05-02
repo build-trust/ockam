@@ -11,9 +11,11 @@ use ockam_core::errcode::Kind;
 
 use crate::{OutputFormat, Result};
 
+pub mod colors;
 pub mod fmt;
 pub mod term;
 
+pub use colors::*;
 pub use fmt::*;
 
 /// A terminal abstraction to handle commands' output and messages styling.
@@ -328,13 +330,42 @@ impl<W: TerminalWriter> Terminal<W> {
         if self.quiet || !self.stderr.is_tty() {
             return None;
         }
+        let ticker = [
+            "⡇⣀⣀⣀⣀⣀",
+            "⣿⣀⣀⣀⣀⣀",
+            "⣿⡇⣀⣀⣀⣀",
+            "⣿⣿⣀⣀⣀⣀",
+            "⣿⣿⡇⣀⣀⣀",
+            "⣿⣿⣿⣀⣀⣀",
+            "⣿⣿⣿⡇⣀⣀",
+            "⣿⣿⣿⣿⣀⣀",
+            "⣿⣿⣿⣿⡇⣀",
+            "⣿⣿⣿⣿⣿⣀",
+            "⣿⣿⣿⣿⣿⡇",
+            "⣿⣿⣿⣿⣿⣿",
+            "⣿⣿⣿⣿⣿⣿",
+            "⢸⣿⣿⣿⣿⣿",
+            "⣀⣿⣿⣿⣿⣿",
+            "⣀⢸⣿⣿⣿⣿",
+            "⣀⣀⣿⣿⣿⣿",
+            "⣀⣀⢸⣿⣿⣿",
+            "⣀⣀⣀⣿⣿⣿",
+            "⣀⣀⣀⢸⣿⣿",
+            "⣀⣀⣀⣀⣿⣿",
+            "⣀⣀⣀⣀⢸⣿",
+            "⣀⣀⣀⣀⣀⣿",
+            "⣀⣀⣀⣀⣀⢸",
+        ];
+        let mut reversed_ticker = ticker;
+        reversed_ticker.reverse();
+
         let pb = ProgressBar::new_spinner();
         pb.set_draw_target(ProgressDrawTarget::stderr());
         pb.enable_steady_tick(Duration::from_millis(80));
         pb.set_style(
-            ProgressStyle::with_template("{spinner} {msg}")
+            ProgressStyle::with_template("{spinner:.yellow} {msg}")
                 .expect("Failed to set progress bar template")
-                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+                .tick_strings(&[ticker, reversed_ticker].concat()),
         );
         Some(pb)
     }
