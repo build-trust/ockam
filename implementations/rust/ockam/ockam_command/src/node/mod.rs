@@ -11,7 +11,7 @@ use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
 
-use crate::{docs, fmt_warn, util::OckamConfig, CommandGlobalOpts, GlobalArgs, Result};
+use crate::{docs, fmt_info, fmt_log, util::OckamConfig, CommandGlobalOpts, GlobalArgs, Result};
 
 mod create;
 mod default;
@@ -118,7 +118,7 @@ pub fn spawn_default_node(node_name: &str) -> String {
 
     let _ = opts
         .terminal
-        .write_line(&fmt_warn!("No default node found. Creating one..."));
+        .write_line(&fmt_info!("No default node found. Creating one..."));
 
     let mut create_command = CreateCommand::default();
     create_command.node_name = node_name.to_string();
@@ -126,7 +126,7 @@ pub fn spawn_default_node(node_name: &str) -> String {
 
     let _ = opts
         .terminal
-        .write_line(&fmt_warn!("Created default node: {}", node_name));
+        .write_line(&fmt_log!("Created default node: {}", node_name));
 
     node_name.to_string()
 }
