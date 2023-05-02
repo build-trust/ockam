@@ -56,7 +56,7 @@ fn get_man_page_directory(cmd_man_dir: &Option<String>) -> io::Result<PathBuf> {
             user_specified_dir.push(dir);
             user_specified_dir
         }
-        None => match dirs::home_dir() {
+        None => match home::home_dir() {
             Some(mut home_dir) => {
                 home_dir.push(".local/share/man/man1/");
                 home_dir
