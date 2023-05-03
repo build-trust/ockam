@@ -75,6 +75,20 @@ jobs:
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_fmt_check
 
+  lint_cargo_readme:
+    name: Rust - lint_cargo_readme
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:0a4c3640f78650e35207a047891e55863d8648a9333ea0bcfe03f09e2d57480c
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - uses: ./.github/actions/gradle_cache
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew lint_cargo_readme
+
   lint_cargo_clippy:
     name: Rust - lint_cargo_clippy
     runs-on: ubuntu-20.04
