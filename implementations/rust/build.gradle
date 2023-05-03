@@ -54,6 +54,32 @@ task lint_cargo_fmt_check {
   }
 }
 
+task lint_cargo_readme {
+  doLast {
+    new File("ockam").eachDir { directory ->
+      def crate = "ockam/${directory.name}"
+      // recreate the README files
+      exec {
+        environment environmentVars()
+        commandLine cargo('readme', '--project-root', crate, '--template', '../README.tpl', '-o', 'README-updated.md')
+      }
+
+      // check if any README file has changed and throw an exception if this is the case
+      exec {
+        def expected = file("$crate/README-updated.md")
+        def actual = file("$crate/README.md")
+
+        if (actual.text != expected.text) {
+          throw new GradleException("the README.md file in $crate needs to be updated. Please run the command `gradle update_readmes` from the `implementations/rust` directory")
+        } else {
+          commandLine 'rm', expected
+        }
+      }
+    }
+  }
+}
+
+
 task lint_cargo_clippy {
   doLast {
     exec {
@@ -93,7 +119,7 @@ task lint {
   group project.name
   description 'Lint the project.'
 
-  dependsOn lint_cargo_fmt_check, lint_cargo_clippy, lint_cargo_deny, lint_environment_variables
+  dependsOn lint_cargo_fmt_check, lint_cargo_clippy, lint_cargo_deny, lint_environment_variables, lint_cargo_readme
 }
 
 task build_docs {
