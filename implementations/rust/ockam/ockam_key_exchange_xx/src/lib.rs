@@ -1,6 +1,7 @@
 //! In order to support a variety of key exchange protocols [Ockam][main-ockam-crate-link] crate uses an abstract Key Exchange trait.
 //!
 //! This crate provides an implementation of Key Exchange using [Noise][noise-protocol-framework] protocol with XX pattern.
+//! [noise-protocol-framework]: http://www.noiseprotocol.org/noise.html
 //!
 //! The main [Ockam][main-ockam-crate-link] has optional dependency on this crate.
 #![deny(unsafe_code)]

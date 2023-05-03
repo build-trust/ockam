@@ -49,6 +49,7 @@ dockerfile = "../../../../tools/cross/Cross.Dockerfile.armv7"
 name = "ockam"
 doc = false
 test = false
+path = "src/bin/ockam.rs"
 
 [dependencies]
 anyhow = "1"

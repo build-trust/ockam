@@ -3,8 +3,10 @@
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
 [![license][license-image]][license-link]
-[![status][status-image]][status-link]
 [![discuss][discuss-image]][discuss-link]
+
+Ockam is a library for building devices that communicate securely, privately
+and trustfully with cloud services and other devices.
 
 End-to-end encrypted, mutually authenticated, secure communication.
 
@@ -26,7 +28,7 @@ to be vulnerable at every point, along their journey, where a transport connecti
 Instead, our application can have a strikingly smaller vulnerability surface and easily make
 _granular authorization decisions about all incoming information and commands._
 
-## Features
+### Features
 
 * End-to-end encrypted, mutually authenticated _secure channels_.
 * Multi-hop, multi-transport, application layer routing.
@@ -35,9 +37,11 @@ _granular authorization decisions about all incoming information and commands._
 * Attribute-based Access Control - credentials with _selective disclosure_.
 * Add-ons for a variety of operating environments, transport protocols, and _cryptographic hardware_.
 
-## Documentation
+### Documentation
 
 Tutorials, examples and reference guides are available at [docs.ockam.io](https://docs.ockam.io).
+
+[e2ee-rust-guide]: https://docs.ockam.io/reference/libraries/rust
 
 ## Usage
 
@@ -60,13 +64,8 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 [docs-image]: https://docs.rs/ockam/badge.svg
 [docs-link]: https://docs.rs/ockam
 
-[status-image]: https://img.shields.io/badge/Status-Preview-58E0C9.svg
-[status-link]: https://github.com/build-trust/ockam/blob/develop/SECURITY.md
-
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE
 
-[discuss-image]: https://img.shields.io/badge/Discuss-On%20Github-ff70b4.svg
+[discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
 [discuss-link]: https://github.com/build-trust/ockam/discussions
-
-[e2ee-rust-guide]: https://docs.ockam.io/reference/libraries/rust

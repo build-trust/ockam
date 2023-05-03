@@ -30,13 +30,12 @@ ockam_executor = "0.47.0"
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-node-crate-link]: https://crates.io/crates/ockam_node
 
 [crate-image]: https://img.shields.io/crates/v/ockam_executor.svg
 [crate-link]: https://crates.io/crates/ockam_executor
 
-[docs-image]: https://docs.rs/ockam_node/badge.svg
-[docs-link]: https://docs.rs/ockam_node
+[docs-image]: https://docs.rs/ockam_executor/badge.svg
+[docs-link]: https://docs.rs/ockam_executor
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE

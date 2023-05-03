@@ -1,4 +1,8 @@
-//! This crates provides the ockam command line application to start Ockam nodes and interact with them.
+//! This crate provides the ockam command line application to:
+//!  - start Ockam nodes and interact with them
+//!  - manage projects and spaces hosted within the Ockam Orchestrator
+//!
+//! For more information please visit the [command guide](https://docs.ockam.io/reference/command)
 
 mod admin;
 mod authenticated;

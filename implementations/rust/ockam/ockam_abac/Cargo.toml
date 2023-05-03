@@ -56,4 +56,4 @@ rand = "0.8.5"
 name = "repl"
 test = true
 required-features = ["repl"]
-path = "."
+path = "src/bin/repl.rs"

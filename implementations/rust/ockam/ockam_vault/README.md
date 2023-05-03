@@ -1,4 +1,4 @@
-# ockam
+# ockam_vault
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]

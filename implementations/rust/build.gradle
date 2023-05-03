@@ -133,6 +133,20 @@ task build_examples {
   }
 }
 
+// This task needs to be executed in the `implementations/rust` directory
+// It collects the names of all the crates and runs the cargo readme task to update
+// the crate README file according to a common template and to the top-level documentation of the src/lib.rs file
+task update_readmes {
+  doLast {
+    new File("ockam").eachDir { directory ->
+      exec {
+        environment environmentVars()
+        commandLine cargo('readme', '--project-root', "ockam/${directory.name}", '--template', '../README.tpl', '-o', "README.md")
+      }
+    }
+  }
+}
+
 task test {
   group project.name
   description 'Test the project.'

@@ -11,6 +11,7 @@ and trustfully with cloud services and other devices.
 In order to support a variety of key exchange protocols [Ockam][main-ockam-crate-link] crate uses an abstract Key Exchange trait.
 
 This crate provides an implementation of Key Exchange using [Noise][noise-protocol-framework] protocol with XX pattern.
+[noise-protocol-framework]: http://www.noiseprotocol.org/noise.html
 
 The main [Ockam][main-ockam-crate-link] has optional dependency on this crate.
 
@@ -28,7 +29,6 @@ ockam_key_exchange_xx = "0.75.0"
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-vault-crate-link]: https://crates.io/crates/ockam_key_exchange_xx
 
 [crate-image]: https://img.shields.io/crates/v/ockam_key_exchange_xx.svg
 [crate-link]: https://crates.io/crates/ockam_key_exchange_xx
@@ -41,5 +41,3 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
 [discuss-link]: https://github.com/build-trust/ockam/discussions
-
-[noise-protocol-framework]: http://www.noiseprotocol.org/noise.html

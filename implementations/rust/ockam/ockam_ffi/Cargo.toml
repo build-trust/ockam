@@ -22,6 +22,7 @@ description = """FFI layer for ockam_vault.
 
 [lib]
 crate-type = ["staticlib"]
+path = "src/lib.rs"
 
 [features]
 default = []

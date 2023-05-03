@@ -14,6 +14,7 @@ This crate provides shared macros to:
  - create an ockam node and access its `Context`
  - write some node-related tests
 
+
 ## Usage
 
 Add this to your `Cargo.toml`:
@@ -23,86 +24,11 @@ Add this to your `Cargo.toml`:
 ockam_macros = "0.28.0"
 ```
 
-All macros except for those used exclusively for testing purposes are re-exported by the `ockam` crate, so you may see examples where the macros are exported from `ockam_macros` if are related to tests or from `ockam` in any other case.
-
-You can read more about how to use the macros and the supported attributes by each of them in the [crate documentation](https://docs.rs/ockam_macros).
-
-### AsyncTryClone
-
-Implements the `AsyncTryClone` trait as defined in [`ockam_core::AsyncTryClone`](https://docs.rs/ockam_core/latest/ockam_core/traits/trait.AsyncTryClone.html).
-
-```rust
-#[derive(ockam::AsyncTryClone)]
-pub struct MyStruct {
-    a: u32,
-}
-```
-
-### Message
-
-Implements the `Message` trait as defined in [`ockam_core::Message`](https://docs.rs/ockam_core/latest/ockam_core/trait.Message.html).
-
-```rust
-#[derive(ockam::Message, Deserialize, Serialize)]
-pub struct MyStruct {
-    a: u32,
-}
-```
-
-### Node
-
-Transforms the `main` function into an async function that sets up a node and provides a `Context` to interact with it.
-
-```rust
-#[ockam::node]
-async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
-    // ...
-}
-```
-
-If you are executing your code in a `no_std` platform that doesn't support a `main` entry point, you must use the `no_main` attribute:
-
-```rust
-#[ockam::node(no_main)]
-async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
-    // ...
-}
-```
-
-### Tests
-
-To write node-related tests:
-
-```rust
-#[ockam::test]
-async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
-    // ...
-}
-```
-
-To write vault-related tests:
-
-```rust
-use ockam_vault::Vault;
-
-fn new_vault() -> Vault {
-    Vault::default()
-}
-
-#[ockam_macros::vault_test]
-fn hkdf() {}
-```
-
-## Develop
-
-Due to dependencies constraints, the tests for all the macros contained in this crate are located in the `ockam` crate.
-
-To test changes done in any of the macros you can use the `macro_expand_playground` from the `ockam` crate to see how a macro expands
-a given input.
-
 ## License
 
 This code is licensed under the terms of the [Apache License 2.0][license-link].
+
+[main-ockam-crate-link]: https://crates.io/crates/ockam
 
 [crate-image]: https://img.shields.io/crates/v/ockam_macros.svg
 [crate-link]: https://crates.io/crates/ockam_macros

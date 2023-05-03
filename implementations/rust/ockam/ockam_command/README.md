@@ -5,10 +5,14 @@
 [![license][license-image]][license-link]
 [![discuss][discuss-image]][discuss-link]
 
-Orchestrate end-to-end encryption, mutual authentication, key management,
-credential management, and authorization policy enforcement — at scale.
+Ockam is a library for building devices that communicate securely, privately
+and trustfully with cloud services and other devices.
 
-This crate provides the `ockam` command line application to start Ockam nodes and interact with them.
+This crate provides the ockam command line application to:
+ - start Ockam nodes and interact with them
+ - manage projects and spaces hosted within the Ockam Orchestrator
+
+For more information please visit the [command guide](https://docs.ockam.io/reference/command)
 
 ## Usage
 
@@ -16,12 +20,14 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_core = "0.85.0"
+ockam_command = "0.85.0"
 ```
 
 ## License
 
 This code is licensed under the terms of the [Apache License 2.0][license-link].
+
+[main-ockam-crate-link]: https://crates.io/crates/ockam
 
 [crate-image]: https://img.shields.io/crates/v/ockam_command.svg
 [crate-link]: https://crates.io/crates/ockam_command
