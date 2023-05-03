@@ -1,10 +1,13 @@
 # ockam_transport_uds
-
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
 [![license][license-image]][license-link]
 [![discuss][discuss-image]][discuss-link]
 
+Ockam is a library for building devices that communicate securely, privately
+and trustfully with cloud services and other devices.
+
+This crate provides a Unix Domain Socket Transport for Ockam's Routing Protocol.
 
 ## Usage
 
@@ -14,3 +17,19 @@ Add this to your `Cargo.toml`:
 [dependencies]
 ockam_transport_uds = "0.9.0"
 ```
+
+## License
+
+This code is licensed under the terms of the [Apache License 2.0][license-link].
+
+[crate-image]: https://img.shields.io/crates/v/ockam_transport_uds.svg
+[crate-link]: https://crates.io/crates/ockam_transport_uds
+
+[docs-image]: https://docs.rs/ockam_transport_uds/badge.svg
+[docs-link]: https://docs.rs/ockam_transport_uds
+
+[license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
+[license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE
+
+[discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
+[discuss-link]: https://github.com/build-trust/ockam/discussions
