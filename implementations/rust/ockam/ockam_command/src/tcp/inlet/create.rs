@@ -1,7 +1,8 @@
 use crate::node::{default_node_name, node_name_parser};
 use crate::policy::{add_default_project_policy, has_policy};
-use crate::tcp::util::{alias_parser, socket_addr_parser};
+use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
+use crate::util::parsers::socket_addr_parser;
 use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
     process_nodes_multiaddr, RpcBuilder,

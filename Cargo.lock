@@ -2703,12 +2703,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libm"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "348108ab3fba42ec82ff6e9564fc4ca0247bdccdc68dd8af9764bbc79c3c8ffb"
-
-[[package]]
 name = "line-wrap"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3326,7 +3320,6 @@ dependencies = [
  "io-lifetimes",
  "is-terminal",
  "itertools",
- "lazy_static",
  "minicbor",
  "nix",
  "ockam",
@@ -3358,7 +3351,6 @@ dependencies = [
  "termimad",
  "thiserror",
  "time",
- "tiny-gradient",
  "tokio",
  "tokio-retry",
  "tracing",
@@ -5253,15 +5245,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "372950940a5f07bf38dbe211d7283c9e6d7327df53794992d293e534c733d09b"
 dependencies = [
  "time-core",
-]
-
-[[package]]
-name = "tiny-gradient"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8063c572fcc935676f1e01615f201f355a053e88525ec41c1b0c4884ce104847"
-dependencies = [
- "libm",
 ]
 
 [[package]]
