@@ -59,7 +59,7 @@ defmodule Ockam.Services.MixProject do
       {:poison, "~> 5.0.0"},
 
       ## Used for Ockam.Services.API.Endpoint' dispatch table implementation
-      {:cowboy, "~> 2.9.0"}
+      {:cowboy, "~> 2.10.0"}
     ]
   end
 
