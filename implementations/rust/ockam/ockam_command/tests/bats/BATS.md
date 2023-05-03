@@ -36,11 +36,6 @@ Unit tests doesn't need any special setup. This will run the simple local-only t
 bats implementations/rust/ockam/ockam_command/tests/bats
 ```
 
-This will run all local-only tests, including the long ones:
-```bash
-LONG_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/bats
-```
-
 ## How to run the orchestrator tests
 
 The orchestrator tests require having an enrolled identity under `$OCKAM_HOME` (by default set at `$HOME/.ockam`), which will be copied to each test environment.
@@ -53,14 +48,9 @@ ockam enroll
 
 After this command completes, you will be able to run the orchestrator tests.
 
-This will run the simple orchestrator tests that don't take too long:
+This will run the simple orchestrator tests:
 ```bash
 ORCHESTRATOR_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/bats
-```
-
-This will run all orchestrator tests, including the long ones that can take several minutes to complete:
-```bash
-ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/bats
 ```
 
 ## Executing the tests in parallel

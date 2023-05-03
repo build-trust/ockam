@@ -14,12 +14,6 @@ function skip_if_orchestrator_tests_not_enabled() {
   fi
 }
 
-function skip_if_long_tests_not_enabled() {
-  if [ -z "${LONG_TESTS}" ]; then
-    skip "LONG_TESTS are not enabled"
-  fi
-}
-
 function load_orchestrator_data() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
     cp -a $OCKAM_HOME_BASE $OCKAM_HOME
