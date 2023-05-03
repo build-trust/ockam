@@ -225,7 +225,7 @@ defmodule Ockam.Worker do
             address: address,
             all_addresses: [address],
             module: module,
-            started_at: System.os_time(:millisecond),
+            started_at: System.monotonic_time(:millisecond),
             last_message_ts: nil,
             authorization: Authorization.expand_config(authorization),
             attributes: attributes,
@@ -289,7 +289,7 @@ defmodule Ockam.Worker do
   def is_idle?(state) do
     idle_timeout = Map.get(state, :idle_timeout, :infinity)
 
-    now = System.os_time(:millisecond)
+    now = System.monotonic_time(:millisecond)
 
     last_activity =
       case Map.get(state, :last_message_ts) do
@@ -329,7 +329,7 @@ defmodule Ockam.Worker do
         end
       end)
 
-    last_message_ts = System.os_time(:millisecond)
+    last_message_ts = System.monotonic_time(:millisecond)
 
     case return_value do
       {:ok, returned_state} ->

@@ -4,7 +4,17 @@ defmodule Ockam.API.Request do
   """
 
   alias Ockam.API.Request
-  defstruct [:id, :path, :method, :body, from_route: [], to_route: [], local_metadata: %{}]
+
+  defstruct [
+    :id,
+    :path,
+    :method,
+    :body,
+    from_route: [],
+    to_route: [],
+    local_metadata: %{},
+    start_time: nil
+  ]
 
   @max_id 65_534
 

@@ -22,7 +22,7 @@ defmodule Ockam.Healthcheck do
         %Target{} = target,
         timeout \\ 5000
       ) do
-    start_time = System.os_time(:millisecond)
+    start_time = System.monotonic_time(:millisecond)
 
     case ping_target(target, timeout) do
       :ok ->
@@ -156,7 +156,7 @@ defmodule Ockam.Healthcheck do
   end
 
   def report_check_ok(target, start_time) do
-    duration = System.os_time(:millisecond) - start_time
+    duration = System.monotonic_time(:millisecond) - start_time
 
     log_healthcheck("Healthcheck OK", duration, target)
 
@@ -176,7 +176,7 @@ defmodule Ockam.Healthcheck do
   end
 
   def report_check_failed(target, reason, start_time) do
-    duration = System.os_time(:millisecond) - start_time
+    duration = System.monotonic_time(:millisecond) - start_time
 
     log_healthcheck(
       "Healthcheck ERROR: #{inspect(reason)}",
