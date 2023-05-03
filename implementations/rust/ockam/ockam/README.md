@@ -35,32 +35,9 @@ _granular authorization decisions about all incoming information and commands._
 * Attribute-based Access Control - credentials with _selective disclosure_.
 * Add-ons for a variety of operating environments, transport protocols, and _cryptographic hardware_.
 
-## Get Started
+## Documentation
 
-* [__End-to-End Encryption with Rust__][e2ee-rust-guide]:
-In this guide, we create two small Rust programs called Alice and Bob. Alice and Bob send each other
-messages, over the network, via a cloud service. They mutually authenticate each other and have a cryptographic
-guarantee that the integrity, authenticity, and confidentiality of their messages is protected end-to-end.
-[👉][e2ee-rust-guide]
-
-* [__Step-by-Step Deep Dive__][step-by-step-rust-guide]:
-In this step-by-step guide we write many small rust programs to understand the various building blocks
-that make up Ockam. We dive into Node, Workers, Routing, Transport, Secure Channels and more.
-[👉][step-by-step-rust-guide]
-
-* [__End-to-End Encryption through Kafka__][e2ee-kafka-guide]:
-In this guide, we show two programs called Alice and Bob. Alice and Bob send each other messages, over
-the network, via a cloud service, _through Kafka_. They mutually authenticate each other and have a
-cryptographic guarantee that the integrity, authenticity, and confidentiality of their messages is protected
-end-to-end. The Kafka instance, the intermediary cloud service and attackers on the network are not be able
-to see or change the contents of en-route messages. The application data in Kafka is encrypted.
-[👉][e2ee-kafka-guide]
-
-* [__Build Secure Remote Access Tunnels__][secure-remote-access-tunnels]:
-In this guide, we'll write a few simple Rust programs to programmatically create secure access tunnels to remote
-services and devices that are running in a private network, behind a NAT. We'll then tunnel arbitrary communication
-protocols through these secure tunnels.
-[👉][secure-remote-access-tunnels]
+Tutorials, examples and reference guides are available at [docs.ockam.io](https://docs.ockam.io).
 
 ## Usage
 
@@ -92,7 +69,4 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 [discuss-image]: https://img.shields.io/badge/Discuss-On%20Github-ff70b4.svg
 [discuss-link]: https://github.com/build-trust/ockam/discussions
 
-[e2ee-rust-guide]: https://github.com/build-trust/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme
-[e2ee-kafka-guide]: https://github.com/build-trust/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-through-kafka#readme
-[step-by-step-rust-guide]: https://github.com/build-trust/ockam/tree/develop/documentation/guides/rust#readme
-[secure-remote-access-tunnels]: https://github.com/build-trust/ockam/tree/develop/documentation/use-cases/secure-remote-access-tunnels
+[e2ee-rust-guide]: https://docs.ockam.io/reference/libraries/rust
