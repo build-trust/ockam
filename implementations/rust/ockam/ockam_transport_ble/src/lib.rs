@@ -1,15 +1,5 @@
-//! Bluetooth Low Energy (BLE) Transport for Ockam's routing framework
-//!
-//! The `ockam_node` (or `ockam_node_no_std`) crate sits at the core
-//! of the Ockam routing framework, with transport specific
-//! abstraction plugins.  This crate implements a Bluetooth connection
-//! plugin for this architecture.
-//!
-//! You can use Ockam's routing mechanism for cryptographic protocols,
-//! key lifecycle, credential exchange, enrollment, etc, without having
-//! to worry about the transport specifics.
-//!
-
+//! This crate provides a BLE Transport for Ockam's Routing Protocol.
+//! Please read the support [documentation](./documentation.md) for more information.
 #![deny(
     //missing_docs,
     dead_code,

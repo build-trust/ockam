@@ -1,4 +1,4 @@
-# ockam_vault
+# ockam
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -8,11 +8,16 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-In order to support a variety of cryptographically capable hardware we maintain loose coupling between our protocols and how a specific building block is invoked in a specific hardware. This is achieved using an abstract Vault trait.
+In order to support a variety of cryptographically capable hardware we maintain loose coupling between
+our protocols and how a specific building block is invoked in a specific hardware.
+This is achieved using an abstract Vault trait.
 
-A concrete implementation of the Vault trait is called an Ockam Vault. Over time, and with help from the Ockam open source community, we plan to add vaults for several TEEs, TPMs, HSMs, and Secure Enclaves.
+A concrete implementation of the Vault trait is called an Ockam Vault.
+Over time, and with help from the Ockam open source community, we plan to add vaults for
+several TEEs, TPMs, HSMs, and Secure Enclaves.
 
-This crate provides a software-only Vault implementation that can be used when no cryptographic hardware is available. The primary Ockam crate uses this as the default Vault implementation.
+This crate provides a software-only Vault implementation that can be used when no cryptographic
+hardware is available. The primary Ockam crate uses this as the default Vault implementation.
 
 The main [Ockam][main-ockam-crate-link] has optional dependency on this crate.
 
@@ -25,29 +30,11 @@ Add this to your `Cargo.toml`:
 ockam_vault = "0.75.0"
 ```
 
-## Crate Features
-
-The `ockam_vault` crate has a Cargo feature named `"std"` that is enabled by
-default. In order to use this crate in a `no_std` context this feature can
-disabled as follows
-
-```
-[dependencies]
-ockam_vault = { version = "0.75.0" , default-features = false }
-```
-
-Please note that Cargo features are unioned across the entire dependency
-graph of a project. If any other crate you depend on has not opted out of
-`ockam_vault` default features, Cargo will build `ockam_vault` with the std
-feature enabled whether or not your direct dependency on `ockam_vault`
-has `default-features = false`.
-
 ## License
 
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-vault-crate-link]: https://crates.io/crates/ockam_vault
 
 [crate-image]: https://img.shields.io/crates/v/ockam_vault.svg
 [crate-link]: https://crates.io/crates/ockam_vault

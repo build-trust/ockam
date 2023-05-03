@@ -1,10 +1,9 @@
-//! Core types of the Ockam library.
+//! This crate contains the core types of the [Ockam][main-ockam-crate-link]
+//! library and is intended for use by crates that provide features and add-ons
+//! to the main [Ockam][main-ockam-crate-link] library.
 //!
-//! This crate contains the core types of the Ockam library and is intended
-//! for use by other crates that provide features and add-ons to the main
-//! Ockam library.
-//!
-//! The main Ockam crate re-exports types defined in this crate.
+//! The main [Ockam][main-ockam-crate-link] crate re-exports types defined in
+//! this crate.
 #![deny(unsafe_code)]
 #![warn(
     missing_docs,

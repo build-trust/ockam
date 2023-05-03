@@ -1,4 +1,4 @@
-//! An implementation of multiformats.io/multiaddr.
+//! This crate provides an implementation of multiformats.io/multiaddr.
 //!
 //! The main entities of this crate are:
 //!

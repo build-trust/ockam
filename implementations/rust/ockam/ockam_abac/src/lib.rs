@@ -1,3 +1,6 @@
+//! The ockam_abac crate is responsible for performing attribute based authorization
+//! control on messages within an Ockam worker system.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "alloc")]

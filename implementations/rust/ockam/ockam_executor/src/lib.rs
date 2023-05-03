@@ -1,11 +1,10 @@
-//! Async executor for the Ockam library.
-//!
 //! This crate provides an implementation of an async executor for
 //! `no_std` environments and is intended for use by crates that provide
-//! features and add-ons to the main Ockam library.
+//! features and add-ons to the main [Ockam][main-ockam-crate-link]
+//! library.
 //!
-//! The ockam_node crate re-exports types defined in this crate when the 'std'
-//! feature is not enabled.
+//! The [ockam-node][ockam-node-crate-link] crate re-exports types defined in
+//! this crate when the `"std"` feature is disabled.
 #![warn(
     //missing_docs,
     trivial_casts,

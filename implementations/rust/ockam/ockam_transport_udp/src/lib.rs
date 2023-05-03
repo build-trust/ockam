@@ -1,3 +1,12 @@
+//! This crate provides a UDP Transport for Ockam's Routing Protocol.
+//!
+//! ## Examples
+//
+// In `ockam_transport_udp` directory, run an echo server
+// with command `cargo run --example echo_server`
+//
+// Then, run a client that sends a hello message to the server
+// with command `cargo run --example client`
 use ockam_core::TransportType;
 
 pub use rendezvous_service::UdpRendezvousService;

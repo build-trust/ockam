@@ -1,3 +1,5 @@
+//! This crate provides a Unix Domain Socket Transport for Ockam's Routing Protocol.
+//!
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "alloc")]

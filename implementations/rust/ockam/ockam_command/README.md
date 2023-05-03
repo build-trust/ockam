@@ -8,7 +8,7 @@
 Orchestrate end-to-end encryption, mutual authentication, key management,
 credential management, and authorization policy enforcement — at scale.
 
-This crates provides the `ockam` command line application to start Ockam nodes and interact with them.
+This crate provides the `ockam` command line application to start Ockam nodes and interact with them.
 
 ## Usage
 

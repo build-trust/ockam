@@ -1,4 +1,37 @@
-//! End-to-end encryption and mutual authentication for distributed applications.
+//! End-to-end encrypted, mutually authenticated, secure communication.
+//!
+//! _[A hands-on guide 👉][e2ee-rust-guide]_.
+//!
+//! Data, within modern distributed applications, are rarely exchanged over a single point-to-point
+//! transport connection. Application messages routinely flow over complex, multi-hop, multi-protocol
+//! routes — _across data centers, through queues and caches, via gateways and brokers_ — before reaching
+//! their end destination.
+//!
+//! Transport layer security protocols are unable to protect application messages because their protection
+//! is constrained by the length and duration of the underlying transport connection.
+//!
+//! Ockam makes it simple for our applications to guarantee end-to-end integrity, authenticity,
+//! and confidentiality of data. We no longer have to implicitly depend on the defenses of every machine
+//! or application within the same, usually porous, network boundary. Our application's messages don't have
+//! to be vulnerable at every point, along their journey, where a transport connection terminates.
+//!
+//! Instead, our application can have a strikingly smaller vulnerability surface and easily make
+//! _granular authorization decisions about all incoming information and commands._
+//!
+//! ## Features
+//!
+//! * End-to-end encrypted, mutually authenticated _secure channels_.
+//! * Multi-hop, multi-transport, application layer routing.
+//! * Key establishment, rotation, and revocation - _for fleets, at scale_.
+//! * Lightweight, Concurrent, Stateful Workers that enable _simple APIs_.
+//! * Attribute-based Access Control - credentials with _selective disclosure_.
+//! * Add-ons for a variety of operating environments, transport protocols, and _cryptographic hardware_.
+//!
+//! ## Documentation
+//!
+//! Tutorials, examples and reference guides are available at [docs.ockam.io](https://docs.ockam.io).
+//!
+//! [e2ee-rust-guide]: https://docs.ockam.io/reference/libraries/rust
 
 #![deny(unsafe_code)]
 #![warn(

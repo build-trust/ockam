@@ -1,13 +1,4 @@
-//! TCP Transport utilities for Ockam's routing framework
-//!
-//! The `ockam_node` crate sits at the core
-//! of the Ockam routing framework, with transport specific
-//! abstraction plugins.  This crate implements a TCP connection
-//! plugin for this architecture.
-//!
-//! You can use Ockam's routing mechanism for cryptographic protocols,
-//! key lifecycle, credential exchange, enrollment, etc, without having
-//! to worry about the transport specifics.
+//! This crate provides a TCP Transport for Ockam's Routing Protocol.
 #![deny(unsafe_code)]
 #![warn(
     missing_docs,
