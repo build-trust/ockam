@@ -49,9 +49,9 @@ use crate::nodes::connection::{
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
-use crate::rpc_proxy::RpcProxyService;
 use crate::session::sessions::Sessions;
 use crate::session::Medic;
+use crate::RpcProxyService;
 use crate::{local_worker, DefaultAddress};
 
 use super::registry::Registry;
