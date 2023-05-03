@@ -1,9 +1,10 @@
 use crate::node::{default_node_name, node_name_parser};
 use crate::policy::{add_default_project_policy, has_policy};
-use crate::tcp::util::{alias_parser, socket_addr_parser};
+use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 
 use crate::fmt_info;
+use crate::util::parsers::socket_addr_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{fmt_ok, CommandGlobalOpts};
 
