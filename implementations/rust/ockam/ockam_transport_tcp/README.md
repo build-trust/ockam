@@ -10,19 +10,6 @@ and trustfully with cloud services and other devices.
 
 This crate provides a TCP Transport for Ockam's Routing Protocol.
 
-The Routing Protocol decouples Ockam's suite of cryptographic protocols,
-like secure channels, key lifecycle, credential exchange, enrollment etc. from
-the underlying transport protocols. This allows applications to establish
-end-to-end trust between entities.
-
-TCP is one possible transport for Routing Protocol messages, over time there
-will be more transport implementations.
-
-Currently available transports include:
-
-* `ockam_transport_ble` - Bluetooth Low Energy Transport
-* `ockam_transport_websocket` - WebSocket Transport
-
 ## Usage
 
 Add this to your `Cargo.toml`:

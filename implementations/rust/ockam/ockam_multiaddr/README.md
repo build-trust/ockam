@@ -8,6 +8,19 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
+This crate supports the concept of [MultiAddr, "Composable and future-proof network addresses"](https://github.com/multiformats/multiaddr).
+Those addresses are used by the `ockam_command` crate as arguments to specify complex services paths involving several
+protocols: TCP, secure channels, service name etc...
+
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```
+[dependencies]
+ockam_multiaddr = "0.19.0"
+```
+
 ## License
 
 This code is licensed under the terms of the [Apache License 2.0][license-link].

@@ -1,15 +1,35 @@
 # ockam_transport_ble
 
-### Run:
+[![crate][crate-image]][crate-link]
+[![docs][docs-image]][docs-link]
+[![license][license-image]][license-link]
+[![discuss][discuss-image]][discuss-link]
+
+Ockam is a library for building devices that communicate securely, privately
+and trustfully with cloud services and other devices.
+
+This crate provides a BLE Transport for Ockam's Routing Protocol.
+
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```
+[dependencies]
+ockam_transport_ble = "0.40.0"
+```
+
+## License
+
+This code is licensed under the terms of the [Apache License 2.0][license-link].
+
+## Examples
 
     cargo build --example 04-routing-over-ble-transport-initiator
 
     cargo run --example 04-routing-over-ble-transport-initiator
 
     cargo run --example 05-secure-channel-over-ble-transport-initiator
-
-----
-
 
 ## Transport Model
 
@@ -158,3 +178,15 @@ To fix:
 
 
     codesign --entitlements Entitlements.plist -f -s "Apple Distribution" 04-routing-over-ble-transport-initiator
+
+[crate-image]: https://img.shields.io/crates/v/ockam_transport_ble.svg
+[crate-link]: https://crates.io/crates/ockam_transport_ble
+
+[docs-image]: https://docs.rs/ockam_transport_ble/badge.svg
+[docs-link]: https://docs.rs/ockam_transport_ble
+
+[license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
+[license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE
+
+[discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
+[discuss-link]: https://github.com/build-trust/ockam/discussions

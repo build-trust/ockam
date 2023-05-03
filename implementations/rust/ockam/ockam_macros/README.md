@@ -8,7 +8,11 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-This crate provides shared macros.
+This crate provides shared macros to:
+
+ - clone structs asynchronously
+ - create an ockam node and access its `Context`
+ - write some node-related tests
 
 ## Usage
 
@@ -111,4 +115,3 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
 [discuss-link]: https://github.com/build-trust/ockam/discussions
-

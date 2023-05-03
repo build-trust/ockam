@@ -1,4 +1,14 @@
 # ockam_transport_udp
+[![crate][crate-image]][crate-link]
+[![docs][docs-image]][docs-link]
+[![license][license-image]][license-link]
+[![discuss][discuss-image]][discuss-link]
+
+
+Ockam is a library for building devices that communicate securely, privately
+and trustfully with cloud services and other devices.
+
+This crate provides a UDP Transport for Ockam's Routing Protocol.
 
 ## Usage
 
@@ -27,11 +37,11 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
 
-[crate-image]: https://img.shields.io/crates/v/ockam_transport_tcp.svg
-[crate-link]: https://crates.io/crates/ockam_transport_tcp
+[crate-image]: https://img.shields.io/crates/v/ockam_transport_udp.svg
+[crate-link]: https://crates.io/crates/ockam_transport_udp
 
-[docs-image]: https://docs.rs/ockam_transport_tcp/badge.svg
-[docs-link]: https://docs.rs/ockam_transport_tcp
+[docs-image]: https://docs.rs/ockam_transport_udp/badge.svg
+[docs-link]: https://docs.rs/ockam_transport_udp
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE
