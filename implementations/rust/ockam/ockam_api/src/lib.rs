@@ -15,7 +15,7 @@ pub mod kafka;
 pub mod nodes;
 pub mod okta;
 pub mod port_range;
-pub mod rpc_proxy;
+pub mod rpc_proxy_service;
 pub mod uppercase;
 pub mod verifier;
 
@@ -23,6 +23,7 @@ mod schema;
 mod session;
 mod util;
 
+pub use rpc_proxy_service::*;
 pub use util::*;
 
 #[macro_use]
