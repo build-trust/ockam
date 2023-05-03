@@ -1,4 +1,4 @@
-# ockam_identity
+# ockam
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -8,13 +8,22 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-Identity is an abstraction easing use of authentication and authorization APIs.
+This crate supports the domain of "identities", which is required to create secure channels:
 
-## Crate Features
+ - the `identity` module describes an entity as a set of verified key changes and an identifier
+   uniquely representing those changes
 
-Features of the `ockam_identity` crate:
-- `noise_xx` - Enable Noise Protocol XX key agreement dependency.
-- `software_vault` - Enable Software Vault dependency.
+ - the `identities` module provides services to create, update, and import identities
+
+ - the `credential` module describes sets of attributes describing a given identity and signed by
+   another identity
+
+ - the `credentials` module provides services to create, import and verify credentials
+
+ - the `secure_channel` module describes the steps required to establish a secure channel
+   between 2 identities
+
+ - the `secure_channels` module provides services to create a secure channel between 2 identities
 
 ## Usage
 
@@ -30,7 +39,6 @@ ockam_identity = "0.73.0"
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-entity-crate-link]: https://crates.io/crates/ockam_identity
 
 [crate-image]: https://img.shields.io/crates/v/ockam_identity.svg
 [crate-link]: https://crates.io/crates/ockam_identity

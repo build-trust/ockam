@@ -22,7 +22,13 @@ license = "Apache-2.0"
 publish = true
 repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_node"
 rust-version = "1.56.0"
-description = "Ockam Node implementation crate"
+description = """This crate provides an implementation of an Ockam [Ockam][main-ockam-crate-link]
+Node and is intended for use by crates that provide features and add-ons
+to the main [Ockam][main-ockam-crate-link] library.
+
+The main [Ockam][main-ockam-crate-link] crate re-exports types defined in
+this crate, when the `"std"` feature is enabled.
+"""
 
 [features]
 default = ["std"]

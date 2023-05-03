@@ -1,7 +1,15 @@
-//! Software implementation of ockam_core::vault traits.
+//! In order to support a variety of cryptographically capable hardware we maintain loose coupling between
+//! our protocols and how a specific building block is invoked in a specific hardware.
+//! This is achieved using an abstract Vault trait.
 //!
-//! This crate contains one of the possible implementation of the vault traits
-//! which you can use with Ockam library.
+//! A concrete implementation of the Vault trait is called an Ockam Vault.
+//! Over time, and with help from the Ockam open source community, we plan to add vaults for
+//! several TEEs, TPMs, HSMs, and Secure Enclaves.
+//!
+//! This crate provides a software-only Vault implementation that can be used when no cryptographic
+//! hardware is available. The primary Ockam crate uses this as the default Vault implementation.
+//!
+//! The main [Ockam][main-ockam-crate-link] has optional dependency on this crate.
 #![deny(unsafe_code)]
 #![warn(
     missing_docs,

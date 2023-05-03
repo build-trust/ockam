@@ -1,4 +1,9 @@
-//! ockam_node - Ockam Node API
+//! This crate provides an implementation of an Ockam [Ockam][main-ockam-crate-link]
+//! Node and is intended for use by crates that provide features and add-ons
+//! to the main [Ockam][main-ockam-crate-link] library.
+//!
+//! The main [Ockam][main-ockam-crate-link] crate re-exports types defined in
+//! this crate, when the `"std"` feature is enabled.
 #![deny(unsafe_code)]
 #![warn(
     missing_docs,

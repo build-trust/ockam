@@ -1,3 +1,9 @@
+//! This crate provides shared macros to:
+//!
+//!  - clone structs asynchronously
+//!  - create an ockam node and access its `Context`
+//!  - write some node-related tests
+//!
 #![deny(
     trivial_casts,
     trivial_numeric_casts,
