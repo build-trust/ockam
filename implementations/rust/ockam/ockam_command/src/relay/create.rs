@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Context as _};
 use clap::Args;
+use colorful::Colorful;
 use ockam::identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Project;
 
@@ -10,12 +11,15 @@ use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use crate::node::{default_node_name, node_name_parser};
+use crate::terminal::OckamColor;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::Result;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, fmt_info, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -67,40 +71,83 @@ pub fn default_forwarder_at() -> MultiAddr {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    opts.terminal.write_line(&fmt_info!("Creating Relay"))?;
+
     let tcp = TcpTransport::create(&ctx).await?;
     let api_node = extract_address_value(&cmd.to)?;
     let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
 
     let ma = process_nodes_multiaddr(&cmd.at, &opts.state)?;
-
-    let req = {
-        let alias = if at_rust_node {
-            format!("forward_to_{}", cmd.relay_name)
-        } else {
-            cmd.relay_name.clone()
-        };
-        let body = if cmd.at.matches(0, &[Project::CODE.into()]) {
-            if cmd.authorized.is_some() {
-                return Err(anyhow!("--authorized can not be used with project addresses").into());
-            }
-            CreateForwarder::at_project(ma, Some(alias))
-        } else {
-            CreateForwarder::at_node(ma, Some(alias), at_rust_node, cmd.authorized)
-        };
-        Request::post("/node/forwarder").body(body)
+    let alias = if at_rust_node {
+        format!("forward_to_{}", cmd.relay_name)
+    } else {
+        cmd.relay_name.clone()
     };
 
     let mut rpc = RpcBuilder::new(&ctx, &opts, &api_node).tcp(&tcp)?.build();
-    rpc.request(req).await?;
-    let relay: ForwarderInfo = rpc.parse_response()?;
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let plain = relay.output()?;
+    let send_req = async {
+        let req = {
+            let body = if cmd.at.matches(0, &[Project::CODE.into()]) {
+                if cmd.authorized.is_some() {
+                    return Err(
+                        anyhow!("--authorized can not be used with project addresses").into(),
+                    );
+                }
+                CreateForwarder::at_project(ma, Some(alias.clone()))
+            } else {
+                CreateForwarder::at_node(ma, Some(alias.clone()), at_rust_node, cmd.authorized)
+            };
+            Request::post("/node/forwarder").body(body)
+        };
+
+        rpc.request(req).await?;
+
+        *is_finished.lock().await = true;
+
+        rpc.parse_response::<ForwarderInfo>()
+    };
+
+    let output_messages = vec![
+        format!(
+            "Creating relay forwarding service at {}...",
+            &cmd.at
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ),
+        format!(
+            "Setting up receiving relay mailbox on node {}...",
+            &api_node
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ),
+    ];
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (relay, _) = try_join!(send_req, progress_output)?;
+
     let machine = relay.remote_address_ma()?;
     let json = serde_json::to_string_pretty(&relay)?;
 
+    let formatted_from = format!("{}{}", &cmd.at, &relay.worker_address_ma()?.to_string())
+        .color(OckamColor::PrimaryResource.color());
+    let formatted_to = format!(
+        "/node/{}{}",
+        &api_node,
+        &relay.remote_address_ma()?.to_string()
+    )
+    .color(OckamColor::PrimaryResource.color());
+
     opts.terminal
         .stdout()
-        .plain(plain)
+        .plain(fmt_ok!(
+            "Now relaying messages from {} → {}",
+            formatted_from,
+            formatted_to
+        ))
         .machine(machine)
         .json(json)
         .write_line()?;

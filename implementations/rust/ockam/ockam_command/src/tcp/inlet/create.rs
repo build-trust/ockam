@@ -1,15 +1,15 @@
 use crate::node::{default_node_name, node_name_parser};
 use crate::policy::{add_default_project_policy, has_policy};
-use crate::tcp::util::alias_parser;
-use crate::util::parsers::socket_addr_parser;
+use crate::tcp::util::{alias_parser, socket_addr_parser};
+use crate::terminal::OckamColor;
 use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
     process_nodes_multiaddr, RpcBuilder,
 };
-use crate::{CommandGlobalOpts, Result};
-
+use crate::{fmt_info, fmt_log, fmt_ok, CommandGlobalOpts, Result};
 use anyhow::anyhow;
 use clap::Args;
+use colorful::Colorful;
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
 use ockam_abac::Resource;
@@ -24,6 +24,8 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 /// Create TCP Inlets
 #[derive(Clone, Debug, Args)]
@@ -74,93 +76,118 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    opts.terminal.write_line(&fmt_info!("Creating TCP Inlet"))?;
     cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state)?;
-
-    // Check if the port is used by some other services or process
-    if !bind_to_port_check(&cmd.from) {
-        return Err(crate::error::Error::new(
-            exitcode::IOERR,
-            anyhow!("Another process is listening on the provided port!"),
-        ));
-    }
+    let node = extract_address_value(&cmd.at)?;
 
     let tcp = TcpTransport::create(&ctx).await?;
-    let node = extract_address_value(&cmd.at)?;
-    let project = opts
-        .state
-        .nodes
-        .get(&node)?
-        .config()
-        .setup()
-        .project
-        .to_owned();
-    let resource = Resource::new("tcp-inlet");
-    if let Some(p) = project {
-        if !has_policy(&node, &ctx, &opts, &resource).await? {
-            add_default_project_policy(&node, &ctx, &opts, p, &resource).await?;
-        }
-    }
-
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();
-    let via_project = if cmd.to.clone().matches(0, &[Project::CODE.into()]) {
-        if cmd.authorized.is_some() {
-            return Err(anyhow!("--authorized can not be used with project addresses").into());
+    let is_finished: Mutex<bool> = Mutex::new(false);
+    let progress_bar = opts.terminal.progress_spinner();
+    let send_req = async {
+        // Check if the port is used by some other services or process
+        if !bind_to_port_check(&cmd.from) {
+            return Err(crate::error::Error::new(
+                exitcode::IOERR,
+                anyhow!("Another process is listening on the provided port!"),
+            ));
         }
-        true
-    } else {
-        false
-    };
 
-    let spinner_opts = opts.terminal.progress_spinner();
-
-    if let Some(spinner) = spinner_opts.as_ref() {
-        spinner.set_message("Creating inlet and establishing connection to outlet...");
-    }
-
-    let inlet = loop {
-        let req = {
-            let mut payload = if via_project {
-                CreateInlet::via_project(cmd.from, cmd.to.clone(), route![], route![])
-            } else {
-                CreateInlet::to_node(
-                    cmd.from,
-                    cmd.to.clone(),
-                    route![],
-                    route![],
-                    cmd.authorized.clone(),
-                )
-            };
-            if let Some(a) = cmd.alias.as_ref() {
-                payload.set_alias(a)
+        let project = opts
+            .state
+            .nodes
+            .get(&node)?
+            .config()
+            .setup()
+            .project
+            .to_owned();
+        let resource = Resource::new("tcp-inlet");
+        if let Some(p) = project {
+            if !has_policy(&node, &ctx, &opts, &resource).await? {
+                add_default_project_policy(&node, &ctx, &opts, p, &resource).await?;
             }
-            payload.set_wait_ms(cmd.connection_wait_ms);
+        }
 
-            Request::post("/node/inlet").body(payload)
+        let via_project = if cmd.to.clone().matches(0, &[Project::CODE.into()]) {
+            if cmd.authorized.is_some() {
+                return Err(anyhow!("--authorized can not be used with project addresses").into());
+            }
+            true
+        } else {
+            false
         };
 
-        rpc.request(req).await?;
+        let inlet = loop {
+            let req = {
+                let mut payload = if via_project {
+                    CreateInlet::via_project(cmd.from, cmd.to.clone(), route![], route![])
+                } else {
+                    CreateInlet::to_node(
+                        cmd.from,
+                        cmd.to.clone(),
+                        route![],
+                        route![],
+                        cmd.authorized.clone(),
+                    )
+                };
+                if let Some(a) = cmd.alias.as_ref() {
+                    payload.set_alias(a)
+                }
+                payload.set_wait_ms(cmd.connection_wait_ms);
 
-        match rpc.is_ok() {
-            Ok(_) => {
-                break rpc.parse_response::<InletStatus>()?;
+                Request::post("/node/inlet").body(payload)
+            };
+
+            rpc.request(req).await?;
+
+            match rpc.is_ok() {
+                Ok(_) => {
+                    println!("RPC IS OKAY");
+                    *is_finished.lock().await = true;
+                    break rpc.parse_response::<InletStatus>()?;
+                }
+                Err(_) => {
+                    if let Some(spinner) = progress_bar.as_ref() {
+                        spinner.set_message(format!(
+                            "Waiting for outlet {} to be available... Retrying momentarily",
+                            &cmd.to
+                                .to_string()
+                                .color(OckamColor::PrimaryResource.color())
+                        ));
+                    }
+                    sleep(Duration::from_millis(cmd.retry_wait_ms))
+                }
             }
-            Err(_) => sleep(Duration::from_millis(cmd.retry_wait_ms)),
-        }
+        };
+
+        Ok(inlet)
     };
 
-    if let Some(spinner) = spinner_opts.as_ref() {
-        spinner.finish_with_message("Inlet created and connected to outlet");
-    }
-
-    let output = format!(
-        r#"
-Inlet {}
-    Address: {}
-    Worker: {}
-    Outlet: {}
-"#,
-        inlet.alias, inlet.bind_addr, inlet.worker_addr, inlet.outlet_route
+    let progress_messages = vec![
+        format!(
+            "Creating TCP Inlet on {}...",
+            &node.to_string().color(OckamColor::PrimaryResource.color())
+        ),
+        format!(
+            "Hosting TCP Socket at {}...",
+            &cmd.from
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ),
+        format!(
+            "Establishing connection to outlet {}...",
+            &cmd.to
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ),
+    ];
+    let progress_output = opts.terminal.progress_output_with_progress_bar(
+        &progress_messages,
+        &is_finished,
+        progress_bar.as_ref(),
     );
+
+    let (inlet, _) = try_join!(send_req, progress_output)?;
 
     let machine_output = inlet.bind_addr.to_string();
 
@@ -168,7 +195,20 @@ Inlet {}
 
     opts.terminal
         .stdout()
-        .plain(output)
+        .plain(
+            fmt_ok!(
+                "TCP Inlet {} on node {} is now sending traffic\n",
+                &cmd.from
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color()),
+                &node.to_string().color(OckamColor::PrimaryResource.color())
+            ) + &fmt_log!(
+                "to the outlet at {}",
+                &cmd.to
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ),
+        )
         .machine(machine_output)
         .json(json_output)
         .write_line()?;

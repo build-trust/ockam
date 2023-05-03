@@ -57,7 +57,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let ockam_header = include_str!("../../static/ockam_ascii.txt").trim();
     let colored_header = ockam_header.gradient_with_color(
         OckamColor::OckamBlue.color(),
-        OckamColor::PrimaryGradient.color(),
+        OckamColor::HeaderGradient.color(),
     );
 
     opts.terminal
@@ -266,15 +266,16 @@ impl Auth0Service {
         let dc = self.device_code().await?;
 
         opts.terminal
-            .write_line(&fmt_log!(
+            .write_line(&fmt_info!(
                 "Enroll Ockam Command's default identity with Ockam Orchestrator"
             ))?
-            .write_line(&fmt_info!(
+            .write_line(&fmt_log!(
                 "First copy your one-time code: {}",
                 format!(" {} ", dc.user_code).bg_white().black()
             ))?
             .write(&fmt_log!(
-                "Then press enter to open {} in your browser...",
+                "Then press {} to open {} in your browser...",
+                " ENTER ↵ ".bg_white().black(),
                 dc.verification_uri.to_string().light_green()
             ))?;
 
