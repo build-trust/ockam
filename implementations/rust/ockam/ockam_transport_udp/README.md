@@ -1,14 +1,16 @@
 # ockam_transport_udp
+
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
 [![license][license-image]][license-link]
 [![discuss][discuss-image]][discuss-link]
 
-
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
 This crate provides a UDP Transport for Ockam's Routing Protocol.
+
+### Examples
 
 ## Usage
 
@@ -18,18 +20,6 @@ Add this to your `Cargo.toml`:
 [dependencies]
 ockam_transport_udp = "0.19.0"
 ```
-
-## Test
-
-In `ockam_transport_udp` directory, ran `cargo test`.
-
-## Examples
-
-In `ockam_transport_udp` directory, run an echo server
-with command `cargo run --example echo_server`
-
-Then, run a client that sends a hello message to the server
-with command `cargo run --example client`
 
 ## License
 

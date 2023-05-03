@@ -20,6 +20,7 @@ Currently available transports include:
 * `ockam_transport_websocket` - WebSocket Transport
 * `ockam_transport_uds` - Unix Domain Socket Transport
 
+
 ## Usage
 
 Add this to your `Cargo.toml`:
@@ -28,8 +29,6 @@ Add this to your `Cargo.toml`:
 [dependencies]
 ockam_transport_core = "0.52.0"
 ```
-
-This crate requires the rust standard library `"std"`.
 
 ## License
 

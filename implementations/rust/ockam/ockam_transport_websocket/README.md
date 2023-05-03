@@ -10,55 +10,41 @@ and trustfully with cloud services and other devices.
 
 This crate provides a WebSocket Transport for Ockam's Routing Protocol.
 
-The Routing Protocol decouples Ockam's suite of cryptographic protocols,
-like secure channels, key lifecycle, credential exchange, enrollment etc. from
-the underlying transport protocols. This allows applications to establish
-end-to-end trust between entities.
-
-WebSocket is one possible transport for Routing Protocol messages, over time there
-will be more transport implementations.
-
-## Usage
-
-Add this to your `Cargo.toml`:
-
-```
-[dependencies]
-ockam_transport_websocket = "0.71.0"
-```
-
 This crate requires the rust standard library `"std"`.
 
 We need to define the behavior of the worker that will be processing incoming messages.
 
 ```rust
+use ockam_core::{Worker, Result, Routed, async_trait};
+use ockam_node::Context;
+
 struct MyWorker;
 
-#[worker]
+#[async_trait]
 impl Worker for MyWorker {
     type Context = Context;
     type Message = String;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
+    async fn handle_message(&mut self, _ctx: &mut Context, _msg: Routed<String>) -> Result<()> {
         // ...
         Ok(())
     }
 }
-```
 
-Now we can write the main function that will run the previous worker. In this case, our worker will be listening for new connections on port 8000 until the process is manually killed.
+// Now we can write the main function that will run the previous worker. In this case, our worker will be listening for new connections on port 8000 until the process is manually killed.
 
-```rust
 use ockam_transport_websocket::WebSocketTransport;
-use ockam::{Context, Result};
+use ockam_core::{AllowAll};
+use ockam_node::NodeBuilder;
+use ockam_macros::node;
 
-#[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+#[ockam_macros::node(crate = "ockam_node")]
+async fn main(mut ctx: Context) -> Result<()> {//!
     let ws = WebSocketTransport::create(&ctx).await?;
     ws.listen("localhost:8000").await?; // Listen on port 8000
 
     // Start a worker, of type MyWorker, at address "my_worker"
-    ctx.start_worker("my_worker", MyWorker).await?;
+    ctx.start_worker("my_worker", MyWorker, AllowAll, AllowAll).await?;
 
     // Run worker indefinitely in the background
     Ok(())
@@ -69,12 +55,14 @@ Finally, we can write another node that connects to the node that is hosting the
 
 ```rust
 use ockam_transport_websocket::{WebSocketTransport, WS};
-use ockam::{Context, Result};
+use ockam_core::{route, Result};
+use ockam_node::Context;
+use ockam_macros::node;
 
-#[ockam::node]
+#[ockam_macros::node(crate = "ockam_node")]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Initialize the WS Transport.
-    let _ws = WebSocketTransport::create(&ctx).await?;
+    use ockam_node::MessageReceiveOptions;
+let ws = WebSocketTransport::create(&ctx).await?;
 
     // Define the route to the server's worker.
     let r = route![(WS, "localhost:8000"), "my_worker"];
@@ -88,6 +76,16 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Stop all workers, stop the node, cleanup and return.
     ctx.stop().await
 }
+```
+
+
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```
+[dependencies]
+ockam_transport_websocket = "0.71.0"
 ```
 
 ## License

@@ -27,6 +27,7 @@ description = "End-to-end encryption and mutual authentication for distributed a
 
 [lib]
 proc-macro = true
+path = "src/lib.rs"
 
 [features]
 default = []

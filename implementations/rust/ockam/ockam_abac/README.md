@@ -1,4 +1,4 @@
-# ockam
+# ockam_abac
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]

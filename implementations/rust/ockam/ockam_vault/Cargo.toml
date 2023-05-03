@@ -22,7 +22,7 @@ description = """A software-only Ockam Vault implementation.
 
 [lib]
 crate-type = ["rlib"]
-path = "."
+path = "src/lib.rs"
 
 [features]
 default = ["std", "storage", "rustcrypto"]

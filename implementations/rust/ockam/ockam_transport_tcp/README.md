@@ -10,6 +10,8 @@ and trustfully with cloud services and other devices.
 
 This crate provides a TCP Transport for Ockam's Routing Protocol.
 
+This crate requires the rust standard library `"std"`
+
 ## Usage
 
 Add this to your `Cargo.toml`:
@@ -18,8 +20,6 @@ Add this to your `Cargo.toml`:
 [dependencies]
 ockam_transport_tcp = "0.80.0"
 ```
-
-This crate requires the rust standard library `"std"`.
 
 ## License
 

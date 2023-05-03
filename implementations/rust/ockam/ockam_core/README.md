@@ -15,6 +15,24 @@ to the main [Ockam][main-ockam-crate-link] library.
 The main [Ockam][main-ockam-crate-link] crate re-exports types defined in
 this crate.
 
+### Crate Features
+
+The `ockam_core` crate has a Cargo feature named `"std"` that is enabled by
+default. In order to use this crate in a `no_std` context this feature can
+be disabled as follows
+
+```toml
+[dependencies]
+ockam_core = { version = "<current version>" , default-features = false }
+```
+
+Please note that Cargo features are unioned across the entire dependency
+graph of a project. If any other crate you depend on has not opted out of
+`ockam_core` default features, Cargo will build `ockam_core` with the std
+feature enabled whether or not your direct dependency on `ockam_core`
+has `default-features = false`.
+
+
 ## Usage
 
 Add this to your `Cargo.toml`:
@@ -23,23 +41,6 @@ Add this to your `Cargo.toml`:
 [dependencies]
 ockam_core = "0.79.0"
 ```
-
-## Crate Features
-
-The `ockam_core` crate has a Cargo feature named `"std"` that is enabled by
-default. In order to use this crate in a `no_std` context this feature can
-be disabled as follows
-
-```
-[dependencies]
-ockam_core = { version = "0.79.0" , default-features = false }
-```
-
-Please note that Cargo features are unioned across the entire dependency
-graph of a project. If any other crate you depend on has not opted out of
-`ockam_core` default features, Cargo will build `ockam_core` with the std
-feature enabled whether or not your direct dependency on `ockam_core`
-has `default-features = false`.
 
 ## License
 
