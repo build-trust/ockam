@@ -10,6 +10,7 @@ repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/
 description = "Ockam's request-response API"
 
 [features]
+default = ["std", "direct-authenticator"]
 std = [
   "either/use_std",
   "hex/std",

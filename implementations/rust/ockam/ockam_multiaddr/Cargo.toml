@@ -10,6 +10,7 @@ repository = "https://github.com/ockam-network/ockam"
 description = "An implementation of multiformats.io/multiaddr"
 
 [features]
+default = ["std"]
 std = ["ockam_core/std", "unsigned-varint/std", "serde?/std"]
 cbor = ["minicbor"]
 
