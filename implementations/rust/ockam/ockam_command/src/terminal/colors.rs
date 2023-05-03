@@ -4,18 +4,26 @@ use colors_transform::{Color, Rgb};
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OckamColor {
     OckamBlue,
-    PrimaryGradient,
-    DeepBlue,
-    SuccessGreen,
+    HeaderGradient,
+    PrimaryResource,
+    FmtTextColor,
+    FmtOKBackground,
+    FmtINFOBackground,
+    FmtWARNBackground,
+    FmtERRORBackground,
 }
 
 impl OckamColor {
     pub fn value(&self) -> &str {
         match self {
             OckamColor::OckamBlue => "#52c7ea",
-            OckamColor::PrimaryGradient => "#4FDAB8",
-            OckamColor::DeepBlue => "#0A1A2B",
-            OckamColor::SuccessGreen => "#85ff00",
+            OckamColor::HeaderGradient => "#4FDAB8",
+            OckamColor::PrimaryResource => "#4FDAB8",
+            OckamColor::FmtTextColor => "#0A1A2B",
+            OckamColor::FmtOKBackground => "#61d800",
+            OckamColor::FmtINFOBackground => "#0DCAF0",
+            OckamColor::FmtWARNBackground => "#ff9a00",
+            OckamColor::FmtERRORBackground => "#ff0000",
         }
     }
 

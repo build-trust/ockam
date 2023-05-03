@@ -8,6 +8,8 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use mode::*;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::errcode::Kind;
+use tokio::sync::Mutex;
+use tokio::time::sleep;
 
 use crate::{OutputFormat, Result};
 
@@ -368,5 +370,48 @@ impl<W: TerminalWriter> Terminal<W> {
                 .tick_strings(&[ticker, reversed_ticker].concat()),
         );
         Some(pb)
+    }
+
+    pub async fn progress_output(
+        &self,
+        output_messages: &Vec<String>,
+        is_finished: &Mutex<bool>,
+    ) -> Result<()> {
+        let spinner = self.progress_spinner();
+
+        self.progress_output_with_progress_bar(output_messages, is_finished, spinner.as_ref())
+            .await
+    }
+
+    pub async fn progress_output_with_progress_bar(
+        &self,
+        output_messages: &Vec<String>,
+        is_finished: &Mutex<bool>,
+        progress_bar: Option<&ProgressBar>,
+    ) -> Result<()> {
+        let mut i = 0;
+        let progress_bar = match progress_bar {
+            Some(pb) => pb,
+            None => return Ok(()),
+        };
+
+        loop {
+            if *is_finished.lock().await {
+                progress_bar.finish_and_clear();
+                break;
+            }
+
+            progress_bar.set_message(output_messages[i].clone());
+
+            if i == output_messages.len() - 1 {
+                i = 0;
+            } else {
+                i += 1;
+            }
+
+            sleep(Duration::from_millis(500)).await;
+        }
+
+        Ok(())
     }
 }

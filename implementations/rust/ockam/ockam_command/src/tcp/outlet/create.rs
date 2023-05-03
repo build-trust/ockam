@@ -1,15 +1,20 @@
 use crate::node::{default_node_name, node_name_parser};
 use crate::policy::{add_default_project_policy, has_policy};
-use crate::tcp::util::alias_parser;
-use crate::util::output::Output;
-use crate::util::parsers::socket_addr_parser;
+use crate::tcp::util::{alias_parser, socket_addr_parser};
+use crate::terminal::OckamColor;
+
+use crate::fmt_info;
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{fmt_ok, CommandGlobalOpts};
+
 use clap::Args;
+use colorful::Colorful;
 use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_core::api::{Request, RequestBuilder};
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use std::net::SocketAddr;
@@ -48,6 +53,8 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
+    opts.terminal
+        .write_line(&fmt_info!("Creating TCP Outlet"))?;
     let node = extract_address_value(&cmd.at)?;
     let project = opts
         .state
@@ -65,22 +72,51 @@ pub async fn run_impl(
     }
 
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let cmd = CreateCommand {
-        from: extract_address_value(&cmd.from)?,
-        ..cmd
+    let send_req = async {
+        let new_cmd = CreateCommand {
+            from: extract_address_value(&cmd.from)?,
+            ..cmd
+        };
+
+        rpc.request(make_api_request(new_cmd)?).await?;
+
+        *is_finished.lock().await = true;
+        rpc.parse_response::<OutletStatus>()
     };
 
-    rpc.request(make_api_request(cmd)?).await?;
-    let outlet_status: OutletStatus = rpc.parse_response()?;
+    let output_messages = vec![
+        format!(
+            "Creating outlet service on node {}...",
+            &node.to_string().color(OckamColor::PrimaryResource.color()),
+        ),
+        "Creating up TCP outlet worker...".to_string(),
+        format!(
+            "Hosting outlet service at {}...",
+            &cmd.from
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ),
+    ];
 
-    let plain = outlet_status.output()?;
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (outlet_status, _) = try_join!(send_req, progress_output)?;
     let machine = outlet_status.worker_address()?;
     let json = serde_json::to_string_pretty(&outlet_status)?;
 
     opts.terminal
         .stdout()
-        .plain(plain)
+        .plain(fmt_ok!(
+            "{} is now sending TCP traffic to {}",
+            &node.to_string().color(OckamColor::PrimaryResource.color()),
+            &cmd.to
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))
         .machine(machine)
         .json(json)
         .write_line()?;

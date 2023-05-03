@@ -18,7 +18,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
-use crate::{fmt_log, CommandGlobalOpts, OckamConfig, Result};
+use crate::{CommandGlobalOpts, OckamConfig, Result};
 
 pub fn clean_projects_multiaddr(
     input: MultiAddr,
@@ -299,8 +299,6 @@ pub async fn check_project_readiness(
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.finish_and_clear();
     }
-
-    opts.terminal.write_line(&fmt_log!("Project is ready!"))?;
 
     // Persist project config with all its fields
     config::set_project(&opts.config, &project).await?;

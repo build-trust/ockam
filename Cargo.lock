@@ -3326,6 +3326,7 @@ dependencies = [
  "io-lifetimes",
  "is-terminal",
  "itertools",
+ "lazy_static",
  "minicbor",
  "nix",
  "ockam",
