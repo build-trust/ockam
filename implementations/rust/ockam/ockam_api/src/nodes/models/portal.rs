@@ -1,6 +1,7 @@
 //! Inlets and outlet request/response types
 
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use minicbor::{Decode, Encode};
 use ockam::route;
@@ -41,6 +42,8 @@ pub struct CreateInlet<'a> {
     /// A suffix route that will be applied after outlet_addr, and won't be used
     /// to monitor the state of the connection
     #[n(6)] suffix_route: Route,
+    /// The maximum duration to wait for an outlet to be available
+    #[n(7)] wait_for_outlet_duration: Option<Duration>,
 }
 
 impl<'a> CreateInlet<'a> {
@@ -59,6 +62,7 @@ impl<'a> CreateInlet<'a> {
             authorized: None,
             prefix_route,
             suffix_route,
+            wait_for_outlet_duration: None,
         }
     }
 
@@ -78,11 +82,16 @@ impl<'a> CreateInlet<'a> {
             authorized: auth,
             prefix_route,
             suffix_route,
+            wait_for_outlet_duration: None,
         }
     }
 
     pub fn set_alias(&mut self, a: impl Into<Cow<'a, str>>) {
         self.alias = Some(CowStr(a.into()))
+    }
+
+    pub fn set_wait_ms(&mut self, ms: u64) {
+        self.wait_for_outlet_duration = Some(Duration::from_millis(ms))
     }
 
     pub fn listen_addr(&self) -> SocketAddr {
@@ -107,6 +116,10 @@ impl<'a> CreateInlet<'a> {
 
     pub fn suffix_route(&self) -> &Route {
         &self.suffix_route
+    }
+
+    pub fn wait_for_outlet_duration(&self) -> Option<Duration> {
+        self.wait_for_outlet_duration.clone()
     }
 }
 
