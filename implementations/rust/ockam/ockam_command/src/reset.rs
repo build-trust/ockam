@@ -38,7 +38,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> crate::Result<()> {
     opts.state.delete(true)?;
     opts.terminal
         .stdout()
-        .plain(fmt_ok!("Local CLI state deleted"))
+        .plain(fmt_ok!("Local Ockam configuration deleted"))
         .write_line()?;
     Ok(())
 }
