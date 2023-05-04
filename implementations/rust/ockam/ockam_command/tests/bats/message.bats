@@ -43,12 +43,14 @@ teardown() {
   assert_success
   m1_identifier=$($OCKAM identity show m1)
 
-  $OCKAM project enroll --member "$m1_identifier" --attribute role=member
+  run "$OCKAM" project enroll --member "$m1_identifier" --attribute role=member
+  assert_success
 
   # m1' identity was added by enroller
   run "$OCKAM" project authenticate --identity m1 --project-path "$PROJECT_JSON_PATH"
+  assert_success
 
-  # m1 is a member,  must be able to contact the project' service
+  # m1 is a member, must be able to contact the project' service
   msg=$(random_str)
   run "$OCKAM" message send --timeout 5 --identity m1 --project-path "$PROJECT_JSON_PATH" --to /project/default/service/echo "$msg"
   assert_success
