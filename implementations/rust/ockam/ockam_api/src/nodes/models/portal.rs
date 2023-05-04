@@ -119,7 +119,7 @@ impl<'a> CreateInlet<'a> {
     }
 
     pub fn wait_for_outlet_duration(&self) -> Option<Duration> {
-        self.wait_for_outlet_duration.clone()
+        self.wait_for_outlet_duration
     }
 }
 
