@@ -39,7 +39,9 @@ async fn main(ctx: Context) -> Result<()> {
             ],
             SecureChannelOptions::new(),
         )
-        .await?;
+        .await?
+        .encryptor_address()
+        .clone();
 
     // Send a message
     node.send(

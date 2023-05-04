@@ -46,7 +46,7 @@ impl DecryptorWorker {
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         timeout: Duration,
-    ) -> Result<Address> {
+    ) -> Result<()> {
         let mut completion_callback_ctx = ctx
             .new_detached(
                 addresses.completion_callback.clone(),
@@ -90,7 +90,7 @@ impl DecryptorWorker {
             )
             .await?;
 
-        Ok(addresses.encryptor)
+        Ok(())
     }
 }
 

@@ -25,10 +25,13 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let server = identities_creation.create_identity().await?;
     let client = identities_creation.create_identity().await?;
 
-    let options = SecureChannelListenerOptions::new();
-    let sc_flow_control_id = options.spawner_flow_control_id();
-    secure_channels
-        .create_secure_channel_listener(ctx, &server.identifier(), "listener", options)
+    let listener = secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &server.identifier(),
+            "listener",
+            SecureChannelListenerOptions::new(),
+        )
         .await?;
 
     let trust_context = TrustContext::new(
@@ -43,7 +46,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
     ctx.flow_controls().add_consumer(
         "credential_exchange",
-        &sc_flow_control_id,
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
     credentials_service
@@ -110,10 +113,13 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .issue_credential(&authority.identifier(), credential_data)
         .await?;
 
-    let options = SecureChannelListenerOptions::new();
-    let sc_flow_control_id = options.spawner_flow_control_id();
-    secure_channels
-        .create_secure_channel_listener(ctx, &client1.identifier(), "listener", options)
+    let listener = secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &client1.identifier(),
+            "listener",
+            SecureChannelListenerOptions::new(),
+        )
         .await?;
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
@@ -126,7 +132,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     );
     ctx.flow_controls().add_consumer(
         "credential_exchange",
-        &sc_flow_control_id,
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
@@ -196,8 +202,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let client = identities_creation.create_identity().await?;
 
     let options = SecureChannelListenerOptions::new();
-    let sc_flow_control_id = options.spawner_flow_control_id();
-    secure_channels
+    let listener = secure_channels
         .create_secure_channel_listener(ctx, &server.identifier(), "listener", options)
         .await?;
 
@@ -213,7 +218,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     ctx.flow_controls().add_consumer(
         "credential_exchange",
-        &sc_flow_control_id,
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
@@ -256,7 +261,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     ctx.flow_controls().add_consumer(
         "counter",
-        &sc_flow_control_id,
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 

@@ -65,17 +65,18 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     let tcp_route = multiaddr_to_route(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
     let options = SecureChannelOptions::new()
-        .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.authority_identifier()]));
+        .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.authority_identifier()]))
+        .with_timeout(Duration::from_secs(120));
 
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = node
-        .create_secure_channel_extended(&control_plane, tcp_route.route, options, Duration::from_secs(120))
+        .create_secure_channel(&control_plane, tcp_route.route, options)
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
         RpcClient::new(
-            route![secure_channel.clone(), DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
+            route![secure_channel, DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
             node.context(),
         )
         .await?,
@@ -135,18 +136,14 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 5. create a forwarder on the Ockam orchestrator
 
     let tcp_project_route = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
-    let project_options =
-        SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
+    let project_options = SecureChannelOptions::new()
+        .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]))
+        .with_timeout(Duration::from_secs(120));
 
     // create a secure channel to the project first
     // we make sure that we indeed connect to the correct project on the Orchestrator
     let secure_channel_address = node
-        .create_secure_channel_extended(
-            &control_plane,
-            tcp_project_route.route,
-            project_options,
-            Duration::from_secs(120),
-        )
+        .create_secure_channel(&control_plane, tcp_project_route.route, project_options)
         .await?;
     println!("secure channel to project: {secure_channel_address:?}");
 
