@@ -12,7 +12,7 @@ setup() {
   load_bats_ext
   setup_home_dir
   skip_if_orchestrator_tests_not_enabled
-  load_orchestrator_data
+  copy_local_orchestrator_data
 }
 
 teardown() {

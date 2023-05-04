@@ -149,7 +149,7 @@ teardown() {
 
 @test "trust context - trust context with an id and authority using orchestrator; orchestrator enrollment and connection is performed, orchestrator" {
   skip_if_orchestrator_tests_not_enabled
-  load_orchestrator_data
+  copy_local_orchestrator_data
 
   $OCKAM trust-context create orchestrator-test
 

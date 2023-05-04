@@ -358,11 +358,11 @@ teardown() {
 
 @test "relay - create relay with default parameters" {
   skip_if_orchestrator_tests_not_enabled
-  load_orchestrator_data
+  copy_local_orchestrator_data
 
   port=7100
 
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
+  run "$OCKAM" node create blue
   assert_success
   $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
@@ -370,7 +370,7 @@ teardown() {
   run "$OCKAM" relay create $fwd
   assert_success
 
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
+  run "$OCKAM" node create green
   assert_success
   $OCKAM secure-channel create --from /node/green --to "/project/default/service/forward_to_$fwd/service/api" |
     $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet

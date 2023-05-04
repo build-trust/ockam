@@ -51,19 +51,19 @@ teardown() {
 # https://docs.ockam.io/
 @test "use-case - end-to-end encryption, orchestrator" {
   skip_if_orchestrator_tests_not_enabled
-  load_orchestrator_data
+  copy_local_orchestrator_data
 
   port=9001
 
   # Service
-  run "$OCKAM" node create s --project-path "$PROJECT_JSON_PATH"
+  run "$OCKAM" node create s
   run "$OCKAM" tcp-outlet create --at /node/s --to 127.0.0.1:5000
 
   fwd=$(random_str)
   run "$OCKAM" relay create "$fwd" --to /node/s
 
   # Client
-  run "$OCKAM" node create c --project-path "$PROJECT_JSON_PATH"
+  run "$OCKAM" node create c
   run bash -c "$OCKAM secure-channel create --from /node/c --to /project/default/service/forward_to_$fwd/service/api \
               | $OCKAM tcp-inlet create --at /node/c --from 127.0.0.1:$port --to -/service/outlet"
   assert_success
@@ -75,7 +75,7 @@ teardown() {
 # https://docs.ockam.io/use-cases/apply-fine-grained-permissions-with-attribute-based-access-control-abac
 @test "use-case - abac" {
   skip_if_orchestrator_tests_not_enabled
-  load_orchestrator_data
+  copy_local_orchestrator_data
 
   port_1=9002
   port_2=9003
