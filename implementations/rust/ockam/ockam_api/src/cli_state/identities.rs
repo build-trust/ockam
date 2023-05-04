@@ -1,18 +1,22 @@
-use super::Result;
-use crate::cli_state::nodes::NodeState;
-use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
-use crate::cli_state::CliStateError;
-use ockam_identity::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
-    IdentityHistoryComparison, IdentityIdentifier, LmdbStorage,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::SystemTime;
+
+use serde::{Deserialize, Deserializer, Serialize};
 use time::format_description::well_known::Iso8601;
 use time::OffsetDateTime;
+
+use ockam_identity::{
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
+    IdentityChangeHistory, IdentityHistoryComparison, IdentityIdentifier, LmdbStorage,
+};
+
+use crate::cli_state::nodes::NodeState;
+use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
+use crate::cli_state::CliStateError;
+
+use super::Result;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IdentitiesState {
@@ -144,10 +148,47 @@ impl Display for IdentityState {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct IdentityConfig {
     pub identity: Identity,
     pub enrollment_status: Option<EnrollmentStatus>,
+}
+
+impl<'de> Deserialize<'de> for IdentityConfig {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize, Debug, Clone)]
+        struct IdentityConfigV1 {
+            identifier: IdentityIdentifier,
+            change_history: IdentityChangeHistory,
+            enrollment_status: Option<EnrollmentStatus>,
+        }
+        #[derive(Deserialize, Debug, Clone)]
+        struct IdentityConfigV2 {
+            identity: Identity,
+            enrollment_status: Option<EnrollmentStatus>,
+        }
+        #[derive(Deserialize, Debug, Clone)]
+        #[serde(untagged)]
+        enum IdentityConfigs {
+            V1(IdentityConfigV1),
+            V2(IdentityConfigV2),
+        }
+
+        match IdentityConfigs::deserialize(deserializer) {
+            Ok(IdentityConfigs::V1(config)) => Ok(IdentityConfig {
+                identity: Identity::new(config.identifier, config.change_history),
+                enrollment_status: config.enrollment_status,
+            }),
+            Ok(IdentityConfigs::V2(config)) => Ok(IdentityConfig {
+                identity: config.identity,
+                enrollment_status: config.enrollment_status,
+            }),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 impl IdentityConfig {
@@ -208,10 +249,12 @@ impl Display for EnrollmentStatus {
 }
 
 mod traits {
-    use super::*;
+    use ockam_core::async_trait;
+
     use crate::cli_state::traits::*;
     use crate::cli_state::{file_stem, CliStateError};
-    use ockam_core::async_trait;
+
+    use super::*;
 
     #[async_trait]
     impl StateDirTrait for IdentitiesState {
@@ -286,5 +329,64 @@ mod traits {
         fn config(&self) -> &Self::Config {
             &self.config
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::str::FromStr;
+
+    use ockam_identity::IdentityChangeHistory;
+
+    use super::*;
+
+    #[test]
+    fn test_serialize() {
+        let identity_config = create_identity_config();
+        let expected = create_identity_config_json();
+        assert_eq!(serde_json::to_string(&identity_config).unwrap(), expected)
+    }
+
+    #[test]
+    fn test_deserialize() {
+        let json = create_identity_config_json();
+        let actual: IdentityConfig = serde_json::from_str(json.as_str()).unwrap();
+        let expected = create_identity_config();
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_deserialize_legacy() {
+        let json = create_identity_config_json_legacy();
+        println!("{}", json);
+        let actual: IdentityConfig = serde_json::from_str(json.as_str()).unwrap();
+        let expected = create_identity_config();
+        assert_eq!(actual, expected)
+    }
+
+    fn create_identity_config() -> IdentityConfig {
+        let data = hex::decode("0144c7eb72dd1e633f38e0d0521e9d5eb5072f6418176529eb1b00189e4d69ad2e000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020c6c52380125d42b0b4da922b1cff8503a258c3497ec8ac0b4a3baa0d9ca7b3780301014075064b902bda9d16db81ab5f38fbcf226a0e904e517a8c087d379ea139df1f2d7fee484ac7e1c2b7ab2da75f85adef6af7ddb05e7fa8faf180820cb9e86def02").unwrap();
+        let identity = Identity::new(
+            IdentityIdentifier::from_str(
+                "Pfa804b7fca12a19eed206ae180b5b576860ae6512f196c189d90661bcc434b50",
+            )
+            .unwrap(),
+            IdentityChangeHistory::import(data.to_vec().as_slice()).unwrap(),
+        );
+        IdentityConfig {
+            identity,
+            enrollment_status: Some(EnrollmentStatus {
+                is_enrolled: true,
+                created_at: SystemTime::from(OffsetDateTime::from_unix_timestamp(0).unwrap()),
+            }),
+        }
+    }
+
+    fn create_identity_config_json() -> String {
+        r#"{"identity":{"identifier":"Pfa804b7fca12a19eed206ae180b5b576860ae6512f196c189d90661bcc434b50","change_history":[{"identifier":[68,199,235,114,221,30,99,63,56,224,208,82,30,157,94,181,7,47,100,24,23,101,41,235,27,0,24,158,77,105,173,46],"change":{"CreateKey":{"prev_change_id":[5,71,201,50,57,186,61,129,142,194,108,156,218,221,42,53,203,223,31,163,182,209,167,49,224,97,100,177,7,159,183,184],"key_attributes":{"label":"OCKAM_RK","secret_attributes":{"stype":"Ed25519","persistence":"Persistent","length":32}},"public_key":{"data":[198,197,35,128,18,93,66,176,180,218,146,43,28,255,133,3,162,88,195,73,126,200,172,11,74,59,170,13,156,167,179,120],"stype":"Ed25519"}}},"signatures":[{"stype":"SelfSign","data":[117,6,75,144,43,218,157,22,219,129,171,95,56,251,207,34,106,14,144,78,81,122,140,8,125,55,158,161,57,223,31,45,127,238,72,74,199,225,194,183,171,45,167,95,133,173,239,106,247,221,176,94,127,168,250,241,128,130,12,185,232,109,239,2]}]}]},"enrollment_status":{"is_enrolled":true,"created_at":{"secs_since_epoch":0,"nanos_since_epoch":0}}}"#.into()
+    }
+
+    fn create_identity_config_json_legacy() -> String {
+        r#"{"identifier":"Pfa804b7fca12a19eed206ae180b5b576860ae6512f196c189d90661bcc434b50","change_history":[{"identifier":[68,199,235,114,221,30,99,63,56,224,208,82,30,157,94,181,7,47,100,24,23,101,41,235,27,0,24,158,77,105,173,46],"change":{"CreateKey":{"prev_change_id":[5,71,201,50,57,186,61,129,142,194,108,156,218,221,42,53,203,223,31,163,182,209,167,49,224,97,100,177,7,159,183,184],"key_attributes":{"label":"OCKAM_RK","secret_attributes":{"stype":"Ed25519","persistence":"Persistent","length":32}},"public_key":{"data":[198,197,35,128,18,93,66,176,180,218,146,43,28,255,133,3,162,88,195,73,126,200,172,11,74,59,170,13,156,167,179,120],"stype":"Ed25519"}}},"signatures":[{"stype":"SelfSign","data":[117,6,75,144,43,218,157,22,219,129,171,95,56,251,207,34,106,14,144,78,81,122,140,8,125,55,158,161,57,223,31,45,127,238,72,74,199,225,194,183,171,45,167,95,133,173,239,106,247,221,176,94,127,168,250,241,128,130,12,185,232,109,239,2]}]}],"enrollment_status":{"is_enrolled":true,"created_at":{"secs_since_epoch":0,"nanos_since_epoch":0}}}"#.into()
     }
 }
