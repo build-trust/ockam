@@ -15,7 +15,7 @@ on:
       ockam_publish_recent_failure:
         description: Indicate A Recent Failure
         type: choice
-        default: false
+        default: 'false'
         options:
         - false
         - true
