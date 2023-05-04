@@ -34,10 +34,10 @@ pub struct Node {
 /// use std::sync::Arc;
 /// use ockam::{Node, Result};
 /// use ockam_node::Context;
-/// use ockam_vault::storage::VaultFileStorage;
+/// use ockam_vault::storage::PersistentStorage;
 ///
 /// async fn make_node(ctx: Context) -> Result<Node> {
-///   let node = Node::builder().with_vault_storage(Arc::new(VaultFileStorage::create("vault".into()).await?)).build(ctx).await?;
+///   let node = Node::builder().with_vault_storage(Arc::new(PersistentStorage::create("vault".into()).await?)).build(ctx).await?;
 ///   Ok(node)
 /// }
 ///
@@ -103,6 +103,7 @@ impl Node {
     }
 
     /// Import an Identity given its private key and change history
+    /// Note: the data is not persisted!
     pub async fn import_private_identity(
         &self,
         identity_history: &str,

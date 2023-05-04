@@ -1,5 +1,4 @@
 use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::sync::Arc;
 
 use crate::{
     identity::default_identity_name,
@@ -81,7 +80,7 @@ async fn run_impl(
         auth_identity_identifier.to_string(),
     );
 
-    let vault = Arc::new(opts.state.vaults.get(&cmd.vault)?.get().await?);
+    let vault = opts.state.vaults.get(&cmd.vault)?.get().await?;
     let issuer = ident_state.get(vault.clone()).await?;
     let identities = ident_state.make_identities(vault).await?;
 

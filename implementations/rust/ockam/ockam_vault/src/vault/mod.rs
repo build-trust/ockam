@@ -11,16 +11,16 @@
 //! [`ockam_vault`]: https://docs.rs/ockam_vault/latest
 
 mod asymmetric_impl;
-mod aws;
-mod error;
-mod hasher_impl;
-mod secret_impl;
+mod secrets_store_impl;
 mod signer_impl;
 mod symmetric_impl;
+#[allow(clippy::module_inception)]
 mod vault;
-mod verifier_impl;
-mod xeddsa;
+mod vault_builder;
+mod vault_error;
+mod vault_kms;
 
-pub use aws::*;
-pub use error::*;
 pub use vault::*;
+pub use vault_builder::*;
+pub use vault_error::*;
+pub use vault_kms::*;

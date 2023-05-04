@@ -60,7 +60,7 @@ error-traces = ["backtrace", "tracing-error", "once_cell"]
 # message flows within Ockam apps.
 debugger = []
 
-tag = ["cddl-cat"]
+tag = ["cddl-cat", "serde_cbor"]
 
 [dev-dependencies]
 quickcheck = "1.0.1"
@@ -82,6 +82,7 @@ rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false }
+serde_cbor = { version = "0.11.2", optional = true }
 spin = { version = "0.9.8", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
 subtle = { version = "2", default-features = false }
 tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }

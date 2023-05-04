@@ -6,11 +6,10 @@ use futures::future::join_all;
 use lazy_static::lazy_static;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Error, Result};
+use ockam_core::{Error, KeyId, Result};
 use ockam_vault::Vault;
 use ockam_vault::{
-    AsymmetricVault, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretVault,
-    SymmetricVault,
+    AsymmetricVault, PublicKey, Secret, SecretAttributes, SecretsStore, SymmetricVault,
 };
 use tokio::{runtime::Runtime, sync::RwLock, task};
 
@@ -131,7 +130,7 @@ pub extern "C" fn ockam_vault_sha256(
 
         let res = block_future(async move {
             let entry = get_vault_entry(context).await?;
-            entry.vault.sha256(input).await
+            Ok::<[u8; 32], Error>(entry.vault.compute_sha256(input))
         })?;
 
         unsafe {
@@ -153,7 +152,7 @@ pub extern "C" fn ockam_vault_secret_generate(
         *secret = block_future(async move {
             let entry = get_vault_entry(context).await?;
             let atts = attributes.try_into()?;
-            let key_id = entry.vault.secret_generate(atts).await?;
+            let key_id = entry.vault.create_persistent_secret(atts).await?;
 
             let index = entry.insert(key_id).await;
 
@@ -180,8 +179,8 @@ pub extern "C" fn ockam_vault_secret_import(
 
             let secret_data = unsafe { core::slice::from_raw_parts(input, input_length as usize) };
 
-            let secret = Secret::Key(SecretKey::new(secret_data.to_vec()));
-            let key_id = entry.vault.secret_import(secret, atts).await?;
+            let secret = Secret::new(secret_data.to_vec());
+            let key_id = entry.vault.import_ephemeral_secret(secret, atts).await?;
 
             let index = entry.insert(key_id).await;
 
@@ -205,18 +204,18 @@ pub extern "C" fn ockam_vault_secret_export(
         block_future(async move {
             let entry = get_vault_entry(context).await?;
             let key_id = entry.get(secret).await?;
-            let key = entry.vault.secret_export(&key_id).await?;
-            if output_buffer_size < key.try_as_key()?.as_ref().len() as u32 {
+            let key = entry
+                .vault
+                .get_ephemeral_secret(&key_id, "secret from ffi")
+                .await?;
+            let key = key.secret().as_ref();
+            if output_buffer_size < key.len() as u32 {
                 return Err(FfiError::BufferTooSmall.into());
             }
-            *output_buffer_length = key.try_as_key()?.as_ref().len() as u32;
+            *output_buffer_length = key.len() as u32;
 
             unsafe {
-                std::ptr::copy_nonoverlapping(
-                    key.try_as_key()?.as_ref().as_ptr(),
-                    output_buffer,
-                    key.try_as_key()?.as_ref().len(),
-                );
+                std::ptr::copy_nonoverlapping(key.as_ptr(), output_buffer, key.len());
             };
             Ok::<(), Error>(())
         })?;
@@ -238,7 +237,7 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
         block_future(async move {
             let entry = get_vault_entry(context).await?;
             let key_id = entry.get(secret).await?;
-            let key = entry.vault.secret_public_key_get(&key_id).await?;
+            let key = entry.vault.get_public_key(&key_id).await?;
             if output_buffer_size < key.data().len() as u32 {
                 return Err(FfiError::BufferTooSmall.into());
             }
@@ -264,7 +263,7 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
         *attributes = block_future(async move {
             let entry = get_vault_entry(context).await?;
             let key_id = entry.get(secret).await?;
-            let atts = entry.vault.secret_attributes_get(&key_id).await?;
+            let atts = entry.vault.get_secret_attributes(&key_id).await?;
             Ok::<FfiSecretAttributes, Error>(atts.into())
         })?;
         Ok(())
@@ -280,7 +279,7 @@ pub extern "C" fn ockam_vault_secret_destroy(
     match block_future(async move {
         let entry = get_vault_entry(context).await?;
         let key_id = entry.take(secret).await?;
-        entry.vault.secret_destroy(key_id).await?;
+        entry.vault.delete_ephemeral_secret(key_id).await?;
         Ok::<(), Error>(())
     }) {
         Ok(_) => FfiOckamError::none(),
@@ -307,8 +306,8 @@ pub extern "C" fn ockam_vault_ecdh(
         *shared_secret = block_future(async move {
             let entry = get_vault_entry(context).await?;
             let key_id = entry.get(secret).await?;
-            let atts = entry.vault.secret_attributes_get(&key_id).await?;
-            let pubkey = PublicKey::new(peer_publickey.to_vec(), atts.stype());
+            let atts = entry.vault.get_secret_attributes(&key_id).await?;
+            let pubkey = PublicKey::new(peer_publickey.to_vec(), atts.secret_type());
             let shared_ctx = entry.vault.ec_diffie_hellman(&key_id, &pubkey).await?;
             let index = entry.insert(shared_ctx).await;
             Ok::<u64, Error>(index)

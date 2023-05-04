@@ -9,11 +9,11 @@ use ed25519_dalek::{ed25519::signature::Signature, PublicKey as EPublicKey, Veri
 use sha2::digest::Digest;
 use x25519_dalek::{PublicKey as XPublicKey, StaticSecret as XSecretKey};
 
-pub trait XEddsaSigner {
+pub(crate) trait XEddsaSigner {
     fn xeddsa_sign(&self, msg: &[u8], nonce: &[u8; 64]) -> [u8; 64];
 }
 
-pub trait XEddsaVerifier {
+pub(crate) trait XEddsaVerifier {
     fn xeddsa_verify(&self, msg: &[u8], sig: &[u8; 64]) -> bool;
 }
 

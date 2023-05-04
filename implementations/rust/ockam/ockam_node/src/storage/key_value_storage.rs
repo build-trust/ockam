@@ -1,3 +1,4 @@
+use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, Result};
 
 /// This trait defines a key/value storage

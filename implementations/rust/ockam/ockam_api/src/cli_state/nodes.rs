@@ -190,7 +190,7 @@ impl NodeConfig {
         Ok(std::fs::canonicalize(&self.default_vault)?)
     }
 
-    pub async fn vault(&self) -> Result<Vault> {
+    pub async fn vault(&self) -> Result<Arc<Vault>> {
         let state = VaultState::load(self.vault_path()?)?;
         state.get().await
     }
@@ -201,7 +201,7 @@ impl NodeConfig {
     }
 
     pub async fn identity(&self) -> Result<Identity> {
-        let vault: Arc<dyn IdentitiesVault> = Arc::new(self.vault().await?);
+        let vault: Arc<dyn IdentitiesVault> = self.vault().await?;
         let state_path = std::fs::canonicalize(&self.default_identity)?;
         let state = IdentityState::load(state_path)?;
         state.get(vault).await

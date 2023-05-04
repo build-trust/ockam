@@ -36,20 +36,17 @@ pub const AES_GCM_TAGSIZE_U32: u32 = 16;
 pub const AES_GCM_TAGSIZE_USIZE: usize = 16;
 
 /// Vault with XX required functionality
-pub trait XXVault:
-    SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send + Sync + 'static
-{
-}
+pub trait XXVault: SecretsStore + AsymmetricVault + SymmetricVault + Send + Sync + 'static {}
 
 impl<D> XXVault for D where
-    D: SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send + Sync + 'static
+    D: SecretsStore + AsymmetricVault + SymmetricVault + Send + Sync + 'static
 {
 }
 
 /// Vault with required functionalities after XX key exchange
-pub trait XXInitializedVault: SecretVault + SymmetricVault + Send + Sync + 'static {}
+pub trait XXInitializedVault: SecretsStore + SymmetricVault + Send + Sync + 'static {}
 
-impl<D> XXInitializedVault for D where D: SecretVault + SymmetricVault + Send + Sync + 'static {}
+impl<D> XXInitializedVault for D where D: SecretsStore + SymmetricVault + Send + Sync + 'static {}
 
 mod initiator;
 mod state;
@@ -58,7 +55,7 @@ mod responder;
 pub use responder::*;
 mod new_key_exchanger;
 pub use new_key_exchanger::*;
-use ockam_vault::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
+use ockam_vault::{AsymmetricVault, SecretsStore, SymmetricVault};
 
 #[cfg(test)]
 mod tests {
@@ -99,13 +96,25 @@ mod tests {
 
         assert_eq!(initiator.h(), responder.h());
 
-        let s1 = vault.secret_export(initiator.encrypt_key()).await.unwrap();
-        let s2 = vault.secret_export(responder.decrypt_key()).await.unwrap();
+        let s1 = vault
+            .get_ephemeral_secret(initiator.encrypt_key(), "encrypt key")
+            .await
+            .unwrap();
+        let s2 = vault
+            .get_ephemeral_secret(responder.decrypt_key(), "decrypt key")
+            .await
+            .unwrap();
 
         assert_eq!(s1, s2);
 
-        let s1 = vault.secret_export(initiator.decrypt_key()).await.unwrap();
-        let s2 = vault.secret_export(responder.encrypt_key()).await.unwrap();
+        let s1 = vault
+            .get_ephemeral_secret(initiator.decrypt_key(), "decrypt key")
+            .await
+            .unwrap();
+        let s2 = vault
+            .get_ephemeral_secret(responder.encrypt_key(), "encrypt key")
+            .await
+            .unwrap();
 
         assert_eq!(s1, s2);
 

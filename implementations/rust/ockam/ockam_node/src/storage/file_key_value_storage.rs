@@ -14,15 +14,15 @@ pub struct FileKeyValueStorage<K, V> {
 }
 
 impl<
-        K: Ord + Serialize + for<'de> Deserialize<'de>,
-        V: Default + Serialize + for<'de> Deserialize<'de>,
+        K: Ord + Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static,
+        V: Default + Serialize + for<'de> Deserialize<'de> + Clone + Send + Sync + 'static,
     > FileKeyValueStorage<K, V>
 {
     /// Create the file storage and in memory cache
     pub async fn create(path: &Path) -> Result<Self> {
         Ok(Self {
             file_storage: FileValueStorage::create(path).await?,
-            cache: InMemoryKeyValueStorage::create(),
+            cache: InMemoryKeyValueStorage::new(),
         })
     }
 }
@@ -51,7 +51,7 @@ impl<
             Ok(Some(value))
         } else {
             let k = key.clone();
-            let f = move |map: BTreeMap<K, V>| Ok(map.get(&k).map(|v| v.clone()));
+            let f = move |map: BTreeMap<K, V>| Ok(map.get(&k).cloned());
             let retrieved_value = self.file_storage.read_value(f).await?;
             if let Some(retrieved) = retrieved_value.clone() {
                 self.cache.put(key.clone(), retrieved).await?;

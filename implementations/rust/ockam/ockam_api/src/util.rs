@@ -399,7 +399,7 @@ pub mod test {
 
         let identity_name = hex::encode(rand::random::<[u8; 4]>());
         let secure_channels = SecureChannels::builder()
-            .with_identities_vault(Arc::new(vault))
+            .with_identities_vault(vault)
             .with_identities_repository(cli_state.identities.identities_repository().await?)
             .build();
 

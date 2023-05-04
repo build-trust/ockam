@@ -4,7 +4,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::KeyId;
 use ockam_core::Result;
 use ockam_key_exchange_xx::XXInitializedVault;
-use ockam_vault::SymmetricVault;
+use ockam_vault::Secret;
 
 pub(crate) struct Encryptor {
     key: KeyId,
@@ -38,13 +38,10 @@ impl Encryptor {
             .aead_aes_gcm_encrypt(key, &zeroes, &nonce_buffer, &[])
             .await?;
 
-        let attributes = vault.secret_attributes_get(key).await?;
+        let attributes = vault.get_secret_attributes(key).await?;
 
         vault
-            .secret_import(
-                Secret::Key(SecretKey::new(new_key_buffer[0..32].to_vec())),
-                attributes,
-            )
+            .import_ephemeral_secret(Secret::new(new_key_buffer[0..32].to_vec()), attributes)
             .await
     }
 
@@ -59,7 +56,7 @@ impl Encryptor {
         if current_nonce > 0 && current_nonce % KEY_RENEWAL_INTERVAL == 0 {
             let new_key = Self::rekey(&self.vault, &self.key).await?;
             let old_key = core::mem::replace(&mut self.key, new_key);
-            self.vault.secret_destroy(old_key).await?;
+            self.vault.delete_ephemeral_secret(old_key).await?;
         }
 
         let (small_nonce, nonce) = Self::convert_nonce_from_u64(current_nonce);

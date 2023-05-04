@@ -12,7 +12,6 @@ pub(crate) use issue::IssueCommand;
 pub(crate) use list::ListCommand;
 use ockam::identity::credential::{Credential, CredentialData, Unverified};
 use ockam::identity::IdentityIdentifier;
-use ockam_core::compat::sync::Arc;
 pub(crate) use present::PresentCommand;
 pub(crate) use show::ShowCommand;
 pub(crate) use store::StoreCommand;
@@ -67,7 +66,7 @@ pub async fn validate_encoded_cred(
     vault: &str,
     opts: &CommandGlobalOpts,
 ) -> Result<()> {
-    let vault = Arc::new(opts.state.vaults.get(vault)?.get().await?);
+    let vault = opts.state.vaults.get(vault)?.get().await?;
 
     let bytes = match hex::decode(encoded_cred) {
         Ok(b) => b,

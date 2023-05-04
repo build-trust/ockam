@@ -19,7 +19,7 @@ pub fn identities() -> Arc<Identities> {
 impl IdentitiesBuilder {
     /// Set a specific storage for the identities vault
     pub fn with_vault_storage(&mut self, storage: VaultStorage) -> IdentitiesBuilder {
-        self.with_identities_vault(Arc::new(Vault::new(storage)))
+        self.with_identities_vault(Vault::builder().with_persistent_storage(storage).build())
     }
 
     /// Set a specific identities vault

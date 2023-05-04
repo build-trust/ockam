@@ -1,7 +1,8 @@
 #![allow(conflicting_repr_hints)]
 
 use crate::FfiError;
-use ockam_vault::{SecretAttributes, SecretPersistence, SecretType};
+use ockam_vault::constants::AES256_SECRET_LENGTH_U32;
+use ockam_vault::{SecretAttributes, SecretType};
 
 /// Represents a handle id for the secret key
 pub type SecretKeyHandle = u64;
@@ -38,7 +39,6 @@ impl FfiVaultFatPointer {
 #[repr(C)]
 pub struct FfiSecretAttributes {
     stype: u8,
-    persistence: u8,
     length: u32,
 }
 
@@ -46,27 +46,20 @@ impl FfiSecretAttributes {
     pub fn stype(&self) -> u8 {
         self.stype
     }
-    pub fn persistence(&self) -> u8 {
-        self.persistence
-    }
     pub fn length(&self) -> u32 {
         self.length
     }
 }
 
 impl FfiSecretAttributes {
-    pub fn new(stype: u8, persistence: u8, length: u32) -> Self {
-        Self {
-            stype,
-            persistence,
-            length,
-        }
+    pub fn new(stype: u8, length: u32) -> Self {
+        Self { stype, length }
     }
 }
 
 impl From<SecretAttributes> for FfiSecretAttributes {
     fn from(attrs: SecretAttributes) -> Self {
-        let stype = match attrs.stype() {
+        let stype = match attrs.secret_type() {
             SecretType::Buffer => 0,
             SecretType::Aes => 1,
             SecretType::X25519 => 2,
@@ -74,12 +67,7 @@ impl From<SecretAttributes> for FfiSecretAttributes {
             SecretType::NistP256 => 4,
         };
 
-        let persistence = match attrs.persistence() {
-            SecretPersistence::Ephemeral => 0,
-            SecretPersistence::Persistent => 1,
-        };
-
-        Self::new(stype, persistence, attrs.length())
+        Self::new(stype, attrs.length())
     }
 }
 
@@ -87,20 +75,16 @@ impl TryFrom<FfiSecretAttributes> for SecretAttributes {
     type Error = FfiError;
 
     fn try_from(attrs: FfiSecretAttributes) -> Result<Self, Self::Error> {
-        let stype = match attrs.stype() {
-            0 => Ok(SecretType::Buffer),
-            1 => Ok(SecretType::Aes),
-            2 => Ok(SecretType::X25519),
-            3 => Ok(SecretType::Ed25519),
+        match attrs.stype() {
+            0 => Ok(SecretAttributes::Buffer(attrs.length)),
+            1 => Ok(if attrs.length == AES256_SECRET_LENGTH_U32 {
+                SecretAttributes::Aes256
+            } else {
+                SecretAttributes::Aes128
+            }),
+            2 => Ok(SecretAttributes::X25519),
+            3 => Ok(SecretAttributes::Ed25519),
             _ => Err(FfiError::InvalidParam),
-        }?;
-
-        let persistence = match attrs.persistence() {
-            0 => Ok(SecretPersistence::Ephemeral),
-            1 => Ok(SecretPersistence::Persistent),
-            _ => Err(FfiError::InvalidParam),
-        }?;
-
-        Ok(Self::new(stype, persistence, attrs.length()))
+        }
     }
 }

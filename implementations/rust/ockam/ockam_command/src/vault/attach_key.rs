@@ -7,7 +7,7 @@ use ockam_api::cli_state::identities::IdentityConfig;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 
 use ockam_identity::{IdentityChangeConstants, KeyAttributes};
-use ockam_vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
+use ockam_vault::SecretAttributes;
 
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
@@ -42,14 +42,13 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Resu
     }
     let vault = v_state.get().await?;
     let idt = {
-        let attrs = SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32);
-        let kid = vault.secret_import(Secret::Aws(cmd.key_id), attrs).await?;
-        let attrs = KeyAttributes::new(IdentityChangeConstants::ROOT_LABEL.to_string(), attrs);
+        let attrs = SecretAttributes::NistP256;
+        let key_attrs = KeyAttributes::new(IdentityChangeConstants::ROOT_LABEL.to_string(), attrs);
         opts.state
             .get_identities(vault)
             .await?
             .identities_creation()
-            .create_identity_with_external_key(&kid, attrs)
+            .create_identity_with_external_key(&cmd.key_id, key_attrs)
             .await?
     };
     let idt_name = cli_state::random_name();

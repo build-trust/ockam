@@ -1,10 +1,7 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::Result;
-use ockam_vault::Secret::Key;
-use ockam_vault::{
-    KeyId, SecretAttributes, SecretKey, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32,
-};
+use ockam_core::{KeyId, Result};
+use ockam_vault::{Secret, SecretAttributes};
 
 use crate::alloc::string::ToString;
 use crate::identity::IdentityError;
@@ -54,17 +51,16 @@ impl IdentitiesCreation {
     /// encoded as a hex string.
     /// Such a key can be obtained by running vault.secret_export and then encoding
     /// the exported secret as a hex string
+    /// Note: the data is not persisted!
     pub async fn import_private_identity(
         &self,
         identity_history: &str,
         secret: &str,
     ) -> Result<Identity> {
+        let secret = Secret::new(hex::decode(secret).unwrap());
         let key_attributes = KeyAttributes::default_with_label(IdentityChangeConstants::ROOT_LABEL);
         self.vault
-            .secret_import(
-                Key(SecretKey::new(hex::decode(secret).unwrap())),
-                key_attributes.secret_attributes(),
-            )
+            .import_ephemeral_secret(secret, key_attributes.secret_attributes())
             .await?;
         let identity_history_data: Vec<u8> =
             hex::decode(identity_history).map_err(|_| IdentityError::InvalidInternalState)?;
@@ -81,10 +77,7 @@ impl IdentitiesCreation {
         change_history: &IdentityChangeHistory,
     ) -> Result<IdentityIdentifier> {
         let root_public_key = change_history.get_first_root_public_key()?;
-        let key_id = self
-            .vault
-            .compute_key_id_for_public_key(&root_public_key)
-            .await?;
+        let key_id = self.vault.get_key_id(&root_public_key).await?;
 
         Ok(IdentityIdentifier::from_key_id(&key_id))
     }
@@ -102,11 +95,7 @@ impl IdentitiesCreation {
     pub async fn create_identity(&self) -> Result<Identity> {
         let attrs = KeyAttributes::new(
             IdentityChangeConstants::ROOT_LABEL.to_string(),
-            SecretAttributes::new(
-                SecretType::Ed25519,
-                SecretPersistence::Persistent,
-                CURVE25519_SECRET_LENGTH_U32,
-            ),
+            SecretAttributes::Ed25519,
         );
         self.make_and_persist_identity(None, attrs).await
     }
