@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.29.0 - 2023-05-04
+
+### Added
+
+- Added a readme template and updated some readmes
+
+### Changed
+
+- Apply cli_state abstraction to identities and projects
+- Apply cli_state abstraction to credentials and trust_contexts
+- Apply cli_state abstraction to nodes
+- Authority node creation
+- Updated dependencies
+
+### Fixed
+
+- Move to the smaller, cargo-team maintained `home` crate
+- Fix docs build for api and multiaddr crates
+
 ## 0.28.0 - 2023-04-27
 
 ### Changed

@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.86.0 - 2023-05-04
+
+### Added
+
+- Add all available environment variables to the displayed in commands help text
+- Added a readme template and updated some readmes
+
+### Changed
+
+- Apply cli_state abstraction to identities and projects
+- Apply cli_state abstraction to credentials and trust_contexts
+- Apply cli_state abstraction to nodes
+- Store serialized identity in the config instead of storing in parts
+- Rotate cli logs
+- Update how we handle user confirmation on `reset` command
+- Use 'local ockam configuration' in messages instead of cli state
+- Automate the creation and update of readmes
+- Updated dependencies
+
+### Fixed
+
+- Parsing `GlobalArgs` from input
+- Move to the smaller, cargo-team maintained `home` crate
+- On `reset` command, don't prompt the user if `-y` flag is passed
+
 ## 0.85.0 - 2023-04-27
 
 ### Added

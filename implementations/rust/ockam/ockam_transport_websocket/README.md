@@ -38,7 +38,7 @@ use ockam_core::{AllowAll};
 use ockam_node::NodeBuilder;
 use ockam_macros::node;
 
-#[ockam_macros::node(crate = "ockam_node")]
+#[ockam_macros::node(crate = "0.72.0")]
 async fn main(mut ctx: Context) -> Result<()> {//!
     let ws = WebSocketTransport::create(&ctx).await?;
     ws.listen("localhost:8000").await?; // Listen on port 8000
@@ -59,7 +59,7 @@ use ockam_core::{route, Result};
 use ockam_node::Context;
 use ockam_macros::node;
 
-#[ockam_macros::node(crate = "ockam_node")]
+#[ockam_macros::node(crate = "0.72.0")]
 async fn main(mut ctx: Context) -> Result<()> {
     use ockam_node::MessageReceiveOptions;
 let ws = WebSocketTransport::create(&ctx).await?;
@@ -85,7 +85,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_websocket = "0.71.0"
+ockam_transport_websocket = "0.72.0"
 ```
 
 ## License

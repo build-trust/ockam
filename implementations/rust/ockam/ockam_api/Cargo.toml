@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.28.0"
+version = "0.29.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
@@ -54,24 +54,24 @@ tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
 tokio-retry = "0.3.0"
 tracing = { version = "0.1", default-features = false }
 
-ockam = { path = "../ockam", version = "^0.85.0", features = ["software_vault"] }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.19.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.80.0" }
+ockam = { path = "../ockam", version = "^0.86.0", features = ["software_vault"] }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.20.0", features = ["cbor", "serde"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.81.0" }
 
 [dependencies.ockam_core]
-version = "0.79.0"
+version = "0.80.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version = "0.82.0"
+version = "0.83.0"
 path = "../ockam_node"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version = "0.75.0"
+version = "0.76.0"
 path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -79,13 +79,13 @@ default-features = false
 features = ["std", "aws", "rustcrypto"]
 
 [dependencies.ockam_identity]
-version = "0.73.0"
+version = "0.74.0"
 path = "../ockam_identity"
 default-features = false
 features = ["std"]
 
 [dependencies.ockam_abac]
-version = "0.19.0"
+version = "0.20.0"
 path = "../ockam_abac"
 default-features = false
 
@@ -97,8 +97,8 @@ indexmap = "1.7.0"
 mockall = "0.11"
 # TODO enable "tag" feature once implemented on elixir side
 ockam_api = { path = ".", features = ["std", "authenticators"] }
-ockam_macros = { version = "0.28.0", path = "../ockam_macros", features = ["std"] }
-ockam_transport_tcp = { version = "0.80.0", path = "../ockam_transport_tcp" }
+ockam_macros = { version = "0.29.0", path = "../ockam_macros", features = ["std"] }
+ockam_transport_tcp = { version = "0.81.0", path = "../ockam_transport_tcp" }
 quickcheck = "1.0.1"
 tokio = { version = "1.28.0", features = ["full"] }
 uuid = "1.3.2"
