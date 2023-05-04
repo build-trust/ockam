@@ -13,8 +13,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::time::Duration;
 use ockam_core::{
-    Address, AllowAll, Any, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox, Mailboxes,
-    NewKeyExchanger, OutgoingAccessControl, Route, Routed,
+    AllowAll, Any, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox, Mailboxes, NewKeyExchanger,
+    OutgoingAccessControl, Route, Routed,
 };
 use ockam_core::{Decodable, Worker};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
@@ -171,7 +171,7 @@ impl InitiatorWorker {
         trust_context: Option<TrustContext>,
         remote_route: Route,
         timeout: Duration,
-    ) -> ockam_core::Result<Address> {
+    ) -> ockam_core::Result<()> {
         let (mut callback_waiter, callback_sender) = ockam_node::callback::new_callback();
 
         let identity = secure_channels
@@ -221,7 +221,7 @@ impl InitiatorWorker {
 
         callback_waiter.receive_timeout(timeout).await?;
 
-        Ok(addresses.encryptor)
+        Ok(())
     }
 
     pub(crate) fn create_mailboxes(

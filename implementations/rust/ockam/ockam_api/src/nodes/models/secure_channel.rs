@@ -200,8 +200,8 @@ impl ShowSecureChannelListenerResponse {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: info.addr().to_string().into(),
-            flow_control_id: info.flow_control_id().clone(),
+            addr: info.listener().address().to_string().into(),
+            flow_control_id: info.listener().flow_control_id().clone(),
         }
     }
 }
@@ -272,8 +272,8 @@ pub struct ShowSecureChannelResponse<'a> {
     #[n(0)] tag: TypeTag<4566220>,
     #[b(1)] pub channel: Option<Cow<'a, str>>,
     #[b(2)] pub route: Option<Cow<'a, str>>,
-    #[b(4)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
-    #[b(5)] pub flow_control_id: Option<FlowControlId>,
+    #[b(3)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
+    #[n(4)] pub flow_control_id: Option<FlowControlId>,
 }
 
 impl<'a> ShowSecureChannelResponse<'a> {
@@ -281,7 +281,7 @@ impl<'a> ShowSecureChannelResponse<'a> {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            channel: info.map(|info| info.addr().to_string().into()),
+            channel: info.map(|info| info.sc().encryptor_address().to_string().into()),
             route: info.map(|info| info.route().to_string().into()),
             authorized_identifiers: info
                 .map(|info| {
@@ -289,7 +289,7 @@ impl<'a> ShowSecureChannelResponse<'a> {
                         .map(|ids| ids.iter().map(|iid| iid.to_string().into()).collect())
                 })
                 .unwrap_or(None),
-            flow_control_id: info.map(|info| info.flow_control_id().clone()),
+            flow_control_id: info.map(|info| info.sc().flow_control_id().clone()),
         }
     }
 }
@@ -300,7 +300,7 @@ impl<'a> ShowSecureChannelResponse<'a> {
 pub struct SecureChannelListenersList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5141124>,
-    #[b(1)] pub list: Vec<ShowSecureChannelListenerResponse>
+    #[n(1)] pub list: Vec<ShowSecureChannelListenerResponse>
 }
 
 impl SecureChannelListenersList {

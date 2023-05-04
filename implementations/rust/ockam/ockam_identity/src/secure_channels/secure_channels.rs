@@ -6,7 +6,7 @@ use crate::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannelRegistry,
 };
-use crate::{IdentityIdentifier, SecureChannelsBuilder};
+use crate::{IdentityIdentifier, SecureChannel, SecureChannelListener, SecureChannelsBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
@@ -63,17 +63,21 @@ impl SecureChannels {
         identifier: &IdentityIdentifier,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
-    ) -> Result<()> {
+    ) -> Result<SecureChannelListener> {
+        let address = address.into();
+        let options = options.into();
+        let flow_control_id = options.spawner_flow_control_id.clone();
+
         IdentityChannelListener::create(
             ctx,
             Arc::new(self.clone()),
             identifier,
-            address.into(),
-            options.into(),
+            address.clone(),
+            options,
         )
         .await?;
 
-        Ok(())
+        Ok(SecureChannelListener::new(address, flow_control_id))
     }
 
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
@@ -83,19 +87,20 @@ impl SecureChannels {
         identifier: &IdentityIdentifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
-    ) -> Result<Address> {
+    ) -> Result<SecureChannel> {
         let addresses = Addresses::generate(Role::Initiator);
+        let options = options.into();
+        let flow_control_id = options.producer_flow_control_id.clone();
 
         let route = route.into();
         let next = route.next()?;
-        let options = options.into();
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
 
         InitiatorWorker::create(
             ctx,
             Arc::new(self.clone()),
-            addresses,
+            addresses.clone(),
             identifier,
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
@@ -104,7 +109,13 @@ impl SecureChannels {
             route,
             options.timeout,
         )
-        .await
+        .await?;
+
+        Ok(SecureChannel::new(
+            addresses.encryptor,
+            addresses.encryptor_api,
+            flow_control_id,
+        ))
     }
 
     /// Stop a SecureChannel given an encryptor address

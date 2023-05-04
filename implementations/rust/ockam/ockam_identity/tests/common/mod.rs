@@ -126,17 +126,16 @@ pub async fn create_secure_channel_listener(
         FlowControlPolicy::ProducerAllowMultiple
     };
     let options = options.as_consumer(flow_control_id, policy);
-    let flow_control_id = options.spawner_flow_control_id();
 
     let identifier = identity.identifier();
-    secure_channels
+    let listener = secure_channels
         .create_secure_channel_listener(ctx, &identifier, "listener", options)
         .await?;
 
     let info = SecureChannelListenerInfo {
         secure_channels,
         identifier,
-        flow_control_id,
+        flow_control_id: listener.flow_control_id().clone(),
     };
 
     Ok(info)
@@ -167,7 +166,9 @@ pub async fn create_secure_channel(
             route![connection.clone(), "listener"],
             SecureChannelOptions::new(),
         )
-        .await?;
+        .await?
+        .encryptor_address()
+        .clone();
 
     let info = SecureChannelInfo {
         secure_channels,

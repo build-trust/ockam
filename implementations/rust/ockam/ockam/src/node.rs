@@ -7,8 +7,8 @@ use ockam_core::{
 };
 use ockam_identity::{
     secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, IdentityIdentifier, SecureChannelRegistry,
-    SecureChannels, SecureChannelsBuilder, Storage,
+    IdentitiesKeys, IdentitiesRepository, IdentityIdentifier, SecureChannel, SecureChannelListener,
+    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder, Storage,
 };
 use ockam_identity::{
     IdentitiesVault, Identity, SecureChannelListenerOptions, SecureChannelOptions,
@@ -130,7 +130,7 @@ impl Node {
         identifier: &IdentityIdentifier,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
-    ) -> Result<()> {
+    ) -> Result<SecureChannelListener> {
         self.secure_channels()
             .create_secure_channel_listener(self.get_context(), identifier, address, options)
             .await
@@ -142,7 +142,7 @@ impl Node {
         identifier: &IdentityIdentifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
-    ) -> Result<Address> {
+    ) -> Result<SecureChannel> {
         self.secure_channels()
             .create_secure_channel(self.get_context(), identifier, route, options)
             .await

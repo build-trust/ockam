@@ -91,7 +91,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         )
         .await?;
     // Add the member via the enroller's connection:
-    let c = CredentialsIssuerClient::new(route![e2a.address(), auth_worker_addr], ctx).await?;
+    let c = CredentialsIssuerClient::new(route![e2a, auth_worker_addr], ctx).await?;
     // Get a fresh member credential and verify its validity:
     let credential = c.credential().await?;
     let exported = member_identity.export()?;

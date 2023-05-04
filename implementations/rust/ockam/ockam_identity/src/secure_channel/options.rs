@@ -1,6 +1,5 @@
 use crate::secure_channel::Addresses;
 use crate::{Credential, TrustContext, TrustEveryonePolicy, TrustPolicy};
-use alloc::vec::Vec;
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
