@@ -14,11 +14,11 @@ use crate::{
     fmt_info,
     kafka::{
         kafka_default_producer_port_range, kafka_default_producer_server,
-        kafka_default_project_route, kafka_producer_default_addr, parse_bootstrap_server,
+        kafka_default_project_route, kafka_producer_default_addr,
     },
     node::NodeOpts,
     service::start::start_service_impl,
-    util::node_rpc,
+    util::{node_rpc, parsers::socket_addr_parser},
     CommandGlobalOpts,
 };
 
@@ -33,7 +33,7 @@ pub struct CreateCommand {
     addr: String,
     /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
     /// In case just a port is specified, the default loopback address (127.0.0.1) will be used
-    #[arg(long, default_value_t = kafka_default_producer_server(), value_parser = parse_bootstrap_server)]
+    #[arg(long, default_value_t = kafka_default_producer_server(), value_parser = socket_addr_parser)]
     bootstrap_server: SocketAddr,
     /// Local port range dynamically allocated to kafka brokers, must not overlap with the
     /// bootstrap port

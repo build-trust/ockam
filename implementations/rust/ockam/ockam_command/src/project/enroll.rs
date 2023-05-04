@@ -16,7 +16,6 @@ use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use ockam_node::RpcClient;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::node::NodeOpts;
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
@@ -31,9 +30,6 @@ pub struct EnrollCommand {
 
     #[command(flatten)]
     trust_opts: TrustContextOpts,
-
-    #[command(flatten)]
-    node_opts: NodeOpts,
 
     #[arg(long, short)]
     member: Option<IdentityIdentifier>,
