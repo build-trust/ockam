@@ -19,7 +19,6 @@ use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
-const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
 /// Manage identities
 #[derive(Clone, Debug, Args)]
@@ -27,7 +26,6 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 arg_required_else_help = true,
 subcommand_required = true,
 long_about = docs::about(LONG_ABOUT),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct IdentityCommand {
     #[command(subcommand)]

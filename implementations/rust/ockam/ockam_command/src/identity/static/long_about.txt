@@ -1,0 +1,1 @@
+Ockam Identities are unique, cryptographically verifiable digital identities. These identities authenticate by proving possession of secret keys and are stored in Ockam Vaults. Each Ockam Identity has a unique public identifier, called the Ockam Identifier of this identity.

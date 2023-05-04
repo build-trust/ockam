@@ -10,6 +10,7 @@ use crate::terminal::ConfirmResult;
 use crate::util::node_rpc;
 use crate::{fmt_ok, fmt_warn, CommandGlobalOpts};
 
+/// Delete a vault
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     /// Name of the vault

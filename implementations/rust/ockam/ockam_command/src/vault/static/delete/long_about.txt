@@ -1,0 +1,1 @@
+This command will delete the specified vault. Note that the identities stored in the vault will become unusable. Use this command with caution.

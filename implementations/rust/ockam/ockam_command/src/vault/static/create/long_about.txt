@@ -1,0 +1,1 @@
+This command will create a new vault. By default, it creates a file system based vault, where Ockam Identities are stored at a specific file path.

@@ -3,6 +3,7 @@ use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::CommandGlobalOpts;
 
+/// Show the details of a vault
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
     /// Name of the vault

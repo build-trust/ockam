@@ -12,15 +12,21 @@ use crate::vault::default::DefaultCommand;
 use crate::vault::delete::DeleteCommand;
 use crate::vault::list::ListCommand;
 use crate::vault::show::ShowCommand;
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliState;
 
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+
 /// Manage vaults
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(
+    arg_required_else_help = true,
+    subcommand_required = true,
+    long_about = docs::about(LONG_ABOUT),
+)]
 pub struct VaultCommand {
     #[command(subcommand)]
     subcommand: VaultSubcommand,
@@ -28,18 +34,11 @@ pub struct VaultCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum VaultSubcommand {
-    /// Create a vault
     Create(CreateCommand),
-    /// Attach a key to a vault
-    #[command(arg_required_else_help = true)]
     AttachKey(AttachKeyCommand),
-    /// Show vault details
     Show(ShowCommand),
-    /// Delete a vault
     Delete(DeleteCommand),
-    /// List vaults
     List(ListCommand),
-    /// Set the default identity
     Default(DefaultCommand),
 }
 

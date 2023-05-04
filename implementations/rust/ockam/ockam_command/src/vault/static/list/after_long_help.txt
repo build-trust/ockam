@@ -1,0 +1,3 @@
+```sh
+$ ockam vault list
+```
