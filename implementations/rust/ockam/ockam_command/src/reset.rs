@@ -21,16 +21,16 @@ impl ResetCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> crate::Result<()> {
-    match opts
-        .terminal
-        .confirm("This will delete the local Ockam configuration. Are you sure?")?
-    {
-        ConfirmResult::Yes => {}
-        ConfirmResult::No => {
-            return Ok(());
-        }
-        ConfirmResult::NonTTY => {
-            if !cmd.yes {
+    if !cmd.yes {
+        match opts
+            .terminal
+            .confirm("This will delete the local Ockam configuration. Are you sure?")?
+        {
+            ConfirmResult::Yes => {}
+            ConfirmResult::No => {
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
                 return Err(anyhow!("Use --yes to confirm").into());
             }
         }
