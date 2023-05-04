@@ -58,7 +58,7 @@ impl Instantiator for SecureChannelInstantiator {
             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
         let mut node_manager = self.node_manager.write().await;
-        let (encryptor_address, flow_control_id) = node_manager
+        let sc = node_manager
             .create_secure_channel_impl(
                 //the transport route is needed to reach the secure channel listener
                 //since it can be in another node
@@ -74,13 +74,13 @@ impl Instantiator for SecureChannelInstantiator {
 
         // when creating a secure channel we want the route to pass through that
         // ignoring previous steps, since they will be implicit
-        let mut current_multiaddr = try_address_to_multiaddr(&encryptor_address).unwrap();
+        let mut current_multiaddr = try_address_to_multiaddr(sc.encryptor_address()).unwrap();
         current_multiaddr.try_extend(after.iter())?;
 
         Ok(Changes {
             current_multiaddr,
-            flow_control_id: Some(flow_control_id),
-            secure_channel_encryptors: vec![encryptor_address],
+            flow_control_id: Some(sc.flow_control_id().clone()),
+            secure_channel_encryptors: vec![sc.encryptor_address().clone()],
             tcp_worker: None,
         })
     }

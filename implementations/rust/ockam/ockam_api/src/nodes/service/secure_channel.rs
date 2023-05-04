@@ -10,8 +10,9 @@ use ockam::identity::{
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::route;
+use ockam_identity::{SecureChannel, SecureChannelListener};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -42,43 +43,29 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
-    ) -> Result<(Address, FlowControlId)> {
-        // If channel was already created, do nothing.
-        if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
-            // Actually should not happen, since every time a new TCP connection is created, so the
-            // route is different
-            let addr = channel.addr();
-            debug!(%addr, "Using cached secure channel");
-            return Ok((addr.clone(), channel.flow_control_id().clone()));
-        }
-        // Else, create it.
-
+    ) -> Result<SecureChannel> {
         debug!(%sc_route, "Creating secure channel");
         let timeout = timeout.unwrap_or(Duration::from_secs(120));
 
-        let options = SecureChannelOptions::new();
-        let sc_flow_control_id = options.producer_flow_control_id();
+        let options = SecureChannelOptions::new().with_timeout(timeout);
 
         let options = match authorized_identifiers.clone() {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        let sc_addr = self
+        let sc = self
             .secure_channels
-            .create_secure_channel_extended(ctx, identifier, sc_route.clone(), options, timeout)
+            .create_secure_channel(ctx, identifier, sc_route.clone(), options)
             .await?;
 
-        debug!(%sc_route, %sc_addr, "Created secure channel");
+        debug!(%sc_route, %sc, "Created secure channel");
 
-        self.registry.secure_channels.insert(
-            sc_addr.clone(),
-            sc_route,
-            sc_flow_control_id.clone(),
-            authorized_identifiers,
-        );
+        self.registry
+            .secure_channels
+            .insert(sc_route, sc.clone(), authorized_identifiers);
 
-        Ok((sc_addr, sc_flow_control_id))
+        Ok(sc)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -91,7 +78,7 @@ impl NodeManager {
         identity_name: Option<String>,
         ctx: &Context,
         credential_name: Option<String>,
-    ) -> Result<(Address, FlowControlId)> {
+    ) -> Result<SecureChannel> {
         let identifier = self.get_identifier(None, identity_name.clone()).await?;
         let provided_credential = if let Some(credential_name) = credential_name {
             Some(
@@ -105,7 +92,7 @@ impl NodeManager {
             None
         };
 
-        let (sc_addr, sc_flow_control_id) = self
+        let sc = self
             .create_secure_channel_internal(
                 &identifier,
                 ctx,
@@ -127,10 +114,10 @@ impl NodeManager {
 
         match actual_exchange_mode {
             CredentialExchangeMode::None => {
-                debug!(%sc_addr, "No credential presentation");
+                debug!(%sc, "No credential presentation");
             }
             CredentialExchangeMode::Oneway => {
-                debug!(%sc_addr, "One-way credential presentation");
+                debug!(%sc, "One-way credential presentation");
                 let credential = match provided_credential {
                     Some(c) => c,
                     None => {
@@ -144,14 +131,14 @@ impl NodeManager {
                 self.credentials_service()
                     .present_credential(
                         ctx,
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
+                        route![sc.clone(), DefaultAddress::CREDENTIALS_SERVICE],
                         credential,
                     )
                     .await?;
-                debug!(%sc_addr, "One-way credential presentation success");
+                debug!(%sc, "One-way credential presentation success");
             }
             CredentialExchangeMode::Mutual => {
-                debug!(%sc_addr, "Mutual credential presentation");
+                debug!(%sc, "Mutual credential presentation");
                 let credential = match provided_credential {
                     Some(c) => c,
                     None => {
@@ -165,17 +152,17 @@ impl NodeManager {
                 self.credentials_service()
                     .present_credential_mutual(
                         ctx,
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
+                        route![sc.clone(), DefaultAddress::CREDENTIALS_SERVICE],
                         self.trust_context()?.authorities().await?.as_slice(),
                         credential,
                     )
                     .await?;
-                debug!(%sc_addr, "Mutual credential presentation success");
+                debug!(%sc, "Mutual credential presentation success");
             }
         }
 
-        // Return secure channel address
-        Ok((sc_addr, sc_flow_control_id))
+        // Return secure channel
+        Ok(sc)
     }
 
     pub(super) async fn create_secure_channel_listener_impl(
@@ -185,7 +172,7 @@ impl NodeManager {
         vault_name: Option<String>,
         identity_name: Option<String>,
         ctx: &Context,
-    ) -> Result<FlowControlId> {
+    ) -> Result<SecureChannelListener> {
         info!(
             "Handling request to create a new secure channel listener: {}",
             address
@@ -202,49 +189,48 @@ impl NodeManager {
             &self.api_transport.flow_control_id,
             FlowControlPolicy::SpawnerAllowOnlyOneMessage,
         );
-        let flow_control_id = options.spawner_flow_control_id();
 
         let options = match authorized_identifiers {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        secure_channels
+        let listener = secure_channels
             .create_secure_channel_listener(ctx, &identifier, address.clone(), options)
             .await?;
 
         self.registry.secure_channel_listeners.insert(
             address.clone(),
-            SecureChannelListenerInfo::new(address, flow_control_id.clone()),
+            SecureChannelListenerInfo::new(listener.clone()),
         );
 
         // TODO: Clean
         // Add Echoer, Uppercase and Cred Exch as a consumer by default
         ctx.flow_controls().add_consumer(
             DefaultAddress::ECHO_SERVICE,
-            &flow_control_id,
+            listener.flow_control_id(),
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         ctx.flow_controls().add_consumer(
             DefaultAddress::UPPERCASE_SERVICE,
-            &flow_control_id,
+            listener.flow_control_id(),
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         ctx.flow_controls().add_consumer(
             DefaultAddress::CREDENTIALS_SERVICE,
-            &flow_control_id,
+            listener.flow_control_id(),
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         ctx.flow_controls().add_consumer(
             KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS,
-            &flow_control_id,
+            listener.flow_control_id(),
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        Ok(flow_control_id)
+        Ok(listener)
     }
 
     pub(crate) async fn get_secure_channels(
@@ -348,7 +334,7 @@ impl NodeManagerWorker {
                 .secure_channels
                 .list()
                 .iter()
-                .map(|v| v.addr().to_string())
+                .map(|v| v.sc().encryptor_address().to_string())
                 .collect(),
         )
     }
@@ -413,7 +399,7 @@ impl NodeManagerWorker {
         .await
         .ok_or_else(invalid_multiaddr_error)?;
 
-        let (sc_address, sc_flow_control_id) = node_manager
+        let sc = node_manager
             .create_secure_channel_impl(
                 result.route,
                 authorized_identifiers,
@@ -426,8 +412,8 @@ impl NodeManagerWorker {
             .await?;
 
         let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(
-            &sc_address,
-            &sc_flow_control_id,
+            sc.encryptor_address(),
+            sc.flow_control_id(),
         ));
 
         Ok(response)

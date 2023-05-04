@@ -1,5 +1,6 @@
 use crate::secure_channel::Addresses;
 use crate::{TrustEveryonePolicy, TrustPolicy};
+use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{
@@ -11,6 +12,7 @@ use ockam_core::{Address, OutgoingAccessControl, Result};
 pub struct SecureChannelOptions {
     pub(crate) producer_flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+    pub(crate) timeout: Duration,
 }
 
 pub(crate) struct SecureChannelAccessControl {
@@ -24,12 +26,19 @@ impl SecureChannelOptions {
         Self {
             producer_flow_control_id: FlowControls::generate_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
+            timeout: Duration::from_secs(120),
         }
     }
 
     /// Set Trust Policy
     pub fn with_trust_policy(mut self, trust_policy: impl TrustPolicy) -> Self {
         self.trust_policy = Arc::new(trust_policy);
+        self
+    }
+
+    /// Set timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
         self
     }
 

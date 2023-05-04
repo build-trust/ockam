@@ -70,7 +70,7 @@ impl Instantiator for ProjectInstantiator {
             .await
             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
-        let (encryptor_address, flow_control_id) = node_manager
+        let sc = node_manager
             .create_secure_channel_impl(
                 tcp.route,
                 Some(vec![project_identifier]),
@@ -86,13 +86,13 @@ impl Instantiator for ProjectInstantiator {
 
         // when creating a secure channel we want the route to pass through that
         // ignoring previous steps, since they will be implicit
-        let mut current_multiaddr = try_address_to_multiaddr(&encryptor_address).unwrap();
+        let mut current_multiaddr = try_address_to_multiaddr(sc.encryptor_address()).unwrap();
         current_multiaddr.try_extend(after.iter())?;
 
         Ok(Changes {
-            flow_control_id: Some(flow_control_id),
+            flow_control_id: Some(sc.flow_control_id().clone()),
             current_multiaddr,
-            secure_channel_encryptors: vec![encryptor_address],
+            secure_channel_encryptors: vec![sc.encryptor_address().clone()],
             tcp_worker: tcp.tcp_worker,
         })
     }

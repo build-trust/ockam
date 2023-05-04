@@ -87,17 +87,12 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
         debug!("Create secure channel to authority");
 
         let options = SecureChannelOptions::new()
-            .with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed));
+            .with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed))
+            .with_timeout(Duration::from_secs(120));
 
         let sc = self
             .secure_channels
-            .create_secure_channel_extended(
-                ctx,
-                for_identity,
-                resolved_route.clone(),
-                options,
-                Duration::from_secs(120),
-            )
+            .create_secure_channel(ctx, for_identity, resolved_route.clone(), options)
             .await?;
 
         debug!("Created secure channel to project authority");

@@ -181,7 +181,7 @@ mod node {
                     .await?
             };
 
-            let (sc_address, _sc_flow_control_id) = {
+            let sc = {
                 let node_manager = self.get().read().await;
                 let cloud_route =
                     crate::multiaddr_to_route(cloud_multiaddr, &node_manager.tcp_transport)
@@ -191,18 +191,15 @@ mod node {
                 let options = SecureChannelOptions::new().with_trust_policy(
                     TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
                 );
-                let sc_flow_control_id = options.producer_flow_control_id().clone();
-                let sc_address = secure_channels
+                secure_channels
                     .create_secure_channel(ctx, &identifier, cloud_route.route, options)
-                    .await?;
-
-                (sc_address, sc_flow_control_id)
+                    .await?
             };
 
-            let route = route![sc_address.clone(), api_service];
+            let route = route![sc.clone(), api_service];
             let options = MessageSendReceiveOptions::new().with_timeout(timeout);
             let res = request_with_options(ctx, label, schema, route, req, options).await;
-            ctx.stop_worker(sc_address).await?;
+            ctx.stop_worker(sc.encryptor_address().clone()).await?; // TODO: Stop all workers?
             res
         }
     }
