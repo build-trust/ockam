@@ -51,7 +51,8 @@ impl Transport for TcpTransport {
         if address.transport_type() == TCP {
             Ok(self
                 .connect(address.address().to_string(), TcpConnectionOptions::new())
-                .await?)
+                .await?
+                .into())
         } else {
             Err(Error::new(
                 Origin::Transport,

@@ -97,11 +97,11 @@ impl Authority {
         // Create a TCP listener and wait for incoming connections
         let tcp = TcpTransport::create(ctx).await?;
 
-        let (address, _) = tcp
+        let listener = tcp
             .listen(configuration.tcp_listener_address(), tcp_listener_options)
             .await?;
 
-        info!("started a TCP listener at {address:?}");
+        info!("started a TCP listener at {listener:?}");
         Ok(secure_channel_listener_flow_control_id)
     }
 

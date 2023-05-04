@@ -253,8 +253,7 @@ async fn run_foreground_node(
     let bind = &cmd.tcp_listener_address;
 
     let options = TcpListenerOptions::new();
-    let tcp_listener_flow_control_id = options.spawner_flow_control_id();
-    let (socket_addr, listener_addr) = tcp.listen(&bind, options).await?;
+    let listener = tcp.listen(&bind, options).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     node_state.set_setup(
@@ -285,9 +284,9 @@ async fn run_foreground_node(
             ApiTransport {
                 tt: TransportType::Tcp,
                 tm: TransportMode::Listen,
-                socket_address: socket_addr,
-                worker_address: listener_addr,
-                flow_control_id: tcp_listener_flow_control_id.clone(),
+                socket_address: *listener.socket_address(),
+                worker_address: listener.processor_address().clone(),
+                flow_control_id: listener.flow_control_id().clone(),
             },
             tcp.async_try_clone().await?,
         ),
@@ -298,7 +297,7 @@ async fn run_foreground_node(
 
     ctx.flow_controls().add_consumer(
         NODEMANAGER_ADDR,
-        &tcp_listener_flow_control_id,
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
