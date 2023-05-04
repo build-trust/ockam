@@ -1,4 +1,3 @@
-use crate::error::ApiError;
 use crate::nodes::models::transport::{
     CreateTransport, DeleteTransport, TransportList, TransportMode, TransportStatus, TransportType,
 };
@@ -8,7 +7,6 @@ use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::flow_control::FlowControls;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions};
-use std::net::{AddrParseError, SocketAddr};
 
 use super::NodeManagerWorker;
 
@@ -74,33 +72,34 @@ impl NodeManagerWorker {
 
         // TODO: Support FlowControls from ockam_command CLI
         let res = match (tt, tm) {
-            (Tcp, Listen) => {
-                let options = TcpListenerOptions::new();
-                let flow_control_id = options.spawner_flow_control_id();
-                node_manager.tcp_transport.listen(&addr, options).await.map(
-                    |(socket, worker_address)| {
-                        (socket.to_string(), worker_address, flow_control_id)
-                    },
-                )
-            }
-            (Tcp, Connect) => {
-                let options = TcpConnectionOptions::new();
-                let flow_control_id = options.producer_flow_control_id();
-                node_manager
-                    .tcp_transport
-                    .connect(&socket_addr, options)
-                    .await
-                    .map(|worker_address| (socket_addr, worker_address, flow_control_id))
-            }
+            (Tcp, Listen) => node_manager
+                .tcp_transport
+                .listen(&addr, TcpListenerOptions::new())
+                .await
+                .map(|listener| {
+                    (
+                        *listener.socket_address(),
+                        listener.processor_address().clone(),
+                        listener.flow_control_id().clone(),
+                    )
+                }),
+            (Tcp, Connect) => node_manager
+                .tcp_transport
+                .connect(&socket_addr, TcpConnectionOptions::new())
+                .await
+                .map(|connection| {
+                    (
+                        *connection.socket_address(),
+                        connection.sender_address().clone(),
+                        connection.flow_control_id().clone(),
+                    )
+                }),
             _ => unimplemented!(),
         };
 
         let response = match res {
             Ok((socket_address, worker_address, flow_control_id)) => {
                 let tid = random_alias();
-                let socket_address: SocketAddr = socket_address
-                    .parse()
-                    .map_err(|err: AddrParseError| ApiError::generic(&err.to_string()))?;
                 let api_transport = ApiTransport {
                     tt,
                     tm,

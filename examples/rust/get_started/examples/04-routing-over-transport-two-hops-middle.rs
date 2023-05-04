@@ -23,7 +23,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Forwarder worker
     node.start_worker(
         "forward_to_responder",
-        Forwarder(connection_to_responder),
+        Forwarder(connection_to_responder.into()),
         AllowAll,
         AllowAll,
     )

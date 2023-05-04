@@ -28,11 +28,13 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let transport = TcpTransport::create(ctx).await?;
-    let (listener_address, _) = transport.listen("127.0.0.1:0", options).await?;
+    let listener = transport.listen("127.0.0.1:0", options).await?;
 
     let addr = transport
-        .connect(listener_address.to_string(), TcpConnectionOptions::new())
-        .await?;
+        .connect(listener.socket_string(), TcpConnectionOptions::new())
+        .await?
+        .sender_address()
+        .clone();
 
     // Sender
     {

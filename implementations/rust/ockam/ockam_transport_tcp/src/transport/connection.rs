@@ -1,4 +1,4 @@
-use crate::transport::common::resolve_peer;
+use crate::transport::common::{resolve_peer, TcpConnection};
 use crate::workers::{Addresses, ConnectionRole, TcpRecvProcessor, TcpSendWorker};
 use crate::{TcpConnectionOptions, TcpTransport};
 use ockam_core::{Address, Result};
@@ -13,14 +13,15 @@ impl TcpTransport {
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
-    /// let addr = tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?; // and connect to port 5000
+    /// let connection = tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
     pub async fn connect(
         &self,
         peer: impl Into<String>,
         options: TcpConnectionOptions,
-    ) -> Result<Address> {
+    ) -> Result<TcpConnection> {
+        let flow_control_id = options.producer_flow_control_id.clone();
         // Resolve peer address
         let socket = resolve_peer(peer.into())?;
 
@@ -51,7 +52,11 @@ impl TcpTransport {
         )
         .await?;
 
-        Ok(addresses.sender_address().clone())
+        Ok(TcpConnection::new(
+            addresses.sender_address().clone(),
+            socket,
+            flow_control_id,
+        ))
     }
 
     /// Interrupt an active TCP connection given its `Address`
