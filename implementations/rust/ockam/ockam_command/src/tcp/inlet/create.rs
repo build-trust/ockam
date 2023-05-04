@@ -1,6 +1,7 @@
 use crate::node::{default_node_name, node_name_parser};
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
+use crate::util::parsers::socket_addr_parser;
 use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
     process_nodes_multiaddr, RpcBuilder,
@@ -30,7 +31,7 @@ pub struct CreateCommand {
     at: String,
 
     /// Address on which to accept tcp connections.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", default_value_t = default_from_addr())]
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", default_value_t = default_from_addr(), value_parser = socket_addr_parser)]
     from: SocketAddr,
 
     /// Route to a tcp outlet.
