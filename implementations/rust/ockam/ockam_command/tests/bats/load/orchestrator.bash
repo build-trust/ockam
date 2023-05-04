@@ -14,15 +14,16 @@ function skip_if_orchestrator_tests_not_enabled() {
   fi
 }
 
-function load_orchestrator_data() {
+function copy_local_orchestrator_data() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
     cp -a $OCKAM_HOME_BASE $OCKAM_HOME
     export PROJECT_JSON_PATH="$OCKAM_HOME/project.json"
-    fetch_orchestrator_data
+    cp $OCKAM_HOME/projects/default.json $PROJECT_JSON_PATH
   fi
 }
 
 function fetch_orchestrator_data() {
+  copy_local_orchestrator_data
   max_retries=5
   i=0
   while [[ $i -lt $max_retries ]]; do
