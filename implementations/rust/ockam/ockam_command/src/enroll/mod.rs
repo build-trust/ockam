@@ -173,10 +173,12 @@ async fn default_project(
         check_project_readiness(ctx, opts, cloud_opts, node_name, None, default_project).await?;
     println!("{}", project.output()?);
 
-    opts.state.projects.create(&project.name, project.clone())?;
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
     opts.state
         .trust_contexts
-        .create(&project.name, project.clone().try_into()?)?;
+        .overwrite(&project.name, project.clone().try_into()?)?;
     Ok(project)
 }
 
