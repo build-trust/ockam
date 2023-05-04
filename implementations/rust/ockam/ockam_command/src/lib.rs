@@ -232,7 +232,7 @@ pub struct CommandGlobalOpts {
 
 impl CommandGlobalOpts {
     fn new(global_args: GlobalArgs, config: OckamConfig) -> Self {
-        let state = CliState::try_default().expect("Failed to load CLI state");
+        let state = CliState::try_default().expect("Failed to load the local Ockam configuration");
         let terminal = Terminal::new(
             global_args.quiet,
             global_args.no_color,

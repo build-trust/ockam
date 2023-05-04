@@ -82,8 +82,8 @@ impl Output for ShortIdentityResponse<'_> {
 }
 
 fn default_identity_name() -> String {
-    let state =
-        CliState::try_default().expect("Failed to load CLI state. Try running 'ockam reset'");
+    let state = CliState::try_default()
+        .expect("Failed to load the local Ockam configuration. Try running 'ockam reset'");
     state
         .identities
         .default()
