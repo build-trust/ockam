@@ -16,16 +16,13 @@ mod common;
 #[ockam_macros::test]
 async fn test1(ctx: &mut Context) -> Result<()> {
     let tcp_bob = TcpTransport::create(ctx).await?;
-    let (socket_addr, bob_flow_control_id) = {
-        let options = TcpListenerOptions::new();
-        let flow_control_id = options.spawner_flow_control_id();
-        let (socket_addr, _) = tcp_bob.listen("127.0.0.1:0", options).await?;
-        (socket_addr, flow_control_id)
-    };
+    let listener = tcp_bob
+        .listen("127.0.0.1:0", TcpListenerOptions::new())
+        .await?;
 
     let tcp_alice = TcpTransport::create(ctx).await?;
     let connection_to_bob = tcp_alice
-        .connect(socket_addr.to_string(), TcpConnectionOptions::new())
+        .connect(listener.socket_string(), TcpConnectionOptions::new())
         .await?;
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
@@ -36,12 +33,13 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .unwrap()
         .clone();
 
-    message_should_not_pass(ctx, &connection_to_bob).await?;
+    message_should_not_pass(ctx, &connection_to_bob.clone().into()).await?;
     message_should_not_pass(ctx, &connection_to_alice).await?;
 
-    let bob_listener_info = create_secure_channel_listener(ctx, &bob_flow_control_id, true).await?;
+    let bob_listener_info =
+        create_secure_channel_listener(ctx, listener.flow_control_id(), true).await?;
 
-    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
+    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob.clone().into()).await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
     let channel_to_alice = bob_listener_info.get_channel();
 
@@ -71,17 +69,16 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn test2(ctx: &mut Context) -> Result<()> {
     let tcp_bob = TcpTransport::create(ctx).await?;
-    let socket_addr = {
+    let listener = {
         let options = TcpListenerOptions::new();
-        let (socket_addr, _) = tcp_bob.listen("127.0.0.1:0", options).await?;
-        socket_addr
+        tcp_bob.listen("127.0.0.1:0", options).await?
     };
 
     let tcp_alice = TcpTransport::create(ctx).await?;
     let alice_tcp_options = TcpConnectionOptions::new();
     let alice_flow_control_id = alice_tcp_options.producer_flow_control_id();
     let connection_to_bob = tcp_alice
-        .connect(socket_addr.to_string(), alice_tcp_options)
+        .connect(listener.socket_string(), alice_tcp_options)
         .await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
     let connection_to_alice = tcp_bob
@@ -91,7 +88,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .unwrap()
         .clone();
 
-    message_should_not_pass(ctx, &connection_to_bob).await?;
+    message_should_not_pass(ctx, &connection_to_bob.into()).await?;
     message_should_not_pass(ctx, &connection_to_alice).await?;
 
     let alice_listener_info =

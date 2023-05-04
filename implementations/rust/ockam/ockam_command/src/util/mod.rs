@@ -190,11 +190,17 @@ impl<'a> Rpc<'a> {
                 let addr = match tcp {
                     None => {
                         let tcp = TcpTransport::create(ctx).await?;
-                        tcp.connect(addr_str, TcpConnectionOptions::new()).await?
+                        tcp.connect(addr_str, TcpConnectionOptions::new())
+                            .await?
+                            .sender_address()
+                            .clone()
                     }
                     Some(tcp) => {
                         // Create a new connection anyway
-                        tcp.connect(addr_str, TcpConnectionOptions::new()).await?
+                        tcp.connect(addr_str, TcpConnectionOptions::new())
+                            .await?
+                            .sender_address()
+                            .clone()
                     }
                 };
                 to.modify().prepend(addr);

@@ -63,8 +63,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let bind = cmd.tcp_listener_address;
 
     let options = TcpListenerOptions::new();
-    let tcp_listener_flow_control_id = options.spawner_flow_control_id();
-    let (socket_addr, listened_worker_address) = tcp.listen(&bind, options).await?;
+    let listener = tcp.listen(&bind, options).await?;
 
     let projects = cfg.inner().lookup().projects().collect();
 
@@ -81,9 +80,9 @@ pub async fn start_embedded_node_with_vault_and_identity(
             ApiTransport {
                 tt: TransportType::Tcp,
                 tm: TransportMode::Listen,
-                socket_address: socket_addr,
-                worker_address: listened_worker_address,
-                flow_control_id: tcp_listener_flow_control_id.clone(),
+                socket_address: *listener.socket_address(),
+                worker_address: listener.processor_address().clone(),
+                flow_control_id: listener.flow_control_id().clone(),
             },
             tcp,
         ),
@@ -95,7 +94,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     ctx.flow_controls().add_consumer(
         NODEMANAGER_ADDR,
-        &tcp_listener_flow_control_id,
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 

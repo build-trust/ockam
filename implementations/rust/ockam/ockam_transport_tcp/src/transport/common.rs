@@ -1,6 +1,110 @@
+use core::fmt;
+use core::fmt::Formatter;
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
-use ockam_core::Result;
+use ockam_core::flow_control::FlowControlId;
+use ockam_core::{Address, Result};
 use ockam_transport_core::TransportError;
+
+/// Result of [`TcpTransport::connect`] call.
+#[derive(Clone, Debug)]
+pub struct TcpConnection {
+    sender_address: Address,
+    socket_address: SocketAddr,
+    flow_control_id: FlowControlId,
+}
+
+impl fmt::Display for TcpConnection {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Socket: {}, Worker: {}, FlowId: {}",
+            self.socket_address, self.sender_address, self.flow_control_id
+        )
+    }
+}
+
+impl From<TcpConnection> for Address {
+    fn from(value: TcpConnection) -> Self {
+        value.sender_address
+    }
+}
+
+impl TcpConnection {
+    /// Constructor
+    pub fn new(
+        sender_address: Address,
+        socket_address: SocketAddr,
+        flow_control_id: FlowControlId,
+    ) -> Self {
+        Self {
+            sender_address,
+            socket_address,
+            flow_control_id,
+        }
+    }
+    /// Corresponding [`TcpSendWorker`](super::workers::TcpSendWorker) [`Address`] that can be used in a route to send messages to the other
+    /// side of the TCP connection
+    pub fn sender_address(&self) -> &Address {
+        &self.sender_address
+    }
+    /// Corresponding [`SocketAddr`]
+    pub fn socket_address(&self) -> &SocketAddr {
+        &self.socket_address
+    }
+    /// Generated fresh random [`FlowControlId`]
+    pub fn flow_control_id(&self) -> &FlowControlId {
+        &self.flow_control_id
+    }
+}
+
+/// Result of [`TcpTransport::listen`] call.
+#[derive(Clone, Debug)]
+pub struct TcpListener {
+    processor_address: Address,
+    socket_address: SocketAddr,
+    flow_control_id: FlowControlId,
+}
+
+impl fmt::Display for TcpListener {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Socket: {}, Processor: {}, FlowId: {}",
+            self.socket_address, self.processor_address, self.flow_control_id
+        )
+    }
+}
+
+impl TcpListener {
+    /// Constructor
+    pub fn new(
+        processor_address: Address,
+        socket_address: SocketAddr,
+        flow_control_id: FlowControlId,
+    ) -> Self {
+        Self {
+            processor_address,
+            socket_address,
+            flow_control_id,
+        }
+    }
+    /// Corresponding Worker [`Address`] that can be used to stop the Listener
+    pub fn processor_address(&self) -> &Address {
+        &self.processor_address
+    }
+    /// Corresponding [`SocketAddr`]
+    pub fn socket_address(&self) -> &SocketAddr {
+        &self.socket_address
+    }
+    /// Corresponding [`SocketAddr`] in String format
+    pub fn socket_string(&self) -> String {
+        self.socket_address.to_string()
+    }
+    /// Generated fresh random [`FlowControlId`]
+    pub fn flow_control_id(&self) -> &FlowControlId {
+        &self.flow_control_id
+    }
+}
 
 /// Resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
 pub(super) fn resolve_peer(peer: String) -> Result<SocketAddr> {
