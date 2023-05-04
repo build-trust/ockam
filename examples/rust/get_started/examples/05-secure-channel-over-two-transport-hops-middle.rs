@@ -21,8 +21,13 @@ async fn main(ctx: Context) -> Result<()> {
     let connection_to_bob = tcp.connect("127.0.0.1:4000", TcpConnectionOptions::new()).await?;
 
     // Start a Forwarder to forward messages to Bob using the TCP connection.
-    node.start_worker("forward_to_bob", Forwarder(connection_to_bob), AllowAll, AllowAll)
-        .await?;
+    node.start_worker(
+        "forward_to_bob",
+        Forwarder(connection_to_bob.into()),
+        AllowAll,
+        AllowAll,
+    )
+    .await?;
 
     let tcp_listener_options = TcpListenerOptions::new();
     node.flow_controls().add_consumer(

@@ -48,7 +48,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     ForwardingService::create(ctx, "forwarding_service", options).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
 
-    let (socket_addr, _) = cloud_tcp
+    let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", tcp_listener_options)
         .await?;
 
@@ -64,7 +64,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let server_tcp = TcpTransport::create(ctx).await?;
     let cloud_connection = server_tcp
-        .connect(socket_addr.to_string(), tcp_options)
+        .connect(cloud_listener.socket_string(), tcp_options)
         .await?;
 
     let remote_info =
@@ -73,7 +73,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let client_tcp = TcpTransport::create(ctx).await?;
     let cloud_connection = client_tcp
-        .connect(socket_addr.to_string(), TcpConnectionOptions::new())
+        .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
 
     let resp = ctx
@@ -104,7 +104,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
         );
     ForwardingService::create(ctx, "forwarding_service", options).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
-    let (socket_addr, _) = cloud_tcp
+    let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", tcp_listener_options)
         .await?;
 
@@ -113,7 +113,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
 
     let server_tcp = TcpTransport::create(ctx).await?;
     let cloud_connection = server_tcp
-        .connect(socket_addr.to_string(), tcp_options)
+        .connect(cloud_listener.socket_string(), tcp_options)
         .await?;
 
     let remote_info =
@@ -208,7 +208,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let cloud_tcp = TcpTransport::create(ctx).await?;
-    let (socket_addr, _) = cloud_tcp
+    let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", cloud_tcp_listener_options)
         .await?;
 
@@ -229,7 +229,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     let server_tcp = TcpTransport::create(ctx).await?;
     let cloud_server_connection = server_tcp
-        .connect(socket_addr.to_string(), TcpConnectionOptions::new())
+        .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
     let server_identity = identities_creation.create_identity().await?;
     let cloud_server_channel = secure_channels
@@ -259,7 +259,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     // Client
     let client_tcp = TcpTransport::create(ctx).await?;
     let cloud_client_connection = client_tcp
-        .connect(socket_addr.to_string(), TcpConnectionOptions::new())
+        .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
     let client_identity = identities_creation.create_identity().await?;
     let cloud_client_channel = secure_channels

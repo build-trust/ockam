@@ -78,7 +78,12 @@ pub async fn multiaddr_to_route(
                 let options = TcpConnectionOptions::new();
                 flow_control_id = Some(options.producer_flow_control_id().clone());
 
-                let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                let addr = tcp
+                    .connect(socket_addr.to_string(), options)
+                    .await
+                    .ok()?
+                    .sender_address()
+                    .clone();
                 tcp_worker = Some(addr.clone());
 
                 number_of_tcp_hops += 1;
@@ -96,7 +101,12 @@ pub async fn multiaddr_to_route(
                 let options = TcpConnectionOptions::new();
                 flow_control_id = Some(options.producer_flow_control_id().clone());
 
-                let addr = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                let addr = tcp
+                    .connect(socket_addr.to_string(), options)
+                    .await
+                    .ok()?
+                    .sender_address()
+                    .clone();
                 tcp_worker = Some(addr.clone());
 
                 number_of_tcp_hops += 1;
@@ -118,7 +128,9 @@ pub async fn multiaddr_to_route(
                         let addr = tcp
                             .connect(format!("{}:{}", &*host, *port), options)
                             .await
-                            .ok()?;
+                            .ok()?
+                            .sender_address()
+                            .clone();
                         tcp_worker = Some(addr.clone());
 
                         number_of_tcp_hops += 1;

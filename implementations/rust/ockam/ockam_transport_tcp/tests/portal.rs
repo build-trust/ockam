@@ -130,10 +130,13 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
 
     let tcp = TcpTransport::create(ctx).await?;
 
-    let (socket_address, _) = tcp.listen("127.0.0.1:0", options).await?;
+    let listener = tcp.listen("127.0.0.1:0", options).await?;
 
     let tcp_connection = tcp
-        .connect(socket_address.to_string(), TcpConnectionOptions::new())
+        .connect(
+            listener.socket_address().to_string(),
+            TcpConnectionOptions::new(),
+        )
         .await?;
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -191,10 +194,10 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
 
     let tcp = TcpTransport::create(ctx).await?;
 
-    let (socket_address, _) = tcp.listen("127.0.0.1:0", options).await?;
+    let tcp_listener = tcp.listen("127.0.0.1:0", options).await?;
 
     let tcp_connection = tcp
-        .connect(socket_address.to_string(), TcpConnectionOptions::new())
+        .connect(tcp_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();

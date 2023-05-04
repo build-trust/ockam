@@ -1,7 +1,6 @@
-use crate::transport::common::parse_socket_addr;
+use crate::transport::common::{parse_socket_addr, TcpListener};
 use crate::workers::TcpListenProcessor;
 use crate::{TcpListenerOptions, TcpTransport};
-use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result};
 
 impl TcpTransport {
@@ -24,13 +23,14 @@ impl TcpTransport {
         &self,
         bind_addr: impl AsRef<str>,
         options: TcpListenerOptions,
-    ) -> Result<(SocketAddr, Address)> {
+    ) -> Result<TcpListener> {
+        let flow_control_id = options.spawner_flow_control_id.clone();
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
         // Could be different from the bind_addr, e.g., if binding to port 0\
         let (socket_addr, address) =
             TcpListenProcessor::start(&self.ctx, self.registry.clone(), bind_addr, options).await?;
 
-        Ok((socket_addr, address))
+        Ok(TcpListener::new(address, socket_addr, flow_control_id))
     }
 
     /// Interrupt an active TCP listener given its `Address`

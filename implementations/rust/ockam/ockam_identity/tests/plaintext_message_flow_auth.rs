@@ -76,16 +76,15 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 // Bob: TCP listener + Secure Channel listener
 #[ockam_macros::test]
 async fn test2(ctx: &mut Context) -> Result<()> {
-    let bob_tcp_options = TcpListenerOptions::new();
-    let flow_control_id_bob_tcp = bob_tcp_options.spawner_flow_control_id();
-
     let tcp_alice = TcpTransport::create(ctx).await?;
     let tcp_bob = TcpTransport::create(ctx).await?;
 
-    let (socket_addr, _) = tcp_bob.listen("127.0.0.1:0", bob_tcp_options).await?;
+    let listener = tcp_bob
+        .listen("127.0.0.1:0", TcpListenerOptions::new())
+        .await?;
 
     let connection_to_bob = tcp_alice
-        .connect(socket_addr.to_string(), TcpConnectionOptions::new())
+        .connect(listener.socket_string(), TcpConnectionOptions::new())
         .await?;
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
@@ -94,7 +93,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let connection_to_alice = senders.first().unwrap().clone();
 
-    message_should_not_pass(ctx, &connection_to_bob).await?;
+    message_should_not_pass(ctx, &connection_to_bob.clone().into()).await?;
     message_should_not_pass(ctx, &connection_to_alice).await?;
 
     let alice_secure_channels = secure_channels();
@@ -112,7 +111,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let bob_options = SecureChannelListenerOptions::new().as_consumer(
-        &flow_control_id_bob_tcp,
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowOnlyOneMessage,
     );
     let flow_control_id_bob_plaintext = bob_options.spawner_flow_control_id();
