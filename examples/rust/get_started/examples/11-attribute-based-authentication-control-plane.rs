@@ -73,7 +73,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     let token_acceptor = TokenAcceptorClient::new(
         RpcClient::new(
-            route![secure_channel.clone(), DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
+            route![secure_channel, DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
             node.context(),
         )
         .await?,

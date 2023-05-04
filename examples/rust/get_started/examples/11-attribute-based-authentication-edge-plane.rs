@@ -5,13 +5,13 @@ use ockam::identity::{
     identities, AuthorityService, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannelOptions,
     TrustContext, TrustMultiIdentifiersPolicy,
 };
-use ockam::{node, TcpInletOptions};
+use ockam::node;
 use ockam::{route, Context, Result};
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_core::compat::sync::Arc;
 use ockam_node::RpcClient;
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam_transport_tcp::{TcpInletOptions, TcpTransportExtension};
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet

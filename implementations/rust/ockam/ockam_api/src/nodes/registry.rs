@@ -2,8 +2,8 @@ use crate::nodes::service::Alias;
 use ockam::identity::IdentityIdentifier;
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Route};
+use ockam_identity::{SecureChannel, SecureChannelListener};
 
 #[derive(Default)]
 pub(crate) struct SecureChannelRegistry {
@@ -11,31 +11,24 @@ pub(crate) struct SecureChannelRegistry {
 }
 
 impl SecureChannelRegistry {
-    pub fn get_by_route(&self, route: &Route) -> Option<&SecureChannelInfo> {
-        self.channels.iter().find(|&x| x.route() == route)
-    }
-
     pub fn get_by_addr(&self, addr: &Address) -> Option<&SecureChannelInfo> {
-        self.channels.iter().find(|&x| x.addr() == addr)
+        self.channels
+            .iter()
+            .find(|&x| x.sc.encryptor_address() == addr)
     }
 
     pub fn insert(
         &mut self,
-        addr: Address,
         route: Route,
-        sc_flow_control_id: FlowControlId,
+        sc: SecureChannel,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) {
-        self.channels.push(SecureChannelInfo::new(
-            route,
-            addr,
-            sc_flow_control_id,
-            authorized_identifiers,
-        ))
+        self.channels
+            .push(SecureChannelInfo::new(route, sc, authorized_identifiers))
     }
 
     pub fn remove_by_addr(&mut self, addr: &Address) {
-        self.channels.retain(|x| x.addr() != addr)
+        self.channels.retain(|x| x.sc().encryptor_address() != addr)
     }
 
     pub fn list(&self) -> &[SecureChannelInfo] {
@@ -47,23 +40,19 @@ impl SecureChannelRegistry {
 pub struct SecureChannelInfo {
     // Target route of the channel
     route: Route,
-    // Local address of the created channel
-    addr: Address,
-    flow_control_id: FlowControlId,
+    sc: SecureChannel,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 }
 
 impl SecureChannelInfo {
     pub fn new(
         route: Route,
-        addr: Address,
-        flow_control_id: FlowControlId,
+        sc: SecureChannel,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) -> Self {
         Self {
-            addr,
             route,
-            flow_control_id,
+            sc,
             authorized_identifiers,
         }
     }
@@ -72,12 +61,8 @@ impl SecureChannelInfo {
         &self.route
     }
 
-    pub fn addr(&self) -> &Address {
-        &self.addr
-    }
-
-    pub fn flow_control_id(&self) -> &FlowControlId {
-        &self.flow_control_id
+    pub fn sc(&self) -> &SecureChannel {
+        &self.sc
     }
 
     pub fn authorized_identifiers(&self) -> Option<&Vec<IdentityIdentifier>> {
@@ -87,24 +72,16 @@ impl SecureChannelInfo {
 
 #[derive(Clone)]
 pub(crate) struct SecureChannelListenerInfo {
-    addr: Address,
-    flow_control_id: FlowControlId,
+    listener: SecureChannelListener,
 }
 
 impl SecureChannelListenerInfo {
-    pub fn new(addr: Address, flow_control_id: FlowControlId) -> Self {
-        Self {
-            addr,
-            flow_control_id,
-        }
+    pub fn new(listener: SecureChannelListener) -> Self {
+        Self { listener }
     }
 
-    pub fn addr(&self) -> &Address {
-        &self.addr
-    }
-
-    pub fn flow_control_id(&self) -> &FlowControlId {
-        &self.flow_control_id
+    pub fn listener(&self) -> &SecureChannelListener {
+        &self.listener
     }
 }
 
