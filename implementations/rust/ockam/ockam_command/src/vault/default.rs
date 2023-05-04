@@ -5,7 +5,7 @@ use colorful::Colorful;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
-/// Set the default vault
+/// Change the default vault
 #[derive(Clone, Debug, Args)]
 pub struct DefaultCommand {
     /// Name of the vault to be set as default

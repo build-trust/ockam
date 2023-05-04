@@ -12,7 +12,9 @@ use ockam_identity::{IdentityChangeConstants, KeyAttributes};
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
 
+/// Attach a key to a vault
 #[derive(Clone, Debug, Args)]
+#[command(arg_required_else_help = true)]
 pub struct AttachKeyCommand {
     /// Name of the vault to attach the key to
     vault: String,

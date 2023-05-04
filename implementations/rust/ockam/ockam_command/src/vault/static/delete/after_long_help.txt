@@ -1,0 +1,4 @@
+```sh
+# To delete a vault given its name
+$ ockam vault delete v
+```

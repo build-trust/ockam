@@ -1,0 +1,3 @@
+A vault is a secure storage location for secret keys belonging to Ockam identities. Ockam Vaults safely store these secret keys in cryptographic hardware and cloud key management systems.
+
+Vaults are designed to be used in a way that secret keys never have to leave a vault. There is a growing base of Ockam Vault implementations in the Ockam Github Repository that safely store secret keys in specific KMSs, HSMs, Secure Enclaves etc.

@@ -4,6 +4,7 @@ use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::CommandGlobalOpts;
 
+/// List vaults
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand;
 

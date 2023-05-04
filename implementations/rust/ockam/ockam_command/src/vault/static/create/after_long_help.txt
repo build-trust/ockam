@@ -1,0 +1,7 @@
+```sh
+# To create a new vault with a random name
+$ ockam vault create
+
+# To create a new vault with a specific name
+$ ockam vault create v
+```

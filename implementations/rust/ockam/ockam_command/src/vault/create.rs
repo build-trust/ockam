@@ -9,6 +9,7 @@ use ockam_api::cli_state::traits::StateDirTrait;
 use crate::util::node_rpc;
 use crate::{fmt_info, fmt_ok, CommandGlobalOpts};
 
+/// Create a vault
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]

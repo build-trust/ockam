@@ -1,0 +1,7 @@
+```sh
+# To show the default vault
+$ ockam vault show
+
+# To show a specific vault
+$ ockam vault show v1
+```
