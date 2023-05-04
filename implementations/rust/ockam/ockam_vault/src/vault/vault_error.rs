@@ -1,3 +1,4 @@
+use crate::SecretType;
 use ockam_core::compat::string::String;
 use ockam_core::{
     errcode::{Kind, Origin},
@@ -21,7 +22,7 @@ pub enum VaultError {
     /// Invalid AES key length
     InvalidAesKeyLength,
     /// Invalid Secret length
-    InvalidSecretLength,
+    InvalidSecretLength(SecretType, usize, u32),
     /// Invalid HKDF output type
     InvalidHkdfOutputType,
     /// Invalid private key length
@@ -54,9 +55,13 @@ impl core::fmt::Display for VaultError {
             Self::InvalidPublicKey => write!(f, "public key is invalid"),
             Self::UnknownEcdhKeyType => write!(f, "unknown ECDH key type"),
             Self::InvalidKeyType => write!(f, "invalid key type"),
-            Self::EntryNotFound(entry) => write!(f, "entry not found {entry}"),
+            Self::EntryNotFound(entry) => write!(f, "{entry}"),
             Self::InvalidAesKeyLength => write!(f, "invalid AES key length"),
-            Self::InvalidSecretLength => write!(f, "invalid secret length"),
+            Self::InvalidSecretLength(secret_type, actual, expected) => write!(
+                f,
+                "invalid secret length for {}. Actual: {}, Expected: {}",
+                secret_type, actual, expected
+            ),
             Self::InvalidHkdfOutputType => write!(f, "invalid HKDF outputtype"),
             Self::InvalidPrivateKeyLen => write!(f, "invalid private key length"),
             Self::AeadAesGcmEncrypt => write!(f, "aes encryption failed"),
@@ -90,22 +95,4 @@ impl From<VaultError> for Error {
 
         Error::new(Origin::Vault, kind, err)
     }
-}
-
-#[cfg(feature = "rustcrypto")]
-pub(crate) fn from_pkcs8<T: core::fmt::Display>(e: T) -> Error {
-    #[cfg(feature = "no_std")]
-    use ockam_core::compat::string::ToString;
-
-    Error::new(Origin::Vault, Kind::Unknown, e.to_string())
-}
-
-#[cfg(feature = "rustcrypto")]
-pub(crate) fn from_ecdsa(e: p256::ecdsa::Error) -> Error {
-    Error::new(Origin::Vault, Kind::Unknown, e)
-}
-
-#[cfg(feature = "rustcrypto")]
-pub(crate) fn from_ecurve(e: p256::elliptic_curve::Error) -> Error {
-    Error::new(Origin::Vault, Kind::Unknown, e)
 }

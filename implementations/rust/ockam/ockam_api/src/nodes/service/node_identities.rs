@@ -85,7 +85,7 @@ impl NodeIdentities {
     ) -> Result<Arc<dyn IdentitiesVault>> {
         if let Some(vault) = vault_name {
             let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
-            Ok(Arc::new(existing_vault))
+            Ok(existing_vault)
         } else {
             Ok(self.identities_vault())
         }

@@ -9,8 +9,8 @@ use crate::identity::{
 };
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Encodable, Result};
-use ockam_vault::KeyId;
+use ockam_core::{Encodable, KeyId, Result};
+use ockam_vault::Vault;
 
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {
@@ -38,15 +38,8 @@ impl IdentitiesKeys {
 
     /// Initial `ChangeIdentifier` that is used as a previous_identifier of the first change
     async fn make_change_identifier(&self) -> Result<ChangeIdentifier> {
-        let h = match self
-            .vault
-            .sha256(IdentityChangeConstants::INITIAL_CHANGE)
-            .await
-        {
-            Ok(hash) => hash,
-            Err(_) => panic!("failed to hash initial change"),
-        };
-        Ok(ChangeIdentifier::from_hash(h))
+        let hash = Vault::sha256(IdentityChangeConstants::INITIAL_CHANGE);
+        Ok(ChangeIdentifier::from_hash(hash))
     }
 }
 
@@ -78,7 +71,7 @@ impl IdentitiesKeys {
         key_label: Option<&str>,
     ) -> Result<bool> {
         let public_key = identity.get_public_key(key_label)?;
-        self.vault.verify(signature, &public_key, data).await
+        self.vault.verify(&public_key, data, signature).await
     }
 
     /// Generate and add a new key to this `Identity` with a given `label`
@@ -109,7 +102,7 @@ impl IdentitiesKeys {
         label: String,
         secret: &KeyId,
     ) -> Result<()> {
-        let secret_attributes = self.vault.secret_attributes_get(secret).await?;
+        let secret_attributes = self.vault.get_secret_attributes(secret).await?;
         let key_attribs = KeyAttributes::new(label, secret_attributes);
 
         let change = self
@@ -199,7 +192,7 @@ impl IdentitiesKeys {
         root_key: Option<&KeyId>,
     ) -> Result<IdentitySignedChange> {
         let secret_key = self.generate_key_if_needed(secret, &key_attributes).await?;
-        let public_key = self.vault.secret_public_key_get(&secret_key).await?;
+        let public_key = self.vault.get_public_key(&secret_key).await?;
 
         let data = CreateKeyChangeData::new(prev_id, key_attributes, public_key);
 
@@ -208,7 +201,7 @@ impl IdentitiesKeys {
             .encode()
             .map_err(|_| IdentityError::BareError)?;
 
-        let change_id = self.vault.sha256(&change_block_binary).await?;
+        let change_id = Vault::sha256(&change_block_binary);
         let change_id = ChangeIdentifier::from_hash(change_id);
 
         let self_signature = self.vault.sign(&secret_key, change_id.as_ref()).await?;
@@ -239,7 +232,7 @@ impl IdentitiesKeys {
             Ok(s.clone())
         } else {
             self.vault
-                .secret_generate(key_attributes.secret_attributes())
+                .create_persistent_secret(key_attributes.secret_attributes())
                 .await
         }
     }
@@ -271,8 +264,11 @@ impl IdentitiesKeys {
 
         let secret_attributes = key_attributes.secret_attributes();
 
-        let secret_key = self.vault.secret_generate(secret_attributes).await?;
-        let public_key = self.vault.secret_public_key_get(&secret_key).await?;
+        let secret_key = self
+            .vault
+            .create_persistent_secret(secret_attributes)
+            .await?;
+        let public_key = self.vault.get_public_key(&secret_key).await?;
 
         let data = RotateKeyChangeData::new(prev_change_id, key_attributes, public_key);
 
@@ -281,7 +277,7 @@ impl IdentitiesKeys {
             .encode()
             .map_err(|_| IdentityError::BareError)?;
 
-        let change_id = self.vault.sha256(&change_block_binary).await?;
+        let change_id = Vault::sha256(&change_block_binary);
         let change_id = ChangeIdentifier::from_hash(change_id);
 
         let self_signature = self.vault.sign(&secret_key, change_id.as_ref()).await?;
@@ -315,7 +311,7 @@ impl IdentitiesKeys {
 
     async fn get_secret_key_from_change(&self, change: &IdentitySignedChange) -> Result<KeyId> {
         let public_key = change.change().public_key()?;
-        self.vault.compute_key_id_for_public_key(&public_key).await
+        self.vault.get_key_id(&public_key).await
     }
 
     /// Verify all changes present in current `IdentityChangeHistory`
@@ -336,7 +332,7 @@ impl IdentitiesKeys {
             .encode()
             .map_err(|_| IdentityError::BareError)?;
 
-        let change_id = self.vault.sha256(&change_binary).await?;
+        let change_id = Vault::sha256(&change_binary);
         let change_id = ChangeIdentifier::from_hash(change_id);
 
         if &change_id != new_change.identifier() {
@@ -401,7 +397,7 @@ impl IdentitiesKeys {
 
             if !self
                 .vault
-                .verify(signature.data(), &public_key, change_id.as_ref())
+                .verify(&public_key, change_id.as_ref(), signature.data())
                 .await?
             {
                 return Err(IdentityError::IdentityVerificationFailed.into());

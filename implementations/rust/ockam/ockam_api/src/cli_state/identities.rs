@@ -358,7 +358,6 @@ mod tests {
     #[test]
     fn test_deserialize_legacy() {
         let json = create_identity_config_json_legacy();
-        println!("{}", json);
         let actual: IdentityConfig = serde_json::from_str(json.as_str()).unwrap();
         let expected = create_identity_config();
         assert_eq!(actual, expected)

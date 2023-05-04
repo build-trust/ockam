@@ -21,6 +21,7 @@ std = [
   "ockam_multiaddr/std",
   "ockam_node/std",
   "ockam_vault/std",
+  "ockam_vault_aws/std",
   "tinyvec/std",
   "tracing/std",
 ]
@@ -31,6 +32,7 @@ direct-authenticator = ["std"]
 
 [dependencies]
 anyhow = "1"
+aws-config = { version = "0.54.1", default-features = false, features = ["native-tls"] }
 bytes = { version = "1.4.0", default-features = false, features = ["serde"] }
 cddl-cat = { version = "0.6.1", optional = true }
 either = { version = "1.8.1", default-features = false }
@@ -76,7 +78,13 @@ path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
 # breaks building ockam_vault with feature set "no_std,std":
-features = ["std", "aws", "rustcrypto"]
+features = ["std", "rustcrypto"]
+
+[dependencies.ockam_vault_aws]
+version = "0.1.0"
+path = "../ockam_vault_aws"
+default-features = false
+features = ["std"]
 
 [dependencies.ockam_identity]
 version = "0.75.0"

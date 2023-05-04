@@ -2,15 +2,14 @@ use crate::identities::{self, IdentitiesKeys};
 use crate::identity::identity_change::IdentitySignedChange;
 use crate::identity::{Identity, IdentityChangeHistory};
 use crate::Identities;
-use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
+use ockam_core::{async_trait, KeyId};
 use ockam_node::Context;
-use ockam_vault::Vault;
 use ockam_vault::{
-    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretVault,
-    Signature, Signer, SmallBuffer, SymmetricVault, Verifier,
+    Implementation, PublicKey, Secret, SecretAttributes, SecretsStore, Signature, Signer,
 };
+use ockam_vault::{StoredSecret, Vault};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
 use rand::{thread_rng, Rng};
@@ -20,7 +19,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 #[ockam_macros::test]
 async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
     for _ in 0..100 {
-        let crazy_vault = Arc::new(CrazyVault::new(0.1, Vault::default()));
+        let crazy_vault = Arc::new(CrazyVault::new(0.1, Vault::new()));
         let identities = Identities::builder()
             .with_identities_vault(crazy_vault.clone())
             .build();
@@ -68,7 +67,7 @@ async fn check_identity(identity: &mut Identity) -> Result<Identity> {
 
 #[ockam_macros::test]
 async fn test_eject_signatures(ctx: &mut Context) -> Result<()> {
-    let crazy_vault = CrazyVault::new(0.1, Vault::default());
+    let crazy_vault = CrazyVault::new(0.1, Vault::new());
 
     for _ in 0..100 {
         let identities = crate::Identities::builder()
@@ -174,6 +173,8 @@ struct CrazyVault {
     vault: Vault,
 }
 
+impl Implementation for CrazyVault {}
+
 impl CrazyVault {
     pub fn forged_operation_occurred(&self) -> bool {
         self.forged_operation_occurred.load(Ordering::Relaxed)
@@ -191,90 +192,45 @@ impl CrazyVault {
 }
 
 #[async_trait]
-impl SecretVault for CrazyVault {
-    async fn secret_generate(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        self.vault.secret_generate(attributes).await
+impl SecretsStore for CrazyVault {
+    async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
+        self.vault.create_persistent_secret(attributes).await
     }
 
-    async fn secret_import(&self, secret: Secret, attributes: SecretAttributes) -> Result<KeyId> {
-        self.vault.secret_import(secret, attributes).await
-    }
-
-    async fn secret_export(&self, key_id: &KeyId) -> Result<Secret> {
-        self.vault.secret_export(key_id).await
-    }
-
-    async fn secret_attributes_get(&self, key_id: &KeyId) -> Result<SecretAttributes> {
-        self.vault.secret_attributes_get(key_id).await
-    }
-
-    async fn secret_public_key_get(&self, key_id: &KeyId) -> Result<PublicKey> {
-        self.vault.secret_public_key_get(key_id).await
-    }
-
-    async fn secret_destroy(&self, key_id: KeyId) -> Result<()> {
-        self.vault.secret_destroy(key_id).await
-    }
-}
-
-#[async_trait]
-impl SymmetricVault for CrazyVault {
-    async fn aead_aes_gcm_encrypt(
+    async fn import_ephemeral_secret(
         &self,
-        key_id: &KeyId,
-        plaintext: &[u8],
-        nonce: &[u8],
-        aad: &[u8],
-    ) -> Result<Buffer<u8>> {
-        self.vault
-            .aead_aes_gcm_encrypt(key_id, plaintext, nonce, aad)
-            .await
-    }
-
-    async fn aead_aes_gcm_decrypt(
-        &self,
-        key_id: &KeyId,
-        cipher_text: &[u8],
-        nonce: &[u8],
-        aad: &[u8],
-    ) -> Result<Buffer<u8>> {
-        self.vault
-            .aead_aes_gcm_decrypt(key_id, cipher_text, nonce, aad)
-            .await
-    }
-}
-
-#[async_trait]
-impl Hasher for CrazyVault {
-    async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]> {
-        self.vault.sha256(data).await
-    }
-
-    async fn hkdf_sha256(
-        &self,
-        salt: &KeyId,
-        info: &[u8],
-        ikm: Option<&KeyId>,
-        output_attributes: SmallBuffer<SecretAttributes>,
-    ) -> Result<SmallBuffer<KeyId>> {
-        self.vault
-            .hkdf_sha256(salt, info, ikm, output_attributes)
-            .await
-    }
-}
-
-#[async_trait]
-impl AsymmetricVault for CrazyVault {
-    async fn ec_diffie_hellman(
-        &self,
-        secret: &KeyId,
-        peer_public_key: &PublicKey,
+        secret: Secret,
+        attributes: SecretAttributes,
     ) -> Result<KeyId> {
-        self.vault.ec_diffie_hellman(secret, peer_public_key).await
+        self.vault.import_ephemeral_secret(secret, attributes).await
     }
 
-    async fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> Result<KeyId> {
-        self.vault.compute_key_id_for_public_key(public_key).await
+    async fn get_ephemeral_secret(
+        &self,
+        key_id: &KeyId,
+        description: &str,
+    ) -> Result<StoredSecret> {
+        self.vault.get_ephemeral_secret(key_id, description).await
+    }
+
+    async fn get_secret_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes> {
+        self.vault.get_secret_attributes(key_id).await
+    }
+
+    async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
+        self.vault.get_public_key(key_id).await
+    }
+
+    async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
+        self.vault.delete_ephemeral_secret(key_id).await
+    }
+
+    async fn create_ephemeral_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
+        self.vault.create_ephemeral_secret(attributes).await
+    }
+
+    async fn get_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {
+        self.vault.get_key_id(public_key).await
     }
 }
 
@@ -291,20 +247,16 @@ impl Signer for CrazyVault {
 
         Ok(signature)
     }
-}
-
-#[async_trait]
-impl Verifier for CrazyVault {
     async fn verify(
         &self,
-        signature: &Signature,
         public_key: &PublicKey,
         data: &[u8],
+        signature: &Signature,
     ) -> Result<bool> {
         if signature.as_ref().iter().all(|&x| x == 0) {
             return Ok(true);
         }
 
-        self.vault.verify(signature, public_key, data).await
+        self.vault.verify(public_key, data, signature).await
     }
 }

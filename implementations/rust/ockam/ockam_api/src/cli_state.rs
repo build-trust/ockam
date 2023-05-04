@@ -163,7 +163,7 @@ impl CliState {
     pub async fn create_identity_state(
         &self,
         identity_name: Option<&str>,
-        vault: Vault,
+        vault: Arc<Vault>,
     ) -> Result<IdentityState> {
         if let Ok(identity) = self.identities.get_or_default(identity_name) {
             Ok(identity)
@@ -172,7 +172,11 @@ impl CliState {
         }
     }
 
-    async fn make_identity_state(&self, vault: Vault, name: Option<&str>) -> Result<IdentityState> {
+    async fn make_identity_state(
+        &self,
+        vault: Arc<Vault>,
+        name: Option<&str>,
+    ) -> Result<IdentityState> {
         let identity = self
             .get_identities(vault)
             .await?
@@ -186,9 +190,9 @@ impl CliState {
         self.identities.create(&identity_name, identity_config)
     }
 
-    pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
+    pub async fn get_identities(&self, vault: Arc<Vault>) -> Result<Arc<Identities>> {
         Ok(Identities::builder()
-            .with_identities_vault(Arc::new(vault))
+            .with_identities_vault(vault)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
     }
@@ -222,7 +226,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_default_identity_state() {
         let state = CliState::test().unwrap();
-        let vault = Vault::new_in_memory();
+        let vault = Vault::create();
         let identity1 = state
             .create_identity_state(None, vault.clone())
             .await
@@ -240,7 +244,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_named_identity_state() {
         let state = CliState::test().unwrap();
-        let vault = Vault::new_in_memory();
+        let vault = Vault::create();
         let identity1 = state
             .create_identity_state(Some("alice"), vault.clone())
             .await
@@ -285,7 +289,7 @@ mod tests {
         let identity_name = {
             let name = hex::encode(random::<[u8; 4]>());
             let vault_state = sut.vaults.get(&vault_name).unwrap();
-            let vault: Arc<dyn IdentitiesVault> = Arc::new(vault_state.get().await.unwrap());
+            let vault: Arc<dyn IdentitiesVault> = vault_state.get().await.unwrap();
             let identities = Identities::builder()
                 .with_identities_vault(vault)
                 .with_identities_repository(sut.identities.identities_repository().await?)

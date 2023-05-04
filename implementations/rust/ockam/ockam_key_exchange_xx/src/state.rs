@@ -1,14 +1,12 @@
 use crate::{XXError, XXVault, AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_USIZE};
 use ockam_core::compat::sync::Arc;
-use ockam_core::CompletedKeyExchange;
 use ockam_core::{compat::vec::Vec, Result};
-use ockam_vault::{
-    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
-    CURVE25519_PUBLIC_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_U32,
-};
+use ockam_core::{CompletedKeyExchange, KeyId};
+use ockam_vault::{PublicKey, SecretAttributes, SecretType, Vault};
 
 mod dh_state;
 pub(crate) use dh_state::*;
+use ockam_vault::constants::CURVE25519_PUBLIC_LENGTH_USIZE;
 
 /// Represents the XX Handshake
 #[derive(Clone)]
@@ -58,8 +56,8 @@ impl State {
 }
 
 impl State {
-    fn get_symmetric_key_type_and_length(&self) -> (SecretType, u32) {
-        (SecretType::Aes, AES256_SECRET_LENGTH_U32)
+    fn get_symmetric_key_type_attributes(&self) -> SecretAttributes {
+        SecretAttributes::Aes256
     }
 
     fn get_protocol_name(&self) -> &'static [u8] {
@@ -68,31 +66,20 @@ impl State {
 
     /// Create a new `HandshakeState` starting with the prologue
     async fn prologue(&mut self) -> Result<()> {
-        let attributes = SecretAttributes::new(
-            SecretType::X25519,
-            SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH_U32,
-        );
+        let attributes = SecretAttributes::X25519;
         // 1. Generate a static key pair for this handshake and set it to `s`
         if let Some(ik) = &self.identity_key {
-            self.identity_public_key = Some(self.vault.secret_public_key_get(ik).await?);
+            self.identity_public_key = Some(self.vault.get_public_key(ik).await?);
         } else {
-            let static_secret_handle = self.vault.secret_generate(attributes).await?;
-            self.identity_public_key = Some(
-                self.vault
-                    .secret_public_key_get(&static_secret_handle)
-                    .await?,
-            );
+            let static_secret_handle = self.vault.create_ephemeral_secret(attributes).await?;
+            self.identity_public_key =
+                Some(self.vault.get_public_key(&static_secret_handle).await?);
             self.identity_key = Some(static_secret_handle)
         };
 
         // 2. Generate an ephemeral key pair for this handshake and set it to e
-        let ephemeral_secret_handle = self.vault.secret_generate(attributes).await?;
-        self.ephemeral_public = Some(
-            self.vault
-                .secret_public_key_get(&ephemeral_secret_handle)
-                .await?,
-        );
+        let ephemeral_secret_handle = self.vault.create_ephemeral_secret(attributes).await?;
+        self.ephemeral_public = Some(self.vault.get_public_key(&ephemeral_secret_handle).await?);
         self.ephemeral_secret = Some(ephemeral_secret_handle);
 
         // 3. Set k to empty, Set n to 0
@@ -106,8 +93,7 @@ impl State {
         let mut h = [0u8; SHA256_SIZE_USIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
         self.dh_state = DhState::new(&h, self.vault.clone()).await?;
-        self.h = Some(self.vault.sha256(&h).await?);
-
+        self.h = Some(Vault::sha256(&h));
         Ok(())
     }
 
@@ -117,8 +103,7 @@ impl State {
 
         let mut input = h.to_vec();
         input.extend_from_slice(data.as_ref());
-        let h = self.vault.sha256(&input).await?;
-        Ok(h)
+        Ok(Vault::sha256(&input))
     }
 
     /// Encrypt and mix step in Noise protocol
@@ -165,12 +150,7 @@ impl State {
     async fn split(&mut self) -> Result<(KeyId, KeyId)> {
         let ck = self.dh_state.ck().ok_or(XXError::InvalidState)?;
 
-        let symmetric_key_info = self.get_symmetric_key_type_and_length();
-        let attributes = SecretAttributes::new(
-            symmetric_key_info.0,
-            SecretPersistence::Ephemeral,
-            symmetric_key_info.1,
-        );
+        let attributes = self.get_symmetric_key_type_attributes();
         let mut hkdf_output = self
             .vault
             .hkdf_sha256(ck, b"", None, vec![attributes, attributes])
@@ -392,10 +372,7 @@ mod tests {
     use ockam_core::{AsyncTryClone, KeyExchanger};
     use ockam_node::Context;
     use ockam_vault::Vault;
-    use ockam_vault::{
-        Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
-        CURVE25519_SECRET_LENGTH_U32,
-    };
+    use ockam_vault::{Secret, SecretAttributes};
 
     #[ockam_macros::test]
     async fn prologue(ctx: &mut Context) -> Result<()> {
@@ -413,12 +390,12 @@ mod tests {
         assert_eq!(state.h.unwrap(), exp_h);
 
         let ck = vault
-            .secret_export(&state.dh_state.ck.unwrap())
+            .get_ephemeral_secret(&state.dh_state.ck.unwrap(), "ck")
             .await
             .unwrap();
 
         assert_eq!(
-            ck.cast_as_key().as_ref(),
+            ck.secret().as_ref(),
             *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"
         );
         assert_eq!(state.nonce, 0);
@@ -643,50 +620,35 @@ mod tests {
         static_private: &str,
         ephemeral_private: &str,
     ) -> State {
-        let attributes = SecretAttributes::new(
-            SecretType::X25519,
-            SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH_U32,
-        );
+        let secret = Secret::new(decode(static_private).unwrap());
+        let attributes = SecretAttributes::X25519;
+
         // Static x25519 for this handshake, `s`
         let static_secret_handle = vault
-            .secret_import(
-                Secret::Key(SecretKey::new(decode(static_private).unwrap())),
-                attributes,
-            )
+            .import_ephemeral_secret(secret, attributes)
             .await
             .unwrap();
-        let static_public_key = vault
-            .secret_public_key_get(&static_secret_handle)
-            .await
-            .unwrap();
+        let static_public_key = vault.get_public_key(&static_secret_handle).await.unwrap();
 
         // Ephemeral x25519 for this handshake, `e`
+        let secret = Secret::new(decode(ephemeral_private).unwrap());
         let ephemeral_secret_handle = vault
-            .secret_import(
-                Secret::Key(SecretKey::new(decode(ephemeral_private).unwrap())),
-                attributes,
-            )
-            .await
-            .unwrap();
-        let ephemeral_public_key = vault
-            .secret_public_key_get(&ephemeral_secret_handle)
+            .import_ephemeral_secret(secret, attributes)
             .await
             .unwrap();
 
-        let h = vault
-            .sha256(b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0")
+        let ephemeral_public_key = vault
+            .get_public_key(&ephemeral_secret_handle)
             .await
             .unwrap();
+
+        let h = Vault::sha256(b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
         let ck = *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
 
-        let attributes = SecretAttributes::new(
-            SecretType::Buffer,
-            SecretPersistence::Ephemeral,
-            ck.len() as u32,
-        );
+        let attributes = SecretAttributes::Buffer(ck.len() as u32);
+        let secret = Secret::new(ck[..].to_vec());
         let ck = vault
-            .secret_import(Secret::Key(SecretKey::new(ck[..].to_vec())), attributes)
+            .import_ephemeral_secret(secret, attributes)
             .await
             .unwrap();
 

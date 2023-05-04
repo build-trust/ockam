@@ -1,15 +1,15 @@
 mod asymmetric_vault;
-mod hasher;
-mod secret_vault;
+mod kms;
+pub(crate) mod secrets_store;
 mod signer;
 mod symmetric_vault;
-pub(crate) mod types;
-mod verifier;
 
+pub use asymmetric_vault::tests::*;
 pub use asymmetric_vault::*;
-pub use hasher::*;
-pub use secret_vault::*;
+pub use kms::*;
+pub use secrets_store::tests::*;
+pub use secrets_store::*;
+pub use signer::tests::*;
 pub use signer::*;
+pub use symmetric_vault::tests::*;
 pub use symmetric_vault::*;
-pub use types::*;
-pub use verifier::*;

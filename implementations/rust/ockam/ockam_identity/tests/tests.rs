@@ -4,7 +4,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_identity::identities;
 use ockam_node::Context;
-use ockam_vault::{SecretAttributes, SecretPersistence, SecretType};
+use ockam_vault::SecretAttributes;
+use rand::{thread_rng, RngCore};
 
 #[ockam_macros::test]
 async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
@@ -148,11 +149,7 @@ async fn add_key(ctx: &mut Context) -> Result<()> {
     let mut identity = identities_creation.create_identity().await?;
 
     let key = identities_vault
-        .secret_generate(SecretAttributes::new(
-            SecretType::Ed25519,
-            SecretPersistence::Ephemeral,
-            32,
-        ))
+        .create_persistent_secret(SecretAttributes::Ed25519)
         .await?;
 
     identities_keys

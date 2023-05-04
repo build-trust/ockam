@@ -65,16 +65,12 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc", "p256/ecdsa", 
 
 storage = ["ockam_node/storage", "std", "serde"]
 
-aws = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
 # FIXME: Either remove that feature, or avoid unneccessary dependencies when it's disabled
 rustcrypto = []
 
 [dependencies]
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
 arrayref = "0.3"
-# AWS KMS specific:
-aws-config = { version = "0.55.2", default-features = false, features = ["native-tls"], optional = true }
-aws-sdk-kms = { version = "0.27.0", default-features = false, features = ["native-tls"], optional = true }
 cfg-if = "1.0.0"
 curve25519-dalek = { version = "3.1", default-features = false }
 ed25519-dalek = { version = "1.0", default-features = false }
@@ -98,6 +94,7 @@ zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 data-encoding = { version = "2.3.3", features = ["alloc"] }
+serde_bare = { version = "0.5.0" }
 serde_json = { version = "1" }
 tokio = { version = "1.28", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }

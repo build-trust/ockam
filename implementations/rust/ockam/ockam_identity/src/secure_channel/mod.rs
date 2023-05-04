@@ -31,28 +31,14 @@ pub use trust_policy::*;
 #[cfg(test)]
 mod tests {
     use crate::secure_channel::{decryptor::Decryptor, encryptor::Encryptor};
-    use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
-    use ockam_vault::{SecretVault, Vault};
+    use ockam_core::Result;
+    use ockam_vault::{SecretAttributes, SecretsStore, Vault};
     use rand::seq::SliceRandom;
     use rand::thread_rng;
 
     #[tokio::test]
     async fn test_encrypt_decrypt_normal_flow() {
-        let vault1 = Vault::create();
-        let vault2 = Vault::create();
-
-        let secret_attrs = SecretAttributes::new(
-            SecretType::Aes,
-            SecretPersistence::Ephemeral,
-            ockam_core::vault::AES256_SECRET_LENGTH_U32,
-        );
-        let key_on_v1 = vault1.secret_generate(secret_attrs).await.unwrap();
-        let secret = vault1.secret_export(&key_on_v1).await.unwrap();
-
-        let key_on_v2 = vault2.secret_import(secret, secret_attrs).await.unwrap();
-
-        let mut encryptor = Encryptor::new(key_on_v1, 0, vault1);
-        let mut decryptor = Decryptor::new(key_on_v2, vault2);
+        let (mut encryptor, mut decryptor) = create_encryptor_decryptor().await.unwrap();
 
         for n in 0..100 {
             let msg = vec![n];
@@ -68,21 +54,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_encrypt_decrypt_with_message_lost() {
-        let vault1 = Vault::create();
-        let vault2 = Vault::create();
-
-        let secret_attrs = SecretAttributes::new(
-            SecretType::Aes,
-            SecretPersistence::Ephemeral,
-            ockam_core::vault::AES256_SECRET_LENGTH_U32,
-        );
-        let key_on_v1 = vault1.secret_generate(secret_attrs).await.unwrap();
-        let secret = vault1.secret_export(&key_on_v1).await.unwrap();
-
-        let key_on_v2 = vault2.secret_import(secret, secret_attrs).await.unwrap();
-
-        let mut encryptor = Encryptor::new(key_on_v1, 0, vault1);
-        let mut decryptor = Decryptor::new(key_on_v2, vault2);
+        let (mut encryptor, mut decryptor) = create_encryptor_decryptor().await.unwrap();
 
         for n in 0..100 {
             let msg = vec![n];
@@ -97,21 +69,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_encrypt_decrypt_out_of_order() {
-        let vault1 = Vault::create();
-        let vault2 = Vault::create();
-
-        let secret_attrs = SecretAttributes::new(
-            SecretType::Aes,
-            SecretPersistence::Ephemeral,
-            ockam_core::vault::AES256_SECRET_LENGTH_U32,
-        );
-        let key_on_v1 = vault1.secret_generate(secret_attrs).await.unwrap();
-        let secret = vault1.secret_export(&key_on_v1).await.unwrap();
-
-        let key_on_v2 = vault2.secret_import(secret, secret_attrs).await.unwrap();
-
-        let mut encryptor = Encryptor::new(key_on_v1, 0, vault1);
-        let mut decryptor = Decryptor::new(key_on_v2, vault2);
+        let (mut encryptor, mut decryptor) = create_encryptor_decryptor().await.unwrap();
 
         // Vec<(plaintext, ciphertext)>
         let mut all_msgs: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
@@ -149,22 +107,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_attack_nonce() {
-        let vault1 = Vault::create();
-        let vault2 = Vault::create();
-
-        let secret_attrs = SecretAttributes::new(
-            SecretType::Aes,
-            SecretPersistence::Ephemeral,
-            ockam_core::vault::AES256_SECRET_LENGTH_U32,
-        );
-        let key_on_v1 = vault1.secret_generate(secret_attrs).await.unwrap();
-        let secret = vault1.secret_export(&key_on_v1).await.unwrap();
-
-        let key_on_v2 = vault2.secret_import(secret, secret_attrs).await.unwrap();
-
-        let mut encryptor = Encryptor::new(key_on_v1, 0, vault1);
-        let mut decryptor = Decryptor::new(key_on_v2, vault2);
-
+        let (mut encryptor, mut decryptor) = create_encryptor_decryptor().await.unwrap();
         for n in 0..100 {
             let msg = vec![n];
             let ciphertext = encryptor.encrypt(&msg).await.unwrap();
@@ -186,5 +129,27 @@ mod tests {
             // FIXME: fix the implementation so this test pass.
             assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap());
         }
+    }
+
+    async fn create_encryptor_decryptor() -> Result<(Encryptor, Decryptor)> {
+        let vault1 = Vault::create();
+        let vault2 = Vault::create();
+
+        let secret_attrs = SecretAttributes::Aes256;
+        let key_on_v1 = vault1.create_ephemeral_secret(secret_attrs).await.unwrap();
+        let secret = vault1
+            .get_ephemeral_secret(&key_on_v1, "secret")
+            .await
+            .unwrap();
+
+        let key_on_v2 = vault2
+            .import_ephemeral_secret(secret.secret().clone(), secret_attrs)
+            .await
+            .unwrap();
+
+        Ok((
+            Encryptor::new(key_on_v1, 0, vault1),
+            Decryptor::new(key_on_v2, vault2),
+        ))
     }
 }

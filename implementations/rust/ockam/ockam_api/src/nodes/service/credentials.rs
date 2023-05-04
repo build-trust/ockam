@@ -35,7 +35,7 @@ impl NodeManagerWorker {
                 Ok(idt) => idt.identifier(),
                 Err(_) => {
                     let default_vault = &node_manager.cli_state.vaults.default()?.get().await?;
-                    let vault: Arc<dyn IdentitiesVault> = Arc::new(default_vault.clone());
+                    let vault: Arc<dyn IdentitiesVault> = default_vault.clone();
                     idt_state.get(vault).await?.identifier()
                 }
             }

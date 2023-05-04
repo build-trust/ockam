@@ -1,25 +1,22 @@
 use ockam::identity::{IdentityChangeConstants, KeyAttributes};
 use ockam::Node;
 use ockam_core::Result;
-use ockam_vault::Secret::Key;
-use ockam_vault::{SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32};
+use ockam_vault::SecretAttributes;
 
 /// This function can be used to create a new identity and export both it public and private keys
 pub async fn create_identity(node: &Node) -> Result<()> {
-    let attributes = SecretAttributes::new(
-        SecretType::Ed25519,
-        SecretPersistence::Persistent,
-        CURVE25519_SECRET_LENGTH_U32,
-    );
+    let attributes = SecretAttributes::Ed25519;
     let key_attributes = KeyAttributes::new(IdentityChangeConstants::ROOT_LABEL.to_string(), attributes);
 
-    let key_id = node.identities_vault().secret_generate(attributes).await?;
+    let key_id = node.identities_vault().create_persistent_secret(attributes).await?;
     println!("{key_id}");
 
-    if let Key(exported) = node.identities_vault().secret_export(&key_id).await? {
-        let s = hex::encode(exported.as_ref());
-        println!("secret {s:?}");
-    }
+    let exported = node
+        .identities_vault()
+        .get_ephemeral_secret(&key_id, "private key")
+        .await?;
+    let s = hex::encode(exported.secret().as_ref());
+    println!("secret {s:?}");
 
     let identity = node
         .identities_creation()

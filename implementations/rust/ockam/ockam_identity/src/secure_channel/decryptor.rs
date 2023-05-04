@@ -6,7 +6,6 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::KeyId;
 use ockam_core::Result;
 use ockam_key_exchange_xx::XXInitializedVault;
-use ockam_vault::SymmetricVault;
 use tracing::warn;
 
 pub(crate) struct Decryptor {
@@ -52,7 +51,7 @@ impl Decryptor {
 
             if result.is_ok() {
                 if let Some(previous_key) = self.previous_key.replace(self.current_key.clone()) {
-                    self.vault.secret_destroy(previous_key).await?;
+                    self.vault.delete_ephemeral_secret(previous_key).await?;
                 }
 
                 self.nonce_tracker = nonce_tracker;

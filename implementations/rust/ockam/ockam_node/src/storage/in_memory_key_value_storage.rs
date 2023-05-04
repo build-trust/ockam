@@ -29,7 +29,7 @@ impl<K: Ord + Send + Sync + 'static, V: Clone + Send + Sync + 'static> KeyValueS
 
     async fn get(&self, key: &K) -> Result<Option<V>> {
         let storage = self.storage.read().unwrap();
-        let value = storage.get(key).map(|v| v.clone());
+        let value = storage.get(key).cloned();
         Ok(value)
     }
 
@@ -39,12 +39,18 @@ impl<K: Ord + Send + Sync + 'static, V: Clone + Send + Sync + 'static> KeyValueS
     }
 }
 
-impl<K, V> InMemoryKeyValueStorage<K, V> {
+impl<K: Ord + Sync + Send + 'static, V: Clone + Send + Sync + 'static>
+    InMemoryKeyValueStorage<K, V>
+{
     /// Create a new in-memory key / value storage
-    pub fn create() -> InMemoryKeyValueStorage<K, V> {
+    pub fn new() -> InMemoryKeyValueStorage<K, V> {
         InMemoryKeyValueStorage {
             storage: Default::default(),
         }
+    }
+    /// Create a new in-memory key / value storage
+    pub fn create() -> Arc<dyn KeyValueStorage<K, V>> {
+        Arc::new(InMemoryKeyValueStorage::new())
     }
 }
 

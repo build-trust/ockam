@@ -2,8 +2,8 @@ use super::Result;
 use crate::cli_state::traits::StateItemTrait;
 use crate::cli_state::{CliStateError, StateDirTrait};
 use ockam_identity::IdentitiesVault;
-use ockam_vault::storage::VaultFileStorage;
 use ockam_vault::Vault;
+use ockam_vault_aws::{AwsKms, AwsKmsConfig};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
@@ -38,14 +38,17 @@ pub struct VaultState {
 }
 
 impl VaultState {
-    pub async fn get(&self) -> Result<Vault> {
+    pub async fn get(&self) -> Result<Arc<Vault>> {
         if self.config.aws_kms {
-            // TODO: provide an AWS implementation
-            let vault_storage = VaultFileStorage::create(self.vault_file_path().as_path()).await?;
-            Ok(Vault::new(vault_storage))
+            let config = AwsKmsConfig::new();
+            Ok(Vault::builder()
+                .with_kms(AwsKms::create(config).await?)
+                .build())
         } else {
-            let vault_storage = VaultFileStorage::create(self.vault_file_path().as_path()).await?;
-            Ok(Vault::new(vault_storage))
+            Ok(Vault::builder()
+                .with_persistent_storage_path(self.vault_file_path().as_path())
+                .await?
+                .build())
         }
     }
 
@@ -62,7 +65,10 @@ impl VaultState {
 
     pub async fn identities_vault(&self) -> Result<Arc<dyn IdentitiesVault>> {
         let path = self.vault_file_path().clone();
-        let vault = Vault::create_with_path(path.as_path()).await?;
+        let vault = Vault::builder()
+            .with_persistent_storage_path(path.as_path())
+            .await?
+            .build();
         Ok(vault)
     }
 

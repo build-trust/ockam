@@ -27,16 +27,19 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-/// Support functions for testing alternative Vault traits implementations
-pub mod test_support;
+/// Storage
+#[cfg(feature = "storage")]
+pub mod storage;
+
 /// Traits and types defining the behaviour of a Vault
 pub mod traits;
 /// Default Vault implementation
 pub mod vault;
 
-/// Storage
-#[cfg(feature = "storage")]
-pub mod storage;
+/// Main vault types: PublicKey, Secret, SecretAttributes etc...
+mod types;
 
+pub use constants;
 pub use traits::*;
+pub use types::*;
 pub use vault::*;

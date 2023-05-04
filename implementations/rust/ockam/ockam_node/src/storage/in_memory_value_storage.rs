@@ -55,7 +55,7 @@ mod tests {
     async fn test_value_storage() -> Result<()> {
         let storage = InMemoryValueStorage::<Value>::create();
 
-        let initial = storage.read_value(move |value: Value| Ok(value)).await?;
+        let initial = storage.read_value(Ok).await?;
 
         // sanity check
         assert_eq!(Value::default(), Value(0));
@@ -70,7 +70,7 @@ mod tests {
             .unwrap();
 
         // the new value can be read again
-        let updated = storage.read_value(move |value: Value| Ok(value)).await?;
+        let updated = storage.read_value(Ok).await?;
         assert_eq!(updated, Value(10));
 
         Ok(())

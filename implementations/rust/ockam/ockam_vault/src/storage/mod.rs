@@ -1,7 +1,4 @@
-mod file_storage;
-mod secret_storage;
-mod vault_secret_storage;
+/// Storage of secrets to a file
+mod persistent_storage;
 
-pub use file_storage::*;
-pub(crate) use secret_storage::*;
-pub use vault_secret_storage::*;
+pub use persistent_storage::*;

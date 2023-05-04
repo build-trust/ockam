@@ -40,8 +40,8 @@ impl<V: Default + Serialize + for<'de> Deserialize<'de>> FileValueStorage<V> {
 
     /// Create the file storage but don't initialize it
     fn new(path: &Path) -> Self {
-        let temp_path = Self::path_with_suffix(&path, ".tmp");
-        let lock_path = Self::path_with_suffix(&path, ".lock");
+        let temp_path = Self::path_with_suffix(path, ".tmp");
+        let lock_path = Self::path_with_suffix(path, ".lock");
         Self {
             path: path.into(),
             temp_path: temp_path.into(),
@@ -218,7 +218,7 @@ mod tests {
                 .await
                 .unwrap();
 
-        let initial = storage.read_value(move |value: Value| Ok(value)).await?;
+        let initial = storage.read_value(Ok).await?;
 
         // sanity check
         assert_eq!(Value::default(), Value(0));
@@ -233,7 +233,7 @@ mod tests {
             .unwrap();
 
         // the new value can be read again
-        let updated = storage.read_value(move |value: Value| Ok(value)).await?;
+        let updated = storage.read_value(Ok).await?;
         assert_eq!(updated, Value(10));
 
         Ok(())
