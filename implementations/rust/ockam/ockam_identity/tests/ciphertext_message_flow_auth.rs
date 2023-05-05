@@ -34,7 +34,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .clone();
 
     message_should_not_pass(ctx, &connection_to_bob.clone().into()).await?;
-    message_should_not_pass(ctx, &connection_to_alice).await?;
+    message_should_not_pass(ctx, connection_to_alice.address()).await?;
 
     let bob_listener_info =
         create_secure_channel_listener(ctx, listener.flow_control_id(), true).await?;
@@ -88,12 +88,12 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .clone();
 
     message_should_not_pass(ctx, &connection_to_bob.into()).await?;
-    message_should_not_pass(ctx, &connection_to_alice).await?;
+    message_should_not_pass(ctx, connection_to_alice.address()).await?;
 
     let alice_listener_info =
         create_secure_channel_listener(ctx, &alice_flow_control_id, false).await?;
 
-    let channel_to_alice = create_secure_channel(ctx, &connection_to_alice).await?;
+    let channel_to_alice = create_secure_channel(ctx, connection_to_alice.address()).await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
     let channel_to_bob = alice_listener_info.get_channel();
 

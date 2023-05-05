@@ -94,7 +94,7 @@ impl Project {
     // then this will return the string "node.dnsaddr.com:4000".
     fn access_route_socket_addr(&self) -> Result<String> {
         let ma = self.access_route()?;
-        ma.multiaddr_to_socket_addr()
+        ma.to_socket_addr()
             .map_err(|e| ApiError::generic(&e.to_string()))
     }
 }
