@@ -1,6 +1,7 @@
 use minicbor::{Decode, Encode};
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_transport_tcp::TcpConnectionMode;
 use std::fmt::{self, Display};
 
 /// Encode which type of transport is being requested
@@ -34,15 +35,27 @@ impl Display for TransportType {
 pub enum TransportMode {
     /// Listen on a set address
     #[n(0)] Listen,
+    /// Received a connection from a remote peer
+    #[n(1)] Incoming,
     /// Connect to a remote peer
-    #[n(1)] Connect,
+    #[n(2)] Outgoing,
+}
+
+impl From<TcpConnectionMode> for TransportMode {
+    fn from(value: TcpConnectionMode) -> Self {
+        match value {
+            TcpConnectionMode::Outgoing => Self::Outgoing,
+            TcpConnectionMode::Incoming => Self::Incoming,
+        }
+    }
 }
 
 impl Display for TransportMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::Listen => "Listening",
-            Self::Connect => "Remote connection",
+            Self::Incoming => "Incoming connection",
+            Self::Outgoing => "Outgoing connection",
         })
     }
 }

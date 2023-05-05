@@ -50,12 +50,10 @@ pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<(
                  tm,
                  socket_addr,
                  worker_addr,
-                 tid,
                  flow_control_id,
                  ..
              }| {
                 let row = vec![
-                    tid.cell(),
                     tt.cell(),
                     tm.cell(),
                     socket_addr.cell(),
@@ -68,12 +66,11 @@ pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<(
         )
         .table()
         .title(vec![
-            "Transport ID".cell().bold(true),
             "Transport Type".cell().bold(true),
             "Mode".cell().bold(true),
             "Address bind".cell().bold(true),
             "Worker address".cell().bold(true),
-            "FlowControlId".cell().bold(true),
+            "Flow Control Id".cell().bold(true),
         ]);
 
     print_stdout(table)?;

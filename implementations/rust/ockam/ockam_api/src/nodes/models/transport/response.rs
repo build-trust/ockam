@@ -25,15 +25,10 @@ pub struct TransportStatus<'a> {
     #[b(5)] pub worker_addr: CowStr<'a>,
     /// Corresponding flow control id
     #[n(6)] pub flow_control_id: FlowControlId,
-    /// Transport ID inside the node manager
-    ///
-    /// We use this as a kind of URI to be able to address a transport
-    /// by a unique value for specific updates and deletion events.
-    #[b(7)] pub tid: CowStr<'a>,
 }
 
 impl<'a> TransportStatus<'a> {
-    pub fn new(api_transport: ApiTransport, tid: impl Into<CowStr<'a>>) -> Self {
+    pub fn new(api_transport: ApiTransport) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -42,7 +37,6 @@ impl<'a> TransportStatus<'a> {
             socket_addr: CowStr::from(api_transport.socket_address.to_string()),
             worker_addr: CowStr::from(api_transport.worker_address.to_string()),
             flow_control_id: api_transport.flow_control_id,
-            tid: tid.into(),
         }
     }
 
