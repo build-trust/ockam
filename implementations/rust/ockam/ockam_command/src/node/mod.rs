@@ -11,7 +11,10 @@ use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
 
-use crate::{docs, fmt_info, fmt_log, util::OckamConfig, CommandGlobalOpts, GlobalArgs, Result};
+use crate::{
+    docs, fmt_info, fmt_log, terminal::OckamColor, util::OckamConfig, CommandGlobalOpts,
+    GlobalArgs, Result, PARSER_LOGS,
+};
 
 mod create;
 mod default;
@@ -107,7 +110,6 @@ pub fn node_name_parser(node_name: &str) -> Result<String> {
 
 pub fn spawn_default_node(node_name: &str) -> String {
     let config = OckamConfig::load().expect("Failed to load config");
-    let opts = CommandGlobalOpts::new(GlobalArgs::parse_from_input(), config.clone());
     let quiet_opts = CommandGlobalOpts::new(
         GlobalArgs {
             quiet: true,
@@ -116,17 +118,19 @@ pub fn spawn_default_node(node_name: &str) -> String {
         config,
     );
 
-    let _ = opts
-        .terminal
-        .write_line(&fmt_info!("No default node found. Creating one..."));
-
     let mut create_command = CreateCommand::default();
     create_command.node_name = node_name.to_string();
     create_command.run(quiet_opts);
 
-    let _ = opts
-        .terminal
-        .write_line(&fmt_log!("Created default node: {}", node_name));
+    if let Ok(mut logs) = PARSER_LOGS.lock() {
+        logs.push(fmt_info!("No default node was found."));
+        logs.push(fmt_log!(
+            "Created default node, {}",
+            node_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ));
+    }
 
     node_name.to_string()
 }

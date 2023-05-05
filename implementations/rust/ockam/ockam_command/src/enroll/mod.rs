@@ -23,6 +23,7 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::check_project_readiness;
 
 use crate::space::util::config;
+
 use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
 
@@ -54,15 +55,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> R
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
-    let ockam_header = include_str!("../../static/ockam_ascii.txt").trim();
-    let colored_header = ockam_header.gradient_with_color(
-        OckamColor::OckamBlue.color(),
-        OckamColor::HeaderGradient.color(),
-    );
-
-    opts.terminal
-        .write_line(&format!("\n{}\n", colored_header))?;
-
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     enroll(ctx, &opts, &cmd, &node_name).await?;
@@ -146,7 +138,10 @@ async fn default_space<'a>(
 
     opts.terminal.write_line(&fmt_info!(
         "Space {} is set as default",
-        default_space.name.to_string().light_magenta()
+        default_space
+            .name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
     ))?;
     Ok(default_space)
 }
@@ -190,7 +185,10 @@ async fn default_project(
 
     opts.terminal.write_line(&fmt_info!(
         "Project {} is set as default",
-        project.name.to_string().light_magenta()
+        project
+            .name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
     ))?;
 
     opts.state

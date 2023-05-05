@@ -11,8 +11,9 @@ pub(crate) use list::ListCommand;
 use ockam_api::cli_state::CliState;
 pub(crate) use show::ShowCommand;
 
+use crate::terminal::OckamColor;
 use crate::util::OckamConfig;
-use crate::{docs, fmt_info, fmt_log, CommandGlobalOpts, GlobalArgs, Result};
+use crate::{docs, fmt_info, fmt_log, CommandGlobalOpts, GlobalArgs, Result, PARSER_LOGS};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
@@ -88,7 +89,6 @@ pub fn identity_name_parser(identity_name: &str) -> Result<String> {
 
 pub fn create_default_identity(identity_name: &str) -> String {
     let config = OckamConfig::load().expect("Failed to load config");
-    let opts = CommandGlobalOpts::new(GlobalArgs::parse_from_input(), config.clone());
     let quiet_opts = CommandGlobalOpts::new(
         GlobalArgs {
             quiet: true,
@@ -97,15 +97,18 @@ pub fn create_default_identity(identity_name: &str) -> String {
         config,
     );
 
-    let _ = opts
-        .terminal
-        .write_line(&fmt_info!("No default identity found. Creating one..."));
-
     let create_command = CreateCommand::new(identity_name.into(), None);
     create_command.run(quiet_opts);
 
-    let _ = opts
-        .terminal
-        .write_line(&fmt_log!("Created default identity: {}", identity_name));
+    if let Ok(mut logs) = PARSER_LOGS.lock() {
+        logs.push(fmt_info!("No default identity was found."));
+        logs.push(fmt_log!(
+            "Created default identity, {}",
+            identity_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ));
+    }
+
     identity_name.to_string()
 }
