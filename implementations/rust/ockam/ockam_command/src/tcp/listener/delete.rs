@@ -15,7 +15,7 @@ pub struct DeleteCommand {
     node_opts: NodeOpts,
 
     /// Tcp Listener ID
-    pub id: String,
+    pub address: String,
 }
 
 impl DeleteCommand {
@@ -31,19 +31,19 @@ async fn run_impl(
     let node = parse_node_name(&cmd.node_opts.api_node)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     let req = Request::delete("/node/tcp/listener")
-        .body(models::transport::DeleteTransport::new(&cmd.id));
+        .body(models::transport::DeleteTransport::new(cmd.address.clone()));
     rpc.request(req).await?;
     rpc.is_ok()?;
 
     opts.terminal
         .stdout()
         .plain(format!(
-            "{} TCP listener with id '{}' has been deleted.",
+            "{} TCP listener with address '{}' has been deleted.",
             "✔︎".light_green(),
-            &cmd.id
+            &cmd.address
         ))
-        .machine(&cmd.id)
-        .json(serde_json::json!({ "tcp-listener": { "id": &cmd.id } }))
+        .machine(&cmd.address)
+        .json(serde_json::json!({ "tcp-listener": { "address": &cmd.address } }))
         .write_line()?;
 
     Ok(())

@@ -1,14 +1,10 @@
 //! Nodemanager API types
 
-// TODO: split up this file into sub modules
-
 use minicbor::{Decode, Encode};
 use ockam_core::CowStr;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-
-///////////////////-!  REQUEST BODIES
 
 ///////////////////-!  RESPONSE BODIES
 
@@ -23,7 +19,6 @@ pub struct NodeStatus<'a> {
     #[b(2)] pub status: CowStr<'a>,
     #[n(3)] pub workers: u32,
     #[n(4)] pub pid: i32,
-    #[n(5)] pub transports: u32,
 }
 
 impl<'a> NodeStatus<'a> {
@@ -32,7 +27,6 @@ impl<'a> NodeStatus<'a> {
         status: impl Into<CowStr<'a>>,
         workers: u32,
         pid: i32,
-        transports: u32,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -41,7 +35,6 @@ impl<'a> NodeStatus<'a> {
             status: status.into(),
             workers,
             pid,
-            transports,
         }
     }
 }

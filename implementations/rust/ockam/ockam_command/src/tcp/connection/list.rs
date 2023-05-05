@@ -40,12 +40,10 @@ async fn run_impl(
                  tm,
                  socket_addr,
                  worker_addr,
-                 tid,
                  flow_control_id,
                  ..
              }| {
                 let row = vec![
-                    tid.cell(),
                     tt.cell(),
                     tm.cell(),
                     socket_addr.cell(),
@@ -58,12 +56,11 @@ async fn run_impl(
         )
         .table()
         .title(vec![
-            "Transport ID".cell().bold(true),
             "Transport Type".cell().bold(true),
             "Mode".cell().bold(true),
             "Socket address".cell().bold(true),
             "Worker address".cell().bold(true),
-            "FlowControlId".cell().bold(true),
+            "Flow Control Id".cell().bold(true),
         ]);
 
     print_stdout(table).context("failed to print node status")?;

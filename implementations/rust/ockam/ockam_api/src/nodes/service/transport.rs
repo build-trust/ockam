@@ -3,7 +3,7 @@ use crate::nodes::models::transport::{
     CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportList, TransportMode,
     TransportStatus, TransportType,
 };
-use crate::nodes::service::{random_alias, Alias, ApiTransport, Transports};
+use crate::nodes::service::ApiTransport;
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
@@ -12,7 +12,10 @@ use ockam_core::{Address, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Secure, Service, Worker};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions};
+use ockam_transport_tcp::{
+    TcpConnectionOptions, TcpListenerInfo, TcpListenerOptions, TcpSenderInfo, TcpTransport,
+};
+use std::net::SocketAddr;
 
 use super::NodeManagerWorker;
 
@@ -81,47 +84,160 @@ fn handle_expose_to_multiaddr(
 }
 
 impl NodeManagerWorker {
-    pub(super) fn get_tcp_con_or_list<'a>(
+    fn find_connection(tcp: &TcpTransport, address: String) -> Option<TcpSenderInfo> {
+        match address.parse::<SocketAddr>() {
+            Ok(socket_address) => tcp
+                .registry()
+                .get_all_sender_workers()
+                .iter()
+                .find(|x| x.socket_address() == socket_address)
+                .cloned(),
+            Err(_err) => {
+                let address: Address = address.into();
+
+                // Check if it's a Receiver Address
+                let address = if let Some(receiver) = tcp
+                    .registry()
+                    .get_all_receiver_processors()
+                    .iter()
+                    .find(|x| x.address() == &address)
+                {
+                    receiver.sender_address().clone()
+                } else {
+                    address
+                };
+
+                tcp.registry()
+                    .get_all_sender_workers()
+                    .iter()
+                    .find(|x| x.address() == &address)
+                    .cloned()
+            }
+        }
+    }
+
+    fn find_listener(tcp: &TcpTransport, address: String) -> Option<TcpListenerInfo> {
+        match address.parse::<SocketAddr>() {
+            Ok(socket_address) => tcp
+                .registry()
+                .get_all_listeners()
+                .iter()
+                .find(|x| x.socket_address() == socket_address)
+                .cloned(),
+            Err(_err) => {
+                let address: Address = address.into();
+
+                tcp.registry()
+                    .get_all_listeners()
+                    .iter()
+                    .find(|x| x.address() == &address)
+                    .cloned()
+            }
+        }
+    }
+
+    pub(super) fn get_tcp_connections<'a>(
         &self,
         req: &Request<'a>,
-        transports: &'a Transports,
-        mode: TransportMode,
+        tcp: &TcpTransport,
     ) -> ResponseBuilder<TransportList<'a>> {
+        let map = |info: &TcpSenderInfo| {
+            TransportStatus::new(ApiTransport {
+                tt: TransportType::Tcp,
+                tm: (*info.mode()).into(),
+                socket_address: info.socket_address(),
+                worker_address: info.address().clone(),
+                flow_control_id: info.flow_control_id().clone(),
+            })
+        };
+
         Response::ok(req.id()).body(TransportList::new(
-            transports
+            tcp.registry()
+                .get_all_sender_workers()
                 .iter()
-                .filter(|(_, ApiTransport { tm, .. })| *tm == mode)
-                .map(|(tid, api_transport)| {
-                    TransportStatus::new(api_transport.clone(), tid.to_string())
-                })
+                .map(map)
                 .collect(),
         ))
     }
 
-    pub(super) async fn get_transport<'a>(
+    pub(super) fn get_tcp_connection<'a>(
         &self,
         req: &Request<'a>,
-        id: &str,
-        tt: TransportType,
-        tm: TransportMode,
-    ) -> Result<Vec<u8>> {
-        let transport = {
-            let inner = self.node_manager.read().await;
-            inner.transports.get(id).cloned()
-        };
-        let res = match transport {
-            None => Response::not_found(req.id()).to_vec()?,
-            Some(transport) => {
-                if transport.tt == tt && transport.tm == tm {
-                    Response::ok(req.id())
-                        .body(TransportStatus::new(transport, id.to_string()))
-                        .to_vec()?
-                } else {
-                    Response::not_found(req.id()).to_vec()?
-                }
+        tcp: &TcpTransport,
+        address: String,
+    ) -> ResponseBuilder<TransportStatus<'a>> {
+        let sender = match Self::find_connection(tcp, address) {
+            None => {
+                return Response::bad_request(req.id()).body(TransportStatus::new(ApiTransport {
+                    tt: TransportType::Tcp,
+                    tm: TransportMode::Outgoing,
+                    socket_address: "0.0.0.0:0000".parse().unwrap(),
+                    worker_address: "<none>".into(),
+                    flow_control_id: FlowControls::generate_id(), // FIXME
+                }));
             }
+            Some(sender) => sender,
         };
-        Ok(res)
+
+        let status = TransportStatus::new(ApiTransport {
+            tt: TransportType::Tcp,
+            tm: (*sender.mode()).into(),
+            socket_address: sender.socket_address(),
+            worker_address: sender.address().clone(),
+            flow_control_id: sender.flow_control_id().clone(),
+        });
+
+        Response::ok(req.id()).body(status)
+    }
+
+    pub(super) fn get_tcp_listeners<'a>(
+        &self,
+        req: &Request<'a>,
+        tcp: &TcpTransport,
+    ) -> ResponseBuilder<TransportList<'a>> {
+        let map = |info: &TcpListenerInfo| {
+            TransportStatus::new(ApiTransport {
+                tt: TransportType::Tcp,
+                tm: TransportMode::Listen,
+                socket_address: info.socket_address(),
+                worker_address: info.address().clone(),
+                flow_control_id: info.flow_control_id().clone(),
+            })
+        };
+
+        Response::ok(req.id()).body(TransportList::new(
+            tcp.registry().get_all_listeners().iter().map(map).collect(),
+        ))
+    }
+
+    pub(super) fn get_tcp_listener<'a>(
+        &self,
+        req: &Request<'a>,
+        tcp: &TcpTransport,
+        address: String,
+    ) -> ResponseBuilder<TransportStatus<'a>> {
+        let listener = match Self::find_listener(tcp, address) {
+            None => {
+                return Response::bad_request(req.id()).body(TransportStatus::new(ApiTransport {
+                    tt: TransportType::Tcp,
+                    tm: TransportMode::Listen,
+                    socket_address: "0.0.0.0:0000".parse().unwrap(),
+                    worker_address: "<none>".into(),
+                    flow_control_id: FlowControls::generate_id(), // FIXME
+                }));
+            }
+            Some(listener) => listener,
+        };
+
+        let status = TransportStatus::new(ApiTransport {
+            tt: TransportType::Tcp,
+            tm: TransportMode::Listen,
+            socket_address: listener.socket_address(),
+            worker_address: listener.address().clone(),
+            flow_control_id: listener.flow_control_id().clone(),
+        });
+
+        Response::ok(req.id()).body(status)
     }
 
     pub(super) async fn create_tcp_connection<'a>(
@@ -130,7 +246,7 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<ResponseBuilder<TransportStatus<'a>>> {
-        let mut node_manager = self.node_manager.write().await;
+        let node_manager = self.node_manager.read().await;
         let CreateTcpConnection {
             addr, exposed_to, ..
         } = dec.decode()?;
@@ -154,31 +270,24 @@ impl NodeManagerWorker {
 
         let response = match res {
             Ok(connection) => {
-                let tid = random_alias();
                 let api_transport = ApiTransport {
                     tt: Tcp,
-                    tm: Connect,
+                    tm: Outgoing,
                     socket_address: *connection.socket_address(),
                     worker_address: connection.sender_address().clone(),
                     flow_control_id: connection.flow_control_id().clone(),
                 };
-                node_manager
-                    .transports
-                    .insert(tid.clone(), api_transport.clone());
-                Response::ok(req.id()).body(TransportStatus::new(api_transport, tid))
+                Response::ok(req.id()).body(TransportStatus::new(api_transport))
             }
             Err(msg) => {
                 error!("{}", msg.to_string());
-                Response::bad_request(req.id()).body(TransportStatus::new(
-                    ApiTransport {
-                        tt: Tcp,
-                        tm: Connect,
-                        socket_address: "0.0.0.0:0000".parse().unwrap(),
-                        worker_address: "<none>".into(),
-                        flow_control_id: FlowControls::generate_id(), // FIXME
-                    },
-                    "<none>".to_string(),
-                ))
+                Response::bad_request(req.id()).body(TransportStatus::new(ApiTransport {
+                    tt: Tcp,
+                    tm: Outgoing,
+                    socket_address: "0.0.0.0:0000".parse().unwrap(),
+                    worker_address: "<none>".into(),
+                    flow_control_id: FlowControls::generate_id(), // FIXME
+                }))
             }
         };
 
@@ -190,7 +299,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<TransportStatus<'a>>> {
-        let mut node_manager = self.node_manager.write().await;
+        let node_manager = self.node_manager.read().await;
         let CreateTcpListener { addr, .. } = dec.decode()?;
 
         use {super::TransportType::*, TransportMode::*};
@@ -202,7 +311,6 @@ impl NodeManagerWorker {
 
         let response = match res {
             Ok(listener) => {
-                let tid = random_alias();
                 let api_transport = ApiTransport {
                     tt: Tcp,
                     tm: Listen,
@@ -210,59 +318,88 @@ impl NodeManagerWorker {
                     worker_address: listener.processor_address().clone(),
                     flow_control_id: listener.flow_control_id().clone(),
                 };
-                node_manager
-                    .transports
-                    .insert(tid.clone(), api_transport.clone());
-                Response::ok(req.id()).body(TransportStatus::new(api_transport, tid))
+                Response::ok(req.id()).body(TransportStatus::new(api_transport))
             }
             Err(msg) => {
                 error!("{}", msg.to_string());
-                Response::bad_request(req.id()).body(TransportStatus::new(
-                    ApiTransport {
-                        tt: Tcp,
-                        tm: Listen,
-                        socket_address: "0.0.0.0:0000".parse().unwrap(),
-                        worker_address: "<none>".into(),
-                        flow_control_id: FlowControls::generate_id(), // FIXME
-                    },
-                    "<none>".to_string(),
-                ))
+                Response::bad_request(req.id()).body(TransportStatus::new(ApiTransport {
+                    tt: Tcp,
+                    tm: Listen,
+                    socket_address: "0.0.0.0:0000".parse().unwrap(),
+                    worker_address: "<none>".into(),
+                    flow_control_id: FlowControls::generate_id(), // FIXME
+                }))
             }
         };
 
         Ok(response)
     }
 
-    pub(super) async fn delete_transport(
+    pub(super) async fn delete_tcp_connection(
         &self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<()>> {
-        let mut node_manager = self.node_manager.write().await;
+        let node_manager = self.node_manager.read().await;
         let body: DeleteTransport = dec.decode()?;
-        info!("Handling request to delete transport: {}", body.tid);
+        info!("Handling request to stop listener: {}", body.address);
 
-        let tid: Alias = body.tid.to_string();
-
-        match node_manager.transports.get(&tid) {
-            Some(t) if t.tm == TransportMode::Listen => {
-                // FIXME: stopping the listener shuts down the entire node
-                // node_manager
-                //     .tcp_transport
-                //     .stop_listener(&t.worker_address)
-                //     .await?;
-                node_manager.transports.remove(&tid);
-                Ok(Response::ok(req.id()))
-            }
-            Some(t) => {
-                node_manager
+        let sender_address = match body.address.parse::<SocketAddr>() {
+            Ok(socket_address) => {
+                match node_manager
                     .tcp_transport
-                    .disconnect(&t.worker_address)
-                    .await?;
-                node_manager.transports.remove(&tid);
-                Ok(Response::ok(req.id()))
+                    .registry()
+                    .get_all_sender_workers()
+                    .iter()
+                    .find(|x| x.socket_address() == socket_address)
+                    .map(|x| x.address().clone())
+                {
+                    None => return Ok(Response::bad_request(req.id())),
+                    Some(addr) => addr,
+                }
             }
-            None => Ok(Response::bad_request(req.id())),
+            Err(_err) => body.address.into(),
+        };
+
+        match node_manager.tcp_transport.disconnect(&sender_address).await {
+            Ok(_) => Ok(Response::ok(req.id())),
+            Err(_err) => Ok(Response::bad_request(req.id())),
+        }
+    }
+
+    pub(super) async fn delete_tcp_listener(
+        &self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<()>> {
+        let node_manager = self.node_manager.read().await;
+        let body: DeleteTransport = dec.decode()?;
+        info!("Handling request to stop listener: {}", body.address);
+
+        let listener_address = match body.address.parse::<SocketAddr>() {
+            Ok(socket_address) => {
+                match node_manager
+                    .tcp_transport
+                    .registry()
+                    .get_all_listeners()
+                    .iter()
+                    .find(|x| x.socket_address() == socket_address)
+                    .map(|x| x.address().clone())
+                {
+                    None => return Ok(Response::bad_request(req.id())),
+                    Some(addr) => addr,
+                }
+            }
+            Err(_err) => body.address.into(),
+        };
+
+        match node_manager
+            .tcp_transport
+            .stop_listener(&listener_address)
+            .await
+        {
+            Ok(_) => Ok(Response::ok(req.id())),
+            Err(_err) => Ok(Response::bad_request(req.id())),
         }
     }
 }

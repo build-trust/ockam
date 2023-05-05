@@ -86,14 +86,11 @@ pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Err
     invalid_multiaddr_error()
 }
 
-type Transports = BTreeMap<Alias, ApiTransport>;
-
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
     node_name: String,
     api_transport: ApiTransport,
-    transports: Transports,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
@@ -349,7 +346,6 @@ impl NodeManager {
             cli_state,
             node_name: general_options.node_name,
             api_transport: transport_options.api_transport,
-            transports,
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults: general_options.skip_defaults,
@@ -586,7 +582,6 @@ impl NodeManagerWorker {
                         "Running",
                         ctx.list_workers().await?.len() as u32,
                         std::process::id() as i32,
-                        node_manager.transports.len() as u32,
                     ))
                     .to_vec()?
             }
@@ -594,39 +589,37 @@ impl NodeManagerWorker {
             // ==*== Tcp Connection ==*==
             (Get, ["node", "tcp", "connection"]) => {
                 let node_manager = self.node_manager.read().await;
-                self.get_tcp_con_or_list(req, &node_manager.transports, TransportMode::Connect)
+                self.get_tcp_connections(req, &node_manager.tcp_transport)
                     .to_vec()?
             }
-            (Get, ["node", "tcp", "connection", id]) => {
-                self.get_transport(req, id, TransportType::Tcp, TransportMode::Connect)
-                    .await?
+            (Get, ["node", "tcp", "connection", address]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_tcp_connection(req, &node_manager.tcp_transport, address.to_string())
+                    .to_vec()?
             }
             (Post, ["node", "tcp", "connection"]) => {
                 self.create_tcp_connection(req, dec, ctx).await?.to_vec()?
             }
             (Delete, ["node", "tcp", "connection"]) => {
-                self.delete_transport(req, dec).await?.to_vec()?
+                self.delete_tcp_connection(req, dec).await?.to_vec()?
             }
 
             // ==*== Tcp Listeners ==*==
             (Get, ["node", "tcp", "listener"]) => {
                 let node_manager = self.node_manager.read().await;
-                self.get_tcp_con_or_list(
-                    req,
-                    &node_manager.transports.clone(),
-                    TransportMode::Listen,
-                )
-                .to_vec()?
+                self.get_tcp_listeners(req, &node_manager.tcp_transport)
+                    .to_vec()?
             }
-            (Get, ["node", "tcp", "listener", id]) => {
-                self.get_transport(req, id, TransportType::Tcp, TransportMode::Listen)
-                    .await?
+            (Get, ["node", "tcp", "listener", address]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_tcp_listener(req, &node_manager.tcp_transport, address.to_string())
+                    .to_vec()?
             }
             (Post, ["node", "tcp", "listener"]) => {
                 self.create_tcp_listener(req, dec).await?.to_vec()?
             }
             (Delete, ["node", "tcp", "listener"]) => {
-                self.delete_transport(req, dec).await?.to_vec()?
+                self.delete_tcp_listener(req, dec).await?.to_vec()?
             }
 
             // ==*== Credential ==*==
