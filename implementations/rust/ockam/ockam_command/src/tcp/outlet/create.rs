@@ -12,13 +12,13 @@ use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
 use ockam_abac::Resource;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_core::api::{Request, RequestBuilder};
+use ockam_multiaddr::MultiAddr;
+use std::net::SocketAddr;
 use tokio::sync::Mutex;
 use tokio::try_join;
-
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use std::net::SocketAddr;
 
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
@@ -38,6 +38,9 @@ pub struct CreateCommand {
     /// Assign a name to this outlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
     alias: Option<String>,
+
+    #[arg(short, long, value_name = "EXPOSED")]
+    pub exposed_to: Option<Vec<MultiAddr>>,
 }
 
 impl CreateCommand {
@@ -129,7 +132,8 @@ fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, 
     let tcp_addr = cmd.to.to_string();
     let worker_addr = cmd.from;
     let alias = cmd.alias.map(|a| a.into());
-    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias);
+    let exposed_to = cmd.exposed_to.unwrap_or(vec![]);
+    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, exposed_to);
     let request = Request::post("/node/outlet").body(payload);
     Ok(request)
 }

@@ -41,6 +41,7 @@ async fn run_impl(
                  socket_addr,
                  worker_addr,
                  tid,
+                 flow_control_id,
                  ..
              }| {
                 let row = vec![
@@ -49,6 +50,7 @@ async fn run_impl(
                     tm.cell(),
                     socket_addr.cell(),
                     worker_addr.cell(),
+                    flow_control_id.cell(),
                 ];
                 acc.push(row);
                 acc
@@ -61,6 +63,7 @@ async fn run_impl(
             "Mode".cell().bold(true),
             "Socket address".cell().bold(true),
             "Worker address".cell().bold(true),
+            "FlowControlId".cell().bold(true),
         ]);
 
     print_stdout(table).context("failed to print node status")?;

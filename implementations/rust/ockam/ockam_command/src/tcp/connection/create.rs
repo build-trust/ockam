@@ -28,6 +28,9 @@ pub struct CreateCommand {
     /// The address to connect to (required)
     #[arg(id = "to", short, long, value_name = "ADDRESS")]
     pub address: String,
+
+    #[arg(short, long, value_name = "EXPOSED")]
+    pub exposed_to: Option<Vec<MultiAddr>>,
 }
 
 impl CreateCommand {
