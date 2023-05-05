@@ -59,12 +59,10 @@ impl CreateCommand {
                 let to = response.socket_addr()?;
                 if opts.global_args.no_color {
                     println!("\n  TCP Connection:");
-                    println!("    ID: {}", response.tid);
                     println!("    From: /node/{from}");
                     println!("    To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
                 } else {
                     println!("\n  TCP Connection:");
-                    println!("{}", format!("    ID: {}", response.tid).light_magenta());
                     println!("{}", format!("    From: /node/{from}").light_magenta());
                     println!(
                         "{}",

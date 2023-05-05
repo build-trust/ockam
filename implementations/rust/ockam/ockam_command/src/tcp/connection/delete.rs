@@ -11,7 +11,7 @@ pub struct DeleteCommand {
     node_opts: NodeOpts,
 
     /// Tcp Connection ID
-    pub id: String,
+    pub address: String,
 }
 
 impl DeleteCommand {
@@ -28,10 +28,10 @@ async fn run_impl(
 
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let req = Request::delete("/node/tcp/connection")
-        .body(models::transport::DeleteTransport::new(&cmd.id));
+        .body(models::transport::DeleteTransport::new(cmd.address.clone()));
     rpc.request(req).await?;
     rpc.is_ok()?;
 
-    println!("Tcp connection `{}` successfully deleted", cmd.id);
+    println!("Tcp connection `{}` successfully deleted", cmd.address);
     Ok(())
 }

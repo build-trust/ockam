@@ -1,5 +1,4 @@
 use minicbor::{Decode, Encode};
-use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_multiaddr::MultiAddr;
@@ -52,19 +51,19 @@ impl CreateTcpListener {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct DeleteTransport<'a> {
+pub struct DeleteTransport {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4739996>,
     /// The transport ID to delete
-    #[b(1)] pub tid: CowStr<'a>,
+    #[n(1)] pub address: String,
 }
 
-impl<'a> DeleteTransport<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(tid: S) -> Self {
+impl DeleteTransport {
+    pub fn new(address: String) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tid: tid.into(),
+            address,
         }
     }
 }
