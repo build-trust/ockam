@@ -4,6 +4,7 @@ use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl};
 
 /// Trust Options for an Inlet
+#[derive(Debug)]
 pub struct TcpInletOptions {
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
@@ -60,12 +61,14 @@ impl Default for TcpInletOptions {
     }
 }
 
+#[derive(Debug)]
 pub(super) struct ConsumerFlowControl {
     pub(super) flow_control_id: FlowControlId,
     pub(super) flow_control_policy: FlowControlPolicy,
 }
 
 /// Trust Options for an Outlet
+#[derive(Debug)]
 pub struct TcpOutletOptions {
     pub(super) consumer_flow_control: Vec<ConsumerFlowControl>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
