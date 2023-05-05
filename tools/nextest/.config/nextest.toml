@@ -1,3 +1,6 @@
+[profile.default]
+slow-timeout = { period = "2m", terminate-after = 3, grace-period = "30s" }
+
 [test-groups]
 sequential = { max-threads = 1 }
 
