@@ -23,10 +23,6 @@ pub struct StartCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum StartSubCommand {
-    Vault {
-        #[arg(default_value_t = vault_default_addr())]
-        addr: String,
-    },
     Identity {
         #[arg(default_value_t = identity_default_addr())]
         addr: String,
@@ -56,10 +52,6 @@ pub enum StartSubCommand {
         #[arg(long)]
         project: String,
     },
-}
-
-fn vault_default_addr() -> String {
-    DefaultAddress::VAULT_SERVICE.to_string()
 }
 
 fn identity_default_addr() -> String {
@@ -103,9 +95,6 @@ async fn run_impl(
     let node_name = &cmd.node_opts.api_node;
     let tcp = TcpTransport::create(ctx).await?;
     match cmd.create_subcommand {
-        StartSubCommand::Vault { addr, .. } => {
-            start_vault_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?
-        }
         StartSubCommand::Identity { addr, .. } => {
             start_identity_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?
         }
@@ -169,18 +158,6 @@ where
             Err(anyhow!("Failed to start {serv_name} service").into())
         }
     }
-}
-
-/// Public so `ockam_command::node::create` can use it.
-pub async fn start_vault_service(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-    serv_addr: &str,
-    tcp: Option<&'_ TcpTransport>,
-) -> Result<()> {
-    let req = api::start_vault_service(serv_addr);
-    start_service_impl(ctx, opts, node_name, serv_addr, "Vault", req, tcp).await
 }
 
 /// Public so `ockam_command::node::create` can use it.

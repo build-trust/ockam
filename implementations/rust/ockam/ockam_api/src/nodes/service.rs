@@ -397,8 +397,6 @@ impl NodeManager {
 
     async fn initialize_defaults(&mut self, ctx: &Context) -> Result<()> {
         // Start services
-        self.start_vault_service_impl(ctx, DefaultAddress::VAULT_SERVICE.into())
-            .await?;
         self.start_identity_service_impl(ctx, DefaultAddress::IDENTITY_SERVICE.into())
             .await?;
         self.start_authenticated_service_impl(ctx, DefaultAddress::AUTHENTICATED_SERVICE.into())
@@ -648,9 +646,6 @@ impl NodeManagerWorker {
                 .to_vec()?,
 
             // ==*== Services ==*==
-            (Post, ["node", "services", DefaultAddress::VAULT_SERVICE]) => {
-                self.start_vault_service(ctx, req, dec).await?.to_vec()?
-            }
             (Post, ["node", "services", DefaultAddress::IDENTITY_SERVICE]) => {
                 self.start_identity_service(ctx, req, dec).await?.to_vec()?
             }

@@ -103,26 +103,6 @@ impl<'a> StartKafkaProducerRequest<'a> {
     }
 }
 
-/// Request body when instructing a node to start a Vault service
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct StartVaultServiceRequest<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<9798850>,
-    #[b(1)] pub addr: CowStr<'a>,
-}
-
-impl<'a> StartVaultServiceRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr: addr.into(),
-        }
-    }
-}
-
 /// Request body when instructing a node to start an Identity service
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]

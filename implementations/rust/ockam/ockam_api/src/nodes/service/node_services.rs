@@ -1,3 +1,19 @@
+use std::net::IpAddr;
+
+use minicbor::Decoder;
+
+use ockam::{Address, Context, Result};
+use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
+use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
+use ockam_core::compat::net::SocketAddr;
+use ockam_core::compat::sync::Arc;
+use ockam_core::{route, AllowAll, IncomingAccessControl};
+use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
+use ockam_multiaddr::proto::Project;
+use ockam_multiaddr::MultiAddr;
+use ockam_node::WorkerBuilder;
+
 use crate::auth::Server;
 use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::echoer::Echoer;
@@ -14,7 +30,7 @@ use crate::nodes::models::services::{
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
     StartIdentityServiceRequest, StartKafkaConsumerRequest, StartKafkaProducerRequest,
     StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
-    StartVaultServiceRequest, StartVerifierService,
+    StartVerifierService,
 };
 use crate::nodes::registry::{
     AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
@@ -23,52 +39,12 @@ use crate::nodes::registry::{
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
-use crate::vault::VaultService;
 use crate::DefaultAddress;
 use crate::{actions, resources};
-use minicbor::Decoder;
-use ockam::{Address, Context, Result};
-use ockam_abac::expr::{and, eq, ident, str};
-use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
-use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
-use ockam_core::compat::net::SocketAddr;
-use ockam_core::compat::sync::Arc;
-use ockam_core::{route, AllowAll, IncomingAccessControl};
-use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
-use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::MultiAddr;
-use ockam_node::WorkerBuilder;
-use std::net::IpAddr;
 
 use super::NodeManagerWorker;
 
 impl NodeManager {
-    pub(super) async fn start_vault_service_impl(
-        &mut self,
-        ctx: &Context,
-        addr: Address,
-    ) -> Result<()> {
-        if self.registry.vault_services.contains_key(&addr) {
-            return Err(ApiError::generic("Vault service exists at this address"));
-        }
-
-        let service = VaultService::new(self.secure_channels_vault());
-
-        ctx.start_worker(
-            addr.clone(),
-            service,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
-
-        self.registry
-            .vault_services
-            .insert(addr, Default::default());
-
-        Ok(())
-    }
-
     pub(super) async fn start_identity_service_impl(
         &mut self,
         ctx: &Context,
@@ -421,19 +397,6 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-    pub(super) async fn start_vault_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let mut node_manager = self.node_manager.write().await;
-        let req_body: StartVaultServiceRequest = dec.decode()?;
-        let addr = req_body.addr.to_string().into();
-        node_manager.start_vault_service_impl(ctx, addr).await?;
-        Ok(Response::ok(req.id()))
-    }
-
     pub(super) async fn start_identity_service(
         &mut self,
         ctx: &Context,
@@ -816,12 +779,6 @@ impl NodeManagerWorker {
         registry: &'a Registry,
     ) -> ResponseBuilder<ServiceList<'a>> {
         let mut list = Vec::new();
-        registry.vault_services.keys().for_each(|addr| {
-            list.push(ServiceStatus::new(
-                addr.address(),
-                DefaultAddress::VAULT_SERVICE,
-            ))
-        });
         registry.identity_services.keys().for_each(|addr| {
             list.push(ServiceStatus::new(
                 addr.address(),

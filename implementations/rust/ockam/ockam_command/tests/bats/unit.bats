@@ -37,12 +37,6 @@ teardown() {
   assert_success
 
   # Check we can start service, but only once with the same name
-  run "$OCKAM" service start vault my_vault --node n1
-  assert_success
-  run "$OCKAM" service start vault my_vault --node n1
-  assert_failure
-
-  # Check we can start service, but only once with the same name
   run "$OCKAM" service start identity my_identity --node n1
   assert_success
   run "$OCKAM" service start identity my_identity --node n1
@@ -72,13 +66,13 @@ teardown() {
   # Create node, check that it has one of the default services running
   run "$OCKAM" node create "$n"
   assert_success
-  assert_output --partial "/service/vault_service"
+  assert_output --partial "/service/identity_service"
 
   # Stop node, restart it, and check that the service is up again
   $OCKAM node stop "$n"
   run "$OCKAM" node start "$n"
   assert_success
-  assert_output --partial "/service/vault_service"
+  assert_output --partial "/service/identity_service"
 }
 
 # ===== VAULT

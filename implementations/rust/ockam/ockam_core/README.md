@@ -23,7 +23,7 @@ be disabled as follows
 
 ```toml
 [dependencies]
-ockam_core = { version = "0.80.0" , default-features = false }
+ockam_core = { version = "<current version>" , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency
