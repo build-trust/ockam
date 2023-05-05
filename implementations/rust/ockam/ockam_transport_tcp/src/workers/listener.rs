@@ -1,5 +1,5 @@
-use crate::workers::{Addresses, ConnectionRole, TcpRecvProcessor};
-use crate::{TcpListenerOptions, TcpRegistry, TcpSendWorker};
+use crate::workers::{Addresses, TcpRecvProcessor};
+use crate::{TcpConnectionMode, TcpListenerInfo, TcpListenerOptions, TcpRegistry, TcpSendWorker};
 use ockam_core::{async_trait, compat::net::SocketAddr, DenyAll};
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
@@ -15,6 +15,7 @@ use tracing::debug;
 pub(crate) struct TcpListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
+    socket_address: SocketAddr,
     options: TcpListenerOptions,
 }
 
@@ -37,6 +38,7 @@ impl TcpListenProcessor {
         let processor = Self {
             registry,
             inner,
+            socket_address: saddr,
             options,
         };
 
@@ -54,7 +56,11 @@ impl Processor for TcpListenProcessor {
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
-        self.registry.add_listener_processor(&ctx.address());
+        self.registry.add_listener_processor(TcpListenerInfo::new(
+            ctx.address(),
+            self.socket_address,
+            self.options.spawner_flow_control_id.clone(),
+        ));
 
         Ok(())
     }
@@ -72,14 +78,15 @@ impl Processor for TcpListenProcessor {
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
         debug!("TCP connection accepted");
 
-        let addresses = Addresses::generate(ConnectionRole::Responder);
+        let mode = TcpConnectionMode::Incoming;
+        let addresses = Addresses::generate(mode);
 
-        let flow_control_id = self
+        let receiver_flow_control_id = self
             .options
             .setup_flow_control_for_connection(ctx.flow_controls(), &addresses);
         let access_control = self
             .options
-            .create_access_control(ctx.flow_controls(), flow_control_id.clone());
+            .create_access_control(ctx.flow_controls(), receiver_flow_control_id.clone());
 
         let (read_half, write_half) = stream.into_split();
 
@@ -90,7 +97,9 @@ impl Processor for TcpListenProcessor {
             write_half,
             &addresses,
             peer,
+            mode,
             access_control.sender_incoming_access_control,
+            &receiver_flow_control_id,
         )
         .await?;
 
@@ -101,6 +110,8 @@ impl Processor for TcpListenProcessor {
             read_half,
             &addresses,
             peer,
+            mode,
+            &receiver_flow_control_id,
             access_control.receiver_outgoing_access_control,
         )
         .await?;

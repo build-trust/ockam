@@ -1,7 +1,8 @@
 use crate::workers::Addresses;
-use crate::{TcpRegistry, TcpSendWorkerMsg};
+use crate::{TcpConnectionMode, TcpReceiverInfo, TcpRegistry, TcpSendWorkerMsg};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait, AllowOnwardAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl,
 };
@@ -22,8 +23,10 @@ use tracing::{error, info, trace};
 pub(crate) struct TcpRecvProcessor {
     registry: TcpRegistry,
     read_half: OwnedReadHalf,
-    peer: SocketAddr,
+    socket_address: SocketAddr,
     addresses: Addresses,
+    mode: TcpConnectionMode,
+    flow_control_id: FlowControlId,
 }
 
 impl TcpRecvProcessor {
@@ -31,26 +34,40 @@ impl TcpRecvProcessor {
     fn new(
         registry: TcpRegistry,
         read_half: OwnedReadHalf,
-        peer: SocketAddr,
+        socket_address: SocketAddr,
         addresses: Addresses,
+        mode: TcpConnectionMode,
+        flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             registry,
             read_half,
-            peer,
+            socket_address,
             addresses,
+            mode,
+            flow_control_id,
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn start(
         ctx: &Context,
         registry: TcpRegistry,
         read_half: OwnedReadHalf,
         addresses: &Addresses,
-        peer: SocketAddr,
+        socket_address: SocketAddr,
+        mode: TcpConnectionMode,
+        flow_control_id: &FlowControlId,
         receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Result<()> {
-        let receiver = TcpRecvProcessor::new(registry, read_half, peer, addresses.clone());
+        let receiver = TcpRecvProcessor::new(
+            registry,
+            read_half,
+            socket_address,
+            addresses.clone(),
+            mode,
+            flow_control_id.clone(),
+        );
 
         let mailbox = Mailbox::new(
             addresses.receiver_address().clone(),
@@ -79,7 +96,13 @@ impl Processor for TcpRecvProcessor {
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
-        self.registry.add_receiver_processor(&ctx.address());
+        self.registry.add_receiver_processor(TcpReceiverInfo::new(
+            ctx.address(),
+            self.addresses.sender_address().clone(),
+            self.socket_address,
+            self.mode,
+            self.flow_control_id.clone(),
+        ));
 
         Ok(())
     }
@@ -109,7 +132,7 @@ impl Processor for TcpRecvProcessor {
             Err(_e) => {
                 info!(
                     "Connection to peer '{}' was closed; dropping stream",
-                    self.peer
+                    self.socket_address
                 );
 
                 // Notify sender tx is closed
@@ -143,7 +166,7 @@ impl Processor for TcpRecvProcessor {
 
         // Heartbeat message
         if msg.onward_route.next().is_err() {
-            trace!("Got heartbeat message from: {}", self.peer);
+            trace!("Got heartbeat message from: {}", self.socket_address);
             return Ok(true);
         }
 

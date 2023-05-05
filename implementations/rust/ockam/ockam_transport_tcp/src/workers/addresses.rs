@@ -1,4 +1,4 @@
-use crate::workers::ConnectionRole;
+use crate::TcpConnectionMode;
 use ockam_core::Address;
 
 #[derive(Clone, Debug)]
@@ -14,15 +14,13 @@ pub(crate) struct Addresses {
 }
 
 impl Addresses {
-    pub(crate) fn generate(role: ConnectionRole) -> Self {
-        let role_str = role.str();
-
-        let sender_address = Address::random_tagged(&format!("TcpSendWorker_tx_addr_{}", role_str));
+    pub(crate) fn generate(mode: TcpConnectionMode) -> Self {
+        let sender_address = Address::random_tagged(&format!("TcpSendWorker_tx_addr_{}", mode));
         let sender_internal_address =
-            Address::random_tagged(&format!("TcpSendWorker_int_addr_{}", role_str));
-        let receiver_address = Address::random_tagged(&format!("TcpRecvProcessor_{}", role_str));
+            Address::random_tagged(&format!("TcpSendWorker_int_addr_{}", mode));
+        let receiver_address = Address::random_tagged(&format!("TcpRecvProcessor_{}", mode));
         let receiver_internal_address =
-            Address::random_tagged(&format!("TcpRecvProcessor_int_addr_{}", role_str));
+            Address::random_tagged(&format!("TcpRecvProcessor_int_addr_{}", mode));
 
         Self {
             sender_address,
