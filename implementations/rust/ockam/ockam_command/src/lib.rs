@@ -267,10 +267,8 @@ pub enum OckamSubcommand {
 
 impl OckamSubcommand {
     pub fn should_display_header(&self) -> bool {
-        match self {
-            OckamSubcommand::Enroll(_) => true,
-            _ => false,
-        }
+        // Currently only enroll command displays the header
+        matches!(self, OckamSubcommand::Enroll(_))
     }
 }
 
