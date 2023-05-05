@@ -98,7 +98,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let connection_to_alice = senders.first().unwrap().clone();
 
     message_should_not_pass(ctx, &connection_to_bob.clone().into()).await?;
-    message_should_not_pass(ctx, &connection_to_alice).await?;
+    message_should_not_pass(ctx, connection_to_alice.address()).await?;
 
     let alice_secure_channels = secure_channels();
     let bob_secure_channels = secure_channels();

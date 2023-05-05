@@ -1,7 +1,8 @@
 use crate::workers::Addresses;
-use crate::TcpRegistry;
+use crate::{TcpConnectionMode, TcpRegistry, TcpSenderInfo};
 use cfg_if::cfg_if;
 use core::time::Duration;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
@@ -25,20 +26,6 @@ pub(crate) enum TcpSendWorkerMsg {
     ConnectionClosed,
 }
 
-pub(crate) enum ConnectionRole {
-    Initiator,
-    Responder,
-}
-
-impl ConnectionRole {
-    pub(crate) fn str(&self) -> &'static str {
-        match self {
-            ConnectionRole::Initiator => "initiator",
-            ConnectionRole::Responder => "responder",
-        }
-    }
-}
-
 /// A TCP sending message worker
 ///
 /// Create this worker type by calling
@@ -50,8 +37,10 @@ impl ConnectionRole {
 pub(crate) struct TcpSendWorker {
     registry: TcpRegistry,
     write_half: OwnedWriteHalf,
-    peer: SocketAddr,
+    socket_address: SocketAddr,
     addresses: Addresses,
+    mode: TcpConnectionMode,
+    receiver_flow_control_id: FlowControlId,
     rx_should_be_stopped: bool,
 }
 
@@ -60,14 +49,18 @@ impl TcpSendWorker {
     fn new(
         registry: TcpRegistry,
         write_half: OwnedWriteHalf,
-        peer: SocketAddr,
+        socket_address: SocketAddr,
         addresses: Addresses,
+        mode: TcpConnectionMode,
+        receiver_flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             registry,
             write_half,
-            peer,
+            socket_address,
             addresses,
+            receiver_flow_control_id,
+            mode,
             rx_should_be_stopped: true,
         }
     }
@@ -76,16 +69,26 @@ impl TcpSendWorker {
 impl TcpSendWorker {
     /// Create a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
     /// manages the connection with the given peer
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
         write_half: OwnedWriteHalf,
         addresses: &Addresses,
-        peer: SocketAddr,
+        socket_address: SocketAddr,
+        mode: TcpConnectionMode,
         sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
+        receiver_flow_control_id: &FlowControlId,
     ) -> Result<()> {
         trace!("Creating new TCP worker pair");
-        let sender_worker = Self::new(registry, write_half, peer, addresses.clone());
+        let sender_worker = Self::new(
+            registry,
+            write_half,
+            socket_address,
+            addresses.clone(),
+            mode,
+            receiver_flow_control_id.clone(),
+        );
 
         let main_mailbox = Mailbox::new(
             addresses.sender_address().clone(),
@@ -118,15 +121,17 @@ impl TcpSendWorker {
         Ok(())
     }
 
-    pub(crate) async fn connect(peer: SocketAddr) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
-        debug!(addr = %peer, "Connecting");
-        let connection = match TcpStream::connect(peer).await {
+    pub(crate) async fn connect(
+        socket_address: SocketAddr,
+    ) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
+        debug!(addr = %socket_address, "Connecting");
+        let connection = match TcpStream::connect(socket_address).await {
             Ok(c) => {
-                debug!(addr = %peer, "Connected");
+                debug!(addr = %socket_address, "Connected");
                 c
             }
             Err(e) => {
-                debug!(addr = %peer, err = %e, "Failed to connect");
+                debug!(addr = %socket_address, err = %e, "Failed to connect");
                 return Err(TransportError::from(e).into());
             }
         };
@@ -156,8 +161,13 @@ impl Worker for TcpSendWorker {
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
-        self.registry
-            .add_sender_worker(self.addresses.sender_address());
+        self.registry.add_sender_worker(TcpSenderInfo::new(
+            self.addresses.sender_address().clone(),
+            self.addresses.receiver_address().clone(),
+            self.socket_address,
+            self.mode,
+            self.receiver_flow_control_id.clone(),
+        ));
 
         Ok(())
     }
@@ -188,7 +198,10 @@ impl Worker for TcpSendWorker {
 
             match msg {
                 TcpSendWorkerMsg::ConnectionClosed => {
-                    info!("Stopping sender due to closed connection {}", self.peer);
+                    info!(
+                        "Stopping sender due to closed connection {}",
+                        self.socket_address
+                    );
                     // No need to stop Receiver as it notified us about connection drop and will
                     // stop itself
                     self.rx_should_be_stopped = false;
@@ -206,7 +219,7 @@ impl Worker for TcpSendWorker {
             let msg = prepare_message(msg)?;
 
             if self.write_half.write_all(msg.as_slice()).await.is_err() {
-                warn!("Failed to send message to peer {}", self.peer);
+                warn!("Failed to send message to peer {}", self.socket_address);
                 self.stop(ctx).await?;
 
                 return Ok(());

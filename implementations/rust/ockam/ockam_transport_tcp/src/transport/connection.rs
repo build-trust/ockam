@@ -1,6 +1,6 @@
 use crate::transport::common::{resolve_peer, TcpConnection};
-use crate::workers::{Addresses, ConnectionRole, TcpRecvProcessor, TcpSendWorker};
-use crate::{TcpConnectionOptions, TcpTransport};
+use crate::workers::{Addresses, TcpRecvProcessor, TcpSendWorker};
+use crate::{TcpConnectionMode, TcpConnectionOptions, TcpTransport};
 use ockam_core::{Address, Result};
 
 impl TcpTransport {
@@ -21,15 +21,16 @@ impl TcpTransport {
         peer: impl Into<String>,
         options: TcpConnectionOptions,
     ) -> Result<TcpConnection> {
-        let flow_control_id = options.producer_flow_control_id.clone();
         // Resolve peer address
         let socket = resolve_peer(peer.into())?;
 
         let (read_half, write_half) = TcpSendWorker::connect(socket).await?;
 
-        let addresses = Addresses::generate(ConnectionRole::Initiator);
+        let mode = TcpConnectionMode::Outgoing;
+        let addresses = Addresses::generate(mode);
 
         options.setup_flow_control(self.ctx.flow_controls(), &addresses);
+        let flow_control_id = options.producer_flow_control_id.clone();
         let access_control = options.create_access_control(self.ctx.flow_controls());
 
         TcpSendWorker::start(
@@ -38,7 +39,9 @@ impl TcpTransport {
             write_half,
             &addresses,
             socket,
+            mode,
             access_control.sender_incoming_access_control,
+            &flow_control_id,
         )
         .await?;
 
@@ -48,6 +51,8 @@ impl TcpTransport {
             read_half,
             &addresses,
             socket,
+            mode,
+            &flow_control_id,
             access_control.receiver_outgoing_access_control,
         )
         .await?;
@@ -55,6 +60,7 @@ impl TcpTransport {
         Ok(TcpConnection::new(
             addresses.sender_address().clone(),
             socket,
+            mode,
             flow_control_id,
         ))
     }
