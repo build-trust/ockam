@@ -380,13 +380,6 @@ async fn start_services(ctx: &Context, cfg: &Config) -> Result<()> {
         }
     };
 
-    if let Some(cfg) = config.vault {
-        if !cfg.disabled {
-            println!("starting vault service ...");
-            let req = api::start_vault_service(&cfg.address);
-            send_req_to_node_manager(ctx, req).await?;
-        }
-    }
     if let Some(cfg) = config.identity {
         if !cfg.disabled {
             println!("starting identity service ...");

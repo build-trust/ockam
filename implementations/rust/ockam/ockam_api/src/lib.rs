@@ -17,7 +17,6 @@ pub mod okta;
 pub mod port_range;
 pub mod rpc_proxy;
 pub mod uppercase;
-pub mod vault;
 pub mod verifier;
 
 mod schema;
@@ -32,7 +31,6 @@ extern crate tracing;
 pub struct DefaultAddress;
 
 impl DefaultAddress {
-    pub const VAULT_SERVICE: &'static str = "vault_service";
     pub const IDENTITY_SERVICE: &'static str = "identity_service";
     pub const AUTHENTICATED_SERVICE: &'static str = "authenticated";
     pub const FORWARDING_SERVICE: &'static str = "forwarding_service";

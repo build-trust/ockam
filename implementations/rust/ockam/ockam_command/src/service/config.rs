@@ -1,18 +1,12 @@
-use crate::Result;
-use anyhow::Context as _;
-use ockam::identity::IdentityIdentifier;
-use ockam_api::DefaultAddress;
-use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VaultConfig {
-    #[serde(default = "vault_default_addr")]
-    pub(crate) address: String,
+use anyhow::Context as _;
+use serde::{Deserialize, Serialize};
 
-    #[serde(default)]
-    pub(crate) disabled: bool,
-}
+use ockam::identity::IdentityIdentifier;
+use ockam_api::DefaultAddress;
+
+use crate::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IdentityConfig {
@@ -77,7 +71,6 @@ pub struct OktaIdentityProviderConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceConfigs {
-    pub(crate) vault: Option<VaultConfig>,
     pub(crate) identity: Option<IdentityConfig>,
     pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
     pub(crate) verifier: Option<VerifierConfig>,
@@ -97,10 +90,6 @@ impl Config {
         let c = serde_json::from_str(&s).context(format!("invalid config {:?}", path.as_ref()))?;
         Ok(c)
     }
-}
-
-fn vault_default_addr() -> String {
-    DefaultAddress::VAULT_SERVICE.to_string()
 }
 
 fn identity_default_addr() -> String {

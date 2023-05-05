@@ -1,24 +1,23 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use ockam_api::cloud::project::Project;
-use ockam_api::config::cli::TrustContextConfig;
-use regex::Regex;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Context};
 use clap::Args;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
-use ockam_api::nodes::models::services::{
-    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartIdentityServiceRequest, StartOktaIdentityProviderRequest, StartVaultServiceRequest,
-    StartVerifierService,
-};
+use regex::Regex;
 use tracing::trace;
 
 use ockam::identity::IdentityIdentifier;
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
+use ockam_api::config::cli::TrustContextConfig;
+use ockam_api::nodes::models::services::{
+    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
+    StartIdentityServiceRequest, StartOktaIdentityProviderRequest, StartVerifierService,
+};
 use ockam_api::nodes::*;
 use ockam_api::DefaultAddress;
 use ockam_core::api::RequestBuilder;
@@ -138,12 +137,6 @@ pub(crate) fn show_secure_channel_listener(
 ) -> RequestBuilder<'static, models::secure_channel::ShowSecureChannelListenerRequest<'static>> {
     let payload = models::secure_channel::ShowSecureChannelListenerRequest::new(addr);
     Request::get("/node/show_secure_channel_listener").body(payload)
-}
-
-/// Construct a request to start a Vault Service
-pub(crate) fn start_vault_service(addr: &str) -> RequestBuilder<'static, StartVaultServiceRequest> {
-    let payload = StartVaultServiceRequest::new(addr);
-    Request::post(node_service(DefaultAddress::VAULT_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Identity Service
