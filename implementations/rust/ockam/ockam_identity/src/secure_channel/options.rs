@@ -1,5 +1,7 @@
 use crate::secure_channel::Addresses;
 use crate::{Credential, TrustContext, TrustEveryonePolicy, TrustPolicy};
+use core::fmt;
+use core::fmt::Formatter;
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -7,6 +9,8 @@ use ockam_core::flow_control::{
     FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
 };
 use ockam_core::{Address, OutgoingAccessControl, Result};
+
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Trust options for a Secure Channel
 pub struct SecureChannelOptions {
@@ -17,7 +21,11 @@ pub struct SecureChannelOptions {
     pub(crate) timeout: Duration,
 }
 
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
+impl fmt::Debug for SecureChannelOptions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "FlowId: {}", self.producer_flow_control_id)
+    }
+}
 
 pub(crate) struct SecureChannelAccessControl {
     pub(crate) decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
@@ -117,6 +125,7 @@ impl SecureChannelOptions {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct CiphertextFlowControl {
     pub(crate) id: FlowControlId,
     pub(crate) policy: FlowControlPolicy,
@@ -129,6 +138,12 @@ pub struct SecureChannelListenerOptions {
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) credentials: Vec<Credential>,
+}
+
+impl fmt::Debug for SecureChannelListenerOptions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "SpawnerFlowId: {}", self.spawner_flow_control_id)
+    }
 }
 
 impl SecureChannelListenerOptions {

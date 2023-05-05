@@ -1,6 +1,8 @@
 use crate::workers::Addresses;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
+use ockam_core::flow_control::{
+    FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
+};
 use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
 
 pub(crate) struct TcpConnectionAccessControl {
@@ -8,9 +10,16 @@ pub(crate) struct TcpConnectionAccessControl {
     pub receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
 }
 
+#[derive(Debug)]
+pub(super) struct ConsumerFlowControl {
+    pub(super) flow_control_id: FlowControlId,
+    pub(super) flow_control_policy: FlowControlPolicy,
+}
+
 /// Trust Options for a TCP connection
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct TcpConnectionOptions {
+    pub(super) consumer_flow_control: Vec<ConsumerFlowControl>,
     pub(crate) producer_flow_control_id: FlowControlId,
 }
 
@@ -19,8 +28,23 @@ impl TcpConnectionOptions {
     /// Mark this Tcp Receiver as a Producer with a random [`FlowControlId`]
     pub fn new() -> Self {
         Self {
+            consumer_flow_control: vec![],
             producer_flow_control_id: FlowControls::generate_id(),
         }
+    }
+
+    /// Mark that this Connection is a Consumer for to the given [`FlowControlId`]
+    pub fn as_consumer(
+        mut self,
+        flow_control_id: &FlowControlId,
+        flow_control_policy: FlowControlPolicy,
+    ) -> Self {
+        self.consumer_flow_control.push(ConsumerFlowControl {
+            flow_control_id: flow_control_id.clone(),
+            flow_control_policy,
+        });
+
+        self
     }
 
     /// Getter for freshly generated [`FlowControlId`]
@@ -37,6 +61,13 @@ impl TcpConnectionOptions {
             None,
             vec![addresses.sender_address().clone()],
         );
+        for consumer_flow_control in &self.consumer_flow_control {
+            flow_controls.add_consumer(
+                addresses.sender_address().clone(),
+                &consumer_flow_control.flow_control_id,
+                consumer_flow_control.flow_control_policy,
+            );
+        }
     }
 
     pub(crate) fn create_access_control(
