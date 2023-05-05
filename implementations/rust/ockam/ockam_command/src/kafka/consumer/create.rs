@@ -9,17 +9,19 @@ use ockam_api::{
 };
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
+use tokio::{sync::Mutex, try_join};
 
 use crate::{
-    fmt_info,
+    fmt_log, fmt_ok,
     kafka::{
         kafka_consumer_default_addr, kafka_default_consumer_port_range,
         kafka_default_consumer_server, kafka_default_project_route,
     },
     node::NodeOpts,
     service::start::start_service_impl,
+    terminal::OckamColor,
     util::{node_rpc, parsers::socket_addr_parser},
-    CommandGlobalOpts,
+    CommandGlobalOpts, Result,
 };
 
 /// Create a new Kafka Consumer
@@ -50,7 +52,7 @@ impl CreateCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let CreateCommand {
         node_opts,
         addr,
@@ -58,32 +60,67 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> c
         brokers_port_range,
         project_route,
     } = cmd;
-    let tcp = TcpTransport::create(&ctx).await?;
+    let is_finished = Mutex::new(false);
+    let send_req = async {
+        let tcp = TcpTransport::create(&ctx).await?;
 
-    let payload =
-        StartKafkaConsumerRequest::new(bootstrap_server, brokers_port_range, project_route);
-    let payload = StartServiceRequest::new(payload, &addr);
-    let req = Request::post("/node/services/kafka_consumer").body(payload);
+        let payload =
+            StartKafkaConsumerRequest::new(bootstrap_server, brokers_port_range, project_route);
+        let payload = StartServiceRequest::new(payload, &addr);
+        let req = Request::post("/node/services/kafka_consumer").body(payload);
 
-    opts.terminal.write_line(&fmt_info!(
-        "Starting KafkaConsumer service at {}",
-        &bootstrap_server.to_string()
-    ))?;
-    opts.terminal.write_line(&fmt_info!(
-        "Brokers port range set to {}",
-        &brokers_port_range.to_string()
-    ))?;
+        start_service_impl(
+            &ctx,
+            &opts,
+            &node_opts.api_node,
+            "KafkaConsumer",
+            req,
+            Some(&tcp),
+        )
+        .await?;
 
-    start_service_impl(
-        &ctx,
-        &opts,
-        &node_opts.api_node,
-        &addr,
-        "KafkaConsumer",
-        req,
-        Some(&tcp),
-    )
-    .await?;
+        *is_finished.lock().await = true;
+
+        Ok::<_, crate::Error>(())
+    };
+
+    let msgs = vec![
+        format!(
+            "Buildling KafkaConsumer service {}",
+            &addr.to_string().color(OckamColor::PrimaryResource.color())
+        ),
+        format!(
+            "Starting KafkaConsumer service at {}",
+            &bootstrap_server
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ),
+        format!(
+            "Setting brokers port range to {}",
+            &brokers_port_range
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ),
+    ];
+    let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
+    let (_, _) = try_join!(send_req, progress_output)?;
+
+    opts.terminal
+        .stdout()
+        .plain(
+            fmt_ok!(
+                "KafkaConsumer service started at {}\n",
+                &bootstrap_server
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ) + &fmt_log!(
+                "Brokers port range set to {}",
+                &brokers_port_range
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ),
+        )
+        .write_line()?;
 
     Ok(())
 }
