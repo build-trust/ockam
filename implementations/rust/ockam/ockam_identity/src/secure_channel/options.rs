@@ -1,5 +1,7 @@
 use crate::secure_channel::Addresses;
 use crate::{TrustEveryonePolicy, TrustPolicy};
+use core::fmt;
+use core::fmt::Formatter;
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -13,6 +15,12 @@ pub struct SecureChannelOptions {
     pub(crate) producer_flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     pub(crate) timeout: Duration,
+}
+
+impl fmt::Debug for SecureChannelOptions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "FlowId: {}", self.producer_flow_control_id)
+    }
 }
 
 pub(crate) struct SecureChannelAccessControl {
@@ -93,6 +101,7 @@ impl SecureChannelOptions {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct CiphertextFlowControl {
     pub(crate) id: FlowControlId,
     pub(crate) policy: FlowControlPolicy,
@@ -103,6 +112,12 @@ pub struct SecureChannelListenerOptions {
     pub(crate) consumer_flow_control: Vec<CiphertextFlowControl>,
     pub(crate) spawner_flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+}
+
+impl fmt::Debug for SecureChannelListenerOptions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "SpawnerFlowId: {}", self.spawner_flow_control_id)
+    }
 }
 
 impl SecureChannelListenerOptions {
