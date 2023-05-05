@@ -1,3 +1,4 @@
+use crate::TcpConnectionMode;
 use core::fmt;
 use core::fmt::Formatter;
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
@@ -10,6 +11,7 @@ use ockam_transport_core::TransportError;
 pub struct TcpConnection {
     sender_address: Address,
     socket_address: SocketAddr,
+    mode: TcpConnectionMode,
     flow_control_id: FlowControlId,
 }
 
@@ -34,11 +36,13 @@ impl TcpConnection {
     pub fn new(
         sender_address: Address,
         socket_address: SocketAddr,
+        mode: TcpConnectionMode,
         flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             sender_address,
             socket_address,
+            mode,
             flow_control_id,
         }
     }
@@ -54,6 +58,10 @@ impl TcpConnection {
     /// Generated fresh random [`FlowControlId`]
     pub fn flow_control_id(&self) -> &FlowControlId {
         &self.flow_control_id
+    }
+    /// Corresponding [`TcpConnectionMode`]
+    pub fn mode(&self) -> TcpConnectionMode {
+        self.mode
     }
 }
 
