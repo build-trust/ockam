@@ -81,6 +81,23 @@ teardown() {
   assert_output --partial "/service/vault_service"
 }
 
+@test "create a node and show its identity then rotate keys" {
+  run $OCKAM node create n1
+  assert_success
+
+  run $OCKAM identity rotate-key --node n1
+  assert_success
+  assert_output --regexp '^key rotated'
+
+  run $OCKAM identity show --node n1
+  assert_success
+  assert_output --regexp '^P'
+
+  run $OCKAM identity rotate-key --node n1
+  assert_success
+  assert_output --regexp '^key rotated'
+}
+
 # ===== VAULT
 
 @test "vault - create and check show/list output" {

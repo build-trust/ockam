@@ -8,6 +8,7 @@ use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions};
 use std::net::{AddrParseError, SocketAddr};
+use crate::nodes::models::identity::{RotateKeyResponse, RotateKeyRequest};
 
 use super::NodeManagerWorker;
 
@@ -53,6 +54,23 @@ impl NodeManagerWorker {
             }
         };
         Ok(res)
+    }
+
+    pub(super) async fn rotate_key<'a>(
+        &mut self,
+        req: &Request<'a>,
+        dec: &mut Decoder<'a>,
+    ) -> Result<ResponseBuilder<RotateKeyResponse<'_>>> {
+        let node_manager = self.node_manager.read().await;
+        let identities = node_manager.identities();
+        let rotate_args = dec.decode::<RotateKeyRequest>()?;
+        let identities_keys = identities.identities_keys();
+        let identity = &mut node_manager.identity();
+        identities_keys.rotate_key(identity, &rotate_args.label).await?;
+
+        let response =
+            Response::ok(req.id()).body(RotateKeyResponse::new(rotate_args.label.to_string()));
+        Ok(response)
     }
 
     pub(super) async fn add_transport<'a>(

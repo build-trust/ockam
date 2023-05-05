@@ -529,11 +529,11 @@ impl NodeManager {
 impl NodeManagerWorker {
     //////// Request matching and response handling ////////
 
-    async fn handle_request(
+    async fn handle_request<'a>(
         &mut self,
         ctx: &mut Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
+        req: &Request<'a>,
+        dec: &mut Decoder<'a>,
     ) -> Result<Vec<u8>> {
         debug! {
             target: TARGET,
@@ -566,6 +566,10 @@ impl NodeManagerWorker {
                         node_manager.transports.len() as u32,
                     ))
                     .to_vec()?
+            }
+
+            (Post, ["node", "identity", "actions", "rotate_key"]) => {
+                self.rotate_key(req, dec).await?.to_vec()?
             }
 
             // ==*== Tcp Connection ==*==

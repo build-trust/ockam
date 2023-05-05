@@ -254,6 +254,13 @@ impl Node {
         self.identities().identities_keys()
     }
 
+    /*
+    pub fn rotate_keys(&self) -> Arc<IdentitiesKeys> {
+        todo!();
+        self.identities().identities_keys().rotate_key();
+    }
+    */
+
     /// Return services to manage credentials
     pub fn credentials(&self) -> Arc<dyn Credentials> {
         self.identities().credentials()

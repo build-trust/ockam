@@ -1,4 +1,5 @@
 mod create;
+mod rotate_key;
 mod default;
 mod delete;
 mod list;
@@ -10,6 +11,7 @@ pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 use ockam_api::cli_state::CliState;
 pub(crate) use show::ShowCommand;
+pub(crate) use rotate_key::RotateKeyCommand;
 
 use crate::util::OckamConfig;
 use crate::{docs, fmt_warn, CommandGlobalOpts, GlobalArgs, Result};
@@ -40,6 +42,8 @@ pub enum IdentitySubcommand {
     List(ListCommand),
     Default(DefaultCommand),
     Delete(DeleteCommand),
+    /// Rotate Keys,
+    RotateKey(RotateKeyCommand),
 }
 
 impl IdentityCommand {
@@ -50,6 +54,7 @@ impl IdentityCommand {
             IdentitySubcommand::List(c) => c.run(options),
             IdentitySubcommand::Delete(c) => c.run(options),
             IdentitySubcommand::Default(c) => c.run(options),
+            IdentitySubcommand::RotateKey(c) => c.run(options),
         }
     }
 }
