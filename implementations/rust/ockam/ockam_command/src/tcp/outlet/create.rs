@@ -92,7 +92,7 @@ pub async fn run_impl(
             "Creating outlet service on node {}...",
             &node.to_string().color(OckamColor::PrimaryResource.color()),
         ),
-        "Creating up TCP outlet worker...".to_string(),
+        "Setting up TCP outlet worker...".to_string(),
         format!(
             "Hosting outlet service at {}...",
             &cmd.from

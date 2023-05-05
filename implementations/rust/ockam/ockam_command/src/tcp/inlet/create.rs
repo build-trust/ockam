@@ -143,7 +143,6 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
 
             match rpc.is_ok() {
                 Ok(_) => {
-                    println!("RPC IS OKAY");
                     *is_finished.lock().await = true;
                     break rpc.parse_response::<InletStatus>()?;
                 }

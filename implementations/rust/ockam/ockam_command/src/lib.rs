@@ -50,6 +50,7 @@ use crate::terminal::{Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 
+use colorful::Colorful;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
 use console::Term;
@@ -59,6 +60,7 @@ use error::{Error, Result};
 use identity::IdentityCommand;
 use kafka::consumer::KafkaConsumerCommand;
 use kafka::producer::KafkaProducerCommand;
+use lazy_static::lazy_static;
 use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use markdown::MarkdownCommand;
@@ -74,10 +76,12 @@ use service::ServiceCommand;
 use space::SpaceCommand;
 use status::StatusCommand;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
 };
+use terminal::OckamColor;
 use trust_context::TrustContextCommand;
 use upgrade::check_if_an_upgrade_is_available;
 use util::{exitcode, exitcode::ExitCode, OckamConfig};
@@ -88,6 +92,10 @@ use worker::WorkerCommand;
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
+
+lazy_static! {
+    static ref PARSER_LOGS: Mutex<Vec<String>> = Mutex::new(vec![]);
+}
 
 #[derive(Debug, Parser)]
 #[command(
@@ -158,47 +166,6 @@ pub struct GlobalArgs {
     // but the command is not executed.
     #[arg(global = true, long, hide = true)]
     test_argument_parser: bool,
-}
-
-impl GlobalArgs {
-    // Being able to retrieve the global args from anywhere is useful
-    // and presented to be more difficult within clap than expected.
-    //
-    // Clap's value parsers are not able to access the command, or global opts
-    // attempting to wrap the OckamCommand as a singleton, also did not work
-    // due to the fact the parsers are invoked during `OckamCommand::parse_from(input)`
-    // unable to let the parser know about the singleton.
-    fn parse_from_input() -> Self {
-        let mut s = Self::default();
-        let input = std::env::args()
-            .map(replace_hyphen_with_stdin)
-            .collect::<Vec<_>>();
-        let mut iter = input.iter().peekable();
-        while let Some(arg) = iter.next() {
-            match arg.as_str() {
-                "-h" | "--help" => s.help = Some(true),
-                "-q" | "--quiet" => {
-                    s.quiet = true;
-                    s.verbose = 0;
-                }
-                "-v" | "--verbose" => {
-                    s.quiet = false;
-                    s.verbose += 1;
-                }
-                "--no-color" => s.no_color = true,
-                "--no-input" => s.no_input = true,
-                "--output" => {
-                    s.output_format = match iter.peek() {
-                        Some(v) => OutputFormat::from_str(v, true).expect("Invalid output format"),
-                        None => OutputFormat::Plain,
-                    }
-                }
-                "--test-argument-parser" => s.test_argument_parser = true,
-                _ => (),
-            }
-        }
-        s
-    }
 }
 
 impl Default for GlobalArgs {
@@ -298,6 +265,15 @@ pub enum OckamSubcommand {
     TrustContext(TrustContextCommand),
 }
 
+impl OckamSubcommand {
+    pub fn should_display_header(&self) -> bool {
+        match self {
+            OckamSubcommand::Enroll(_) => true,
+            _ => false,
+        }
+    }
+}
+
 pub fn run() {
     let input = std::env::args()
         .map(replace_hyphen_with_stdin)
@@ -336,6 +312,28 @@ impl OckamCommand {
         // without having to execute their logic.
         if options.global_args.test_argument_parser {
             return;
+        }
+
+        // Display Header if needed
+        if self.subcommand.should_display_header() {
+            let ockam_header = include_str!("../static/ockam_ascii.txt").trim();
+            let colored_header = ockam_header.gradient_with_color(
+                OckamColor::OckamBlue.color(),
+                OckamColor::HeaderGradient.color(),
+            );
+
+            let _ = options
+                .terminal
+                .write_line(&format!("\n{}\n", colored_header));
+        }
+
+        // Display any known messages from parsing.
+        if let Ok(mut logs) = PARSER_LOGS.lock() {
+            logs.iter().for_each(|msg| {
+                let _ = options.terminal.write_line(msg);
+            });
+
+            logs.clear();
         }
 
         match self.subcommand {
