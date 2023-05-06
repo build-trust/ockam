@@ -305,3 +305,14 @@ jobs:
         run: |
           mv tools/semgrep/.semgrepignore . & \
           semgrep --verbose --config="r2c" --config="tools/semgrep/rules/example.yaml"
+
+  lint-cargo-toml:
+    name: lint-cargo-toml
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - name: Install dprint
+        run: npm install -g dprint
+      - name: Check formatting
+        run: dprint check
