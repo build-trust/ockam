@@ -2,6 +2,7 @@ defmodule Ockam.SecureChannel.Tests do
   use ExUnit.Case, async: true
   doctest Ockam.SecureChannel
 
+  alias Ockam.Identity
   alias Ockam.Message
   alias Ockam.Node
   alias Ockam.Router
@@ -10,9 +11,14 @@ defmodule Ockam.SecureChannel.Tests do
   alias Ockam.Vault
   alias Ockam.Vault.Software, as: SoftwareVault
 
+  @identity_impl Ockam.Identity.Stub
+
   setup do
     Node.register_address("test")
+    {:ok, alice, alice_id} = Identity.create(@identity_impl)
+    {:ok, bob, bob_id} = Identity.create(@identity_impl)
     on_exit(fn -> Node.unregister_address("test") end)
+    {:ok, alice: alice, alice_id: alice_id, bob: bob, bob_id: bob_id}
   end
 
   defp man_in_the_middle(callback) do
@@ -133,7 +139,6 @@ defmodule Ockam.SecureChannel.Tests do
         {:ok, raw, ""} = :bare.decode(payload, :data)
 
         trash2 =
-          trash =
           %Message{message | payload: :bare.encode(raw <> "s", :data)} |> Message.forward_trace()
 
         [trash1, trash2]
@@ -175,28 +180,6 @@ defmodule Ockam.SecureChannel.Tests do
     end)
 
     refute_receive(_, 100)
-  end
-
-  test "secure channel works" do
-    {:ok, echoer} = Echoer.create([])
-
-    {:ok, listener} = create_secure_channel_listener()
-    {:ok, channel} = create_secure_channel([listener])
-
-    message = %{
-      payload: "hello",
-      onward_route: [channel, echoer],
-      return_route: ["test"]
-    }
-
-    Router.route(message)
-
-    assert_receive %{
-                     payload: "hello",
-                     onward_route: ["test"],
-                     return_route: [^channel, ^echoer]
-                   },
-                   1000
   end
 
   test "tunneled secure channel works" do
@@ -265,18 +248,238 @@ defmodule Ockam.SecureChannel.Tests do
                    10_000
   end
 
+  test "local secure channel", %{alice: alice, alice_id: alice_id, bob: bob, bob_id: bob_id} do
+    {:ok, vault} = SoftwareVault.init()
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [vault: vault]
+      )
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        [
+          identity: bob,
+          encryption_options: [vault: vault],
+          route: [listener]
+        ],
+        3000
+      )
+
+    channel_pid = Ockam.Node.whereis(channel)
+
+    ref1 = Process.monitor(channel_pid)
+
+    assert alice == SecureChannel.get_remote_identity(channel)
+    assert alice_id == SecureChannel.get_remote_identity_id(channel)
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: return_route,
+      local_metadata: %{identity_id: id, identity: _identity, channel: :secure_channel}
+    }
+
+    assert id == bob_id
+
+    # Hacky way to get the receiver' pid, so we can monitor it and ensure it get terminated
+    # after disconnection
+    [receiver_addr, _] = return_route
+    receiver_pid = Ockam.Node.whereis(receiver_addr)
+    ref2 = Process.monitor(receiver_pid)
+
+    Ockam.Router.route("PONG!", return_route, [me])
+
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PONG!",
+      return_route: [^channel | _],
+      local_metadata: %{identity_id: id, identity: _identity, channel: :secure_channel}
+    }
+
+    assert id == alice_id
+
+    SecureChannel.disconnect(channel)
+    assert_receive {:DOWN, ^ref1, _, _, _}
+    assert_receive {:DOWN, ^ref2, _, _, _}
+  end
+
+  test "identity channel inner address is protected", %{alice: alice, bob: bob} do
+    ## Inner address is the one pointing to the other peer.
+    ## This just test that it don't pass messages around, as
+    ## the message will fail to be decrypted
+    {:ok, vault} = SoftwareVault.init()
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [vault: vault]
+      )
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        identity: bob,
+        encryption_options: [vault: vault],
+        route: [listener]
+      )
+
+    {:ok, bob_inner_address} = Ockam.AsymmetricWorker.get_inner_address(channel)
+
+    {:ok, me} = Ockam.Node.register_random_address()
+
+    Ockam.Router.route("PING!", [bob_inner_address, me], [me])
+
+    refute_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!"
+    }
+  end
+
+  test "additional metadata", %{alice: alice, bob: bob} do
+    {:ok, vault} = SoftwareVault.init()
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [vault: vault],
+        additional_metadata: %{foo: :bar}
+      )
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        identity: bob,
+        encryption_options: [vault: vault],
+        route: [listener],
+        additional_metadata: %{bar: :foo}
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: return_route,
+      local_metadata: %{
+        identity_id: _id,
+        identity: _identity,
+        channel: :secure_channel,
+        foo: :bar
+      }
+    }
+
+    Ockam.Router.route("PONG!", return_route, [me])
+
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PONG!",
+      return_route: [^channel | _],
+      local_metadata: %{
+        identity_id: _id,
+        identity: _identity,
+        channel: :secure_channel,
+        bar: :foo
+      }
+    }
+  end
+
+  test "initiator trust policy", %{alice: alice, bob: bob} do
+    {:ok, vault} = SoftwareVault.init()
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [vault: vault],
+        additional_metadata: %{foo: :bar}
+      )
+
+    {:error, _reason} =
+      SecureChannel.create_channel(
+        [
+          identity: bob,
+          encryption_options: [vault: vault],
+          route: [listener],
+          additional_metadata: %{bar: :foo},
+          trust_policies: [fn _me, _contact -> {:error, :test} end]
+        ],
+        2000
+      )
+  end
+
+  test "responder trust policy", %{alice: alice, bob: bob} do
+    {:ok, vault} = SoftwareVault.init()
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [vault: vault],
+        additional_metadata: %{foo: :bar},
+        trust_policies: [fn _me, _contact -> {:error, :test} end]
+      )
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        identity: bob,
+        encryption_options: [vault: vault],
+        route: [listener],
+        additional_metadata: %{bar: :foo}
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    refute_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!"
+    }
+  end
+
+  test "dynamic identity" do
+    {:ok, listener} = SecureChannel.create_listener(identity: :dynamic)
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        identity: :dynamic,
+        route: [listener]
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: [_channel, ^me],
+      local_metadata: %{identity_id: _id, identity: _identity, channel: :secure_channel}
+    }
+  end
+
   defp create_secure_channel_listener() do
     {:ok, vault} = SoftwareVault.init()
     {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
-    SecureChannel.create_listener(vault: vault, static_keypair: keypair)
+    {:ok, identity, _identity_id} = Identity.create(@identity_impl)
+
+    SecureChannel.create_listener(
+      identity: identity,
+      encryption_options: [vault: vault, static_keypair: keypair]
+    )
   end
 
   defp create_secure_channel(route_to_listener) do
     {:ok, vault} = SoftwareVault.init()
     {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
+    {:ok, identity, _identity_id} = Identity.create(@identity_impl)
 
     {:ok, c} =
-      SecureChannel.create(route: route_to_listener, vault: vault, static_keypair: keypair)
+      SecureChannel.create_channel(
+        identity: identity,
+        route: route_to_listener,
+        encryption_options: [vault: vault, static_keypair: keypair]
+      )
 
     {:ok, c}
   end

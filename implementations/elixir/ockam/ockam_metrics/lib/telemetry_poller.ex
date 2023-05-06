@@ -7,8 +7,6 @@ defmodule Ockam.Metrics.TelemetryPoller do
 
   alias Ockam.Telemetry
 
-  alias Ockam.Session.Pluggable, as: Session
-
   require Logger
 
   if Code.ensure_loaded?(Ockam.Node) do
@@ -36,9 +34,6 @@ defmodule Ockam.Metrics.TelemetryPoller do
       type, error ->
         {type, error}
     end
-
-    @channel_data_mod Ockam.Identity.SecureChannel.Data
-    @channel_handshake_mod Ockam.Identity.SecureChannel.Handshake
 
     def dispatch_secure_channels_count() do
       ## Report secure channel initiator/responder workers
@@ -80,14 +75,28 @@ defmodule Ockam.Metrics.TelemetryPoller do
     def secure_channels() do
       all_workers = workers_by_type()
 
-      data_workers = Map.get(all_workers, @channel_data_mod, [])
-      handshake_workers = Map.get(all_workers, @channel_handshake_mod, [])
+      channel_workers = Map.get(all_workers, Ockam.SecureChannel.Channel, [])
+
+      # Well, these workers could have already be gone at any point, this is ugly way
+      # to handle that by ignoring errors caused by GenServer.call into non-existing processes.
+      try_f = fn call ->
+        try do
+          call.()
+        catch
+          type, error -> {:error, {type, error}}
+        end
+      end
+
+      {data_workers, handshake_workers} =
+        Enum.split_with(channel_workers, fn w ->
+          try_f.(fn -> Ockam.SecureChannel.established?(w) end)
+        end)
 
       data_by_role =
         Enum.group_by(
           data_workers,
           fn address ->
-            Session.role(address)
+            try_f.(fn -> Ockam.SecureChannel.role(address) end)
           end
         )
 
@@ -95,7 +104,7 @@ defmodule Ockam.Metrics.TelemetryPoller do
         Enum.group_by(
           handshake_workers,
           fn address ->
-            Session.role(address)
+            try_f.(fn -> Ockam.SecureChannel.role(address) end)
           end
         )
 

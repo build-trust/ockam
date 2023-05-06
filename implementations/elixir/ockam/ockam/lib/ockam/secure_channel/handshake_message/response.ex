@@ -1,4 +1,4 @@
-defmodule Ockam.Identity.SecureChannel.HandshakeMessage.Response do
+defmodule Ockam.SecureChannel.HandshakeMessage.Response do
   @moduledoc """
   Identity channel handshake response
   """

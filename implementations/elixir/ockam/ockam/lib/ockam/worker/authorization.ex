@@ -21,6 +21,20 @@ defmodule Ockam.Worker.Authorization do
 
   require Logger
 
+  @typedoc """
+   function :: atom - a function from `Ockam.Worker.Authorization` taking message and state as arguments
+   {function :: atom, args :: list} - a function from `Ockam.Worker.Authorization` taking args
+   {module :: atom, function :: atom} - a function form module taking message and state as arguments
+   {module :: atom, function :: atom, args :: list} - function taking args
+  """
+  @type step ::
+          atom()
+          | {atom(), list()}
+          | {atom(), atom()}
+          | {atom(), atom(), list()}
+
+  @type config :: list(step()) | %{Address.t() => list(step())}
+
   @doc """
   Allow any messages to be handled by the worker
   """
@@ -119,7 +133,7 @@ defmodule Ockam.Worker.Authorization do
   to be handled by the worker.
   """
   def from_secure_channel(prev \\ :ok, message, _state) do
-    Logger.debug("check is secure #{inspect(message)}")
+    Logger.debug("check from secure channel #{inspect(message)}")
 
     chain(prev, fn ->
       case Message.local_metadata(message) do
@@ -131,27 +145,6 @@ defmodule Ockam.Worker.Authorization do
 
         other ->
           {:error, {:from_secure_channel, :invalid_metadata, other}}
-      end
-    end)
-  end
-
-  @doc """
-  Allow messages which have `channel: :identity_secure_channel` in their local metadata
-  to be handled by the worker.
-  """
-  def from_identiy_secure_channel(prev \\ :ok, message, _state) do
-    Logger.debug("check from identity channel #{inspect(message)}")
-
-    chain(prev, fn ->
-      case Message.local_metadata(message) do
-        %{source: :channel, channel: :identity_secure_channel} ->
-          :ok
-
-        %{source: :channel, channel: other} ->
-          {:error, {:from_identiy_secure_channel, :invalid_channel, other}}
-
-        other ->
-          {:error, {:from_identiy_secure_channel, :invalid_metadata, other}}
       end
     end)
   end
@@ -204,12 +197,6 @@ defmodule Ockam.Worker.Authorization do
 
   When steps are in a list - they are checked to all addresses.
   When steps are in a map - only the current address (first in onward_route) steps are checked
-
-  Each step can be:
-  - function :: atom - a function from `Ockam.Worker.Authorization` taking message and state as arguments
-  - {function :: atom, args :: list} - a function from `Ockam.Worker.Authorization` taking args
-  - {module :: atom, function :: atom} - a function form module taking message and state as arguments
-  - {module :: atom, function :: atom, args :: list} - function taking args
 
   If args contain atoms `:message` or `:state`, they are replaced
   with the checked message or the current state of the worker

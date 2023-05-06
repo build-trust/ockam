@@ -1,10 +1,10 @@
-defmodule Ockam.Identity.SecureChannel.HandshakeMessage do
+defmodule Ockam.SecureChannel.HandshakeMessage do
   @moduledoc """
   Data encoding/decoding for HandshakeMessage
   """
 
-  alias Ockam.Identity.SecureChannel.HandshakeMessage.Request
-  alias Ockam.Identity.SecureChannel.HandshakeMessage.Response
+  alias Ockam.SecureChannel.HandshakeMessage.Request
+  alias Ockam.SecureChannel.HandshakeMessage.Response
 
   @request {:struct, [contact: :data, proof: :data]}
   @response {:struct, [contact: :data, proof: :data]}

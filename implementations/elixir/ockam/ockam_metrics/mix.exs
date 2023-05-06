@@ -24,6 +24,7 @@ defmodule Ockam.Metrics.MixProject do
       # test
       test_coverage: [output: "_build/cover"],
       preferred_cli_env: ["test.cover": :test],
+      elixirc_paths: elixirc_paths(Mix.env()),
 
       # hex
       description: "Ockam Metrics",
@@ -34,6 +35,9 @@ defmodule Ockam.Metrics.MixProject do
       docs: docs()
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/helpers"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # mix help compile.app for more
   def application do
@@ -54,7 +58,9 @@ defmodule Ockam.Metrics.MixProject do
       {:telemetry_metrics, "~> 0.6.1"},
       {:telemetry_metrics_prometheus, "~> 1.1.0"},
       # Needed to avoid conflic on ranch version used by cowboy (telemetry_metrics_prometheus dep)
-      {:ranch, "~> 2.1.0", override: true}
+      {:ranch, "~> 2.1.0", override: true},
+      # Needed to create secure channels on test cases
+      {:ockam_vault_software, path: "../ockam_vault_software", only: :test}
     ]
   end
 

@@ -1,4 +1,4 @@
-defmodule Ockam.Identity.SecureChannel.ServiceMessage do
+defmodule Ockam.SecureChannel.ServiceMessage do
   @moduledoc """
   Service message for identity secure channel.
 

@@ -3,6 +3,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
 
   alias Ockam.Vault
 
+  @type message :: :message1 | :message2 | :message3
+
   defstruct [
     # handle to a vault
     :vault,
@@ -24,18 +26,16 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     :h,
     # a prologue that is hashed into h
     :prologue,
-    # payload for message1
-    :m1_payload,
-    # payload for message2
-    :m2_payload,
-    # payload for message2
-    :m3_payload
+
+    # payloads sent/received %{message() => binary},
+    :payloads,
+
+    # messages pending to complete the handshake [message()]
+    :pending_handshake
   ]
 
   @default_prologue ""
-  @default_m1_payload ""
-  @default_m2_payload ""
-  @default_m3_payload ""
+  @default_payloads %{}
 
   @protocol_name "Noise_XX_25519_AESGCM_SHA256"
   defmacro zero_padded_protocol_name do
@@ -45,17 +45,43 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  def setup(options, data) do
-    with {:ok, protocol_state} <- setup_vault(options, %__MODULE__{}),
+  def setup(options) do
+    with {:ok, protocol_state} <-
+           setup_vault(options, %__MODULE__{pending_handshake: [:message1, :message2, :message3]}),
          {:ok, protocol_state} <- setup_s(options, protocol_state),
          {:ok, protocol_state} <- setup_e(options, protocol_state),
          {:ok, protocol_state} <- setup_h(protocol_state),
          {:ok, protocol_state} <- setup_ck(protocol_state),
-         {:ok, protocol_state} <- setup_prologe(options, protocol_state),
-         {:ok, protocol_state} <- setup_message_payloads(options, protocol_state) do
-      data = Map.put(data, :xx_key_establishment_state, protocol_state)
-      {:ok, data}
+         {:ok, protocol_state} <- setup_prologe(options, protocol_state) do
+      setup_message_payloads(options, protocol_state)
     end
+  end
+
+  def out_payload(%{pending_handshake: [msg | rest]} = state) do
+    with {:ok, data, state} <- encode(msg, state),
+         {:ok, next} <- next(%{state | pending_handshake: rest}) do
+      {:ok, data, next}
+    else
+      {:error, reason} -> {:error, {:failed_to_encode, msg, reason}}
+    end
+  end
+
+  def in_payload(%{pending_handshake: [msg | rest], payloads: payloads} = state, data) do
+    with {:ok, payload, state} <- decode(msg, state, data) do
+      next(%{state | pending_handshake: rest, payloads: Map.put(payloads, msg, payload)})
+    end
+  end
+
+  defp next(%{pending_handshake: [], vault: vault, ck: ck, h: h, payloads: payloads}) do
+    k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
+
+    with {:ok, [k1, k2]} <- Vault.hkdf_sha256(vault, ck, [k_attributes, k_attributes]) do
+      {:ok, {:complete, {k1, k2, h, payloads}}}
+    end
+  end
+
+  defp next(%{pending_handshake: [_ | _]} = state) do
+    {:ok, {:continue, state}}
   end
 
   defp setup_vault(options, state) do
@@ -119,55 +145,22 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   defp setup_message_payloads(options, state) do
-    state =
-      state
-      |> Map.put(:m1_payload, Keyword.get(options, :message1_payload, @default_m1_payload))
-      |> Map.put(:m2_payload, Keyword.get(options, :message2_payload, @default_m2_payload))
-      |> Map.put(:m3_payload, Keyword.get(options, :message3_payload, @default_m3_payload))
-
+    state = Map.put(state, :payloads, Keyword.get(options, :payloads, @default_payloads))
     {:ok, state}
   end
 
-  def encode(message_name, %{xx_key_establishment_state: protocol_state} = data)
-      when message_name in [:message1, :message2, :message3] do
-    encoder = String.to_existing_atom("encode_" <> Atom.to_string(message_name))
-    return_value = apply(__MODULE__, encoder, [protocol_state])
+  def encode(:message1, %{e: e, payloads: payloads} = state) do
+    payload = Map.get(payloads, :message1, "")
 
-    case return_value do
-      {:ok, encoded, protocol_state} ->
-        ## TODO: optimise double encoding of binaries
-        encoded_payload = :bare.encode(encoded, :data)
-        {:ok, encoded_payload, %{data | xx_key_establishment_state: protocol_state}}
-
-      {:error, reason} ->
-        {:error, {:failed_to_encode, message_name, reason}}
-    end
-  end
-
-  def decode(message_name, message_payload, %{xx_key_establishment_state: protocol_state} = data)
-      when message_name in [:message1, :message2, :message3] do
-    ## TODO: optimise double encoding of binaries
-    {:ok, message, ""} = :bare.decode(message_payload, :data)
-    decoder = String.to_existing_atom("decode_" <> Atom.to_string(message_name))
-    return_value = apply(__MODULE__, decoder, [message, protocol_state])
-
-    case return_value do
-      {:ok, payload, protocol_state} ->
-        {:ok, payload, %{data | xx_key_establishment_state: protocol_state}}
-
-      {:error, reason} ->
-        {:error, {:failed_to_decode, message_name, reason}}
-    end
-  end
-
-  def encode_message1(%{e: e, m1_payload: payload} = state) do
     with {:ok, state} <- mix_hash(state, e.public),
          {:ok, state} <- mix_hash(state, payload) do
       {:ok, e.public <> payload, state}
     end
   end
 
-  def encode_message2(%{e: e, s: s, re: re, m2_payload: payload} = state) do
+  def encode(:message2, %{e: e, s: s, re: re, payloads: payloads} = state) do
+    payload = Map.get(payloads, :message2, "")
+
     with {:ok, state} <- mix_hash(state, e.public),
          {:ok, shared_secret} <- dh(state, e, re),
          {:ok, state} <- mix_key(state, shared_secret),
@@ -179,7 +172,9 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  def encode_message3(%{s: s, re: re, m3_payload: payload} = state) do
+  def encode(:message3, %{s: s, re: re, payloads: payloads} = state) do
+    payload = Map.get(payloads, :message3, "")
+
     with {:ok, state, encrypted_s_and_tag} <- encrypt_and_hash(state, s.public),
          {:ok, shared_secret} <- dh(state, s, re),
          {:ok, state} <- mix_key(state, shared_secret),
@@ -188,7 +183,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  def decode_message1(message, state) do
+  def decode(:message1, state, message) do
     with {:ok, re, payload} <- parse_message1(message),
          {:ok, state} <- mix_hash(state, re),
          {:ok, state} <- mix_hash(state, payload) do
@@ -196,7 +191,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  def decode_message2(message, %{e: e} = state) do
+  def decode(:message2, %{e: e} = state, message) do
     with {:ok, re, encrypted_rs_and_tag, encrypted_payload_and_tag} <- parse_message2(message),
          {:ok, state} <- mix_hash(state, re),
          {:ok, shared_secret} <- dh(state, e, re),
@@ -209,7 +204,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  def decode_message3(message, %{e: e} = state) do
+  def decode(:message3, %{e: e} = state, message) do
     with {:ok, encrypted_rs_and_tag, encrypted_payload_and_tag} <- parse_message3(message),
          {:ok, state, rs} <- decrypt_and_hash(state, encrypted_rs_and_tag),
          {:ok, shared_secret} <- dh(state, e, rs),
