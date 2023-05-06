@@ -1,0 +1,11 @@
+[[IgnoredVulns]]
+id = "RUSTSEC-2021-0145"
+reason = "Affects Windows OS which we don't support currently"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2021-0127"
+reason = "Unmaintained crate pulled-in by cddl-cat used for validating CDDL schema conformance in tests"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2022-0048"
+reason = "Unmaintained crate pulled in from a transitive dependency serde-xml-rs"
