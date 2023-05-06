@@ -15,52 +15,15 @@ defmodule Ockam.Services.Authorization.Tests do
 
   setup_all do
     {:ok, vault} = SoftwareVault.init()
-    {:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
 
     {:ok, channel_listener} =
-      Ockam.SecureChannel.create_listener(vault: vault, static_keypair: keypair)
+      Ockam.SecureChannel.create_listener(identity: :dynamic, encryption_options: [vault: vault])
 
     on_exit(fn ->
       Ockam.Node.stop(channel_listener)
     end)
 
     [vault: vault, channel_listener: channel_listener]
-  end
-
-  test "Worker requiring secure channel", %{vault: vault, channel_listener: channel_listener} do
-    {:ok, echoer} = Echo.create(authorization: [:from_secure_channel])
-
-    {:ok, me} = Ockam.Node.register_random_address()
-
-    Router.route(%Message{
-      payload: "Hello fake secure channel",
-      onward_route: [echoer],
-      return_route: [me],
-      local_metadata: %{source: :channel, channel: :secure_channel}
-    })
-
-    assert_receive(%Message{onward_route: [^me], payload: "Hello fake secure channel"}, 500)
-
-    Router.route(%Message{
-      payload: "Hello local",
-      onward_route: [echoer],
-      return_route: [me]
-    })
-
-    refute_receive(%Message{onward_route: [^me], payload: "Hello local"}, 500)
-
-    {:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
-
-    {:ok, channel} =
-      Ockam.SecureChannel.create(vault: vault, route: [channel_listener], static_keypair: keypair)
-
-    Router.route(%Message{
-      payload: "Hello secure channel",
-      onward_route: [channel, echoer],
-      return_route: [me]
-    })
-
-    assert_receive(%Message{onward_route: [^me], payload: "Hello secure channel"}, 500)
   end
 
   test "Worker requiring local message", %{vault: vault, channel_listener: channel_listener} do
@@ -85,10 +48,12 @@ defmodule Ockam.Services.Authorization.Tests do
 
     refute_receive(%Message{onward_route: [^me], payload: "Hello transport"}, 500)
 
-    {:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
-
     {:ok, channel} =
-      Ockam.SecureChannel.create(vault: vault, route: [channel_listener], static_keypair: keypair)
+      Ockam.SecureChannel.create_channel(
+        identity: :dynamic,
+        route: [channel_listener],
+        encryption_options: [vault: vault]
+      )
 
     Router.route(%Message{
       payload: "Hello secure channel",
@@ -104,7 +69,7 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
 
     {:ok, listener} =
-      Ockam.Identity.SecureChannel.create_listener(
+      Ockam.SecureChannel.create_listener(
         identity: listener_identity,
         encryption_options: [vault: vault]
       )
@@ -112,13 +77,13 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, bob, _bob_id} = Identity.create(Ockam.Identity.Stub)
 
     {:ok, bob_channel} =
-      Ockam.Identity.SecureChannel.create_channel(
+      Ockam.SecureChannel.create_channel(
         identity: bob,
         encryption_options: [vault: vault],
         route: [listener]
       )
 
-    {:ok, echoer} = Echo.create(authorization: [:from_identiy_secure_channel])
+    {:ok, echoer} = Echo.create(authorization: [:from_secure_channel])
 
     {:ok, me} = Ockam.Node.register_random_address()
     Ockam.Router.route("VIA CHANNEL", [bob_channel, echoer], [me])
@@ -135,7 +100,7 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
 
     {:ok, listener} =
-      Ockam.Identity.SecureChannel.create_listener(
+      Ockam.SecureChannel.create_listener(
         identity: listener_identity,
         encryption_options: [vault: vault]
       )
@@ -143,7 +108,7 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, bob, _bob_id} = Identity.create(Ockam.Identity.Stub)
 
     {:ok, bob_channel} =
-      Ockam.Identity.SecureChannel.create_channel(
+      Ockam.SecureChannel.create_channel(
         identity: bob,
         encryption_options: [vault: vault],
         route: [listener],
@@ -170,7 +135,7 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
 
     {:ok, listener} =
-      Ockam.Identity.SecureChannel.create_listener(
+      Ockam.SecureChannel.create_listener(
         identity: listener_identity,
         encryption_options: [vault: vault],
         responder_authorization: [:is_local]
@@ -179,7 +144,7 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, bob, _bob_id} = Identity.create(Ockam.Identity.Stub)
 
     {:ok, bob_channel} =
-      Ockam.Identity.SecureChannel.create_channel(
+      Ockam.SecureChannel.create_channel(
         identity: bob,
         encryption_options: [vault: vault],
         route: [listener]

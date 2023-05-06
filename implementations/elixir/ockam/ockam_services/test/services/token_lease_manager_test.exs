@@ -34,7 +34,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
 
   alias Ockam.API.Client
   alias Ockam.Identity
-  alias Ockam.Identity.SecureChannel
+  alias Ockam.SecureChannel
   alias Ockam.Services.TokenLeaseManager
   alias Ockam.Services.TokenLeaseManager.Lease
   alias Ockam.Services.TokenLeaseManager.StorageService.Memory, as: MemoryStorage

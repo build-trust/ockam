@@ -4,8 +4,8 @@ defmodule Ockam.Healthcheck do
   """
 
   alias Ockam.Healthcheck.Target
-  alias Ockam.Identity.SecureChannel
   alias Ockam.Message
+  alias Ockam.SecureChannel
   alias Ockam.Telemetry
 
   require Logger
@@ -111,7 +111,7 @@ defmodule Ockam.Healthcheck do
     with_conn(
       fn -> connect_secure_channel(tcp_conn, api_worker) end,
       fun,
-      fn chan -> Ockam.Identity.SecureChannel.disconnect(chan) end,
+      fn chan -> Ockam.SecureChannel.disconnect(chan) end,
       :secure_channel_error
     )
   end
@@ -123,11 +123,13 @@ defmodule Ockam.Healthcheck do
       Logger.debug("Identity: #{inspect(identity)}")
 
       case SecureChannel.create_channel(
-             route: api_route,
-             identity: identity,
-             vault_name: vault_name,
+             [
+               route: api_route,
+               identity: identity,
+               vault_name: vault_name
+             ],
              ## TODO: make this configurable
-             key_exchange_timeout: @key_exchange_timeout
+             @key_exchange_timeout
            ) do
         {:ok, channel} ->
           {:ok, channel}
@@ -136,6 +138,7 @@ defmodule Ockam.Healthcheck do
          {:worker_init, _worker,
           {:handler_error, reason, _message,
            {Ockam.Transport.TCP, :handle_transport_message, [[]]}}}} ->
+          # How is this defined?
           {:error, {:tcp_connection_error, reason}}
 
         {:error, {:worker_init, _worker, reason}} ->

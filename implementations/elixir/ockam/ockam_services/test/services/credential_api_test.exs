@@ -4,7 +4,7 @@ defmodule Test.Services.CredentialExchangeTest do
   alias Ockam.API.Client, as: ApiClient
   alias Ockam.Credential.AttributeStorageETS, as: AttributeStorage
   alias Ockam.Identity
-  alias Ockam.Identity.SecureChannel
+  alias Ockam.SecureChannel
   alias Ockam.Services.API.CredentialExchange
 
   alias Ockam.Services.Tests.TelemetryListener

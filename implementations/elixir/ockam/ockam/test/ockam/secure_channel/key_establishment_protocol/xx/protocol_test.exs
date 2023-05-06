@@ -62,52 +62,47 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
 
     {:ok, initiator_state} =
       Protocol.setup(
-        [
-          vault: vault,
-          static_keypair: test_case.initiator_static,
-          ephemeral_keypair: test_case.initiator_ephemeral,
-          message1_payload: test_case.message_1_payload,
-          message3_payload: test_case.message_3_payload
-        ],
-        %{}
+        vault: vault,
+        static_keypair: test_case.initiator_static,
+        ephemeral_keypair: test_case.initiator_ephemeral,
+        payloads: %{message1: test_case.message_1_payload, message3: test_case.message_3_payload}
       )
-
-    initiator_state = initiator_state.xx_key_establishment_state
 
     {:ok, responder_state} =
       Protocol.setup(
-        [
-          vault: vault,
-          static_keypair: test_case.responder_static,
-          ephemeral_keypair: test_case.responder_ephemeral,
-          message2_payload: test_case.message_2_payload
-        ],
-        %{}
+        vault: vault,
+        static_keypair: test_case.responder_static,
+        ephemeral_keypair: test_case.responder_ephemeral,
+        payloads: %{message2: test_case.message_2_payload}
       )
 
-    responder_state = responder_state.xx_key_establishment_state
+    {:ok, message_1_ciphertext, {:continue, initiator_state}} =
+      Protocol.out_payload(initiator_state)
 
-    {:ok, message_1_ciphertext, initiator_state} = Protocol.encode_message1(initiator_state)
+    {:ok, {:continue, responder_state}} =
+      Protocol.in_payload(responder_state, message_1_ciphertext)
 
-    {:ok, message_1_payload, responder_state} =
-      Protocol.decode_message1(message_1_ciphertext, responder_state)
+    {:ok, message_2_ciphertext, {:continue, responder_state}} =
+      Protocol.out_payload(responder_state)
 
-    {:ok, message_2_ciphertext, responder_state} = Protocol.encode_message2(responder_state)
+    {:ok, {:continue, initiator_state}} =
+      Protocol.in_payload(initiator_state, message_2_ciphertext)
 
-    {:ok, message_2_payload, initiator_state} =
-      Protocol.decode_message2(message_2_ciphertext, initiator_state)
+    {:ok, message_3_ciphertext, {:complete, {k1_i, k2_i, h_i, p_i}}} =
+      Protocol.out_payload(initiator_state)
 
-    {:ok, message_3_ciphertext, _initiator_state} = Protocol.encode_message3(initiator_state)
+    {:ok, {:complete, {k1_r, k2_r, h_r, p_r}}} =
+      Protocol.in_payload(responder_state, message_3_ciphertext)
 
-    {:ok, message_3_payload, _responder_state} =
-      Protocol.decode_message3(message_3_ciphertext, responder_state)
-
-    message_1_ciphertext === test_case.message_1_ciphertext and
-      message_1_payload === test_case.message_1_payload and
-      message_2_ciphertext === test_case.message_2_ciphertext and
-      message_2_payload === test_case.message_2_payload and
-      message_3_ciphertext === test_case.message_3_ciphertext and
-      message_3_payload === test_case.message_3_payload
+    assert Vault.secret_export(vault, k1_i) == Vault.secret_export(vault, k1_r)
+    assert Vault.secret_export(vault, k2_i) == Vault.secret_export(vault, k2_r)
+    assert h_i == h_r
+    assert message_1_ciphertext == test_case.message_1_ciphertext
+    assert message_2_ciphertext == test_case.message_2_ciphertext
+    assert message_3_ciphertext == test_case.message_3_ciphertext
+    assert test_case.message_1_payload == p_r.message1
+    assert test_case.message_2_payload == p_i.message2
+    assert test_case.message_3_payload == p_r.message3
   end
 
   test "test cases" do

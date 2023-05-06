@@ -61,7 +61,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     decryptor = Decryptor.new(decryptor_vault, kd, 0, 32)
 
     {msgs, encryptor} =
-      Enum.reduce(0..1000, {[], encryptor}, fn i, {acc, encryptor} ->
+      Enum.reduce(0..1000, {[], encryptor}, fn _i, {acc, encryptor} ->
         plain = :crypto.strong_rand_bytes(64)
         {:ok, ciphertext, encryptor} = Encryptor.encrypt(<<>>, plain, encryptor)
         {[{plain, ciphertext} | acc], encryptor}

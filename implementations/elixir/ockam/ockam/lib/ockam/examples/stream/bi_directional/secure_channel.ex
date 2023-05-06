@@ -157,9 +157,10 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
 
     SecureChannel.create_listener(
-      vault: vault,
-      static_keypair: keypair,
-      address: "SC_listener"
+      address: "SC_listener",
+      identity: :dynamic,
+      identity_module: Ockam.Identity.Stub,
+      encryption_options: [vault: vault, static_keypair: keypair]
     )
   end
 
@@ -168,7 +169,12 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
 
     {:ok, c} =
-      SecureChannel.create(route: route_to_listener, vault: vault, static_keypair: keypair)
+      SecureChannel.create_channel(
+        identity: :dynamic,
+        identity_module: Ockam.Identity.Stub,
+        route: route_to_listener,
+        encryption_options: [vault: vault, static_keypair: keypair]
+      )
 
     {:ok, c}
   end

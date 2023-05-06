@@ -9,7 +9,7 @@ defmodule Ockam.Healthcheck.Test do
     {:ok, transport} = Ockam.Transport.TCP.start(listen: [port: 4000])
 
     {:ok, _api} =
-      Ockam.Identity.SecureChannel.create_listener(
+      Ockam.SecureChannel.create_listener(
         identity: :dynamic,
         address: "api",
         trust_policies: []
