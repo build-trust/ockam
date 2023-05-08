@@ -1,6 +1,4 @@
 use minicbor::{Decode, Encode};
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_transport_tcp::TcpConnectionMode;
 use std::fmt::{self, Display};
 
