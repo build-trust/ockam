@@ -20,63 +20,101 @@ use std::net::SocketAddr;
 use super::NodeManagerWorker;
 
 fn handle_expose_to_multiaddr(
+    tcp: &TcpTransport,
     flow_controls: &FlowControls,
-    multiaddr: MultiAddr,
+    mut multiaddr: MultiAddr,
 ) -> Result<(FlowControlId, FlowControlPolicy)> {
-    let mut iter = multiaddr.iter();
-    let p = iter.next().unwrap(); // FIXME
-
-    let res = match p.code() {
-        Worker::CODE => {
-            let local = p.cast::<Worker>().unwrap(); // FIXME
-            let address = Address::new(LOCAL, &*local);
-
-            let flow_control_id = flow_controls
-                .find_flow_control_with_producer_address(&address)
-                .unwrap() // FIXME
-                .flow_control_id()
-                .clone();
-
-            (flow_control_id, FlowControlPolicy::ProducerAllowMultiple)
-        }
-        Service::CODE => {
-            let local = p.cast::<Service>().unwrap(); // FIXME
-            let address = Address::new(LOCAL, &*local);
-
-            let flow_control_id = flow_controls
-                .find_flow_control_with_producer_address(&address)
-                .unwrap() // FIXME
-                .flow_control_id()
-                .clone();
-
-            (flow_control_id, FlowControlPolicy::ProducerAllowMultiple)
-        }
-
-        Secure::CODE => {
-            let local = p.cast::<Secure>().unwrap(); // FIXME
-            let address = Address::new(LOCAL, &*local);
-
-            let flow_control_id = flow_controls
-                .get_flow_control_with_spawner(&address)
-                .unwrap();
-
-            (
-                flow_control_id,
-                FlowControlPolicy::SpawnerAllowMultipleMessages,
-            )
-        }
-
-        Ip4::CODE | Ip6::CODE => {
-            // iter.next().unwrap()
+    // Tcp connection of listener
+    let res = if let Ok(socket) = multiaddr.to_socket_addr() {
+        let socket_address = socket.parse::<SocketAddr>().unwrap();
+        if let Some(res) = tcp
+            .registry()
+            .get_all_receiver_processors()
+            .iter()
+            .find(|x| x.socket_address() == socket_address)
+            .map(|x| {
+                (
+                    x.flow_control_id().clone(),
+                    FlowControlPolicy::ProducerAllowMultiple,
+                )
+            })
+        {
+            res
+        } else if let Some(res) = tcp
+            .registry()
+            .get_all_listeners()
+            .iter()
+            .find(|x| x.socket_address() == socket_address)
+            .map(|x| {
+                (
+                    x.flow_control_id().clone(),
+                    FlowControlPolicy::SpawnerAllowMultipleMessages,
+                )
+            })
+        {
+            res
+        } else {
             unimplemented!()
         }
-        DnsAddr::CODE => unreachable!(), // FIXME
+    }
+    // Worker or a Secure Channel Listener
+    else {
+        if multiaddr.len() != 1 {
+            unimplemented!()
+        }
 
-        other => {
-            error!(target: "ockam_api", code = %other, "unsupported protocol in exposed_to");
-            return Err(ApiError::message(
-                "unknown multiaddr protocol in exposed_to",
-            ));
+        let p = multiaddr.pop_front().unwrap(); // FIXME
+
+        match p.code() {
+            Worker::CODE => {
+                let local = p.cast::<Worker>().unwrap(); // FIXME
+                let address = Address::new(LOCAL, &*local);
+
+                let flow_control_id = flow_controls
+                    .find_flow_control_with_producer_address(&address)
+                    .unwrap() // FIXME
+                    .flow_control_id()
+                    .clone();
+
+                (flow_control_id, FlowControlPolicy::ProducerAllowMultiple)
+            }
+            Service::CODE => {
+                let local = p.cast::<Service>().unwrap(); // FIXME
+                let address = Address::new(LOCAL, &*local);
+
+                let flow_control_id = flow_controls
+                    .find_flow_control_with_producer_address(&address)
+                    .unwrap() // FIXME
+                    .flow_control_id()
+                    .clone();
+
+                (flow_control_id, FlowControlPolicy::ProducerAllowMultiple)
+            }
+
+            Secure::CODE => {
+                let local = p.cast::<Secure>().unwrap(); // FIXME
+                let address = Address::new(LOCAL, &*local);
+
+                let flow_control_id = flow_controls
+                    .get_flow_control_with_spawner(&address)
+                    .unwrap();
+
+                (
+                    flow_control_id,
+                    FlowControlPolicy::SpawnerAllowMultipleMessages,
+                )
+            }
+
+            Ip4::CODE | Ip6::CODE | DnsAddr::CODE => {
+                unimplemented!()
+            }
+
+            other => {
+                error!(target: "ockam_api", code = %other, "unsupported protocol in exposed_to");
+                return Err(ApiError::message(
+                    "unknown multiaddr protocol in exposed_to",
+                ));
+            }
         }
     };
 
@@ -257,7 +295,11 @@ impl NodeManagerWorker {
         let mut options = TcpConnectionOptions::new();
 
         for exposed_to in exposed_to {
-            let (id, policy) = handle_expose_to_multiaddr(ctx.flow_controls(), exposed_to)?;
+            let (id, policy) = handle_expose_to_multiaddr(
+                &node_manager.tcp_transport,
+                ctx.flow_controls(),
+                exposed_to,
+            )?;
             options = options.as_consumer(&id, policy);
         }
 
