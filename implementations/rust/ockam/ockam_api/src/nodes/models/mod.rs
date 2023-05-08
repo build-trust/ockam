@@ -4,6 +4,7 @@
 /// its own
 pub mod base;
 pub mod credentials;
+pub mod flow_controls;
 pub mod forwarder;
 pub mod identity;
 pub mod policy;

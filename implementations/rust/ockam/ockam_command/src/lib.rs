@@ -13,6 +13,7 @@ mod credential;
 mod docs;
 mod enroll;
 mod error;
+mod flow_control;
 mod identity;
 mod kafka;
 mod lease;
@@ -42,6 +43,7 @@ mod worker;
 
 use crate::admin::AdminCommand;
 use crate::authority::AuthorityCommand;
+use crate::flow_control::FlowControlCommand;
 use crate::logs::setup_logging;
 use crate::node::NodeSubcommand;
 use crate::run::RunCommand;
@@ -263,6 +265,8 @@ pub enum OckamSubcommand {
     Markdown(MarkdownCommand),
     Manpages(ManpagesCommand),
     TrustContext(TrustContextCommand),
+
+    FlowControl(FlowControlCommand),
 }
 
 impl OckamSubcommand {
@@ -366,6 +370,8 @@ impl OckamCommand {
             OckamSubcommand::Markdown(c) => c.run(),
             OckamSubcommand::Manpages(c) => c.run(),
             OckamSubcommand::TrustContext(c) => c.run(options),
+
+            OckamSubcommand::FlowControl(c) => c.run(options),
         }
     }
 

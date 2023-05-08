@@ -57,6 +57,7 @@ use crate::{local_worker, DefaultAddress};
 use super::registry::Registry;
 
 mod credentials;
+mod flow_controls;
 mod forwarder;
 pub mod message;
 mod node_identities;
@@ -751,6 +752,11 @@ impl NodeManagerWorker {
             }
             (Delete, ["node", "inlet", alias]) => self.delete_inlet(req, alias).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
+
+            // ==*== Flow Controls ==*==
+            (Post, ["node", "flow_controls", "add_consumer"]) => {
+                self.add_consumer(ctx, req, dec)?.to_vec()?
+            }
 
             // ==*== Workers ==*==
             (Get, ["node", "workers"]) => {

@@ -14,6 +14,7 @@ use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
 use ockam_api::config::cli::TrustContextConfig;
+use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
     StartIdentityServiceRequest, StartOktaIdentityProviderRequest, StartVerifierService,
@@ -23,6 +24,7 @@ use ockam_api::DefaultAddress;
 use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
 use ockam_core::env::{get_env_with_default, FromString};
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
@@ -176,6 +178,15 @@ pub(crate) fn start_authenticator_service<'a>(
 ) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
     let payload = StartAuthenticatorRequest::new(addr, project.as_bytes());
     Request::post(node_service(DefaultAddress::DIRECT_AUTHENTICATOR)).body(payload)
+}
+
+pub(crate) fn add_consumer(
+    id: FlowControlId,
+    address: MultiAddr,
+    policy: FlowControlPolicy,
+) -> RequestBuilder<'static, AddConsumer> {
+    let payload = AddConsumer::new(id, address, policy);
+    Request::post("/node/flow_controls/add_consumer").body(payload)
 }
 
 pub(crate) fn start_okta_service(
