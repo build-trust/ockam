@@ -591,7 +591,7 @@ impl MultiAddr {
 
     /// If the input MultiAddr is "/dnsaddr/localhost/tcp/4000/service/api",
     /// then this will return string format of the SocketAddr: "127.0.0.1:4000".
-    pub fn multiaddr_to_socket_addr(self) -> Result<String, Error> {
+    pub fn to_socket_addr(&self) -> Result<String, Error> {
         let mut it = self.iter().peekable();
         while let Some(p) = it.next() {
             match p.code() {
