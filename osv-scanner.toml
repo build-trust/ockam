@@ -1,6 +1,6 @@
 [[IgnoredVulns]]
 id = "RUSTSEC-2021-0145"
-reason = "Affects Windows OS which we don't support currently"
+reason = "atty crate pulled in from transitive dependency env_logger used by kafka-protocol and quickcheck"
 
 [[IgnoredVulns]]
 id = "RUSTSEC-2021-0127"
