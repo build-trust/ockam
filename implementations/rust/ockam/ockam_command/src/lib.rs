@@ -14,6 +14,7 @@ mod docs;
 mod enroll;
 mod environment;
 mod error;
+mod flow_control;
 mod identity;
 mod kafka;
 mod lease;
@@ -43,6 +44,7 @@ mod worker;
 
 use crate::admin::AdminCommand;
 use crate::authority::AuthorityCommand;
+use crate::flow_control::FlowControlCommand;
 use crate::logs::setup_logging;
 use crate::node::NodeSubcommand;
 use crate::run::RunCommand;
@@ -281,6 +283,8 @@ pub enum OckamSubcommand {
     Manpages(ManpagesCommand),
     TrustContext(TrustContextCommand),
     Environment(EnvironmentCommand),
+
+    FlowControl(FlowControlCommand),
 }
 
 impl OckamSubcommand {
@@ -385,6 +389,8 @@ impl OckamCommand {
             OckamSubcommand::Manpages(c) => c.run(),
             OckamSubcommand::TrustContext(c) => c.run(options),
             OckamSubcommand::Environment(c) => c.run(),
+
+            OckamSubcommand::FlowControl(c) => c.run(options),
         }
     }
 
