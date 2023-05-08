@@ -41,3 +41,13 @@ impl Distribution<FlowControlId> for Standard {
         FlowControlId::new(&hex::encode(address))
     }
 }
+
+impl From<String> for FlowControlId {
+    fn from(value: String) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            id: value,
+        }
+    }
+}
