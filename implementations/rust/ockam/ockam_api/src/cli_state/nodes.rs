@@ -67,7 +67,10 @@ impl NodeState {
 
     fn _delete(&self, sikgill: bool) -> Result<()> {
         self.kill_process(sikgill)?;
-        std::fs::remove_dir_all(&self.path)?;
+        match std::fs::remove_dir_all(&self.path) {
+            Ok(_) => info!(name=%self.name, "remove_dir_all call succeeded"),
+            Err(err) => error!(name=%self.name, "remove_dir_all call failed: {:?}", err)
+        };
         let _ = std::fs::remove_dir(&self.path); // Make sure the dir is gone
         info!(name=%self.name, "node deleted");
         Ok(())
