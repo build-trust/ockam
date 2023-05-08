@@ -6,7 +6,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   defstruct [
     # handle to a vault
     :vault,
-    # identity keypair, reference in vault
+    # static keypair, reference in vault
     :s,
     # ephemeral keypair, reference in vault
     :e,
@@ -66,7 +66,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   defp setup_s(options, state) do
-    case Keyword.get(options, :identity_keypair) do
+    case Keyword.get(options, :static_keypair) do
       nil -> generate_key(:s, state)
       %{private: _priv, public: _pub} = s -> {:ok, %{state | s: s}}
       vault_handle -> turn_vault_private_key_handle_to_keypair(:s, vault_handle, state)

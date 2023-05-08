@@ -16,12 +16,12 @@ defmodule Ockam.SecureChannel.Listener do
   @impl true
   def setup(options, state) do
     with {:ok, vault} <- Keyword.fetch(options, :vault),
-         {:ok, identity_keypair} <- Keyword.fetch(options, :identity_keypair) do
+         {:ok, static_keypair} <- Keyword.fetch(options, :static_keypair) do
       state = Map.put(state, :vault, vault)
-      state = Map.put(state, :identity_keypair, identity_keypair)
+      state = Map.put(state, :static_keypair, static_keypair)
       {:ok, state}
     else
-      :error -> {:error, {:required_options_missing, [:vault, :identity_keypair], options}}
+      :error -> {:error, {:required_options_missing, [:vault, :static_keypair], options}}
     end
   end
 
@@ -38,7 +38,7 @@ defmodule Ockam.SecureChannel.Listener do
     base_channel_options =
       [role: :responder]
       |> Keyword.put(:vault, state.vault)
-      |> Keyword.put(:identity_keypair, state.identity_keypair)
+      |> Keyword.put(:static_keypair, state.static_keypair)
 
     with {:ok, init_handshake} <- InitHandshake.decode(payload),
          {:ok, responder_init_message} <- make_responder_init_message(message, init_handshake),

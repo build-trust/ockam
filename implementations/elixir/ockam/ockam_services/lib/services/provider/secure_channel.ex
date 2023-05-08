@@ -40,7 +40,7 @@ defmodule Ockam.Services.Provider.SecureChannel do
   def service_options(:secure_channel, args) do
     with {:ok, vault} <- SoftwareVault.init(),
          {:ok, keypair} <- Ockam.Vault.secret_generate(vault, type: :curve25519) do
-      Keyword.merge([vault: vault, identity_keypair: keypair, address: "secure_channel"], args)
+      Keyword.merge([vault: vault, static_keypair: keypair, address: "secure_channel"], args)
     else
       error ->
         raise "error starting service options for secure channel: #{inspect(error)}"
@@ -64,7 +64,7 @@ defmodule Ockam.Services.Provider.SecureChannel do
         [
           identity: :dynamic,
           identity_module: identity_module,
-          encryption_options: [vault: vault, identity_keypair: keypair],
+          encryption_options: [vault: vault, static_keypair: keypair],
           address: "identity_secure_channel",
           trust_policies: trust_policies
         ],
