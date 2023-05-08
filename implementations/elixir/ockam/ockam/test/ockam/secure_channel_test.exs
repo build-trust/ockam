@@ -267,16 +267,16 @@ defmodule Ockam.SecureChannel.Tests do
 
   defp create_secure_channel_listener() do
     {:ok, vault} = SoftwareVault.init()
-    {:ok, identity} = Vault.secret_generate(vault, type: :curve25519)
-    SecureChannel.create_listener(vault: vault, identity_keypair: identity)
+    {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
+    SecureChannel.create_listener(vault: vault, static_keypair: keypair)
   end
 
   defp create_secure_channel(route_to_listener) do
     {:ok, vault} = SoftwareVault.init()
-    {:ok, identity} = Vault.secret_generate(vault, type: :curve25519)
+    {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
 
     {:ok, c} =
-      SecureChannel.create(route: route_to_listener, vault: vault, identity_keypair: identity)
+      SecureChannel.create(route: route_to_listener, vault: vault, static_keypair: keypair)
 
     {:ok, c}
   end

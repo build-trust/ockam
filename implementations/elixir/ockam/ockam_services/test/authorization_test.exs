@@ -15,10 +15,10 @@ defmodule Ockam.Services.Authorization.Tests do
 
   setup_all do
     {:ok, vault} = SoftwareVault.init()
-    {:ok, identity} = Ockam.Vault.secret_generate(vault, type: :curve25519)
+    {:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
 
     {:ok, channel_listener} =
-      Ockam.SecureChannel.create_listener(vault: vault, identity_keypair: identity)
+      Ockam.SecureChannel.create_listener(vault: vault, static_keypair: keypair)
 
     on_exit(fn ->
       Ockam.Node.stop(channel_listener)
@@ -49,10 +49,10 @@ defmodule Ockam.Services.Authorization.Tests do
 
     refute_receive(%Message{onward_route: [^me], payload: "Hello local"}, 500)
 
-    {:ok, kp} = Ockam.Vault.secret_generate(vault, type: :curve25519)
+    {:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
 
     {:ok, channel} =
-      Ockam.SecureChannel.create(vault: vault, route: [channel_listener], identity_keypair: kp)
+      Ockam.SecureChannel.create(vault: vault, route: [channel_listener], static_keypair: keypair)
 
     Router.route(%Message{
       payload: "Hello secure channel",
@@ -85,10 +85,10 @@ defmodule Ockam.Services.Authorization.Tests do
 
     refute_receive(%Message{onward_route: [^me], payload: "Hello transport"}, 500)
 
-    {:ok, kp} = Ockam.Vault.secret_generate(vault, type: :curve25519)
+    {:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
 
     {:ok, channel} =
-      Ockam.SecureChannel.create(vault: vault, route: [channel_listener], identity_keypair: kp)
+      Ockam.SecureChannel.create(vault: vault, route: [channel_listener], static_keypair: keypair)
 
     Router.route(%Message{
       payload: "Hello secure channel",

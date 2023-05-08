@@ -64,7 +64,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
       Protocol.setup(
         [
           vault: vault,
-          identity_keypair: test_case.initiator_static,
+          static_keypair: test_case.initiator_static,
           ephemeral_keypair: test_case.initiator_ephemeral,
           message1_payload: test_case.message_1_payload,
           message3_payload: test_case.message_3_payload
@@ -78,7 +78,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
       Protocol.setup(
         [
           vault: vault,
-          identity_keypair: test_case.responder_static,
+          static_keypair: test_case.responder_static,
           ephemeral_keypair: test_case.responder_ephemeral,
           message2_payload: test_case.message_2_payload
         ],

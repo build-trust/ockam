@@ -8,14 +8,14 @@
 # Start the TCP Transport Add-on for Ockam Routing and a TCP listener on port 4000.
 Ockam.Transport.TCP.start(listen: [port: 4000])
 
-# Create a vault and an identity keypair.
+# Create a vault and an static keypair.
 {:ok, vault} = Ockam.Vault.Software.init()
-{:ok, identity} = Ockam.Vault.secret_generate(vault, type: :curve25519)
+{:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
 
 # Create a secure channel listener that will wait for requests to initiate an Authenticated Key Exchange.
 Ockam.SecureChannel.create_listener(
   vault: vault,
-  identity_keypair: identity,
+  static_keypair: keypair,
   address: "secure_channel_listener"
 )
 
