@@ -98,7 +98,7 @@ serde_json = "1"
 serde_yaml = "0.9"
 strip-ansi-escapes = "0.1.1"
 syntect = "5"
-sysinfo = { version = "0.28", default-features = false }
+sysinfo = { version = "0.29", default-features = false }
 tempfile = "3.5"
 termcolor = "1.2.0"
 termimad = "0.23"
