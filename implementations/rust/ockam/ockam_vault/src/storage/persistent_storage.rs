@@ -2,7 +2,7 @@ use crate::{constants, Secret, SecretAttributes, SecretType, StoredSecret};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, KeyId, Result};
-use ockam_node::{FileValueStorage, KeyValueStorage, ValueStorage};
+use ockam_node::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueStorage};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -12,13 +12,15 @@ use std::path::Path;
 /// in the presence of concurrent accesses
 pub struct PersistentStorage {
     storage: Arc<FileValueStorage<StoredSecrets>>,
+    cache: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>,
 }
 
 impl PersistentStorage {
     /// Create a new file storage for a Vault
     pub async fn create(path: &Path) -> Result<Arc<dyn KeyValueStorage<KeyId, StoredSecret>>> {
         let storage = Arc::new(FileValueStorage::create(path).await?);
-        Ok(Arc::new(PersistentStorage { storage }))
+        let cache = InMemoryKeyValueStorage::create();
+        Ok(Arc::new(PersistentStorage { storage, cache }))
     }
 }
 
@@ -177,6 +179,10 @@ impl<'de> Deserialize<'de> for StoredSecrets {
 #[async_trait]
 impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
     async fn put(&self, key_id: KeyId, stored_secret: StoredSecret) -> Result<()> {
+        self.cache
+            .put(key_id.clone(), stored_secret.clone())
+            .await?;
+
         let t = move |mut v: StoredSecrets| {
             v.add_stored_secret(key_id.clone(), stored_secret.clone());
             Ok(v)
@@ -185,6 +191,9 @@ impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
     }
 
     async fn get(&self, key_id: &KeyId) -> Result<Option<StoredSecret>> {
+        if let Ok(Some(s)) = self.cache.get(key_id).await {
+            return Ok(Some(s));
+        }
         let k = key_id.clone();
         let t =
             move |v: StoredSecrets| -> Result<Option<StoredSecret>> { Ok(v.get_stored_secret(&k)) };
@@ -192,6 +201,7 @@ impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
     }
 
     async fn delete(&self, key_id: &KeyId) -> Result<Option<StoredSecret>> {
+        self.cache.delete(key_id).await?;
         let k = key_id.clone();
         let t = move |mut v: StoredSecrets| -> Result<(StoredSecrets, Option<StoredSecret>)> {
             let r = v.delete_stored_secret(&k);
