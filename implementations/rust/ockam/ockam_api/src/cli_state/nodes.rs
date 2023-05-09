@@ -71,8 +71,10 @@ impl NodeState {
             Ok(_) => info!(name=%self.name, "remove_dir_all call succeeded"),
             Err(err) => error!(name=%self.name, "remove_dir_all call failed: {:?}", err)
         };
-        let _ = std::fs::remove_dir(&self.path); // Make sure the dir is gone
-        info!(name=%self.name, "node deleted");
+        match std::fs::remove_dir(&self.path) {
+            Ok(_) => info!(name=%self.name, "remove_dir call succeeded"),
+            Err(err) => error!(name=%self.name, "remove_dir call failed: {:?}", err)
+        };
         Ok(())
     }
 
