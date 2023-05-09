@@ -12,7 +12,7 @@ use ockam_node::KeyValueStorage;
 ///
 /// # Examples
 /// ```
-/// use ockam_vault::{SecretAttributes, SecretsStore, Signer, Verifier, Vault};
+/// use ockam_vault::{SecretAttributes, SecretsStore, Signer, Vault};
 /// use ockam_core::Result;
 ///
 /// async fn example() -> Result<()> {

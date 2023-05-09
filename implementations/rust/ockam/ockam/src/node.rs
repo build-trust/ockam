@@ -31,13 +31,14 @@ pub struct Node {
 /// Persistent implementations are available by using a builder.
 /// For example, you can use a FileStorage backend to support the node vault.
 /// ```rust
+/// use std::path::Path;
 /// use std::sync::Arc;
 /// use ockam::{Node, Result};
 /// use ockam_node::Context;
 /// use ockam_vault::storage::PersistentStorage;
 ///
 /// async fn make_node(ctx: Context) -> Result<Node> {
-///   let node = Node::builder().with_vault_storage(Arc::new(PersistentStorage::create("vault".into()).await?)).build(ctx).await?;
+///   let node = Node::builder().with_vault_storage(PersistentStorage::create(Path::new("vault")).await?).build(ctx).await?;
 ///   Ok(node)
 /// }
 ///
