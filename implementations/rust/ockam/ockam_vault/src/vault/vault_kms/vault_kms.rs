@@ -119,7 +119,7 @@ impl Kms for VaultKms {
     }
 
     async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature> {
-        let vault_entry = self.get_secret(key_id, "signing key").await?;
+        let vault_entry = self.get_secret(key_id, "kms signing key").await?;
         Self::sign_with_secret(vault_entry, message)
     }
 }
