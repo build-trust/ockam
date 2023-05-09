@@ -16,7 +16,7 @@ pub trait Signer: Send + Sync {
     ) -> Result<bool>;
 }
 
-/// Tests for implementations of the Signer and Verifier traits
+/// Tests for implementations of the Signer trait
 pub mod tests {
     use super::*;
     use crate::{SecretAttributes, SecretsStore};
