@@ -25,19 +25,19 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_macros/std", "alloc"]
+std = ["ockam_vault/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
-no_std = ["ockam_core/no_std", "ockam_macros/no_std"]
+no_std = ["ockam_vault/no_std"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_macros/alloc"]
+alloc = ["ockam_vault/alloc"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.80.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.29.0", default_features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.76.0" }
+ockam_vault = { path = "../ockam_vault", default_features = false, version = "^0.76.0" }
 
 [dev-dependencies]
 hex = "0.4"

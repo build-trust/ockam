@@ -30,10 +30,8 @@ default = ["std", "storage", "rustcrypto"]
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
-  "ockam_core/std",
   "ockam_macros/std",
   "ockam_node/std",
-  "minicbor/std",
   "aes-gcm/alloc",
   "aes-gcm/std",
   "rand/std",
@@ -50,20 +48,24 @@ std = [
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
 no_std = [
-  "ockam_core/no_std",
-  "ockam_macros/no_std",
   "ockam_node/no_std",
   "rand_pcg",
   "x25519-dalek/u32_backend",
   "aes-gcm/heapless",
   "aes-gcm/force-soft",
   "aes-gcm/stream",
+  "serde/derive",
 ]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc", "p256/ecdsa", "p256/pem"]
+alloc = [
+  "ockam_node/alloc",
+  "aes-gcm/alloc",
+  "p256/ecdsa",
+  "p256/pem",
+]
 
-storage = ["ockam_node/storage", "std", "serde"]
+storage = ["ockam_node/storage", "std", "serde", "serde_cbor"]
 
 # FIXME: Either remove that feature, or avoid unneccessary dependencies when it's disabled
 rustcrypto = []
@@ -84,7 +86,7 @@ ockam_node = { path = "../ockam_node", version = "^0.83.0", default_features = f
 p256 = { version = "0.13.2", default_features = false }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
-serde = { version = "1", features = ["derive"], optional = true }
+serde = { version = "1", default-features = false, features = ["derive"], optional = true }
 serde_cbor = { version = "0.11.2", optional = true }
 sha2 = { version = "0.10", default-features = false }
 thiserror = { version = "1.0.38", optional = true }

@@ -1,9 +1,11 @@
+#[cfg(feature = "storage")]
 use crate::storage::PersistentStorage;
 use crate::vault::secrets_store_impl::VaultSecretsStore;
 use crate::{
     AsymmetricVault, Kms, SecretsStore, Signer, SymmetricVault, Vault, VaultKms, VaultStorage,
 };
 use ockam_core::compat::sync::Arc;
+#[cfg(feature = "storage")]
 use ockam_core::Result;
 use ockam_node::InMemoryKeyValueStorage;
 #[cfg(feature = "std")]

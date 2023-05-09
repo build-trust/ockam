@@ -5,9 +5,9 @@ use crate::{
     Kms, PublicKey, Secret, SecretAttributes, SecretType, Signature, StoredSecret, VaultError,
 };
 use arrayref::array_ref;
-use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::Arc;
+#[cfg(feature = "rustcrypto")]
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_core::{Error, KeyId};
@@ -105,18 +105,14 @@ impl Kms for VaultKms {
                 let public_key = ed25519_dalek::PublicKey::from_bytes(public_key.data()).unwrap();
                 Ok(public_key.verify(data.as_ref(), &signature).is_ok())
             }
+            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => {
-                cfg_if! {
-                    if #[cfg(feature = "rustcrypto")] {
-                        use p256::ecdsa::{VerifyingKey, Signature, signature::Verifier as _};
-                        use p256::pkcs8::DecodePublicKey;
-                        let k = VerifyingKey::from_public_key_der(public_key.data()).map_err(Self::from_pkcs8)?;
-                        let s = Signature::from_der(signature.as_ref()).map_err(Self::from_ecdsa)?;
-                        Ok(k.verify(data, &s).is_ok())
-                    } else {
-                        compile_error!("NIST P-256 requires feature `rustcrypto`")
-                    }
-                }
+                use p256::ecdsa::{signature::Verifier as _, Signature, VerifyingKey};
+                use p256::pkcs8::DecodePublicKey;
+                let k = VerifyingKey::from_public_key_der(public_key.data())
+                    .map_err(Self::from_pkcs8)?;
+                let s = Signature::from_der(signature.as_ref()).map_err(Self::from_ecdsa)?;
+                Ok(k.verify(data, &s).is_ok())
             }
             SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidPublicKey.into()),
         }
@@ -140,19 +136,15 @@ impl VaultKms {
                 };
                 Secret::new(bytes)
             }
+            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => {
-                cfg_if! {
-                    if #[cfg(feature = "rustcrypto")] {
-                        use p256::ecdsa::SigningKey;
-                        use p256::pkcs8::EncodePrivateKey;
-                        let sec = SigningKey::random(& mut thread_rng());
-                        let sec = p256::SecretKey::from_bytes(&sec.to_bytes()).map_err(Self::from_ecurve)?;
-                        let doc = sec.to_pkcs8_der().map_err(Self::from_pkcs8)?;
-                        Secret::new(doc.as_bytes().to_vec())
-                    } else {
-                        compile_error!("NIST P-256 requires feature `rustcrypto`")
-                    }
-                }
+                use p256::ecdsa::SigningKey;
+                use p256::pkcs8::EncodePrivateKey;
+                let sec = SigningKey::random(&mut thread_rng());
+                let sec =
+                    p256::SecretKey::from_bytes(&sec.to_bytes()).map_err(Self::from_ecurve)?;
+                let doc = sec.to_pkcs8_der().map_err(Self::from_pkcs8)?;
+                Secret::new(doc.as_bytes().to_vec())
             }
         };
         Ok(secret)
@@ -178,15 +170,8 @@ impl VaultKms {
                 let pk = ed25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::Ed25519))
             }
-            SecretType::NistP256 => {
-                cfg_if! {
-                    if #[cfg(feature = "rustcrypto")] {
-                        Self::public_key(stored_secret.secret().as_ref())
-                    } else {
-                        compile_error!("NIST P-256 requires feature `rustcrypto`")
-                    }
-                }
-            }
+            #[cfg(feature = "rustcrypto")]
+            SecretType::NistP256 => Self::public_key(stored_secret.secret().as_ref()),
             SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
     }
@@ -225,20 +210,15 @@ impl VaultKms {
                 let sig = kp.sign(data.as_ref());
                 Ok(Signature::new(sig.to_bytes().to_vec()))
             }
+            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => {
                 let key = stored_secret.secret().as_ref();
-                cfg_if! {
-                    if #[cfg(feature = "rustcrypto")] {
-                        use p256::ecdsa::signature::Signer;
-                        use p256::pkcs8::DecodePrivateKey;
-                        let sec = p256::ecdsa::SigningKey::from_pkcs8_der(key).map_err(Self::from_pkcs8)?;
+                use p256::ecdsa::signature::Signer;
+                use p256::pkcs8::DecodePrivateKey;
+                let sec = p256::ecdsa::SigningKey::from_pkcs8_der(key).map_err(Self::from_pkcs8)?;
 
-                        let sig: p256::ecdsa::Signature = sec.sign(data);
-                        Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
-                    } else {
-                        compile_error!("NIST P-256 requires feature `rustcrypto`")
-                    }
-                }
+                let sig: p256::ecdsa::Signature = sec.sign(data);
+                Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
             }
             SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
@@ -276,16 +256,6 @@ impl VaultKms {
                 ))
                 .await?
             }
-            SecretType::NistP256 => {
-                cfg_if! {
-                    if #[cfg(feature = "rustcrypto")] {
-                        let pk = Self::public_key(secret.as_ref())?;
-                        Self::compute_key_id_for_public_key(&pk).await?
-                    } else {
-                        compile_error!("NIST P-256 requires feature `rustcrypto`")
-                    }
-                }
-            }
             SecretType::Buffer | SecretType::Aes => {
                 // NOTE: Buffer and Aes secrets in the system are ephemeral and it should be fine,
                 // that every time we import the same secret - it gets different KeyId value.
@@ -295,6 +265,11 @@ impl VaultKms {
                 let mut rand = [0u8; 8];
                 rng.fill_bytes(&mut rand);
                 hex::encode(rand)
+            }
+            #[cfg(feature = "rustcrypto")]
+            SecretType::NistP256 => {
+                let pk = Self::public_key(secret.as_ref())?;
+                Self::compute_key_id_for_public_key(&pk).await?
             }
         })
     }

@@ -21,7 +21,9 @@ noise_xx = ["ockam_key_exchange_xx"]
 software_vault = [
   "ockam_vault",
   "ockam_vault/rustcrypto",
+  "rustcrypto",
 ]
+rustcrypto = []
 lease_proto_json = ["serde_json"]
 
 # Feature (enabled by default): "std" enables functionality expected to
