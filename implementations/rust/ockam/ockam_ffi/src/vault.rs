@@ -152,7 +152,7 @@ pub extern "C" fn ockam_vault_secret_generate(
         *secret = block_future(async move {
             let entry = get_vault_entry(context).await?;
             let atts = attributes.try_into()?;
-            let key_id = entry.vault.create_persistent_secret(atts).await?;
+            let key_id = entry.vault.create_ephemeral_secret(atts).await?;
 
             let index = entry.insert(key_id).await;
 
