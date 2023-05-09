@@ -31,11 +31,8 @@ all-features = false
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std", "ockam_transport_tcp", "software_vault", "software_vault_storage"]
-software_vault = [
-  "ockam_vault/rustcrypto",
-  "ockam_identity/software_vault",
-]
+default = ["std", "ockam_transport_tcp", "software_vault_storage"]
+software_vault = ["ockam_identity/software_vault"]
 software_vault_storage = ["software_vault", "ockam_vault/storage"]
 
 # Feature (enabled by default): "std" enables functionality expected to

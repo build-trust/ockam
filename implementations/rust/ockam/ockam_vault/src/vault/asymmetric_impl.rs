@@ -118,9 +118,11 @@ impl Vault {
                 let secret = sk.diffie_hellman(&pk_t);
                 Ok(secret.as_bytes().to_vec())
             }
-            SecretType::NistP256 | SecretType::Buffer | SecretType::Aes | SecretType::Ed25519 => {
+            SecretType::Buffer | SecretType::Aes | SecretType::Ed25519 => {
                 Err(VaultError::UnknownEcdhKeyType.into())
             }
+            #[cfg(feature = "rustcrypto")]
+            SecretType::NistP256 => Err(VaultError::UnknownEcdhKeyType.into()),
         }
     }
 }
