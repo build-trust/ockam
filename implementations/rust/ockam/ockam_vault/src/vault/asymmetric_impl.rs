@@ -1,6 +1,4 @@
-use crate::constants::{
-    AES128_SECRET_LENGTH_USIZE, AES256_SECRET_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_U32,
-};
+use crate::constants::CURVE25519_SECRET_LENGTH_U32;
 use crate::{
     AsymmetricVault, Buffer, EphemeralSecretsStore, Implementation, PublicKey, Secret,
     SecretAttributes, SecretType, StoredSecret, Vault, VaultError,
@@ -74,14 +72,11 @@ impl<T: EphemeralSecretsStore + Implementation> AsymmetricVault for T {
         let mut index = 0;
 
         for attributes in output_attributes {
-            let length = attributes.length() as usize;
-            if attributes.secret_type() == SecretType::Aes {
-                if length != AES256_SECRET_LENGTH_USIZE && length != AES128_SECRET_LENGTH_USIZE {
-                    return Err(VaultError::InvalidAesKeyLength.into());
-                }
-            } else if attributes.secret_type() != SecretType::Buffer {
+            if ![SecretType::Buffer, SecretType::Aes].contains(&attributes.secret_type()) {
                 return Err(VaultError::InvalidHkdfOutputType.into());
             }
+
+            let length = attributes.length() as usize;
             let secret = Secret::new(okm[index..index + length].to_vec());
             let secret = self.import_ephemeral_secret(secret, attributes).await?;
 
