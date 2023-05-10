@@ -39,10 +39,10 @@ impl<T: EphemeralSecretsStore + Implementation> AsymmetricVault for T {
     ) -> Result<Vec<KeyId>> {
         let ikm: Result<Secret> = match ikm {
             Some(ikm) => {
-                let vault_entry = self.get_ephemeral_secret(ikm, "hkdf_sha256").await?;
+                let stored_secret = self.get_ephemeral_secret(ikm, "hkdf_sha256").await?;
 
-                if vault_entry.attributes().secret_type() == SecretType::Buffer {
-                    let secret_key = vault_entry.secret().clone();
+                if stored_secret.attributes().secret_type() == SecretType::Buffer {
+                    let secret_key = stored_secret.secret().clone();
                     Ok(secret_key)
                 } else {
                     Err(VaultError::InvalidKeyType.into())
@@ -51,9 +51,9 @@ impl<T: EphemeralSecretsStore + Implementation> AsymmetricVault for T {
             None => Ok(Secret::new(vec![])),
         };
 
-        let vault_entry = self.get_ephemeral_secret(salt, "hkdf_sha256 salt").await?;
+        let stored_secret = self.get_ephemeral_secret(salt, "hkdf_sha256 salt").await?;
 
-        if vault_entry.attributes().secret_type() != SecretType::Buffer {
+        if stored_secret.attributes().secret_type() != SecretType::Buffer {
             return Err(VaultError::InvalidKeyType.into());
         }
 
@@ -62,7 +62,8 @@ impl<T: EphemeralSecretsStore + Implementation> AsymmetricVault for T {
 
         let okm = {
             let mut okm = vec![0u8; okm_len];
-            let prk = hkdf::Hkdf::<Sha256>::new(Some(vault_entry.secret().as_ref()), ikm?.as_ref());
+            let prk =
+                hkdf::Hkdf::<Sha256>::new(Some(stored_secret.secret().as_ref()), ikm?.as_ref());
 
             prk.expand(info, okm.as_mut_slice())
                 .map_err(|_| Into::<ockam_core::Error>::into(VaultError::HkdfExpandError))?;

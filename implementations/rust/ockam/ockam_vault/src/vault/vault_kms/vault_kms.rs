@@ -47,8 +47,8 @@ impl Kms for VaultKms {
 
     /// Extract public key from secret. Only Curve25519 type is supported
     async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
-        let vault_entry = self.get_secret(key_id, "secret public key").await?;
-        Self::compute_public_key_from_secret(vault_entry)
+        let stored_secret = self.get_secret(key_id, "secret public key").await?;
+        Self::compute_public_key_from_secret(stored_secret)
     }
 
     /// Get the key id for a given public key
@@ -59,8 +59,8 @@ impl Kms for VaultKms {
 
     /// Get the secret attributes for a given key id
     async fn get_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes> {
-        let vault_entry = self.get_secret(key_id, "secret public key").await?;
-        Ok(vault_entry.attributes())
+        let stored_secret = self.get_secret(key_id, "secret public key").await?;
+        Ok(stored_secret.attributes())
     }
 
     /// Remove secret from memory and persistent storage if it is a persistent secret
@@ -119,8 +119,8 @@ impl Kms for VaultKms {
     }
 
     async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature> {
-        let vault_entry = self.get_secret(key_id, "kms signing key").await?;
-        Self::sign_with_secret(vault_entry, message)
+        let stored_secret = self.get_secret(key_id, "kms signing key").await?;
+        Self::sign_with_secret(stored_secret, message)
     }
 }
 
