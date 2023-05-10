@@ -28,3 +28,12 @@ indent_style = tab
 
 [*.cddl]
 indent_size = unset
+
+# Ignore paths
+[/implementations/rust/ockam/ockam_command/static/**]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
