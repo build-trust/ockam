@@ -75,24 +75,6 @@ impl Kms for VaultKms {
         signature: &Signature,
     ) -> Result<bool> {
         match public_key.stype() {
-            SecretType::X25519 => {
-                if public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
-                    || signature.as_ref().len() != 64
-                {
-                    return Err(VaultError::InvalidPublicKey.into());
-                }
-
-                use crate::vault::vault_kms::xeddsa::XEddsaVerifier;
-                use arrayref::array_ref;
-
-                let signature_array = array_ref!(signature.as_ref(), 0, 64);
-                let public_key = x25519_dalek::PublicKey::from(*array_ref!(
-                    public_key.data(),
-                    0,
-                    CURVE25519_PUBLIC_LENGTH_USIZE
-                ));
-                Ok(public_key.xeddsa_verify(data.as_ref(), signature_array))
-            }
             SecretType::Ed25519 => {
                 if public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
                     || signature.as_ref().len() != 64
@@ -114,7 +96,9 @@ impl Kms for VaultKms {
                 let s = Signature::from_der(signature.as_ref()).map_err(Self::from_ecdsa)?;
                 Ok(k.verify(data, &s).is_ok())
             }
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidPublicKey.into()),
+            SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
+                Err(VaultError::InvalidPublicKey.into())
+            }
         }
     }
 
@@ -182,20 +166,6 @@ impl VaultKms {
     ) -> Result<Signature, Error> {
         let attributes = stored_secret.attributes();
         match attributes.secret_type() {
-            SecretType::X25519 => {
-                use crate::vault::vault_kms::xeddsa::XEddsaSigner;
-                let key = stored_secret.secret().as_ref();
-                let mut rng = thread_rng();
-                let mut nonce = [0u8; 64];
-                rng.fill_bytes(&mut nonce);
-                let sig = x25519_dalek::StaticSecret::from(*array_ref!(
-                    key,
-                    0,
-                    CURVE25519_SECRET_LENGTH_U32 as usize
-                ))
-                .xeddsa_sign(data.as_ref(), &nonce);
-                Ok(Signature::new(sig.to_vec()))
-            }
             SecretType::Ed25519 => {
                 use ed25519_dalek::Signer;
                 let key = stored_secret.secret().as_ref();
@@ -220,7 +190,9 @@ impl VaultKms {
                 let sig: p256::ecdsa::Signature = sec.sign(data);
                 Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
             }
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
+                Err(VaultError::InvalidKeyType.into())
+            }
         }
     }
 
