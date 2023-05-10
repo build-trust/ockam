@@ -9,7 +9,14 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, KeyId, Result};
 use ockam_node::KeyValueStorage;
 
-/// Vault implementation that stores secrets in memory and uses software crypto.
+/// A Vault provides high-level interfaces to manage secrets:
+///
+///  - storage
+///  - symmetric/asymmetric encryption
+///  - signing
+///
+/// Its implementation is modular: storage can be replaced, signing can be provided via an
+/// external KMS system etc...
 ///
 /// # Examples
 /// ```
