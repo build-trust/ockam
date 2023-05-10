@@ -1,5 +1,4 @@
 # Trust for Data-in-Motion
-comment
 
 Ockam is a suite of open source programming libraries and command line tools to
 orchestrate end-to-end encryption, mutual authentication, key management, credential
