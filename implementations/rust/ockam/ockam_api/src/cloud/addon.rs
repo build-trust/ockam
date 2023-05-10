@@ -66,6 +66,28 @@ impl ConfluentConfigResponse {
     }
 }
 
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct DisableAddon<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))] pub tag: TypeTag<8677807>,
+
+    #[serde(borrow)]
+    #[cbor(b(1))] pub addon_id: CowStr<'a>,
+}
+
+impl<'a> DisableAddon<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(addon_id: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addon_id: addon_id.into(),
+        }
+    }
+}
+
 mod node {
     use minicbor::{Decode, Decoder, Encode};
     use tracing::trace;
@@ -74,7 +96,7 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::addon::ConfluentConfig;
+    use crate::cloud::addon::{ConfluentConfig, DisableAddon};
     use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::error::ApiError;
@@ -173,15 +195,16 @@ mod node {
             ctx: &mut Context,
             dec: &mut Decoder<'_>,
             project_id: &str,
-            addon_id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
             let label = "disable_addon";
-            trace!(target: TARGET, project_id, addon_id, "disabling addon");
+            trace!(target: TARGET, project_id, "disabling addon");
 
-            let req_builder = Request::delete(format!("/v0/{project_id}/addons/{addon_id}"));
+            let req_wrapper: CloudRequestWrapper<DisableAddon> = dec.decode()?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
+            let req_body = req_wrapper.req;
+
+            let req_builder =
+                Request::post(format!("/v1/projects/{project_id}/disable_addon")).body(req_body);
 
             self.request_controller(
                 ctx,

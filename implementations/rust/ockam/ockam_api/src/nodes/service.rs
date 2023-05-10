@@ -802,8 +802,8 @@ impl NodeManagerWorker {
             (Post, ["v1", "projects", project_id, "configure_addon", addon_id]) => {
                 self.configure_addon(ctx, dec, project_id, addon_id).await?
             }
-            (Delete, [project_id, "addons", addon_id]) => {
-                self.disable_addon(ctx, dec, project_id, addon_id).await?
+            (Post, ["v1", "projects", project_id, "disable_addon"]) => {
+                self.disable_addon(ctx, dec, project_id).await?
             }
 
             // ==*== Operations ==*==
