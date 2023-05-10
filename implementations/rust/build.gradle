@@ -17,13 +17,23 @@ ext {
   upgradeCheckValue = System.getenv(upgradeCheckEnvVar)
   upgradeCheckDisabled = upgradeCheckDisabledValues.contains(upgradeCheckValue)
 
+  // Set DYLD_FALLBACK_LIBRARY_PATH
+  // a workaround for nix and nextest not getting along well.
+  // https://github.com/nextest-rs/nextest/issues/267
+  def commandOutput = new ByteArrayOutputStream()
+  def process = new ProcessBuilder('rustc', '--print', 'sysroot').start()
+  process.waitForProcessOutput(commandOutput, System.err)
+  rustc_sysroot = commandOutput.toString().trim()
+  dyld_fallback_library_path = "${rustc_sysroot}/lib"
+
   // Environment variables for CI tasks
   // See...
   //  https://github.com/build-trust/ockam/issues/2822
   //  https://github.com/build-trust/ockam/issues/2342
   environmentVars = { ->
     env = [
-      RUSTFLAGS: "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings -C link-arg=-fuse-ld=/opt/mold/bin/mold",
+      DYLD_FALLBACK_LIBRARY_PATH: "${dyld_fallback_library_path}",
+      RUSTFLAGS: "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings",
       CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: "clang",
       CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "clang",
       CARGO_INCREMENTAL: "0"
