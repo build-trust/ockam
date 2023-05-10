@@ -1,6 +1,7 @@
 use crate::{
-    AsymmetricVault, Buffer, PublicKey, Secret, SecretAttributes, SecretsStore, Signature, Signer,
-    StoredSecret, SymmetricVault, VaultBuilder, VaultKms,
+    AsymmetricVault, Buffer, EphemeralSecretsStore, PersistentSecretsStore, PublicKey, Secret,
+    SecretAttributes, SecretsStore, SecretsStoreReader, Signature, Signer, StoredSecret,
+    SymmetricVault, VaultBuilder, VaultKms,
 };
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::fmt::Vec;
@@ -12,7 +13,7 @@ use ockam_node::KeyValueStorage;
 ///
 /// # Examples
 /// ```
-/// use ockam_vault::{SecretAttributes, SecretsStore, Signer, Vault};
+/// use ockam_vault::{PersistentSecretsStore, SecretAttributes, SecretsStoreReader, Signer, Vault};
 /// use ockam_core::Result;
 ///
 /// async fn example() -> Result<()> {
@@ -83,7 +84,7 @@ impl Vault {
 }
 
 #[async_trait]
-impl SecretsStore for Vault {
+impl EphemeralSecretsStore for Vault {
     async fn create_ephemeral_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
         self.secrets_store.create_ephemeral_secret(attributes).await
     }
@@ -111,13 +112,23 @@ impl SecretsStore for Vault {
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
         self.secrets_store.delete_ephemeral_secret(key_id).await
     }
+}
 
+#[async_trait]
+impl PersistentSecretsStore for Vault {
     async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
         self.secrets_store
             .create_persistent_secret(attributes)
             .await
     }
 
+    async fn delete_persistent_secret(&self, key_id: KeyId) -> Result<bool> {
+        self.secrets_store.delete_persistent_secret(key_id).await
+    }
+}
+
+#[async_trait]
+impl SecretsStoreReader for Vault {
     async fn get_secret_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes> {
         self.secrets_store.get_secret_attributes(key_id).await
     }
@@ -212,7 +223,6 @@ mod tests {
     use super::*;
     use crate::storage::tests::create_temp_file;
     use crate::storage::PersistentStorage;
-    use crate::traits::secrets_store::SecretsStore;
     use crate::SecretAttributes;
     use ockam_core::compat::join;
 

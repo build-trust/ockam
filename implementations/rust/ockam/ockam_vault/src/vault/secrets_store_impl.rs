@@ -1,6 +1,6 @@
 use crate::{
-    Implementation, Kms, PublicKey, Secret, SecretAttributes, SecretsStore, Signature,
-    StoredSecret, VaultError, VaultKms,
+    EphemeralSecretsStore, Implementation, Kms, PersistentSecretsStore, PublicKey, Secret,
+    SecretAttributes, SecretsStoreReader, Signature, StoredSecret, VaultError, VaultKms,
 };
 use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, KeyId, Result};
 use ockam_node::KeyValueStorage;
@@ -26,12 +26,7 @@ impl VaultSecretsStore {
 }
 
 #[async_trait]
-impl SecretsStore for VaultSecretsStore {
-    /// Generate fresh secret
-    async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        self.kms.create_secret(attributes).await
-    }
-
+impl EphemeralSecretsStore for VaultSecretsStore {
     async fn create_ephemeral_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
         let secret = VaultKms::create_secret_from_attributes(attributes)?;
         self.import_ephemeral_secret(secret, attributes).await
@@ -61,6 +56,29 @@ impl SecretsStore for VaultSecretsStore {
         Ok(stored_secret)
     }
 
+    /// Remove secret from in memory storage
+    async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
+        self.ephemeral_secrets
+            .delete(&key_id.clone())
+            .await
+            .map(|r| r.is_some())
+    }
+}
+
+#[async_trait]
+impl PersistentSecretsStore for VaultSecretsStore {
+    async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
+        self.kms.create_secret(attributes).await
+    }
+
+    /// Remove secret from in memory storage
+    async fn delete_persistent_secret(&self, key_id: KeyId) -> Result<bool> {
+        self.kms.delete_secret(key_id.clone()).await
+    }
+}
+
+#[async_trait]
+impl SecretsStoreReader for VaultSecretsStore {
     /// Get the secret attributes for a given key id
     async fn get_secret_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes> {
         // search in the ephemeral secrets first, otherwise export the public key from the Kms
@@ -83,14 +101,6 @@ impl SecretsStore for VaultSecretsStore {
 
     async fn get_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {
         self.kms.get_key_id(public_key).await
-    }
-
-    /// Remove secret from in memory storage
-    async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
-        self.ephemeral_secrets
-            .delete(&key_id.clone())
-            .await
-            .map(|r| r.is_some())
     }
 }
 

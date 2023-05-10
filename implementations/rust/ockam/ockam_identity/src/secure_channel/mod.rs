@@ -32,7 +32,7 @@ pub use trust_policy::*;
 mod tests {
     use crate::secure_channel::{decryptor::Decryptor, encryptor::Encryptor};
     use ockam_core::Result;
-    use ockam_vault::{SecretAttributes, SecretsStore, Vault};
+    use ockam_vault::{EphemeralSecretsStore, SecretAttributes, Vault};
     use rand::seq::SliceRandom;
     use rand::thread_rng;
 

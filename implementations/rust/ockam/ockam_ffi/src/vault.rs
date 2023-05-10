@@ -7,10 +7,8 @@ use lazy_static::lazy_static;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, KeyId, Result};
-use ockam_vault::Vault;
-use ockam_vault::{
-    AsymmetricVault, PublicKey, Secret, SecretAttributes, SecretsStore, SymmetricVault,
-};
+use ockam_vault::{AsymmetricVault, PublicKey, Secret, SecretAttributes, SymmetricVault};
+use ockam_vault::{EphemeralSecretsStore, SecretsStoreReader, Vault};
 use tokio::{runtime::Runtime, sync::RwLock, task};
 
 #[derive(Default)]

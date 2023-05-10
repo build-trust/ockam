@@ -273,7 +273,9 @@ impl From<Error> for ockam_core::Error {
 mod tests {
     use super::AwsKmsClient;
     use ockam_node::tokio;
-    use ockam_vault::{SecretAttributes, SecretsStore, Signer, Vault};
+    use ockam_vault::{
+        PersistentSecretsStore, SecretAttributes, SecretsStoreReader, Signer, Vault,
+    };
 
     // A key ID that refers to an existing AWS KMS NIST P-256 key.
     const PREEXISTING_KEY_ID: &str = "d1583be3-23f6-4ad7-9214-33a1e64e2374";
@@ -299,7 +301,7 @@ mod tests {
         let vault = Vault::create();
         {
             let att = SecretAttributes::NistP256;
-            let kid = vault.create_ephemeral_secret(att).await.unwrap();
+            let kid = vault.create_persistent_secret(att).await.unwrap();
             let pky = vault.get_public_key(&kid).await.unwrap();
             let sig = vault.sign(&kid, &msg[..]).await.unwrap();
             assert!(vault.verify(&pky, msg, &sig).await.unwrap())

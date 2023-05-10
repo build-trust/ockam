@@ -24,10 +24,10 @@ pub trait SymmetricVault: Send + Sync {
 }
 
 pub mod tests {
-    use crate::{SecretAttributes, SecretsStore, SymmetricVault};
+    use crate::{EphemeralSecretsStore, SecretAttributes, SymmetricVault};
 
     /// This test checks that we can use an ephemeral secret to encrypt and decrypt data
-    pub async fn test_encrypt_decrypt(vault: &mut (impl SymmetricVault + SecretsStore)) {
+    pub async fn test_encrypt_decrypt(vault: &mut (impl SymmetricVault + EphemeralSecretsStore)) {
         let message = b"Ockam Test Message";
         let nonce = b"TestingNonce";
         let aad = b"Extra payload data";
