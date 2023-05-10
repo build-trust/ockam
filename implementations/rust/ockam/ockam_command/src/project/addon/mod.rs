@@ -122,3 +122,16 @@ pub fn configure_addon_endpoint(cli_state: &CliState, project_name: &str) -> Res
         .clone();
     Ok(format!("v1/projects/{project_id}/configure_addon"))
 }
+
+pub fn disable_addon_endpoint(cli_state: &CliState, project_name: &str) -> Result<String> {
+    let project_id = cli_state
+        .projects
+        .get(project_name)
+        .context(format!(
+            "Failed to get project {project_name} from config lookup"
+        ))?
+        .config()
+        .id
+        .clone();
+    Ok(format!("v1/projects/{project_id}/disable_addon"))
+}

@@ -142,6 +142,7 @@ async fn run_impl(
     println!("Okta addon enabled");
 
     check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
+    println!();
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     rpc.request(api::project::show(&project_id, controller_route))

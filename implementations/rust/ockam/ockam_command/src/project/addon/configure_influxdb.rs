@@ -191,6 +191,7 @@ async fn run_impl(
 
     // Wait until project is ready again
     check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
+    println!();
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     let mut rpc = rpc.clone();

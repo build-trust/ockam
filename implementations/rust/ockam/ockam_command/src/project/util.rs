@@ -210,7 +210,7 @@ pub async fn check_project_readiness(
         .await?;
     }
 
-        {
+    {
         if let Some(spinner) = spinner_option.as_ref() {
             spinner.set_message("Establishing connection to the project...");
         }

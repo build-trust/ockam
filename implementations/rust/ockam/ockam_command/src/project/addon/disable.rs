@@ -3,11 +3,15 @@ use clap::Args;
 
 use ockam::Context;
 
+use ockam_api::cloud::addon::DisableAddon;
+use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
+use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
-use crate::project::addon::base_endpoint;
+use crate::operation::util::check_for_completion;
+use crate::project::addon::disable_addon_endpoint;
 
 use crate::util::api::CloudOpts;
 
@@ -53,14 +57,22 @@ async fn run_impl(
     } = cmd;
 
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
-    let endpoint = format!(
-        "{}/{}",
-        base_endpoint(&opts.state, &project_name)?,
-        addon_id
-    );
-    let req = Request::delete(endpoint).body(CloudRequestWrapper::bare(controller_route));
+    let body = DisableAddon::new(addon_id);
+    let endpoint = disable_addon_endpoint(&opts.state, &project_name)?;
+
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(
+        body,
+        controller_route,
+        None::<CowStr>,
+    ));
     rpc.request(req).await?;
-    rpc.is_ok()?;
+    let res = rpc.parse_response::<CreateOperationResponse>()?;
+    let operation_id = res.operation_id;
+
+    check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
+
+    println!("Addon disabled successfully");
+
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }
