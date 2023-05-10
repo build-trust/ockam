@@ -1,4 +1,4 @@
-//! Software implementation of Vault traits.
+//! AWS implementation of the ockam_vault::Kms trait
 //!
 #![deny(unsafe_code)]
 #![warn(
