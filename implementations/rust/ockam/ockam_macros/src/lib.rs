@@ -139,8 +139,8 @@ pub fn test(args: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Expands to a test suite for a custom implementation of the vault traits.
 ///
-/// The name of the test function must match one of the functions from the
-/// `ockam_vault::test_support` module.
+/// The name of the test function must match one of the test functions
+/// accompanying the traits definitions in the `ockam_vault::traits` module.
 ///
 /// Example of use:
 ///
