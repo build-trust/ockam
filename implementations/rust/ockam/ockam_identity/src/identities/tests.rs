@@ -7,7 +7,8 @@ use ockam_core::Result;
 use ockam_core::{async_trait, KeyId};
 use ockam_node::Context;
 use ockam_vault::{
-    Implementation, PublicKey, Secret, SecretAttributes, SecretsStore, Signature, Signer,
+    EphemeralSecretsStore, Implementation, PersistentSecretsStore, PublicKey, Secret,
+    SecretAttributes, SecretsStoreReader, Signature, Signer,
 };
 use ockam_vault::{StoredSecret, Vault};
 use rand::distributions::Standard;
@@ -192,9 +193,9 @@ impl CrazyVault {
 }
 
 #[async_trait]
-impl SecretsStore for CrazyVault {
-    async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        self.vault.create_persistent_secret(attributes).await
+impl EphemeralSecretsStore for CrazyVault {
+    async fn create_ephemeral_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
+        self.vault.create_ephemeral_secret(attributes).await
     }
 
     async fn import_ephemeral_secret(
@@ -213,6 +214,24 @@ impl SecretsStore for CrazyVault {
         self.vault.get_ephemeral_secret(key_id, description).await
     }
 
+    async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
+        self.vault.delete_ephemeral_secret(key_id).await
+    }
+}
+
+#[async_trait]
+impl PersistentSecretsStore for CrazyVault {
+    async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
+        self.vault.create_persistent_secret(attributes).await
+    }
+
+    async fn delete_persistent_secret(&self, key_id: KeyId) -> Result<bool> {
+        self.vault.delete_persistent_secret(key_id).await
+    }
+}
+
+#[async_trait]
+impl SecretsStoreReader for CrazyVault {
     async fn get_secret_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes> {
         self.vault.get_secret_attributes(key_id).await
     }
@@ -220,15 +239,6 @@ impl SecretsStore for CrazyVault {
     async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
         self.vault.get_public_key(key_id).await
     }
-
-    async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
-        self.vault.delete_ephemeral_secret(key_id).await
-    }
-
-    async fn create_ephemeral_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        self.vault.create_ephemeral_secret(attributes).await
-    }
-
     async fn get_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {
         self.vault.get_key_id(public_key).await
     }

@@ -36,7 +36,10 @@ pub const AES_GCM_TAGSIZE_U32: u32 = 16;
 pub const AES_GCM_TAGSIZE_USIZE: usize = 16;
 
 /// Vault with XX required functionality
-pub trait XXVault: SecretsStore + AsymmetricVault + SymmetricVault + Send + Sync + 'static {}
+pub trait XXVault:
+    EphemeralSecretsStore + AsymmetricVault + SymmetricVault + Send + Sync + 'static
+{
+}
 
 impl<D> XXVault for D where
     D: SecretsStore + AsymmetricVault + SymmetricVault + Send + Sync + 'static
@@ -44,9 +47,15 @@ impl<D> XXVault for D where
 }
 
 /// Vault with required functionalities after XX key exchange
-pub trait XXInitializedVault: SecretsStore + SymmetricVault + Send + Sync + 'static {}
+pub trait XXInitializedVault:
+    EphemeralSecretsStore + SymmetricVault + Send + Sync + 'static
+{
+}
 
-impl<D> XXInitializedVault for D where D: SecretsStore + SymmetricVault + Send + Sync + 'static {}
+impl<D> XXInitializedVault for D where
+    D: EphemeralSecretsStore + SymmetricVault + Send + Sync + 'static
+{
+}
 
 mod initiator;
 mod state;
@@ -55,7 +64,7 @@ mod responder;
 pub use responder::*;
 mod new_key_exchanger;
 pub use new_key_exchanger::*;
-use ockam_vault::{AsymmetricVault, SecretsStore, SymmetricVault};
+use ockam_vault::{AsymmetricVault, EphemeralSecretsStore, SecretsStore, SymmetricVault};
 
 #[cfg(test)]
 mod tests {
@@ -63,7 +72,7 @@ mod tests {
     use ockam_core::Result;
     use ockam_core::{KeyExchanger, NewKeyExchanger};
     use ockam_node::Context;
-    use ockam_vault::Vault;
+    use ockam_vault::{EphemeralSecretsStore, Vault};
 
     #[allow(non_snake_case)]
     #[ockam_macros::test]

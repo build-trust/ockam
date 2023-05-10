@@ -2,15 +2,18 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, KeyId, Result};
 use ockam_key_exchange_xx::{XXInitializedVault, XXVault};
-use ockam_vault::{Implementation, SymmetricVault};
+use ockam_vault::{
+    EphemeralSecretsStore, Implementation, PersistentSecretsStore, SecretsStoreReader,
+    SymmetricVault,
+};
 use ockam_vault::{PublicKey, Secret, SecretAttributes};
-use ockam_vault::{SecretsStore, Signature, Signer, StoredSecret};
+use ockam_vault::{Signature, Signer, StoredSecret};
 
 /// Traits required for a Vault implementation suitable for use in an Identity
 /// Vault with XX required functionality
-pub trait IdentitiesVault: XXVault + Signer {}
+pub trait IdentitiesVault: XXVault + PersistentSecretsStore + Signer {}
 
-impl<D> IdentitiesVault for D where D: XXVault + Signer {}
+impl<D> IdentitiesVault for D where D: XXVault + PersistentSecretsStore + Signer {}
 
 /// This struct is used to compensate for the lack of non-experimental trait upcasting in Rust
 /// We encapsulate an IdentitiesVault and delegate the implementation of all the functions of
@@ -22,19 +25,7 @@ struct CoercedIdentitiesVault {
 impl Implementation for CoercedIdentitiesVault {}
 
 #[async_trait]
-impl SecretsStore for CoercedIdentitiesVault {
-    async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        self.vault.create_persistent_secret(attributes).await
-    }
-
-    async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
-        self.vault.get_public_key(key_id).await
-    }
-
-    async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
-        self.vault.delete_ephemeral_secret(key_id).await
-    }
-
+impl EphemeralSecretsStore for CoercedIdentitiesVault {
     async fn create_ephemeral_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
         self.vault.create_ephemeral_secret(attributes).await
     }
@@ -47,16 +38,38 @@ impl SecretsStore for CoercedIdentitiesVault {
         self.vault.import_ephemeral_secret(secret, attributes).await
     }
 
-    async fn get_secret_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes> {
-        self.vault.get_secret_attributes(key_id).await
-    }
-
     async fn get_ephemeral_secret(
         &self,
         key_id: &KeyId,
         description: &str,
     ) -> Result<StoredSecret> {
         self.vault.get_ephemeral_secret(key_id, description).await
+    }
+
+    async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
+        self.vault.delete_ephemeral_secret(key_id).await
+    }
+}
+
+#[async_trait]
+impl PersistentSecretsStore for CoercedIdentitiesVault {
+    async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
+        self.vault.create_persistent_secret(attributes).await
+    }
+
+    async fn delete_persistent_secret(&self, key_id: KeyId) -> Result<bool> {
+        self.vault.delete_persistent_secret(key_id).await
+    }
+}
+
+#[async_trait]
+impl SecretsStoreReader for CoercedIdentitiesVault {
+    async fn get_secret_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes> {
+        self.vault.get_secret_attributes(key_id).await
+    }
+
+    async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
+        self.vault.get_public_key(key_id).await
     }
 
     async fn get_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {

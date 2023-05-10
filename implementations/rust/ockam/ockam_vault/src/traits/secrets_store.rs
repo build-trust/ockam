@@ -2,18 +2,21 @@ use crate::{PublicKey, Secret, SecretAttributes, StoredSecret};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
 
-/// This traits supports the creation / retrieval / deletion of secrets
-/// A secret represented by
-///   - some binary data
-///   - some attributes indicating how the data was generated and the secret length
-///   - a unique key id
-///
-/// Some secrets, if they are asymmetric keys can have a corresponding public key
-/// It is possible with this trait to retrieve the key id corresponding to a given public key
-/// and also to retrieve the public key from the key id
+/// This traits provides all the functionalities related to the management of secrets
 #[async_trait]
-pub trait SecretsStore: Sync + Send {
-    // -- Ephemeral secrets
+pub trait SecretsStore:
+    EphemeralSecretsStore + PersistentSecretsStore + SecretsStoreReader + Sync + Send
+{
+}
+
+impl<T: EphemeralSecretsStore + PersistentSecretsStore + SecretsStoreReader + Sync + Send>
+    SecretsStore for T
+{
+}
+
+/// This traits supports the creation / retrieval / deletion of ephemeral secrets
+#[async_trait]
+pub trait EphemeralSecretsStore: SecretsStoreReader + Sync + Send {
     /// Generate a secret and persist it to ephemeral memory
     async fn create_ephemeral_secret(&self, attributes: SecretAttributes) -> Result<KeyId>;
     /// Import a secret and persist it to ephemeral memory
@@ -28,12 +31,20 @@ pub trait SecretsStore: Sync + Send {
         -> Result<StoredSecret>;
     /// Remove an ephemeral secret from the vault.
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool>;
+}
 
-    // -- Persistent secrets
+/// This traits supports the creation / deletion of persistent secrets
+#[async_trait]
+pub trait PersistentSecretsStore: SecretsStoreReader + Sync + Send {
     /// Generate a secret and persist it to long-term memory
     async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId>;
+    /// Remove a persistent secret from the vault.
+    async fn delete_persistent_secret(&self, key_id: KeyId) -> Result<bool>;
+}
 
-    // -- Common methods
+/// This traits supports the retrieval of public information for a given secret
+#[async_trait]
+pub trait SecretsStoreReader: Sync + Send {
     /// Return the secret attributes related to a secret
     async fn get_secret_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes>;
     /// Return the associated public key given the secret key

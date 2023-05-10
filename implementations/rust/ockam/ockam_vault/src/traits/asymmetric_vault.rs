@@ -24,12 +24,12 @@ pub trait AsymmetricVault: Send + Sync {
 /// Tests for implementations of the AsymmetricVault trait
 pub mod tests {
     use super::*;
-    use crate::{Secret, SecretAttributes, SecretsStore};
+    use crate::{EphemeralSecretsStore, Secret, SecretAttributes};
     use hex::encode;
 
     /// This test checks that we can create a Diffie-Hellman key from 2 public keys
     pub async fn test_ec_diffie_hellman_curve25519(
-        vault: &mut (impl AsymmetricVault + SecretsStore),
+        vault: &mut (impl AsymmetricVault + EphemeralSecretsStore),
     ) {
         let attributes = SecretAttributes::X25519;
         let key_id_1 = vault.create_ephemeral_secret(attributes).await.unwrap();
@@ -51,7 +51,7 @@ pub mod tests {
     }
 
     /// This test checks the creation of a derived HKDF key
-    pub async fn test_hkdf_sha256(vault: &mut (impl AsymmetricVault + SecretsStore)) {
+    pub async fn test_hkdf_sha256(vault: &mut (impl AsymmetricVault + EphemeralSecretsStore)) {
         let salt_value = b"hkdf_test";
         let secret = Secret::new(salt_value.to_vec());
         let attributes = SecretAttributes::Buffer(salt_value.len() as u32);

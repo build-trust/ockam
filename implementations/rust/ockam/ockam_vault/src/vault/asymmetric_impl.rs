@@ -2,8 +2,8 @@ use crate::constants::{
     AES128_SECRET_LENGTH_USIZE, AES256_SECRET_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_U32,
 };
 use crate::{
-    AsymmetricVault, Buffer, Implementation, PublicKey, Secret, SecretAttributes, SecretType,
-    SecretsStore, StoredSecret, Vault, VaultError,
+    AsymmetricVault, Buffer, EphemeralSecretsStore, Implementation, PublicKey, Secret,
+    SecretAttributes, SecretType, StoredSecret, Vault, VaultError,
 };
 use arrayref::array_ref;
 use ockam_core::compat::vec::Vec;
@@ -11,7 +11,7 @@ use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
 use sha2::Sha256;
 
 #[async_trait]
-impl<T: SecretsStore + Implementation> AsymmetricVault for T {
+impl<T: EphemeralSecretsStore + Implementation> AsymmetricVault for T {
     async fn ec_diffie_hellman(
         &self,
         secret: &KeyId,
