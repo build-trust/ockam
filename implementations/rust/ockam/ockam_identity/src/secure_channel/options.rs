@@ -1,5 +1,6 @@
 use crate::secure_channel::Addresses;
-use crate::{IdentityError, TrustEveryonePolicy, TrustPolicy};
+use crate::{Credential, IdentityError, TrustContext, TrustEveryonePolicy, TrustPolicy};
+use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{
     FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
@@ -11,7 +12,12 @@ pub struct SecureChannelOptions {
     pub(crate) consumer_flow_control: Option<FlowControls>,
     pub(crate) producer_flow_control: Option<(FlowControls, FlowControlId)>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+    pub(crate) trust_context: Option<TrustContext>,
+    pub(crate) credentials: Vec<Credential>,
+    pub(crate) timeout: Duration,
 }
+
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
 pub(crate) struct SecureChannelAccessControl {
     pub(crate) decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
@@ -27,6 +33,9 @@ impl SecureChannelOptions {
             consumer_flow_control: None,
             producer_flow_control: None,
             trust_policy: Arc::new(TrustEveryonePolicy),
+            trust_context: None,
+            credentials: vec![],
+            timeout: DEFAULT_TIMEOUT,
         }
     }
 
@@ -43,7 +52,34 @@ impl SecureChannelOptions {
             consumer_flow_control: None,
             producer_flow_control: Some((flow_controls.clone(), flow_control_id.clone())),
             trust_policy: Arc::new(TrustEveryonePolicy),
+            trust_context: None,
+            credentials: vec![],
+            timeout: DEFAULT_TIMEOUT,
         }
+    }
+
+    /// Sets a timeout different from the default one [`DEFAULT_TIMEOUT`]
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Adds provided credentials
+    pub fn with_credentials(mut self, credentials: Vec<Credential>) -> Self {
+        self.credentials.extend(credentials);
+        self
+    }
+
+    /// Adds a single credential
+    pub fn with_credential(mut self, credential: Credential) -> Self {
+        self.credentials.push(credential);
+        self
+    }
+
+    /// Sets trust context
+    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
+        self.trust_context = Some(trust_context);
+        self
     }
 
     /// Set Trust Policy
@@ -117,6 +153,8 @@ pub struct SecureChannelListenerOptions {
     pub(crate) consumer_flow_control: Option<CiphertextFlowControl>,
     pub(crate) channels_producer_flow_control: Option<(FlowControls, FlowControlId)>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+    pub(crate) trust_context: Option<TrustContext>,
+    pub(crate) credentials: Vec<Credential>,
 }
 
 impl SecureChannelListenerOptions {
@@ -129,6 +167,8 @@ impl SecureChannelListenerOptions {
             consumer_flow_control: None,
             channels_producer_flow_control: None,
             trust_policy: Arc::new(TrustEveryonePolicy),
+            trust_context: None,
+            credentials: vec![],
         }
     }
 
@@ -173,7 +213,27 @@ impl SecureChannelListenerOptions {
             consumer_flow_control: None,
             channels_producer_flow_control: Some((flow_controls.clone(), flow_control_id.clone())),
             trust_policy: Arc::new(TrustEveryonePolicy),
+            trust_context: None,
+            credentials: vec![],
         }
+    }
+
+    /// Adds provided credentials
+    pub fn with_credentials(mut self, credentials: Vec<Credential>) -> Self {
+        self.credentials.extend(credentials);
+        self
+    }
+
+    /// Adds a single credential
+    pub fn with_credential(mut self, credential: Credential) -> Self {
+        self.credentials.push(credential);
+        self
+    }
+
+    /// Sets trust context
+    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
+        self.trust_context = Some(trust_context);
+        self
     }
 
     /// Set trust policy

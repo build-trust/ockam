@@ -1,18 +1,16 @@
-use core::time::Duration;
-
+use crate::identities::Identities;
+use crate::identities::IdentitiesVault;
+use crate::identity::IdentityError;
+use crate::secure_channel::initiator_worker::InitiatorWorker;
+use crate::secure_channel::{
+    Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
+    SecureChannelRegistry,
+};
+use crate::{IdentityIdentifier, SecureChannelsBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
 use ockam_node::Context;
-
-use crate::identities::Identities;
-use crate::identities::IdentitiesVault;
-use crate::identity::IdentityError;
-use crate::secure_channel::{
-    Addresses, DecryptorWorker, IdentityChannelListener, Role, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannelRegistry,
-};
-use crate::{IdentityIdentifier, SecureChannelsBuilder};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -87,36 +85,6 @@ impl SecureChannels {
         options: impl Into<SecureChannelOptions>,
     ) -> Result<Address> {
         let addresses = Addresses::generate(Role::Initiator);
-        let options = options.into();
-
-        let route = route.into();
-        let next = route.next()?;
-        options.setup_flow_control(&addresses, next)?;
-        let access_control = options.create_access_control();
-
-        DecryptorWorker::create_initiator(
-            ctx,
-            Arc::new(self.clone()),
-            identifier.clone(),
-            route,
-            addresses,
-            options.trust_policy,
-            access_control.decryptor_outgoing_access_control,
-            Duration::from_secs(120),
-        )
-        .await
-    }
-
-    /// Extended function to create a SecureChannel with [`SecureChannelOptions`]
-    pub async fn create_secure_channel_extended(
-        &self,
-        ctx: &Context,
-        identifier: &IdentityIdentifier,
-        route: impl Into<Route>,
-        options: impl Into<SecureChannelOptions>,
-        timeout: Duration,
-    ) -> Result<Address> {
-        let addresses = Addresses::generate(Role::Initiator);
 
         let route = route.into();
         let next = route.next()?;
@@ -124,15 +92,17 @@ impl SecureChannels {
         options.setup_flow_control(&addresses, next)?;
         let access_control = options.create_access_control();
 
-        DecryptorWorker::create_initiator(
+        InitiatorWorker::create(
             ctx,
             Arc::new(self.clone()),
-            identifier.clone(),
-            route,
             addresses,
+            identifier,
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
-            timeout,
+            options.credentials,
+            options.trust_context,
+            route,
+            options.timeout,
         )
         .await
     }

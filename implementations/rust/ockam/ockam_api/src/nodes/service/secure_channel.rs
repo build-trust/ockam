@@ -54,9 +54,14 @@ impl NodeManager {
         // Else, create it.
 
         debug!(%sc_route, "Creating secure channel");
-        let timeout = timeout.unwrap_or(Duration::from_secs(120));
         let sc_flow_control_id = self.flow_controls.generate_id();
         let options = SecureChannelOptions::as_producer(&self.flow_controls, &sc_flow_control_id);
+
+        let options = if let Some(timeout) = timeout {
+            options.with_timeout(timeout)
+        } else {
+            options
+        };
 
         // Just add ourself as consumer for the next hop if it's a producer
         let options = match self
@@ -75,7 +80,7 @@ impl NodeManager {
 
         let sc_addr = self
             .secure_channels
-            .create_secure_channel_extended(ctx, identifier, sc_route.clone(), options, timeout)
+            .create_secure_channel(ctx, identifier, sc_route.clone(), options)
             .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");

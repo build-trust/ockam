@@ -6,6 +6,7 @@
 //!
 //! The main Ockam crate re-exports types defined in this crate.
 use crate::compat::{string::String, vec::Vec};
+use crate::vault::PublicKey;
 use crate::{async_trait, compat::boxed::Box, Result};
 use cfg_if::cfg_if;
 use zeroize::Zeroize;
@@ -34,9 +35,9 @@ pub trait NewKeyExchanger {
     type Responder: KeyExchanger;
 
     /// Create a new Key Exchanger with the initiator role
-    async fn initiator(&self) -> Result<Self::Initiator>;
+    async fn initiator(&self, key_id: Option<KeyId>) -> Result<Self::Initiator>;
     /// Create a new Key Exchanger with the responder role
-    async fn responder(&self) -> Result<Self::Responder>;
+    async fn responder(&self, key_id: Option<KeyId>) -> Result<Self::Responder>;
 }
 
 /// The state of a completed key exchange.
@@ -46,6 +47,7 @@ pub struct CompletedKeyExchange {
     h: [u8; 32],
     encrypt_key: KeyId,
     decrypt_key: KeyId,
+    public_static_key: PublicKey,
 }
 
 impl CompletedKeyExchange {
@@ -61,15 +63,26 @@ impl CompletedKeyExchange {
     pub fn decrypt_key(&self) -> &KeyId {
         &self.decrypt_key
     }
+
+    /// The public static key of the remote peer.
+    pub fn public_static_key(&self) -> &PublicKey {
+        &self.public_static_key
+    }
 }
 
 impl CompletedKeyExchange {
     /// Build a CompletedKeyExchange comprised of the input parameters.
-    pub fn new(h: [u8; 32], encrypt_key: KeyId, decrypt_key: KeyId) -> Self {
+    pub fn new(
+        h: [u8; 32],
+        encrypt_key: KeyId,
+        decrypt_key: KeyId,
+        public_static_key: PublicKey,
+    ) -> Self {
         CompletedKeyExchange {
             h,
             encrypt_key,
             decrypt_key,
+            public_static_key,
         }
     }
 }

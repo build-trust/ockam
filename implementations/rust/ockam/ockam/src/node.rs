@@ -1,5 +1,3 @@
-use core::time::Duration;
-
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
@@ -141,19 +139,6 @@ impl Node {
     ) -> Result<Address> {
         self.secure_channels()
             .create_secure_channel(self.get_context(), identifier, route, options)
-            .await
-    }
-
-    /// Extended function to create a SecureChannel with [`SecureChannelOptions`]
-    pub async fn create_secure_channel_extended(
-        &self,
-        identifier: &IdentityIdentifier,
-        route: impl Into<Route>,
-        options: impl Into<SecureChannelOptions>,
-        timeout: Duration,
-    ) -> Result<Address> {
-        self.secure_channels()
-            .create_secure_channel_extended(self.get_context(), identifier, route, options, timeout)
             .await
     }
 

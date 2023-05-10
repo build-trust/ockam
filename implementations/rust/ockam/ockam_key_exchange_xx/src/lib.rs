@@ -81,8 +81,8 @@ mod tests {
 
         let key_exchanger = XXNewKeyExchanger::new(vault.clone());
 
-        let mut initiator = key_exchanger.initiator().await.unwrap();
-        let mut responder = key_exchanger.responder().await.unwrap();
+        let mut initiator = key_exchanger.initiator(None).await.unwrap();
+        let mut responder = key_exchanger.responder(None).await.unwrap();
 
         loop {
             if !initiator.is_complete().await.unwrap() {

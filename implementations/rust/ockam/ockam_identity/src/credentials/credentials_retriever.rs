@@ -1,5 +1,3 @@
-use core::time::Duration;
-
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
 
@@ -97,13 +95,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
 
         let sc = self
             .secure_channels
-            .create_secure_channel_extended(
-                ctx,
-                for_identity,
-                resolved_route.clone(),
-                options,
-                Duration::from_secs(120),
-            )
+            .create_secure_channel(ctx, for_identity, resolved_route.clone(), options)
             .await?;
 
         debug!("Created secure channel to project authority");
