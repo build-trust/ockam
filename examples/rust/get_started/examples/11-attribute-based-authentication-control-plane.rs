@@ -13,7 +13,6 @@ use ockam_core::flow_control::FlowControls;
 use ockam_node::RpcClient;
 use ockam_transport_tcp::TcpTransportExtension;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///
@@ -77,7 +76,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = node
-        .create_secure_channel_extended(&control_plane, tcp_route.route, options, Duration::from_secs(120))
+        .create_secure_channel(&control_plane, tcp_route.route, options)
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
@@ -157,12 +156,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the project first
     // we make sure that we indeed connect to the correct project on the Orchestrator
     let secure_channel_address = node
-        .create_secure_channel_extended(
-            &control_plane,
-            tcp_project_route.route,
-            project_options,
-            Duration::from_secs(120),
-        )
+        .create_secure_channel(&control_plane, tcp_project_route.route, project_options)
         .await?;
     println!("secure channel to project: {secure_channel_address:?}");
 

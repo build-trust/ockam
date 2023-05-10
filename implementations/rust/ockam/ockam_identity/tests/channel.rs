@@ -4,11 +4,12 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::{
-    DecryptionResponse, EncryptionRequest, EncryptionResponse, IdentityAccessControlBuilder,
-    IdentitySecureChannelLocalInfo, SecureChannelListenerOptions, SecureChannelOptions,
-    TrustEveryonePolicy, TrustIdentifierPolicy,
+    AuthorityService, CredentialData, DecryptionResponse, EncryptionRequest, EncryptionResponse,
+    IdentityAccessControlBuilder, IdentityIdentifier, IdentitySecureChannelLocalInfo,
+    SecureChannelListenerOptions, SecureChannelOptions, TrustContext, TrustEveryonePolicy,
+    TrustIdentifierPolicy,
 };
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use tokio::time::sleep;
 
 #[ockam_macros::test]
@@ -73,6 +74,190 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     assert_eq!(local_info.their_identity_id(), bob.identifier());
 
     assert_eq!("Hello, Alice!", msg.body());
+
+    ctx.stop().await
+}
+
+#[ockam_macros::test]
+async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
+
+    let authority = identities_creation.create_identity().await?;
+    let alice = identities_creation.create_identity().await?;
+    let bob = identities_creation.create_identity().await?;
+
+    let trust_context = TrustContext::new(
+        "test".to_string(),
+        Some(AuthorityService::new(
+            secure_channels.identities().credentials(),
+            authority.clone(),
+            None,
+        )),
+    );
+
+    let bob_credential_1st = secure_channels
+        .identities()
+        .credentials()
+        .issue_credential(
+            &authority,
+            CredentialData::builder(bob.identifier(), authority.identifier())
+                .with_attribute("is_bob", b"true")
+                .build()?,
+        )
+        .await?;
+
+    let bob_credential_2nd = secure_channels
+        .identities()
+        .credentials()
+        .issue_credential(
+            &authority,
+            CredentialData::builder(bob.identifier(), authority.identifier())
+                .with_attribute("bob_2nd", b"true")
+                .build()?,
+        )
+        .await?;
+
+    secure_channels
+        .create_secure_channel_listener(
+            context,
+            &bob,
+            "bob_listener",
+            SecureChannelListenerOptions::new()
+                .with_trust_context(trust_context.clone())
+                .with_credential(bob_credential_1st)
+                .with_credential(bob_credential_2nd),
+        )
+        .await?;
+
+    let alice_credential_1st = secure_channels
+        .identities()
+        .credentials()
+        .issue_credential(
+            &authority,
+            CredentialData::builder(alice.identifier(), authority.identifier())
+                .with_attribute("is_alice", b"true")
+                .build()?,
+        )
+        .await?;
+
+    let alice_credential_2nd = secure_channels
+        .identities()
+        .credentials()
+        .issue_credential(
+            &authority,
+            CredentialData::builder(alice.identifier(), authority.identifier())
+                .with_attribute("alice_2nd", b"true")
+                .build()?,
+        )
+        .await?;
+
+    let _alice_channel = secure_channels
+        .create_secure_channel(
+            context,
+            &alice,
+            route!["bob_listener"],
+            SecureChannelOptions::new()
+                .with_trust_context(trust_context)
+                .with_credential(alice_credential_1st)
+                .with_credential(alice_credential_2nd),
+        )
+        .await?;
+
+    context.sleep(Duration::from_millis(100)).await;
+
+    let alice_attributes = secure_channels
+        .identities()
+        .repository()
+        .get_attributes(&alice.identifier())
+        .await?
+        .unwrap();
+
+    //FIXME: only the last credential is kept around in the storage
+    // assert_eq!(
+    //     "true".as_bytes(),
+    //     alice_attributes.attrs().get("is_alice").unwrap()
+    // );
+    assert_eq!(
+        "true".as_bytes(),
+        alice_attributes.attrs().get("alice_2nd").unwrap()
+    );
+    assert!(alice_attributes.attrs().get("is_bob").is_none());
+    assert!(alice_attributes.attrs().get("bob_2nd").is_none());
+
+    let bob_attributes = secure_channels
+        .identities()
+        .repository()
+        .get_attributes(&bob.identifier())
+        .await?
+        .unwrap();
+
+    assert!(bob_attributes.attrs().get("is_alice").is_none());
+    assert!(bob_attributes.attrs().get("alice_2nd").is_none());
+    //FIXME: only the last credential is kept around in the storage
+    // assert_eq!(
+    //     "true".as_bytes(),
+    //     bob_attributes.attrs().get("is_bob").unwrap()
+    // );
+    assert_eq!(
+        "true".as_bytes(),
+        bob_attributes.attrs().get("bob_2nd").unwrap()
+    );
+
+    context.stop().await
+}
+
+#[ockam_macros::test]
+async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
+
+    let alice = identities_creation.create_identity().await?;
+    let bob = identities_creation.create_identity().await?;
+
+    let alice_broken_trust_policy =
+        TrustIdentifierPolicy::new(IdentityIdentifier::from_key_id("random-text"));
+
+    secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &bob,
+            "bob_listener",
+            SecureChannelListenerOptions::new().with_trust_policy(alice_broken_trust_policy),
+        )
+        .await?;
+
+    let alice_channel = secure_channels
+        .create_secure_channel(
+            ctx,
+            &alice,
+            route!["bob_listener"],
+            SecureChannelOptions::new().with_timeout(Duration::from_millis(500)),
+        )
+        .await?;
+
+    let mut child_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            "child",
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
+
+    child_ctx
+        .send(
+            route![alice_channel, child_ctx.address()],
+            "Hello, Bob!".to_string(),
+        )
+        .await?;
+
+    let result = child_ctx
+        .receive_extended::<String>(
+            MessageReceiveOptions::new().with_timeout(Duration::from_millis(50)),
+        )
+        .await;
+
+    assert!(result.is_err());
 
     ctx.stop().await
 }

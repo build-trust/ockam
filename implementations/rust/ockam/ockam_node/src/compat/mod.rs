@@ -23,3 +23,4 @@ pub mod asynchronous {
 }
 
 pub use crate::tokio;
+pub use tokio::time::timeout;

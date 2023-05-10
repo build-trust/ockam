@@ -64,12 +64,11 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let res = channel_to_bob
         .secure_channels
-        .create_secure_channel_extended(
+        .create_secure_channel(
             ctx,
             &channel_to_bob.identity,
             route![connection_to_bob.address.clone(), "listener"],
-            SecureChannelOptions::new(),
-            Duration::from_secs(1),
+            SecureChannelOptions::new().with_timeout(Duration::from_secs(1)),
         )
         .await;
     assert!(
@@ -106,12 +105,11 @@ async fn test3(ctx: &mut Context) -> Result<()> {
 
     let res = channel_to_bob
         .secure_channels
-        .create_secure_channel_extended(
+        .create_secure_channel(
             ctx,
             &channel_to_bob.identity,
             route![connection_to_bob.address.clone(), "listener"],
-            SecureChannelOptions::new(),
-            Duration::from_secs(1),
+            SecureChannelOptions::new().with_timeout(Duration::from_secs(1)),
         )
         .await;
     assert!(
@@ -148,12 +146,11 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     let res = channel_to_bob
         .secure_channels
-        .create_secure_channel_extended(
+        .create_secure_channel(
             ctx,
             &channel_to_bob.identity,
             route![connection_to_bob.address.clone(), "listener"],
-            SecureChannelOptions::new(),
-            Duration::from_secs(1),
+            SecureChannelOptions::new().with_timeout(Duration::from_secs(1)),
         )
         .await;
     assert!(
@@ -190,12 +187,11 @@ async fn test5(ctx: &mut Context) -> Result<()> {
 
     let res = channel_to_alice
         .secure_channels
-        .create_secure_channel_extended(
+        .create_secure_channel(
             ctx,
             &channel_to_alice.identity,
             route![connection_to_alice.address.clone(), "listener"],
-            SecureChannelOptions::new(),
-            Duration::from_secs(1),
+            SecureChannelOptions::new().with_timeout(Duration::from_secs(1)),
         )
         .await;
     assert!(

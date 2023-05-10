@@ -175,12 +175,19 @@ impl AddressRecord {
     pub fn address_set(&self) -> &[Address] {
         &self.address_set
     }
+
     pub fn sender(&self) -> MessageSender<RelayMessage> {
         self.sender.clone().expect("No such sender!")
     }
+
     pub fn sender_drop(&mut self) {
         self.sender = None;
     }
+
+    pub fn keep_only_primary_address(&mut self) {
+        self.address_set = vec![self.address_set[0].clone()];
+    }
+
     pub fn new(
         address_set: Vec<Address>,
         sender: MessageSender<RelayMessage>,

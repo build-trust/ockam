@@ -1,12 +1,12 @@
 use crate::identity::Identity;
 use crate::secure_channel::addresses::Addresses;
-use crate::secure_channel::common::{CreateResponderChannelMessage, Role};
+use crate::secure_channel::common::Role;
 use crate::secure_channel::options::SecureChannelListenerOptions;
-use crate::secure_channel::DecryptorWorker;
+use crate::secure_channel::responder_worker::ResponderWorker;
 use crate::secure_channels::secure_channels::SecureChannels;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, AllowAll, DenyAll, Result, Routed, Worker};
+use ockam_core::{Address, AllowAll, Any, LocalOnwardOnly, Result, Routed, Worker};
 use ockam_node::Context;
 
 pub(crate) struct IdentityChannelListener {
@@ -52,8 +52,10 @@ impl IdentityChannelListener {
         let listener = Self::new(secure_channels.clone(), identity.clone(), options);
 
         ctx.start_worker(
-            address, listener, AllowAll, // TODO: @ac allow to customize
-            DenyAll,
+            address,
+            listener,
+            AllowAll, // TODO: @ac allow to customize
+            LocalOnwardOnly,
         )
         .await?;
 
@@ -63,13 +65,13 @@ impl IdentityChannelListener {
 
 #[ockam_core::worker]
 impl Worker for IdentityChannelListener {
-    type Message = CreateResponderChannelMessage;
+    type Message = Any;
     type Context = Context;
 
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
+        message: Routed<Self::Message>,
     ) -> Result<()> {
         // Check if the Worker that send us this message is a Producer
         // If yes - decryptor will be added to that flow_control to be able to receive further messages
@@ -78,7 +80,7 @@ impl Worker for IdentityChannelListener {
             if let Some(ciphertext_flow_control) = &self.options.consumer_flow_control {
                 ciphertext_flow_control
                     .flow_controls
-                    .get_flow_control_with_producer(&msg.src_addr())
+                    .get_flow_control_with_producer(&message.src_addr())
                     .map(|x| x.flow_control_id().clone())
             } else {
                 None
@@ -92,15 +94,25 @@ impl Worker for IdentityChannelListener {
             .options
             .create_access_control(flow_control_id.clone())?;
 
-        DecryptorWorker::create_responder(
+        let decryptor_remote_address = ResponderWorker::create(
             ctx,
             self.secure_channels.clone(),
             addresses,
             self.identity.clone(),
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
-            msg,
+            self.options.credentials.clone(),
+            self.options.trust_context.clone(),
         )
-        .await
+        .await?;
+
+        let mut local_message = message.into_local_message();
+        local_message
+            .transport_mut()
+            .onward_route
+            .modify()
+            .replace(decryptor_remote_address);
+
+        ctx.forward(local_message).await
     }
 }
