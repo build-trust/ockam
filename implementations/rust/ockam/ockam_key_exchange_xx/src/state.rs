@@ -18,7 +18,7 @@ pub(crate) struct State {
     identity_public_key: Option<PublicKey>,
     ephemeral_secret: Option<KeyId>,
     ephemeral_public: Option<PublicKey>,
-    _remote_static_public_key: Option<PublicKey>,
+    remote_static_public_key: Option<PublicKey>,
     remote_ephemeral_public_key: Option<PublicKey>,
     dh_state: DhState,
     nonce: u16,
@@ -40,14 +40,14 @@ impl core::fmt::Debug for State {
 }
 
 impl State {
-    pub(crate) async fn new(vault: Arc<dyn XXVault>) -> Result<Self> {
+    pub(crate) async fn new(vault: Arc<dyn XXVault>, key_id: Option<KeyId>) -> Result<Self> {
         Ok(Self {
             run_prologue: true,
-            identity_key: None,
+            identity_key: key_id,
             identity_public_key: None,
             ephemeral_secret: None,
             ephemeral_public: None,
-            _remote_static_public_key: None,
+            remote_static_public_key: None,
             remote_ephemeral_public_key: None,
             dh_state: DhState::empty(vault.clone()),
             nonce: 0,
@@ -187,10 +187,20 @@ impl State {
     }
 
     /// Set this state up to send and receive messages
-    fn finalize(&mut self, encrypt_key: KeyId, decrypt_key: KeyId) -> Result<CompletedKeyExchange> {
+    fn finalize(
+        &mut self,
+        encrypt_key: KeyId,
+        decrypt_key: KeyId,
+        public_static_key: PublicKey,
+    ) -> Result<CompletedKeyExchange> {
         let h = self.h.ok_or(XXError::InvalidState)?;
 
-        Ok(CompletedKeyExchange::new(h, encrypt_key, decrypt_key))
+        Ok(CompletedKeyExchange::new(
+            h,
+            encrypt_key,
+            decrypt_key,
+            public_static_key,
+        ))
     }
 }
 
@@ -248,7 +258,7 @@ impl State {
         self.h = Some(h);
         let rs = PublicKey::new(rs, SecretType::X25519);
         self.dh_state.dh(&ephemeral_secret_handle, &rs).await?;
-        self._remote_static_public_key = Some(rs);
+        self.remote_static_public_key = Some(rs);
         self.nonce = 0;
 
         let (payload, h) = self.decrypt_and_mix_hash(encrypted_payload_and_tag).await?;
@@ -285,9 +295,14 @@ impl State {
     }
 
     pub(crate) async fn finalize_initiator(&mut self) -> Result<CompletedKeyExchange> {
+        let public_static_key = self
+            .remote_static_public_key
+            .take()
+            .ok_or(XXError::InvalidState)?;
+
         let keys = { self.split().await? };
 
-        self.finalize(keys.1, keys.0)
+        self.finalize(keys.1, keys.0, public_static_key)
     }
 }
 
@@ -371,14 +386,18 @@ impl State {
             .await?;
         self.h = Some(h);
         self.nonce += 1;
-        self._remote_static_public_key = Some(rs);
+        self.remote_static_public_key = Some(rs);
         Ok(payload)
     }
 
     pub(crate) async fn finalize_responder(&mut self) -> Result<CompletedKeyExchange> {
-        let keys = { self.split().await? };
+        let public_static_key = self
+            .remote_static_public_key
+            .take()
+            .ok_or(XXError::InvalidState)?;
 
-        self.finalize(keys.0, keys.1)
+        let keys = { self.split().await? };
+        self.finalize(keys.0, keys.1, public_static_key)
     }
 }
 
@@ -407,7 +426,7 @@ mod tests {
         ];
 
         let vault: Arc<dyn XXVault> = vault;
-        let mut state = State::new(vault.clone()).await.unwrap();
+        let mut state = State::new(vault.clone(), None).await.unwrap();
         let res = state.prologue().await;
         assert!(res.is_ok());
         assert_eq!(state.h.unwrap(), exp_h);
@@ -696,7 +715,7 @@ mod tests {
             identity_public_key: Some(static_public_key),
             ephemeral_secret: Some(ephemeral_secret_handle),
             ephemeral_public: Some(ephemeral_public_key),
-            _remote_static_public_key: None,
+            remote_static_public_key: None,
             remote_ephemeral_public_key: None,
             dh_state: DhState {
                 key: None,

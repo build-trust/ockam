@@ -137,7 +137,7 @@ impl Context {
     }
 
     /// Wait for a particular address to become "ready"
-    pub async fn wait_for<A: Into<Address>>(&mut self, addr: A) -> Result<()> {
+    pub async fn wait_for<A: Into<Address>>(&self, addr: A) -> Result<()> {
         let (msg, mut reply) = NodeMessage::get_ready(addr.into());
         self.sender
             .send(msg)
