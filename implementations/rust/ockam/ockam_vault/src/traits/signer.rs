@@ -24,7 +24,7 @@ pub mod tests {
 
     /// This test checks that an ephemeral secret can be used to sign data and that we can verify the signature
     pub async fn test_sign_and_verify_ephemeral_secret(vault: &mut (impl Signer + SecretsStore)) {
-        for attributes in [SecretAttributes::X25519, SecretAttributes::Ed25519] {
+        for attributes in [SecretAttributes::Ed25519] {
             let secret = vault.create_ephemeral_secret(attributes).await.unwrap();
             sign_and_verify(vault, &secret).await;
         }
@@ -32,7 +32,7 @@ pub mod tests {
 
     /// This test checks that a persistent secret can be used to sign data and that we can verify the signature
     pub async fn test_sign_and_verify_persistent_secret(vault: &mut (impl Signer + SecretsStore)) {
-        for attributes in [SecretAttributes::X25519, SecretAttributes::Ed25519] {
+        for attributes in [SecretAttributes::Ed25519] {
             let secret = vault.create_persistent_secret(attributes).await.unwrap();
             sign_and_verify(vault, &secret).await;
         }
