@@ -48,7 +48,7 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Resu
             .get_identities(vault)
             .await?
             .identities_creation()
-            .create_identity_with_external_key(&cmd.key_id, key_attrs)
+            .create_identity_with_existing_key(&cmd.key_id, key_attrs)
             .await?
     };
     let idt_name = cli_state::random_name();
