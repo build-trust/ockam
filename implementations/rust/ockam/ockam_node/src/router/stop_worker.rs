@@ -46,6 +46,9 @@ pub(super) async fn exec(
         router.map.addr_map.remove(addr);
     }
 
+    // removes aliases from the address record to allow for reuse right after stop
+    record.keep_only_primary_address();
+
     reply
         .send(RouterReply::ok())
         .await

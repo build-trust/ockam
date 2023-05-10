@@ -1,7 +1,3 @@
-use ockam::{node, MessageSendReceiveOptions, TcpInletOptions};
-use ockam_core::compat::sync::Arc;
-use std::time::Duration;
-
 use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::credential::OneTimeCode;
@@ -9,9 +5,11 @@ use ockam::identity::{
     identities, AuthorityService, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannelOptions,
     TrustContext, TrustMultiIdentifiersPolicy,
 };
+use ockam::{node, MessageSendReceiveOptions, TcpInletOptions};
 use ockam::{route, Context, Result};
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
+use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_node::RpcClient;
 use ockam_transport_tcp::TcpTransportExtension;
@@ -78,12 +76,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = node
-        .create_secure_channel_extended(
-            &edge_plane,
-            tcp_authority_route.route,
-            options,
-            Duration::from_secs(120),
-        )
+        .create_secure_channel(&edge_plane, tcp_authority_route.route, options)
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
@@ -155,12 +148,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 4.1 first created a secure channel to the project
     let secure_channel_address = node
-        .create_secure_channel_extended(
-            &edge_plane,
-            tcp_project_route.route,
-            project_options,
-            Duration::from_secs(120),
-        )
+        .create_secure_channel(&edge_plane, tcp_project_route.route, project_options)
         .await?;
     println!("secure channel address to the project: {secure_channel_address:?}");
 
@@ -177,11 +165,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4.3 then create a secure channel to the control node (via its forwarder)
     let secure_channel_listener_route = route![secure_channel_address, "forward_to_control_plane1", "untrusted"];
     let secure_channel_to_control = node
-        .create_secure_channel_extended(
+        .create_secure_channel(
             &edge_plane,
             secure_channel_listener_route.clone(),
             SecureChannelOptions::new(),
-            Duration::from_secs(120),
         )
         .await?;
 

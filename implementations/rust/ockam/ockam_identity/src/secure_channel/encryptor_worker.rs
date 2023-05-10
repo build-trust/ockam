@@ -3,7 +3,7 @@ use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::Encryptor;
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, Address, Decodable, Encodable, Route};
+use ockam_core::{async_trait, Decodable, Encodable, Route};
 use ockam_core::{Any, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use tracing::debug;
@@ -13,7 +13,6 @@ pub(crate) struct EncryptorWorker {
     role: &'static str,
     addresses: Addresses,
     remote_route: Route,
-    remote_backwards_compatibility_address: Address,
     encryptor: Encryptor,
 }
 
@@ -22,14 +21,12 @@ impl EncryptorWorker {
         role: &'static str,
         addresses: Addresses,
         remote_route: Route,
-        remote_backwards_compatibility_address: Address,
         encryptor: Encryptor,
     ) -> Self {
         Self {
             role,
             addresses,
             remote_route,
-            remote_backwards_compatibility_address,
             encryptor,
         }
     }
@@ -79,12 +76,6 @@ impl EncryptorWorker {
 
         // Remove our address
         let _ = onward_route.step();
-
-        // Add backwards compatibility address to simulate old behaviour where secure channel
-        // and identity secure channel workers were separate
-        onward_route
-            .modify()
-            .prepend(self.remote_backwards_compatibility_address.clone());
 
         let msg = TransportMessage::v1(
             onward_route,
