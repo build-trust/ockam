@@ -8,7 +8,7 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-Software implementation of Vault traits.
+AWS implementation of the ockam_vault::Kms trait
 
 
 ## Usage
