@@ -333,33 +333,9 @@ impl<W: TerminalWriter> Terminal<W> {
             return None;
         }
         let ticker = [
-            "⡇⣀⣀⣀⣀⣀",
-            "⣿⣀⣀⣀⣀⣀",
-            "⣿⡇⣀⣀⣀⣀",
-            "⣿⣿⣀⣀⣀⣀",
-            "⣿⣿⡇⣀⣀⣀",
-            "⣿⣿⣿⣀⣀⣀",
-            "⣿⣿⣿⡇⣀⣀",
-            "⣿⣿⣿⣿⣀⣀",
-            "⣿⣿⣿⣿⡇⣀",
-            "⣿⣿⣿⣿⣿⣀",
-            "⣿⣿⣿⣿⣿⡇",
-            "⣿⣿⣿⣿⣿⣿",
-            "⣿⣿⣿⣿⣿⣿",
-            "⢸⣿⣿⣿⣿⣿",
-            "⣀⣿⣿⣿⣿⣿",
-            "⣀⢸⣿⣿⣿⣿",
-            "⣀⣀⣿⣿⣿⣿",
-            "⣀⣀⢸⣿⣿⣿",
-            "⣀⣀⣀⣿⣿⣿",
-            "⣀⣀⣀⢸⣿⣿",
-            "⣀⣀⣀⣀⣿⣿",
-            "⣀⣀⣀⣀⢸⣿",
-            "⣀⣀⣀⣀⣀⣿",
-            "⣀⣀⣀⣀⣀⢸",
+            "     ⠋", "     ⠙", "     ⠹", "     ⠸", "     ⠼", "     ⠴", "     ⠦", "     ⠧",
+            "     ⠇", "     ⠏",
         ];
-        let mut reversed_ticker = ticker;
-        reversed_ticker.reverse();
 
         let pb = ProgressBar::new_spinner();
         pb.set_draw_target(ProgressDrawTarget::stderr());
@@ -367,7 +343,7 @@ impl<W: TerminalWriter> Terminal<W> {
         pb.set_style(
             ProgressStyle::with_template("{spinner:.yellow} {msg}")
                 .expect("Failed to set progress bar template")
-                .tick_strings(&[ticker, reversed_ticker].concat()),
+                .tick_strings(&ticker),
         );
         Some(pb)
     }
@@ -403,7 +379,7 @@ impl<W: TerminalWriter> Terminal<W> {
 
             progress_bar.set_message(output_messages[i].clone());
 
-            if i == output_messages.len() - 1 {
+            if i >= output_messages.len() - 1 {
                 i = 0;
             } else {
                 i += 1;
