@@ -56,7 +56,7 @@ anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
 clap = { version = "4.2.7", features = ["derive", "cargo", "wrap_help"] }
-clap_complete = "4.2.1"
+clap_complete = "4.2.2"
 clap_mangen = "0.2.9"
 cli-table = "0.4"
 colorful = "0.2"
@@ -106,7 +106,7 @@ termcolor = "1.2.0"
 termimad = "0.23"
 thiserror = "1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
-tokio = { version = "1.28.0", features = ["full"] }
+tokio = { version = "1.28.1", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-appender = "0.2.2"
