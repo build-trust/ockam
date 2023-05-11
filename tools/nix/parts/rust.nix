@@ -108,7 +108,7 @@ in {
 
           inherit (config.devShells.tooling) BATS_LIB;
 
-          inherit (envVars) OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS;
+          inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS;
 
           RUST_SRC_PATH = lib.optional cfg.rustAnalyzer "${toolchain}/lib/rustlib/src/rust/library";
         };
@@ -121,7 +121,7 @@ in {
             ]
             ++ nightlyTooling
             ++ sharedInputs;
-          inherit (envVars) OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS;
+          inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS;
           RUST_SRC_PATH = lib.optional cfg.rustAnalyzer "${nightlyToolchain}/lib/rustlib/src/rust/library";
         };
       };
