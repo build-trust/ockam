@@ -581,7 +581,12 @@ impl NodeManagerWorker {
 
         let trust_context = TrustContext::new(
             encoded_identity.to_string(),
-            Some(AuthorityService::new(node_manager.credentials(), i, None)),
+            Some(AuthorityService::new(
+                node_manager.identities().identities_reader(),
+                node_manager.credentials(),
+                i.identifier(),
+                None,
+            )),
         );
 
         node_manager

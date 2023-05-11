@@ -126,6 +126,14 @@ impl IdentitiesRepository for BootstrapedIdentityStore {
     fn as_attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
         Arc::new(self.clone())
     }
+
+    fn as_identities_reader(&self) -> Arc<dyn IdentitiesReader> {
+        Arc::new(self.clone())
+    }
+
+    fn as_identities_writer(&self) -> Arc<dyn IdentitiesWriter> {
+        Arc::new(self.clone())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

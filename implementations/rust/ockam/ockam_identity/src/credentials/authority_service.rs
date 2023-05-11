@@ -1,5 +1,7 @@
 use crate::credentials::credentials_retriever::CredentialsRetriever;
-use crate::{Credential, Credentials, Identity, IdentityError, IdentityIdentifier};
+use crate::{
+    Credential, Credentials, IdentitiesReader, Identity, IdentityError, IdentityIdentifier,
+};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_node::Context;
@@ -7,28 +9,31 @@ use ockam_node::Context;
 /// An AuthorityService represents an authority which issued credentials
 #[derive(Clone)]
 pub struct AuthorityService {
+    identities_reader: Arc<dyn IdentitiesReader>,
     credentials: Arc<dyn Credentials>,
-    identity: Identity,
+    identifier: IdentityIdentifier,
     own_credential: Option<Arc<dyn CredentialsRetriever>>,
 }
 
 impl AuthorityService {
     /// Create a new authority service
     pub fn new(
+        identities_reader: Arc<dyn IdentitiesReader>,
         credentials: Arc<dyn Credentials>,
-        identity: Identity,
+        identifier: IdentityIdentifier,
         own_credential: Option<Arc<dyn CredentialsRetriever>>,
     ) -> Self {
         Self {
+            identities_reader,
             credentials,
-            identity,
+            identifier,
             own_credential,
         }
     }
 
     /// Return the Public Identity of the Authority
-    pub fn identity(&self) -> Identity {
-        self.identity.clone()
+    pub async fn identity(&self) -> Result<Identity> {
+        self.identities_reader.get_identity(&self.identifier).await
     }
 
     /// Retrieve the credential for an identity within this authority
