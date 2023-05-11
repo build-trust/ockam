@@ -92,7 +92,7 @@ async fn run_impl(
     )?;
     let credential = identities
         .credentials()
-        .issue_credential(&issuer, credential_data)
+        .issue_credential(&issuer.identifier(), credential_data)
         .await?;
 
     print_encodable(credential, &cmd.encode_format)?;

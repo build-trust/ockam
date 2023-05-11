@@ -62,7 +62,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         .await?;
     let auth = CredentialsIssuer::new(
         identities.clone(),
-        auth_identity.clone(),
+        auth_identity.identifier(),
         "project42".into(),
     )
     .await?;

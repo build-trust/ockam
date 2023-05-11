@@ -6,8 +6,8 @@ use ockam_core::compat::net::SocketAddr;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::{
-    secure_channels, Identity, IdentityIdentifier, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannels,
+    secure_channels, IdentityIdentifier, SecureChannelListenerOptions, SecureChannelOptions,
+    SecureChannels,
 };
 use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
@@ -211,7 +211,7 @@ async fn create_tcp_connection(
 
 #[allow(dead_code)]
 pub struct SecureChannelListenerInfo {
-    pub identity: Identity,
+    pub identifier: IdentityIdentifier,
     pub secure_channels: Arc<SecureChannels>,
 }
 
@@ -252,13 +252,14 @@ pub async fn create_secure_channel_listener(
         options
     };
 
+    let identifier = identity.identifier();
     secure_channels
-        .create_secure_channel_listener(ctx, &identity.identifier(), "listener", options)
+        .create_secure_channel_listener(ctx, &identifier, "listener", options)
         .await?;
 
     let info = SecureChannelListenerInfo {
         secure_channels,
-        identity,
+        identifier,
     };
 
     Ok(info)

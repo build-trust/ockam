@@ -78,7 +78,7 @@ async fn main(ctx: Context) -> Result<()> {
         .start(
             node.context(),
             trust_context,
-            server.clone(),
+            server.identifier(),
             "credentials".into(),
             true,
         )

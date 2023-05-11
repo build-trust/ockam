@@ -108,7 +108,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
             Some(Arc::new(RemoteCredentialsRetriever::new(
                 node.secure_channels(),
                 RemoteCredentialsRetrieverInfo::new(
-                    project.authority_identity(),
+                    project.authority_identity().identifier(),
                     tcp_project_session.route,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 ),
@@ -130,7 +130,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .start(
             node.context(),
             trust_context,
-            project.authority_identity(),
+            project.authority_identity().identifier(),
             "credential_exchange".into(),
             true,
         )

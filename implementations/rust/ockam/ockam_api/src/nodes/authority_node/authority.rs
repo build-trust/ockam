@@ -224,7 +224,7 @@ impl Authority {
         // create and start a credential issuer worker
         let issuer = CredentialsIssuer::new(
             self.identities(),
-            self.identity.clone(),
+            self.identity.identifier(),
             configuration.trust_context_identifier(),
         )
         .await?;

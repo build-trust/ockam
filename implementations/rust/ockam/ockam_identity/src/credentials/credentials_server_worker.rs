@@ -12,7 +12,7 @@ use crate::credential::Credential;
 use crate::credentials::Credentials;
 use crate::identity::IdentityIdentifier;
 use crate::secure_channel::IdentitySecureChannelLocalInfo;
-use crate::{Identity, TrustContext};
+use crate::TrustContext;
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 
@@ -20,7 +20,7 @@ const TARGET: &str = "ockam::credential_exchange_worker::service";
 pub struct CredentialsServerWorker {
     credentials: Arc<dyn Credentials>,
     trust_context: TrustContext,
-    identity: Identity,
+    identifier: IdentityIdentifier,
     present_back: bool,
 }
 
@@ -28,13 +28,13 @@ impl CredentialsServerWorker {
     pub fn new(
         credentials: Arc<dyn Credentials>,
         trust_context: TrustContext,
-        identity: Identity,
+        identifier: IdentityIdentifier,
         present_back: bool,
     ) -> Self {
         Self {
             credentials,
             trust_context,
-            identity,
+            identifier,
             present_back,
         }
     }
@@ -131,7 +131,7 @@ impl CredentialsServerWorker {
                     let credential = self
                         .trust_context
                         .authority()?
-                        .credential(ctx, &self.identity.identifier())
+                        .credential(ctx, &self.identifier)
                         .await;
                     match credential.as_ref() {
                         Ok(p) if self.present_back => {

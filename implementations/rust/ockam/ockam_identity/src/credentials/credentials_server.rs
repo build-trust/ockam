@@ -3,7 +3,7 @@ use crate::credentials::credentials_server_worker::CredentialsServerWorker;
 use crate::credentials::Credentials;
 use crate::identity::Identity;
 use crate::secure_channel::IdentitySecureChannelLocalInfo;
-use crate::TrustContext;
+use crate::{IdentityIdentifier, TrustContext};
 use async_trait::async_trait;
 use minicbor::Decoder;
 use ockam_core::api::{Request, Response, Status};
@@ -44,7 +44,7 @@ pub trait CredentialsServer: Send + Sync {
         &self,
         ctx: &Context,
         trust_context: TrustContext,
-        identity: Identity,
+        identifier: IdentityIdentifier,
         address: Address,
         present_back: bool,
     ) -> Result<()>;
@@ -145,14 +145,14 @@ impl CredentialsServer for CredentialsServerModule {
         &self,
         ctx: &Context,
         trust_context: TrustContext,
-        identity: Identity,
+        identifier: IdentityIdentifier,
         address: Address,
         present_back: bool,
     ) -> Result<()> {
         let worker = CredentialsServerWorker::new(
             self.credentials.clone(),
             trust_context,
-            identity,
+            identifier,
             present_back,
         );
 

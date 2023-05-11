@@ -10,8 +10,8 @@ use ockam_core::{async_trait, route, Address, Result, Route};
 use ockam_node::Context;
 
 use crate::{
-    Credential, CredentialsIssuerClient, Identity, IdentityIdentifier, SecureChannelOptions,
-    SecureChannels, TrustMultiIdentifiersPolicy,
+    Credential, CredentialsIssuerClient, IdentityIdentifier, SecureChannelOptions, SecureChannels,
+    TrustMultiIdentifiersPolicy,
 };
 
 /// Trait for retrieving a credential for a given identity
@@ -87,7 +87,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
             resolved_route.clone()
         );
 
-        let allowed = vec![self.issuer.identity.identifier()];
+        let allowed = vec![self.issuer.identifier.clone()];
         debug!("Create secure channel to authority");
 
         let flow_control_id = self.flow_controls.generate_id();
@@ -122,7 +122,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RemoteCredentialsRetrieverInfo {
     /// Issuer identity, used to validate retrieved credentials
-    pub identity: Identity,
+    pub identifier: IdentityIdentifier,
     /// Route used to establish a secure channel to the remote node
     pub route: Route,
     /// Address of the credentials service on the remote node
@@ -131,9 +131,9 @@ pub struct RemoteCredentialsRetrieverInfo {
 
 impl RemoteCredentialsRetrieverInfo {
     /// Create new information for a credential retriever
-    pub fn new(identity: Identity, route: Route, service_address: Address) -> Self {
+    pub fn new(identifier: IdentityIdentifier, route: Route, service_address: Address) -> Self {
         Self {
-            identity,
+            identifier,
             route,
             service_address,
         }

@@ -88,7 +88,7 @@ impl NodeManager {
             .start(
                 ctx,
                 trust_context,
-                self.identity.clone(),
+                self.identity.identifier(),
                 addr.clone(),
                 !oneway,
             )
@@ -247,7 +247,7 @@ impl NodeManager {
             .build_access_control(&resource, &action, project.as_str(), &rule)
             .await?;
         let issuer =
-            CredentialsIssuer::new(self.identities(), self.identity.clone(), project).await?;
+            CredentialsIssuer::new(self.identities(), self.identity.identifier(), project).await?;
         WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), addr.clone(), issuer)
             .start(ctx)
             .await

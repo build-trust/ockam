@@ -284,7 +284,7 @@ impl CredentialRetrieverConfig {
             CredentialRetrieverConfig::FromCredentialIssuer(issuer_config) => {
                 let _ = tcp_transport.ok_or_else(|| ApiError::generic("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
                 let credential_issuer_info = RemoteCredentialsRetrieverInfo::new(
-                    issuer_config.resolve_identity().await?,
+                    issuer_config.resolve_identity().await?.identifier(),
                     issuer_config.resolve_route().await?,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 );
