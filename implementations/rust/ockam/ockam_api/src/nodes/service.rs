@@ -1,11 +1,18 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
+use std::collections::BTreeMap;
+use std::error::Error as _;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+
 use minicbor::Decoder;
+
+pub use node_identities::*;
 use ockam::identity::{
     Credentials, CredentialsServer, CredentialsServerModule, Identities, IdentitiesRepository,
     IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
 };
-use ockam::identity::{Identity, IdentityIdentifier, SecureChannels};
+use ockam::identity::{IdentityIdentifier, SecureChannels};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
@@ -19,17 +26,13 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone, LOCAL};
+use ockam_identity::{Identity, TrustContext};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::tokio;
 use ockam_node::tokio::task::JoinHandle;
-use std::collections::BTreeMap;
-use std::error::Error as _;
-use std::net::SocketAddr;
-use std::path::PathBuf;
 
-use super::registry::Registry;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
@@ -48,6 +51,8 @@ use crate::session::sessions::Sessions;
 use crate::session::Medic;
 use crate::{local_worker, DefaultAddress};
 
+use super::registry::Registry;
+
 mod credentials;
 mod forwarder;
 pub mod message;
@@ -57,9 +62,6 @@ mod policy;
 mod portals;
 mod secure_channel;
 mod transport;
-
-pub use node_identities::*;
-use ockam_identity::TrustContext;
 
 const TARGET: &str = "ockam_api::nodemanager::service";
 
@@ -92,7 +94,7 @@ pub struct NodeManager {
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
-    identity: Identity,
+    identifier: IdentityIdentifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     trust_context: Option<TrustContext>,
@@ -104,8 +106,14 @@ pub struct NodeManager {
 }
 
 impl NodeManager {
-    pub(super) fn identity(&self) -> Identity {
-        self.identity.clone()
+    pub(super) async fn identity(&self) -> Result<Identity> {
+        self.identities_repository()
+            .get_identity(&self.identifier())
+            .await
+    }
+
+    pub(super) fn identifier(&self) -> IdentityIdentifier {
+        self.identifier.clone()
     }
 
     pub(super) fn identities(&self) -> Arc<Identities> {
@@ -355,7 +363,7 @@ impl NodeManager {
                     .unwrap()
                     .authority()
                     .is_ok(),
-            identity,
+            identifier: identity.identifier(),
             secure_channels,
             projects: Arc::new(projects_options.projects),
             trust_context: None,

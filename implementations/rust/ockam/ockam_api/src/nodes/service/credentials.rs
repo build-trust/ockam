@@ -40,7 +40,7 @@ impl NodeManagerWorker {
                 }
             }
         } else {
-            Arc::new(node_manager.identity())
+            Arc::new(node_manager.identity().await?)
         };
 
         if let Ok(c) = node_manager
@@ -75,7 +75,7 @@ impl NodeManagerWorker {
         let credential = node_manager
             .trust_context()?
             .authority()?
-            .credential(ctx, &node_manager.identity.identifier())
+            .credential(ctx, &node_manager.identifier())
             .await?;
 
         if request.oneway {

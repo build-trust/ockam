@@ -303,7 +303,7 @@ impl NodeManager {
                 Err(CliStateError::NotFound.into())
             }
         } else {
-            Ok(self.identity.clone())
+            self.identity().await
         }
     }
 

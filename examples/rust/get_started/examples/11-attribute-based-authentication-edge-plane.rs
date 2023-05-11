@@ -103,12 +103,13 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
         Some(AuthorityService::new(
+            node.identities().identities_reader(),
             node.credentials(),
-            project.authority_identity(),
+            project.authority_identifier(),
             Some(Arc::new(RemoteCredentialsRetriever::new(
                 node.secure_channels(),
                 RemoteCredentialsRetrieverInfo::new(
-                    project.authority_identity().identifier(),
+                    project.authority_identifier(),
                     tcp_project_session.route,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 ),
@@ -130,7 +131,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .start(
             node.context(),
             trust_context,
-            project.authority_identity().identifier(),
+            project.authority_identifier(),
             "credential_exchange".into(),
             true,
         )

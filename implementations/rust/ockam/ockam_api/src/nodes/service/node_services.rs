@@ -85,13 +85,7 @@ impl NodeManager {
         }
 
         self.credentials_service()
-            .start(
-                ctx,
-                trust_context,
-                self.identity.identifier(),
-                addr.clone(),
-                !oneway,
-            )
+            .start(ctx, trust_context, self.identifier(), addr.clone(), !oneway)
             .await?;
 
         self.registry
@@ -246,8 +240,7 @@ impl NodeManager {
         let abac = self
             .build_access_control(&resource, &action, project.as_str(), &rule)
             .await?;
-        let issuer =
-            CredentialsIssuer::new(self.identities(), self.identity.identifier(), project).await?;
+        let issuer = CredentialsIssuer::new(self.identities(), self.identifier(), project).await?;
         WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), addr.clone(), issuer)
             .start(ctx)
             .await
