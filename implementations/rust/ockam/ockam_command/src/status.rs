@@ -9,6 +9,7 @@ use ockam_api::cli_state::identities::IdentityState;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::NodeState;
 use ockam_api::nodes::models::base::NodeStatus;
+use ockam_identity::IdentityIdentifier;
 use std::time::Duration;
 
 /// Display Ockam Status
@@ -20,7 +21,7 @@ pub struct StatusCommand {
 }
 
 struct NodeDetails {
-    identity: Identity,
+    identifier: IdentityIdentifier,
     state: NodeState,
     status: String,
 }
@@ -45,7 +46,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) ->
     let tcp = TcpTransport::create(ctx).await?;
     for node_state in &node_states {
         let node_infos = NodeDetails {
-            identity: node_state.config().identity().await?,
+            identifier: node_state.config().identity().await?.identifier(),
             state: node_state.clone(),
             status: get_node_status(ctx, &opts, node_state, &tcp).await?,
         };
@@ -115,8 +116,7 @@ async fn print_status(
             println!("{:2}{}", "", line);
         }
 
-        node_details
-            .retain(|nd| nd.identity.identifier() == identity.config().identity.identifier());
+        node_details.retain(|nd| nd.identifier == identity.config().identity.identifier());
         if !node_details.is_empty() {
             println!("{:2}Linked Nodes:", "");
             for (n_idx, node) in node_details.iter().enumerate() {
