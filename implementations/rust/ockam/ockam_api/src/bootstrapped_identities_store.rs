@@ -103,15 +103,18 @@ impl IdentityAttributesWriter for BootstrapedIdentityStore {
 
 #[async_trait]
 impl IdentitiesReader for BootstrapedIdentityStore {
-    async fn get_identity(&self, identifier: &IdentityIdentifier) -> Result<Option<Identity>> {
+    async fn retrieve_identity(&self, identifier: &IdentityIdentifier) -> Result<Option<Identity>> {
+        self.repository.retrieve_identity(identifier).await
+    }
+    async fn get_identity(&self, identifier: &IdentityIdentifier) -> Result<Identity> {
         self.repository.get_identity(identifier).await
     }
 }
 
 #[async_trait]
 impl IdentitiesWriter for BootstrapedIdentityStore {
-    async fn update_known_identity(&self, identity: &Identity) -> Result<()> {
-        self.repository.update_known_identity(identity).await
+    async fn update_identity(&self, identity: &Identity) -> Result<()> {
+        self.repository.update_identity(identity).await
     }
 }
 

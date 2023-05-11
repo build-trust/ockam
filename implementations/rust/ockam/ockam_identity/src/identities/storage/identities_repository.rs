@@ -76,14 +76,26 @@ pub trait IdentityAttributesWriter: Send + Sync + 'static {
 pub trait IdentitiesWriter: Send + Sync + 'static {
     /// Store changes if there are new key changes associated to that identity
     /// Return an error if the current change history conflicts with the persisted one
-    async fn update_known_identity(&self, identity: &Identity) -> Result<()>;
+    async fn update_identity(&self, identity: &Identity) -> Result<()>;
 }
 
 /// Trait implementing read access to identiets
 #[async_trait]
 pub trait IdentitiesReader: Send + Sync + 'static {
     /// Return a persisted identity
-    async fn get_identity(&self, identifier: &IdentityIdentifier) -> Result<Option<Identity>>;
+    async fn retrieve_identity(&self, identifier: &IdentityIdentifier) -> Result<Option<Identity>>;
+
+    /// Return a persisted identity that is expected to be present and return and Error if this is not the case
+    async fn get_identity(&self, identifier: &IdentityIdentifier) -> Result<Identity> {
+        match self.retrieve_identity(identifier).await? {
+            Some(identity) => Ok(identity),
+            None => Err(Error::new(
+                Origin::Core,
+                Kind::NotFound,
+                format!("identity not found for identifier {}", identifier),
+            )),
+        }
+    }
 }
 
 /// Implementation of `IdentityAttributes` trait based on an underlying `Storage`
@@ -228,8 +240,9 @@ impl IdentityAttributesWriter for IdentitiesStorage {
 
 #[async_trait]
 impl IdentitiesWriter for IdentitiesStorage {
-    async fn update_known_identity(&self, identity: &Identity) -> Result<()> {
-        let should_set = if let Some(known) = self.get_identity(&identity.identifier()).await? {
+    async fn update_identity(&self, identity: &Identity) -> Result<()> {
+        let should_set = if let Some(known) = self.retrieve_identity(&identity.identifier()).await?
+        {
             match identity.changes().compare(known.changes()) {
                 IdentityHistoryComparison::Equal => false, /* Do nothing */
                 IdentityHistoryComparison::Conflict => {
@@ -254,7 +267,7 @@ impl IdentitiesWriter for IdentitiesStorage {
 
 #[async_trait]
 impl IdentitiesReader for IdentitiesStorage {
-    async fn get_identity(&self, identifier: &IdentityIdentifier) -> Result<Option<Identity>> {
+    async fn retrieve_identity(&self, identifier: &IdentityIdentifier) -> Result<Option<Identity>> {
         if let Some(data) = self
             .storage
             .get(

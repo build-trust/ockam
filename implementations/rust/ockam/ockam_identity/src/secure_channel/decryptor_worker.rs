@@ -423,7 +423,7 @@ impl IdentityExchangeState {
         self.secure_channels
             .identities()
             .repository()
-            .update_known_identity(&their_identity)
+            .update_identity(&their_identity)
             .await?;
 
         info!(
@@ -447,15 +447,21 @@ impl IdentityExchangeState {
     }
 
     async fn send_identity(&mut self, ctx: &mut Context, first_sender: bool) -> Result<()> {
+        let identity = self
+            .secure_channels
+            .identities
+            .identities_repository
+            .get_identity(&self.identifier)
+            .await?;
         // Prove we posses our Identity key
         let signature = self
             .secure_channels
             .identities()
             .identities_keys()
-            .create_signature(&self.identity, &self.auth_hash, None)
+            .create_signature(&identity, &self.auth_hash, None)
             .await?;
 
-        let exported = self.identity.export()?;
+        let exported = identity.export()?;
         let auth_msg = if first_sender {
             IdentityChannelMessage::Request {
                 identity: exported,
