@@ -8,7 +8,7 @@ use ockam_core::Result;
 use serde::{Deserialize, Serialize};
 
 /// Possible types of [`crate::SecureChannels`] changes
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum IdentityChange {
     /// Create key
     CreateKey(CreateKeyChangeData),
@@ -55,7 +55,7 @@ impl IdentityChange {
 
 /// [`crate::SecureChannels`]s are modified using a chain of changes.
 /// Signatures are used to check change validity.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IdentitySignedChange {
     identifier: ChangeIdentifier,
     change: IdentityChange,

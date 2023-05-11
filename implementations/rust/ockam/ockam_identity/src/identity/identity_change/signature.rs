@@ -14,7 +14,7 @@ pub enum SignatureType {
 }
 
 /// Signature, its type and data
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Signature {
     stype: SignatureType,
     data: OckamVaultSignature,
