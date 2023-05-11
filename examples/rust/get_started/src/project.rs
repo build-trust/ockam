@@ -1,13 +1,15 @@
-use anyhow::anyhow;
-use ockam::identity::{IdentitiesCreation, IdentitiesVault, Identity, IdentityIdentifier};
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Error, Result};
-use ockam_multiaddr::MultiAddr;
-use serde_json::{Map, Value};
 use std::fs::File;
 use std::io::Read;
 use std::str::FromStr;
 use std::sync::Arc;
+
+use anyhow::anyhow;
+use serde_json::{Map, Value};
+
+use ockam::identity::{Identities, Identity, IdentityIdentifier};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result};
+use ockam_multiaddr::MultiAddr;
 
 /// This struct contains the json data exported
 /// when running `ockam project information > project.json`
@@ -48,13 +50,13 @@ impl Project {
 
 /// Import a project identity into a Vault from a project.json path
 /// and return a Project struct
-pub async fn import_project(path: &str, vault: Arc<dyn IdentitiesVault>) -> Result<Project> {
+pub async fn import_project(path: &str, identities: Arc<Identities>) -> Result<Project> {
     match read_json(path)? {
         Value::Object(values) => {
             let project_identifier = IdentityIdentifier::from_str(get_field_as_str(&values, "identity")?.as_str())?;
 
             let authority_identity = get_field_as_str(&values, "authority_identity")?;
-            let identities_creation = IdentitiesCreation::new(vault);
+            let identities_creation = identities.identities_creation();
             let authority_public_identity = identities_creation
                 .decode_identity(&hex::decode(authority_identity).unwrap())
                 .await?;

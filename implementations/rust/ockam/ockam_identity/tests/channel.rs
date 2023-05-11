@@ -25,7 +25,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_listener",
             SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy),
         )
@@ -34,7 +34,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["bob_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy),
         )
@@ -91,7 +91,7 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_listener",
             SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy),
         )
@@ -100,7 +100,7 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["bob_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy),
         )
@@ -149,7 +149,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_listener",
             SecureChannelListenerOptions::new(),
         )
@@ -158,7 +158,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["bob_listener"],
             SecureChannelOptions::new(),
         )
@@ -217,7 +217,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_listener",
             SecureChannelListenerOptions::new(),
         )
@@ -226,7 +226,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["bob_listener"],
             SecureChannelOptions::new(),
         )
@@ -327,7 +327,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_listener",
             SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone()),
         )
@@ -336,7 +336,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["bob_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone()),
         )
@@ -345,7 +345,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_another_listener",
             SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy),
         )
@@ -354,7 +354,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let alice_another_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route![alice_channel, "bob_another_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy),
         )
@@ -400,7 +400,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_listener",
             SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone()),
         )
@@ -409,7 +409,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["bob_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone()),
         )
@@ -418,7 +418,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_another_listener",
             SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone()),
         )
@@ -427,7 +427,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     let alice_another_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route![alice_channel, "bob_another_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone()),
         )
@@ -436,7 +436,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_yet_another_listener",
             SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy),
         )
@@ -445,7 +445,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     let alice_yet_another_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route![alice_another_channel, "bob_yet_another_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone()),
         )
@@ -495,7 +495,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         secure_channels
             .create_secure_channel_listener(
                 ctx,
-                &bob,
+                &bob.identifier(),
                 i.to_string(),
                 SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone()),
             )
@@ -510,7 +510,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         let alice_channel = secure_channels
             .create_secure_channel(
                 ctx,
-                &alice,
+                &alice.identifier(),
                 channel_route,
                 SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone()),
             )
@@ -590,13 +590,18 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
     .await?;
 
     secure_channels
-        .create_secure_channel_listener(ctx, &bob, "listener", SecureChannelListenerOptions::new())
+        .create_secure_channel_listener(
+            ctx,
+            &bob.identifier(),
+            "listener",
+            SecureChannelListenerOptions::new(),
+        )
         .await?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["listener"],
             SecureChannelOptions::new().with_trust_policy(TrustEveryonePolicy),
         )
@@ -648,13 +653,18 @@ async fn access_control__unknown_participant__should_not_pass_messages(
     .await?;
 
     secure_channels
-        .create_secure_channel_listener(ctx, &bob, "listener", SecureChannelListenerOptions::new())
+        .create_secure_channel_listener(
+            ctx,
+            &bob.identifier(),
+            "listener",
+            SecureChannelListenerOptions::new(),
+        )
         .await?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["listener"],
             SecureChannelOptions::new().with_trust_policy(TrustEveryonePolicy),
         )

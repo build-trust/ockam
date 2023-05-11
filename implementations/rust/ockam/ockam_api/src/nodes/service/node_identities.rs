@@ -1,24 +1,33 @@
-use crate::cli_state::traits::StateDirTrait;
-use crate::cli_state::CliState;
 use ockam::compat::sync::Arc;
 use ockam::identity::{Identities, IdentitiesCreation, IdentitiesKeys};
 use ockam::identity::{IdentitiesVault, Identity};
 use ockam::Result;
+use ockam_identity::IdentitiesRepository;
+
+use crate::cli_state::traits::StateDirTrait;
+use crate::cli_state::CliState;
 
 /// This struct supports identities operation that are either backed by
 /// a specific vault or which are using the default vault
 pub struct NodeIdentities {
-    vault: Arc<dyn IdentitiesVault>,
+    identities: Arc<Identities>,
     cli_state: CliState,
 }
 
 impl NodeIdentities {
-    pub fn new(vault: Arc<dyn IdentitiesVault>, cli_state: CliState) -> NodeIdentities {
-        NodeIdentities { vault, cli_state }
+    pub fn new(identities: Arc<Identities>, cli_state: CliState) -> NodeIdentities {
+        NodeIdentities {
+            identities,
+            cli_state,
+        }
     }
 
     pub(super) fn identities_vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.vault.clone()
+        self.identities.vault()
+    }
+
+    pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
+        self.identities.repository()
     }
 
     /// Return an identity if it has been created with that name before
@@ -44,7 +53,7 @@ impl NodeIdentities {
     /// Return an identities keys service backed up by the default vault
     pub(crate) async fn get_default_identities_keys(&self) -> Result<Arc<IdentitiesKeys>> {
         Ok(Identities::builder()
-            .with_identities_vault(self.vault.clone())
+            .with_identities_vault(self.identities_vault())
             .build()
             .identities_keys())
     }
@@ -66,7 +75,7 @@ impl NodeIdentities {
         vault_name: Option<String>,
     ) -> Result<IdentitiesCreation> {
         let vault = self.get_identities_vault(vault_name).await?;
-        Ok(IdentitiesCreation::new(vault))
+        Ok(IdentitiesCreation::new(self.identities_repository(), vault))
     }
 
     /// Return either the default vault or a specific one

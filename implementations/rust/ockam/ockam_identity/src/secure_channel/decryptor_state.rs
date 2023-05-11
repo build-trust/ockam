@@ -1,15 +1,17 @@
-use crate::secure_channel::decryptor::Decryptor;
-use crate::secure_channel::encryptor::Encryptor;
-use crate::secure_channel::{Addresses, Role};
-use crate::{Identity, IdentityIdentifier, SecureChannels, TrustPolicy};
 use alloc::vec::Vec;
+
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, KeyExchanger, Route};
 
+use crate::secure_channel::decryptor::Decryptor;
+use crate::secure_channel::encryptor::Encryptor;
+use crate::secure_channel::{Addresses, Role};
+use crate::{IdentityIdentifier, SecureChannels, TrustPolicy};
+
 pub(crate) struct KeyExchangeState {
     pub(crate) role: Role,
-    pub(crate) identity: Identity,
+    pub(crate) identifier: IdentityIdentifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
     pub(crate) addresses: Addresses,
     pub(crate) remote_route: Route,
@@ -23,7 +25,7 @@ pub(crate) struct KeyExchangeState {
 
 pub(crate) struct IdentityExchangeState {
     pub(crate) role: Role,
-    pub(crate) identity: Identity,
+    pub(crate) identifier: IdentityIdentifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
     pub(crate) encryptor: Option<Encryptor>,
     pub(crate) addresses: Addresses,
@@ -52,7 +54,7 @@ impl KeyExchangeState {
     ) -> IdentityExchangeState {
         IdentityExchangeState {
             role: self.role,
-            identity: self.identity,
+            identifier: self.identifier,
             secure_channels: self.secure_channels,
             remote_route: self.remote_route,
             addresses: self.addresses,
@@ -92,7 +94,7 @@ impl State {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         role: Role,
-        identity: Identity,
+        identifier: IdentityIdentifier,
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
         key_exchanger: Box<dyn KeyExchanger>,
@@ -103,7 +105,7 @@ impl State {
     ) -> Self {
         Self::KeyExchange(KeyExchangeState {
             role,
-            identity,
+            identifier,
             secure_channels,
             addresses,
             remote_route,

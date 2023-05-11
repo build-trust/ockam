@@ -1,5 +1,7 @@
 use minicbor::Decoder;
+
 use ockam::identity::identity::IdentityHistoryComparison;
+use ockam::node;
 use ockam_api::cli_state::CliState;
 use ockam_api::identity::models::*;
 use ockam_api::identity::IdentityService;
@@ -7,9 +9,8 @@ use ockam_api::nodes::service::NodeIdentities;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::rand::random;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, Error, LocalOnwardOnly, LocalSourceOnly, Result};
+use ockam_core::{route, AsyncTryClone, Error, LocalOnwardOnly, LocalSourceOnly, Result};
 use ockam_node::Context;
-use ockam_vault::Vault;
 
 async fn create_identity(ctx: &mut Context, service_address: &str) -> Result<(Vec<u8>, String)> {
     let req = Request::post("").to_vec()?;
@@ -156,20 +157,20 @@ async fn verify_signature(
 #[ockam_macros::test]
 async fn full_flow(ctx: &mut Context) -> Result<()> {
     let cli_state = CliState::test().unwrap();
-    let vault1 = Vault::create();
-    let vault2 = Vault::create();
+    let node1 = node(ctx.async_try_clone().await?);
+    let node2 = node(ctx.async_try_clone().await?);
 
     // Start services
     ctx.start_worker(
         "1",
-        IdentityService::new(NodeIdentities::new(vault1, cli_state.clone())).await?,
+        IdentityService::new(NodeIdentities::new(node1.identities(), cli_state.clone())).await?,
         LocalSourceOnly,
         LocalOnwardOnly,
     )
     .await?;
     ctx.start_worker(
         "2",
-        IdentityService::new(NodeIdentities::new(vault2, cli_state)).await?,
+        IdentityService::new(NodeIdentities::new(node2.identities(), cli_state)).await?,
         LocalSourceOnly,
         LocalOnwardOnly,
     )

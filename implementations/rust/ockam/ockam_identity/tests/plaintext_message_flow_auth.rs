@@ -37,7 +37,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     bob_secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "listener",
             SecureChannelListenerOptions::as_spawner(
                 &flow_controls_bob,
@@ -49,7 +49,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["listener"],
             SecureChannelOptions::as_producer(&flow_controls_alice, &flow_control_id_alice_channel),
         )
@@ -140,7 +140,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     bob_secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "listener",
             SecureChannelListenerOptions::as_spawner(
                 &flow_controls_bob,
@@ -157,7 +157,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route![connection_to_bob, "listener"],
             SecureChannelOptions::as_producer(
                 &flow_controls_alice,

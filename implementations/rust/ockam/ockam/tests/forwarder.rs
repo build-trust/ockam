@@ -186,7 +186,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &cloud_identity,
+            &cloud_identity.identifier(),
             "cloud_listener",
             SecureChannelListenerOptions::new(),
         )
@@ -222,7 +222,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_server_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &server_identity,
+            &server_identity.identifier(),
             route![cloud_server_connection, "cloud_listener"],
             SecureChannelOptions::as_producer(
                 &server_flow_controls,
@@ -234,7 +234,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &server_identity,
+            &server_identity.identifier(),
             "server_listener",
             SecureChannelListenerOptions::as_spawner(
                 &server_flow_controls,
@@ -272,7 +272,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_client_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &client_identity,
+            &client_identity.identifier(),
             route![cloud_client_connection, "cloud_listener"],
             SecureChannelOptions::as_producer(
                 &client_flow_controls,
@@ -285,7 +285,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let tunnel_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &client_identity,
+            &client_identity.identifier(),
             route![
                 cloud_client_channel,
                 remote_info.remote_address(),

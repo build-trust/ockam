@@ -28,7 +28,7 @@ async fn main(ctx: Context) -> Result<()> {
     let issuer_connection = tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?;
     let issuer_channel = node
         .create_secure_channel(
-            &client,
+            &client.identifier(),
             route![issuer_connection, "secure"],
             SecureChannelOptions::new(),
         )
@@ -51,7 +51,7 @@ async fn main(ctx: Context) -> Result<()> {
     let server_connection = tcp.connect("127.0.0.1:4000", TcpConnectionOptions::new()).await?;
     let channel = node
         .create_secure_channel(
-            &client,
+            &client.identifier(),
             route![server_connection, "secure"],
             SecureChannelOptions::new(),
         )

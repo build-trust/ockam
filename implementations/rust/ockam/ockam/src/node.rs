@@ -1,6 +1,5 @@
-use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
-use crate::stream::Stream;
 use core::time::Duration;
+
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
@@ -9,13 +8,16 @@ use ockam_core::{
 };
 use ockam_identity::{
     secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, SecureChannelRegistry, SecureChannels,
-    SecureChannelsBuilder, Storage,
+    IdentitiesKeys, IdentitiesRepository, IdentityIdentifier, SecureChannelRegistry,
+    SecureChannels, SecureChannelsBuilder, Storage,
 };
 use ockam_identity::{
     IdentitiesVault, Identity, SecureChannelListenerOptions, SecureChannelOptions,
 };
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
+
+use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
+use crate::stream::Stream;
 
 /// This struct supports all the ockam services for managing identities
 /// and creating secure channels
@@ -91,8 +93,12 @@ impl Node {
     }
 
     /// Create an Identity
-    pub async fn create_identity(&self) -> Result<Identity> {
-        self.identities_creation().create_identity().await
+    pub async fn create_identity(&self) -> Result<IdentityIdentifier> {
+        Ok(self
+            .identities_creation()
+            .create_identity()
+            .await?
+            .identifier())
     }
 
     /// Import an Identity given its private key and change history
@@ -114,37 +120,37 @@ impl Node {
     /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerOptions`]
     pub async fn create_secure_channel_listener(
         &self,
-        identity: &Identity,
+        identifier: &IdentityIdentifier,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
     ) -> Result<()> {
         self.secure_channels()
-            .create_secure_channel_listener(self.get_context(), identity, address, options)
+            .create_secure_channel_listener(self.get_context(), identifier, address, options)
             .await
     }
 
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
     pub async fn create_secure_channel(
         &self,
-        identity: &Identity,
+        identifier: &IdentityIdentifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
     ) -> Result<Address> {
         self.secure_channels()
-            .create_secure_channel(self.get_context(), identity, route, options)
+            .create_secure_channel(self.get_context(), identifier, route, options)
             .await
     }
 
     /// Extended function to create a SecureChannel with [`SecureChannelOptions`]
     pub async fn create_secure_channel_extended(
         &self,
-        identity: &Identity,
+        identifier: &IdentityIdentifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
         timeout: Duration,
     ) -> Result<Address> {
         self.secure_channels()
-            .create_secure_channel_extended(self.get_context(), identity, route, options, timeout)
+            .create_secure_channel_extended(self.get_context(), identifier, route, options, timeout)
             .await
     }
 

@@ -1,16 +1,18 @@
-use crate::identities::Identities;
-use crate::identities::IdentitiesVault;
-use crate::identity::{Identity, IdentityError};
-use crate::secure_channel::{
-    Addresses, DecryptorWorker, IdentityChannelListener, Role, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannelRegistry,
-};
-use crate::SecureChannelsBuilder;
 use core::time::Duration;
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
 use ockam_node::Context;
+
+use crate::identities::Identities;
+use crate::identities::IdentitiesVault;
+use crate::identity::IdentityError;
+use crate::secure_channel::{
+    Addresses, DecryptorWorker, IdentityChannelListener, Role, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannelRegistry,
+};
+use crate::{IdentityIdentifier, SecureChannelsBuilder};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -60,14 +62,14 @@ impl SecureChannels {
     pub async fn create_secure_channel_listener(
         &self,
         ctx: &Context,
-        identity: &Identity,
+        identifier: &IdentityIdentifier,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
     ) -> Result<()> {
         IdentityChannelListener::create(
             ctx,
             Arc::new(self.clone()),
-            identity,
+            identifier,
             address.into(),
             options.into(),
         )
@@ -80,7 +82,7 @@ impl SecureChannels {
     pub async fn create_secure_channel(
         &self,
         ctx: &Context,
-        identity: &Identity,
+        identifier: &IdentityIdentifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
     ) -> Result<Address> {
@@ -95,7 +97,7 @@ impl SecureChannels {
         DecryptorWorker::create_initiator(
             ctx,
             Arc::new(self.clone()),
-            identity.clone(),
+            identifier.clone(),
             route,
             addresses,
             options.trust_policy,
@@ -109,7 +111,7 @@ impl SecureChannels {
     pub async fn create_secure_channel_extended(
         &self,
         ctx: &Context,
-        identity: &Identity,
+        identifier: &IdentityIdentifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
         timeout: Duration,
@@ -125,7 +127,7 @@ impl SecureChannels {
         DecryptorWorker::create_initiator(
             ctx,
             Arc::new(self.clone()),
-            identity.clone(),
+            identifier.clone(),
             route,
             addresses,
             options.trust_policy,

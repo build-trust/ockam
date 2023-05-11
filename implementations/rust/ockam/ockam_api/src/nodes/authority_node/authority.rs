@@ -1,9 +1,7 @@
-use crate::authenticator::direct::EnrollmentTokenAuthenticator;
-use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
-use crate::echoer::Echoer;
-use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
-use crate::nodes::authority_node::Configuration;
-use crate::{actions, DefaultAddress};
+use std::path::Path;
+
+use tracing::info;
+
 use ockam::identity::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
     IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
@@ -19,8 +17,13 @@ use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
-use std::path::Path;
-use tracing::info;
+
+use crate::authenticator::direct::EnrollmentTokenAuthenticator;
+use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
+use crate::echoer::Echoer;
+use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
+use crate::nodes::authority_node::Configuration;
+use crate::{actions, DefaultAddress};
 
 /// This struct represents an Authority, which is an
 /// Identity which other identities trust to authenticate attributes
@@ -95,7 +98,12 @@ impl Authority {
 
         let listener_name = configuration.secure_channel_listener_name();
         self.secure_channels
-            .create_secure_channel_listener(ctx, &self.identity, listener_name.clone(), options)
+            .create_secure_channel_listener(
+                ctx,
+                &self.identity.identifier(),
+                listener_name.clone(),
+                options,
+            )
             .await?;
         info!("started a secure channel listener with name '{listener_name}'");
 

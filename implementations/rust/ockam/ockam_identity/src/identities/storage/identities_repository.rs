@@ -1,16 +1,17 @@
-use crate::alloc::string::ToString;
-use crate::credential::Timestamp;
-use crate::identities::storage::storage::{InMemoryStorage, Storage};
-use crate::identity::IdentityHistoryComparison;
-use crate::identity::{Identity, IdentityChangeConstants, IdentityError, IdentityIdentifier};
-use crate::AttributesEntry;
-use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
+use ockam_core::{async_trait, Error};
+
+use crate::alloc::string::ToString;
+use crate::credential::Timestamp;
+use crate::identities::storage::storage::{InMemoryStorage, Storage};
+use crate::identity::IdentityHistoryComparison;
+use crate::identity::{Identity, IdentityChangeConstants, IdentityError, IdentityIdentifier};
+use crate::AttributesEntry;
 
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]
@@ -153,9 +154,8 @@ impl IdentityAttributesReader for IdentitiesStorage {
 
         let entry: AttributesEntry = minicbor::decode(&entry)?;
 
-        let now = Timestamp::now().ok_or_else(|| {
-            ockam_core::Error::new(Origin::Core, Kind::Internal, "invalid system time")
-        })?;
+        let now = Timestamp::now()
+            .ok_or_else(|| Error::new(Origin::Core, Kind::Internal, "invalid system time"))?;
         match entry.expires() {
             Some(exp) if exp <= now => {
                 self.storage
