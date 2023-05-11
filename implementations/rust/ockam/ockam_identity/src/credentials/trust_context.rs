@@ -1,4 +1,5 @@
 use ockam_core::compat::string::String;
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
 use crate::{AuthorityService, Identity, IdentityError};
