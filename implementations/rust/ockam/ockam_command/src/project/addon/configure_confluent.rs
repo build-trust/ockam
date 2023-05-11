@@ -86,8 +86,6 @@ async fn run_impl(
     let res = rpc.parse_response::<CreateOperationResponse>()?;
     let operation_id = res.operation_id;
 
-    println!("Confluent addon enabled");
-
     check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();

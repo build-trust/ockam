@@ -187,11 +187,8 @@ async fn run_impl(
     let res = rpc.parse_response::<CreateOperationResponse>()?;
     let operation_id = res.operation_id;
 
-    println!("InfluxDB addon enabled");
-
     // Wait until project is ready again
     check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
-    println!();
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     let mut rpc = rpc.clone();
@@ -201,6 +198,7 @@ async fn run_impl(
     check_project_readiness(&ctx, &opts, &cloud_opts, rpc.node_name(), None, project).await?;
 
     println!("InfluxDB addon configured successfully");
+
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }
