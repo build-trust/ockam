@@ -53,6 +53,8 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    opts.terminal
+        .write_line(&fmt_log!("Creating KafkaConsumer service"))?;
     let CreateCommand {
         node_opts,
         addr,

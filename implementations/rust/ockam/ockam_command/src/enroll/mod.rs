@@ -2,6 +2,8 @@ use clap::Args;
 
 use anyhow::anyhow;
 use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use std::borrow::Borrow;
 use std::io::stdin;
@@ -28,7 +30,7 @@ use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{docs, fmt_err, fmt_info, fmt_log, fmt_ok, CommandGlobalOpts, Result};
+use crate::{docs, fmt_err, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts, Result, PARSER_LOGS};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -55,6 +57,18 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> R
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
+    opts.terminal
+        .write_line(&fmt_log!("Enrolling with Ockam Orchestrator\n"))?;
+
+    // Display any known messages from parsing.
+    if let Ok(mut logs) = PARSER_LOGS.lock() {
+        logs.iter().for_each(|msg| {
+            let _ = opts.terminal.write_line(msg);
+        });
+
+        logs.clear();
+    }
+
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     enroll(ctx, &opts, &cmd, &node_name).await?;
@@ -65,8 +79,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     update_enrolled_identity(&opts, &node_name).await?;
     delete_embedded_node(&opts, &node_name).await;
 
-    opts.terminal
-        .write_line(&fmt_ok!("Enrolled successfully!"))?;
+    opts.terminal.write_line(&fmt_ok!("Enrolled"))?;
     Ok(())
 }
 
@@ -77,7 +90,7 @@ async fn enroll(
     node_name: &str,
 ) -> Result<()> {
     let auth0 = Auth0Service::new(Auth0Provider::Auth0);
-    let token = auth0.token(opts).await?;
+    let token = auth0.token(&cmd.cloud_opts, opts).await?;
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     rpc.request(api::enroll::auth0(cmd.clone(), token)).await?;
     let (res, dec) = rpc.check_response()?;
@@ -100,44 +113,87 @@ async fn default_space<'a>(
     node_name: &str,
 ) -> Result<Space<'a>> {
     // Get available spaces for node's identity
+    opts.terminal.write_line(&fmt_log!(
+        "Getting available spaces for {}",
+        cloud_opts
+            .identity
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    ))?;
+
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-    let mut available_spaces = {
+    let is_finished = Mutex::new(false);
+    let send_req = async {
         rpc.request(api::space::list(&cloud_opts.route())).await?;
-        rpc.parse_response::<Vec<Space>>()?
+        *is_finished.lock().await = true;
+
+        rpc.parse_response::<Vec<Space>>()
     };
+
+    let message = vec![format!("Checking for any existing spaces...")];
+    let progress_output = opts.terminal.progress_output(&message, &is_finished);
+
+    let (mut available_spaces, _) = try_join!(send_req, progress_output)?;
+
     // If the identity has no spaces, create one
     let default_space = if available_spaces.is_empty() {
-        let cmd = crate::space::CreateCommand {
-            cloud_opts: cloud_opts.clone(),
-            name: crate::util::random_name(),
-            admins: vec![],
-        };
-        opts.terminal.write_line(&fmt_info!(
-            "{}",
-            "Creating a trial space for you (everything in it will be deleted in 15 days) ..."
-                .light_magenta()
-        ))?
-        .write_line(&fmt_log!(
-            "{}",
-            "To learn more about production ready spaces in Ockam Orchestrator, contact us at: hello@ockam.io".light_magenta()
+        opts.terminal
+            .write_line(&fmt_para!("No spaces was found"))?
+            .write_line(&fmt_para!(
+                "Creating a trial space for you ({}) ...",
+                "everything in it will be deleted in 15 days"
+                    .to_string()
+                    .color(OckamColor::FmtWARNBackground.color())
+            ))?
+            .write_line(&fmt_para!(
+            "To learn more about production ready spaces in Ockam Orchestrator, contact us at: {}", 
+            "hello@ockam.io".to_string().color(OckamColor::PrimaryResource.color())
         ))?;
 
+        let is_finished = Mutex::new(false);
+        let name = crate::util::random_name();
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-        rpc.request(api::space::create(&cmd)).await?;
-        rpc.parse_response::<Space>()?.to_owned()
+        let send_req = async {
+            let cmd = crate::space::CreateCommand {
+                cloud_opts: cloud_opts.clone(),
+                name: name.to_string(),
+                admins: vec![],
+            };
+
+            rpc.request(api::space::create(&cmd)).await?;
+            *is_finished.lock().await = true;
+            rpc.parse_response::<Space>()
+        };
+
+        let message = vec![format!(
+            "Creating space {}...",
+            name.to_string().color(OckamColor::PrimaryResource.color())
+        )];
+        let progress_output = opts.terminal.progress_output(&message, &is_finished);
+        let (space, _) = try_join!(send_req, progress_output)?;
+        space.to_owned()
     }
     // If it has, return the first one on the list
     else {
-        available_spaces
+        let space = available_spaces
             .drain(..1)
             .next()
             .expect("already checked that is not empty")
-            .to_owned()
+            .to_owned();
+
+        opts.terminal.write_line(&fmt_log!(
+            "Found space {}...",
+            space
+                .name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))?;
+        space
     };
     config::set_space(&opts.config, &default_space)?;
 
-    opts.terminal.write_line(&fmt_info!(
-        "Space {} is set as default",
+    opts.terminal.write_line(&fmt_ok!(
+        "Setting space {} as default for local operations\n",
         default_space
             .name
             .to_string()
@@ -154,37 +210,78 @@ async fn default_project(
     space: &Space<'_>,
 ) -> Result<Project> {
     // Get available project for the given space
+    opts.terminal.write_line(&fmt_log!(
+        "Getting avaiable projects for {}",
+        cloud_opts
+            .identity
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    ))?;
+
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-    let mut available_projects: Vec<Project> = {
+    let is_finished = Mutex::new(false);
+    let send_req = async {
         rpc.request(api::project::list(&cloud_opts.route())).await?;
-        rpc.parse_response::<Vec<Project>>()?
+        *is_finished.lock().await = true;
+
+        rpc.parse_response::<Vec<Project>>()
     };
+
+    let message = vec![format!("Checking for any existing projects...")];
+    let progress_output = opts.terminal.progress_output(&message, &is_finished);
+
+    let (mut available_projects, _) = try_join!(send_req, progress_output)?;
+
     // If the space has no projects, create one
     let default_project = if available_projects.is_empty() {
+        opts.terminal
+            .write_line(&fmt_para!("No project found"))?
+            .write_line(&fmt_para!("Creating a project for you"))?;
+
+        let is_finished = Mutex::new(false);
+        let name = "default";
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-        rpc.request_with_timeout(
-            api::project::create("default", &space.id, &cloud_opts.route()),
-            Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
-        )
-        .await?;
-        rpc.parse_response::<Project>()?.to_owned()
+        let send_req = async {
+            rpc.request_with_timeout(
+                api::project::create(name, &space.id, &cloud_opts.route()),
+                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
+            )
+            .await?;
+            *is_finished.lock().await = true;
+            rpc.parse_response::<Project>()
+        };
+
+        let message = vec![format!(
+            "Creating project {}...",
+            name.to_string().color(OckamColor::PrimaryResource.color())
+        )];
+        let progress_output = opts.terminal.progress_output(&message, &is_finished);
+        let (project, _) = try_join!(send_req, progress_output)?;
+        project.to_owned()
     }
     // If it has, return the "default" project or first one on the list
     else {
-        match available_projects.iter().find(|ns| ns.name == "default") {
+        let p = match available_projects.iter().find(|ns| ns.name == "default") {
             None => available_projects
                 .drain(..1)
                 .next()
                 .expect("already checked that is not empty")
                 .to_owned(),
             Some(p) => p.to_owned(),
-        }
+        };
+        opts.terminal.write_line(&fmt_log!(
+            "Found project {}...",
+            p.name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))?;
+        p
     };
     let project =
         check_project_readiness(ctx, opts, cloud_opts, node_name, None, default_project).await?;
 
-    opts.terminal.write_line(&fmt_info!(
-        "Project {} is set as default",
+    opts.terminal.write_line(&fmt_ok!(
+        "Setting project {} as default for local operations\n",
         project
             .name
             .to_string()
@@ -260,28 +357,34 @@ impl Auth0Service {
         &self.0
     }
 
-    pub(crate) async fn token(&self, opts: &CommandGlobalOpts) -> Result<Auth0Token> {
+    pub(crate) async fn token(
+        &self,
+        _cloud_opts: &CloudOpts,
+        opts: &CommandGlobalOpts,
+    ) -> Result<Auth0Token> {
         let dc = self.device_code().await?;
 
         opts.terminal
-            .write_line(&fmt_info!(
-                "Enroll Ockam Command's default identity with Ockam Orchestrator"
-            ))?
             .write_line(&fmt_log!(
+                "To enroll we need to associate your local identity with an Orchestrator account\n"
+            ))?
+            .write_line(&fmt_para!(
                 "First copy your one-time code: {}",
                 format!(" {} ", dc.user_code).bg_white().black()
             ))?
-            .write(&fmt_log!(
-                "Then press {} to open {} in your browser...",
-                " ENTER ↵ ".bg_white().black(),
+            .write(&fmt_para!(
+                "Then press {} to open {} in your browser...\n",
+                " ENTER ↵ ".bg_white().black().blink(),
                 dc.verification_uri.to_string().light_green()
             ))?;
 
         let mut input = String::new();
         match stdin().read_line(&mut input) {
             Ok(_) => {
-                opts.terminal
-                    .write_line(&fmt_log!("Opening: {}", dc.verification_uri))?;
+                opts.terminal.write_line(&fmt_para!(
+                    "Opening {} to begin authentication",
+                    dc.verification_uri
+                ))?;
             }
             Err(_e) => {
                 return Err(anyhow!("couldn't read enter from stdin").into());
@@ -350,7 +453,7 @@ impl Auth0Service {
         let token;
         let spinner_option = opts.terminal.progress_spinner();
         if let Some(spinner) = spinner_option.as_ref() {
-            spinner.set_message("Waiting for token...");
+            spinner.set_message("Waiting for authentication in browser to complete...");
         }
         loop {
             let res = client
@@ -374,7 +477,7 @@ impl Auth0Service {
                     if let Some(spinner) = spinner_option.as_ref() {
                         spinner.finish_and_clear();
                     }
-                    opts.terminal.write_line(&fmt_log!("Token received!"))?;
+                    opts.terminal.write_line(&fmt_para!("Authenticated\n"))?;
                     return Ok(token);
                 }
                 _ => {

@@ -322,16 +322,7 @@ impl OckamCommand {
 
             let _ = options
                 .terminal
-                .write_line(&format!("\n{}\n", colored_header));
-        }
-
-        // Display any known messages from parsing.
-        if let Ok(mut logs) = PARSER_LOGS.lock() {
-            logs.iter().for_each(|msg| {
-                let _ = options.terminal.write_line(msg);
-            });
-
-            logs.clear();
+                .write_line(&format!("{}\n", colored_header));
         }
 
         match self.subcommand {

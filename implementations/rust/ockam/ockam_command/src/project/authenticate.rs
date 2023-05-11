@@ -78,8 +78,8 @@ async fn run_impl(
         // however, it could be worked to use one in the future
         //
         // REQUIRES Project passed or default project
-        let path = match cmd.trust_opts.project_path {
-            Some(p) => p,
+        let path = match cmd.trust_opts.project_path.as_ref() {
+            Some(p) => p.clone(),
             None => {
                 let default_project = opts
                     .state
@@ -110,12 +110,12 @@ async fn run_impl(
             &node_name,
             authority.identity_id().clone(),
             authority.address(),
-            Some(cmd.cloud_opts.identity),
+            Some(cmd.cloud_opts.identity.to_string()),
         )
         .await?
     };
 
-    if let Some(tkn) = cmd.enroll_ticket {
+    if let Some(tkn) = cmd.enroll_ticket.as_ref() {
         // Return address to the authenticator in the authority node
         let token_issuer_route = {
             let service = MultiAddr::try_from(
@@ -133,8 +133,15 @@ async fn run_impl(
         );
         client.present_token(tkn.one_time_code()).await?
     } else if cmd.okta {
-        authenticate_through_okta(&ctx, &opts, &node_name, proj, secure_channel_addr.clone())
-            .await?
+        authenticate_through_okta(
+            &ctx,
+            &cmd,
+            &opts,
+            &node_name,
+            proj,
+            secure_channel_addr.clone(),
+        )
+        .await?
     }
 
     let credential_issuer_route = {
@@ -169,6 +176,7 @@ async fn run_impl(
 
 async fn authenticate_through_okta(
     ctx: &Context,
+    cmd: &AuthenticateCommand,
     opts: &CommandGlobalOpts,
     node_name: &str,
     p: ProjectInfo<'_>,
@@ -177,7 +185,7 @@ async fn authenticate_through_okta(
     // Get auth0 token
     let okta_config: OktaAuth0 = p.okta_config.context("Okta addon not configured")?.into();
     let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config));
-    let token = auth0.token(opts).await?;
+    let token = auth0.token(&cmd.cloud_opts, opts).await?;
 
     // Return address to the "okta_authenticator" worker on the authority node through the secure channel
     let okta_authenticator_addr = {

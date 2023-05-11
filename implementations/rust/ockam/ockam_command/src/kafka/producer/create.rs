@@ -53,6 +53,9 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
+    opts.terminal
+        .write_line(&fmt_log!("Creating KafkaProducer service"))?;
+
     let CreateCommand {
         node_opts,
         addr,

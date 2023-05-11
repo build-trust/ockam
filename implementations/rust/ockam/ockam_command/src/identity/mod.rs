@@ -13,7 +13,7 @@ pub(crate) use show::ShowCommand;
 
 use crate::terminal::OckamColor;
 use crate::util::OckamConfig;
-use crate::{docs, fmt_info, fmt_log, CommandGlobalOpts, GlobalArgs, Result, PARSER_LOGS};
+use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, GlobalArgs, Result, PARSER_LOGS};
 use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
@@ -101,9 +101,15 @@ pub fn create_default_identity(identity_name: &str) -> String {
     create_command.run(quiet_opts);
 
     if let Ok(mut logs) = PARSER_LOGS.lock() {
-        logs.push(fmt_info!("No default identity was found."));
+        logs.push(fmt_log!("No default identity was found."));
+        logs.push(fmt_ok!(
+            "Creating default identity {}",
+            identity_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ));
         logs.push(fmt_log!(
-            "Created default identity, {}",
+            "Setting identity {} as default for local operations...\n",
             identity_name
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())

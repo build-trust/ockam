@@ -12,8 +12,8 @@ use start::StartCommand;
 use stop::StopCommand;
 
 use crate::{
-    docs, fmt_info, fmt_log, terminal::OckamColor, util::OckamConfig, CommandGlobalOpts,
-    GlobalArgs, Result, PARSER_LOGS,
+    docs, fmt_log, terminal::OckamColor, util::OckamConfig, CommandGlobalOpts, GlobalArgs, Result,
+    PARSER_LOGS,
 };
 
 mod create;
@@ -123,7 +123,7 @@ pub fn spawn_default_node(node_name: &str) -> String {
     create_command.run(quiet_opts);
 
     if let Ok(mut logs) = PARSER_LOGS.lock() {
-        logs.push(fmt_info!("No default node was found."));
+        logs.push(fmt_log!("No default node was found."));
         logs.push(fmt_log!(
             "Created default node, {}",
             node_name
