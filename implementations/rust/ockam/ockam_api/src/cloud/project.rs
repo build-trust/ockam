@@ -65,6 +65,9 @@ pub struct Project {
 
     #[cbor(n(14))]
     pub running: Option<bool>,
+
+    #[cbor(n(15))]
+    pub operation_id: Option<String>,
 }
 
 impl Project {
@@ -258,8 +261,6 @@ impl<'a> CreateProject<'a> {
 }
 
 mod node {
-    use std::time::Duration;
-
     use minicbor::Decoder;
     use tracing::trace;
 
@@ -267,9 +268,7 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::{
-        BareCloudRequestWrapper, CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT,
-    };
+    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManagerWorker;
 
     use super::*;
@@ -290,9 +289,10 @@ mod node {
             let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
-            let req_builder = Request::post(format!("/v0/{space_id}")).body(&req_body);
+            let req_builder =
+                Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
 
-            self.request_controller_with_timeout(
+            self.request_controller(
                 ctx,
                 label,
                 "create_project",
@@ -300,7 +300,6 @@ mod node {
                 "projects",
                 req_builder,
                 req_wrapper.identity_name,
-                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
         }
@@ -415,6 +414,7 @@ mod tests {
                 confluent_config: None,
                 version: None,
                 running: None,
+                operation_id: None,
             })
         }
     }

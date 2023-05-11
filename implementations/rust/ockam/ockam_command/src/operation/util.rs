@@ -20,7 +20,7 @@ pub async fn check_for_completion<'a>(
 
     let spinner_option = opts.terminal.progress_spinner();
     if let Some(spinner) = spinner_option.as_ref() {
-        spinner.set_message("Configuring project (this can take a few minutes)...");
+        spinner.set_message("Configuring project...");
     }
 
     let operation = Retry::spawn(retry_strategy.clone(), || async {

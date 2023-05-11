@@ -1,7 +1,6 @@
 use clap::Args;
 
 use anyhow::anyhow;
-use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use ockam_identity::IdentityIdentifier;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -24,6 +23,7 @@ use ockam_api::cloud::space::Space;
 use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 
 use crate::terminal::OckamColor;
@@ -249,11 +249,8 @@ async fn default_project(
         let name = "default";
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
         let send_req = async {
-            rpc.request_with_timeout(
-                api::project::create(name, &space.id, &cloud_opts.route()),
-                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
-            )
-            .await?;
+            rpc.request(api::project::create(name, &space.id, &cloud_opts.route()))
+                .await?;
             *is_finished.lock().await = true;
             rpc.parse_response::<Project>()
         };
@@ -272,6 +269,10 @@ async fn default_project(
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
+
+        let operation_id = project.operation_id.clone().unwrap();
+        check_for_completion(ctx, opts, cloud_opts, rpc.node_name(), &operation_id).await?;
+
         project.to_owned()
     }
     // If it has, return the "default" project or first one on the list

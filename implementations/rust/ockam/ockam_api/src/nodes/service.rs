@@ -771,7 +771,9 @@ impl NodeManagerWorker {
             (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, dec, id).await?,
 
             // ==*== Projects ==*==
-            (Post, ["v0", "projects", space_id]) => self.create_project(ctx, dec, space_id).await?,
+            (Post, ["v1", "spaces", space_id, "projects"]) => {
+                self.create_project(ctx, dec, space_id).await?
+            }
             (Get, ["v0", "projects"]) => self.list_projects(ctx, dec).await?,
             (Get, ["v0", "projects", project_id]) => self.get_project(ctx, dec, project_id).await?,
             (Delete, ["v0", "projects", space_id, project_id]) => {
