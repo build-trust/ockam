@@ -3,8 +3,8 @@ use std::path::Path;
 use tracing::info;
 
 use ockam::identity::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
-    IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, IdentityAttributesWriter,
+    SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
 };
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
@@ -12,7 +12,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{Address, AllowAll, Error, Message, Result, Worker};
-use ockam_identity::{CredentialsIssuer, LmdbStorage};
+use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 use ockam_vault::storage::FileStorage;
@@ -33,7 +33,7 @@ use crate::{actions, DefaultAddress};
 //   - an enrollment token issuer
 //   - an enrollment token acceptor
 pub struct Authority {
-    identity: Identity,
+    identifier: IdentityIdentifier,
     secure_channels: Arc<SecureChannels>,
 }
 
@@ -41,9 +41,9 @@ pub struct Authority {
 ///   - create an Authority
 ///   - start services
 impl Authority {
-    /// Return the public identity for this authority
-    pub fn identity(&self) -> Identity {
-        self.identity.clone()
+    /// Return the identity identifier for this authority
+    pub fn identifier(&self) -> IdentityIdentifier {
+        self.identifier.clone()
     }
 
     /// Create an identity for an authority from the configured public identity and configured vault
@@ -58,15 +58,11 @@ impl Authority {
             .with_identities_repository(repository)
             .build();
 
-        let identity = secure_channels
-            .identities()
-            .identities_creation()
-            .decode_identity(configuration.identity.export()?.as_slice())
-            .await?;
-        info!(identifier=%identity.identifier(), "retrieved the authority identifier");
+        let identifier = configuration.identity.identifier();
+        info!(identifier=%identifier, "retrieved the authority identifier");
 
         Ok(Authority {
-            identity,
+            identifier,
             secure_channels,
         })
     }
@@ -98,12 +94,7 @@ impl Authority {
 
         let listener_name = configuration.secure_channel_listener_name();
         self.secure_channels
-            .create_secure_channel_listener(
-                ctx,
-                &self.identity.identifier(),
-                listener_name.clone(),
-                options,
-            )
+            .create_secure_channel_listener(ctx, &self.identifier(), listener_name.clone(), options)
             .await?;
         info!("started a secure channel listener with name '{listener_name}'");
 
@@ -224,7 +215,7 @@ impl Authority {
         // create and start a credential issuer worker
         let issuer = CredentialsIssuer::new(
             self.identities(),
-            self.identity.identifier(),
+            self.identifier(),
             configuration.trust_context_identifier(),
         )
         .await?;
