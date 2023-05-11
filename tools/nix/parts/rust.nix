@@ -114,6 +114,7 @@ in {
         };
 
         nightly = pkgs.mkShell {
+          inputsFrom = [config.devShells.tooling];
           nativeBuildInputs = [pkgs.pkgconfig];
           packages =
             [
