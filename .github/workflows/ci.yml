@@ -11,3 +11,4 @@ jobs:
       with:
         command: list
         arguments: --all-features
+        command-arguments: "> file.json"
