@@ -146,7 +146,7 @@ async fn default_space<'a>(
                     .color(OckamColor::FmtWARNBackground.color())
             ))?
             .write_line(&fmt_para!(
-            "To learn more about production ready spaces in Ockam Orchestrator, contact us at: {}", 
+            "To learn more about production ready spaces in Ockam Orchestrator, contact us at: {}",
             "hello@ockam.io".to_string().color(OckamColor::PrimaryResource.color())
         ))?;
 
