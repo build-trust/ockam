@@ -138,7 +138,7 @@ impl IdentityService {
                         .node_identities
                         .get_default_identities_creation()
                         .await?;
-                    let identity = identities_creation.import_identity(args.identity()).await?;
+                    let identity = identities_creation.decode_identity(args.identity()).await?;
 
                     let body = ValidateIdentityChangeHistoryResponse::new(String::from(
                         identity.identifier(),
@@ -156,7 +156,7 @@ impl IdentityService {
                         .node_identities
                         .get_identities_creation(args.vault_name())
                         .await?;
-                    let identity = identities_creation.import_identity(args.identity()).await?;
+                    let identity = identities_creation.decode_identity(args.identity()).await?;
                     let identities_keys = self
                         .node_identities
                         .get_identities_keys(args.vault_name())
@@ -180,7 +180,7 @@ impl IdentityService {
                         .get_default_identities_creation()
                         .await?;
                     let peer_identity = identities_creation
-                        .import_identity(args.signer_identity())
+                        .decode_identity(args.signer_identity())
                         .await?;
 
                     let identities_keys =
@@ -211,14 +211,14 @@ impl IdentityService {
                         .await?;
 
                     let current_identity = identities_creation
-                        .import_identity(args.current_identity())
+                        .decode_identity(args.current_identity())
                         .await?;
 
                     let body = if args.known_identity().is_empty() {
                         IdentityHistoryComparison::Newer
                     } else {
                         let known_identity = identities_creation
-                            .import_identity(args.known_identity())
+                            .decode_identity(args.known_identity())
                             .await?;
                         current_identity.compare(&known_identity)
                     };

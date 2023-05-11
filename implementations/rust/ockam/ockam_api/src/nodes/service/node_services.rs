@@ -576,7 +576,7 @@ impl NodeManagerWorker {
             &hex::decode(encoded_identity).map_err(|_| ApiError::generic("Unable to decode trust context's public identity when starting credential service."))?;
         let i = identities()
             .identities_creation()
-            .import_identity(decoded_identity)
+            .decode_identity(decoded_identity)
             .await?;
 
         let trust_context = TrustContext::new(

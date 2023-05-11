@@ -74,7 +74,7 @@ impl IdentityState {
             .make_identities(vault)
             .await?
             .identities_creation()
-            .import_identity(&data)
+            .decode_identity(&data)
             .await?)
     }
 

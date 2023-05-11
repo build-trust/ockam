@@ -278,7 +278,7 @@ impl ProjectAuthority {
                 .map_err(|_| ApiError::generic("Invalid project authority"))?;
             let p = identities()
                 .identities_creation()
-                .import_identity(&a)
+                .decode_identity(&a)
                 .await?;
             Ok(Some(ProjectAuthority::new(p.identifier(), rte, a)))
         } else {

@@ -91,7 +91,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let exported = member_identity.export()?;
 
     let imported = identities_creation
-        .import_identity(&exported)
+        .decode_identity(&exported)
         .await
         .unwrap();
     let data = identities

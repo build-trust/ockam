@@ -42,7 +42,7 @@ impl StoreCommand {
         };
         let identity = identities()
             .identities_creation()
-            .import_identity(&identity_as_bytes)
+            .decode_identity(&identity_as_bytes)
             .await?;
         Ok(identity)
     }

@@ -108,7 +108,7 @@ impl Node {
 
     /// Import an Identity given that was exported as a hex-encoded string
     pub async fn import_identity_hex(&self, data: &str) -> Result<Identity> {
-        self.identities_creation().import_identity_hex(data).await
+        self.identities_creation().decode_identity_hex(data).await
     }
 
     /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerOptions`]

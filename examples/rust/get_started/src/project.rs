@@ -56,7 +56,7 @@ pub async fn import_project(path: &str, vault: Arc<dyn IdentitiesVault>) -> Resu
             let authority_identity = get_field_as_str(&values, "authority_identity")?;
             let identities_creation = IdentitiesCreation::new(vault);
             let authority_public_identity = identities_creation
-                .import_identity(&hex::decode(authority_identity).unwrap())
+                .decode_identity(&hex::decode(authority_identity).unwrap())
                 .await?;
 
             let authority_access_route = get_field_as_str(&values, "authority_access_route")?;

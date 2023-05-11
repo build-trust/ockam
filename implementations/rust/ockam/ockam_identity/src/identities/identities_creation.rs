@@ -24,8 +24,8 @@ impl IdentitiesCreation {
     }
 
     /// Import and verify an `Identity` from its change history in a hex format
-    pub async fn import_identity_hex(&self, data: &str) -> Result<Identity> {
-        self.import_identity(
+    pub async fn decode_identity_hex(&self, data: &str) -> Result<Identity> {
+        self.decode_identity(
             hex::decode(data)
                 .map_err(|_| IdentityError::ConsistencyError)?
                 .as_slice(),
@@ -34,7 +34,7 @@ impl IdentitiesCreation {
     }
 
     /// Import and verify an `Identity` from its change history in a binary format
-    pub async fn import_identity(&self, data: &[u8]) -> Result<Identity> {
+    pub async fn decode_identity(&self, data: &[u8]) -> Result<Identity> {
         let change_history = IdentityChangeHistory::import(data)?;
         let identity_keys = IdentitiesKeys::new(self.vault.clone());
         identity_keys
@@ -63,7 +63,7 @@ impl IdentitiesCreation {
             .await?;
         let identity_history_data: Vec<u8> =
             hex::decode(identity_history).map_err(|_| IdentityError::InvalidInternalState)?;
-        self.import_identity(identity_history_data.as_slice()).await
+        self.decode_identity(identity_history_data.as_slice()).await
     }
 
     /// Cryptographically compute `IdentityIdentifier`
