@@ -13,7 +13,7 @@ pub trait Credentials: Send + Sync + 'static {
     /// Issue a credential for by having the issuer sign the serialized credential data
     async fn issue_credential(
         &self,
-        issuer: &Identity,
+        issuer: &IdentityIdentifier,
         credential_data: CredentialData<Verified>,
     ) -> Result<Credential>;
 
@@ -81,13 +81,14 @@ impl Credentials for Identities {
     /// Create a signed credential based on the given values.
     async fn issue_credential(
         &self,
-        issuer: &Identity,
+        issuer: &IdentityIdentifier,
         credential_data: CredentialData<Verified>,
     ) -> Result<Credential> {
         let bytes = minicbor::to_vec(credential_data)?;
+        let issuer_identity = self.repository().get_identity(issuer).await?;
         let sig = self
             .identities_keys()
-            .create_signature(issuer, &bytes, None)
+            .create_signature(&issuer_identity, &bytes, None)
             .await?;
         Ok(Credential::new(bytes, SignatureVec::from(sig)))
     }

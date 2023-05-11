@@ -1,18 +1,19 @@
-use crate::alloc::string::ToString;
 use minicbor::Decoder;
+use tracing::trace;
+
+use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{api, Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
+use crate::alloc::string::ToString;
 use crate::credential::Credential;
-use crate::identity::{Identity, IdentityIdentifier};
+use crate::identity::IdentityIdentifier;
 use crate::{CredentialData, Identities, IdentitySecureChannelLocalInfo, PROJECT_MEMBER_SCHEMA};
-use ockam_core::api::{Method, Request, Response};
-use ockam_core::flow_control::FlowControls;
-use tracing::trace;
 
 /// Legacy id for a trust context, it used to be 'project_id', not it is the more general 'trust_context_id'
 /// TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
@@ -24,7 +25,7 @@ pub const TRUST_CONTEXT_ID: &str = "trust_context_id";
 /// This struct runs as a Worker to issue credentials based on a request/response protocol
 pub struct CredentialsIssuer {
     identities: Arc<Identities>,
-    issuer: Identity,
+    issuer: IdentityIdentifier,
     trust_context: String,
 }
 
@@ -32,7 +33,7 @@ impl CredentialsIssuer {
     /// Create a new credentials issuer
     pub async fn new(
         identities: Arc<Identities>,
-        issuer: Identity,
+        issuer: IdentityIdentifier,
         trust_context: String,
     ) -> Result<Self> {
         Ok(Self {
@@ -55,7 +56,7 @@ impl CredentialsIssuer {
                     .attrs()
                     .iter()
                     .fold(
-                        CredentialData::builder(from.clone(), self.issuer.identifier())
+                        CredentialData::builder(from.clone(), self.issuer.clone())
                             .with_schema(PROJECT_MEMBER_SCHEMA),
                         |crd, (a, v)| crd.with_attribute(a, v),
                     )

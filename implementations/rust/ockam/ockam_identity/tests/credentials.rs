@@ -46,7 +46,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .start(
             ctx,
             trust_context,
-            server.clone(),
+            server.identifier(),
             "credential_exchange".into(),
             false,
         )
@@ -67,7 +67,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .build()?;
 
     let credential = credentials
-        .issue_credential(&authority, credential_data)
+        .issue_credential(&authority.identifier(), credential_data)
         .await?;
 
     credentials_service
@@ -108,7 +108,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .with_attribute("is_admin", b"true")
         .build()?;
     let credential = credentials
-        .issue_credential(&authority, credential_data)
+        .issue_credential(&authority.identifier(), credential_data)
         .await?;
 
     secure_channels
@@ -131,7 +131,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .start(
             ctx,
             trust_context.clone(),
-            client1.clone(),
+            client1.identifier(),
             "credential_exchange".into(),
             true,
         )
@@ -141,7 +141,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .with_attribute("is_user", b"true")
         .build()?;
     let credential = credentials
-        .issue_credential(&authority, credential_data)
+        .issue_credential(&authority.identifier(), credential_data)
         .await?;
 
     let channel = secure_channels
@@ -215,7 +215,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .start(
             ctx,
             trust_context,
-            server.clone(),
+            server.identifier(),
             "credential_exchange".into(),
             false,
         )
@@ -235,7 +235,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .with_attribute("is_superuser", b"true")
         .build()?;
     let credential = credentials
-        .issue_credential(&authority, credential_data)
+        .issue_credential(&authority.identifier(), credential_data)
         .await?;
 
     let counter = Arc::new(AtomicI8::new(0));
