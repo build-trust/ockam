@@ -3,7 +3,6 @@ use crate::CommandGlobalOpts;
 use crate::Result;
 use anyhow::anyhow;
 use clap::Args;
-use ockam::identity::Identity;
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};

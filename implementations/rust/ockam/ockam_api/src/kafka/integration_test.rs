@@ -112,7 +112,7 @@ mod test {
                 .secure_channels
                 .create_secure_channel_listener(
                     context,
-                    &handle.identity.identifier(),
+                    &handle.identifier,
                     DefaultAddress::SECURE_CHANNEL_LISTENER,
                     SecureChannelListenerOptions::new().as_consumer_with_flow_control_id(
                         flow_controls,

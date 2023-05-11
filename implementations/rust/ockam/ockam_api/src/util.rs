@@ -1,5 +1,7 @@
-use crate::error::ApiError;
+use std::net::{SocketAddrV4, SocketAddrV6};
+
 use anyhow::anyhow;
+
 use ockam::TcpTransport;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
@@ -8,7 +10,8 @@ use ockam_multiaddr::proto::{
 };
 use ockam_multiaddr::{Code, MultiAddr, Protocol};
 use ockam_transport_tcp::{TcpConnectionOptions, TCP};
-use std::net::{SocketAddrV4, SocketAddrV6};
+
+use crate::error::ApiError;
 
 /// Try to convert a multi-address to an Ockam route.
 pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
@@ -338,20 +341,22 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 
 #[cfg(test)]
 pub mod test {
+    use ockam::identity::SecureChannels;
+    use ockam::Result;
+    use ockam_core::compat::sync::Arc;
+    use ockam_core::flow_control::FlowControls;
+    use ockam_core::AsyncTryClone;
+    use ockam_identity::IdentityIdentifier;
+    use ockam_node::compat::asynchronous::RwLock;
+    use ockam_node::Context;
+    use ockam_transport_tcp::TcpTransport;
+
     use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::nodes::service::{
         ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
         NodeManagerTransportOptions, NodeManagerTrustOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-    use ockam::identity::{Identity, SecureChannels};
-    use ockam::Result;
-    use ockam_core::compat::sync::Arc;
-    use ockam_core::flow_control::FlowControls;
-    use ockam_core::AsyncTryClone;
-    use ockam_node::compat::asynchronous::RwLock;
-    use ockam_node::Context;
-    use ockam_transport_tcp::TcpTransport;
 
     /// This struct is used by tests, it has two responsibilities:
     /// - guard to delete the cli state at the end of the test, the cli state
@@ -363,7 +368,7 @@ pub mod test {
         pub node_manager: Arc<RwLock<NodeManager>>,
         pub tcp: TcpTransport,
         pub secure_channels: Arc<SecureChannels>,
-        pub identity: Identity,
+        pub identifier: IdentityIdentifier,
         pub flow_controls: FlowControls,
     }
 
@@ -449,7 +454,7 @@ pub mod test {
             node_manager,
             tcp: tcp.async_try_clone().await?,
             secure_channels: secure_channels.clone(),
-            identity: identity.clone(),
+            identifier: identity.identifier(),
             flow_controls,
         })
     }
