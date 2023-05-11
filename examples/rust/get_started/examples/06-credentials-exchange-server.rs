@@ -60,8 +60,9 @@ async fn main(ctx: Context) -> Result<()> {
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
         Some(AuthorityService::new(
+            node.identities().identities_reader(),
             node.credentials(),
-            issuer.clone(),
+            issuer.identifier(),
             Some(Arc::new(CredentialsMemoryRetriever::new(credential))),
         )),
     );

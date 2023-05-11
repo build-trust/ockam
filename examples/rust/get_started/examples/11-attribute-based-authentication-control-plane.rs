@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::time::Duration;
+
 use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::credential::OneTimeCode;
@@ -12,8 +15,6 @@ use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_core::flow_control::FlowControls;
 use ockam_node::RpcClient;
 use ockam_transport_tcp::TcpTransportExtension;
-use std::sync::Arc;
-use std::time::Duration;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///
@@ -97,12 +98,13 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
         Some(AuthorityService::new(
+            node.identities().identities_reader(),
             node.credentials(),
-            project.authority_identity(),
+            project.authority_identifier(),
             Some(Arc::new(RemoteCredentialsRetriever::new(
                 node.secure_channels(),
                 RemoteCredentialsRetrieverInfo::new(
-                    project.authority_identity().identifier(),
+                    project.authority_identifier(),
                     tcp_project_session.route,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 ),
@@ -124,7 +126,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .start(
             node.context(),
             trust_context,
-            project.authority_identity().identifier(),
+            project.authority_identifier(),
             "credential_exchange".into(),
             true,
         )
