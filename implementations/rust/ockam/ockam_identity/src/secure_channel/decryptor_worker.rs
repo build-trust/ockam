@@ -401,7 +401,7 @@ impl IdentityExchangeState {
         let identities = self.secure_channels.identities();
         let their_identity = identities
             .identities_creation()
-            .import_identity(identity.as_slice())
+            .decode_identity(identity.as_slice())
             .await?;
         let their_identity_id = their_identity.identifier();
 

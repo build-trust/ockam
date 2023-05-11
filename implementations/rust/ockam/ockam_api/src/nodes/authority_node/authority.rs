@@ -58,7 +58,7 @@ impl Authority {
         let identity = secure_channels
             .identities()
             .identities_creation()
-            .import_identity(configuration.identity.export()?.as_slice())
+            .decode_identity(configuration.identity.export()?.as_slice())
             .await?;
         info!(identifier=%identity.identifier(), "retrieved the authority identifier");
 

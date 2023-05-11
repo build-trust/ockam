@@ -42,7 +42,7 @@ async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
 
             let res = identities::identities()
                 .identities_creation()
-                .import_identity(&identity.export()?)
+                .decode_identity(&identity.export()?)
                 .await;
             if crazy_vault.forged_operation_occurred() {
                 assert!(res.is_err());
@@ -62,7 +62,7 @@ async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
 async fn check_identity(identity: &mut Identity) -> Result<Identity> {
     identities::identities()
         .identities_creation()
-        .import_identity(&identity.export()?)
+        .decode_identity(&identity.export()?)
         .await
 }
 
@@ -86,14 +86,14 @@ async fn test_eject_signatures(ctx: &mut Context) -> Result<()> {
 
         let res = identities
             .identities_creation()
-            .import_identity(&identity.export()?)
+            .decode_identity(&identity.export()?)
             .await;
         assert!(res.is_ok());
 
         let identity = eject_random_signature(&identity)?;
         let res = identities
             .identities_creation()
-            .import_identity(&identity.export()?)
+            .decode_identity(&identity.export()?)
             .await;
         assert!(res.is_err());
     }

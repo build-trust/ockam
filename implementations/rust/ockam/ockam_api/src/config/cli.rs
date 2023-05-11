@@ -242,7 +242,7 @@ impl TrustAuthorityConfig {
     pub async fn identity(&self) -> Result<Identity> {
         identities()
             .identities_creation()
-            .import_identity(
+            .decode_identity(
                 &hex::decode(&self.identity)
                     .map_err(|_| ApiError::generic("unable to decode authority identity"))?,
             )
@@ -319,7 +319,7 @@ impl AuthoritiesConfig {
             v.push(
                 identities
                     .identities_creation()
-                    .import_identity(a.identity.as_slice())
+                    .decode_identity(a.identity.as_slice())
                     .await?,
             )
         }
@@ -384,7 +384,7 @@ impl CredentialIssuerConfig {
             .map_err(|_| ApiError::generic("Invalid project authority"))?;
         identities()
             .identities_creation()
-            .import_identity(&encoded)
+            .decode_identity(&encoded)
             .await
     }
 }

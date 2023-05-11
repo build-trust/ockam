@@ -90,7 +90,7 @@ impl Verifier {
         let authority = if let Some(ident) = req.authority(data.unverified_issuer()) {
             self.identities
                 .identities_creation()
-                .import_identity(ident)
+                .decode_identity(ident)
                 .await?
         } else {
             let err = Error::new("/verify").with_message("unauthorised issuer");
