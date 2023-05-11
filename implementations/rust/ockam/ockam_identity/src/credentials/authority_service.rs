@@ -1,5 +1,5 @@
 use crate::credentials::credentials_retriever::CredentialsRetriever;
-use crate::{Credential, Credentials, Identity, IdentityError};
+use crate::{Credential, Credentials, Identity, IdentityError, IdentityIdentifier};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_node::Context;
@@ -32,7 +32,11 @@ impl AuthorityService {
     }
 
     /// Retrieve the credential for an identity within this authority
-    pub async fn credential(&self, ctx: &Context, for_identity: &Identity) -> Result<Credential> {
+    pub async fn credential(
+        &self,
+        ctx: &Context,
+        for_identity: &IdentityIdentifier,
+    ) -> Result<Credential> {
         let retriever = self
             .own_credential
             .clone()
@@ -40,11 +44,7 @@ impl AuthorityService {
         let credential = retriever.retrieve(ctx, for_identity).await?;
 
         self.credentials
-            .verify_credential(
-                &for_identity.identifier(),
-                &[self.identity.clone()],
-                credential.clone(),
-            )
+            .verify_credential(for_identity, &[self.identity().await?], credential.clone())
             .await?;
         Ok(credential)
     }

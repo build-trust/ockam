@@ -37,7 +37,7 @@ async fn main(ctx: Context) -> Result<()> {
     let issuer_connection = tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?;
     let issuer_channel = node
         .create_secure_channel(
-            &server,
+            &server.identifier(),
             route![issuer_connection, "secure"],
             SecureChannelOptions::new(),
         )
@@ -86,7 +86,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
-    node.create_secure_channel_listener(&server, "secure", SecureChannelListenerOptions::new())
+    node.create_secure_channel_listener(&server.identifier(), "secure", SecureChannelListenerOptions::new())
         .await?;
 
     // Create a TCP listener and wait for incoming connections

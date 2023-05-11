@@ -43,7 +43,7 @@ impl NodeManagerWorker {
         if let Ok(c) = node_manager
             .trust_context()?
             .authority()?
-            .credential(ctx, &identity)
+            .credential(ctx, &identity.identifier())
             .await
         {
             Ok(Either::Right(Response::ok(req.id()).body(c)))
@@ -72,7 +72,7 @@ impl NodeManagerWorker {
         let credential = node_manager
             .trust_context()?
             .authority()?
-            .credential(ctx, &node_manager.identity)
+            .credential(ctx, &node_manager.identity.identifier())
             .await?;
 
         if request.oneway {

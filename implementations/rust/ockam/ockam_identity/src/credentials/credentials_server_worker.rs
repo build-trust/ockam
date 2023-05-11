@@ -131,7 +131,7 @@ impl CredentialsServerWorker {
                     let credential = self
                         .trust_context
                         .authority()?
-                        .credential(ctx, &self.identity)
+                        .credential(ctx, &self.identity.identifier())
                         .await;
                     match credential.as_ref() {
                         Ok(p) if self.present_back => {

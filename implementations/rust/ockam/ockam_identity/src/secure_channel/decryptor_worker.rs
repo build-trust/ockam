@@ -1,19 +1,7 @@
-use crate::secure_channel::decryptor::Decryptor;
-use crate::secure_channel::decryptor_state::{
-    IdentityExchangeState, InitializedState, KeyExchangeState, State,
-};
-use crate::secure_channel::encryptor::Encryptor;
-use crate::secure_channel::encryptor_worker::EncryptorWorker;
-use crate::secure_channel::messages::IdentityChannelMessage;
-use crate::secure_channel::{
-    Addresses, AuthenticationConfirmation, CreateResponderChannelMessage, Role,
-};
-use crate::{
-    to_xx_initialized, to_xx_vault, DecryptionRequest, DecryptionResponse, Identity, IdentityError,
-    IdentityIdentifier, IdentitySecureChannelLocalInfo, SecureChannelRegistryEntry,
-    SecureChannelTrustInfo, SecureChannels, TrustPolicy,
-};
 use core::time::Duration;
+
+use tracing::{debug, info, warn};
+
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -26,7 +14,22 @@ use ockam_core::{
 };
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
-use tracing::{debug, info, warn};
+
+use crate::secure_channel::decryptor::Decryptor;
+use crate::secure_channel::decryptor_state::{
+    IdentityExchangeState, InitializedState, KeyExchangeState, State,
+};
+use crate::secure_channel::encryptor::Encryptor;
+use crate::secure_channel::encryptor_worker::EncryptorWorker;
+use crate::secure_channel::messages::IdentityChannelMessage;
+use crate::secure_channel::{
+    Addresses, AuthenticationConfirmation, CreateResponderChannelMessage, Role,
+};
+use crate::{
+    to_xx_initialized, to_xx_vault, DecryptionRequest, DecryptionResponse, IdentityError,
+    IdentityIdentifier, IdentitySecureChannelLocalInfo, SecureChannelRegistryEntry,
+    SecureChannelTrustInfo, SecureChannels, TrustPolicy,
+};
 
 pub(crate) struct DecryptorWorker {
     state: Option<State>,
@@ -37,7 +40,7 @@ impl DecryptorWorker {
     pub(crate) async fn create_initiator(
         ctx: &Context,
         secure_channels: Arc<SecureChannels>,
-        identity: Identity,
+        identifier: IdentityIdentifier,
         remote_route: Route,
         addresses: Addresses,
         trust_policy: Arc<dyn TrustPolicy>,
@@ -61,7 +64,7 @@ impl DecryptorWorker {
         let worker = DecryptorWorker {
             state: Some(State::new(
                 Role::Initiator,
-                identity,
+                identifier,
                 secure_channels.clone(),
                 addresses.clone(),
                 Box::new(key_exchanger),
@@ -96,7 +99,7 @@ impl DecryptorWorker {
         ctx: &Context,
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
-        identity: Identity,
+        identifier: IdentityIdentifier,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         msg: Routed<CreateResponderChannelMessage>,
@@ -121,7 +124,7 @@ impl DecryptorWorker {
         let worker = DecryptorWorker {
             state: Some(State::new(
                 Role::Responder,
-                identity,
+                identifier,
                 secure_channels.clone(),
                 addresses.clone(),
                 Box::new(key_exchanger),
@@ -358,7 +361,7 @@ impl IdentityExchangeState {
             self.addresses.decryptor_remote.clone(),
             self.addresses.decryptor_api.clone(),
             self.role.is_initiator(),
-            self.identity.identifier(),
+            self.identifier.clone(),
             their_identity_id.clone(),
         );
         self.secure_channels

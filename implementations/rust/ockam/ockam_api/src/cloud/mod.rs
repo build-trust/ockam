@@ -2,11 +2,12 @@ use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
 
-use crate::error::ApiError;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{CowStr, Result};
 use ockam_multiaddr::MultiAddr;
+
+use crate::error::ApiError;
 
 pub mod addon;
 pub mod enroll;
@@ -200,7 +201,7 @@ mod node {
                 ))
                 .as_consumer(&node_manager.flow_controls);
                 let sc_address = secure_channels
-                    .create_secure_channel(ctx, &identity, cloud_route.route, options)
+                    .create_secure_channel(ctx, &identity.identifier(), cloud_route.route, options)
                     .await?;
 
                 (

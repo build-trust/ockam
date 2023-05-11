@@ -31,7 +31,10 @@ impl Identities {
 
     /// Return the identities creation service
     pub fn identities_creation(&self) -> Arc<IdentitiesCreation> {
-        Arc::new(IdentitiesCreation::new(self.vault.clone()))
+        Arc::new(IdentitiesCreation::new(
+            self.repository(),
+            self.vault.clone(),
+        ))
     }
 
     /// Return the identities credentials service

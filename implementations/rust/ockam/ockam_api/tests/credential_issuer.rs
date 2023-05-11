@@ -1,11 +1,10 @@
-use ockam_core::compat::collections::{BTreeMap, HashMap};
-use ockam_core::compat::sync::Arc;
-
 use ockam::identity::credential::Timestamp;
-use ockam::identity::{identities, AttributesEntry, IdentitiesStorage};
+use ockam::identity::{identities, AttributesEntry};
 use ockam::route;
 use ockam_api::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
+use ockam_core::compat::collections::{BTreeMap, HashMap};
 use ockam_core::compat::rand::random_string;
+use ockam_core::compat::sync::Arc;
 use ockam_core::{AllowAll, Result};
 use ockam_identity::{
     CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions,
@@ -37,7 +36,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     let boostrapped = BootstrapedIdentityStore::new(
         Arc::new(PreTrustedIdentities::from(pre_trusted)),
-        IdentitiesStorage::create(),
+        identities.repository(),
     );
 
     // Now recreate the identities services with the previous vault
@@ -56,7 +55,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &auth_identity,
+            &auth_identity.identifier(),
             &api_worker_addr,
             SecureChannelListenerOptions::new(),
         )
@@ -79,7 +78,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let e2a = secure_channels
         .create_secure_channel(
             ctx,
-            &member_identity,
+            &member_identity.identifier(),
             &api_worker_addr,
             SecureChannelOptions::new(),
         )

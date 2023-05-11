@@ -1,12 +1,14 @@
+use core::time::Duration;
+
+use ockam_core::{route, Result};
+use ockam_identity::SecureChannelOptions;
+use ockam_node::Context;
+
 use crate::common::{
     create_secure_channel, create_secure_channel_listener, create_tcp_connection_with_flow_control,
     create_tcp_connection_without_flow_control, create_tcp_listener_with_flow_control,
     create_tcp_listener_without_flow_control, message_should_not_pass, message_should_pass,
 };
-use core::time::Duration;
-use ockam_core::{route, Result};
-use ockam_identity::SecureChannelOptions;
-use ockam_node::Context;
 
 mod common;
 
@@ -66,7 +68,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .secure_channels
         .create_secure_channel_extended(
             ctx,
-            &channel_to_bob.identity,
+            &channel_to_bob.identifier,
             route![connection_to_bob.address.clone(), "listener"],
             SecureChannelOptions::new(),
             Duration::from_secs(1),
@@ -108,7 +110,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
         .secure_channels
         .create_secure_channel_extended(
             ctx,
-            &channel_to_bob.identity,
+            &channel_to_bob.identifier,
             route![connection_to_bob.address.clone(), "listener"],
             SecureChannelOptions::new(),
             Duration::from_secs(1),
@@ -150,7 +152,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .secure_channels
         .create_secure_channel_extended(
             ctx,
-            &channel_to_bob.identity,
+            &channel_to_bob.identifier,
             route![connection_to_bob.address.clone(), "listener"],
             SecureChannelOptions::new(),
             Duration::from_secs(1),
@@ -192,7 +194,7 @@ async fn test5(ctx: &mut Context) -> Result<()> {
         .secure_channels
         .create_secure_channel_extended(
             ctx,
-            &channel_to_alice.identity,
+            &channel_to_alice.identifier,
             route![connection_to_alice.address.clone(), "listener"],
             SecureChannelOptions::new(),
             Duration::from_secs(1),

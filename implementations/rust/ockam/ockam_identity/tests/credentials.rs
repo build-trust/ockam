@@ -27,7 +27,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &server,
+            &server.identifier(),
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -55,7 +55,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let channel = secure_channels
         .create_secure_channel(
             ctx,
-            &client,
+            &client.identifier(),
             route!["listener"],
             SecureChannelOptions::new()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
@@ -114,7 +114,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &client1,
+            &client1.identifier(),
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -147,7 +147,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let channel = secure_channels
         .create_secure_channel(
             ctx,
-            &client2,
+            &client2.identifier(),
             route!["listener"],
             SecureChannelOptions::new(),
         )
@@ -196,7 +196,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &server,
+            &server.identifier(),
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -224,7 +224,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let channel = secure_channels
         .create_secure_channel(
             ctx,
-            &client,
+            &client.identifier(),
             route!["listener"],
             SecureChannelOptions::new()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),

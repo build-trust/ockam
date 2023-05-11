@@ -10,15 +10,19 @@ use ockam_core::{async_trait, route, Address, Result, Route};
 use ockam_node::Context;
 
 use crate::{
-    Credential, CredentialsIssuerClient, Identity, SecureChannelOptions, SecureChannels,
-    TrustMultiIdentifiersPolicy,
+    Credential, CredentialsIssuerClient, Identity, IdentityIdentifier, SecureChannelOptions,
+    SecureChannels, TrustMultiIdentifiersPolicy,
 };
 
 /// Trait for retrieving a credential for a given identity
 #[async_trait]
 pub trait CredentialsRetriever: Send + Sync + 'static {
     /// Retrieve a credential for an identity
-    async fn retrieve(&self, ctx: &Context, for_identity: &Identity) -> Result<Credential>;
+    async fn retrieve(
+        &self,
+        ctx: &Context,
+        for_identity: &IdentityIdentifier,
+    ) -> Result<Credential>;
 }
 
 /// Credentials retriever that retrieves a credential from memory
@@ -36,7 +40,11 @@ impl CredentialsMemoryRetriever {
 #[async_trait]
 impl CredentialsRetriever for CredentialsMemoryRetriever {
     /// Retrieve a credential stored in memory
-    async fn retrieve(&self, _ctx: &Context, _for_identity: &Identity) -> Result<Credential> {
+    async fn retrieve(
+        &self,
+        _ctx: &Context,
+        _for_identity: &IdentityIdentifier,
+    ) -> Result<Credential> {
         Ok(self.credential.clone())
     }
 }
@@ -65,7 +73,11 @@ impl RemoteCredentialsRetriever {
 
 #[async_trait]
 impl CredentialsRetriever for RemoteCredentialsRetriever {
-    async fn retrieve(&self, ctx: &Context, for_identity: &Identity) -> Result<Credential> {
+    async fn retrieve(
+        &self,
+        ctx: &Context,
+        for_identity: &IdentityIdentifier,
+    ) -> Result<Credential> {
         debug!("Getting credential from : {}", &self.issuer.route);
         let resolved_route = ctx
             .resolve_transport_route(&self.flow_controls, self.issuer.route.clone())

@@ -1,14 +1,8 @@
 #[cfg(test)]
 mod test {
-    use crate::hop::Hop;
-    use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
-    use crate::kafka::secure_channel_map::ForwarderCreator;
-    use crate::kafka::{
-        KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
-    };
-    use crate::nodes::registry::KafkaServiceKind;
-    use crate::test::NodeManagerHandle;
-    use crate::DefaultAddress;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::time::Duration;
+
     use bytes::{Buf, BufMut, BytesMut};
     use indexmap::IndexMap;
     use kafka_protocol::messages::produce_request::{PartitionProduceData, TopicProduceData};
@@ -27,6 +21,13 @@ mod test {
     use kafka_protocol::records::{
         Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions, TimestampType,
     };
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+    use tokio::net::TcpStream;
+    use tokio::sync::Mutex;
+    use tokio::task::JoinHandle;
+    use uuid::Uuid;
+
     use ockam::compat::tokio::io::DuplexStream;
     use ockam::Context;
     use ockam_core::async_trait;
@@ -39,14 +40,16 @@ mod test {
     use ockam_multiaddr::MultiAddr;
     use ockam_node::compat::tokio;
     use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::time::Duration;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    use tokio::net::TcpListener;
-    use tokio::net::TcpStream;
-    use tokio::sync::Mutex;
-    use tokio::task::JoinHandle;
-    use uuid::Uuid;
+
+    use crate::hop::Hop;
+    use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
+    use crate::kafka::secure_channel_map::ForwarderCreator;
+    use crate::kafka::{
+        KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
+    };
+    use crate::nodes::registry::KafkaServiceKind;
+    use crate::test::NodeManagerHandle;
+    use crate::DefaultAddress;
 
     //TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
@@ -109,7 +112,7 @@ mod test {
                 .secure_channels
                 .create_secure_channel_listener(
                     context,
-                    &handle.identity,
+                    &handle.identity.identifier(),
                     DefaultAddress::SECURE_CHANNEL_LISTENER,
                     SecureChannelListenerOptions::new().as_consumer_with_flow_control_id(
                         flow_controls,

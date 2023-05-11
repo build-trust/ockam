@@ -1,13 +1,16 @@
+use std::sync::Arc;
+
+use rand::random;
+
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::{
-    secure_channels, Identity, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    secure_channels, Identity, IdentityIdentifier, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels,
 };
 use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
-use rand::random;
-use std::sync::Arc;
 
 #[allow(dead_code)]
 pub async fn message_should_pass(ctx: &Context, address: &Address) -> Result<()> {
@@ -250,7 +253,7 @@ pub async fn create_secure_channel_listener(
     };
 
     secure_channels
-        .create_secure_channel_listener(ctx, &identity, "listener", options)
+        .create_secure_channel_listener(ctx, &identity.identifier(), "listener", options)
         .await?;
 
     let info = SecureChannelListenerInfo {
@@ -264,7 +267,7 @@ pub async fn create_secure_channel_listener(
 #[allow(dead_code)]
 pub struct SecureChannelInfo {
     pub secure_channels: Arc<SecureChannels>,
-    pub identity: Identity,
+    pub identifier: IdentityIdentifier,
     pub address: Address,
 }
 
@@ -285,10 +288,11 @@ pub async fn create_secure_channel(
         options
     };
 
+    let identifier = identity.identifier();
     let address = secure_channels
         .create_secure_channel(
             ctx,
-            &identity,
+            &identifier,
             route![connection.address.clone(), "listener"],
             options,
         )
@@ -296,7 +300,7 @@ pub async fn create_secure_channel(
 
     let info = SecureChannelInfo {
         secure_channels,
-        identity,
+        identifier,
         address,
     };
 

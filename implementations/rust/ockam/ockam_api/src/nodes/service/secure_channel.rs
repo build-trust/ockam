@@ -73,7 +73,13 @@ impl NodeManager {
 
         let sc_addr = self
             .secure_channels
-            .create_secure_channel_extended(ctx, identity, sc_route.clone(), options, timeout)
+            .create_secure_channel_extended(
+                ctx,
+                &identity.identifier(),
+                sc_route.clone(),
+                options,
+                timeout,
+            )
             .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
@@ -143,7 +149,7 @@ impl NodeManager {
                     None => {
                         self.trust_context()?
                             .authority()?
-                            .credential(ctx, &identity)
+                            .credential(ctx, &identity.identifier())
                             .await?
                     }
                 };
@@ -165,7 +171,7 @@ impl NodeManager {
                     None => {
                         self.trust_context()?
                             .authority()?
-                            .credential(ctx, &identity)
+                            .credential(ctx, &identity.identifier())
                             .await?
                     }
                 };
@@ -217,7 +223,7 @@ impl NodeManager {
         };
 
         secure_channels
-            .create_secure_channel_listener(ctx, &identity, address.clone(), options)
+            .create_secure_channel_listener(ctx, &identity.identifier(), address.clone(), options)
             .await?;
 
         self.registry.secure_channel_listeners.insert(
@@ -278,7 +284,7 @@ impl NodeManager {
     }
 
     pub(super) fn node_identities(&self) -> NodeIdentities {
-        NodeIdentities::new(self.identities_vault(), self.cli_state.clone())
+        NodeIdentities::new(self.identities(), self.cli_state.clone())
     }
 
     pub(crate) async fn get_identity(

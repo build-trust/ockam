@@ -1,29 +1,30 @@
-use crate::identity::Identity;
-use crate::secure_channel::addresses::Addresses;
-use crate::secure_channel::common::{CreateResponderChannelMessage, Role};
-use crate::secure_channel::options::SecureChannelListenerOptions;
-use crate::secure_channel::DecryptorWorker;
-use crate::secure_channels::secure_channels::SecureChannels;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, AllowAll, DenyAll, Result, Routed, Worker};
 use ockam_node::Context;
 
+use crate::secure_channel::addresses::Addresses;
+use crate::secure_channel::common::{CreateResponderChannelMessage, Role};
+use crate::secure_channel::options::SecureChannelListenerOptions;
+use crate::secure_channel::DecryptorWorker;
+use crate::secure_channels::secure_channels::SecureChannels;
+use crate::IdentityIdentifier;
+
 pub(crate) struct IdentityChannelListener {
     secure_channels: Arc<SecureChannels>,
-    identity: Identity,
+    identifier: IdentityIdentifier,
     options: SecureChannelListenerOptions,
 }
 
 impl IdentityChannelListener {
     pub fn new(
         secure_channels: Arc<SecureChannels>,
-        identity: Identity,
+        identifier: IdentityIdentifier,
         options: SecureChannelListenerOptions,
     ) -> Self {
         Self {
             secure_channels,
-            identity,
+            identifier,
             options,
         }
     }
@@ -31,7 +32,7 @@ impl IdentityChannelListener {
     pub async fn create(
         ctx: &Context,
         secure_channels: Arc<SecureChannels>,
-        identity: &Identity,
+        identifier: &IdentityIdentifier,
         address: Address,
         options: SecureChannelListenerOptions,
     ) -> Result<()> {
@@ -49,7 +50,7 @@ impl IdentityChannelListener {
             flow_controls.add_spawner(&address, flow_control_id);
         }
 
-        let listener = Self::new(secure_channels.clone(), identity.clone(), options);
+        let listener = Self::new(secure_channels.clone(), identifier.clone(), options);
 
         ctx.start_worker(
             address, listener, AllowAll, // TODO: @ac allow to customize
@@ -96,7 +97,7 @@ impl Worker for IdentityChannelListener {
             ctx,
             self.secure_channels.clone(),
             addresses,
-            self.identity.clone(),
+            self.identifier.clone(),
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             msg,

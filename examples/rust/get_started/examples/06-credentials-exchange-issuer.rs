@@ -43,7 +43,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a secure channel listener that only allows channels where the identity
     // at the other end of the channel can authenticate with the latest private key
     // corresponding to one of the above known public identifiers.
-    node.create_secure_channel_listener(&issuer, "secure", SecureChannelListenerOptions::new())
+    node.create_secure_channel_listener(&issuer.identifier(), "secure", SecureChannelListenerOptions::new())
         .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from

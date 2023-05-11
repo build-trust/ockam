@@ -61,7 +61,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     //    to retrieve the node credential
 
     // Import the authority identity and route from the information file
-    let project = import_project(project_information_path, node.identities_vault()).await?;
+    let project = import_project(project_information_path, node.identities()).await?;
 
     let flow_controls = FlowControls::default();
     let tcp_authority_route = multiaddr_to_route(&project.authority_route(), &tcp, &flow_controls)
