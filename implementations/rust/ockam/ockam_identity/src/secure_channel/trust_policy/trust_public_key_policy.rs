@@ -35,7 +35,7 @@ impl TrustPolicy for TrustPublicKeyPolicy {
         let their_identity = match self
             .identities
             .identities_repository
-            .get_identity(trust_info.their_identity_id())
+            .retrieve_identity(trust_info.their_identity_id())
             .await?
         {
             Some(their_identity) => their_identity,

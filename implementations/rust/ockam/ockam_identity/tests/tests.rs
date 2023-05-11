@@ -16,8 +16,8 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    identities_repository.update_known_identity(&bob).await?;
-    identities_repository.update_known_identity(&alice).await?;
+    identities_repository.update_identity(&bob).await?;
+    identities_repository.update_identity(&alice).await?;
 
     // Some state known to both parties. In Noise this would be a computed hash, for example.
     let state = {
@@ -34,8 +34,7 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
 
     let known_bob = identities_repository
         .get_identity(&bob.identifier())
-        .await?
-        .unwrap();
+        .await?;
     if !identities_keys
         .verify_signature(&known_bob, &bob_proof, &state, None)
         .await?
@@ -45,8 +44,7 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
 
     let known_alice = identities_repository
         .get_identity(&alice.identifier())
-        .await?
-        .unwrap();
+        .await?;
     if !identities_keys
         .verify_signature(&known_alice, &alice_proof, &state, None)
         .await?
@@ -74,8 +72,8 @@ async fn test_key_rotation(ctx: &mut Context) -> Result<()> {
     identities_keys.rotate_root_key(&mut alice).await?;
     identities_keys.rotate_root_key(&mut bob).await?;
 
-    identities_repository.update_known_identity(&bob).await?;
-    identities_repository.update_known_identity(&alice).await?;
+    identities_repository.update_identity(&bob).await?;
+    identities_repository.update_identity(&alice).await?;
 
     ctx.stop().await?;
 
@@ -93,14 +91,14 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
     let mut alice = identities_creation.create_identity().await?;
     let mut bob = identities_creation.create_identity().await?;
 
-    identities_repository.update_known_identity(&bob).await?;
-    identities_repository.update_known_identity(&alice).await?;
+    identities_repository.update_identity(&bob).await?;
+    identities_repository.update_identity(&alice).await?;
 
     identities_keys.rotate_root_key(&mut alice).await?;
     identities_keys.rotate_root_key(&mut bob).await?;
 
-    identities_repository.update_known_identity(&bob).await?;
-    identities_repository.update_known_identity(&alice).await?;
+    identities_repository.update_identity(&bob).await?;
+    identities_repository.update_identity(&alice).await?;
 
     // Re-Prove
     let state = {
@@ -117,8 +115,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 
     let known_bob = identities_repository
         .get_identity(&bob.identifier())
-        .await?
-        .unwrap();
+        .await?;
     if !identities_keys
         .verify_signature(&known_bob, &bob_proof, &state, None)
         .await?
@@ -128,8 +125,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 
     let known_alice = identities_repository
         .get_identity(&alice.identifier())
-        .await?
-        .unwrap();
+        .await?;
     if !identities_keys
         .verify_signature(&known_alice, &alice_proof, &state, None)
         .await?
