@@ -180,7 +180,7 @@ impl NodeManager {
                     .present_credential_mutual(
                         ctx,
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        &[self.trust_context()?.authority()?.identity()],
+                        self.trust_context()?.authorities().await?.as_slice(),
                         credential,
                         MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
                     )

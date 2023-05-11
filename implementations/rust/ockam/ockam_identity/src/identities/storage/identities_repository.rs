@@ -23,6 +23,12 @@ pub trait IdentitiesRepository:
 
     /// Restrict this repository as a writer for attributes
     fn as_attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter>;
+
+    /// Restrict this repository as a reader for identities
+    fn as_identities_reader(&self) -> Arc<dyn IdentitiesReader>;
+
+    /// Restrict this repository as a writer for identities
+    fn as_identities_writer(&self) -> Arc<dyn IdentitiesWriter>;
 }
 
 #[async_trait]
@@ -32,6 +38,14 @@ impl IdentitiesRepository for IdentitiesStorage {
     }
 
     fn as_attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
+        Arc::new(self.clone())
+    }
+
+    fn as_identities_reader(&self) -> Arc<dyn IdentitiesReader> {
+        Arc::new(self.clone())
+    }
+
+    fn as_identities_writer(&self) -> Arc<dyn IdentitiesWriter> {
         Arc::new(self.clone())
     }
 }

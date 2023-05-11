@@ -128,8 +128,9 @@ impl TrustContextConfig {
                     };
 
                 Some(AuthorityService::new(
+                    secure_channels.identities().identities_reader(),
                     secure_channels.identities().credentials(),
-                    identity,
+                    identity.identifier(),
                     credential_retriever,
                 ))
             } else {

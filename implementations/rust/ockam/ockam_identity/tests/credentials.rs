@@ -1,15 +1,15 @@
+use std::sync::atomic::{AtomicI8, Ordering};
+use std::time::Duration;
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, AllowAll, Any, DenyAll, Mailboxes};
 use ockam_core::{route, Result, Routed, Worker};
-
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::{
     AuthorityService, CredentialAccessControl, CredentialData, CredentialsMemoryRetriever,
     SecureChannelListenerOptions, SecureChannelOptions, TrustContext, TrustIdentifierPolicy,
 };
 use ockam_node::{Context, MessageSendReceiveOptions, WorkerBuilder};
-use std::sync::atomic::{AtomicI8, Ordering};
-use std::time::Duration;
 
 #[ockam_macros::test]
 async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
@@ -36,8 +36,9 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
         Some(AuthorityService::new(
+            secure_channels.identities().identities_reader(),
             secure_channels.identities().credentials(),
-            authority.clone(),
+            authority.identifier(),
             None,
         )),
     );
@@ -122,8 +123,9 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
         Some(AuthorityService::new(
+            secure_channels.identities().identities_reader(),
             secure_channels.identities().credentials(),
-            authority.clone(),
+            authority.identifier(),
             Some(Arc::new(CredentialsMemoryRetriever::new(credential))),
         )),
     );
@@ -157,7 +159,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .present_credential_mutual(
             ctx,
             route![channel, "credential_exchange"],
-            &[trust_context.authority()?.identity()],
+            trust_context.authorities().await?.as_slice(),
             credential,
             MessageSendReceiveOptions::new(),
         )
@@ -205,8 +207,9 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
         Some(AuthorityService::new(
+            identities.identities_reader(),
             credentials.clone(),
-            authority.clone(),
+            authority.identifier(),
             None,
         )),
     );

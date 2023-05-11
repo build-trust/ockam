@@ -81,7 +81,7 @@ impl CredentialsServerWorker {
                     .credentials
                     .receive_presented_credential(
                         &sender,
-                        &[self.trust_context.authority()?.identity()],
+                        self.trust_context.authorities().await?.as_slice(),
                         credential,
                     )
                     .await;
@@ -112,7 +112,7 @@ impl CredentialsServerWorker {
                     .credentials
                     .receive_presented_credential(
                         &sender,
-                        &[self.trust_context.authority()?.identity()],
+                        self.trust_context.authorities().await?.as_slice(),
                         credential,
                     )
                     .await;

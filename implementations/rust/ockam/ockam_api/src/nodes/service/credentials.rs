@@ -1,18 +1,21 @@
-use crate::cli_state::traits::StateDirTrait;
-use crate::error::ApiError;
-use crate::local_multiaddr_to_route;
-use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
-use crate::nodes::service::map_multiaddr_err;
+use std::str::FromStr;
+use std::sync::Arc;
+
 use either::Either;
 use minicbor::Decoder;
+
 use ockam::identity::Credential;
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_identity::IdentitiesVault;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
-use std::str::FromStr;
-use std::sync::Arc;
+
+use crate::cli_state::traits::StateDirTrait;
+use crate::error::ApiError;
+use crate::local_multiaddr_to_route;
+use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
+use crate::nodes::service::map_multiaddr_err;
 
 use super::NodeManagerWorker;
 
@@ -91,7 +94,11 @@ impl NodeManagerWorker {
                 .present_credential_mutual(
                     ctx,
                     route,
-                    &[node_manager.trust_context()?.authority()?.identity()],
+                    node_manager
+                        .trust_context()?
+                        .authorities()
+                        .await?
+                        .as_slice(),
                     credential,
                     MessageSendReceiveOptions::new().with_flow_control(&node_manager.flow_controls),
                 )
