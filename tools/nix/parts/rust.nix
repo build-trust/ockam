@@ -91,9 +91,10 @@ in {
         sharedInputs = compilerTools ++ nativeLibs ++ devTools;
 
         envVars = {
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = lib.optional moldEnabled (lib.getExe pkgs.clang);
           OCKAM_DISABLE_UPGRADE_CHECK = lib.optional cfg.disableUpgradeCheck true;
           RUSTFLAGS =
-            lib.optional moldEnabled "-C link-arg=-fuse-ld=${pkgs.mold}/bin/mold";
+            lib.optional moldEnabled "-C link-arg=-fuse-ld=${lib.getExe pkgs.mold}";
         };
       in {
         rust = pkgs.mkShell {
