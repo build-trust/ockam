@@ -1,15 +1,16 @@
-use crate::{
-    errcode::{Kind, Origin},
-    hex_encoding, Error,
-};
-use cfg_if::cfg_if;
 use core::fmt;
+
+use cfg_if::cfg_if;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 #[cfg(feature = "tag")]
 use crate::TypeTag;
+use crate::{
+    errcode::{Kind, Origin},
+    hex_encoding, Error,
+};
 
 /// Curve25519 private key length.
 pub const CURVE25519_SECRET_LENGTH_U32: u32 = 32;
@@ -94,6 +95,7 @@ impl fmt::Debug for SecretKey {
 }
 
 impl Eq for SecretKey {}
+
 impl PartialEq for SecretKey {
     fn eq(&self, o: &Self) -> bool {
         subtle::ConstantTimeEq::ct_eq(&self.0[..], &o.0[..]).into()
@@ -120,6 +122,7 @@ pub struct PublicKey {
 }
 
 impl Eq for PublicKey {}
+
 impl PartialEq for PublicKey {
     fn eq(&self, o: &Self) -> bool {
         let choice = subtle::ConstantTimeEq::ct_eq(&self.data[..], &o.data[..]);
@@ -201,7 +204,7 @@ pub enum SecretType {
     /// Ed 22519 key
     #[n(4)] Ed25519,
     /// NIST P-256 key
-    #[n(5)] NistP256
+    #[n(5)] NistP256,
 }
 
 /// All possible [`SecretKey`] persistence types
@@ -302,7 +305,7 @@ pub enum Secret {
     /// A secret key.
     #[n(0)] Key(#[n(0)] SecretKey),
     /// Reference to an unmanaged, external secret key of AWS KMS.
-    #[n(1)] Aws(#[n(1)] KeyId)
+    #[n(1)] Aws(#[n(1)] KeyId),
 }
 
 impl Secret {

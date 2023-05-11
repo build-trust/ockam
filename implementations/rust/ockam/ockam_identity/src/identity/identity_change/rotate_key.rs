@@ -5,7 +5,7 @@ use ockam_core::vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
 /// RotateKeyChangeData
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RotateKeyChangeData {
     prev_change_id: ChangeIdentifier,
     key_attributes: KeyAttributes,

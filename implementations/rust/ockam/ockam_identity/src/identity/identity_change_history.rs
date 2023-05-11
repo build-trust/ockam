@@ -33,7 +33,7 @@ pub enum IdentityHistoryComparison {
 }
 
 /// Full history of [`crate::secure_channels::SecureChannels`] changes. History and corresponding secret keys are enough to recreate [`crate::secure_channels::SecureChannels`]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IdentityChangeHistory(Vec<IdentitySignedChange>);
 
 impl fmt::Display for IdentityChangeHistory {

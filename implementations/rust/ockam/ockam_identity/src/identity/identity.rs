@@ -12,7 +12,7 @@ use ockam_core::Result;
 use serde::{Deserialize, Serialize};
 
 /// Identity implementation
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Identity {
     pub(crate) identifier: IdentityIdentifier,
     pub(crate) change_history: IdentityChangeHistory,

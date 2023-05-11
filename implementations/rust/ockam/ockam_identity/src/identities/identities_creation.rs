@@ -130,3 +130,47 @@ impl IdentitiesCreation {
         Ok(identity)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use core::str::FromStr;
+
+    use crate::identities;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_identity_creation() -> Result<()> {
+        let identities = identities();
+        let creation = identities.identities_creation();
+        let repository = identities.repository();
+        let keys = identities.identities_keys();
+
+        let identity = creation.create_identity().await?;
+        let actual = repository.get_identity(&identity.identifier()).await?;
+        assert_eq!(
+            actual,
+            identity.clone(),
+            "the identity can be retrieved from the repository"
+        );
+
+        let actual = repository.retrieve_identity(&identity.identifier()).await?;
+        assert_eq!(
+            actual,
+            Some(identity.clone()),
+            "the identity can be retrieved from the repository as an Option"
+        );
+
+        let missing = repository
+            .retrieve_identity(&IdentityIdentifier::from_str(
+                "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638",
+            )?)
+            .await?;
+        assert_eq!(missing, None, "a missing identity returns None");
+
+        let root_key = keys.get_secret_key(&identity, None).await;
+        assert!(root_key.is_ok(), "there is a key for the created identity");
+
+        Ok(())
+    }
+}
