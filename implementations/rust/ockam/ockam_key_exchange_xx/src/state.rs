@@ -187,20 +187,10 @@ impl State {
     }
 
     /// Set this state up to send and receive messages
-    fn finalize(
-        &mut self,
-        encrypt_key: KeyId,
-        decrypt_key: KeyId,
-        public_static_key: PublicKey,
-    ) -> Result<CompletedKeyExchange> {
+    fn finalize(&mut self, encrypt_key: KeyId, decrypt_key: KeyId) -> Result<CompletedKeyExchange> {
         let h = self.h.ok_or(XXError::InvalidState)?;
 
-        Ok(CompletedKeyExchange::new(
-            h,
-            encrypt_key,
-            decrypt_key,
-            public_static_key,
-        ))
+        Ok(CompletedKeyExchange::new(h, encrypt_key, decrypt_key))
     }
 }
 
@@ -295,14 +285,8 @@ impl State {
     }
 
     pub(crate) async fn finalize_initiator(&mut self) -> Result<CompletedKeyExchange> {
-        let public_static_key = self
-            .remote_static_public_key
-            .take()
-            .ok_or(XXError::InvalidState)?;
-
         let keys = { self.split().await? };
-
-        self.finalize(keys.1, keys.0, public_static_key)
+        self.finalize(keys.1, keys.0)
     }
 }
 
@@ -391,13 +375,8 @@ impl State {
     }
 
     pub(crate) async fn finalize_responder(&mut self) -> Result<CompletedKeyExchange> {
-        let public_static_key = self
-            .remote_static_public_key
-            .take()
-            .ok_or(XXError::InvalidState)?;
-
         let keys = { self.split().await? };
-        self.finalize(keys.0, keys.1, public_static_key)
+        self.finalize(keys.0, keys.1)
     }
 }
 

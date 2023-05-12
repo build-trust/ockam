@@ -99,10 +99,8 @@ impl Worker for IdentityChannelListener {
             self.secure_channels.clone(),
             addresses,
             self.identity.clone(),
-            self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             self.options.credentials.clone(),
-            self.options.trust_context.clone(),
         )
         .await?;
 

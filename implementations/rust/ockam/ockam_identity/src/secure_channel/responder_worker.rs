@@ -7,7 +7,7 @@ use crate::secure_channel::packets::{
 };
 use crate::secure_channel::responder_state::State;
 use crate::secure_channel::{Addresses, Role};
-use crate::{to_xx_vault, Identity, IdentityError, SecureChannels, TrustContext, TrustPolicy};
+use crate::{to_xx_vault, Identity, IdentityError, SecureChannels};
 use ockam_core::{Address, Any, NewKeyExchanger, OutgoingAccessControl, Routed};
 use ockam_core::{Decodable, Worker};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
@@ -100,15 +100,11 @@ impl Worker for ResponderWorker {
 
                 let finalizer = Finalizer {
                     secure_channels: self.secure_channels.clone(),
-                    signature: identity_and_credential.signature,
                     identity: state.identity,
                     their_identity,
                     keys,
-                    credentials: identity_and_credential.credentials,
                     addresses: state.addresses,
                     remote_route: state.remote_route,
-                    trust_context: state.trust_context,
-                    trust_policy: state.trust_policy,
                 };
 
                 let decryptor = finalizer.finalize(context, Role::Responder).await?;
@@ -132,10 +128,8 @@ impl ResponderWorker {
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
         identity: Identity,
-        trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         credentials: Vec<Credential>,
-        trust_context: Option<TrustContext>,
     ) -> ockam_core::Result<Address> {
         let (static_key_id, signature) = secure_channels
             .identities()
@@ -156,8 +150,6 @@ impl ResponderWorker {
                 Box::new(key_exchanger),
                 credentials,
                 signature,
-                trust_context,
-                trust_policy,
             )),
             secure_channels,
         };

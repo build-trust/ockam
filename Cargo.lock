@@ -3400,6 +3400,7 @@ dependencies = [
 name = "ockam_identity"
 version = "0.74.0"
 dependencies = [
+ "arrayref",
  "async-trait",
  "cfg-if",
  "group",

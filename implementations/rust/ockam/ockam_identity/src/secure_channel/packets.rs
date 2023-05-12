@@ -36,7 +36,7 @@ pub(super) struct IdentityAndCredential {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Message)]
 pub(super) struct EncodedPublicIdentity {
-    encoded: Vec<u8>,
+    pub(super) encoded: Vec<u8>,
 }
 
 impl EncodedPublicIdentity {

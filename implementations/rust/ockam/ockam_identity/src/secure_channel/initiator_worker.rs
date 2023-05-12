@@ -1,28 +1,31 @@
 use crate::credential::Credential;
+use crate::secure_channel::decryptor_worker::DecryptorWorker;
 use crate::secure_channel::finalizer::Finalizer;
-use crate::secure_channel::initiator_state::State;
-use crate::secure_channel::key_exchange_with_payload::KeyExchangeWithPayload;
-use crate::secure_channel::packets::{
-    EncodedPublicIdentity, FirstPacket, IdentityAndCredential, SecondPacket, ThirdPacket,
-};
+use crate::secure_channel::initiator_state_machine::Action::SendMessage;
+use crate::secure_channel::initiator_state_machine::Event::{Initialize, ReceivedMessage};
+use crate::secure_channel::initiator_state_machine::InitiatorStateMachine;
+use crate::secure_channel::initiator_state_machine::InitiatorStatus::Ready;
 use crate::secure_channel::{Addresses, Role};
-use crate::{to_xx_vault, Identity, IdentityError, SecureChannels, TrustContext, TrustPolicy};
+use crate::{to_xx_vault, Identity, SecureChannels, TrustContext, TrustPolicy};
 use alloc::sync::Arc;
 use core::time::Duration;
 use ockam_core::{
     Address, AllowAll, Any, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox, Mailboxes,
-    NewKeyExchanger, OutgoingAccessControl, Route, Routed,
+    OutgoingAccessControl, Route, Routed,
 };
-use ockam_core::{Decodable, Worker};
-use ockam_key_exchange_xx::XXNewKeyExchanger;
+use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::debug;
 
 pub(crate) struct InitiatorWorker {
-    state: Option<State>,
     secure_channels: Arc<SecureChannels>,
     callback_sender: CallbackSender<()>,
+    state_machine: InitiatorStateMachine,
+    identity: Identity,
+    remote_route: Route,
+    addresses: Addresses,
+    decryptor: Option<DecryptorWorker>,
 }
 
 #[ockam_core::worker]
@@ -30,122 +33,60 @@ impl Worker for InitiatorWorker {
     type Message = Any;
     type Context = Context;
 
-    async fn initialize(&mut self, context: &mut Self::Context) -> ockam_core::Result<()> {
-        let state = self
-            .state
-            .take()
-            .ok_or_else(|| IdentityError::InvalidSecureChannelInternalState)?;
-
-        //we initiate the exchange by sending the first packet during the initialization
-        match state {
-            State::SendPacket1(mut state) => {
-                let first_packet = FirstPacket {
-                    key_exchange: state.key_exchanger.generate_request(&[]).await?,
-                };
-                context
-                    .send_from_address(
-                        state.remote_route.clone(),
-                        first_packet,
-                        state.addresses.decryptor_remote.clone(),
-                    )
-                    .await?;
-                self.state = Some(State::ReceivePacket2(state.next_state()));
-            }
-            _ => {
-                unreachable!()
-            }
-        };
-
-        Ok(())
+    async fn initialize(&mut self, context: &mut Self::Context) -> Result<()> {
+        let SendMessage(message) = self.state_machine.on_event(Initialize).await?;
+        context
+            .send_from_address(
+                self.remote_route.clone(),
+                message,
+                self.addresses.decryptor_remote.clone(),
+            )
+            .await
     }
 
     async fn handle_message(
         &mut self,
         context: &mut Self::Context,
         message: Routed<Self::Message>,
-    ) -> ockam_core::Result<()> {
-        if let State::Done(decryptor) = self
-            .state
-            .as_mut()
-            .ok_or_else(|| IdentityError::InvalidSecureChannelInternalState)?
-        {
-            //since we cannot replace this worker with the decryptor worker
-            //we act as a relay instead
+    ) -> Result<()> {
+        if let Some(decryptor) = self.decryptor.as_mut() {
+            // since we cannot replace this worker with the decryptor worker we act as a relay instead
             return decryptor.handle_message(context, message).await;
-        }
+        };
 
-        let state = self
-            .state
-            .take()
-            .ok_or_else(|| IdentityError::InvalidSecureChannelInternalState)?;
+        // we only set it once to avoid redirects attack
+        self.remote_route = message.return_route();
+        let SendMessage(message) = self
+            .state_machine
+            .on_event(ReceivedMessage(message.into_transport_message().payload))
+            .await?;
+        context
+            .send_from_address(
+                self.remote_route.clone(),
+                message,
+                self.addresses.decryptor_remote.clone(),
+            )
+            .await?;
 
-        let new_state = match state {
-            State::ReceivePacket2(mut state) => {
-                //we only set it once to avoid redirects attack
-                state.remote_route = message.return_route();
-
-                let second_packet: SecondPacket =
-                    SecondPacket::decode(&message.into_transport_message().payload)?;
-
-                let identity_and_credential = second_packet
-                    .key_exchange_with_payload
-                    .handle_and_decrypt(&mut state.key_exchanger)
-                    .await?;
-
-                let their_identity = identity_and_credential
-                    .identity
-                    .decode(self.secure_channels.vault())
-                    .await?;
-
-                let third_packet = ThirdPacket {
-                    key_exchange_with_payload: KeyExchangeWithPayload::create(
-                        IdentityAndCredential {
-                            identity: EncodedPublicIdentity::from(&state.identity)?,
-                            signature: state.signature.clone(),
-                            credentials: state.credentials.clone(),
-                        },
-                        &mut state.key_exchanger,
-                    )
-                    .await?,
-                };
-
-                context
-                    .send_from_address(
-                        state.remote_route.clone(),
-                        third_packet,
-                        state.addresses.decryptor_remote.clone(),
-                    )
-                    .await?;
-
-                let keys = state.key_exchanger.finalize().await?;
-
+        match self.state_machine.state.status.clone() {
+            Ready {
+                their_identity,
+                keys,
+            } => {
                 let finalizer = Finalizer {
                     secure_channels: self.secure_channels.clone(),
-                    signature: identity_and_credential.signature,
-                    identity: state.identity,
+                    identity: self.identity.clone(),
                     their_identity,
                     keys,
-                    credentials: identity_and_credential.credentials,
-                    addresses: state.addresses,
-                    remote_route: state.remote_route,
-                    trust_context: state.trust_context,
-                    trust_policy: state.trust_policy,
+                    addresses: self.addresses.clone(),
+                    remote_route: self.remote_route.clone(),
                 };
 
-                let decryptor = finalizer.finalize(context, Role::Initiator).await?;
-
-                // Notify interested worker about finished init
+                self.decryptor = Some(finalizer.finalize(context, Role::Initiator).await?);
                 self.callback_sender.send(()).await?;
-
-                State::Done(decryptor)
             }
-
-            State::SendPacket1(_) | State::Done(_) => {
-                unreachable!()
-            }
+            _ => (),
         };
-        self.state = Some(new_state);
-
         Ok(())
     }
 }
@@ -163,34 +104,28 @@ impl InitiatorWorker {
         trust_context: Option<TrustContext>,
         remote_route: Route,
         timeout: Duration,
-    ) -> ockam_core::Result<Address> {
+    ) -> Result<Address> {
+        let vault = to_xx_vault(secure_channels.vault());
+        let identities = secure_channels.identities();
+        let state_machine = InitiatorStateMachine::new(
+            vault,
+            identities,
+            identity.clone(),
+            credentials.clone(),
+            trust_policy.clone(),
+            trust_context.clone(),
+        );
+
         let (mut callback_waiter, callback_sender) = ockam_node::callback::new_callback();
 
-        let (static_key_id, signature) = secure_channels
-            .identities()
-            .identities_keys()
-            .create_signed_static_key(&identity)
-            .await?;
-
-        let key_exchanger = XXNewKeyExchanger::new(to_xx_vault(secure_channels.vault()))
-            .initiator(Some(static_key_id))
-            .await?;
-
-        let decryptor_remote = addresses.decryptor_remote.clone();
-
         let worker = Self {
-            state: Some(State::new(
-                remote_route,
-                identity,
-                addresses.clone(),
-                Box::new(key_exchanger),
-                trust_policy,
-                credentials,
-                trust_context,
-                signature,
-            )),
             secure_channels,
             callback_sender,
+            state_machine,
+            identity: identity.clone(),
+            remote_route: remote_route.clone(),
+            addresses: addresses.clone(),
+            decryptor: None,
         };
 
         WorkerBuilder::with_mailboxes(
@@ -200,6 +135,7 @@ impl InitiatorWorker {
         .start(context)
         .await?;
 
+        let decryptor_remote = addresses.decryptor_remote.clone();
         debug!(
             "Starting SecureChannel Initiator at remote: {}",
             &decryptor_remote

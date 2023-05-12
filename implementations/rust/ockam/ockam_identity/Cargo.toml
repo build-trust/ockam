@@ -64,6 +64,7 @@ alloc = [
 ]
 
 [dependencies]
+arrayref = "0.3"
 async-trait = "0.1.64"
 cfg-if = "1.0.0"
 group = { version = "0.13.0", default-features = false }

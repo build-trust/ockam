@@ -6,7 +6,6 @@
 //!
 //! The main Ockam crate re-exports types defined in this crate.
 use crate::compat::{string::String, vec::Vec};
-use crate::vault::PublicKey;
 use crate::{async_trait, compat::boxed::Box, vault::KeyId, Result};
 use zeroize::Zeroize;
 
@@ -46,7 +45,6 @@ pub struct CompletedKeyExchange {
     h: [u8; 32],
     encrypt_key: KeyId,
     decrypt_key: KeyId,
-    public_static_key: PublicKey,
 }
 
 impl CompletedKeyExchange {
@@ -62,26 +60,15 @@ impl CompletedKeyExchange {
     pub fn decrypt_key(&self) -> &KeyId {
         &self.decrypt_key
     }
-
-    /// The public static key of the remote peer.
-    pub fn public_static_key(&self) -> &PublicKey {
-        &self.public_static_key
-    }
 }
 
 impl CompletedKeyExchange {
     /// Build a CompletedKeyExchange comprised of the input parameters.
-    pub fn new(
-        h: [u8; 32],
-        encrypt_key: KeyId,
-        decrypt_key: KeyId,
-        public_static_key: PublicKey,
-    ) -> Self {
+    pub fn new(h: [u8; 32], encrypt_key: KeyId, decrypt_key: KeyId) -> Self {
         CompletedKeyExchange {
             h,
             encrypt_key,
             decrypt_key,
-            public_static_key,
         }
     }
 }

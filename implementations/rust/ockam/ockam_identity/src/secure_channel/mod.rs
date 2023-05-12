@@ -8,7 +8,7 @@ mod decryptor_worker;
 mod encryptor;
 mod encryptor_worker;
 mod finalizer;
-mod initiator_state;
+mod initiator_state_machine;
 pub(crate) mod initiator_worker;
 mod key_exchange_with_payload;
 mod listener;
