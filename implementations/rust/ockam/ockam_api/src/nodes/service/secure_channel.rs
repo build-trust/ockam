@@ -3,17 +3,12 @@ use std::time::Duration;
 use minicbor::Decoder;
 
 use ockam::identity::TrustEveryonePolicy;
-use ockam::identity::{
-    Identities, IdentitiesVault, IdentityIdentifier, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
-};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
-use ockam_core::route;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_node::Context;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::{CliStateError, StateItemTrait};
@@ -31,6 +26,11 @@ use crate::nodes::service::invalid_multiaddr_error;
 use crate::nodes::service::NodeIdentities;
 use crate::nodes::NodeManager;
 use crate::{multiaddr_to_route, DefaultAddress};
+use ockam::identity::{
+    Identities, IdentitiesVault, IdentityIdentifier, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
+};
+use ockam_identity::Credential;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
 
@@ -42,6 +42,7 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
+        credential: Option<Credential>,
     ) -> Result<(Address, FlowControlId)> {
         // If channel was already created, do nothing.
         if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
@@ -59,6 +60,12 @@ impl NodeManager {
 
         let options = if let Some(timeout) = timeout {
             options.with_timeout(timeout)
+        } else {
+            options
+        };
+
+        let options = if let Some(credential) = credential {
+            options.with_credential(credential)
         } else {
             options
         };
@@ -119,16 +126,6 @@ impl NodeManager {
             None
         };
 
-        let (sc_addr, sc_flow_control_id) = self
-            .create_secure_channel_internal(
-                &identifier,
-                ctx,
-                sc_route,
-                authorized_identifiers,
-                timeout,
-            )
-            .await?;
-
         // TODO: Determine when we can remove this? Or find a better way to determine
         //       when to check credentials. Currently enable_credential_checks only if a PROJECT AC and PROJECT ID are set
         //       -- Oakley
@@ -139,13 +136,14 @@ impl NodeManager {
             CredentialExchangeMode::None
         };
 
-        match actual_exchange_mode {
+        let credential = match actual_exchange_mode {
             CredentialExchangeMode::None => {
-                debug!(%sc_addr, "No credential presentation");
+                debug!("No credential presentation");
+                None
             }
-            CredentialExchangeMode::Oneway => {
-                debug!(%sc_addr, "One-way credential presentation");
-                let credential = match provided_credential {
+            CredentialExchangeMode::Oneway | CredentialExchangeMode::Mutual => {
+                debug!("One-way credential presentation");
+                Some(match provided_credential {
                     Some(c) => c,
                     None => {
                         self.trust_context()?
@@ -153,42 +151,20 @@ impl NodeManager {
                             .credential(ctx, &identifier)
                             .await?
                     }
-                };
-
-                self.credentials_service()
-                    .present_credential(
-                        ctx,
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        credential,
-                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
-                    )
-                    .await?;
-                debug!(%sc_addr, "One-way credential presentation success");
+                })
             }
-            CredentialExchangeMode::Mutual => {
-                debug!(%sc_addr, "Mutual credential presentation");
-                let credential = match provided_credential {
-                    Some(c) => c,
-                    None => {
-                        self.trust_context()?
-                            .authority()?
-                            .credential(ctx, &identifier)
-                            .await?
-                    }
-                };
+        };
 
-                self.credentials_service()
-                    .present_credential_mutual(
-                        ctx,
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-                        self.trust_context()?.authorities().await?.as_slice(),
-                        credential,
-                        MessageSendReceiveOptions::new().with_flow_control(&self.flow_controls),
-                    )
-                    .await?;
-                debug!(%sc_addr, "Mutual credential presentation success");
-            }
-        }
+        let (sc_addr, sc_flow_control_id) = self
+            .create_secure_channel_internal(
+                &identifier,
+                ctx,
+                sc_route,
+                authorized_identifiers,
+                timeout,
+                credential,
+            )
+            .await?;
 
         // Return secure channel address
         Ok((sc_addr, sc_flow_control_id))
@@ -221,6 +197,12 @@ impl NodeManager {
         let options = match authorized_identifiers {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
+        };
+
+        let options = if let Ok(trust_context) = self.trust_context() {
+            options.with_trust_context(trust_context.clone())
+        } else {
+            options
         };
 
         secure_channels
