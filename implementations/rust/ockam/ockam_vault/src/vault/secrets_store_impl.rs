@@ -1,9 +1,9 @@
 use crate::{
-    EphemeralSecretsStore, Implementation, PersistentSecretsStore, PublicKey, Secret,
+    EphemeralSecretsStore, Implementation, KeyId, PersistentSecretsStore, PublicKey, Secret,
     SecretAttributes, SecretsStoreReader, SecurityModule, Signature, StoredSecret, VaultError,
     VaultSecurityModule,
 };
-use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, KeyId, Result};
+use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, Result};
 use ockam_node::KeyValueStorage;
 
 #[derive(Clone)]

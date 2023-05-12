@@ -1,7 +1,7 @@
 use crate::secure_channel::addresses::Addresses;
-use crate::secure_channel::common::Role;
+use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::options::SecureChannelListenerOptions;
-use crate::secure_channel::responder_worker::ResponderWorker;
+use crate::secure_channel::role::Role;
 use crate::secure_channels::secure_channels::SecureChannels;
 use crate::IdentityIdentifier;
 use ockam_core::compat::boxed::Box;
@@ -80,7 +80,7 @@ impl Worker for IdentityChannelListener {
             self.options.credentials.clone()
         };
 
-        let decryptor_remote_address = ResponderWorker::create(
+        let decryptor_remote_address = HandshakeWorker::create(
             ctx,
             self.secure_channels.clone(),
             addresses,
@@ -89,6 +89,9 @@ impl Worker for IdentityChannelListener {
             access_control.decryptor_outgoing_access_control,
             credentials,
             self.options.trust_context.clone(),
+            None,
+            None,
+            Role::Responder,
         )
         .await?;
 

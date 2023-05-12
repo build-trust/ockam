@@ -1,5 +1,5 @@
-use crate::{PublicKey, Secret, SecretAttributes, StoredSecret};
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use crate::{KeyId, PublicKey, Secret, SecretAttributes, StoredSecret};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// This traits provides all the functionalities related to the management of secrets
 #[async_trait]

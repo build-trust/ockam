@@ -6,8 +6,8 @@ use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::env::FromString;
-use ockam_core::{Error, KeyId, Result};
-use ockam_vault::{PublicKey, VaultSecurityModule};
+use ockam_core::{Error, Result};
+use ockam_vault::{KeyId, PublicKey, VaultSecurityModule};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// An identifier of an Identity.

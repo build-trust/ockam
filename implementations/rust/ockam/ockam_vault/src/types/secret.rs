@@ -1,7 +1,7 @@
-use crate::SecretKeyVec;
+use crate::{KeyId, SecretKeyVec};
 use core::fmt;
 use minicbor::{Decode, Encode};
-use ockam_core::{hex_encoding, KeyId};
+use ockam_core::hex_encoding;
 use p256::elliptic_curve::subtle;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};

@@ -133,17 +133,6 @@ pub mod compat {
     pub use ockam_node::tokio;
 }
 
-// TODO: these next few modules should be rethought when we do the updates for
-// getting the layer 2 crates to GA, but for now they just move things out of
-// the way.
-
-pub mod key_exchange {
-    //! Module containing types required for key exchange.
-    pub use ockam_core::NewKeyExchanger;
-    #[cfg(feature = "noise_xx")]
-    pub use ockam_key_exchange_xx::XXNewKeyExchanger;
-}
-
 #[cfg(feature = "ockam_vault")]
 pub mod vault {
     //! Types and traits relating to ockam vaults.

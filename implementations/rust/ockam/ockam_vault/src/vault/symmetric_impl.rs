@@ -1,13 +1,13 @@
 use crate::traits::SymmetricVault;
 use crate::{
-    Buffer, EphemeralSecretsStore, Implementation, SecretAttributes, StoredSecret, Vault,
+    Buffer, EphemeralSecretsStore, Implementation, KeyId, SecretAttributes, StoredSecret, Vault,
     VaultError,
 };
 use aes_gcm::aead::consts::{U0, U12, U16};
 use aes_gcm::aead::{Aead, NewAead, Nonce, Payload, Tag};
 use aes_gcm::aes::{Aes128, Aes256};
 use aes_gcm::{AeadCore, AeadInPlace, Aes128Gcm, Aes256Gcm, AesGcm};
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[async_trait]
 impl<T: EphemeralSecretsStore + Implementation> SymmetricVault for T {

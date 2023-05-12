@@ -1,7 +1,7 @@
-use crate::{constants, Secret, SecretAttributes, SecretType, StoredSecret};
+use crate::{constants, KeyId, Secret, SecretAttributes, SecretType, StoredSecret};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, KeyId, Result};
+use ockam_core::{async_trait, Result};
 use ockam_node::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueStorage};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeMap;

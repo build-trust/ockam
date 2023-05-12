@@ -8,13 +8,12 @@ use aws_sdk_kms::operation::verify::VerifyError;
 use aws_sdk_kms::primitives::Blob;
 use aws_sdk_kms::types::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::Client;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{async_trait, Result};
+use ockam_vault::{KeyId, PublicKey, SecretType, Signature};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 use tracing as log;
-
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, KeyId, Result};
-use ockam_vault::{PublicKey, SecretType, Signature};
 
 /// AWS KMS client.
 #[derive(Debug, Clone)]
@@ -78,7 +77,7 @@ impl AwsKmsClient {
             Ok(out) => out,
             Err(err) => {
                 log::error!(%err, "failed to create new key");
-                return Err(Error::Create(err).into());
+                return Err(Into::<ockam_core::Error>::into(Error::Create(err)));
             }
         };
         if let Some(kid) = output.key_metadata().and_then(|meta| meta.key_id()) {

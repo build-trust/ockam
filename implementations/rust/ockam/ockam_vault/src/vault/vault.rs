@@ -1,12 +1,12 @@
 use crate::{
-    AsymmetricVault, Buffer, EphemeralSecretsStore, PersistentSecretsStore, PublicKey, Secret,
-    SecretAttributes, SecretsStore, SecretsStoreReader, SecurityModule, Signature, Signer,
+    AsymmetricVault, Buffer, EphemeralSecretsStore, KeyId, PersistentSecretsStore, PublicKey,
+    Secret, SecretAttributes, SecretsStore, SecretsStoreReader, SecurityModule, Signature, Signer,
     StoredSecret, SymmetricVault, VaultBuilder, VaultSecurityModule,
 };
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::fmt::Vec;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, KeyId, Result};
+use ockam_core::{async_trait, Result};
 use ockam_node::KeyValueStorage;
 #[cfg(feature = "std")]
 use std::path::Path;

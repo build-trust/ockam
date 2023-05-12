@@ -2,35 +2,29 @@
 pub mod access_control;
 mod addresses;
 mod api;
-mod common;
-mod completer;
 mod decryptor;
 mod decryptor_worker;
 mod encryptor;
 mod encryptor_worker;
-mod initiator_state;
-pub(crate) mod initiator_worker;
-mod key_exchange_with_payload;
+mod handshake;
 mod listener;
 mod local_info;
 mod nonce_tracker;
 mod options;
-mod packets;
 mod registry;
-mod responder_state;
-mod responder_worker;
+mod role;
 /// List of trust policies to setup ABAC controls
 pub mod trust_policy;
 
 pub use access_control::*;
 pub(crate) use addresses::*;
 pub use api::*;
-pub(crate) use common::*;
-// pub(crate) use decryptor_worker::*;
+pub(crate) use handshake::*;
 pub(crate) use listener::*;
 pub use local_info::*;
 pub use options::*;
 pub use registry::*;
+pub(crate) use role::*;
 pub use trust_policy::*;
 
 #[cfg(test)]
