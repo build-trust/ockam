@@ -5,8 +5,8 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, AllowAll, AsyncTryClone, Encodable, Error, LocalInfo, LocalMessage, Route, Routed,
-    TransportMessage, Worker,
+    route, Address, AllowAll, AsyncTryClone, Encodable, Error, LocalInfo, LocalMessage, Route,
+    Routed, TransportMessage, Worker,
 };
 use ockam_node::Context;
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -159,17 +159,19 @@ impl KafkaPortalWorker {
         let mut local_message = routed_message.into_local_message();
         let transport = local_message.transport_mut();
 
-        //to correctly proxy messages to the inlet or outlet side
-        //we invert the return route when a message pass through
-        transport
-            .return_route
-            .modify()
-            .prepend(self.other_worker_address.clone());
-
         if let Receiving::Responses(fixed_onward_route) = &self.receiving {
+            // To correctly proxy messages to the inlet or outlet side we invert the return route
+            // when a message pass through.
             transport.onward_route = fixed_onward_route.clone();
+            transport
+                .return_route
+                .modify()
+                .prepend(self.other_worker_address.clone());
         } else {
             transport.onward_route.step()?;
+            // Since we force the return route next step (fixed_onward_route), we can
+            // omit the previous return route.
+            transport.return_route = route![self.other_worker_address.clone()];
         }
 
         trace!(
@@ -183,27 +185,35 @@ impl KafkaPortalWorker {
     async fn split_and_send(
         &self,
         context: &mut Context,
-        onward_route: Route,
-        return_route: Route,
+        provided_onward_route: Route,
+        provided_return_route: Route,
         buffer: Bytes,
         local_info: &[LocalInfo],
     ) -> ockam_core::Result<()> {
-        let onward_route = if let Receiving::Responses(fixed_onward_route) = &self.receiving {
-            fixed_onward_route.clone()
+        let return_route: Route;
+        let onward_route;
+
+        if let Receiving::Responses(fixed_onward_route) = &self.receiving {
+            // To correctly proxy messages to the inlet or outlet side
+            // we invert the return route when a message pass through
+            return_route = provided_return_route
+                .clone()
+                .modify()
+                .prepend(self.other_worker_address.clone())
+                .into();
+            onward_route = fixed_onward_route.clone();
         } else {
-            onward_route.clone().modify().pop_front().into()
+            // Since we force the return route next step (fixed_onward_route), we can
+            // omit the previous return route
+            return_route = route![self.other_worker_address.clone()];
+            onward_route = provided_onward_route.clone().modify().pop_front().into();
         };
 
         for chunk in buffer.chunks(MAX_PAYLOAD_SIZE) {
-            //to correctly proxy messages to the inlet or outlet side
-            //we invert the return route when a message pass through
             let message = LocalMessage::new(
                 TransportMessage::v1(
                     onward_route.clone(),
-                    return_route
-                        .clone()
-                        .modify()
-                        .prepend(self.other_worker_address.clone()),
+                    return_route.clone(),
                     PortalMessage::Payload(chunk.to_vec()).encode()?,
                 ),
                 local_info.to_vec(),
