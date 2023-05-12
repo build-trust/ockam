@@ -1,6 +1,6 @@
 [package]
 name = "ockam_key_exchange_xx"
-version = "0.76.0"
+version = "0.77.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
