@@ -9,8 +9,8 @@ use crate::identity::{
 };
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Encodable, KeyId, Result};
-use ockam_vault::{SecretAttributes, Vault};
+use ockam_core::{Encodable, Result};
+use ockam_vault::{KeyId, SecretAttributes, Vault};
 
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {

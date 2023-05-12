@@ -14,7 +14,6 @@ members = [
   "implementations/rust/ockam/ockam_executor",
   "implementations/rust/ockam/ockam_ffi",
   "implementations/rust/ockam/ockam_identity",
-  "implementations/rust/ockam/ockam_key_exchange_xx",
   "implementations/rust/ockam/ockam_macros",
   "implementations/rust/ockam/ockam_multiaddr",
   "implementations/rust/ockam/ockam_node",

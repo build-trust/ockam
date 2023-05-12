@@ -3,13 +3,14 @@ use std::path::Path;
 use p256::pkcs8::DecodePublicKey;
 use tracing::error;
 
+use crate::vault::aws_kms_client::{AwsKmsClient, AwsKmsConfig, KmsClient};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Error, KeyId, Result};
+use ockam_core::{async_trait, Error, Result};
 use ockam_node::{FileKeyValueStorage, InMemoryKeyValueStorage, KeyValueStorage};
-use ockam_vault::{PublicKey, SecretAttributes, SecretType, SecurityModule, Signature, VaultError};
-
-use crate::vault::aws_kms_client::{AwsKmsClient, AwsKmsConfig, KmsClient};
+use ockam_vault::{
+    KeyId, PublicKey, SecretAttributes, SecretType, SecurityModule, Signature, VaultError,
+};
 
 /// Security module implementation using an AWS KMS
 pub struct AwsSecurityModule {

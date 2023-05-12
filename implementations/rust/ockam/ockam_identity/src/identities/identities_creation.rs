@@ -1,7 +1,7 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{KeyId, Result};
-use ockam_vault::{Secret, SecretAttributes};
+use ockam_core::Result;
+use ockam_vault::{KeyId, Secret, SecretAttributes};
 
 use crate::alloc::string::ToString;
 use crate::identity::IdentityError;

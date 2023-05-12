@@ -1,11 +1,11 @@
 use crate::constants::CURVE25519_SECRET_LENGTH_U32;
 use crate::{
-    AsymmetricVault, Buffer, EphemeralSecretsStore, Implementation, PublicKey, Secret,
+    AsymmetricVault, Buffer, EphemeralSecretsStore, Implementation, KeyId, PublicKey, Secret,
     SecretAttributes, SecretType, StoredSecret, Vault, VaultError,
 };
 use arrayref::array_ref;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 use sha2::Sha256;
 
 #[async_trait]

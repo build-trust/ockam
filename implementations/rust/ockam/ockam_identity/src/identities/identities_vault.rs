@@ -1,10 +1,9 @@
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, KeyId, Result};
-use ockam_key_exchange_xx::{XXInitializedVault, XXVault};
+use ockam_core::{async_trait, Result};
 use ockam_vault::{
-    EphemeralSecretsStore, Implementation, PersistentSecretsStore, SecretsStoreReader,
-    SymmetricVault,
+    AsymmetricVault, EphemeralSecretsStore, Implementation, KeyId, PersistentSecretsStore,
+    SecretsStore, SecretsStoreReader, SymmetricVault,
 };
 use ockam_vault::{PublicKey, Secret, SecretAttributes};
 use ockam_vault::{Signature, Signer, StoredSecret};
@@ -14,6 +13,19 @@ use ockam_vault::{Signature, Signer, StoredSecret};
 pub trait IdentitiesVault: XXVault + PersistentSecretsStore + Signer {}
 
 impl<D> IdentitiesVault for D where D: XXVault + PersistentSecretsStore + Signer {}
+
+/// Vault with XX required functionality
+pub trait XXVault: SecretsStore + AsymmetricVault + SymmetricVault + Send + Sync + 'static {}
+
+impl<D> XXVault for D where
+    D: SecretsStore + AsymmetricVault + SymmetricVault + Send + Sync + 'static
+{
+}
+
+/// Vault with required functionalities after XX key exchange
+pub trait XXInitializedVault: SecretsStore + SymmetricVault + Send + Sync + 'static {}
+
+impl<D> XXInitializedVault for D where D: SecretsStore + SymmetricVault + Send + Sync + 'static {}
 
 /// This struct is used to compensate for the lack of non-experimental trait upcasting in Rust
 /// We encapsulate an IdentitiesVault and delegate the implementation of all the functions of

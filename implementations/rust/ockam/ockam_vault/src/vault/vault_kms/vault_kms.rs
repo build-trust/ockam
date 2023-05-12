@@ -2,15 +2,15 @@ use crate::constants::CURVE25519_PUBLIC_LENGTH_USIZE;
 use crate::constants::CURVE25519_SECRET_LENGTH_U32;
 
 use crate::{
-    PublicKey, Secret, SecretAttributes, SecretType, SecurityModule, Signature, StoredSecret,
-    VaultError,
+    KeyId, PublicKey, Secret, SecretAttributes, SecretType, SecurityModule, Signature,
+    StoredSecret, VaultError,
 };
 use arrayref::array_ref;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Error;
 use ockam_core::{async_trait, compat::boxed::Box, Result};
-use ockam_core::{Error, KeyId};
 use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
 use sha2::{Digest, Sha256};
 
