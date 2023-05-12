@@ -442,19 +442,31 @@ impl NodeManager {
         debug!("connecting to {}", &connection.addr);
         let context = Arc::new(connection.ctx.async_try_clone().await?);
 
-        let mut intermediary_services = vec![];
-        for protocol_value in connection.addr.iter() {
-            if protocol_value.code() == Service::CODE {
-                let local = protocol_value
-                    .cast::<Service>()
-                    .ok_or_else(|| ApiError::generic("invalid service address"))?;
-                intermediary_services.push(Address::new(LOCAL, &*local));
-            }
+        let consumer_worker = {
+            // The rationale is simple: whenever we go outside the node we are using flow
+            // control. The last service before that must be a consumer of that flow control
+            // in order to receive the message coming back.
+            let mut consumer_worker = None;
+            let mut everything_local = true;
+            for protocol_value in connection.addr.iter() {
+                if protocol_value.code() == Service::CODE {
+                    let local = protocol_value
+                        .cast::<Service>()
+                        .ok_or_else(|| ApiError::generic("invalid service address"))?;
+                    consumer_worker = Some(Address::new(LOCAL, &*local));
+                }
 
-            if !local_worker(&protocol_value.code())? {
-                break;
+                if !local_worker(&protocol_value.code())? {
+                    everything_local = false;
+                    break;
+                }
             }
-        }
+            if everything_local {
+                None
+            } else {
+                consumer_worker
+            }
+        };
 
         let tcp_transport = node_manager
             .clone()
@@ -487,9 +499,9 @@ impl NodeManager {
 
         debug!("connected to {connection_instance:?}");
 
-        // Every piece of the chain must be part of the session to allow communication
-        for service in intermediary_services {
-            connection_instance.add_consumer(&service);
+        // make sure the service before flow control is a consumer
+        if let Some(address) = consumer_worker {
+            connection_instance.add_consumer(&address);
         }
 
         if connection.add_default_consumers {
