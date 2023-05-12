@@ -3555,7 +3555,7 @@ dependencies = [
  "ockam_transport_core",
  "rand",
  "serde",
- "socket2 0.5.2",
+ "socket2 0.5.3",
  "tokio",
  "tracing",
  "trybuild",
@@ -3589,7 +3589,7 @@ dependencies = [
  "ockam_node",
  "ockam_transport_core",
  "serde",
- "socket2 0.5.2",
+ "socket2 0.5.3",
  "tokio",
  "tracing",
 ]
@@ -4847,9 +4847,9 @@ dependencies = [
 
 [[package]]
 name = "socket2"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d283f86695ae989d1e18440a943880967156325ba025f05049946bff47bcc2b"
+checksum = "2538b18701741680e0322a2302176d3253a35388e2e62f172f64f4f16605f877"
 dependencies = [
  "libc",
  "windows-sys 0.48.0",
