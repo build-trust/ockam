@@ -10,9 +10,18 @@ use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType,
 use ockam_identity::{IdentityChangeConstants, KeyAttributes};
 
 use crate::util::node_rpc;
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 
+const LONG_ABOUT: &str = include_str!("./static/attach_key/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/attach_key/after_long_help.txt");
+
+/// Attach key to vault
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
+
 pub struct AttachKeyCommand {
     /// Name of the vault to attach the key to
     vault: String,

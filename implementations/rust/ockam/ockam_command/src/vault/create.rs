@@ -7,9 +7,17 @@ use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::util::node_rpc;
-use crate::{fmt_info, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_info, fmt_ok, CommandGlobalOpts};
 
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
+/// Create a new vault
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct CreateCommand {
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     name: String,
