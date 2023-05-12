@@ -132,12 +132,6 @@ impl NodeManagerWorker {
             }
         };
 
-        // prefix services needs to be part of the session
-        // suffix services are remote so we can safely ignore them
-        for address in req.prefix_route().iter() {
-            connection_instance.add_consumer(address);
-        }
-
         let outlet_route = route![
             req.prefix_route().clone(),
             outlet_route,
@@ -544,10 +538,6 @@ fn replacer(
                     NodeManager::connect(node_manager_arc.clone(), connection).await?;
 
                 *connection_instance_arc.lock().unwrap() = new_connection_instance.clone();
-
-                for address in prefix_route.iter() {
-                    new_connection_instance.add_consumer(address);
-                }
 
                 //we expect a fully normalized MultiAddr
                 let normalized_route = route![
