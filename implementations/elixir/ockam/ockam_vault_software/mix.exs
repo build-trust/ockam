@@ -1,11 +1,11 @@
 defmodule Ockam.Vault.Software.MixProject do
   use Mix.Project
 
-  @version "0.86.0"
+  @version "0.87.0"
 
   @elixir_requirement "~> 1.12"
 
-  @ockam_release_url "https://github.com/metaclips/ockam/releases"
+  @ockam_release_url "https://github.com/build-trust/ockam/releases"
 
   @download_libs [
     {"ockam.linux_x86_64_gnu_elixir_ffi.so",
