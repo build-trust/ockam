@@ -1,8 +1,8 @@
 use crate::channel_types;
 use crate::channel_types::{SmallReceiver, SmallSender};
+use core::time::Duration;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
-use std::time::Duration;
 
 /// The receiving side of a callback
 pub struct CallbackReceiver<T> {

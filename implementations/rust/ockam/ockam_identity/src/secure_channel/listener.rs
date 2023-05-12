@@ -16,7 +16,7 @@ pub(crate) struct IdentityChannelListener {
 }
 
 impl IdentityChannelListener {
-    pub fn new(
+    fn new(
         secure_channels: Arc<SecureChannels>,
         identifier: IdentityIdentifier,
         options: SecureChannelListenerOptions,
