@@ -1,14 +1,15 @@
 use crate::credential::Credential;
+use crate::secure_channel::completer::ExchangeCompleter;
 use crate::secure_channel::decryptor_worker::DecryptorWorker;
-use crate::secure_channel::Addresses;
-use crate::{IdentityIdentifier, TrustContext, TrustPolicy};
+use crate::secure_channel::{Addresses, Role};
+use crate::{Identity, IdentityIdentifier, TrustContext, TrustPolicy};
 use ockam_core::vault::Signature;
-use ockam_core::{KeyExchanger, Route};
+use ockam_core::{CompletedKeyExchange, KeyExchanger, Route};
 use std::sync::Arc;
 
 pub(super) struct SendPacket1 {
     pub(super) key_exchanger: Box<dyn KeyExchanger>,
-    pub(super) identifier: IdentityIdentifier,
+    pub(super) identity_identifier: IdentityIdentifier,
     pub(super) addresses: Addresses,
     pub(super) remote_route: Route,
     pub(super) credentials: Vec<Credential>,
@@ -23,7 +24,7 @@ impl SendPacket1 {
     pub(super) fn next_state(self) -> ReceivePacket2 {
         ReceivePacket2 {
             key_exchanger: self.key_exchanger,
-            identifier: self.identifier,
+            identity_identifier: self.identity_identifier,
             addresses: self.addresses,
             remote_route: self.remote_route,
             credentials: self.credentials,
@@ -36,13 +37,36 @@ impl SendPacket1 {
 
 pub(super) struct ReceivePacket2 {
     pub(super) key_exchanger: Box<dyn KeyExchanger>,
-    pub(super) identifier: IdentityIdentifier,
+    pub(super) identity_identifier: IdentityIdentifier,
     pub(super) addresses: Addresses,
     pub(super) remote_route: Route,
     pub(super) credentials: Vec<Credential>,
     pub(super) signature: Signature,
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+}
+
+impl ReceivePacket2 {
+    pub(crate) fn into_completer(
+        self,
+        keys: CompletedKeyExchange,
+        their_identity: Identity,
+        their_signature: Signature,
+        their_credentials: Vec<Credential>,
+    ) -> ExchangeCompleter {
+        ExchangeCompleter {
+            role: Role::Initiator,
+            identity_identifier: self.identity_identifier,
+            keys,
+            their_identity,
+            their_signature,
+            their_credentials,
+            addresses: self.addresses,
+            remote_route: self.remote_route,
+            trust_context: self.trust_context,
+            trust_policy: self.trust_policy,
+        }
+    }
 }
 
 pub(super) enum State {
@@ -64,7 +88,7 @@ impl State {
         signature: Signature,
     ) -> Self {
         Self::SendPacket1(SendPacket1 {
-            identifier,
+            identity_identifier: identifier,
             signature,
             addresses,
             remote_route,

@@ -16,35 +16,34 @@ use ockam_node::{Context, WorkerBuilder};
 use std::sync::Arc;
 use tracing::info;
 
-pub(crate) struct Finalizer {
-    pub(crate) secure_channels: Arc<SecureChannels>,
-    pub(crate) signature: Signature,
-    pub(crate) identifier: IdentityIdentifier,
-    pub(crate) their_identity: Identity,
+pub(crate) struct ExchangeCompleter {
+    pub(crate) role: Role,
+    pub(crate) identity_identifier: IdentityIdentifier,
     pub(crate) keys: CompletedKeyExchange,
-    pub(crate) credentials: Vec<Credential>,
+    pub(crate) their_signature: Signature,
+    pub(crate) their_identity: Identity,
+    pub(crate) their_credentials: Vec<Credential>,
     pub(crate) addresses: Addresses,
     pub(crate) remote_route: Route,
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
 }
 
-impl Finalizer {
+impl ExchangeCompleter {
     /// Performs the last steps of the secure channel establishment
-    pub(crate) async fn finalize(
+    pub(crate) async fn complete(
         self,
         context: &mut Context,
-        role: Role,
+        secure_channels: Arc<SecureChannels>,
     ) -> ockam_core::Result<DecryptorWorker> {
         //verify the signature of the static key used during noise exchanges
         //actually matches the signature of the identity
-        let signature_verified = self
-            .secure_channels
+        let signature_verified = secure_channels
             .identities
             .identities_keys()
             .verify_signature(
                 &self.their_identity,
-                &self.signature,
+                &self.their_signature,
                 self.keys.public_static_key().data(),
                 None,
             )
@@ -67,9 +66,8 @@ impl Finalizer {
         );
 
         if let Some(trust_context) = self.trust_context {
-            for credential in self.credentials {
-                let result = self
-                    .secure_channels
+            for credential in self.their_credentials {
+                let result = secure_channels
                     .identities()
                     .receive_presented_credential(
                         &self.their_identity.identifier,
@@ -83,18 +81,18 @@ impl Finalizer {
                     return Err(IdentityError::SecureChannelVerificationFailed.into());
                 }
             }
-        } else if !self.credentials.is_empty() {
+        } else if !self.their_credentials.is_empty() {
             //we cannot validate credentials without a trust context
             return Err(IdentityError::SecureChannelVerificationFailed.into());
         }
 
         //decryptor worker
         let decryptor = DecryptorWorker::new(
-            role.str(),
+            self.role.str(),
             self.addresses.clone(),
             Decryptor::new(
                 self.keys.decrypt_key().clone(),
-                to_xx_initialized(self.secure_channels.identities.vault()),
+                to_xx_initialized(secure_channels.identities.vault()),
             ),
             self.their_identity.identifier(),
         );
@@ -102,13 +100,13 @@ impl Finalizer {
         //encryptor worker
         {
             let encryptor = EncryptorWorker::new(
-                role.str(),
+                self.role.str(),
                 self.addresses.clone(),
                 self.remote_route.clone(),
                 Encryptor::new(
                     self.keys.encrypt_key().clone(),
                     0,
-                    to_xx_initialized(self.secure_channels.identities.vault()),
+                    to_xx_initialized(secure_channels.identities.vault()),
                 ),
             );
 
@@ -134,7 +132,7 @@ impl Finalizer {
 
         info!(
             "Initialized SecureChannel {} at local: {}, remote: {}",
-            role.str(),
+            self.role.str(),
             &self.addresses.encryptor,
             &self.addresses.decryptor_remote
         );
@@ -144,12 +142,12 @@ impl Finalizer {
             self.addresses.encryptor_api.clone(),
             self.addresses.decryptor_remote.clone(),
             self.addresses.decryptor_api.clone(),
-            role.is_initiator(),
-            self.identifier,
+            self.role.is_initiator(),
+            self.identity_identifier,
             self.their_identity.identifier(),
         );
 
-        self.secure_channels
+        secure_channels
             .secure_channel_registry()
             .register_channel(info)?;
 

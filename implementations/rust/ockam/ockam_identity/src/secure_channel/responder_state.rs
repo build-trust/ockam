@@ -1,9 +1,10 @@
 use crate::credential::Credential;
+use crate::secure_channel::completer::ExchangeCompleter;
 use crate::secure_channel::decryptor_worker::DecryptorWorker;
-use crate::secure_channel::Addresses;
-use crate::{IdentityIdentifier, TrustContext, TrustPolicy};
+use crate::secure_channel::{Addresses, Role};
+use crate::{Identity, IdentityIdentifier, TrustContext, TrustPolicy};
 use ockam_core::vault::Signature;
-use ockam_core::{route, KeyExchanger, Route};
+use ockam_core::{route, CompletedKeyExchange, KeyExchanger, Route};
 use std::sync::Arc;
 
 pub(crate) struct DecodeMessage1 {
@@ -39,6 +40,29 @@ pub(crate) struct DecodeMessage3 {
     pub(crate) remote_route: Route,
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+}
+
+impl DecodeMessage3 {
+    pub(crate) fn into_completer(
+        self,
+        keys: CompletedKeyExchange,
+        their_identity: Identity,
+        their_signature: Signature,
+        their_credentials: Vec<Credential>,
+    ) -> ExchangeCompleter {
+        ExchangeCompleter {
+            role: Role::Responder,
+            identity_identifier: self.identity_identifier,
+            keys,
+            their_signature,
+            their_identity,
+            their_credentials,
+            addresses: self.addresses,
+            remote_route: self.remote_route,
+            trust_context: self.trust_context,
+            trust_policy: self.trust_policy,
+        }
+    }
 }
 
 pub(crate) enum State {
