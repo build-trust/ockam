@@ -1,11 +1,10 @@
 use crate::credential::Credential;
-use crate::secure_channel::finalizer::Finalizer;
 use crate::secure_channel::initiator_state::State;
 use crate::secure_channel::key_exchange_with_payload::KeyExchangeWithPayload;
 use crate::secure_channel::packets::{
     EncodedPublicIdentity, FirstPacket, IdentityAndCredential, SecondPacket, ThirdPacket,
 };
-use crate::secure_channel::{Addresses, Role};
+use crate::secure_channel::Addresses;
 use crate::{
     to_xx_vault, IdentityError, IdentityIdentifier, SecureChannels, TrustContext, TrustPolicy,
 };
@@ -106,7 +105,7 @@ impl Worker for InitiatorWorker {
                     .secure_channels
                     .identities
                     .identities_repository
-                    .get_identity(&state.identifier)
+                    .get_identity(&state.identity_identifier)
                     .await?;
 
                 let third_packet = ThirdPacket {
@@ -131,20 +130,15 @@ impl Worker for InitiatorWorker {
 
                 let keys = state.key_exchanger.finalize().await?;
 
-                let finalizer = Finalizer {
-                    secure_channels: self.secure_channels.clone(),
-                    signature: identity_and_credential.signature,
-                    identifier: state.identifier,
-                    their_identity: their_identity,
-                    keys,
-                    credentials: identity_and_credential.credentials,
-                    addresses: state.addresses,
-                    remote_route: state.remote_route,
-                    trust_context: state.trust_context,
-                    trust_policy: state.trust_policy,
-                };
-
-                let decryptor = finalizer.finalize(context, Role::Initiator).await?;
+                let decryptor = state
+                    .into_completer(
+                        keys,
+                        their_identity,
+                        identity_and_credential.signature,
+                        identity_and_credential.credentials,
+                    )
+                    .complete(context, self.secure_channels.clone())
+                    .await?;
 
                 // Notify interested worker about finished init
                 self.callback_sender.send(()).await?;
