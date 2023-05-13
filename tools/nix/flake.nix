@@ -22,6 +22,6 @@
 
       ockam.rust.suggestedCargoPlugins = true;
       # see /tools/docker/builder/Dockerfile
-      ockam.rust.version = "1.60.0";
+      ockam.rust.version = "1.68.0";
     };
 }
