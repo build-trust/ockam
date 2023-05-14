@@ -13,6 +13,7 @@ pub use options::*;
 use crate::remote::addresses::Addresses;
 use core::time::Duration;
 use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::Route;
 use ockam_node::DelayedEvent;
 
@@ -23,6 +24,7 @@ pub struct RemoteForwarder {
     completion_msg_sent: bool,
     registration_route: Route,
     registration_payload: String,
+    flow_control_id: Option<FlowControlId>,
     // We only use Heartbeat for static RemoteForwarder
     heartbeat: Option<DelayedEvent<Vec<u8>>>,
     heartbeat_interval: Duration,

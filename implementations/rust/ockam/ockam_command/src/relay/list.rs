@@ -37,11 +37,20 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -
         ));
     }
 
+    // TODO: Switch to the table?
     for relay_info in response.iter() {
         println!("Relay:");
         println!("  Relay Route: {}", relay_info.forwarding_route());
         println!("  Remote Address: {}", relay_info.remote_address_ma()?);
         println!("  Worker Address: {}", relay_info.worker_address_ma()?);
+        println!(
+            "  Flow Control Id: {}",
+            relay_info
+                .flow_control_id()
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("<none>".into())
+        );
     }
 
     Ok(())
