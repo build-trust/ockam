@@ -52,8 +52,8 @@ impl Display for TransportMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::Listen => "Listening",
-            Self::Incoming => "Incoming connection",
-            Self::Outgoing => "Outgoing connection",
+            Self::Incoming => "Incoming",
+            Self::Outgoing => "Outgoing",
         })
     }
 }

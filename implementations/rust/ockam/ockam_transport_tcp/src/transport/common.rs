@@ -10,6 +10,7 @@ use ockam_transport_core::TransportError;
 #[derive(Clone, Debug)]
 pub struct TcpConnection {
     sender_address: Address,
+    receiver_address: Address,
     socket_address: SocketAddr,
     mode: TcpConnectionMode,
     flow_control_id: FlowControlId,
@@ -19,8 +20,8 @@ impl fmt::Display for TcpConnection {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Socket: {}, Worker: {}, FlowId: {}",
-            self.socket_address, self.sender_address, self.flow_control_id
+            "Socket: {}, Worker: {}, Processor: {}, FlowId: {}",
+            self.socket_address, self.sender_address, self.receiver_address, self.flow_control_id
         )
     }
 }
@@ -35,21 +36,27 @@ impl TcpConnection {
     /// Constructor
     pub fn new(
         sender_address: Address,
+        receiver_address: Address,
         socket_address: SocketAddr,
         mode: TcpConnectionMode,
         flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             sender_address,
+            receiver_address,
             socket_address,
             mode,
             flow_control_id,
         }
     }
-    /// Corresponding [`TcpSendWorker`](super::workers::TcpSendWorker) [`Address`] that can be used in a route to send messages to the other
-    /// side of the TCP connection
+    /// Corresponding [`TcpSendWorker`](super::workers::TcpSendWorker) [`Address`] that can be used
+    /// in a route to send messages to the other side of the TCP connection
     pub fn sender_address(&self) -> &Address {
         &self.sender_address
+    }
+    /// Corresponding [`TcpReceiveProcessor`](super::workers::TcpRecvProcessor) [`Address`]
+    pub fn receiver_address(&self) -> &Address {
+        &self.receiver_address
     }
     /// Corresponding [`SocketAddr`]
     pub fn socket_address(&self) -> &SocketAddr {

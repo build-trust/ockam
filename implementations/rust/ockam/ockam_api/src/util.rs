@@ -425,6 +425,7 @@ pub mod test {
                     tm: crate::nodes::models::transport::TransportMode::Listen,
                     socket_address: "127.0.0.1:123".parse().unwrap(),
                     worker_address: "".into(),
+                    processor_address: "".into(),
                     flow_control_id: FlowControls::generate_id(), // FIXME
                 },
                 tcp.async_try_clone().await?,

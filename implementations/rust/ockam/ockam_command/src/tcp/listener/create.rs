@@ -3,11 +3,10 @@ use crate::util::Rpc;
 use crate::util::{node_rpc, parse_node_name};
 use crate::CommandGlobalOpts;
 use clap::Args;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::transport::CreateTcpListener;
 use ockam_core::api::Request;
-use ockam_multiaddr::proto::{DnsAddr, Service, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
 
 #[derive(Args, Clone, Debug)]
@@ -36,20 +35,12 @@ async fn run_impl(
         .await?;
     let response = rpc.parse_response::<models::transport::TransportStatus>()?;
 
-    let port = opts
-        .state
-        .nodes
-        .get(&node_name)?
-        .config()
-        .setup()
-        .default_tcp_listener()?
-        .addr
-        .port();
+    let socket = response.socket_addr()?;
+    let port = socket.port();
     let mut multiaddr = MultiAddr::default();
     multiaddr.push_back(DnsAddr::new("localhost"))?;
     multiaddr.push_back(Tcp::new(port))?;
-    multiaddr.push_back(Service::new(response.worker_addr.to_string()))?;
-    println!("Tcp listener created! You can send messages to it via this route:\n`{multiaddr}`",);
+    println!("Tcp listener created! You can send messages to it via this route:\n`{multiaddr}`");
 
     Ok(())
 }

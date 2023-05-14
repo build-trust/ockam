@@ -37,7 +37,7 @@ async fn run_impl(
     Ok(())
 }
 
-pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<()> {
+pub async fn list_listeners(list: &[TransportStatus]) -> crate::Result<()> {
     let table = list
         .iter()
         .fold(
@@ -47,7 +47,7 @@ pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<(
                  tt,
                  tm,
                  socket_addr,
-                 worker_addr,
+                 processor_address,
                  flow_control_id,
                  ..
              }| {
@@ -55,7 +55,7 @@ pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<(
                     tt.cell(),
                     tm.cell(),
                     socket_addr.cell(),
-                    worker_addr.cell(),
+                    processor_address.cell(),
                     flow_control_id.cell(),
                 ];
                 acc.push(row);
@@ -64,7 +64,7 @@ pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<(
         )
         .table()
         .title(vec![
-            "Transport Type".cell().bold(true),
+            "Type".cell().bold(true),
             "Mode".cell().bold(true),
             "Address bind".cell().bold(true),
             "Worker address".cell().bold(true),
