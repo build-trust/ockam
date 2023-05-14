@@ -3,6 +3,7 @@ use minicbor::{Decode, Encode};
 use ockam::identity::IdentityIdentifier;
 use ockam::remote::RemoteForwarderInfo;
 use ockam::route;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::CowStr;
 use ockam_multiaddr::MultiAddr;
 
@@ -87,6 +88,7 @@ pub struct ForwarderInfo<'a> {
     #[b(1)] forwarding_route: CowStr<'a>,
     #[b(2)] remote_address: CowStr<'a>,
     #[b(3)] worker_address: CowStr<'a>,
+    #[n(4)] flow_control_id: Option<FlowControlId>,
 }
 
 impl<'a> ForwarderInfo<'a> {
@@ -96,6 +98,10 @@ impl<'a> ForwarderInfo<'a> {
 
     pub fn remote_address(&'a self) -> &'a str {
         &self.remote_address
+    }
+
+    pub fn flow_control_id(&'a self) -> &Option<FlowControlId> {
+        &self.flow_control_id
     }
 
     pub fn remote_address_ma(&'a self) -> Result<MultiAddr, ockam_core::Error> {
@@ -117,6 +123,7 @@ impl<'a> From<RemoteForwarderInfo> for ForwarderInfo<'a> {
             forwarding_route: inner.forwarding_route().to_string().into(),
             remote_address: inner.remote_address().to_string().into(),
             worker_address: inner.worker_address().to_string().into(),
+            flow_control_id: inner.flow_control_id().clone(),
         }
     }
 }

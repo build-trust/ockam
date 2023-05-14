@@ -6,6 +6,7 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     route, Address, AllowAll, AllowSourceAddress, DenyAll, Mailbox, Mailboxes,
     OutgoingAccessControl, Result, Route,
@@ -68,6 +69,7 @@ impl RemoteForwarder {
         addresses: Addresses,
         registration_route: Route,
         registration_payload: String,
+        flow_control_id: Option<FlowControlId>,
         heartbeat: Option<DelayedEvent<Vec<u8>>>,
         heartbeat_interval: Duration,
     ) -> Self {
@@ -76,6 +78,7 @@ impl RemoteForwarder {
             completion_msg_sent: false,
             registration_route,
             registration_payload,
+            flow_control_id,
             heartbeat,
             heartbeat_interval,
         }
@@ -106,12 +109,13 @@ impl RemoteForwarder {
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);
         let outgoing_access_control =
-            options.create_access_control(ctx.flow_controls(), flow_control_id);
+            options.create_access_control(ctx.flow_controls(), flow_control_id.clone());
 
         let forwarder = Self::new(
             addresses.clone(),
             registration_route,
             alias.into(),
+            flow_control_id,
             Some(heartbeat),
             Duration::from_secs(5),
         );
@@ -155,12 +159,13 @@ impl RemoteForwarder {
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);
         let outgoing_access_control =
-            options.create_access_control(ctx.flow_controls(), flow_control_id);
+            options.create_access_control(ctx.flow_controls(), flow_control_id.clone());
 
         let forwarder = Self::new(
             addresses.clone(),
             registration_route,
             "register".to_string(),
+            flow_control_id,
             None,
             Duration::from_secs(10),
         );
@@ -204,12 +209,13 @@ impl RemoteForwarder {
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);
         let outgoing_access_control =
-            options.create_access_control(ctx.flow_controls(), flow_control_id);
+            options.create_access_control(ctx.flow_controls(), flow_control_id.clone());
 
         let forwarder = Self::new(
             addresses.clone(),
             registration_route,
             alias.into(),
+            flow_control_id,
             None,
             Duration::from_secs(10),
         );

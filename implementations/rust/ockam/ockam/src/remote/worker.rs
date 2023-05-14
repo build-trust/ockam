@@ -75,11 +75,12 @@ impl Worker for RemoteForwarder {
 
                         ctx.send_from_address(
                             self.addresses.completion_callback.clone(),
-                            RemoteForwarderInfo {
-                                forwarding_route: return_route,
-                                remote_address: address,
-                                worker_address: ctx.address(),
-                            },
+                            RemoteForwarderInfo::new(
+                                return_route,
+                                address,
+                                self.addresses.main_remote.clone(),
+                                self.flow_control_id.clone(),
+                            ),
                             self.addresses.main_remote.clone(),
                         )
                         .await?;
