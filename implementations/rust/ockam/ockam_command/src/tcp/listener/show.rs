@@ -38,7 +38,7 @@ async fn run_impl(
     println!("  Type: {}", res.tt);
     println!("  Mode: {}", res.tm);
     println!("  Socket address: {}", res.socket_addr);
-    println!("  Worker address: {}", res.worker_addr);
+    println!("  Worker address: {}", res.processor_address);
     println!("  Flow Control Id: {}", res.flow_control_id);
 
     Ok(())

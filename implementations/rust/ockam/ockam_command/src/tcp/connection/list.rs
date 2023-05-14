@@ -40,6 +40,7 @@ async fn run_impl(
                  tm,
                  socket_addr,
                  worker_addr,
+                 processor_address,
                  flow_control_id,
                  ..
              }| {
@@ -48,6 +49,7 @@ async fn run_impl(
                     tm.cell(),
                     socket_addr.cell(),
                     worker_addr.cell(),
+                    processor_address.cell(),
                     flow_control_id.cell(),
                 ];
                 acc.push(row);
@@ -56,10 +58,11 @@ async fn run_impl(
         )
         .table()
         .title(vec![
-            "Transport Type".cell().bold(true),
+            "Type".cell().bold(true),
             "Mode".cell().bold(true),
             "Socket address".cell().bold(true),
             "Worker address".cell().bold(true),
+            "Processor address".cell().bold(true),
             "Flow Control Id".cell().bold(true),
         ]);
 

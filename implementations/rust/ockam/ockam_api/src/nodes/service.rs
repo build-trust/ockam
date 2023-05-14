@@ -264,7 +264,9 @@ pub struct ApiTransport {
     /// Socket address
     pub socket_address: SocketAddr,
     /// Worker address
-    pub worker_address: Address,
+    pub worker_address: String,
+    /// Processor address
+    pub processor_address: String,
     /// FlowControlId
     pub flow_control_id: FlowControlId,
 }
