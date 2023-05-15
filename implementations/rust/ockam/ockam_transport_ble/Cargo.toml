@@ -95,7 +95,7 @@ tracing = { version = "0.1", default_features = false }
 
 # Target os: TODO move this into its own "Ockam Addon" crate
 btleplug = { version = "0.10.5", optional = true }
-uuid = { version = "1.3.2", optional = true }
+uuid = { version = "1.3.3", optional = true }
 
 # Target baremetal: TODO move this into its own "Ockam Addon" crate
 bluenrg = { version = "0.1.0", default-features = false, features = ["ms"], optional = true }
