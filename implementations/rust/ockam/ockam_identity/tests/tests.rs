@@ -1,5 +1,3 @@
-use rand::{thread_rng, RngCore};
-
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_identity::identities;

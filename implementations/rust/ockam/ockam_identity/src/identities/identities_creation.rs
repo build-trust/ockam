@@ -82,20 +82,6 @@ impl IdentitiesCreation {
         Ok(IdentityIdentifier::from_key_id(&key_id))
     }
 
-    /// Make a new identity with its key and attributes
-    pub(super) async fn make_identity(
-        &self,
-        key_id: Option<&KeyId>,
-        key_attributes: KeyAttributes,
-    ) -> Result<Identity> {
-        let identity_keys = IdentitiesKeys::new(self.vault.clone());
-        let change_history = identity_keys
-            .create_initial_key(key_id, key_attributes.clone())
-            .await?;
-        let identifier = self.compute_identity_identifier(&change_history).await?;
-        Ok(Identity::new(identifier, change_history))
-    }
-
     /// Create an `Identity` with a key previously created in the Vault. Extended version
     pub async fn create_identity_with_existing_key(
         &self,
