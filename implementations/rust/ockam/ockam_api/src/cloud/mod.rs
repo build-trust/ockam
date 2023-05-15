@@ -167,10 +167,10 @@ mod node {
             T: Encode<()>,
         {
             let identity_name = ident.map(|i| i.to_string()).clone();
-            let identity = {
+            let identifier = {
                 let node_manager = self.get().read().await;
                 node_manager
-                    .get_identity(None, identity_name.clone())
+                    .get_identifier(None, identity_name.clone())
                     .await?
             };
 
@@ -201,7 +201,7 @@ mod node {
                 ))
                 .as_consumer(&node_manager.flow_controls);
                 let sc_address = secure_channels
-                    .create_secure_channel(ctx, &identity.identifier(), cloud_route.route, options)
+                    .create_secure_channel(ctx, &identifier, cloud_route.route, options)
                     .await?;
 
                 (

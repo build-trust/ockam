@@ -1,6 +1,24 @@
 use std::time::Duration;
 
-use super::{map_multiaddr_err, NodeManagerWorker};
+use minicbor::Decoder;
+
+use ockam::identity::TrustEveryonePolicy;
+use ockam::identity::{
+    Identities, IdentitiesVault, IdentityIdentifier, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
+};
+use ockam::{Address, Result, Route};
+use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::compat::sync::Arc;
+use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::route;
+use ockam_multiaddr::MultiAddr;
+use ockam_node::{Context, MessageSendReceiveOptions};
+
+use crate::cli_state::traits::StateDirTrait;
+use crate::cli_state::{CliStateError, StateItemTrait};
+use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
+use crate::nodes::connection::Connection;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
     CredentialExchangeMode, DeleteSecureChannelListenerRequest,
@@ -9,33 +27,17 @@ use crate::nodes::models::secure_channel::{
     ShowSecureChannelResponse,
 };
 use crate::nodes::registry::{Registry, SecureChannelListenerInfo};
-use crate::nodes::NodeManager;
-use crate::{multiaddr_to_route, DefaultAddress};
-use minicbor::Decoder;
-use ockam::identity::TrustEveryonePolicy;
-use ockam::{Address, Result, Route};
-use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
-use ockam_core::route;
-
-use crate::cli_state::traits::StateDirTrait;
-use crate::cli_state::{CliStateError, StateItemTrait};
-use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
-use crate::nodes::connection::Connection;
 use crate::nodes::service::invalid_multiaddr_error;
 use crate::nodes::service::NodeIdentities;
-use ockam::identity::{
-    Identities, IdentitiesVault, Identity, IdentityIdentifier, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
-};
-use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use crate::nodes::NodeManager;
+use crate::{multiaddr_to_route, DefaultAddress};
+
+use super::{map_multiaddr_err, NodeManagerWorker};
 
 impl NodeManager {
     pub(crate) async fn create_secure_channel_internal(
         &mut self,
-        identity: &Identity,
+        identifier: &IdentityIdentifier,
         ctx: &Context,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
@@ -73,13 +75,7 @@ impl NodeManager {
 
         let sc_addr = self
             .secure_channels
-            .create_secure_channel_extended(
-                ctx,
-                &identity.identifier(),
-                sc_route.clone(),
-                options,
-                timeout,
-            )
+            .create_secure_channel_extended(ctx, identifier, sc_route.clone(), options, timeout)
             .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
@@ -105,7 +101,7 @@ impl NodeManager {
         ctx: &Context,
         credential_name: Option<String>,
     ) -> Result<(Address, FlowControlId)> {
-        let identity = self.get_identity(None, identity_name.clone()).await?;
+        let identifier = self.get_identifier(None, identity_name.clone()).await?;
         let provided_credential = if let Some(credential_name) = credential_name {
             Some(
                 self.cli_state
@@ -120,7 +116,7 @@ impl NodeManager {
 
         let (sc_addr, sc_flow_control_id) = self
             .create_secure_channel_internal(
-                &identity,
+                &identifier,
                 ctx,
                 sc_route,
                 authorized_identifiers,
@@ -149,7 +145,7 @@ impl NodeManager {
                     None => {
                         self.trust_context()?
                             .authority()?
-                            .credential(ctx, &identity.identifier())
+                            .credential(ctx, &identifier)
                             .await?
                     }
                 };
@@ -171,7 +167,7 @@ impl NodeManager {
                     None => {
                         self.trust_context()?
                             .authority()?
-                            .credential(ctx, &identity.identifier())
+                            .credential(ctx, &identifier)
                             .await?
                     }
                 };
@@ -209,8 +205,8 @@ impl NodeManager {
         let secure_channels = self
             .get_secure_channels(vault_name.clone(), identity_name.clone())
             .await?;
-        let identity = self
-            .get_identity(vault_name.clone(), identity_name.clone())
+        let identifier = self
+            .get_identifier(vault_name.clone(), identity_name.clone())
             .await?;
 
         let flow_control_id = self.flow_controls.generate_id();
@@ -223,7 +219,7 @@ impl NodeManager {
         };
 
         secure_channels
-            .create_secure_channel_listener(ctx, &identity.identifier(), address.clone(), options)
+            .create_secure_channel_listener(ctx, &identifier, address.clone(), options)
             .await?;
 
         self.registry.secure_channel_listeners.insert(
@@ -287,23 +283,23 @@ impl NodeManager {
         NodeIdentities::new(self.identities(), self.cli_state.clone())
     }
 
-    pub(crate) async fn get_identity(
+    pub(crate) async fn get_identifier(
         &self,
         vault_name: Option<String>,
         identity_name: Option<String>,
-    ) -> Result<Identity> {
+    ) -> Result<IdentityIdentifier> {
         if let Some(name) = identity_name {
             if let Some(identity) = self
                 .node_identities()
                 .get_identity(name.clone(), vault_name)
                 .await?
             {
-                Ok(identity)
+                Ok(identity.identifier())
             } else {
                 Err(CliStateError::NotFound.into())
             }
         } else {
-            self.identity().await
+            Ok(self.identifier())
         }
     }
 
