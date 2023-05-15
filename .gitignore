@@ -18,3 +18,5 @@ cmake_install.cmake
 target
 vendor
 .cargo
+# nix build
+/result*
