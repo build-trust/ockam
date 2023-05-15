@@ -1,24 +1,24 @@
-use crate::secure_channel::state_machine::Action::*;
-use crate::secure_channel::state_machine::Event::*;
-use crate::secure_channel::state_machine::{
-    Action, EncodedPublicIdentity, Event, IdentityAndCredential, State, StateMachine,
+use crate::secure_channel::handshake::handshake_state::Handshake;
+use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
+use crate::secure_channel::handshake::handshake_state_machine::Event::ReceivedMessage;
+use crate::secure_channel::handshake::handshake_state_machine::{
+    Action, EncodedPublicIdentity, Event, IdentityAndCredential, StateMachine,
 };
 use crate::{Credential, Identities, Identity, TrustContext, TrustPolicy};
 use delegate::delegate;
+use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::{KeyId, PublicKey, SecretType, Signature, CURVE25519_PUBLIC_LENGTH_USIZE};
 use ockam_core::{CompletedKeyExchange, Error, Result};
 use ockam_key_exchange_xx::{XXVault, AES_GCM_TAGSIZE_USIZE};
+use Event::*;
 use InitiatorStatus::*;
 
-pub(super) struct InitiatorStateMachine {
-    pub(super) state_machine: StateMachine<InitiatorStatus>,
-}
-
-impl InitiatorStateMachine {
-    pub async fn on_event(&mut self, event: Event) -> Result<Action> {
-        let mut state = self.state_machine.state.clone();
+#[async_trait]
+impl StateMachine for InitiatorStateMachine {
+    async fn on_event(&mut self, event: Event) -> Result<Action> {
+        let mut state = self.handshake.state.clone();
         match (state.status, event) {
             (Initial, Initialize) => {
                 // 1. Generate a static key pair for this handshake and set it to `s`
@@ -52,12 +52,12 @@ impl InitiatorStateMachine {
                 state.h = self.mix_hash(&state.h, payload.as_ref());
 
                 // Set the new status and return the action
-                state.status = WaitingForMessage;
-                self.state_machine.state = state;
+                state.status = WaitingForMessage2;
+                self.handshake.state = state;
                 Ok(SendMessage(output))
             }
-            //
-            (WaitingForMessage, ReceivedMessage(message)) => {
+            // Process the message sent by the responder and send the last message
+            (WaitingForMessage2, ReceivedMessage(message)) => {
                 // -------
                 // RECEIVE
                 // -------
@@ -177,7 +177,7 @@ impl InitiatorStateMachine {
                     their_identity,
                     keys: CompletedKeyExchange::new(state.h, k2, k1),
                 };
-                self.state_machine.state = state;
+                self.handshake.state = state;
                 Ok(SendMessage(c))
             }
             // incorrect state / event
@@ -192,8 +192,8 @@ impl InitiatorStateMachine {
         }
     }
 
-    pub(super) fn ready(&self) -> Option<(Identity, CompletedKeyExchange)> {
-        match self.state_machine.state.status.clone() {
+    fn get_final_state(&self) -> Option<(Identity, CompletedKeyExchange)> {
+        match self.handshake.state.status.clone() {
             Ready {
                 their_identity,
                 keys,
@@ -203,9 +203,13 @@ impl InitiatorStateMachine {
     }
 }
 
+pub(super) struct InitiatorStateMachine {
+    pub(super) handshake: Handshake<InitiatorStatus>,
+}
+
 impl InitiatorStateMachine {
     delegate! {
-        to self.state_machine {
+        to self.handshake {
             async fn generate_static_key(&self) -> Result<KeyId>;
             async fn generate_ephemeral_key(&self) -> Result<KeyId>;
             async fn create_ephemeral_secret(&self, content: Vec<u8>) -> Result<KeyId>;
@@ -239,14 +243,14 @@ impl InitiatorStateMachine {
         trust_context: Option<TrustContext>,
     ) -> InitiatorStateMachine {
         InitiatorStateMachine {
-            state_machine: StateMachine::new(
+            handshake: Handshake::new(
                 vault,
                 identities,
                 identity,
                 credentials,
                 trust_policy,
                 trust_context,
-                State::new(Initial),
+                Initial,
             ),
         }
     }
@@ -255,7 +259,7 @@ impl InitiatorStateMachine {
 #[derive(Debug, Clone)]
 pub enum InitiatorStatus {
     Initial,
-    WaitingForMessage,
+    WaitingForMessage2,
     Ready {
         their_identity: Identity,
         keys: CompletedKeyExchange,

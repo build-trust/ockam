@@ -1,3 +1,4 @@
+use crate::secure_channel::handshake::handshake_state_machine::EncodedPublicIdentity;
 use crate::{
     Credential, Credentials, Identities, IdentitiesKeys, Identity, IdentityError,
     SecureChannelTrustInfo, TrustContext, TrustPolicy,
@@ -8,13 +9,12 @@ use ockam_core::vault::{
     KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
     Signature, AES256_SECRET_LENGTH_U32, CURVE25519_SECRET_LENGTH_U32,
 };
-use ockam_core::{Message, Result};
+use ockam_core::Result;
 use ockam_key_exchange_xx::{XXError, XXVault, SHA256_SIZE_U32, SHA256_SIZE_USIZE};
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::info;
 
-pub struct StateMachine<T> {
+pub struct Handshake<T> {
     vault: Arc<dyn XXVault>,
     identities: Arc<Identities>,
     identity: Identity,
@@ -24,7 +24,7 @@ pub struct StateMachine<T> {
     pub(super) state: State<T>,
 }
 
-impl<T> StateMachine<T> {
+impl<T> Handshake<T> {
     pub(super) fn new(
         vault: Arc<dyn XXVault>,
         identities: Arc<Identities>,
@@ -32,16 +32,16 @@ impl<T> StateMachine<T> {
         credentials: Vec<Credential>,
         trust_policy: Arc<dyn TrustPolicy>,
         trust_context: Option<TrustContext>,
-        state: State<T>,
-    ) -> StateMachine<T> {
-        StateMachine {
+        status: T,
+    ) -> Handshake<T> {
+        Handshake {
             vault,
             identities,
             identity,
             credentials,
             trust_policy,
             trust_context,
-            state,
+            state: State::new(status),
         }
     }
 
@@ -303,40 +303,5 @@ impl<T> State<T> {
             prologue: vec![],
             status,
         }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Event {
-    Initialize,
-    ReceivedMessage(Vec<u8>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Action {
-    NoAction,
-    SendMessage(Vec<u8>),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Message)]
-pub(super) struct IdentityAndCredential {
-    pub(super) identity: EncodedPublicIdentity,
-    // The signature guarantees that the other end has access to the private key of the identity
-    // The signature refers to the static key of the noise ('x') and is made with the static
-    // key of the identity
-    pub(super) signature: Signature,
-    pub(super) credentials: Vec<Credential>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Message)]
-pub(super) struct EncodedPublicIdentity {
-    pub(super) encoded: Vec<u8>,
-}
-
-impl EncodedPublicIdentity {
-    pub(super) fn from(public_identity: &Identity) -> Result<Self> {
-        Ok(Self {
-            encoded: public_identity.export()?,
-        })
     }
 }

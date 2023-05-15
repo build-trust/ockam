@@ -7,17 +7,12 @@ mod decryptor;
 mod decryptor_worker;
 mod encryptor;
 mod encryptor_worker;
-mod finalizer;
-mod initiator_state_machine;
-pub(crate) mod initiator_worker;
+mod handshake;
 mod listener;
 mod local_info;
 mod nonce_tracker;
 mod options;
 mod registry;
-mod responder_state_machine;
-mod responder_worker;
-mod state_machine;
 /// List of trust policies to setup ABAC controls
 pub mod trust_policy;
 
@@ -25,7 +20,7 @@ pub use access_control::*;
 pub(crate) use addresses::*;
 pub use api::*;
 pub(crate) use common::*;
-// pub(crate) use decryptor_worker::*;
+pub(crate) use handshake::*;
 pub(crate) use listener::*;
 pub use local_info::*;
 pub use options::*;

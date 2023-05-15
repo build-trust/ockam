@@ -1,7 +1,7 @@
 use crate::identities::Identities;
 use crate::identities::IdentitiesVault;
 use crate::identity::{Identity, IdentityError};
-use crate::secure_channel::initiator_worker::InitiatorWorker;
+use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannelRegistry,
@@ -92,7 +92,7 @@ impl SecureChannels {
         options.setup_flow_control(&addresses, next)?;
         let access_control = options.create_access_control();
 
-        InitiatorWorker::create(
+        HandshakeWorker::create(
             ctx,
             Arc::new(self.clone()),
             addresses,
@@ -101,8 +101,9 @@ impl SecureChannels {
             access_control.decryptor_outgoing_access_control,
             options.credentials,
             options.trust_context,
-            route,
-            options.timeout,
+            Some(route),
+            Some(options.timeout),
+            Role::Initiator,
         )
         .await
     }

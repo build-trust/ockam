@@ -1,7 +1,11 @@
-use crate::secure_channel::state_machine::{
-    Action, EncodedPublicIdentity, Event, IdentityAndCredential, State, StateMachine,
+use crate::secure_channel::handshake::handshake_state::Handshake;
+use crate::secure_channel::handshake::handshake_state_machine::Action::NoAction;
+use crate::secure_channel::handshake::handshake_state_machine::Event::ReceivedMessage;
+use crate::secure_channel::handshake::handshake_state_machine::{
+    Action, EncodedPublicIdentity, Event, IdentityAndCredential, StateMachine,
 };
 use crate::{Credential, Identities, Identity, TrustContext, TrustPolicy};
+use async_trait::async_trait;
 use delegate::delegate;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -12,12 +16,9 @@ use Action::*;
 use Event::*;
 use ResponderStatus::*;
 
-pub struct ResponderStateMachine {
-    state_machine: StateMachine<ResponderStatus>,
-}
-
-impl ResponderStateMachine {
-    pub async fn on_event(&mut self, event: Event) -> Result<Action> {
+#[async_trait]
+impl StateMachine for ResponderStateMachine {
+    async fn on_event(&mut self, event: Event) -> Result<Action> {
         let mut state = self.state_machine.state.clone();
         match (state.status, event) {
             (Initial, Initialize) => {
@@ -193,7 +194,7 @@ impl ResponderStateMachine {
         }
     }
 
-    pub(super) fn ready(&self) -> Option<(Identity, CompletedKeyExchange)> {
+    fn get_final_state(&self) -> Option<(Identity, CompletedKeyExchange)> {
         match self.state_machine.state.status.clone() {
             Ready {
                 their_identity,
@@ -202,6 +203,10 @@ impl ResponderStateMachine {
             _ => None,
         }
     }
+}
+
+pub struct ResponderStateMachine {
+    state_machine: Handshake<ResponderStatus>,
 }
 
 impl ResponderStateMachine {
@@ -240,14 +245,14 @@ impl ResponderStateMachine {
         trust_context: Option<TrustContext>,
     ) -> ResponderStateMachine {
         ResponderStateMachine {
-            state_machine: StateMachine::new(
+            state_machine: Handshake::new(
                 vault,
                 identities,
                 identity,
                 credentials,
                 trust_policy,
                 trust_context,
-                State::new(Initial),
+                Initial,
             ),
         }
     }
