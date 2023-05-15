@@ -26,7 +26,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone, LOCAL};
-use ockam_identity::{Identity, TrustContext};
+use ockam_identity::TrustContext;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
@@ -106,12 +106,6 @@ pub struct NodeManager {
 }
 
 impl NodeManager {
-    pub(super) async fn identity(&self) -> Result<Identity> {
-        self.identities_repository()
-            .get_identity(&self.identifier())
-            .await
-    }
-
     pub(super) fn identifier(&self) -> IdentityIdentifier {
         self.identifier.clone()
     }

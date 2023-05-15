@@ -29,24 +29,24 @@ impl NodeManagerWorker {
         let node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 
-        let identity = if let Some(identity) = &request.identity_name {
+        let identifier = if let Some(identity) = &request.identity_name {
             let idt_state = node_manager.cli_state.identities.get(identity)?;
             match idt_state.get(node_manager.identities_vault()).await {
-                Ok(idt) => Arc::new(idt),
+                Ok(idt) => idt.identifier(),
                 Err(_) => {
                     let default_vault = &node_manager.cli_state.vaults.default()?.get().await?;
                     let vault: Arc<dyn IdentitiesVault> = Arc::new(default_vault.clone());
-                    Arc::new(idt_state.get(vault).await?)
+                    idt_state.get(vault).await?.identifier()
                 }
             }
         } else {
-            Arc::new(node_manager.identity().await?)
+            node_manager.identifier()
         };
 
         if let Ok(c) = node_manager
             .trust_context()?
             .authority()?
-            .credential(ctx, &identity.identifier())
+            .credential(ctx, &identifier)
             .await
         {
             Ok(Either::Right(Response::ok(req.id()).body(c)))
