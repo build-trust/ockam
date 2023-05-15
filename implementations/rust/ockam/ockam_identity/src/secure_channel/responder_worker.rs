@@ -1,25 +1,25 @@
 use crate::credential::Credential;
+use crate::secure_channel::decryptor_worker::DecryptorWorker;
 use crate::secure_channel::finalizer::Finalizer;
 use crate::secure_channel::initiator_worker::InitiatorWorker;
-use crate::secure_channel::key_exchange_with_payload::KeyExchangeWithPayload;
-use crate::secure_channel::packets::{
-    EncodedPublicIdentity, FirstPacket, IdentityAndCredential, SecondPacket, ThirdPacket,
-};
-use crate::secure_channel::responder_state::State;
-use crate::secure_channel::{Addresses, Role};
-use crate::{to_xx_vault, Identity, IdentityError, SecureChannels};
-use ockam_core::{Address, Any, NewKeyExchanger, OutgoingAccessControl, Routed};
-use ockam_core::{Decodable, Worker};
-use ockam_key_exchange_xx::XXNewKeyExchanger;
+use crate::secure_channel::responder_state_machine::ResponderStateMachine;
+use crate::secure_channel::state_machine::Action::SendMessage;
+use crate::secure_channel::state_machine::Event::ReceivedMessage;
+use crate::secure_channel::Addresses;
+use crate::secure_channel::Role::Responder;
+use crate::{to_xx_vault, Identity, SecureChannels, TrustContext, TrustPolicy};
+use ockam_core::Worker;
+use ockam_core::{Address, Any, OutgoingAccessControl, Routed};
 use ockam_node::{Context, WorkerBuilder};
 use std::sync::Arc;
 use tracing::debug;
 
 pub(crate) struct ResponderWorker {
-    state: Option<State>,
-
-    //only reference to the implementation, not part of the state
+    state_machine: ResponderStateMachine,
     secure_channels: Arc<SecureChannels>,
+    identity: Identity,
+    addresses: Addresses,
+    decryptor: Option<DecryptorWorker>,
 }
 
 #[ockam_core::worker]
@@ -32,91 +32,41 @@ impl Worker for ResponderWorker {
         context: &mut Self::Context,
         message: Routed<Self::Message>,
     ) -> ockam_core::Result<()> {
-        if let State::Done(decryptor) = self
-            .state
-            .as_mut()
-            .ok_or_else(|| IdentityError::InvalidSecureChannelInternalState)?
-        {
-            //since we cannot replace this worker with the decryptor worker
-            //we act as a relay instead
+        if let Some(decryptor) = self.decryptor.as_mut() {
+            // since we cannot replace this worker with the decryptor worker we act as a relay instead
             return decryptor.handle_message(context, message).await;
-        }
+        };
+        let remote_route = message.return_route();
 
-        let state = self
-            .state
-            .take()
-            .ok_or_else(|| IdentityError::InvalidSecureChannelInternalState)?;
-
-        let new_state = match state {
-            State::DecodeMessage1(mut state) => {
-                //we only set it once to avoid redirects attack
-                state.remote_route = message.return_route();
-
-                let first_packet = FirstPacket::decode(&message.into_transport_message().payload)?;
-
-                //ignoring output since no payload is expected in the first packet
-                let _ = state
-                    .key_exchanger
-                    .handle_response(&first_packet.key_exchange)
-                    .await?;
-
-                let second_packet = SecondPacket {
-                    key_exchange_with_payload: KeyExchangeWithPayload::create(
-                        IdentityAndCredential {
-                            identity: EncodedPublicIdentity::from(&state.identity)?,
-                            signature: state.signature.clone(),
-                            credentials: state.credentials.clone(),
-                        },
-                        &mut state.key_exchanger,
-                    )
-                    .await?,
-                };
-
+        match self
+            .state_machine
+            .on_event(ReceivedMessage(message.into_transport_message().payload))
+            .await?
+        {
+            SendMessage(message) => {
                 context
                     .send_from_address(
-                        state.remote_route.clone(),
-                        second_packet,
-                        state.addresses.decryptor_remote.clone(),
+                        remote_route.clone(),
+                        message,
+                        self.addresses.decryptor_remote.clone(),
                     )
-                    .await?;
-
-                State::DecodeMessage3(state.next_state())
+                    .await?
             }
-            State::DecodeMessage3(mut state) => {
-                let third_packet = ThirdPacket::decode(&message.into_transport_message().payload)?;
+            _ => (),
+        }
 
-                let identity_and_credential = third_packet
-                    .key_exchange_with_payload
-                    .handle_and_decrypt(&mut state.key_exchanger)
-                    .await?;
+        if let Some((their_identity, keys)) = self.state_machine.ready() {
+            let finalizer = Finalizer {
+                secure_channels: self.secure_channels.clone(),
+                identity: self.identity.clone(),
+                their_identity,
+                keys,
+                addresses: self.addresses.clone(),
+                remote_route: remote_route,
+            };
 
-                //the identity has not been verified yet
-                let their_identity = identity_and_credential
-                    .identity
-                    .decode(self.secure_channels.vault())
-                    .await?;
-
-                let keys = state.key_exchanger.finalize().await?;
-
-                let finalizer = Finalizer {
-                    secure_channels: self.secure_channels.clone(),
-                    identity: state.identity,
-                    their_identity,
-                    keys,
-                    addresses: state.addresses,
-                    remote_route: state.remote_route,
-                };
-
-                let decryptor = finalizer.finalize(context, Role::Responder).await?;
-
-                State::Done(decryptor)
-            }
-            State::Done(_) => {
-                unreachable!()
-            }
+            self.decryptor = Some(finalizer.finalize(context, Responder).await?);
         };
-        self.state = Some(new_state);
-
         Ok(())
     }
 }
@@ -128,30 +78,28 @@ impl ResponderWorker {
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
         identity: Identity,
+        trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         credentials: Vec<Credential>,
+        trust_context: Option<TrustContext>,
     ) -> ockam_core::Result<Address> {
-        let (static_key_id, signature) = secure_channels
-            .identities()
-            .identities_keys()
-            .create_signed_static_key(&identity)
-            .await?;
-
-        let key_exchanger = XXNewKeyExchanger::new(to_xx_vault(secure_channels.vault()))
-            .responder(Some(static_key_id))
-            .await?;
-
-        let decryptor_remote = addresses.decryptor_remote.clone();
+        let vault = to_xx_vault(secure_channels.vault());
+        let identities = secure_channels.identities();
+        let state_machine = ResponderStateMachine::new(
+            vault,
+            identities,
+            identity.clone(),
+            credentials.clone(),
+            trust_policy.clone(),
+            trust_context.clone(),
+        );
 
         let worker = Self {
-            state: Some(State::new(
-                identity,
-                addresses.clone(),
-                Box::new(key_exchanger),
-                credentials,
-                signature,
-            )),
             secure_channels,
+            state_machine,
+            identity: identity.clone(),
+            addresses: addresses.clone(),
+            decryptor: None,
         };
 
         WorkerBuilder::with_mailboxes(
@@ -161,6 +109,7 @@ impl ResponderWorker {
         .start(context)
         .await?;
 
+        let decryptor_remote = addresses.decryptor_remote.clone();
         debug!(
             "Starting SecureChannel Responder at remote: {}",
             &decryptor_remote

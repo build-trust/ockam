@@ -28,7 +28,7 @@ impl Finalizer {
         context: &mut Context,
         role: Role,
     ) -> ockam_core::Result<DecryptorWorker> {
-        //decryptor worker
+        // decryptor worker
         let decryptor = DecryptorWorker::new(
             role.str(),
             self.addresses.clone(),
@@ -39,7 +39,7 @@ impl Finalizer {
             self.their_identity.identifier(),
         );
 
-        //encryptor worker
+        // encryptor worker
         {
             let encryptor = EncryptorWorker::new(
                 role.str(),

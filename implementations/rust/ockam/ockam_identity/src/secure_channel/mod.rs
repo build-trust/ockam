@@ -10,15 +10,14 @@ mod encryptor_worker;
 mod finalizer;
 mod initiator_state_machine;
 pub(crate) mod initiator_worker;
-mod key_exchange_with_payload;
 mod listener;
 mod local_info;
 mod nonce_tracker;
 mod options;
-mod packets;
 mod registry;
-mod responder_state;
+mod responder_state_machine;
 mod responder_worker;
+mod state_machine;
 /// List of trust policies to setup ABAC controls
 pub mod trust_policy;
 

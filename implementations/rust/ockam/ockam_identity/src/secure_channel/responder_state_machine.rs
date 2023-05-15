@@ -1,5 +1,3 @@
-use crate::secure_channel::state_machine::Action::*;
-use crate::secure_channel::state_machine::Event::*;
 use crate::secure_channel::state_machine::{
     Action, EncodedPublicIdentity, Event, IdentityAndCredential, State, StateMachine,
 };
@@ -10,13 +8,15 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::{KeyId, PublicKey, SecretType, Signature, CURVE25519_PUBLIC_LENGTH_USIZE};
 use ockam_core::{CompletedKeyExchange, Error, Result};
 use ockam_key_exchange_xx::{XXVault, AES_GCM_TAGSIZE_USIZE};
-use InitiatorStatus::*;
+use Action::*;
+use Event::*;
+use ResponderStatus::*;
 
-pub(super) struct InitiatorStateMachine {
-    pub(super) state_machine: StateMachine<InitiatorStatus>,
+pub struct ResponderStateMachine {
+    state_machine: StateMachine<ResponderStatus>,
 }
 
-impl InitiatorStateMachine {
+impl ResponderStateMachine {
     pub async fn on_event(&mut self, event: Event) -> Result<Action> {
         let mut state = self.state_machine.state.clone();
         match (state.status, event) {
@@ -40,24 +40,13 @@ impl InitiatorStateMachine {
                 // 5. h = SHA256(concat(h, prologue))
                 state.h = self.mix_hash(&state.h, state.prologue.as_slice());
 
-                // 6. h = SHA256(concat(h, e.pubKey))
-                //    writeToMessage(bigendian(e.pubKey)
-                let ephemeral_public_key = self.get_ephemeral_public_key(&state.e).await?;
-                let output = ephemeral_public_key.data().to_vec();
-                state.h = self.mix_hash(&state.h, ephemeral_public_key.data());
-
-                // 7. payload = empty string
-                //    h = SHA256(concat(h, payload))
-                let payload = &[];
-                state.h = self.mix_hash(&state.h, payload.as_ref());
-
                 // Set the new status and return the action
-                state.status = WaitingForMessage;
+                state.status = WaitingForMessage1;
                 self.state_machine.state = state;
-                Ok(SendMessage(output))
+                Ok(NoAction)
             }
             //
-            (WaitingForMessage, ReceivedMessage(message)) => {
+            (WaitingForMessage1, ReceivedMessage(message)) => {
                 // -------
                 // RECEIVE
                 // -------
@@ -68,10 +57,23 @@ impl InitiatorStateMachine {
                         .to_vec(),
                     SecretType::X25519,
                 );
-
                 state.h = self.mix_hash(&state.h, re.data());
 
-                // 2. ck, k = HKDF(ck, DH(e, re), 2)
+                // 2. payload = readRemainingMessage()
+                //    h = SHA256(concat(h, payload))
+                let payload = self.read_end_of_message(&message, CURVE25519_PUBLIC_LENGTH_USIZE)?;
+                state.h = self.mix_hash(&state.h, payload);
+
+                // -------
+                // SEND
+                // -------
+
+                // 3. h = SHA256(concat(h, e.pubKey))
+                //    writeToMessage(bigendian(e.pubKey))
+                let ephemeral_public_key = self.get_ephemeral_public_key(&state.e).await?;
+                let mut output = ephemeral_public_key.data().to_vec();
+
+                // 4. ck, k = HKDF(ck, DH(e, re), 2)
                 // n = 0
                 let dh = self.generate_diffie_hellman_key(&state.e, &re).await?;
                 let (ck, k) = self.hkdf(&state.ck, &dh).await?;
@@ -79,70 +81,27 @@ impl InitiatorStateMachine {
                 state.k = self.replace_key(&state.k, &k).await?;
                 state.n = 0;
 
-                // 3. c = readFromMessage(48 bytes)
+                // 5. c = ENCRYPT(k, n++, h, s.pubKey)
                 //    h = SHA256(concat(h, c))
-                let c = self.read_from_message(
-                    &message,
-                    CURVE25519_PUBLIC_LENGTH_USIZE,
-                    CURVE25519_PUBLIC_LENGTH_USIZE + AES_GCM_TAGSIZE_USIZE,
-                )?;
-                state.h = self.mix_hash(&state.h, c);
-
-                // 4. rs = DECRYPT(k, n++, h, c)
+                //    writeToMessage(bigendian(c))
                 state.n += 1;
-                let rs = PublicKey::new(
-                    self.decrypt(&state.k, state.n, &state.h, c).await?,
-                    SecretType::X25519,
-                );
-
-                // 5. ck, k = HKDF(ck, DH(e, rs), 2)
-                let dh = self.generate_diffie_hellman_key(&state.e, &rs).await?;
-                let (ck, k) = self.hkdf(&state.ck, &dh).await?;
-                state.ck = self.replace_key(&state.ck, &ck).await?;
-                state.k = self.replace_key(&state.k, &k).await?;
-
-                // 6. c = readRemainingMessage()
-                //    h = SHA256(concat(h, c))
-                let c = self.read_end_of_message(
-                    &message,
-                    CURVE25519_PUBLIC_LENGTH_USIZE * 2 + AES_GCM_TAGSIZE_USIZE,
-                )?;
-                state.h = self.mix_hash(&state.h, c);
-
-                // 7. payload = DECRYPT(k, n++, h, c)
-                state.n += 1;
-
-                let payload = self.decrypt(&state.k, state.n, &state.h, c).await?;
-                let identity_and_credential: IdentityAndCredential =
-                    serde_bare::from_slice(payload.as_slice())
-                        .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))?;
-
-                // ----
-                // SEND
-                // ----
-
-                // 1. ENCRYPT(k, n++, h, s.pubKey)
-                //    h = SHA256(concat(h, c))
-                state.n += 1;
-                let s_public_key = self.get_ephemeral_public_key(&state.s).await?;
                 let c = self
-                    .encrypt(&state.k, state.n, &state.h, &s_public_key.data())
+                    .encrypt(&state.k, state.n, &state.h, &output.as_slice())
                     .await?;
                 state.h = self.mix_hash(&state.h, c.as_slice());
+                output.extend_from_slice(c.as_slice());
 
-                // 2. writeToMessage(bigendian(c))
-                let message_to_send = c.to_vec();
-
-                // 3. ck, k = HKDF(ck, DH(s, re), 2)
-                //    h = SHA256(concat(h, c))
+                // 6. ck, k = HKDF(ck, DH(s, re), 2)
+                // n = 0
                 let dh = self.generate_diffie_hellman_key(&state.s, &re).await?;
                 let (ck, k) = self.hkdf(&state.ck, &dh).await?;
                 state.ck = self.replace_key(&state.ck, &ck).await?;
                 state.k = self.replace_key(&state.k, &k).await?;
-                state.h = self.mix_hash(&state.h, c.as_slice());
+                state.n = 0;
 
-                // 4. ENCRYPT(k, n++, h, payload)
+                // 7. c = ENCRYPT(k, n++, h, payload)
                 //    h = SHA256(concat(h, c))
+                //    writeToMessage(bigendian(c))
                 let to_send = IdentityAndCredential {
                     identity: EncodedPublicIdentity::from(&self.identity().await?)?,
                     signature: self.sign_static_key(&state.s).await?,
@@ -150,14 +109,56 @@ impl InitiatorStateMachine {
                 };
                 let payload = &serde_bare::to_vec(&to_send)?;
 
-                let mut output = message_to_send;
-                output.extend_from_slice(payload);
-
                 state.n += 1;
                 let c = self
-                    .encrypt(&state.k, state.n, &state.h, &output.as_slice())
+                    .encrypt(&state.k, state.n, &state.h, &payload.as_slice())
                     .await?;
                 state.h = self.mix_hash(&state.h, c.as_slice());
+                output.extend_from_slice(c.as_slice());
+
+                // Set the new status and return the action
+                state.status = WaitingForMessage3;
+                self.state_machine.state = state;
+                Ok(SendMessage(output))
+            }
+            //
+            (WaitingForMessage3, ReceivedMessage(message)) => {
+                // 1. c = readFromMessage(48 bytes)
+                //    h = SHA256(concat(h, c))
+                //    rs = DECRYPT(k, n++, h, c)
+                let c = self.read_from_message(
+                    &message,
+                    0,
+                    CURVE25519_PUBLIC_LENGTH_USIZE + AES_GCM_TAGSIZE_USIZE,
+                )?;
+                state.n += 1;
+                let rs = PublicKey::new(
+                    self.decrypt(&state.k, state.n, &state.h, c).await?,
+                    SecretType::X25519,
+                );
+
+                // 2. ck, k = HKDF(ck, DH(e, rs), 2)
+                // n = 0
+                let dh = self.generate_diffie_hellman_key(&state.e, &rs).await?;
+                let (ck, k) = self.hkdf(&state.ck, &dh).await?;
+                state.ck = self.replace_key(&state.ck, &ck).await?;
+                state.k = self.replace_key(&state.k, &k).await?;
+                state.n = 0;
+
+                // 3. c = readRemainingMessage()
+                //    h = SHA256(concat(h, c))
+                let c = self.read_end_of_message(
+                    &message,
+                    CURVE25519_PUBLIC_LENGTH_USIZE * 2 + AES_GCM_TAGSIZE_USIZE,
+                )?;
+                state.h = self.mix_hash(&state.h, c);
+
+                // 4. payload = DECRYPT(k, n++, h, c)
+                state.n += 1;
+                let payload = self.decrypt(&state.k, state.n, &state.h, c).await?;
+                let identity_and_credential: IdentityAndCredential =
+                    serde_bare::from_slice(payload.as_slice())
+                        .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))?;
 
                 // 5. k1, k2 = HKDF(ck, zerolen, 2)
                 let (k1, k2) = self.hkdf(&state.ck, &dh).await?;
@@ -175,17 +176,17 @@ impl InitiatorStateMachine {
 
                 state.status = Ready {
                     their_identity,
-                    keys: CompletedKeyExchange::new(state.h, k2, k1),
+                    keys: CompletedKeyExchange::new(state.h, k1, k2),
                 };
                 self.state_machine.state = state;
-                Ok(SendMessage(c))
+                Ok(NoAction)
             }
             // incorrect state / event
             (s, e) => Err(Error::new(
                 Origin::Channel,
                 Kind::Invalid,
                 format!(
-                    "Unexpected combination of initiator state and event {:?}/{:?}",
+                    "Unexpected combination of responder state and event {:?}/{:?}",
                     s, e
                 ),
             )),
@@ -203,7 +204,7 @@ impl InitiatorStateMachine {
     }
 }
 
-impl InitiatorStateMachine {
+impl ResponderStateMachine {
     delegate! {
         to self.state_machine {
             async fn generate_static_key(&self) -> Result<KeyId>;
@@ -229,7 +230,7 @@ impl InitiatorStateMachine {
     }
 }
 
-impl InitiatorStateMachine {
+impl ResponderStateMachine {
     pub fn new(
         vault: Arc<dyn XXVault>,
         identities: Arc<Identities>,
@@ -237,8 +238,8 @@ impl InitiatorStateMachine {
         credentials: Vec<Credential>,
         trust_policy: Arc<dyn TrustPolicy>,
         trust_context: Option<TrustContext>,
-    ) -> InitiatorStateMachine {
-        InitiatorStateMachine {
+    ) -> ResponderStateMachine {
+        ResponderStateMachine {
             state_machine: StateMachine::new(
                 vault,
                 identities,
@@ -251,11 +252,11 @@ impl InitiatorStateMachine {
         }
     }
 }
-
 #[derive(Debug, Clone)]
-pub enum InitiatorStatus {
+pub enum ResponderStatus {
     Initial,
-    WaitingForMessage,
+    WaitingForMessage1,
+    WaitingForMessage3,
     Ready {
         their_identity: Identity,
         keys: CompletedKeyExchange,

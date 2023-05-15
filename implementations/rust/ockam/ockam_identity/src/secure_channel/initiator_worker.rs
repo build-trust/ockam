@@ -1,10 +1,10 @@
 use crate::credential::Credential;
 use crate::secure_channel::decryptor_worker::DecryptorWorker;
 use crate::secure_channel::finalizer::Finalizer;
-use crate::secure_channel::initiator_state_machine::Action::SendMessage;
-use crate::secure_channel::initiator_state_machine::Event::{Initialize, ReceivedMessage};
 use crate::secure_channel::initiator_state_machine::InitiatorStateMachine;
-use crate::secure_channel::initiator_state_machine::InitiatorStatus::Ready;
+use crate::secure_channel::state_machine::Action;
+use crate::secure_channel::state_machine::Action::SendMessage;
+use crate::secure_channel::state_machine::Event::{Initialize, ReceivedMessage};
 use crate::secure_channel::{Addresses, Role};
 use crate::{to_xx_vault, Identity, SecureChannels, TrustContext, TrustPolicy};
 use alloc::sync::Arc;
@@ -23,8 +23,8 @@ pub(crate) struct InitiatorWorker {
     callback_sender: CallbackSender<()>,
     state_machine: InitiatorStateMachine,
     identity: Identity,
-    remote_route: Route,
     addresses: Addresses,
+    remote_route: Route,
     decryptor: Option<DecryptorWorker>,
 }
 
@@ -34,14 +34,18 @@ impl Worker for InitiatorWorker {
     type Context = Context;
 
     async fn initialize(&mut self, context: &mut Self::Context) -> Result<()> {
-        let SendMessage(message) = self.state_machine.on_event(Initialize).await?;
-        context
-            .send_from_address(
-                self.remote_route.clone(),
-                message,
-                self.addresses.decryptor_remote.clone(),
-            )
-            .await
+        match self.state_machine.on_event(Initialize).await? {
+            SendMessage(message) => {
+                context
+                    .send_from_address(
+                        self.remote_route.clone(),
+                        message,
+                        self.addresses.decryptor_remote.clone(),
+                    )
+                    .await
+            }
+            Action::NoAction => Ok(()),
+        }
     }
 
     async fn handle_message(
@@ -56,36 +60,35 @@ impl Worker for InitiatorWorker {
 
         // we only set it once to avoid redirects attack
         self.remote_route = message.return_route();
-        let SendMessage(message) = self
+        match self
             .state_machine
             .on_event(ReceivedMessage(message.into_transport_message().payload))
-            .await?;
-        context
-            .send_from_address(
-                self.remote_route.clone(),
-                message,
-                self.addresses.decryptor_remote.clone(),
-            )
-            .await?;
-
-        match self.state_machine.state.status.clone() {
-            Ready {
-                their_identity,
-                keys,
-            } => {
-                let finalizer = Finalizer {
-                    secure_channels: self.secure_channels.clone(),
-                    identity: self.identity.clone(),
-                    their_identity,
-                    keys,
-                    addresses: self.addresses.clone(),
-                    remote_route: self.remote_route.clone(),
-                };
-
-                self.decryptor = Some(finalizer.finalize(context, Role::Initiator).await?);
-                self.callback_sender.send(()).await?;
+            .await?
+        {
+            SendMessage(message) => {
+                context
+                    .send_from_address(
+                        self.remote_route.clone(),
+                        message,
+                        self.addresses.decryptor_remote.clone(),
+                    )
+                    .await?
             }
             _ => (),
+        }
+
+        if let Some((their_identity, keys)) = self.state_machine.ready() {
+            let finalizer = Finalizer {
+                secure_channels: self.secure_channels.clone(),
+                identity: self.identity.clone(),
+                their_identity,
+                keys,
+                addresses: self.addresses.clone(),
+                remote_route: self.remote_route.clone(),
+            };
+
+            self.decryptor = Some(finalizer.finalize(context, Role::Initiator).await?);
+            self.callback_sender.send(()).await?;
         };
         Ok(())
     }
