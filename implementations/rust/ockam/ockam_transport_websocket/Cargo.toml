@@ -50,7 +50,7 @@ ockam_node = { path = "../ockam_node", version = "^0.83.0", default_features = f
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.53.0", default_features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tokio = { version = "1.28", default-features = false, optional = true, features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-std"] }
-tokio-tungstenite = { version = "0.18", default-features = false, optional = true, features = ["connect"] }
+tokio-tungstenite = { version = "0.19", default-features = false, optional = true, features = ["connect"] }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
