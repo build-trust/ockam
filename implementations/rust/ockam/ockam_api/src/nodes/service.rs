@@ -332,12 +332,14 @@ impl NodeManager {
 
         let secure_channels = SecureChannels::builder()
             .with_identities_vault(vault)
-            .with_identities_repository(identities_repository)
+            .with_identities_repository(identities_repository.clone())
             .build();
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
         let identity = node_state.config().identity().await?;
+        // make sure that the configured identity exists in the repository
+        identities_repository.update_identity(&identity).await?;
 
         let flow_controls = FlowControls::default();
         let medic = Medic::new(flow_controls.clone());
