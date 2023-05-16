@@ -112,23 +112,29 @@ impl HandshakeWorker {
         let vault = to_xx_vault(secure_channels.vault());
         let identities = secure_channels.identities();
         let state_machine: Box<dyn StateMachine> = if role.is_initiator() {
-            Box::new(InitiatorStateMachine::new(
-                vault,
-                identities,
-                identity.clone(),
-                credentials.clone(),
-                trust_policy.clone(),
-                trust_context.clone(),
-            ))
+            Box::new(
+                InitiatorStateMachine::new(
+                    vault,
+                    identities,
+                    identity.clone(),
+                    credentials.clone(),
+                    trust_policy.clone(),
+                    trust_context.clone(),
+                )
+                .await?,
+            )
         } else {
-            Box::new(ResponderStateMachine::new(
-                vault,
-                identities,
-                identity.clone(),
-                credentials.clone(),
-                trust_policy.clone(),
-                trust_context.clone(),
-            ))
+            Box::new(
+                ResponderStateMachine::new(
+                    vault,
+                    identities,
+                    identity.clone(),
+                    credentials.clone(),
+                    trust_policy.clone(),
+                    trust_context.clone(),
+                )
+                .await?,
+            )
         };
 
         let (mut callback_waiter, callback_sender) = ockam_node::callback::new_callback();
