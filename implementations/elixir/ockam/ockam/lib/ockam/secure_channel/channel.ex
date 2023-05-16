@@ -15,7 +15,7 @@ defmodule Ockam.SecureChannel.Channel do
                 +-----------------+                          +-----------------+
 
 
-  The secure channel goes throw three stages:
+  The secure channel goes through three stages:
     * Handshaking  (noise handshake)
     * IdentityExchange (identity exchange and verification)
     * Established (channel fully established and peer authenticated)
