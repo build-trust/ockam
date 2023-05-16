@@ -16,8 +16,7 @@ and trustfully with cloud services and other devices.
 """
 
 [features]
-default = ["std", "software_vault", "noise_xx"]
-noise_xx = ["ockam_key_exchange_xx"]
+default = ["std", "software_vault"]
 software_vault = [
   "ockam_vault",
   "ockam_vault/rustcrypto",
@@ -30,7 +29,6 @@ std = [
   "alloc",
   "ockam_core/std",
   "ockam_macros/std",
-  "ockam_key_exchange_xx/std",
   "ockam_node/std",
   "ockam_vault/std",
   "hex/std",
@@ -47,7 +45,6 @@ lmdb = ["tokio-retry", "lmdb-rkv"]
 no_std = [
   "ockam_core/no_std",
   "ockam_macros/no_std",
-  "ockam_key_exchange_xx/no_std",
   "ockam_node/no_std",
   "ockam_vault/no_std",
 ]
@@ -56,7 +53,6 @@ no_std = [
 # platforms, requires nightly.
 alloc = [
   "ockam_core/alloc",
-  "ockam_key_exchange_xx/alloc",
   "ockam_node/alloc",
   "ockam_vault/alloc",
   "hex/alloc",
@@ -74,7 +70,6 @@ hex = { version = "0.4", default-features = false }
 lmdb-rkv = { version = "0.14.0", optional = true }
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.80.0", default-features = false }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.76.0", default-features = false, optional = true }
 ockam_macros = { path = "../ockam_macros", version = "^0.29.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.83.0", default-features = false }
 ockam_vault = { path = "../ockam_vault", version = "^0.76.0", default-features = false, optional = true }
@@ -88,6 +83,7 @@ subtle = { version = "2.4.1", default-features = false }
 time = { version = "0.3.21", features = ["macros", "formatting", "std"], optional = true }
 tokio-retry = { version = "0.3.0", default-features = false, optional = true }
 tracing = { version = "0.1", default_features = false }
+zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }

@@ -1,9 +1,13 @@
+use crate::secure_channel::handshake::constants::{
+    AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_U32, SHA256_SIZE_USIZE,
+};
+use crate::secure_channel::handshake::error::XXError;
 use crate::secure_channel::handshake::handshake_state_machine::{
     EncodedPublicIdentity, IdentityAndCredentials,
 };
 use crate::{
     Credential, Credentials, Identities, IdentitiesKeys, Identity, IdentityError,
-    SecureChannelTrustInfo, TrustContext, TrustPolicy,
+    SecureChannelTrustInfo, TrustContext, TrustPolicy, XXVault,
 };
 use arrayref::array_ref;
 use ockam_core::compat::sync::Arc;
@@ -13,13 +17,11 @@ use ockam_core::vault::{
     Signature, AES256_SECRET_LENGTH_U32, CURVE25519_PUBLIC_LENGTH_USIZE,
     CURVE25519_SECRET_LENGTH_U32,
 };
-use ockam_core::{CompletedKeyExchange, Error, Result};
-use ockam_key_exchange_xx::{
-    XXError, XXVault, AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_U32, SHA256_SIZE_USIZE,
-};
+use ockam_core::{Error, Result};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use tracing::info;
+use zeroize::Zeroize;
 use SecretType::*;
 use Status::*;
 
@@ -535,3 +537,87 @@ pub(super) enum Status {
         keys: CompletedKeyExchange,
     },
 }
+
+/// The state of a completed key exchange.
+#[derive(Debug, Clone, Zeroize)]
+#[zeroize(drop)]
+pub struct CompletedKeyExchange {
+    h: [u8; 32],
+    encrypt_key: KeyId,
+    decrypt_key: KeyId,
+}
+
+impl CompletedKeyExchange {
+    /// The derived encryption key.
+    pub fn encrypt_key(&self) -> &KeyId {
+        &self.encrypt_key
+    }
+    /// The derived decryption key.
+    pub fn decrypt_key(&self) -> &KeyId {
+        &self.decrypt_key
+    }
+}
+
+impl CompletedKeyExchange {
+    /// Build a CompletedKeyExchange comprised of the input parameters.
+    pub fn new(h: [u8; 32], encrypt_key: KeyId, decrypt_key: KeyId) -> Self {
+        CompletedKeyExchange {
+            h,
+            encrypt_key,
+            decrypt_key,
+        }
+    }
+}
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use ockam_core::Result;
+//     use ockam_core::{KeyExchanger, NewKeyExchanger};
+//     use ockam_node::Context;
+//     use ockam_vault::Vault;
+//
+//     #[allow(non_snake_case)]
+//     #[ockam_macros::test]
+//     async fn full_flow__correct_credential__keys_should_match(ctx: &mut Context) -> Result<()> {
+//         let vault = Vault::create();
+//
+//         let key_exchanger = XXNewKeyExchanger::new(vault.clone());
+//
+//         let mut initiator = key_exchanger.initiator(None).await.unwrap();
+//         let mut responder = key_exchanger.responder(None).await.unwrap();
+//
+//         loop {
+//             if !initiator.is_complete().await.unwrap() {
+//                 let m = initiator.generate_request(&[]).await.unwrap();
+//                 let _ = responder.handle_response(&m).await.unwrap();
+//             }
+//
+//             if !responder.is_complete().await.unwrap() {
+//                 let m = responder.generate_request(&[]).await.unwrap();
+//                 let _ = initiator.handle_response(&m).await.unwrap();
+//             }
+//
+//             if initiator.is_complete().await.unwrap() && responder.is_complete().await.unwrap() {
+//                 break;
+//             }
+//         }
+//
+//         let initiator = initiator.finalize().await.unwrap();
+//         let responder = responder.finalize().await.unwrap();
+//
+//         assert_eq!(initiator.h(), responder.h());
+//
+//         let s1 = vault.secret_export(initiator.encrypt_key()).await.unwrap();
+//         let s2 = vault.secret_export(responder.decrypt_key()).await.unwrap();
+//
+//         assert_eq!(s1, s2);
+//
+//         let s1 = vault.secret_export(initiator.decrypt_key()).await.unwrap();
+//         let s2 = vault.secret_export(responder.encrypt_key()).await.unwrap();
+//
+//         assert_eq!(s1, s2);
+//
+//         ctx.stop().await
+//     }
+// }

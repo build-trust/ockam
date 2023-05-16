@@ -1,11 +1,11 @@
 use crate::identity::IdentityError;
 use crate::secure_channel::encryptor::{Encryptor, KEY_RENEWAL_INTERVAL};
 use crate::secure_channel::nonce_tracker::NonceTracker;
+use crate::XXInitializedVault;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::KeyId;
 use ockam_core::Result;
-use ockam_key_exchange_xx::XXInitializedVault;
 use tracing::warn;
 
 pub(crate) struct Decryptor {

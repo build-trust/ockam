@@ -1,6 +1,7 @@
+use crate::secure_channel::handshake::handshake_state::CompletedKeyExchange;
 use crate::{Credential, Identity};
 use ockam_core::vault::Signature;
-use ockam_core::{async_trait, CompletedKeyExchange, Message, Result};
+use ockam_core::{async_trait, Message, Result};
 use serde::{Deserialize, Serialize};
 
 #[async_trait]

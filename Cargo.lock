@@ -3205,7 +3205,6 @@ dependencies = [
  "ockam_abac",
  "ockam_core",
  "ockam_identity",
- "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
  "ockam_transport_tcp",
@@ -3421,7 +3420,6 @@ dependencies = [
  "lmdb-rkv",
  "minicbor",
  "ockam_core",
- "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
  "ockam_transport_tcp",
@@ -3450,17 +3448,6 @@ dependencies = [
  "example_test_helper",
  "ockam",
  "ockam_transport_tcp",
-]
-
-[[package]]
-name = "ockam_key_exchange_xx"
-version = "0.76.0"
-dependencies = [
- "hex",
- "ockam_core",
- "ockam_macros",
- "ockam_node",
- "ockam_vault",
 ]
 
 [[package]]

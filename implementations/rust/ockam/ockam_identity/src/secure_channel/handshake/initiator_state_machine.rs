@@ -1,16 +1,15 @@
-use crate::secure_channel::handshake::handshake_state::{Handshake, Status};
+use crate::secure_channel::handshake::handshake_state::{CompletedKeyExchange, Handshake, Status};
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
 use crate::secure_channel::handshake::handshake_state_machine::Event::ReceivedMessage;
 use crate::secure_channel::handshake::handshake_state_machine::{
     Action, Event, IdentityAndCredentials, StateMachine,
 };
-use crate::{Credential, Identities, Identity, TrustContext, TrustPolicy};
+use crate::{Credential, Identities, Identity, TrustContext, TrustPolicy, XXVault};
 use delegate::delegate;
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{CompletedKeyExchange, Error, Result};
-use ockam_key_exchange_xx::XXVault;
+use ockam_core::{Error, Result};
 use Event::*;
 use Status::*;
 

@@ -3,6 +3,7 @@ use crate::secure_channel::decryptor::Decryptor;
 use crate::secure_channel::decryptor_worker::DecryptorWorker;
 use crate::secure_channel::encryptor::Encryptor;
 use crate::secure_channel::encryptor_worker::EncryptorWorker;
+use crate::secure_channel::handshake::handshake_state::CompletedKeyExchange;
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
 use crate::secure_channel::handshake::handshake_state_machine::Event::{
     Initialize, ReceivedMessage,
@@ -21,7 +22,7 @@ use ockam_core::{
     Address, AllowAll, Any, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox, Mailboxes,
     OutgoingAccessControl, Route, Routed,
 };
-use ockam_core::{AllowOnwardAddress, CompletedKeyExchange, Result, Worker};
+use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info};

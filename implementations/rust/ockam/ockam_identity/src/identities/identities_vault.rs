@@ -7,13 +7,28 @@ use ockam_core::vault::{
 };
 use ockam_core::vault::{SymmetricVault, Verifier};
 use ockam_core::Result;
-use ockam_key_exchange_xx::{XXInitializedVault, XXVault};
 
 /// Traits required for a Vault implementation suitable for use in an Identity
 /// Vault with XX required functionality
 pub trait IdentitiesVault: XXVault + Signer + Verifier {}
 
 impl<D> IdentitiesVault for D where D: XXVault + Signer + Verifier {}
+
+/// Vault with XX required functionality
+pub trait XXVault:
+    SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send + Sync + 'static
+{
+}
+
+impl<D> XXVault for D where
+    D: SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send + Sync + 'static
+{
+}
+
+/// Vault with required functionalities after XX key exchange
+pub trait XXInitializedVault: SecretVault + SymmetricVault + Send + Sync + 'static {}
+
+impl<D> XXInitializedVault for D where D: SecretVault + SymmetricVault + Send + Sync + 'static {}
 
 /// This struct is used to compensate for the lack of non-experimental trait upcasting in Rust
 /// We encapsulate an IdentitiesVault and delegate the implementation of all the functions of

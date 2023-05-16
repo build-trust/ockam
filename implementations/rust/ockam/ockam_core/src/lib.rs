@@ -78,7 +78,6 @@ pub mod env;
 
 mod cbor_utils;
 mod error;
-mod key_exchanger;
 mod message;
 mod processor;
 mod routing;
@@ -89,7 +88,6 @@ mod worker;
 pub use access_control::*;
 pub use cbor_utils::*;
 pub use error::*;
-pub use key_exchanger::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
