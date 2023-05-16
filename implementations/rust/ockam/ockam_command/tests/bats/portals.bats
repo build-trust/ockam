@@ -57,7 +57,7 @@ teardown() {
 }
 
 @test "portals - create an inlet (with implicit secure channel creation), an outlet, a relay in an orchestrator project and move tcp traffic through it" {
-  port=7101
+  port=7102
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
@@ -75,7 +75,7 @@ teardown() {
 }
 
 @test "portals - inlet/outlet example with credential, not provided" {
-  port=7102
+  port=7103
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
   # Setup nodes from a non-enrolled environment
@@ -118,7 +118,7 @@ teardown() {
 }
 
 @test "portals - inlet (with implicit secure channel creation) / outlet example with credential, not provided" {
-  port=7103
+  port=7104
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
@@ -156,7 +156,7 @@ teardown() {
 }
 
 @test "portals - inlet/outlet example with credential" {
-  port=7104
+  port=7105
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
@@ -197,7 +197,7 @@ teardown() {
 }
 
 @test "portals - inlet (with implicit secure channel creation) / outlet example with enrollment token" {
-  port=7105
+  port=7106
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
   green_token=$($OCKAM project enroll --attribute app=app1)
@@ -237,5 +237,84 @@ teardown() {
   assert_success
 
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
+  assert_success
+}
+
+
+@test "portals - local inlet and outlet, removing and re-creating the outlet" {
+  port=7107
+  node_port=7108
+
+  setup_home_dir
+
+  run "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
+  assert_success
+
+  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  assert_success
+
+  run "$OCKAM" node create green
+  assert_success
+
+  run "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /node/blue/secure/api/service/outlet
+  assert_success
+
+  run curl --fail --head --max-time 10 "127.0.0.1:$port"
+  assert_success
+
+  run "$OCKAM" node delete blue
+  assert_success
+
+  run curl --fail --head --max-time 2 "127.0.0.1:$port"
+  assert_failure
+
+  run "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
+  assert_success
+
+  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  assert_success
+
+  run curl --head --retry-connrefused --retry 20 --retry-max-time 20 --max-time 1 "127.0.0.1:$port"
+  assert_success
+}
+
+
+@test "portals - local inlet and outlet passing though a relay, removing and re-creating the outlet" {
+  port=7109
+  node_port=7110
+
+  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --tcp-listener-address "127.0.0.1:$node_port"
+  assert_success
+
+  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  assert_success
+
+  run "$OCKAM" relay create --to /node/blue
+  assert_success
+
+  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
+  assert_success
+
+  run "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /project/default/service/forward_to_default/secure/api/service/outlet
+  assert_success
+
+  run curl --fail --head --max-time 10 "127.0.0.1:$port"
+  assert_success
+
+  $OCKAM node delete blue
+
+  run curl --fail --head --max-time 2 "127.0.0.1:$port"
+  assert_failure
+
+  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --tcp-listener-address "127.0.0.1:$node_port"
+  assert_success
+
+  run "$OCKAM" relay create --to /node/blue
+  assert_success
+
+  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  assert_success
+
+  run curl --head --retry-connrefused --retry 50 --max-time 1 "127.0.0.1:$port"
   assert_success
 }
