@@ -62,8 +62,14 @@ defmodule Ockam.Services do
     end
   end
 
-  @spec stop_service(Ockam.Address.t(), atom()) :: :ok | {:error, :not_found}
-  def stop_service(address, supervisor \\ @supervisor) do
+  @spec stop_service(Ockam.Address.t() | atom(), atom()) :: :ok | {:error, :not_found}
+  def stop_service(address_or_id, supervisor \\ @supervisor)
+
+  def stop_service(id, supervisor) when is_atom(id) do
+    Supervisor.terminate_child(supervisor, id)
+  end
+
+  def stop_service(address, supervisor) do
     with {:ok, child_id} <- find_child_id(supervisor, address) do
       Supervisor.terminate_child(supervisor, child_id)
     end
