@@ -9,6 +9,7 @@ ARG COSIGN_VERSION=1.9.0
 ARG MOLD_VERSION=1.3.1
 ARG SHFMT_VERSION=3.5.1
 ARG COMMITLINT_VERSION=17.1.1
+ARG GH_CLI_VERSION=2.29.0
 
 ARG ELIXIR_SHA256=fb7a7f1ad171f87c2670e4759334daab18e4440a23f0d85802397b7e9d8b2b2f
 
@@ -16,6 +17,7 @@ ENV RUSTUP_HOME=/opt/rust/rustup \
     CARGO_HOME=/usr/rust/cargo \
     JAVA_HOME=/opt/java/openjdk \
     NODEJS_HOME=/opt/nodejs \
+    GH_CLI_HOME=/opt/gh \
     MOLD_HOME=/opt/mold
 
 RUN set -xe; \
@@ -29,7 +31,8 @@ RUN set -xe; \
         JDK_SHA256="81f5bed21077f9fbb04909b50391620c78b9a3c376593c0992934719c0de6b73" && JDK_OS="x64"; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
         MOLD_SHA256="3893f89e5e0dcddcecc9f2ee17f14ad94fbf8b324eca45974b965353a50dac37" && MOLD_OS="x86_64-linux"; \
-        SHFMT_SHA256="56099a689b68534f98e1f8f05d3df6750ab53e3db68f514ee45595bf5b79d158" && SHFMT_OS="linux_amd64" \
+        SHFMT_SHA256="56099a689b68534f98e1f8f05d3df6750ab53e3db68f514ee45595bf5b79d158" && SHFMT_OS="linux_amd64"; \
+        GH_CLI_SHA256="9fe05f43a11a7bf8eacf731422452d1997e6708d4160ef0efcb13c103320390e" && GH_CLI_OS="amd64"; \
         OS="x86_64-unknown-linux-gnu"; \
       ;; \
       "arm64") \
@@ -43,6 +46,7 @@ RUN set -xe; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
         MOLD_SHA256="24ea75ada4337c5f509ad2eecf1a82d6047ab58c415a78374dfa7e6d69b06737" && MOLD_OS="aarch64-linux"; \
         SHFMT_SHA256="09d7902de04d52ebe0b332d84a9746d195f7e930806bdc2436f84d0de6a2d368" && SHFMT_OS="linux_arm64" \
+        GH_CLI_SHA256="71aa963cf4eecc3cc638ad17050464410a92fb6f66a04b409997f4c63588ccb4" && GH_CLI_OS="arm64"; \
         OS="aarch64-unknown-linux-gnu"; \
       ;; \
       *) \
@@ -135,6 +139,15 @@ RUN set -xe; \
     echo "${JQ_SHA256}  jq-${JQ_OS}" | sha256sum -c; \
     mv jq-${JQ_OS} /usr/bin/jq; \
     chmod +x /usr/bin/jq; \
+# Install for release
+    cargo install --locked git-cliff --version 0.7.0; \
+    cargo install --locked tomlq --version 0.1.0; \
+    cargo install --locked cargo-release --version 0.21.0; \
+    curl --proto '=https' --tlsv1.2 -sSOL \
+      "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz"; \
+    echo "${GH_CLI_SHA256}  gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" | sha256sum -c; \
+    tar -xf "gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" -C /opt/; \
+    mv "/opt/gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}" "${GH_CLI_HOME}"; \
 # Setup cosign
     cd /tmp; \
     COSIGN_PACKAGE="cosign-linux-${COSIGN_OS}"; \
@@ -165,7 +178,7 @@ RUN set -xe; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-ENV PATH="${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:${MOLD_HOME}/bin:$PATH" \
+ENV PATH="${GH_CLI_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:${MOLD_HOME}/bin:$PATH" \
     AR=/usr/bin/ar \
     AS=/usr/bin/as \
     CC=/usr/local/bin/gcc \
