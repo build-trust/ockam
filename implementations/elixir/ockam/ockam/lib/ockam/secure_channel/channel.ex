@@ -206,6 +206,13 @@ defmodule Ockam.SecureChannel.Channel do
   ## AsymmetricWorker callbacks
   @impl true
   def inner_setup(options, %{address: address, inner_address: inner_address} = state) do
+    # The authorization rules must apply to the outer address only.  Inner address is
+    # ciphertext and can come from tcp transport, from tunneled channel, etc.  The secure
+    # channel itself verifies the data comes from the right party.
+    # The call below explicitly set the inner_address authorization, that makes any existing
+    # authorization already setup on the worker, be applied to the main address instead of all.
+    # TODO AsyncWorker could provide out-of-the-box support for this.
+    state = Ockam.Worker.update_authorization_state(state, inner_address, [])
     worker_return(inner_setup_impl(address, inner_address, options), state)
   end
 
