@@ -130,7 +130,7 @@ defmodule Ockam.SecureChannel.Channel do
     }
   end
 
-  @spec start_link_channel([initiator_opt()], non_neg_integer) :: :ok | {:error, term()}
+  @spec start_link_channel([initiator_opt()], non_neg_integer) :: {:ok, pid} | {:error, term()}
   def start_link_channel(opts, handshake_timeout \\ @handshake_timeout) do
     ref = make_ref()
 
@@ -142,10 +142,10 @@ defmodule Ockam.SecureChannel.Channel do
         restart_type: :temporary
       )
 
-    {:ok, _pid, addr} = start_link(opts)
+    {:ok, pid, addr} = start_link(opts)
 
     receive do
-      {:connected, ^ref} -> :ok
+      {:connected, ^ref} -> {:ok, pid}
     after
       handshake_timeout ->
         Ockam.Node.stop(addr)
@@ -280,7 +280,7 @@ defmodule Ockam.SecureChannel.Channel do
   defp worker_return({:stop, reason, channel_state}, worker_state),
     do: {:stop, reason, Map.put(worker_state, :state, channel_state)}
 
-  defp new_xx(vault, opts) do
+  defp setup_noise_key_exchange(vault, opts) do
     m1_payload = m2_payload = m3_payload = ""
     {:ok, e_key_handle} = Vault.secret_generate(vault, type: :curve25519)
     {:ok, e_public_key} = Vault.secret_publickey_get(vault, e_key_handle)
@@ -329,12 +329,12 @@ defmodule Ockam.SecureChannel.Channel do
     encryption_options = Keyword.get(options, :encryption_options, [])
     key_exchange_timeout = Keyword.get(options, :key_exchange_timeout, @handshake_timeout)
     vault_name = Keyword.get(options, :vault_name)
+    noise_key_exchange_options = Keyword.take(encryption_options, [:static_keypair])
 
     with {:ok, role} <- Keyword.fetch(options, :role),
          {:ok, vault} <- vault_from_opts(encryption_options),
          {:ok, identity} <- identity_from_opts(options),
-         {:ok, key_exchange_state} <-
-           new_xx(vault, Keyword.take(encryption_options, [:static_keypair])) do
+         {:ok, key_exchange_state} <- setup_noise_key_exchange(vault, noise_key_exchange_options) do
       {:ok, tref} = :timer.apply_after(key_exchange_timeout, Ockam.Node, :stop, [address])
 
       state = %Channel{
@@ -415,9 +415,8 @@ defmodule Ockam.SecureChannel.Channel do
 
   # Check result of the handshake step, send handshake data to the peer if there is a message to exchange,
   # and possible move to another state
-  defp continue_handshake({:complete, {k1, k2, h, _p}}, state) do
-    {encrypt_st, decrypt_st} = split(state.channel_state.vault, k1, k2, state.role)
-    identity_exchange(state, h, encrypt_st, decrypt_st)
+  defp continue_handshake({:complete, _key_agreements} = r, state) do
+    next_handshake_state(r, state)
   end
 
   defp continue_handshake({:continue, key_exchange_state}, state) do
@@ -579,6 +578,11 @@ defmodule Ockam.SecureChannel.Channel do
            ) do
       {:ok, %Channel{state | channel_state: %Established{e | encrypt_st: encrypt_st}}}
     end
+  end
+
+  defp handle_outer_message_impl(message, state) do
+    Logger.warn("discarding message, secure channel not yet established: #{inspect(message)}")
+    {:ok, state}
   end
 
   defp send_over_encrypted_channel(message, encrypt_st, peer_route, inner_address) do
