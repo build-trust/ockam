@@ -22,7 +22,7 @@ pub enum Action {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Message)]
-pub(super) struct IdentityAndCredential {
+pub(super) struct IdentityAndCredentials {
     pub(super) identity: EncodedPublicIdentity,
     // The signature guarantees that the other end has access to the private key of the identity
     // The signature refers to the static key of the noise ('x') and is made with the static

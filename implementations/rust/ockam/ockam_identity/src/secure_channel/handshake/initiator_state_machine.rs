@@ -1,8 +1,8 @@
-use crate::secure_channel::handshake::handshake_state::Handshake;
+use crate::secure_channel::handshake::handshake_state::{Handshake, Status};
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
 use crate::secure_channel::handshake::handshake_state_machine::Event::ReceivedMessage;
 use crate::secure_channel::handshake::handshake_state_machine::{
-    Action, Event, IdentityAndCredential, StateMachine,
+    Action, Event, IdentityAndCredentials, StateMachine,
 };
 use crate::{Credential, Identities, Identity, TrustContext, TrustPolicy};
 use delegate::delegate;
@@ -12,7 +12,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{CompletedKeyExchange, Error, Result};
 use ockam_key_exchange_xx::XXVault;
 use Event::*;
-use InitiatorStatus::*;
+use Status::*;
 
 #[async_trait]
 impl StateMachine for InitiatorStateMachine {
@@ -50,12 +50,12 @@ impl StateMachine for InitiatorStateMachine {
     }
 
     fn get_final_state(&self) -> Option<(Identity, CompletedKeyExchange)> {
-        self.make_final_state()
+        self.get_final_state()
     }
 }
 
 pub(super) struct InitiatorStateMachine {
-    pub(super) handshake: Handshake<InitiatorStatus>,
+    pub(super) handshake: Handshake,
 }
 
 impl InitiatorStateMachine {
@@ -64,32 +64,25 @@ impl InitiatorStateMachine {
             #[call(initialize)]
             async fn initialize_handshake(&mut self) -> Result<()>;
             async fn encode_message1(&mut self) -> Result<Vec<u8>>;
-            async fn decode_message2(&mut self, message: Vec<u8>) -> Result<IdentityAndCredential>;
+            async fn decode_message2(&mut self, message: Vec<u8>) -> Result<IdentityAndCredentials>;
             async fn encode_message3(&mut self) -> Result<Vec<u8>>;
-            async fn verify_identity(&self, identity_and_credential: IdentityAndCredential) -> Result<Identity>;
+            async fn verify_identity(&self, identity_and_credential: IdentityAndCredentials) -> Result<Identity>;
+            pub fn get_final_state(&self) -> Option<(Identity, CompletedKeyExchange)>;
         }
     }
 
     async fn set_ready_status(&mut self, their_identity: Identity) -> Result<()> {
+        let mut state = self.handshake.state.clone();
         // k1, k2 = HKDF(ck, zerolen, 2)
         // k2 is the encryptor key
         // k1 is the decryptor key
-        let (k1, k2) = self.handshake.hkdf(&self.handshake.state.ck, None).await?;
-        self.handshake.state.status = Ready {
+        let (k1, k2) = self.handshake.hkdf(&state.ck, &state.k, None).await?;
+        state.status = Ready {
             their_identity,
-            keys: CompletedKeyExchange::new(self.handshake.state.h, k2, k1),
+            keys: CompletedKeyExchange::new(state.h, k2, k1),
         };
-        Ok(())
-    }
 
-    fn make_final_state(&self) -> Option<(Identity, CompletedKeyExchange)> {
-        match self.handshake.state.status.clone() {
-            Ready {
-                their_identity,
-                keys,
-            } => Some((their_identity, keys)),
-            _ => None,
-        }
+        Ok(self.handshake.state = state)
     }
 }
 
@@ -110,19 +103,8 @@ impl InitiatorStateMachine {
                 credentials,
                 trust_policy,
                 trust_context,
-                Initial,
             )
             .await?,
         })
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum InitiatorStatus {
-    Initial,
-    WaitingForMessage2,
-    Ready {
-        their_identity: Identity,
-        keys: CompletedKeyExchange,
-    },
 }

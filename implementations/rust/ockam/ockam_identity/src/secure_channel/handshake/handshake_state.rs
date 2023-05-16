@@ -1,5 +1,5 @@
 use crate::secure_channel::handshake::handshake_state_machine::{
-    EncodedPublicIdentity, IdentityAndCredential,
+    EncodedPublicIdentity, IdentityAndCredentials,
 };
 use crate::{
     Credential, Credentials, Identities, IdentitiesKeys, Identity, IdentityError,
@@ -13,294 +13,189 @@ use ockam_core::vault::{
     Signature, AES256_SECRET_LENGTH_U32, CURVE25519_PUBLIC_LENGTH_USIZE,
     CURVE25519_SECRET_LENGTH_U32,
 };
-use ockam_core::{Error, Result};
+use ockam_core::{CompletedKeyExchange, Error, Result};
 use ockam_key_exchange_xx::{
     XXError, XXVault, AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_U32, SHA256_SIZE_USIZE,
 };
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use tracing::info;
+use SecretType::*;
+use Status::*;
 
-pub struct Handshake<T> {
+pub struct Handshake {
     vault: Arc<dyn XXVault>,
     identities: Arc<Identities>,
     trust_policy: Arc<dyn TrustPolicy>,
     trust_context: Option<TrustContext>,
     credentials_expected: bool,
-    pub(super) state: State<T>,
+    pub(super) state: State,
 }
 
-impl<T: Clone> Handshake<T> {
+impl Handshake {
     pub(super) async fn initialize(&mut self) -> Result<()> {
         let mut state = self.state.clone();
-
-        // 3. Set k to empty, Set n to 0
-        state.k = "".into();
-        state.n = 0;
-
-        // 4. Set h and ck to protocol name
-        // prologue is empty
-        state.h = self.get_protocol_name().clone();
-        state.ck = self
-            .create_ephemeral_secret(self.get_protocol_name().to_vec())
-            .await?;
-
-        // 5. h = SHA256(concat(h, prologue))
+        state.h = self.protocol_name().clone();
+        state.ck = self.import_secret(self.protocol_name().to_vec()).await?;
         state.mix_hash(state.prologue.clone().as_slice());
+
         Ok(self.state = state)
     }
 
     pub(super) async fn encode_message1(&mut self) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
-        // 1. h = SHA256(concat(h, e.pubKey))
-        //    writeToMessage(bigendian(e.pubKey)
-        let ephemeral_public_key = self.get_ephemeral_public_key(&state.e).await?;
-        let output = ephemeral_public_key.data().to_vec();
-        state.mix_hash(ephemeral_public_key.data());
+        // output e.pubKey
+        let e_pub_key = self.get_public_key(&state.e).await?;
+        let mut message = e_pub_key.data().to_vec();
+        state.mix_hash(e_pub_key.data());
 
-        // 2. payload = empty string
-        //    h = SHA256(concat(h, payload))
-        state.mix_hash(&[]);
+        // output message 1 payload
+        message.extend(state.message1_payload.clone());
+        state.mix_hash(state.message1_payload.clone().as_slice());
+
         self.state = state;
-        Ok(output)
+        Ok(message)
     }
 
     pub(super) async fn decode_message1(&mut self, message: Vec<u8>) -> Result<()> {
         let mut state = self.state.clone();
-        // 1. re = readFromMessage(32 bytes)
-        //    h = SHA256(concat(h, re))
-        self.state.re = PublicKey::new(
-            Self::read_from_message(&message, 0, CURVE25519_PUBLIC_LENGTH_USIZE)?.to_vec(),
-            SecretType::X25519,
-        );
-        state.mix_hash(&self.state.re.data());
+        // read e.pubKey
+        let key = Self::read_key(&message)?;
+        state.re = PublicKey::new(key.to_vec(), X25519);
+        state.mix_hash(key);
 
-        // 2. payload = readRemainingMessage()
-        //    h = SHA256(concat(h, payload))
-        let payload = Self::read_end_of_message(&message, CURVE25519_PUBLIC_LENGTH_USIZE)?;
+        // decode payload
+        let payload = Self::read_message1_payload(&message)?;
         state.mix_hash(payload);
         Ok(self.state = state)
     }
 
     pub(super) async fn encode_message2(&mut self) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
-        // 1. h = SHA256(concat(h, e.pubKey))
-        //    writeToMessage(bigendian(e.pubKey))
-        let ephemeral_public_key = self.get_ephemeral_public_key(&state.e).await?;
-        let mut output = ephemeral_public_key.data().to_vec();
+        // output e.pubKey
+        let e_pub_key = self.get_public_key(&state.e).await?;
+        let mut message2 = e_pub_key.data().to_vec();
 
-        // 2. ck, k = HKDF(ck, DH(e, re), 2)
-        //    n = 0
-        let dh = self
-            .generate_diffie_hellman_key(&state.e, &state.re)
-            .await?;
-        let (ck, k) = self.hkdf(&state.ck, Some(&dh)).await?;
-        state.ck = self.replace_key(&state.ck, &ck).await?;
-        state.k = self.replace_key(&state.k, &k).await?;
-        state.n = 0;
+        // ck, k = HKDF(ck, DH(e, re), 2)
+        let dh = self.dh(&state.e, &state.re).await?;
+        (state.ck, state.k) = self.hkdf(&state.ck, &state.k, Some(&dh)).await?;
 
-        // 3. c = ENCRYPT(k, n++, h, s.pubKey)
-        //    h = SHA256(concat(h, c))
-        //    writeToMessage(bigendian(c))
-        state.n += 1;
-        let c = self
-            .encrypt(&state.k, state.n, &state.h, &output.as_slice())
-            .await?;
+        // encrypt and output s.pubKey
+        let s_pub_key = self.get_public_key(&state.s).await?;
+        let c = self.encrypt(&state.k, &state.h, &s_pub_key.data()).await?;
+        message2.extend_from_slice(c.as_slice());
         state.mix_hash(c.as_slice());
-        output.extend_from_slice(c.as_slice());
 
-        // 4. ck, k = HKDF(ck, DH(s, re), 2)
-        //     n = 0
-        let dh = self
-            .generate_diffie_hellman_key(&state.s, &state.re)
-            .await?;
-        let (ck, k) = self.hkdf(&state.ck, Some(&dh)).await?;
-        state.ck = self.replace_key(&state.ck, &ck).await?;
-        state.k = self.replace_key(&state.k, &k).await?;
-        state.n = 0;
+        // ck, k = HKDF(ck, DH(s, re), 2)
+        let dh = self.dh(&state.s, &state.re).await?;
+        (state.ck, state.k) = self.hkdf(&state.ck, &state.k, Some(&dh)).await?;
 
-        // 7. c = ENCRYPT(k, n++, h, payload)
-        //    h = SHA256(concat(h, c))
-        //    writeToMessage(bigendian(c))
-
-        state.n += 1;
+        // encrypt and output payload
         let c = self
-            .encrypt(
-                &state.k,
-                state.n,
-                &state.h,
-                &state.identity_payload.as_slice(),
-            )
+            .encrypt(&state.k, &state.h, &state.identity_payload.as_slice())
             .await?;
+        message2.extend(c.clone());
         state.mix_hash(c.as_slice());
-        output.extend_from_slice(c.as_slice());
         self.state = state;
-        Ok(output)
+        Ok(message2)
     }
 
     pub(super) async fn decode_message2(
         &mut self,
         message: Vec<u8>,
-    ) -> Result<IdentityAndCredential> {
+    ) -> Result<IdentityAndCredentials> {
         let mut state = self.state.clone();
-        // 1. re = readFromMessage(32 bytes)
-        //    h = SHA256(concat(h, re))
-        self.state.re = PublicKey::new(
-            Self::read_from_message(&message, 0, CURVE25519_PUBLIC_LENGTH_USIZE)?.to_vec(),
-            SecretType::X25519,
-        );
-        state.mix_hash(&self.state.re.data());
+        // decode re.pubKey
+        let re_pub_key = Self::read_key(&message)?;
+        state.re = PublicKey::new(re_pub_key.to_vec(), X25519);
+        state.mix_hash(re_pub_key);
 
-        // 2. ck, k = HKDF(ck, DH(e, re), 2)
-        // n = 0
-        let dh = self
-            .generate_diffie_hellman_key(&state.e, &state.re)
-            .await?;
-        let (ck, k) = self.hkdf(&state.ck, Some(&dh)).await?;
-        state.ck = self.replace_key(&state.ck, &ck).await?;
-        state.k = self.replace_key(&state.k, &k).await?;
-        state.n = 0;
+        // ck, k = HKDF(ck, DH(e, re), 2)
+        let dh = self.dh(&state.e, &state.re).await?;
+        (state.ck, state.k) = self.hkdf(&state.ck, &state.k, Some(&dh)).await?;
 
-        // 3. c = readFromMessage(48 bytes)
-        //    h = SHA256(concat(h, c))
-        let c = Self::read_from_message(
-            &message,
-            CURVE25519_PUBLIC_LENGTH_USIZE,
-            CURVE25519_PUBLIC_LENGTH_USIZE + AES_GCM_TAGSIZE_USIZE,
-        )?;
+        // decrypt rs.pubKey
+        let rs_pub_key = Self::read_message2_encrypted_key(&message)?;
+        state.rs = PublicKey::new(self.decrypt(&state.k, &state.h, rs_pub_key).await?, X25519);
+        state.mix_hash(rs_pub_key);
+
+        // ck, k = HKDF(ck, DH(e, rs), 2)
+        let dh = self.dh(&state.e, &state.rs).await?;
+        (state.ck, state.k) = self.hkdf(&state.ck, &state.k, Some(&dh)).await?;
+
+        // decrypt payload
+        let c = Self::read_message2_payload(&message)?;
+        let payload = self.decrypt(&state.k, &state.h, c).await?;
         state.mix_hash(c);
 
-        // 4. rs = DECRYPT(k, n++, h, c)
-        state.n += 1;
-        state.rs = PublicKey::new(
-            self.decrypt(&state.k, state.n, &state.h, c).await?,
-            SecretType::X25519,
-        );
-
-        // 5. ck, k = HKDF(ck, DH(e, rs), 2)
-        let dh = self
-            .generate_diffie_hellman_key(&state.e, &state.rs)
-            .await?;
-        let (ck, k) = self.hkdf(&state.ck, Some(&dh)).await?;
-        state.ck = self.replace_key(&state.ck, &ck).await?;
-        state.k = self.replace_key(&state.k, &k).await?;
-
-        // 6. c = readRemainingMessage()
-        //    h = SHA256(concat(h, c))
-        let c = Self::read_end_of_message(
-            &message,
-            CURVE25519_PUBLIC_LENGTH_USIZE * 2 + AES_GCM_TAGSIZE_USIZE,
-        )?;
-        state.mix_hash(c);
-
-        // 7. payload = DECRYPT(k, n++, h, c)
-        state.n += 1;
-
-        let payload = self.decrypt(&state.k, state.n, &state.h, c).await?;
         self.state = state;
-        serde_bare::from_slice(payload.as_slice())
-            .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))
+        Self::deserialize(payload)
     }
 
     pub(super) async fn encode_message3(&mut self) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
-        // 1. ENCRYPT(k, n++, h, s.pubKey)
-        //    h = SHA256(concat(h, c))
-        state.n += 1;
-        let s_public_key = self.get_ephemeral_public_key(&state.s).await?;
-        let c = self
-            .encrypt(&state.k, state.n, &state.h, &s_public_key.data())
-            .await?;
+        // encrypt s.pubKey
+        let s_pub_key = self.get_public_key(&state.s).await?;
+        let c = self.encrypt(&state.k, &state.h, &s_pub_key.data()).await?;
+        let mut message3 = c.to_vec();
         state.mix_hash(c.as_slice());
 
-        // 2. writeToMessage(bigendian(c))
-        let message_to_send = c.to_vec();
+        // ck, k = HKDF(ck, DH(s, re), 2)
+        let dh = self.dh(&state.s, &state.re).await?;
+        (state.ck, state.k) = self.hkdf(&state.ck, &state.k, Some(&dh)).await?;
 
-        // 3. ck, k = HKDF(ck, DH(s, re), 2)
-        //    h = SHA256(concat(h, c))
-        let dh = self
-            .generate_diffie_hellman_key(&state.s, &state.re)
-            .await?;
-        let (ck, k) = self.hkdf(&state.ck, Some(&dh)).await?;
-        state.ck = self.replace_key(&state.ck, &ck).await?;
-        state.k = self.replace_key(&state.k, &k).await?;
-
-        // 4. ENCRYPT(k, n++, h, payload)
-        //    h = SHA256(concat(h, c))
-        let mut output = message_to_send;
-        output.extend_from_slice(state.identity_payload.as_slice());
-
-        state.n += 1;
+        // encrypt payload
         let c = self
-            .encrypt(&state.k, state.n, &state.h, &output.as_slice())
+            .encrypt(&state.k, &state.h, &state.identity_payload.as_slice())
             .await?;
+        message3.extend(c.clone());
         state.mix_hash(c.as_slice());
+
         self.state = state;
-        Ok(output)
+        Ok(message3)
     }
 
     pub(super) async fn decode_message3(
         &mut self,
         message: Vec<u8>,
-    ) -> Result<IdentityAndCredential> {
+    ) -> Result<IdentityAndCredentials> {
         let mut state = self.state.clone();
-        // 1. c = readFromMessage(48 bytes)
-        //    h = SHA256(concat(h, c))
-        //    rs = DECRYPT(k, n++, h, c)
-        let c = Self::read_from_message(
-            &message,
-            0,
-            CURVE25519_PUBLIC_LENGTH_USIZE + AES_GCM_TAGSIZE_USIZE,
-        )?;
-        state.n += 1;
-        state.rs = PublicKey::new(
-            self.decrypt(&state.k, state.n, &state.h, c).await?,
-            SecretType::X25519,
-        );
+        // decrypt rs key
+        let rs_pub_key = Self::read_message3_encrypted_key(&message)?;
+        state.rs = PublicKey::new(self.decrypt(&state.k, &state.h, rs_pub_key).await?, X25519);
 
-        // 2. ck, k = HKDF(ck, DH(e, rs), 2)
-        //    n = 0
-        let dh = self
-            .generate_diffie_hellman_key(&state.e, &state.rs)
-            .await?;
-        let (ck, k) = self.hkdf(&state.ck, Some(&dh)).await?;
-        state.ck = self.replace_key(&state.ck, &ck).await?;
-        state.k = self.replace_key(&state.k, &k).await?;
-        state.n = 0;
+        // ck, k = HKDF(ck, DH(e, rs), 2), n = 0
+        let dh = self.dh(&state.e, &state.rs).await?;
+        (state.ck, state.k) = self.hkdf(&state.ck, &state.k, Some(&dh)).await?;
 
-        // 3. c = readRemainingMessage()
-        //    h = SHA256(concat(h, c))
-        let c = Self::read_end_of_message(
-            &message,
-            CURVE25519_PUBLIC_LENGTH_USIZE * 2 + AES_GCM_TAGSIZE_USIZE,
-        )?;
+        // decrypt payload
+        let c = Self::read_message3_payload(&message)?;
+        let payload = self.decrypt(&state.k, &state.h, c).await?;
         state.mix_hash(c);
-
-        // 4. payload = DECRYPT(k, n++, h, c)
-        state.n += 1;
-        let payload = self.decrypt(&state.k, state.n, &state.h, c).await?;
         self.state = state;
-        serde_bare::from_slice(payload.as_slice())
-            .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))
+        Self::deserialize(payload)
     }
 
-    pub(super) async fn verify_identity(
-        &self,
-        identity_and_credential: IdentityAndCredential,
-    ) -> Result<Identity> {
-        let their_identity = self
-            .decode_identity(identity_and_credential.identity)
+    pub(super) async fn verify_identity(&self, peer: IdentityAndCredentials) -> Result<Identity> {
+        let identity = self.decode_identity(peer.identity).await?;
+        self.verify_signature(&identity, &peer.signature, &self.state.rs)
             .await?;
-        let their_signature = identity_and_credential.signature;
-        let their_credentials = identity_and_credential.credentials;
-        self.verify_signature(&their_identity, &their_signature, &self.state.rs)
-            .await?;
-        self.verify_credentials(&their_identity, their_credentials)
-            .await?;
-        Ok(their_identity)
+        self.verify_credentials(&identity, peer.credentials).await?;
+        Ok(identity)
+    }
+
+    pub(super) fn get_final_state(&self) -> Option<(Identity, CompletedKeyExchange)> {
+        match self.state.status.clone() {
+            Ready {
+                their_identity,
+                keys,
+            } => Some((their_identity, keys)),
+            _ => None,
+        }
     }
 }
 
-impl<T> Handshake<T> {
+impl Handshake {
     pub(super) async fn new(
         vault: Arc<dyn XXVault>,
         identities: Arc<Identities>,
@@ -308,8 +203,7 @@ impl<T> Handshake<T> {
         credentials: Vec<Credential>,
         trust_policy: Arc<dyn TrustPolicy>,
         trust_context: Option<TrustContext>,
-        status: T,
-    ) -> Result<Handshake<T>> {
+    ) -> Result<Handshake> {
         // 1. generate a static key pair for this handshake and set it to s
         let s = Self::generate_static_key(vault.clone()).await?;
 
@@ -317,7 +211,7 @@ impl<T> Handshake<T> {
         let e = Self::generate_ephemeral_key(vault.clone()).await?;
 
         // 3. prepare the payload that will be sent either in message 2 or message 3
-        let payload = IdentityAndCredential {
+        let payload = IdentityAndCredentials {
             identity: EncodedPublicIdentity::from(&identity)?,
             signature: Self::sign_static_key(vault.clone(), identities.clone(), identity, &s)
                 .await?,
@@ -331,7 +225,7 @@ impl<T> Handshake<T> {
             trust_policy,
             trust_context,
             credentials_expected: !credentials.is_empty(),
-            state: State::new(status, s, e, identity_payload),
+            state: State::new(s, e, identity_payload),
         })
     }
 
@@ -350,7 +244,7 @@ impl<T> Handshake<T> {
 
     async fn generate_static_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
         let attributes = SecretAttributes::new(
-            SecretType::X25519,
+            X25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         );
@@ -359,32 +253,38 @@ impl<T> Handshake<T> {
 
     async fn generate_ephemeral_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
         let attributes = SecretAttributes::new(
-            SecretType::X25519,
+            X25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         );
         vault.secret_generate(attributes).await
     }
 
-    pub(super) async fn create_ephemeral_secret(&self, content: Vec<u8>) -> Result<KeyId> {
+    fn deserialize<D: for<'a> Deserialize<'a>>(payload: Vec<u8>) -> Result<D> {
+        serde_bare::from_slice(payload.as_slice())
+            .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))
+    }
+
+    pub(super) async fn import_secret(&self, content: Vec<u8>) -> Result<KeyId> {
         self.vault
             .secret_import(Secret::Key(SecretKey::new(content)), Self::ck_attributes())
             .await
     }
 
-    pub(super) async fn get_ephemeral_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
+    pub(super) async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
         self.vault.secret_public_key_get(key_id).await
     }
 
-    pub(super) async fn generate_diffie_hellman_key(
-        &self,
-        key_id: &KeyId,
-        public_key: &PublicKey,
-    ) -> Result<KeyId> {
+    pub(super) async fn dh(&self, key_id: &KeyId, public_key: &PublicKey) -> Result<KeyId> {
         self.vault.ec_diffie_hellman(key_id, public_key).await
     }
 
-    pub(super) async fn hkdf(&self, ck: &KeyId, dh: Option<&KeyId>) -> Result<(KeyId, KeyId)> {
+    pub(super) async fn hkdf(
+        &mut self,
+        ck: &KeyId,
+        k: &KeyId,
+        dh: Option<&KeyId>,
+    ) -> Result<(KeyId, KeyId)> {
         let mut hkdf_output = self
             .vault
             .hkdf_sha256(
@@ -399,54 +299,37 @@ impl<T> Handshake<T> {
             return Err(XXError::InternalVaultError.into());
         }
 
+        self.vault.secret_destroy(ck.clone()).await?;
+        self.vault.secret_destroy(k.clone()).await?;
+
         let ck = hkdf_output.pop().unwrap();
         let k = hkdf_output.pop().unwrap();
+        self.state.n = 0;
 
         Ok((ck, k))
     }
 
-    pub(super) async fn replace_key(
-        &self,
-        old_key_id: &KeyId,
-        new_key_id: &KeyId,
-    ) -> Result<KeyId> {
-        self.vault.secret_destroy(old_key_id.clone()).await?;
-        Ok(new_key_id.clone())
-    }
-
-    pub(super) fn read_from_message(message: &Vec<u8>, start: usize, end: usize) -> Result<&[u8]> {
-        if message.len() < end || start > end {
-            return Err(XXError::MessageLenMismatch.into());
-        }
-        Ok(&message[start..end])
-    }
-
-    pub(super) fn read_end_of_message(message: &Vec<u8>, start: usize) -> Result<&[u8]> {
-        if message.len() < start {
-            return Err(XXError::MessageLenMismatch.into());
-        }
-        Ok(&message[start..])
-    }
-
-    pub(super) async fn decrypt(&self, k: &KeyId, n: usize, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
+    pub(super) async fn decrypt(&mut self, k: &KeyId, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
+        self.state.n += 1;
         let mut nonce = [0u8; 12];
-        nonce[10..].copy_from_slice(&n.to_be_bytes());
+        nonce[10..].copy_from_slice(&self.state.n.to_be_bytes());
         self.vault
             .aead_aes_gcm_decrypt(k, c, nonce.as_ref(), h)
             .await
             .map(|b| b.to_vec())
     }
 
-    pub(super) async fn encrypt(&self, k: &KeyId, n: usize, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
+    pub(super) async fn encrypt(&mut self, k: &KeyId, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
+        self.state.n += 1;
         let mut nonce = [0u8; 12];
-        nonce[10..].copy_from_slice(&n.to_be_bytes());
+        nonce[10..].copy_from_slice(&self.state.n.to_be_bytes());
         self.vault
             .aead_aes_gcm_encrypt(k, c, nonce.as_ref(), h)
             .await
             .map(|b| b.to_vec())
     }
 
-    pub(super) fn get_protocol_name(&self) -> &'static [u8; 32] {
+    pub(super) fn protocol_name(&self) -> &'static [u8; 32] {
         b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"
     }
 
@@ -522,22 +405,6 @@ impl<T> Handshake<T> {
         Ok(())
     }
 
-    fn ck_attributes() -> SecretAttributes {
-        SecretAttributes::new(
-            SecretType::Buffer,
-            SecretPersistence::Ephemeral,
-            SHA256_SIZE_U32,
-        )
-    }
-
-    fn k_attributes() -> SecretAttributes {
-        SecretAttributes::new(
-            SecretType::Aes,
-            SecretPersistence::Ephemeral,
-            AES256_SECRET_LENGTH_U32,
-        )
-    }
-
     fn identities(&self) -> Arc<Identities> {
         self.identities.clone()
     }
@@ -547,8 +414,72 @@ impl<T> Handshake<T> {
     }
 }
 
+/// Static functions
+impl Handshake {
+    fn ck_attributes() -> SecretAttributes {
+        SecretAttributes::new(Buffer, SecretPersistence::Ephemeral, SHA256_SIZE_U32)
+    }
+
+    fn k_attributes() -> SecretAttributes {
+        SecretAttributes::new(Aes, SecretPersistence::Ephemeral, AES256_SECRET_LENGTH_U32)
+    }
+
+    fn read_message1_payload(message: &Vec<u8>) -> Result<&[u8]> {
+        Self::read_end(message, Self::key_size())
+    }
+
+    fn read_message2_encrypted_key(message: &Vec<u8>) -> Result<&[u8]> {
+        Self::read_middle(message, Self::key_size(), Self::encrypted_key_size())
+    }
+
+    fn read_message2_payload(message: &Vec<u8>) -> Result<&[u8]> {
+        Self::read_end(message, Self::key_size() + Self::encrypted_key_size())
+    }
+
+    fn read_message3_encrypted_key(message: &Vec<u8>) -> Result<&[u8]> {
+        Self::read_start(message, Self::encrypted_key_size())
+    }
+
+    fn read_message3_payload(message: &Vec<u8>) -> Result<&[u8]> {
+        Self::read_end(message, Self::encrypted_key_size())
+    }
+
+    fn read_start(message: &Vec<u8>, length: usize) -> Result<&[u8]> {
+        if message.len() < length {
+            return Err(XXError::MessageLenMismatch.into());
+        }
+        Ok(&message[0..length])
+    }
+
+    fn read_end(message: &Vec<u8>, drop_length: usize) -> Result<&[u8]> {
+        if message.len() < drop_length {
+            return Err(XXError::MessageLenMismatch.into());
+        }
+        Ok(&message[drop_length..])
+    }
+
+    fn read_middle(message: &Vec<u8>, drop_length: usize, length: usize) -> Result<&[u8]> {
+        if message.len() < drop_length + length {
+            return Err(XXError::MessageLenMismatch.into());
+        }
+        Ok(&message[drop_length..(drop_length + length)])
+    }
+
+    fn read_key(message: &Vec<u8>) -> Result<&[u8]> {
+        Self::read_start(message, Self::key_size())
+    }
+
+    fn key_size() -> usize {
+        CURVE25519_PUBLIC_LENGTH_USIZE
+    }
+
+    fn encrypted_key_size() -> usize {
+        Self::key_size() + AES_GCM_TAGSIZE_USIZE
+    }
+}
+
 #[derive(Debug, Clone)]
-pub(super) struct State<T> {
+pub(super) struct State {
     pub(super) s: KeyId,
     pub(super) e: KeyId,
     pub(super) k: KeyId,
@@ -558,30 +489,32 @@ pub(super) struct State<T> {
     pub(super) h: [u8; SHA256_SIZE_USIZE],
     pub(super) ck: KeyId,
     pub(super) prologue: Vec<u8>,
+    pub(super) message1_payload: Vec<u8>,
     pub(super) identity_payload: Vec<u8>,
-    pub(super) status: T,
+    pub(super) status: Status,
 }
 
-impl<T> State<T> {
-    pub(super) fn new(status: T, s: KeyId, e: KeyId, identity_payload: Vec<u8>) -> State<T> {
+impl State {
+    pub(super) fn new(s: KeyId, e: KeyId, identity_payload: Vec<u8>) -> State {
         State {
             s,
             e,
             k: "".to_string(),
-            re: PublicKey::new(vec![], SecretType::X25519),
-            rs: PublicKey::new(vec![], SecretType::X25519),
+            re: PublicKey::new(vec![], X25519),
+            rs: PublicKey::new(vec![], X25519),
             n: 0,
             h: [0u8; SHA256_SIZE_USIZE],
             ck: "".to_string(),
             prologue: vec![],
+            message1_payload: vec![],
             identity_payload,
-            status,
+            status: Initial,
         }
     }
 
     pub(super) fn mix_hash(&mut self, data: &[u8]) {
         let mut input = self.h.to_vec();
-        input.extend_from_slice(data.as_ref());
+        input.extend(data);
         self.h = Self::sha256(&input)
     }
 
@@ -589,4 +522,16 @@ impl<T> State<T> {
         let digest = Sha256::digest(data);
         *array_ref![digest, 0, 32]
     }
+}
+
+#[derive(Debug, Clone)]
+pub(super) enum Status {
+    Initial,
+    WaitingForMessage1,
+    WaitingForMessage2,
+    WaitingForMessage3,
+    Ready {
+        their_identity: Identity,
+        keys: CompletedKeyExchange,
+    },
 }
