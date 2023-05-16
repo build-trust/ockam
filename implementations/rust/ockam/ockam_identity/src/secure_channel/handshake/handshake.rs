@@ -2,9 +2,7 @@ use crate::secure_channel::handshake::constants::{AES_GCM_TAGSIZE_USIZE, SHA256_
 use crate::secure_channel::handshake::error::XXError;
 use crate::secure_channel::handshake::handshake_state::Status;
 use crate::secure_channel::handshake::handshake_state::{HandshakeResults, HandshakeState};
-use crate::secure_channel::handshake::handshake_state_machine::{
-    EncodedPublicIdentity, IdentityAndCredentials,
-};
+use crate::secure_channel::handshake::handshake_state_machine::IdentityAndCredentials;
 use crate::secure_channel::Role;
 use crate::{
     Credential, Credentials, Identities, Identity, IdentityError, SecureChannelTrustInfo,
@@ -231,7 +229,7 @@ impl Handshake {
 
         // 3. prepare the payload that will be sent either in message 2 or message 3
         let payload = IdentityAndCredentials {
-            identity: EncodedPublicIdentity::from(&identity)?,
+            identity: identity.export()?,
             signature: Self::sign_static_key(vault.clone(), identities.clone(), identity, &s)
                 .await?,
             credentials: credentials.clone(),
@@ -311,10 +309,10 @@ impl Handshake {
         b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"
     }
 
-    async fn decode_identity(&self, encoded: EncodedPublicIdentity) -> Result<Identity> {
+    async fn decode_identity(&self, encoded: Vec<u8>) -> Result<Identity> {
         self.identities
             .identities_creation()
-            .import_identity(&encoded.encoded)
+            .import_identity(&encoded.as_slice())
             .await
     }
 

@@ -33,6 +33,7 @@ impl Identity {
     }
 
     /// Export an `Identity` to the binary format
+    /// TODO: return a newtype instead of a raw vector
     pub fn export(&self) -> Result<Vec<u8>> {
         self.change_history.export()
     }
