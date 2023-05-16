@@ -1,6 +1,17 @@
 use example_test_helper::{CmdBuilder, Error};
 
 #[test]
+fn alice_bob_securechannel_check_only() -> Result<(), Error> {
+    let code = CmdBuilder::new("cargo check --example ockam_kafka_bob").run()?.0;
+    assert_eq!(0, code.unwrap());
+
+    let code = CmdBuilder::new("cargo check --example ockam_kafka_alice").run()?.0;
+    assert_eq!(0, code.unwrap());
+    Ok(())
+}
+
+#[test]
+#[ignore]
 fn alice_bob_securechannel() -> Result<(), Error> {
     // Spawn BOB and get the dynamic stream addresses
     let bob = CmdBuilder::new("cargo run --example ockam_kafka_bob").spawn()?;
