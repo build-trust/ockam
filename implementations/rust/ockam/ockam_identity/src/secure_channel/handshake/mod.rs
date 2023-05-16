@@ -1,5 +1,6 @@
 mod constants;
 mod error;
+mod handshake;
 mod handshake_state;
 mod handshake_state_machine;
 pub(crate) mod handshake_worker;

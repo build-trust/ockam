@@ -1,4 +1,4 @@
-use crate::secure_channel::handshake::handshake_state::FinalHandshakeState;
+use crate::secure_channel::handshake::handshake_state::HandshakeResults;
 use crate::{Credential, Identity};
 use ockam_core::vault::Signature;
 use ockam_core::{async_trait, Message, Result};
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[async_trait]
 pub(super) trait StateMachine: Send + Sync + 'static {
     async fn on_event(&mut self, event: Event) -> Result<Action>;
-    fn get_final_state(&self) -> Option<FinalHandshakeState>;
+    fn get_handshake_results(&self) -> Option<HandshakeResults>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

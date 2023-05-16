@@ -1,7 +1,7 @@
-use crate::secure_channel::handshake::constants::{
-    AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_U32, SHA256_SIZE_USIZE,
-};
+use crate::secure_channel::handshake::constants::{AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_U32};
 use crate::secure_channel::handshake::error::XXError;
+use crate::secure_channel::handshake::handshake_state::Status;
+use crate::secure_channel::handshake::handshake_state::{HandshakeResults, HandshakeState};
 use crate::secure_channel::handshake::handshake_state_machine::{
     EncodedPublicIdentity, IdentityAndCredentials,
 };
@@ -10,7 +10,6 @@ use crate::{
     Credential, Credentials, Identities, Identity, IdentityError, SecureChannelTrustInfo,
     TrustContext, TrustPolicy, XXVault,
 };
-use arrayref::array_ref;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::{
@@ -20,7 +19,6 @@ use ockam_core::vault::{
 };
 use ockam_core::{Error, Result};
 use serde::Deserialize;
-use sha2::{Digest, Sha256};
 use tracing::info;
 use SecretType::*;
 use Status::*;
@@ -31,7 +29,7 @@ pub struct Handshake {
     trust_policy: Arc<dyn TrustPolicy>,
     trust_context: Option<TrustContext>,
     credentials_expected: bool,
-    pub(super) state: State,
+    pub(super) state: HandshakeState,
 }
 
 impl Handshake {
@@ -186,9 +184,31 @@ impl Handshake {
         Ok(identity)
     }
 
-    pub(super) fn get_final_state(&self) -> Option<FinalHandshakeState> {
+    pub(super) async fn set_final_state(
+        &mut self,
+        their_identity: Identity,
+        role: Role,
+    ) -> Result<()> {
+        let mut state = self.state.clone();
+        // k1, k2 = HKDF(ck, zerolen, 2)
+        let (k1, k2) = self.hkdf(&state.ck, &state.k, None).await?;
+        let (encryption_key, decryption_key) = if role.is_initiator() {
+            (k2, k1)
+        } else {
+            (k1, k2)
+        };
+        state.status = Ready(HandshakeResults {
+            their_identity,
+            encryption_key,
+            decryption_key,
+        });
+
+        Ok(self.state = state)
+    }
+
+    pub(super) fn get_handshake_results(&self) -> Option<HandshakeResults> {
         match self.state.status.clone() {
-            Ready(final_state) => Some(final_state),
+            Ready(results) => Some(results),
             _ => None,
         }
     }
@@ -224,66 +244,25 @@ impl Handshake {
             trust_policy,
             trust_context,
             credentials_expected: !credentials.is_empty(),
-            state: State::new(s, e, identity_payload),
+            state: HandshakeState::new(s, e, identity_payload),
         })
     }
 
-    async fn sign_static_key(
-        vault: Arc<dyn XXVault>,
-        identities: Arc<Identities>,
-        identity: Identity,
-        key_id: &KeyId,
-    ) -> Result<Signature> {
-        let public_static_key = vault.secret_public_key_get(key_id).await?;
-        identities
-            .identities_keys()
-            .create_signature(&identity, public_static_key.data(), None)
-            .await
-    }
-
-    async fn generate_static_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
-        let attributes = SecretAttributes::new(
-            X25519,
-            SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH_U32,
-        );
-        vault.secret_generate(attributes).await
-    }
-
-    async fn generate_ephemeral_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
-        let attributes = SecretAttributes::new(
-            X25519,
-            SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH_U32,
-        );
-        vault.secret_generate(attributes).await
-    }
-
-    fn deserialize<D: for<'a> Deserialize<'a>>(payload: Vec<u8>) -> Result<D> {
-        serde_bare::from_slice(payload.as_slice())
-            .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))
-    }
-
-    pub(super) async fn import_secret(&self, content: Vec<u8>) -> Result<KeyId> {
+    async fn import_secret(&self, content: Vec<u8>) -> Result<KeyId> {
         self.vault
             .secret_import(Secret::Key(SecretKey::new(content)), Self::ck_attributes())
             .await
     }
 
-    pub(super) async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
+    async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
         self.vault.secret_public_key_get(key_id).await
     }
 
-    pub(super) async fn dh(&self, key_id: &KeyId, public_key: &PublicKey) -> Result<KeyId> {
+    async fn dh(&self, key_id: &KeyId, public_key: &PublicKey) -> Result<KeyId> {
         self.vault.ec_diffie_hellman(key_id, public_key).await
     }
 
-    pub(super) async fn hkdf(
-        &mut self,
-        ck: &KeyId,
-        k: &KeyId,
-        dh: Option<&KeyId>,
-    ) -> Result<(KeyId, KeyId)> {
+    async fn hkdf(&mut self, ck: &KeyId, k: &KeyId, dh: Option<&KeyId>) -> Result<(KeyId, KeyId)> {
         let mut hkdf_output = self
             .vault
             .hkdf_sha256(
@@ -308,7 +287,7 @@ impl Handshake {
         Ok((ck, k))
     }
 
-    pub(super) async fn decrypt(&mut self, k: &KeyId, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
+    async fn decrypt(&mut self, k: &KeyId, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
         self.state.n += 1;
         let mut nonce = [0u8; 12];
         nonce[10..].copy_from_slice(&self.state.n.to_be_bytes());
@@ -318,7 +297,7 @@ impl Handshake {
             .map(|b| b.to_vec())
     }
 
-    pub(super) async fn encrypt(&mut self, k: &KeyId, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
+    async fn encrypt(&mut self, k: &KeyId, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
         self.state.n += 1;
         let mut nonce = [0u8; 12];
         nonce[10..].copy_from_slice(&self.state.n.to_be_bytes());
@@ -328,18 +307,18 @@ impl Handshake {
             .map(|b| b.to_vec())
     }
 
-    pub(super) fn protocol_name(&self) -> &'static [u8; 32] {
+    fn protocol_name(&self) -> &'static [u8; 32] {
         b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"
     }
 
-    pub(super) async fn decode_identity(&self, encoded: EncodedPublicIdentity) -> Result<Identity> {
+    async fn decode_identity(&self, encoded: EncodedPublicIdentity) -> Result<Identity> {
         self.identities
             .identities_creation()
             .import_identity(&encoded.encoded)
             .await
     }
 
-    pub(super) async fn verify_signature(
+    async fn verify_signature(
         &self,
         their_identity: &Identity,
         their_signature: &Signature,
@@ -365,7 +344,7 @@ impl Handshake {
         }
     }
 
-    pub(super) async fn verify_credentials(
+    async fn verify_credentials(
         &self,
         their_identity: &Identity,
         credentials: Vec<Credential>,
@@ -404,32 +383,46 @@ impl Handshake {
         };
         Ok(())
     }
-
-    pub(super) async fn set_final_state(
-        &mut self,
-        their_identity: Identity,
-        role: Role,
-    ) -> Result<()> {
-        let mut state = self.state.clone();
-        // k1, k2 = HKDF(ck, zerolen, 2)
-        let (k1, k2) = self.hkdf(&state.ck, &state.k, None).await?;
-        let (encryption_key, decryption_key) = if role.is_initiator() {
-            (k2, k1)
-        } else {
-            (k1, k2)
-        };
-        state.status = Ready(FinalHandshakeState {
-            their_identity,
-            encryption_key,
-            decryption_key,
-        });
-
-        Ok(self.state = state)
-    }
 }
 
 /// Static functions
 impl Handshake {
+    async fn sign_static_key(
+        vault: Arc<dyn XXVault>,
+        identities: Arc<Identities>,
+        identity: Identity,
+        key_id: &KeyId,
+    ) -> Result<Signature> {
+        let public_static_key = vault.secret_public_key_get(key_id).await?;
+        identities
+            .identities_keys()
+            .create_signature(&identity, public_static_key.data(), None)
+            .await
+    }
+
+    async fn generate_static_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
+        let attributes = SecretAttributes::new(
+            X25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH_U32,
+        );
+        vault.secret_generate(attributes).await
+    }
+
+    async fn generate_ephemeral_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
+        let attributes = SecretAttributes::new(
+            X25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH_U32,
+        );
+        vault.secret_generate(attributes).await
+    }
+
+    fn deserialize<D: for<'a> Deserialize<'a>>(payload: Vec<u8>) -> Result<D> {
+        serde_bare::from_slice(payload.as_slice())
+            .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))
+    }
+
     fn ck_attributes() -> SecretAttributes {
         SecretAttributes::new(Buffer, SecretPersistence::Ephemeral, SHA256_SIZE_U32)
     }
@@ -490,68 +483,6 @@ impl Handshake {
     fn encrypted_key_size() -> usize {
         Self::key_size() + AES_GCM_TAGSIZE_USIZE
     }
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct State {
-    pub(super) s: KeyId,
-    pub(super) e: KeyId,
-    pub(super) k: KeyId,
-    pub(super) re: PublicKey,
-    pub(super) rs: PublicKey,
-    pub(super) n: usize,
-    pub(super) h: [u8; SHA256_SIZE_USIZE],
-    pub(super) ck: KeyId,
-    pub(super) prologue: Vec<u8>,
-    pub(super) message1_payload: Vec<u8>,
-    pub(super) identity_payload: Vec<u8>,
-    pub(super) status: Status,
-}
-
-impl State {
-    pub(super) fn new(s: KeyId, e: KeyId, identity_payload: Vec<u8>) -> State {
-        State {
-            s,
-            e,
-            k: "".to_string(),
-            re: PublicKey::new(vec![], X25519),
-            rs: PublicKey::new(vec![], X25519),
-            n: 0,
-            h: [0u8; SHA256_SIZE_USIZE],
-            ck: "".to_string(),
-            prologue: vec![],
-            message1_payload: vec![],
-            identity_payload,
-            status: Initial,
-        }
-    }
-
-    pub(super) fn mix_hash(&mut self, data: &[u8]) {
-        let mut input = self.h.to_vec();
-        input.extend(data);
-        self.h = Self::sha256(&input)
-    }
-
-    fn sha256(data: &[u8]) -> [u8; 32] {
-        let digest = Sha256::digest(data);
-        *array_ref![digest, 0, 32]
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(super) enum Status {
-    Initial,
-    WaitingForMessage1,
-    WaitingForMessage2,
-    WaitingForMessage3,
-    Ready(FinalHandshakeState),
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct FinalHandshakeState {
-    pub(super) their_identity: Identity,
-    pub(super) encryption_key: KeyId,
-    pub(super) decryption_key: KeyId,
 }
 
 // #[cfg(test)]

@@ -1,4 +1,5 @@
-use crate::secure_channel::handshake::handshake_state::{FinalHandshakeState, Handshake, Status};
+use crate::secure_channel::handshake::handshake::Handshake;
+use crate::secure_channel::handshake::handshake_state::{HandshakeResults, Status};
 use crate::secure_channel::handshake::handshake_state_machine::{
     Action, Event, IdentityAndCredentials, StateMachine,
 };
@@ -50,8 +51,8 @@ impl StateMachine for ResponderStateMachine {
         }
     }
 
-    fn get_final_state(&self) -> Option<FinalHandshakeState> {
-        self.get_final_state()
+    fn get_handshake_results(&self) -> Option<HandshakeResults> {
+        self.get_handshake_results()
     }
 }
 
@@ -69,7 +70,7 @@ impl ResponderStateMachine {
             async fn decode_message3(&mut self, message: Vec<u8>) -> Result<IdentityAndCredentials>;
             async fn verify_identity(&self, identity_and_credential: IdentityAndCredentials) -> Result<Identity>;
             async fn set_final_state(&mut self, their_identity: Identity, role: Role) -> Result<()>;
-            fn get_final_state(&self) -> Option<FinalHandshakeState>;
+            fn get_handshake_results(&self) -> Option<HandshakeResults>;
         }
     }
 }

@@ -3,7 +3,7 @@ use crate::secure_channel::decryptor::Decryptor;
 use crate::secure_channel::decryptor_worker::DecryptorWorker;
 use crate::secure_channel::encryptor::Encryptor;
 use crate::secure_channel::encryptor_worker::EncryptorWorker;
-use crate::secure_channel::handshake::handshake_state::FinalHandshakeState;
+use crate::secure_channel::handshake::handshake_state::HandshakeResults;
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
 use crate::secure_channel::handshake::handshake_state_machine::Event::{
     Initialize, ReceivedMessage,
@@ -87,7 +87,7 @@ impl Worker for HandshakeWorker {
             _ => (),
         }
 
-        if let Some(final_state) = self.state_machine.get_final_state() {
+        if let Some(final_state) = self.state_machine.get_handshake_results() {
             // start the encryptor worker and return the decryptor
             self.decryptor = Some(self.finalize(context, final_state).await?);
             self.callback_sender.send(()).await?;
@@ -213,17 +213,17 @@ impl HandshakeWorker {
     async fn finalize(
         &self,
         context: &Context,
-        handshake_state: FinalHandshakeState,
+        handshake_results: HandshakeResults,
     ) -> Result<DecryptorWorker> {
         // decryptor worker
         let decryptor = DecryptorWorker::new(
             self.role.str(),
             self.addresses.clone(),
             Decryptor::new(
-                handshake_state.decryption_key,
+                handshake_results.decryption_key,
                 to_xx_initialized(self.secure_channels.identities.vault()),
             ),
-            handshake_state.their_identity.identifier(),
+            handshake_results.their_identity.identifier(),
         );
 
         // encryptor worker
@@ -233,7 +233,7 @@ impl HandshakeWorker {
                 self.addresses.clone(),
                 self.remote_route(),
                 Encryptor::new(
-                    handshake_state.encryption_key,
+                    handshake_results.encryption_key,
                     0,
                     to_xx_initialized(self.secure_channels.identities.vault()),
                 ),
@@ -273,7 +273,7 @@ impl HandshakeWorker {
             self.addresses.decryptor_api.clone(),
             self.role.is_initiator(),
             self.identity.identifier(),
-            handshake_state.their_identity.identifier(),
+            handshake_results.their_identity.identifier(),
         );
 
         self.secure_channels
