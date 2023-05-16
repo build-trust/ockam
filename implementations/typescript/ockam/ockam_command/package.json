@@ -1,0 +1,18 @@
+{
+  "name": "@ockam/command",
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "postinstall": "bin/install",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.2.3"
+  }
+}

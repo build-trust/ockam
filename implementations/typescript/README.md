@@ -1,22 +1,7 @@
 # Ockam
 
-Ockam is a collection of protocols and toolkits for building connected
-systems that you can trust.
+Ockam is a suite of open source programming libraries and command line tools to
+orchestrate end-to-end encryption, mutual authentication, key management, credential
+management, and authorization policy enforcement – at massive scale.
 
 This folder contains the Typescript implementation of Ockam.
-
-# Build
-
-Install pnpm - https://pnpm.io/installation
-
-Install dependencies
-```
-pnpm install
-```
-
-Build and run an example
-```
-pnpm build
-pnpm example
-pnpm clean
-```

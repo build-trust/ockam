@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if ! command -v ockam &> /dev/null
+then
+  curl --proto '=https' --tlsv1.2 -sSf \
+    https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | bash
+fi
