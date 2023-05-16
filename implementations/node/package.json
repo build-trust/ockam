@@ -1,0 +1,42 @@
+{
+  "name": "@build-trust/ockam",
+  "version": "0.0.1",
+  "description": "",
+  "types": "./lib/cjs/types/index.d.ts",
+  "main": "./lib/cjs/index.js",
+  "scripts": {
+    "test": "esrun test/test.ts",
+    "install": "bin/install.sh",
+    "clean": "rm -rf ./lib",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p ./configs/tsconfig.esm.json && mv lib/esm/index.js lib/esm/index.mjs",
+    "build:cjs": "tsc -p ./configs/tsconfig.cjs.json",
+    "prepack": "npm run build"
+  },
+  "files": [
+    "./lib/**/*",
+    "./bin/**/*"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./lib/esm/types/index.d.ts",
+        "default": "./lib/esm/index.mjs"
+      },
+      "require": {
+        "types": "./lib/cjs/types/index.d.ts",
+        "default": "./lib/cjs/index.js"
+      }
+    }
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@digitak/esrun": "^3.2.24",
+    "@types/watch": "^1.0.3",
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "child_process": "^1.0.2"
+  }
+}
