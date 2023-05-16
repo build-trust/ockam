@@ -60,6 +60,38 @@ defmodule Ockam.Services.Provider do
   end
 
   def get_service_child_specs({service_name, service_args}, providers) do
+    case get_named_service_child_specs(service_name, service_args, providers) do
+      {:ok, specs} ->
+        {:ok, specs}
+
+      {:error, {:unknown_service, service_name}} ->
+        case is_service_module?(service_name) do
+          true ->
+            {:ok, [module_child_spec(service_name, service_args)]}
+
+          false ->
+            {:error, {:unknown_service, service_name}}
+        end
+    end
+  end
+
+  defp is_service_module?(service_name) do
+    case Code.ensure_loaded(service_name) do
+      {:module, _module} ->
+        function_exported?(service_name, :child_spec, 1)
+
+      {:error, _reason} ->
+        false
+    end
+  end
+
+  defp module_child_spec(service_name, service_args) do
+    id = Keyword.get(service_args, :id, service_name)
+
+    Supervisor.child_spec({service_name, service_args}, id: id)
+  end
+
+  defp get_named_service_child_specs(service_name, service_args, providers) do
     service_providers_map = get_service_providers_map(providers)
 
     case Map.get(service_providers_map, service_name) do
@@ -132,26 +164,14 @@ defmodule Ockam.Services.Provider do
     providers_map
   end
 
-  @spec get_service_providers_map(nil | list()) :: list()
+  @spec get_providers(nil | list()) :: list()
   def get_providers(providers \\ nil)
-  def get_providers(nil), do: Application.get_env(:ockam_services, :service_providers)
+  def get_providers(nil), do: Application.get_env(:ockam_services, :service_providers, [])
   def get_providers(providers) when is_list(providers), do: providers
 
   @spec get_configured_services() :: [service_config()]
   def get_configured_services() do
-    case Application.get_env(:ockam_services, :services_config_source) do
-      "json" ->
-        parse_services_json(Application.get_env(:ockam_services, :services_json))
-
-      "file" ->
-        parse_services_file(Application.get_env(:ockam_services, :services_file))
-
-      "list" ->
-        parse_services_list(Application.get_env(:ockam_services, :services_list, []))
-
-      _other ->
-        parse_services_config(Application.get_env(:ockam_services, :services, []))
-    end
+    parse_services_config(Application.get_env(:ockam_services, :services, []))
   end
 
   @spec parse_services_config(Enum.t()) :: [service_config()]
@@ -161,58 +181,8 @@ defmodule Ockam.Services.Provider do
       fn
         atom when is_atom(atom) -> {atom, []}
         {atom, args_map} when is_map(args_map) -> {atom, Map.to_list(args_map)}
-        {_atom, _args} = config -> config
+        {atom, args} = config when is_atom(atom) and is_list(args) -> config
       end
     )
-  end
-
-  @doc false
-  def parse_services_list(nil) do
-    []
-  end
-
-  def parse_services_list(services) do
-    services
-    |> String.split(",", trim: true)
-    |> Enum.map(fn service_name -> service_name |> String.trim() |> String.to_atom() end)
-    |> parse_services_config()
-  end
-
-  @doc false
-  def parse_services_json(nil) do
-    []
-  end
-
-  def parse_services_json("") do
-    []
-  end
-
-  def parse_services_json(json) do
-    case Poison.decode(json, keys: :atoms) do
-      {:ok, services} ->
-        ## TODO: validate services
-        services
-        |> Enum.map(fn {service, args} -> {service, Enum.to_list(args)} end)
-        |> Enum.to_list()
-
-      {:error, err} ->
-        raise("Unable to parse json services config: #{inspect(err)}")
-    end
-  end
-
-  @doc false
-  def parse_services_file(nil) do
-    raise("Services config file is not defined")
-  end
-
-  def parse_services_file(filename) do
-    with true <- File.exists?(filename),
-         {:ok, contents} <- File.read(filename),
-         data <- String.trim(contents) do
-      parse_services_json(data)
-    else
-      _other ->
-        raise("Services file is not found: #{inspect(filename)}")
-    end
   end
 end

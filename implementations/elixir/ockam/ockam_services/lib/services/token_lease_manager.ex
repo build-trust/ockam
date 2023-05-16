@@ -1,5 +1,13 @@
 defmodule Ockam.Services.TokenLeaseManager do
-  @moduledoc false
+  @moduledoc """
+  Service to manage issuance and expiration for access tokens.
+
+  Options:
+
+  - cloud_service (tuple(2)) - tuple with module implementing `Ockam.Services.TokenLeaseManager.CloudService` and initialization options
+  - storage_service_module (atom) - module implementing `Ockam.Services.TokenLeaseManager.StorageService` which stores the tokens
+  - ttl (integer) - lease expiration (in seconds) for new tokens created
+  """
   use Ockam.Services.API.Endpoint
 
   alias Ockam.API.Request

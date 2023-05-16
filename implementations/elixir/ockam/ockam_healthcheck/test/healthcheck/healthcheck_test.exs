@@ -6,7 +6,7 @@ defmodule Ockam.Healthcheck.Test do
   require Logger
 
   setup_all do
-    {:ok, transport} = Ockam.Transport.TCP.start(listen: [port: 4000])
+    start_supervised({Ockam.Transport.TCP, [listen: [port: 4000]]})
 
     {:ok, _api} =
       Ockam.SecureChannel.create_listener(
@@ -20,7 +20,6 @@ defmodule Ockam.Healthcheck.Test do
     on_exit(fn ->
       Ockam.Node.stop("api")
       Ockam.Node.stop("healthcheck")
-      GenServer.stop(transport)
     end)
 
     :ok

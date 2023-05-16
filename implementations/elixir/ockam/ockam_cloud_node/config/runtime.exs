@@ -2,22 +2,6 @@ import Config
 
 # Ockam Cloud Node application config
 
-## Token manager config
-
-token_manager_cloud_service_module =
-  case System.get_env("TOKEN_MANAGER_CLOUD_SERVICE", "INFLUXDB") do
-    "INFLUXDB" -> Ockam.TokenLeaseManager.CloudService.Influxdb
-  end
-
-config :ockam_services, :token_manager,
-  cloud_service_module: token_manager_cloud_service_module,
-  storage_service_module: Ockam.Services.TokenLeaseManager.StorageService.Memory,
-  cloud_service_options: [
-    endpoint: System.get_env("TOKEN_MANAGER_INFLUXDB_ENDPOINT"),
-    token: System.get_env("TOKEN_MANAGER_INFLUXDB_TOKEN"),
-    org: System.get_env("TOKEN_MANAGER_INFLUXDB_ORG")
-  ]
-
 ## Transports config
 
 tcp_port = String.to_integer(System.get_env("TCP_PORT", "4000"))
@@ -110,13 +94,11 @@ config :ockam, identity_module: identity_module
 
 ## Services config
 
-services_json = System.get_env("SERVICES_JSON")
+services_list = System.get_env("SERVICES_LIST", "")
 
-services_list = System.get_env("SERVICES_LIST")
-
-services_file = System.get_env("SERVICES_FILE")
-
-services_config_source = System.get_env("SERVICES_CONFIG_SOURCE")
+services =
+  String.split(services_list, ",", trim: true)
+  |> Enum.map(fn name -> String.trim(name) |> String.to_atom() end)
 
 config :ockam_services,
   service_providers: [
@@ -137,42 +119,9 @@ config :ockam_services,
     # proxies to services in other nodes
     Ockam.Services.Provider.Sidecar
   ],
-  services_config_source: services_config_source,
-  # JSON version of the services definition
-  services_json: services_json,
-  services_file: services_file,
-  services_list: services_list,
-  ## Start echo and forwarding services by default
-  services: [
-    :discovery,
-    :echo,
-    :forwarding,
-    :static_forwarding,
-    :static_forwarding_api,
-    :pub_sub,
-    :stream,
-    :stream_index,
-    :secure_channel,
-    :tracing,
-    :proxy
-  ]
+  services: services
 
 # Ockam Cloud Node application config
-
-## InfluxDB metrics config
-
-influx_token =
-  with true <- File.exists?("/mnt/secrets/influx/token"),
-       {:ok, contents} <- File.read("/mnt/secrets/influx/token"),
-       client_secret <- String.trim(contents) do
-    client_secret
-  else
-    false ->
-      System.get_env("INFLUXDB_TOKEN")
-
-    {:error, :enoent} ->
-      System.get_env("INFLUXDB_TOKEN")
-  end
 
 ## Auto cleanup config
 

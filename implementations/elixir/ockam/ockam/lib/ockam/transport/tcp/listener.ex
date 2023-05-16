@@ -6,8 +6,6 @@ if Code.ensure_loaded?(:ranch) do
     """
 
     ## TODO: is it possible to use ranch listener as a supervised process?
-    use GenServer
-
     require Logger
 
     @typedoc """
@@ -18,12 +16,6 @@ if Code.ensure_loaded?(:ranch) do
     @type options :: Keyword.t()
 
     def start_link(options) do
-      GenServer.start_link(__MODULE__, options)
-    end
-
-    @doc false
-    @impl true
-    def init(options) do
       ip = Keyword.get_lazy(options, :ip, &default_ip/0)
       port = Keyword.get_lazy(options, :port, &default_port/0)
 
@@ -31,19 +23,24 @@ if Code.ensure_loaded?(:ranch) do
 
       ref = make_ref()
       transport = :ranch_tcp
-      transport_options = [port: port, ip: ip]
+      transport_options = :ranch.normalize_opts(port: port, ip: ip)
       protocol = Ockam.Transport.TCP.Handler
       protocol_options = [packet: 2, nodelay: true, handler_options: handler_options]
 
-      with {:ok, _apps} <- Application.ensure_all_started(:ranch),
-           {:ok, ranch_listener} <-
-             start_listener(ref, transport, transport_options, protocol, protocol_options) do
-        {:ok, %{ranch_listener: ranch_listener}}
+      with {:ok, _apps} <- Application.ensure_all_started(:ranch) do
+        start_listener(ref, transport, transport_options, protocol, protocol_options)
       end
     end
 
     defp start_listener(ref, transport, transport_options, protocol, protocol_options) do
-      r = :ranch.start_listener(ref, transport, transport_options, protocol, protocol_options)
+      r =
+        :ranch_listener_sup.start_link(
+          ref,
+          transport,
+          transport_options,
+          protocol,
+          protocol_options
+        )
 
       case r do
         {:ok, child} -> {:ok, child}
