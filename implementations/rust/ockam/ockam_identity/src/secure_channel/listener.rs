@@ -1,8 +1,8 @@
 use crate::identity::Identity;
 use crate::secure_channel::addresses::Addresses;
-use crate::secure_channel::common::Role;
 use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::options::SecureChannelListenerOptions;
+use crate::secure_channel::role::Role;
 use crate::secure_channels::secure_channels::SecureChannels;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;

@@ -5,9 +5,10 @@ use crate::secure_channel::handshake::error::XXError;
 use crate::secure_channel::handshake::handshake_state_machine::{
     EncodedPublicIdentity, IdentityAndCredentials,
 };
+use crate::secure_channel::Role;
 use crate::{
-    Credential, Credentials, Identities, IdentitiesKeys, Identity, IdentityError,
-    SecureChannelTrustInfo, TrustContext, TrustPolicy, XXVault,
+    Credential, Credentials, Identities, Identity, IdentityError, SecureChannelTrustInfo,
+    TrustContext, TrustPolicy, XXVault,
 };
 use arrayref::array_ref;
 use ockam_core::compat::sync::Arc;
@@ -21,7 +22,6 @@ use ockam_core::{Error, Result};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use tracing::info;
-use zeroize::Zeroize;
 use SecretType::*;
 use Status::*;
 
@@ -186,12 +186,9 @@ impl Handshake {
         Ok(identity)
     }
 
-    pub(super) fn get_final_state(&self) -> Option<(Identity, CompletedKeyExchange)> {
+    pub(super) fn get_final_state(&self) -> Option<FinalHandshakeState> {
         match self.state.status.clone() {
-            Ready {
-                their_identity,
-                keys,
-            } => Some((their_identity, keys)),
+            Ready(final_state) => Some(final_state),
             _ => None,
         }
     }
@@ -351,6 +348,7 @@ impl Handshake {
         //verify the signature of the static key used during noise exchanges
         //actually matches the signature of the identity
         let signature_verified = self
+            .identities
             .identities_keys()
             .verify_signature(
                 their_identity,
@@ -387,7 +385,7 @@ impl Handshake {
         if let Some(trust_context) = self.trust_context.clone() {
             for credential in credentials {
                 let result = self
-                    .identities()
+                    .identities
                     .receive_presented_credential(
                         &their_identity.identifier,
                         &[trust_context.authority()?.identity()],
@@ -407,12 +405,26 @@ impl Handshake {
         Ok(())
     }
 
-    fn identities(&self) -> Arc<Identities> {
-        self.identities.clone()
-    }
+    pub(super) async fn set_final_state(
+        &mut self,
+        their_identity: Identity,
+        role: Role,
+    ) -> Result<()> {
+        let mut state = self.state.clone();
+        // k1, k2 = HKDF(ck, zerolen, 2)
+        let (k1, k2) = self.hkdf(&state.ck, &state.k, None).await?;
+        let (encryption_key, decryption_key) = if role.is_initiator() {
+            (k2, k1)
+        } else {
+            (k1, k2)
+        };
+        state.status = Ready(FinalHandshakeState {
+            their_identity,
+            encryption_key,
+            decryption_key,
+        });
 
-    fn identities_keys(&self) -> Arc<IdentitiesKeys> {
-        self.identities.identities_keys()
+        Ok(self.state = state)
     }
 }
 
@@ -532,41 +544,14 @@ pub(super) enum Status {
     WaitingForMessage1,
     WaitingForMessage2,
     WaitingForMessage3,
-    Ready {
-        their_identity: Identity,
-        keys: CompletedKeyExchange,
-    },
+    Ready(FinalHandshakeState),
 }
 
-/// The state of a completed key exchange.
-#[derive(Debug, Clone, Zeroize)]
-#[zeroize(drop)]
-pub struct CompletedKeyExchange {
-    h: [u8; 32],
-    encrypt_key: KeyId,
-    decrypt_key: KeyId,
-}
-
-impl CompletedKeyExchange {
-    /// The derived encryption key.
-    pub fn encrypt_key(&self) -> &KeyId {
-        &self.encrypt_key
-    }
-    /// The derived decryption key.
-    pub fn decrypt_key(&self) -> &KeyId {
-        &self.decrypt_key
-    }
-}
-
-impl CompletedKeyExchange {
-    /// Build a CompletedKeyExchange comprised of the input parameters.
-    pub fn new(h: [u8; 32], encrypt_key: KeyId, decrypt_key: KeyId) -> Self {
-        CompletedKeyExchange {
-            h,
-            encrypt_key,
-            decrypt_key,
-        }
-    }
+#[derive(Debug, Clone)]
+pub(super) struct FinalHandshakeState {
+    pub(super) their_identity: Identity,
+    pub(super) encryption_key: KeyId,
+    pub(super) decryption_key: KeyId,
 }
 
 // #[cfg(test)]

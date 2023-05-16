@@ -2,7 +2,6 @@
 pub mod access_control;
 mod addresses;
 mod api;
-mod common;
 mod decryptor;
 mod decryptor_worker;
 mod encryptor;
@@ -13,18 +12,19 @@ mod local_info;
 mod nonce_tracker;
 mod options;
 mod registry;
+mod role;
 /// List of trust policies to setup ABAC controls
 pub mod trust_policy;
 
 pub use access_control::*;
 pub(crate) use addresses::*;
 pub use api::*;
-pub(crate) use common::*;
 pub(crate) use handshake::*;
 pub(crate) use listener::*;
 pub use local_info::*;
 pub use options::*;
 pub use registry::*;
+pub(crate) use role::*;
 pub use trust_policy::*;
 
 #[cfg(test)]

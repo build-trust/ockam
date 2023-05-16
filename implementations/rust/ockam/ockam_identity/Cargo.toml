@@ -83,7 +83,6 @@ subtle = { version = "2.4.1", default-features = false }
 time = { version = "0.3.21", features = ["macros", "formatting", "std"], optional = true }
 tokio-retry = { version = "0.3.0", default-features = false, optional = true }
 tracing = { version = "0.1", default_features = false }
-zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
