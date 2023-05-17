@@ -1,6 +1,6 @@
 use clap::Args;
 
-use crate::node::NodeOpts;
+use crate::node::{get_node_name, NodeOpts};
 use crate::util::extract_address_value;
 use ockam::Context;
 use ockam_api::nodes::models;
@@ -28,7 +28,8 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let node = extract_address_value(&cmd.node_opts.api_node)?;
+    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
+    let node = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     rpc.request(Request::get(format!("/node/tcp/connection/{}", &cmd.id)))
         .await?;

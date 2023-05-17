@@ -1,4 +1,4 @@
-use crate::node::{default_node_name, node_name_parser};
+use crate::node::get_node_name;
 use crate::util::is_tty;
 use crate::{
     util::{api, extract_address_value, node_rpc, Rpc},
@@ -15,8 +15,8 @@ use serde_json::json;
 #[derive(Clone, Debug, Args)]
 pub struct TcpConnectionNodeOpts {
     /// Node that will initiate the connection
-    #[arg(global = true, short, long, value_name = "NODE", default_value_t = default_node_name(), value_parser = node_name_parser)]
-    pub from: String,
+    #[arg(global = true, short, long, value_name = "NODE")]
+    pub from: Option<String>,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -52,7 +52,7 @@ impl CreateCommand {
                     println!("/service/{worker_addr}");
                     return Ok(());
                 }
-                let from = &self.node_opts.from;
+                let from = get_node_name(&opts.state, self.node_opts.from.clone())?;
                 let to = response.socket_addr()?;
                 if opts.global_args.no_color {
                     println!("\n  TCP Connection:");
@@ -96,8 +96,8 @@ async fn run_impl(
     ctx: ockam::Context,
     (options, command): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let from = &command.node_opts.from;
-    let node_name = extract_address_value(from.as_str())?;
+    let from = get_node_name(&options.state, command.node_opts.from.clone())?;
+    let node_name = extract_address_value(&from)?;
     let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
     let request = api::create_tcp_connection(&command);
     rpc.request(request).await?;

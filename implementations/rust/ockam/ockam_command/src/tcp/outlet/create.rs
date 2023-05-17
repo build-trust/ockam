@@ -1,4 +1,4 @@
-use crate::node::{default_node_name, node_name_parser};
+use crate::node::get_node_name;
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
@@ -24,8 +24,8 @@ use std::net::SocketAddr;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
-    #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name(), value_parser = node_name_parser)]
-    at: String,
+    #[arg(long, display_order = 900, id = "NODE")]
+    at: Option<String>,
 
     /// Address of the tcp outlet.
     #[arg(long, display_order = 901, id = "OUTLET_ADDRESS", default_value_t = default_from_addr())]
@@ -55,7 +55,9 @@ pub async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     opts.terminal.write_line(&fmt_log!("Creating TCP Outlet"))?;
-    let node = extract_address_value(&cmd.at)?;
+
+    let node_name = get_node_name(&opts.state, cmd.at.clone())?;
+    let node = extract_address_value(&node_name)?;
     let project = opts
         .state
         .nodes

@@ -1,5 +1,5 @@
+use crate::node::get_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
-use crate::node::{default_node_name, node_name_parser};
 use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
@@ -17,8 +17,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 )]
 pub struct DeleteCommand {
     /// Name of the node.
-    #[arg(default_value_t = default_node_name(), value_parser = node_name_parser, group = "nodes")]
-    node_name: String,
+    #[arg(group = "nodes")]
+    node_name: Option<String>,
 
     /// Terminate all node processes and delete all node configurations
     #[arg(long, short, group = "nodes")]
@@ -43,25 +43,26 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
         delete_all_nodes(opts, cmd.force)?;
     } else {
         let state = &opts.state.nodes;
-        match state.get(&cmd.node_name) {
+        let node_name = get_node_name(&opts.state, cmd.node_name.clone())?;
+        match state.get(&node_name) {
             // If it exists, proceed
             Ok(_) => {
-                delete_node(&opts, &cmd.node_name, cmd.force)?;
+                delete_node(&opts, &node_name, cmd.force)?;
                 opts.terminal
                     .stdout()
                     .plain(format!(
                         "{} Node with name '{}' has been deleted.",
                         "✔︎".light_green(),
-                        &cmd.node_name
+                        &node_name
                     ))
-                    .machine(&cmd.node_name)
-                    .json(serde_json::json!({ "node": { "name": &cmd.node_name } }))
+                    .machine(&node_name)
+                    .json(serde_json::json!({ "node": { "name": &node_name } }))
                     .write_line()?;
             }
             // Else, return the appropriate error
             Err(err) => match err {
                 CliStateError::NotFound => {
-                    return Err(anyhow!("Node '{}' not found", &cmd.node_name).into())
+                    return Err(anyhow!("Node '{}' not found", &node_name).into())
                 }
                 _ => return Err(err.into()),
             },

@@ -1,5 +1,5 @@
+use crate::node::get_node_name;
 use crate::node::util::check_default;
-use crate::node::{default_node_name, node_name_parser};
 use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
@@ -9,7 +9,7 @@ use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
-use ockam_api::{addr_to_multiaddr, cli_state, route_to_multiaddr};
+use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
 use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -30,8 +30,8 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
     /// Name of the node.
-    #[arg(default_value_t = default_node_name(), value_parser = node_name_parser)]
-    node_name: String,
+    #[arg()]
+    node_name: Option<String>,
 }
 
 impl ShowCommand {
@@ -44,12 +44,12 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let node_name = &cmd.node_name;
+    let node_name = get_node_name(&opts.state, cmd.node_name.clone())?;
 
     let tcp = TcpTransport::create(&ctx).await?;
-    let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-    let is_default = check_default(&opts, node_name);
-    print_query_status(&mut rpc, node_name, false, is_default).await?;
+    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+    let is_default = check_default(&opts, &node_name);
+    print_query_status(&mut rpc, &node_name, false, is_default).await?;
     Ok(())
 }
 

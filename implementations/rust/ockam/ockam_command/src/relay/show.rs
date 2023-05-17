@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
 
-use crate::node::default_node_name;
+use crate::node::{default_node_name, get_node_name};
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
@@ -17,8 +17,8 @@ pub struct ShowCommand {
     remote_address: String,
 
     /// Node which relay belongs to
-    #[arg(display_order = 901, global = true, long, value_name = "NODE", default_value_t = default_node_name())]
-    pub at: String,
+    #[arg(display_order = 901, global = true, long, value_name = "NODE")]
+    pub at: Option<String>,
 }
 
 impl ShowCommand {
@@ -28,7 +28,11 @@ impl ShowCommand {
 }
 
 async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> Result<()> {
-    let node_name = extract_address_value(&cmd.at)?;
+    let at = cmd
+        .at
+        .clone()
+        .unwrap_or_else(|| default_node_name(&opts.state));
+    let node_name = extract_address_value(&at)?;
     let remote_address = &cmd.remote_address;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(Request::get(format!("/node/forwarder/{remote_address}")))

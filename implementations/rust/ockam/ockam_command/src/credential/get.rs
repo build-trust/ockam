@@ -2,7 +2,7 @@ use clap::Args;
 
 use ockam::Context;
 
-use crate::node::NodeOpts;
+use crate::node::{get_node_name, NodeOpts};
 use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
@@ -33,7 +33,8 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: GetCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
+    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
+    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     rpc.request(api::credentials::get_credential(
         cmd.overwrite,
         cmd.identity,

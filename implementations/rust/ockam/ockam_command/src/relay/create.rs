@@ -14,7 +14,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use crate::node::{default_node_name, node_name_parser};
+use crate::node::get_node_name;
 use crate::terminal::OckamColor;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
@@ -37,8 +37,8 @@ pub struct CreateCommand {
     relay_name: String,
 
     /// Node for which to create the relay
-    #[arg(long, id = "NODE", display_order = 900, default_value_t = default_node_name(), value_parser = node_name_parser)]
-    to: String,
+    #[arg(long, id = "NODE", display_order = 900)]
+    to: Option<String>,
 
     /// Route to the node at which to create the relay (optional)
     #[arg(long, id = "ROUTE", display_order = 900, value_parser = parse_at, default_value_t = default_forwarder_at())]
@@ -74,7 +74,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     opts.terminal.write_line(&fmt_log!("Creating Relay"))?;
 
     let tcp = TcpTransport::create(&ctx).await?;
-    let api_node = extract_address_value(&cmd.to)?;
+    let to = get_node_name(&opts.state, cmd.to.clone())?;
+    let api_node = extract_address_value(&to)?;
     let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
 
     let ma = process_nodes_multiaddr(&cmd.at, &opts.state)?;

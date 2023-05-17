@@ -1,4 +1,4 @@
-use crate::node::{default_node_name, node_name_parser};
+use crate::node::get_node_name;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
@@ -19,8 +19,8 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {
     /// Node at which to lookup workers (required)
-    #[arg(value_name = "NODE", long, default_value_t = default_node_name(), value_parser = node_name_parser, display_order = 800)]
-    at: String,
+    #[arg(value_name = "NODE", long, display_order = 800)]
+    at: Option<String>,
 }
 
 impl ListCommand {
@@ -33,7 +33,8 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
-    if let Ok(node_state) = opts.state.nodes.get(&cmd.at) {
+    let at = get_node_name(&opts.state, cmd.at.clone())?;
+    if let Ok(node_state) = opts.state.nodes.get(&at) {
         let tcp = TcpTransport::create(&ctx).await?;
         let mut rpc = RpcBuilder::new(&ctx, &opts, node_state.name())
             .tcp(&tcp)?

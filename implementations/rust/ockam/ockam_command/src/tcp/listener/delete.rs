@@ -6,6 +6,7 @@ use ockam::Context;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
+use crate::node::get_node_name;
 use crate::util::{node_rpc, Rpc};
 use crate::{node::NodeOpts, CommandGlobalOpts};
 
@@ -28,7 +29,8 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
-    let node = parse_node_name(&cmd.node_opts.api_node)?;
+    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
+    let node = parse_node_name(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     let req = Request::delete("/node/tcp/listener")
         .body(models::transport::DeleteTransport::new(&cmd.id));

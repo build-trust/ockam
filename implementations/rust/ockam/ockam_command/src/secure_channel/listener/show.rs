@@ -5,6 +5,7 @@ use ockam::Context;
 use ockam_core::Address;
 
 use super::common::SecureChannelListenerNodeOpts;
+use crate::node::get_node_name;
 use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
@@ -35,8 +36,8 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let at = &cmd.node_opts.at;
-    let node = extract_address_value(at)?;
+    let at = get_node_name(&opts.state, cmd.node_opts.at.clone())?;
+    let node = extract_address_value(&at)?;
     let address = &cmd.address;
 
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
