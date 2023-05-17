@@ -1,4 +1,3 @@
-use core::time::Duration;
 use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::credential::OneTimeCode;
