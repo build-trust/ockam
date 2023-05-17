@@ -1,0 +1,1 @@
+This command will delete the specified project. Deleting a project implies deleting all the resources and services available for that project.

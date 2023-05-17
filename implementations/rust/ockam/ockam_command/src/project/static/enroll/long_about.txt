@@ -1,0 +1,1 @@
+Ockam offers several pluggable enrollment protocols. This command allows project administrators to enroll known identities or create an one-time enrollment ticket that can be used later on the end device to enroll themselves into the project.

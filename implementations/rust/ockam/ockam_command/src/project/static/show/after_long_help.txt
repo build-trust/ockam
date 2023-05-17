@@ -1,0 +1,4 @@
+```sh
+# To show a project with a specific name
+$ ockam project show myspace myproject
+```

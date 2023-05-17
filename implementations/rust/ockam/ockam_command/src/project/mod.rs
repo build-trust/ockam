@@ -22,12 +22,19 @@ pub use info::InfoCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
 
+use crate::docs;
 use crate::project::authenticate::AuthenticateCommand;
 use crate::CommandGlobalOpts;
 
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+
 /// Manage Projects in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(
+    arg_required_else_help = true,
+    subcommand_required = true,
+    long_about = docs::about(LONG_ABOUT),
+)]
 pub struct ProjectCommand {
     #[command(subcommand)]
     subcommand: ProjectSubcommand,

@@ -1,3 +1,7 @@
 ```sh
+# To list the spaces of the default identity
 $ ockam space list
+
+# To list the spaces of a specific identity
+$ ockam space list --identity i2
 ```

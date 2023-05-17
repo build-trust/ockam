@@ -1,0 +1,7 @@
+```sh
+# To list the projects of the default identity
+$ ockam project list
+
+# To list the spaces of a specific identity
+$ ockam project list --identity i2
+```

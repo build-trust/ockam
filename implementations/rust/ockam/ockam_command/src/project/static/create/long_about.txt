@@ -1,0 +1,1 @@
+This command will create a new project within the given space. If the project already exists, it will just fetch it and show its details.

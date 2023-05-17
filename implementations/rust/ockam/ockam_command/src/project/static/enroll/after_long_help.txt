@@ -1,0 +1,7 @@
+```sh
+# To enroll a known identity
+$ ockam project enroll --member id_identifier
+
+# To generate an enrollment ticket that can be used to enroll a device
+$ ockam project enroll --attribute component=control
+```

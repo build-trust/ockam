@@ -1,0 +1,7 @@
+```sh
+# To create a new project with a random name
+$ ockam project create myspace
+
+# To create a new project with a specific name
+$ ockam project create myspace myproject
+```

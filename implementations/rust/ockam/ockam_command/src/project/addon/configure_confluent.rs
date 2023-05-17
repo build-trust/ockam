@@ -24,8 +24,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/configure_confluent/after_l
 /// Configure the Confluent Cloud addon for a project
 #[derive(Clone, Debug, Args)]
 #[command(
-long_about = docs::about(LONG_ABOUT),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct AddonConfigureConfluentSubcommand {
     /// Ockam project name

@@ -1,0 +1,3 @@
+Ockam Orchestrator offers an Okta Add-On that uses OIDC to allow enterprise employees to get Ockam credentials using their regular corporate login.
+
+Their user profile information like department, city, team etc. is included in the credential and securely attested by the Credential Authority.

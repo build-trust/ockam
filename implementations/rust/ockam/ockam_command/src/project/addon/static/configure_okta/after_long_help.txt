@@ -1,0 +1,3 @@
+Examples of how to configure and use the Okta addon can be found within the use-case documentation:
+
+- https://docs.ockam.io/guides/use-cases/use-employee-attributes-from-okta-to-build-trust-with-cryptographically-verifiable-credentials#okta-add-on-for-ockam-orchestrator
