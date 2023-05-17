@@ -9,11 +9,13 @@ use crate::secure_channel::Addresses;
 use crate::{
     to_xx_vault, IdentityError, IdentityIdentifier, SecureChannels, TrustContext, TrustPolicy,
 };
+use alloc::boxed::Box;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 use ockam_core::{Address, Any, NewKeyExchanger, OutgoingAccessControl, Routed};
 use ockam_core::{Decodable, Worker};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::{Context, WorkerBuilder};
-use std::sync::Arc;
 use tracing::debug;
 
 pub(crate) struct ResponderWorker {

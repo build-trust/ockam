@@ -7,13 +7,14 @@ use crate::{
     to_xx_initialized, Credential, Credentials, Identity, IdentityError, IdentityIdentifier,
     SecureChannelRegistryEntry, SecureChannelTrustInfo, SecureChannels, TrustContext, TrustPolicy,
 };
+use alloc::vec::Vec;
+use ockam_core::compat::sync::Arc;
 use ockam_core::vault::Signature;
 use ockam_core::{
     AllowAll, AllowOnwardAddress, CompletedKeyExchange, LocalOnwardOnly, LocalSourceOnly, Mailbox,
     Mailboxes, Route,
 };
 use ockam_node::{Context, WorkerBuilder};
-use std::sync::Arc;
 use tracing::info;
 
 pub(crate) struct ExchangeCompleter {

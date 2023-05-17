@@ -4,6 +4,7 @@ use crate::{
     DecryptionRequest, DecryptionResponse, IdentityError, IdentityIdentifier,
     IdentitySecureChannelLocalInfo,
 };
+use alloc::vec::Vec;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, Decodable, LocalMessage};
 use ockam_core::{Any, Result, Routed, TransportMessage, Worker};
