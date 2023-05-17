@@ -1,5 +1,5 @@
 use crate::secure_channel::handshake::error::XXError;
-use crate::secure_channel::handshake::handshake_state_machine::IdentityAndCredentials;
+use crate::secure_channel::handshake::handshake_state_machine::{HandshakeResults, Status};
 use crate::secure_channel::Role;
 use crate::{
     Credential, Credentials, Identities, Identity, IdentityError, SecureChannelTrustInfo,
@@ -14,8 +14,8 @@ use ockam_core::vault::{
     Signature, AES256_SECRET_LENGTH_U32, CURVE25519_PUBLIC_LENGTH_USIZE,
     CURVE25519_SECRET_LENGTH_U32,
 };
-use ockam_core::{Error, Result};
-use serde::Deserialize;
+use ockam_core::{Error, Message, Result};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::info;
 use SecretType::*;
@@ -48,8 +48,10 @@ impl Handshake {
     /// Initialize the handshake variables
     pub(super) async fn initialize(&mut self) -> Result<()> {
         let mut state = self.state.clone();
-        state.h = self.protocol_name().clone();
-        state.ck = self.import_secret(self.protocol_name().to_vec()).await?;
+        state.h = Self::protocol_name().clone();
+        state.ck = self
+            .import_ck_secret(Self::protocol_name().to_vec())
+            .await?;
         state.mix_hash(state.prologue.clone().as_slice());
 
         Ok(self.state = state)
@@ -280,20 +282,25 @@ impl Handshake {
         })
     }
 
-    async fn import_secret(&self, content: Vec<u8>) -> Result<KeyId> {
+    /// Import the ck secret
+    async fn import_ck_secret(&self, content: Vec<u8>) -> Result<KeyId> {
         self.vault
             .secret_import(Secret::Key(SecretKey::new(content)), Self::ck_attributes())
             .await
     }
 
+    /// Return the public key corresponding to a given key id
     async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
         self.vault.secret_public_key_get(key_id).await
     }
 
+    /// Compute a Diffie-Hellman key between a given key id and the other party public key
     async fn dh(&self, key_id: &KeyId, public_key: &PublicKey) -> Result<KeyId> {
         self.vault.ec_diffie_hellman(key_id, public_key).await
     }
 
+    /// Compute two derived ck, and k keys based on existing ck and k keys + an optional
+    /// Diffie-Hellman key
     async fn hkdf(&mut self, ck: &KeyId, k: &KeyId, dh: Option<&KeyId>) -> Result<(KeyId, KeyId)> {
         let mut hkdf_output = self
             .vault
@@ -319,6 +326,7 @@ impl Handshake {
         Ok((ck, k))
     }
 
+    /// Decrypt a ciphertext 'c' using the key 'k' and the additional data 'h'
     async fn decrypt(&mut self, k: &KeyId, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
         self.state.n += 1;
         let mut nonce = [0u8; 12];
@@ -329,6 +337,7 @@ impl Handshake {
             .map(|b| b.to_vec())
     }
 
+    /// Encrypt a plaintext 'c' using the key 'k' and the additional data 'h'
     async fn encrypt(&mut self, k: &KeyId, h: &[u8], c: &[u8]) -> Result<Vec<u8>> {
         self.state.n += 1;
         let mut nonce = [0u8; 12];
@@ -339,10 +348,7 @@ impl Handshake {
             .map(|b| b.to_vec())
     }
 
-    fn protocol_name(&self) -> &'static [u8; 32] {
-        b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"
-    }
-
+    /// Decode an Identity that was encoded with a BARE encoding
     async fn decode_identity(&self, encoded: Vec<u8>) -> Result<Identity> {
         self.identities
             .identities_creation()
@@ -350,6 +356,7 @@ impl Handshake {
             .await
     }
 
+    /// Verify that the signature was signed with the public key associated to the other party identity
     async fn verify_signature(
         &self,
         their_identity: &Identity,
@@ -376,6 +383,8 @@ impl Handshake {
         }
     }
 
+    /// Verify that the credentials sent by the other party are valid using a trust context
+    /// and store them
     async fn verify_credentials(
         &self,
         their_identity: &Identity,
@@ -419,6 +428,33 @@ impl Handshake {
 
 /// Static functions
 impl Handshake {
+    /// Protocol name, used as a secret during the handshake initialization, padded to 32 bytes
+    fn protocol_name() -> &'static [u8; 32] {
+        b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"
+    }
+
+    /// Generate a static key for the key exchange
+    /// At the moment that key is actually an ephemeral key (not persisted if the current process stops)
+    async fn generate_static_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
+        let attributes = SecretAttributes::new(
+            X25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH_U32,
+        );
+        vault.secret_generate(attributes).await
+    }
+
+    /// Generate an ephemeral key for the key exchange
+    async fn generate_ephemeral_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
+        let attributes = SecretAttributes::new(
+            X25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH_U32,
+        );
+        vault.secret_generate(attributes).await
+    }
+
+    /// Sign the static key used in the key exchange with the identity private key
     async fn sign_static_key(
         vault: Arc<dyn XXVault>,
         identities: Arc<Identities>,
@@ -432,57 +468,48 @@ impl Handshake {
             .await
     }
 
-    async fn generate_static_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
-        let attributes = SecretAttributes::new(
-            X25519,
-            SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH_U32,
-        );
-        vault.secret_generate(attributes).await
-    }
-
-    async fn generate_ephemeral_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
-        let attributes = SecretAttributes::new(
-            X25519,
-            SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH_U32,
-        );
-        vault.secret_generate(attributes).await
-    }
-
+    /// Deserialize a payload as D from a bare encoding
     fn deserialize<D: for<'a> Deserialize<'a>>(payload: Vec<u8>) -> Result<D> {
         serde_bare::from_slice(payload.as_slice())
             .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))
     }
 
+    /// Secret attributes for the ck key
     fn ck_attributes() -> SecretAttributes {
         SecretAttributes::new(Buffer, SecretPersistence::Ephemeral, SHA256_SIZE_U32)
     }
 
+    /// Secret attributes for the k key
     fn k_attributes() -> SecretAttributes {
         SecretAttributes::new(Aes, SecretPersistence::Ephemeral, AES256_SECRET_LENGTH_U32)
     }
 
+    /// Read the message 1 payload which is present after the public key
     fn read_message1_payload(message: &Vec<u8>) -> Result<&[u8]> {
         Self::read_end(message, Self::key_size())
     }
 
+    /// Read the message 2 encrypted key, which is present after the public key
     fn read_message2_encrypted_key(message: &Vec<u8>) -> Result<&[u8]> {
         Self::read_middle(message, Self::key_size(), Self::encrypted_key_size())
     }
 
+    /// Read the message 2 encrypted payload, which is present after the encrypted key
     fn read_message2_payload(message: &Vec<u8>) -> Result<&[u8]> {
         Self::read_end(message, Self::key_size() + Self::encrypted_key_size())
     }
 
+    /// Read the message 3 encrypted key at the beginning of the message
     fn read_message3_encrypted_key(message: &Vec<u8>) -> Result<&[u8]> {
         Self::read_start(message, Self::encrypted_key_size())
     }
 
+    /// Read the message 3 payload which is present after the encrypted key
     fn read_message3_payload(message: &Vec<u8>) -> Result<&[u8]> {
         Self::read_end(message, Self::encrypted_key_size())
     }
 
+    /// Read the first 'length' bytes of the message
     fn read_start(message: &Vec<u8>, length: usize) -> Result<&[u8]> {
         if message.len() < length {
             return Err(XXError::MessageLenMismatch.into());
@@ -490,6 +517,7 @@ impl Handshake {
         Ok(&message[0..length])
     }
 
+    /// Read the bytes of the message after the first 'drop_length' bytes
     fn read_end(message: &Vec<u8>, drop_length: usize) -> Result<&[u8]> {
         if message.len() < drop_length {
             return Err(XXError::MessageLenMismatch.into());
@@ -497,6 +525,7 @@ impl Handshake {
         Ok(&message[drop_length..])
     }
 
+    /// Read 'length' bytes of the message after the first 'drop_length' bytes
     fn read_middle(message: &Vec<u8>, drop_length: usize, length: usize) -> Result<&[u8]> {
         if message.len() < drop_length + length {
             return Err(XXError::MessageLenMismatch.into());
@@ -504,36 +533,44 @@ impl Handshake {
         Ok(&message[drop_length..(drop_length + length)])
     }
 
+    /// Read the bytes of a key at the beginning of a message
     fn read_key(message: &Vec<u8>) -> Result<&[u8]> {
         Self::read_start(message, Self::key_size())
     }
 
+    /// Size of a public key
     fn key_size() -> usize {
         CURVE25519_PUBLIC_LENGTH_USIZE
     }
 
+    /// Size of an encrypted key
     fn encrypted_key_size() -> usize {
         Self::key_size() + AES_GCM_TAGSIZE_USIZE
     }
 }
 
+/// The `HandshakeState` contains all the variables necessary to follow the Noise protocol
 #[derive(Debug, Clone)]
 pub(super) struct HandshakeState {
-    pub(super) s: KeyId,
-    pub(super) e: KeyId,
-    pub(super) k: KeyId,
-    pub(super) re: PublicKey,
-    pub(super) rs: PublicKey,
-    pub(super) n: usize,
-    pub(super) h: [u8; SHA256_SIZE_USIZE],
-    pub(super) ck: KeyId,
-    pub(super) prologue: Vec<u8>,
-    pub(super) message1_payload: Vec<u8>,
-    pub(super) identity_payload: Vec<u8>,
+    s: KeyId,
+    e: KeyId,
+    k: KeyId,
+    re: PublicKey,
+    rs: PublicKey,
+    n: usize,
+    h: [u8; SHA256_SIZE_USIZE],
+    ck: KeyId,
+    prologue: Vec<u8>,
+    message1_payload: Vec<u8>,
+    identity_payload: Vec<u8>,
     pub(super) status: Status,
 }
 
 impl HandshakeState {
+    /// Create a new HandshakeState with:
+    ///   - a static key
+    ///   - an ephemeral key
+    ///   - an encoded identity payload (identity + signature + credentials)
     pub(super) fn new(s: KeyId, e: KeyId, identity_payload: Vec<u8>) -> HandshakeState {
         HandshakeState {
             s,
@@ -551,32 +588,25 @@ impl HandshakeState {
         }
     }
 
-    pub(super) fn mix_hash(&mut self, data: &[u8]) {
+    /// h = SHA256(h || data)
+    fn mix_hash(&mut self, data: &[u8]) {
         let mut input = self.h.to_vec();
         input.extend(data);
-        self.h = Self::sha256(&input)
-    }
-
-    fn sha256(data: &[u8]) -> [u8; 32] {
         let digest = Sha256::digest(data);
-        *array_ref![digest, 0, 32]
+        self.h = *array_ref![digest, 0, 32];
     }
 }
 
-#[derive(Debug, Clone)]
-pub(super) enum Status {
-    Initial,
-    WaitingForMessage1,
-    WaitingForMessage2,
-    WaitingForMessage3,
-    Ready(HandshakeResults),
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct HandshakeResults {
-    pub(super) their_identity: Identity,
-    pub(super) encryption_key: KeyId,
-    pub(super) decryption_key: KeyId,
+/// This internal structure is used as a payload in the XX protocol
+#[derive(Debug, Clone, Serialize, Deserialize, Message)]
+pub(super) struct IdentityAndCredentials {
+    // exported identity
+    pub(super) identity: Vec<u8>,
+    // The signature guarantees that the other end has access to the private key of the identity
+    // The signature refers to the static key of the noise ('x') and is made with the static
+    // key of the identity
+    pub(super) signature: Signature,
+    pub(super) credentials: Vec<Credential>,
 }
 
 // #[cfg(test)]

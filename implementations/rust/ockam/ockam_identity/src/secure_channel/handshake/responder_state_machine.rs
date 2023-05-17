@@ -1,6 +1,6 @@
-use crate::secure_channel::handshake::handshake::{Handshake, HandshakeResults, Status};
+use crate::secure_channel::handshake::handshake::{Handshake, IdentityAndCredentials};
 use crate::secure_channel::handshake::handshake_state_machine::{
-    Action, Event, IdentityAndCredentials, StateMachine,
+    Action, Event, HandshakeResults, StateMachine, Status,
 };
 use crate::{Credential, Identities, Identity, Role, TrustContext, TrustPolicy, XXVault};
 use async_trait::async_trait;
@@ -13,6 +13,7 @@ use Event::*;
 use Role::*;
 use Status::*;
 
+/// Implementation of a state machine for the key exchange on the responder side
 #[async_trait]
 impl StateMachine for ResponderStateMachine {
     async fn on_event(&mut self, event: Event) -> Result<Action> {
@@ -55,6 +56,7 @@ impl StateMachine for ResponderStateMachine {
     }
 }
 
+/// Implementation of the state machine actions, delegated to the Handshake module
 pub struct ResponderStateMachine {
     handshake: Handshake,
 }

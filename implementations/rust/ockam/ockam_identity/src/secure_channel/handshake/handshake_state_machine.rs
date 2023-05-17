@@ -1,35 +1,44 @@
-use crate::secure_channel::handshake::handshake::HandshakeResults;
-use crate::Credential;
-use ockam_core::vault::Signature;
-use ockam_core::{async_trait, Message, Result};
-use serde::{Deserialize, Serialize};
+use crate::Identity;
+use ockam_core::vault::KeyId;
+use ockam_core::{async_trait, Result};
 
+/// Interface for a state machine in a key exchange protocol
 #[async_trait]
 pub(super) trait StateMachine: Send + Sync + 'static {
     async fn on_event(&mut self, event: Event) -> Result<Action>;
     fn get_handshake_results(&self) -> Option<HandshakeResults>;
 }
 
+/// Events received by the state machine, either initializing the state machine
+/// or receiving a message from the other party
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Event {
+pub(super) enum Event {
     Initialize,
     ReceivedMessage(Vec<u8>),
 }
 
+/// Outcome of processing an event: either no action or a message to send to the other party
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Action {
+pub(super) enum Action {
     NoAction,
     SendMessage(Vec<u8>),
 }
 
-/// This internal structure is used as a paylod in the XX protocol
-#[derive(Debug, Clone, Serialize, Deserialize, Message)]
-pub(super) struct IdentityAndCredentials {
-    // exported identity
-    pub(super) identity: Vec<u8>,
-    // The signature guarantees that the other end has access to the private key of the identity
-    // The signature refers to the static key of the noise ('x') and is made with the static
-    // key of the identity
-    pub(super) signature: Signature,
-    pub(super) credentials: Vec<Credential>,
+/// List of possible states for the initiator or responder sides of the exchange
+#[derive(Debug, Clone)]
+pub(super) enum Status {
+    Initial,
+    WaitingForMessage1,
+    WaitingForMessage2,
+    WaitingForMessage3,
+    Ready(HandshakeResults),
+}
+
+/// The end result of a handshake is a pair of encryption/decryption keys +
+/// the identity of the other party
+#[derive(Debug, Clone)]
+pub(super) struct HandshakeResults {
+    pub(super) encryption_key: KeyId,
+    pub(super) decryption_key: KeyId,
+    pub(super) their_identity: Identity,
 }
