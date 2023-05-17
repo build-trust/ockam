@@ -10,8 +10,8 @@ use crate::{
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
-    #[arg(default_value_t = default_vault_name())]
-    pub vault: String,
+    #[arg()]
+    pub vault: Option<String>,
 }
 
 impl ListCommand {
@@ -26,8 +26,12 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let cred_states = opts.state.credentials.list()?;
 
+    let vault_name = cmd
+        .vault
+        .clone()
+        .unwrap_or_else(|| default_vault_name(&opts.state));
     for cred_state in cred_states {
-        display_credential(&opts, cred_state.name(), &cmd.vault).await?;
+        display_credential(&opts, cred_state.name(), &vault_name).await?;
     }
 
     Ok(())

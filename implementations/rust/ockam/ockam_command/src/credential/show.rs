@@ -12,8 +12,8 @@ pub struct ShowCommand {
     #[arg()]
     pub credential_name: String,
 
-    #[arg(default_value_t = default_vault_name())]
-    pub vault: String,
+    #[arg()]
+    pub vault: Option<String>,
 }
 
 impl ShowCommand {
@@ -26,9 +26,11 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    display_credential(&opts, &cmd.credential_name, &cmd.vault).await?;
-
-    Ok(())
+    let vault_name = cmd
+        .vault
+        .clone()
+        .unwrap_or_else(|| default_vault_name(&opts.state));
+    display_credential(&opts, &cmd.credential_name, &vault_name).await
 }
 
 pub(crate) async fn display_credential(

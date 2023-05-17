@@ -25,8 +25,8 @@ pub struct IssueCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     pub attributes: Vec<String>,
 
-    #[arg(default_value_t = default_vault_name())]
-    pub vault: String,
+    #[arg()]
+    pub vault: Option<String>,
 
     /// Encoding Format
     #[arg(long = "encoding", value_enum, default_value = "plain")]
@@ -85,7 +85,11 @@ async fn run_impl(
         auth_identity_identifier.to_string(),
     );
 
-    let vault = opts.state.vaults.get(&cmd.vault)?.get().await?;
+    let vault_name = cmd
+        .vault
+        .clone()
+        .unwrap_or_else(|| default_vault_name(&opts.state));
+    let vault = opts.state.vaults.get(&vault_name)?.get().await?;
     let identities = opts.state.get_identities(vault).await?;
     let issuer = ident_state.identifier();
 
