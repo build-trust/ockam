@@ -18,7 +18,7 @@ use ockam_node::RpcClient;
 use crate::identity::get_identity_name;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::create_secure_channel_to_authority;
-use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::api::{parse_trust_context, CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{CommandGlobalOpts, Result};
 
@@ -84,6 +84,7 @@ impl Runner {
 
         let (base_addr, _flow_control_id) =
             if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
+                let tc = parse_trust_context(&self.opts.state, &tc)?;
                 trust_context = Some(tc.clone());
                 let cred_retr = tc.authority()?.own_credential()?;
                 let addr = match cred_retr {

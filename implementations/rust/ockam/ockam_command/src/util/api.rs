@@ -345,8 +345,12 @@ pub struct TrustContextOpts {
     pub project_path: Option<PathBuf>,
 
     /// Trust Context config file
-    #[arg(global = true, long, value_name = "TRUST_CONTEXT_NAME | TRUST_CONTEXT_JSON_PATH", value_parser = parse_trust_context)]
-    pub trust_context: Option<TrustContextConfig>,
+    #[arg(
+        global = true,
+        long,
+        value_name = "TRUST_CONTEXT_NAME | TRUST_CONTEXT_JSON_PATH"
+    )]
+    pub trust_context: Option<String>,
 
     #[arg(global = true, long = "project")]
     pub project: Option<String>,
@@ -363,16 +367,20 @@ pub struct TrustContextConfigBuilder {
 }
 
 impl TrustContextConfigBuilder {
-    pub fn new(cli_state: &CliState, tco: &TrustContextOpts) -> Self {
-        Self {
+    pub fn new(cli_state: &CliState, tco: &TrustContextOpts) -> Result<Self> {
+        let trust_context = match tco.clone().trust_context {
+            Some(tc) => Some(parse_trust_context(cli_state, &tc)?),
+            None => None,
+        };
+        Ok(Self {
             cli_state: cli_state.clone(),
             project_path: tco.project_path.clone(),
-            trust_context: tco.trust_context.clone(),
+            trust_context,
             project: tco.project.clone(),
             authority_identity: None,
             credential_name: None,
             use_default_trust_context: true,
-        }
+        })
     }
 
     // with_authority_identity
@@ -462,7 +470,10 @@ impl TrustContextConfigBuilder {
     }
 }
 
-pub fn parse_trust_context(trust_context_input: &str) -> Result<TrustContextConfig> {
+pub fn parse_trust_context(
+    cli_state: &CliState,
+    trust_context_input: &str,
+) -> Result<TrustContextConfig> {
     let tcc = match std::fs::read_to_string(trust_context_input) {
         Ok(s) => {
             let mut tc = serde_json::from_str::<TrustContextConfig>(&s)
@@ -471,9 +482,7 @@ pub fn parse_trust_context(trust_context_input: &str) -> Result<TrustContextConf
             tc
         }
         Err(_) => {
-            let state = CliState::try_default()
-                .ok()
-                .and_then(|state| state.trust_contexts.get(trust_context_input).ok());
+            let state = cli_state.trust_contexts.get(trust_context_input).ok();
             let state = state.context("Invalid Trust Context name or path")?;
             let mut tcc = state.config().clone();
             tcc.set_path(state.path().clone());
