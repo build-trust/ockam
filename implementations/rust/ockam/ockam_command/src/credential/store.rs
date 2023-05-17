@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use crate::{
     util::{node_rpc, random_name},
-    vault::default_vault_name,
     CommandGlobalOpts, Result,
 };
 use anyhow::anyhow;
@@ -26,8 +25,8 @@ pub struct StoreCommand {
     #[arg(group = "credential_value", value_name = "CREDENTIAL_FILE", long)]
     pub credential_path: Option<PathBuf>,
 
-    #[arg(default_value_t = default_vault_name())]
-    pub vault: String,
+    #[arg()]
+    pub vault: Option<String>,
 }
 
 impl StoreCommand {

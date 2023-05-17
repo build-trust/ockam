@@ -21,8 +21,8 @@ pub struct VerifyCommand {
     #[arg(group = "credential_value", value_name = "CREDENTIAL_FILE", long)]
     pub credential_path: Option<PathBuf>,
 
-    #[arg(default_value_t = default_vault_name())]
-    pub vault: String,
+    #[arg()]
+    pub vault: Option<String>,
 }
 
 impl VerifyCommand {
@@ -53,10 +53,14 @@ async fn run_impl(
         _ => return Err(anyhow!("Credential or Credential Path argument must be provided").into()),
     };
 
+    let vault_name = cmd
+        .vault
+        .clone()
+        .unwrap_or_else(|| default_vault_name(&opts.state));
     match validate_encoded_cred(
         &cred_as_str,
         &cmd.issuer().await?.identifier(),
-        &cmd.vault,
+        &vault_name,
         &opts,
     )
     .await

@@ -5,7 +5,6 @@ mod delete;
 mod list;
 mod show;
 
-use crate::error::Error;
 use crate::vault::attach_key::AttachKeyCommand;
 use crate::vault::create::CreateCommand;
 use crate::vault::default::DefaultCommand;
@@ -55,18 +54,7 @@ impl VaultCommand {
     }
 }
 
-pub fn default_vault_name() -> String {
-    let res_cli = CliState::try_default();
-
-    let cli_state = match res_cli {
-        Ok(cli_state) => cli_state,
-        Err(err) => {
-            eprintln!("Error initializing command state. \n\n {err:?}");
-            let command_err: Error = err.into();
-            std::process::exit(command_err.code());
-        }
-    };
-
+pub fn default_vault_name(cli_state: &CliState) -> String {
     cli_state
         .vaults
         .default()
