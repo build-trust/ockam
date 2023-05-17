@@ -4,14 +4,14 @@ use clap::Args;
 use clap::Subcommand;
 mod create;
 
-const HELP_DETAIL: &str = include_str!("../constants/authority/help_detail.txt");
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
-/// Create an Authority node
+/// Manage Authority nodes
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    after_long_help = docs::after_help(HELP_DETAIL)
+    long_about = docs::after_help(LONG_ABOUT),
 )]
 pub struct AuthorityCommand {
     #[command(subcommand)]

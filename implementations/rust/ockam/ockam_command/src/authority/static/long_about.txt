@@ -1,0 +1,8 @@
+An Ockam Authority node is an Ockam node running a limited set of services used by other nodes to:
+
+- issue credentials
+- create enrollment tokens
+- accept enrollment tokens
+- authenticate identities as project members
+
+Those services are accessible by creating a secure channel over a TCP connection at `tcp-listener-address`.

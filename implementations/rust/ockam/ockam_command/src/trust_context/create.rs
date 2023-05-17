@@ -7,9 +7,11 @@ use crate::{
 };
 use anyhow::anyhow;
 use clap::Args;
+use indoc::formatdoc;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 
+/// Create a trust context
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = false)]
 pub struct CreateCommand {
@@ -46,13 +48,13 @@ async fn run_impl(
             "None"
         };
 
-        let output = format!(
+        let output = formatdoc!(
             r#"
-Trust Context:
-    Name: {}
-    ID: {}
-    Authority: {}
-"#,
+            Trust Context:
+                Name: {}
+                ID: {}
+                Authority: {}
+            "#,
             cmd.name,
             tcc.id(),
             auth
