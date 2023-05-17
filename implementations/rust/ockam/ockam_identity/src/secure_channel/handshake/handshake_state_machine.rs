@@ -1,4 +1,4 @@
-use crate::secure_channel::handshake::handshake_state::HandshakeResults;
+use crate::secure_channel::handshake::handshake::HandshakeResults;
 use crate::Credential;
 use ockam_core::vault::Signature;
 use ockam_core::{async_trait, Message, Result};

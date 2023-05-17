@@ -1,5 +1,4 @@
-use crate::secure_channel::handshake::handshake::Handshake;
-use crate::secure_channel::handshake::handshake_state::{HandshakeResults, Status};
+use crate::secure_channel::handshake::handshake::{Handshake, HandshakeResults, Status};
 use crate::secure_channel::handshake::handshake_state_machine::{
     Action, Event, IdentityAndCredentials, StateMachine,
 };

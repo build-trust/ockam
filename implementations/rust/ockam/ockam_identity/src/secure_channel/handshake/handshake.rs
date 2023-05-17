@@ -1,15 +1,14 @@
-use crate::secure_channel::handshake::constants::{AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_U32};
 use crate::secure_channel::handshake::error::XXError;
-use crate::secure_channel::handshake::handshake_state::Status;
-use crate::secure_channel::handshake::handshake_state::{HandshakeResults, HandshakeState};
 use crate::secure_channel::handshake::handshake_state_machine::IdentityAndCredentials;
 use crate::secure_channel::Role;
 use crate::{
     Credential, Credentials, Identities, Identity, IdentityError, SecureChannelTrustInfo,
     TrustContext, TrustPolicy, XXVault,
 };
+use arrayref::array_ref;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::vault::SecretType::X25519;
 use ockam_core::vault::{
     KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
     Signature, AES256_SECRET_LENGTH_U32, CURVE25519_PUBLIC_LENGTH_USIZE,
@@ -17,11 +16,23 @@ use ockam_core::vault::{
 };
 use ockam_core::{Error, Result};
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use tracing::info;
 use SecretType::*;
 use Status::*;
 
-pub struct Handshake {
+/// The number of bytes in a SHA256 digest
+pub const SHA256_SIZE_U32: u32 = 32;
+/// The number of bytes in a SHA256 digest
+pub const SHA256_SIZE_USIZE: usize = 32;
+/// The number of bytes in AES-GCM tag
+pub const AES_GCM_TAGSIZE_USIZE: usize = 16;
+
+/// Implementation of a Handshake for the noise protocol
+/// The first members are used in the implementation of some of the protocol steps, for example to
+/// encrypt messages
+/// The variables used in the protocol itself: s, e, rs, re,... are handled in `HandshakeState`
+pub(super) struct Handshake {
     vault: Arc<dyn XXVault>,
     identities: Arc<Identities>,
     trust_policy: Arc<dyn TrustPolicy>,
@@ -30,7 +41,11 @@ pub struct Handshake {
     pub(super) state: HandshakeState,
 }
 
+/// Top-level functions used in the initiator and responder state machines
+/// Each function makes mutable copy of the state to modify it in order to make the code more compact
+/// and avoid self.state.xxx = ...
 impl Handshake {
+    /// Initialize the handshake variables
     pub(super) async fn initialize(&mut self) -> Result<()> {
         let mut state = self.state.clone();
         state.h = self.protocol_name().clone();
@@ -40,6 +55,7 @@ impl Handshake {
         Ok(self.state = state)
     }
 
+    /// Encode the first message, sent from the initiator to the responder
     pub(super) async fn encode_message1(&mut self) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // output e.pubKey
@@ -55,6 +71,7 @@ impl Handshake {
         Ok(message)
     }
 
+    /// Decode the first message to get the ephemeral public key sent by the initiator
     pub(super) async fn decode_message1(&mut self, message: Vec<u8>) -> Result<()> {
         let mut state = self.state.clone();
         // read e.pubKey
@@ -68,6 +85,9 @@ impl Handshake {
         Ok(self.state = state)
     }
 
+    /// Encode the second message from the responder to the initiator
+    /// That message contains: the responder ephemeral public key + a Diffie-Hellman key +
+    ///   an encrypted payload containing the responder identity / signature / credentials
     pub(super) async fn encode_message2(&mut self) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // output e.pubKey
@@ -98,6 +118,7 @@ impl Handshake {
         Ok(message2)
     }
 
+    /// Decode the second message sent by the responder
     pub(super) async fn decode_message2(
         &mut self,
         message: Vec<u8>,
@@ -130,6 +151,9 @@ impl Handshake {
         Self::deserialize(payload)
     }
 
+    /// Encode the third message from the initiator to the responder
+    /// That message contains: the initiator static public key (encrypted) + a Diffie-Hellman key +
+    ///   an encrypted payload containing the initiator identity / signature / credentials
     pub(super) async fn encode_message3(&mut self) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // encrypt s.pubKey
@@ -153,6 +177,7 @@ impl Handshake {
         Ok(message3)
     }
 
+    /// Decode the third message sent by the initiator
     pub(super) async fn decode_message3(
         &mut self,
         message: Vec<u8>,
@@ -174,6 +199,7 @@ impl Handshake {
         Self::deserialize(payload)
     }
 
+    /// Verify the identity sent by the other party: the signature and the credentials must be valid
     pub(super) async fn verify_identity(&self, peer: IdentityAndCredentials) -> Result<Identity> {
         let identity = self.decode_identity(peer.identity).await?;
         self.verify_signature(&identity, &peer.signature, &self.state.rs)
@@ -182,6 +208,8 @@ impl Handshake {
         Ok(identity)
     }
 
+    /// Set the final state of the state machine by creating the encryption / decryption keys
+    /// and return the other party identity
     pub(super) async fn set_final_state(
         &mut self,
         their_identity: Identity,
@@ -204,6 +232,7 @@ impl Handshake {
         Ok(self.state = state)
     }
 
+    /// Return the final results of the handshake if we reached the final state
     pub(super) fn get_handshake_results(&self) -> Option<HandshakeResults> {
         match self.state.status.clone() {
             Ready(results) => Some(results),
@@ -213,6 +242,11 @@ impl Handshake {
 }
 
 impl Handshake {
+    /// Create a new handshake initialized with
+    ///   - a static key
+    ///   - an ephemeral key
+    ///   - a payload containing the identity, a signature of the static key and the credential of
+    ///     the current party
     pub(super) async fn new(
         vault: Arc<dyn XXVault>,
         identities: Arc<Identities>,
@@ -481,6 +515,68 @@ impl Handshake {
     fn encrypted_key_size() -> usize {
         Self::key_size() + AES_GCM_TAGSIZE_USIZE
     }
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct HandshakeState {
+    pub(super) s: KeyId,
+    pub(super) e: KeyId,
+    pub(super) k: KeyId,
+    pub(super) re: PublicKey,
+    pub(super) rs: PublicKey,
+    pub(super) n: usize,
+    pub(super) h: [u8; SHA256_SIZE_USIZE],
+    pub(super) ck: KeyId,
+    pub(super) prologue: Vec<u8>,
+    pub(super) message1_payload: Vec<u8>,
+    pub(super) identity_payload: Vec<u8>,
+    pub(super) status: Status,
+}
+
+impl HandshakeState {
+    pub(super) fn new(s: KeyId, e: KeyId, identity_payload: Vec<u8>) -> HandshakeState {
+        HandshakeState {
+            s,
+            e,
+            k: "".to_string(),
+            re: PublicKey::new(vec![], X25519),
+            rs: PublicKey::new(vec![], X25519),
+            n: 0,
+            h: [0u8; SHA256_SIZE_USIZE],
+            ck: "".to_string(),
+            prologue: vec![],
+            message1_payload: vec![],
+            identity_payload,
+            status: Initial,
+        }
+    }
+
+    pub(super) fn mix_hash(&mut self, data: &[u8]) {
+        let mut input = self.h.to_vec();
+        input.extend(data);
+        self.h = Self::sha256(&input)
+    }
+
+    fn sha256(data: &[u8]) -> [u8; 32] {
+        let digest = Sha256::digest(data);
+        *array_ref![digest, 0, 32]
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(super) enum Status {
+    Initial,
+    WaitingForMessage1,
+    WaitingForMessage2,
+    WaitingForMessage3,
+    Ready(HandshakeResults),
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct HandshakeResults {
+    pub(super) their_identity: Identity,
+    pub(super) encryption_key: KeyId,
+    pub(super) decryption_key: KeyId,
 }
 
 // #[cfg(test)]

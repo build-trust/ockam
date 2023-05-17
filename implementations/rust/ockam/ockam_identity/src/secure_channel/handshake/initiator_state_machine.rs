@@ -1,7 +1,4 @@
-use crate::secure_channel::handshake::handshake::Handshake;
-use crate::secure_channel::handshake::handshake_state::{HandshakeResults, Status};
-use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
-use crate::secure_channel::handshake::handshake_state_machine::Event::ReceivedMessage;
+use crate::secure_channel::handshake::handshake::{Handshake, HandshakeResults, Status};
 use crate::secure_channel::handshake::handshake_state_machine::{
     Action, Event, IdentityAndCredentials, StateMachine,
 };
@@ -11,6 +8,7 @@ use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
+use Action::*;
 use Event::*;
 use Role::*;
 use Status::*;

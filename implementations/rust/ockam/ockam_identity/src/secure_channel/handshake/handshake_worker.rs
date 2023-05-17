@@ -3,7 +3,7 @@ use crate::secure_channel::decryptor::Decryptor;
 use crate::secure_channel::decryptor_worker::DecryptorWorker;
 use crate::secure_channel::encryptor::Encryptor;
 use crate::secure_channel::encryptor_worker::EncryptorWorker;
-use crate::secure_channel::handshake::handshake_state::HandshakeResults;
+use crate::secure_channel::handshake::handshake::HandshakeResults;
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
 use crate::secure_channel::handshake::handshake_state_machine::Event::{
     Initialize, ReceivedMessage,
