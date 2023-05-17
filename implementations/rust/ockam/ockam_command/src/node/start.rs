@@ -3,9 +3,9 @@ use clap::Args;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
+use crate::node::get_node_name;
 use crate::node::show::print_query_status;
 use crate::node::util::{check_default, spawn_node};
-use crate::node::{default_node_name, node_name_parser};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 
@@ -21,8 +21,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt")
 )]
 pub struct StartCommand {
     /// Name of the node.
-    #[arg(default_value_t = default_node_name(), value_parser = node_name_parser)]
-    node_name: String,
+    #[arg()]
+    node_name: Option<String>,
 
     #[arg(long, default_value = "false")]
     aws_kms: bool,
@@ -41,9 +41,9 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, StartCommand),
 ) -> crate::Result<()> {
-    let node_name = &cmd.node_name;
+    let node_name = get_node_name(&opts.state, cmd.node_name.clone())?;
 
-    let node_state = opts.state.nodes.get(node_name)?;
+    let node_state = opts.state.nodes.get(&node_name)?;
     // Check if node is already running
     if node_state.is_running() && !cmd.force {
         println!(
@@ -59,7 +59,7 @@ async fn run_impl(
     spawn_node(
         &opts,
         node_setup.verbose, // Previously user-chosen verbosity level
-        node_name,          // The selected node name
+        &node_name,         // The selected node name
         &node_setup.default_tcp_listener()?.addr.to_string(), // The selected node api address
         None,               // No project information available
         None,               // No trusted identities
@@ -74,9 +74,9 @@ async fn run_impl(
 
     // Print node status
     let tcp = TcpTransport::create(&ctx).await?;
-    let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-    let is_default = check_default(&opts, node_name);
-    print_query_status(&mut rpc, node_name, true, is_default).await?;
+    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+    let is_default = check_default(&opts, &node_name);
+    print_query_status(&mut rpc, &node_name, true, is_default).await?;
 
     Ok(())
 }

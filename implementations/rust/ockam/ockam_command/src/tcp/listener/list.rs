@@ -3,7 +3,7 @@ use cli_table::{print_stdout, Cell, Style, Table};
 use ockam::Context;
 use ockam_api::nodes::models::transport::{TransportList, TransportStatus};
 
-use crate::node::NodeOpts;
+use crate::node::{get_node_name, NodeOpts};
 use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
@@ -28,7 +28,8 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
+    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
+    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     rpc.request(api::list_tcp_listeners()).await?;
     let res = rpc.parse_response::<TransportList>()?;
 

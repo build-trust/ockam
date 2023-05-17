@@ -1,4 +1,4 @@
-use crate::node::NodeOpts;
+use crate::node::{get_node_name, NodeOpts};
 use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::Result;
@@ -94,20 +94,20 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: StartCommand,
 ) -> crate::Result<()> {
-    let node_name = &cmd.node_opts.api_node;
+    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
     let tcp = TcpTransport::create(ctx).await?;
     let addr = match cmd.create_subcommand {
         StartSubCommand::Identity { addr, .. } => {
-            start_identity_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?;
+            start_identity_service(ctx, &opts, &node_name, &addr, Some(&tcp)).await?;
             addr
         }
         StartSubCommand::Authenticated { addr, .. } => {
             let req = api::start_authenticated_service(&addr);
-            start_service_impl(ctx, &opts, node_name, "Authenticated", req, Some(&tcp)).await?;
+            start_service_impl(ctx, &opts, &node_name, "Authenticated", req, Some(&tcp)).await?;
             addr
         }
         StartSubCommand::Verifier { addr, .. } => {
-            start_verifier_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?;
+            start_verifier_service(ctx, &opts, &node_name, &addr, Some(&tcp)).await?;
             addr
         }
         StartSubCommand::Credentials {
@@ -117,11 +117,12 @@ async fn run_impl(
             ..
         } => {
             let req = api::start_credentials_service(&identity, &addr, oneway);
-            start_service_impl(ctx, &opts, node_name, "Credentials", req, Some(&tcp)).await?;
+            start_service_impl(ctx, &opts, &node_name, "Credentials", req, Some(&tcp)).await?;
             addr
         }
         StartSubCommand::Authenticator { addr, project, .. } => {
-            start_authenticator_service(ctx, &opts, node_name, &addr, &project, Some(&tcp)).await?;
+            start_authenticator_service(ctx, &opts, &node_name, &addr, &project, Some(&tcp))
+                .await?;
             addr
         }
     };

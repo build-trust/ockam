@@ -1,4 +1,4 @@
-use crate::node::default_node_name;
+use crate::node::{default_node_name, get_node_name};
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
@@ -15,8 +15,8 @@ pub struct DeleteCommand {
     relay_name: String,
 
     /// Node on which to delete the Relay. If not provided, the default node will be used
-    #[arg(global = true, long, value_name = "NODE", default_value_t = default_node_name())]
-    pub at: String,
+    #[arg(global = true, long, value_name = "NODE")]
+    pub at: Option<String>,
 }
 
 impl DeleteCommand {
@@ -30,7 +30,11 @@ pub async fn run_impl(
     (options, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
     let relay_name = cmd.relay_name.clone();
-    let node = extract_address_value(&cmd.at)?;
+    let at = cmd
+        .at
+        .clone()
+        .unwrap_or_else(|| default_node_name(&options.state));
+    let node = extract_address_value(&at)?;
     let mut rpc = Rpc::background(&ctx, &options, &node)?;
     rpc.request(make_api_request(cmd)?).await?;
 

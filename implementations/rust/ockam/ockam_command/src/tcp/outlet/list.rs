@@ -1,4 +1,4 @@
-use crate::node::NodeOpts;
+use crate::node::{get_node_name, NodeOpts};
 use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use anyhow::anyhow;
@@ -25,7 +25,8 @@ async fn run_impl(
     ctx: ockam::Context,
     (options, command): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
-    let node_name = extract_address_value(&command.node_opts.api_node)?;
+    let node_name = get_node_name(&options.state, command.node_opts.api_node.clone())?;
+    let node_name = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
     rpc.request(Request::get("/node/outlet")).await?;
     let response = rpc.parse_response::<OutletList>()?;

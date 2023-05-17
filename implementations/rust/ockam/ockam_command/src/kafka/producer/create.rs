@@ -11,6 +11,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 use tokio::{sync::Mutex, try_join};
 
+use crate::node::get_node_name;
 use crate::{
     fmt_log, fmt_ok,
     kafka::{
@@ -67,20 +68,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> c
 
     let send_req = async {
         let tcp = TcpTransport::create(&ctx).await?;
+        let node_name = get_node_name(&opts.state, node_opts.api_node.clone())?;
 
         let payload =
             StartKafkaProducerRequest::new(bootstrap_server, brokers_port_range, project_route);
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_producer").body(payload);
-        start_service_impl(
-            &ctx,
-            &opts,
-            &node_opts.api_node,
-            "KafkaProducer",
-            req,
-            Some(&tcp),
-        )
-        .await?;
+        start_service_impl(&ctx, &opts, &node_name, "KafkaProducer", req, Some(&tcp)).await?;
 
         *is_finished.lock().await = true;
 

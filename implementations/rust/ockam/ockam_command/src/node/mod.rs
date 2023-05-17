@@ -80,28 +80,27 @@ impl NodeCommand {
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
     /// Override the default API node
-    #[arg(
-        global = true,
-        id = "node",
-        value_name = "NODE",
-        short,
-        long,
-        default_value_t = default_node_name(), value_parser = node_name_parser
-    )]
-    pub api_node: String,
+    #[arg(global = true, id = "node", value_name = "NODE", short, long)]
+    pub api_node: Option<String>,
 }
 
-pub fn default_node_name() -> String {
-    CliState::try_default()
-        .unwrap()
+pub fn get_node_name(cli_state: &CliState, node_name: Option<String>) -> Result<String> {
+    match node_name {
+        Some(n) => node_name_parser(cli_state, &n),
+        None => Ok(default_node_name(cli_state)),
+    }
+}
+
+pub fn default_node_name(cli_state: &CliState) -> String {
+    cli_state
         .nodes
         .default()
         .map(|n| n.name().to_string())
         .unwrap_or_else(|_| "default".to_string())
 }
 
-pub fn node_name_parser(node_name: &str) -> Result<String> {
-    if node_name == "default" && CliState::try_default().unwrap().nodes.default().is_err() {
+pub fn node_name_parser(cli_state: &CliState, node_name: &str) -> Result<String> {
+    if node_name == "default" && cli_state.nodes.default().is_err() {
         return Ok(spawn_default_node(node_name));
     }
 

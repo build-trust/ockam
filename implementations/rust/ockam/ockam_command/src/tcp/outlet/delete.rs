@@ -1,4 +1,4 @@
-use crate::node::NodeOpts;
+use crate::node::{get_node_name, NodeOpts};
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
@@ -31,8 +31,8 @@ pub async fn run_impl(
     (options, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
     let alias = cmd.alias.clone();
-
-    let node = extract_address_value(&cmd.node_opts.api_node)?;
+    let node_name = get_node_name(&options.state, cmd.node_opts.api_node.clone())?;
+    let node = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &options, &node)?;
     rpc.request(make_api_request(cmd)?).await?;
 

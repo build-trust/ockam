@@ -1,4 +1,4 @@
-use crate::node::{default_node_name, node_name_parser};
+use crate::node::get_node_name;
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
@@ -32,8 +32,8 @@ use tokio::try_join;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
-    #[arg(long, display_order = 900, id = "NODE", default_value_t = default_node_name(), value_parser = node_name_parser)]
-    at: String,
+    #[arg(long, display_order = 900, id = "NODE")]
+    at: Option<String>,
 
     /// Address on which to accept tcp connections.
     #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", default_value_t = default_from_addr(), value_parser = socket_addr_parser)]
@@ -79,7 +79,9 @@ impl CreateCommand {
 async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     opts.terminal.write_line(&fmt_log!("Creating TCP Inlet"))?;
     cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state)?;
-    let node = extract_address_value(&cmd.at)?;
+
+    let node_name = get_node_name(&opts.state, cmd.at.clone())?;
+    let node = extract_address_value(&node_name)?;
 
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();

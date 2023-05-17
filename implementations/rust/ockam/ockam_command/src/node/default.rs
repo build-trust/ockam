@@ -1,5 +1,5 @@
+use crate::node::get_node_name;
 use crate::node::util::{check_default, set_default_node};
-use crate::node::{default_node_name, node_name_parser};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 
@@ -14,8 +14,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt
 )]
 pub struct DefaultCommand {
     /// Name of the node.
-    #[arg(default_value_t = default_node_name(), value_parser = node_name_parser)]
-    node_name: String,
+    #[arg()]
+    node_name: Option<String>,
 }
 
 impl DefaultCommand {
@@ -28,11 +28,12 @@ impl DefaultCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
-    if check_default(&opts, &cmd.node_name) {
+    let node_name = get_node_name(&opts.state, cmd.node_name.clone())?;
+    if check_default(&opts, &node_name) {
         println!("Already set to default node");
     } else {
-        set_default_node(&opts, &cmd.node_name)?;
-        println!("Set node '{}' as default", &cmd.node_name);
+        set_default_node(&opts, &node_name)?;
+        println!("Set node '{}' as default", &node_name);
     }
     Ok(())
 }
