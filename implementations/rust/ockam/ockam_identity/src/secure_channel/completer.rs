@@ -87,6 +87,13 @@ impl ExchangeCompleter {
             return Err(IdentityError::SecureChannelVerificationFailed.into());
         }
 
+        //store identity for future validation
+        secure_channels
+            .identities()
+            .repository()
+            .update_identity(&self.their_identity)
+            .await?;
+
         //decryptor worker
         let decryptor = DecryptorWorker::new(
             self.role.str(),
