@@ -32,7 +32,7 @@ defmodule Ockam.SecureChannel.Tests do
 
   defp man_in_the_middle(callback, initiator, n) do
     receive do
-      %Message{return_route: ^initiator} = message when n >= 3 ->
+      %Message{return_route: ^initiator} = message when n > 2 ->
         callback.(message, n - 3) |> Enum.each(&Router.route/1)
 
       %Message{} = message ->

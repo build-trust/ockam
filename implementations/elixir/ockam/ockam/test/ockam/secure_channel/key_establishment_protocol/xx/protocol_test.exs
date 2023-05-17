@@ -61,17 +61,15 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
       end)
 
     {:ok, initiator_state} =
-      Protocol.setup(
+      Protocol.setup(test_case.initiator_static,
         vault: vault,
-        static_keypair: test_case.initiator_static,
         ephemeral_keypair: test_case.initiator_ephemeral,
         payloads: %{message1: test_case.message_1_payload, message3: test_case.message_3_payload}
       )
 
     {:ok, responder_state} =
-      Protocol.setup(
+      Protocol.setup(test_case.responder_static,
         vault: vault,
-        static_keypair: test_case.responder_static,
         ephemeral_keypair: test_case.responder_ephemeral,
         payloads: %{message2: test_case.message_2_payload}
       )
@@ -88,10 +86,10 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
     {:ok, {:continue, initiator_state}} =
       Protocol.in_payload(initiator_state, message_2_ciphertext)
 
-    {:ok, message_3_ciphertext, {:complete, {k1_i, k2_i, h_i, p_i}}} =
+    {:ok, message_3_ciphertext, {:complete, {k1_i, k2_i, h_i, _rs, p_i}}} =
       Protocol.out_payload(initiator_state)
 
-    {:ok, {:complete, {k1_r, k2_r, h_r, p_r}}} =
+    {:ok, {:complete, {k1_r, k2_r, h_r, _rs, p_r}}} =
       Protocol.in_payload(responder_state, message_3_ciphertext)
 
     assert Vault.secret_export(vault, k1_i) == Vault.secret_export(vault, k1_r)
