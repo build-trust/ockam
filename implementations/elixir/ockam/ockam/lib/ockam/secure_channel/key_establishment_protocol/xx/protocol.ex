@@ -45,10 +45,12 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  def setup(options) do
+  def setup(%{public: _, private: _} = static_keypair, options) do
     with {:ok, protocol_state} <-
-           setup_vault(options, %__MODULE__{pending_handshake: [:message1, :message2, :message3]}),
-         {:ok, protocol_state} <- setup_s(options, protocol_state),
+           setup_vault(options, %__MODULE__{
+             pending_handshake: [:message1, :message2, :message3],
+             s: static_keypair
+           }),
          {:ok, protocol_state} <- setup_e(options, protocol_state),
          {:ok, protocol_state} <- setup_h(protocol_state),
          {:ok, protocol_state} <- setup_ck(protocol_state),
@@ -72,11 +74,11 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  defp next(%{pending_handshake: [], vault: vault, ck: ck, h: h, payloads: payloads}) do
+  defp next(%{pending_handshake: [], vault: vault, ck: ck, h: h, rs: rs, payloads: payloads}) do
     k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
 
     with {:ok, [k1, k2]} <- Vault.hkdf_sha256(vault, ck, [k_attributes, k_attributes]) do
-      {:ok, {:complete, {k1, k2, h, payloads}}}
+      {:ok, {:complete, {k1, k2, h, rs, payloads}}}
     end
   end
 
@@ -91,36 +93,38 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  defp setup_s(options, state) do
-    case Keyword.get(options, :static_keypair) do
-      nil -> generate_key(:s, state)
-      %{private: _priv, public: _pub} = s -> {:ok, %{state | s: s}}
-      vault_handle -> turn_vault_private_key_handle_to_keypair(:s, vault_handle, state)
+  defp get_e(options, state) do
+    case Keyword.fetch(options, :ephemeral_keypair) do
+      :error ->
+        generate_keypair(state.vault)
+
+      {:ok, %{private: _priv, public: _pub} = keypair} ->
+        {:ok, keypair}
+
+      {:ok, vault_handle} ->
+        turn_vault_private_key_handle_to_keypair(state.vault, vault_handle)
     end
   end
 
   defp setup_e(options, state) do
-    case Keyword.get(options, :ephemeral_keypair) do
-      nil -> generate_key(:e, state)
-      %{private: _priv, public: _pub} = e -> {:ok, %{state | e: e}}
-      vault_handle -> turn_vault_private_key_handle_to_keypair(:e, vault_handle, state)
+    with {:ok, keypair} <- get_e(options, state) do
+      {:ok, %{state | e: keypair}}
     end
   end
 
-  defp turn_vault_private_key_handle_to_keypair(s_or_e, handle, %{vault: vault} = state) do
+  def turn_vault_private_key_handle_to_keypair(vault, handle) do
     with {:ok, public_key} <- Vault.secret_publickey_get(vault, handle) do
-      state = Map.put(state, s_or_e, %{private: handle, public: public_key})
-      {:ok, state}
+      {:ok, %{private: handle, public: public_key}}
     end
   end
 
-  defp generate_key(key_type, %{vault: vault} = state) do
+  def generate_keypair(vault) do
     case Ockam.Vault.secret_generate(vault, type: :curve25519) do
       {:ok, key_handle} ->
-        turn_vault_private_key_handle_to_keypair(key_type, key_handle, state)
+        turn_vault_private_key_handle_to_keypair(vault, key_handle)
 
       {:error, reason} ->
-        {:error, {:could_not_setup_key, key_type, reason}}
+        {:error, {:could_not_generate_key, reason}}
     end
   end
 
