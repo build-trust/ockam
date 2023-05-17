@@ -12,13 +12,12 @@ use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
 use ockam_abac::Resource;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_core::api::{Request, RequestBuilder};
+use std::net::SocketAddr;
 use tokio::sync::Mutex;
 use tokio::try_join;
-
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use std::net::SocketAddr;
 
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
