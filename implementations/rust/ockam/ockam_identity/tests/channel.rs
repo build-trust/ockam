@@ -90,8 +90,9 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let trust_context = TrustContext::new(
         "test".to_string(),
         Some(AuthorityService::new(
+            secure_channels.identities().identities_reader(),
             secure_channels.identities().credentials(),
-            authority.clone(),
+            authority.identifier(),
             None,
         )),
     );
@@ -100,7 +101,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .identities()
         .credentials()
         .issue_credential(
-            &authority,
+            &authority.identifier(),
             CredentialData::builder(bob.identifier(), authority.identifier())
                 .with_attribute("is_bob", b"true")
                 .build()?,
@@ -111,7 +112,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .identities()
         .credentials()
         .issue_credential(
-            &authority,
+            &authority.identifier(),
             CredentialData::builder(bob.identifier(), authority.identifier())
                 .with_attribute("bob_2nd", b"true")
                 .build()?,
@@ -121,7 +122,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             context,
-            &bob,
+            &bob.identifier(),
             "bob_listener",
             SecureChannelListenerOptions::new()
                 .with_trust_context(trust_context.clone())
@@ -134,7 +135,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .identities()
         .credentials()
         .issue_credential(
-            &authority,
+            &authority.identifier(),
             CredentialData::builder(alice.identifier(), authority.identifier())
                 .with_attribute("is_alice", b"true")
                 .build()?,
@@ -145,7 +146,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .identities()
         .credentials()
         .issue_credential(
-            &authority,
+            &authority.identifier(),
             CredentialData::builder(alice.identifier(), authority.identifier())
                 .with_attribute("alice_2nd", b"true")
                 .build()?,
@@ -155,7 +156,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let _alice_channel = secure_channels
         .create_secure_channel(
             context,
-            &alice,
+            &alice.identifier(),
             route!["bob_listener"],
             SecureChannelOptions::new()
                 .with_trust_context(trust_context)
@@ -221,7 +222,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob,
+            &bob.identifier(),
             "bob_listener",
             SecureChannelListenerOptions::new().with_trust_policy(alice_broken_trust_policy),
         )
@@ -230,7 +231,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &alice,
+            &alice.identifier(),
             route!["bob_listener"],
             SecureChannelOptions::new().with_timeout(Duration::from_millis(500)),
         )
