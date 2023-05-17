@@ -167,16 +167,6 @@ pub trait StateDirTrait: Sized {
 pub trait StateItemTrait: Sized {
     type Config: Serialize + for<'a> Deserialize<'a> + Send;
 
-    fn cli_state(&self) -> Result<CliState> {
-        CliState::new(
-            self.path()
-                .parent()
-                .expect("no parent dir")
-                .parent()
-                .expect("no parent dir"),
-        )
-    }
-
     /// Create a new item with the given config.
     fn new(path: PathBuf, config: Self::Config) -> Result<Self>;
 

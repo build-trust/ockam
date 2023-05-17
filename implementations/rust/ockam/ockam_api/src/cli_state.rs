@@ -131,6 +131,20 @@ impl CliState {
         Ok(())
     }
 
+    pub fn delete_identity(&self, identity_state: IdentityState) -> Result<()> {
+        // Abort if identity is being used by some running node.
+        for node in self.nodes.list()? {
+            if node.config().identity_config()?.identifier() == identity_state.identifier() {
+                return Err(CliStateError::Invalid(format!(
+                    "Can't delete identity '{}' because is currently in use by node '{}'",
+                    &identity_state.name(),
+                    &node.name()
+                )));
+            }
+        }
+        identity_state.delete()
+    }
+
     /// Returns the default directory for the CLI state.
     pub fn default_dir() -> Result<PathBuf> {
         Ok(get_env_with_default::<PathBuf>(

@@ -31,12 +31,12 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
-    let state = opts.state.identities;
+    let state = opts.state;
     // Check if exists
-    match state.get(&cmd.name) {
+    match state.identities.get(&cmd.name) {
         // If it exists, proceed
-        Ok(_) => {
-            state.delete(&cmd.name)?;
+        Ok(identity_state) => {
+            state.delete_identity(identity_state)?;
             println!("Identity '{}' deleted", cmd.name);
             Ok(())
         }
