@@ -514,10 +514,10 @@ async fn update_enrolled_identity(opts: &CommandGlobalOpts, node_name: &str) -> 
     let identities = opts.state.identities.list()?;
 
     let node_state = opts.state.nodes.get(node_name)?;
-    let node_identity = node_state.config().identity().await?;
+    let node_identifier = node_state.config().identifier().await?;
 
     for mut identity in identities {
-        if node_identity.identifier() == identity.config().identity.identifier() {
+        if node_identifier == identity.config().identifier() {
             identity.set_enrollment_status()?;
         }
     }

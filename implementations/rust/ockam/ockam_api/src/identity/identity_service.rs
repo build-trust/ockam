@@ -100,7 +100,7 @@ impl IdentityService {
                 [identity_name] => {
                     match self
                         .node_identities
-                        .get_identity(identity_name.to_string(), None)
+                        .get_identity(identity_name.to_string())
                         .await?
                     {
                         Some(identity) => {

@@ -1,7 +1,7 @@
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::DefaultAddress;
 use ockam::identity::credential::Timestamp;
-use ockam::identity::{AttributesEntry, Identity, IdentityIdentifier};
+use ockam::identity::{AttributesEntry, IdentityIdentifier};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::{Display, Formatter};
@@ -13,7 +13,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
     /// Authority identity or identity associated with the newly created node
-    pub identity: Identity,
+    pub identifier: IdentityIdentifier,
 
     /// path where the storage for identity attributes should be persisted
     pub storage_path: PathBuf,
@@ -53,6 +53,11 @@ pub struct Configuration {
 
 /// Local and private functions for the authority configuration
 impl Configuration {
+    /// Return the authority identity identifier
+    pub(crate) fn identifier(&self) -> IdentityIdentifier {
+        self.identifier.clone()
+    }
+
     /// Return the project identifier as bytes
     pub(crate) fn project_identifier(&self) -> String {
         self.project_identifier.clone()

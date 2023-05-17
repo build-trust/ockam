@@ -114,10 +114,6 @@ impl NodeManager {
         self.secure_channels.identities()
     }
 
-    pub(super) fn identities_vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.identities().vault()
-    }
-
     pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
         self.identities().repository().clone()
     }
@@ -337,10 +333,6 @@ impl NodeManager {
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
-        let identity = node_state.config().identity().await?;
-        // make sure that the configured identity exists in the repository
-        identities_repository.update_identity(&identity).await?;
-
         let flow_controls = FlowControls::default();
         let medic = Medic::new(flow_controls.clone());
         let sessions = medic.sessions();
@@ -359,7 +351,7 @@ impl NodeManager {
                     .unwrap()
                     .authority()
                     .is_ok(),
-            identifier: identity.identifier(),
+            identifier: node_state.config().identifier().await?,
             secure_channels,
             projects: Arc::new(projects_options.projects),
             trust_context: None,

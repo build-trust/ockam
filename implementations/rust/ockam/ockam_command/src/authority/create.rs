@@ -243,7 +243,7 @@ async fn start_authority_node(
 
     // Retrieve the authority identity if it has been created before
     // otherwise create a new one
-    let identity = match &cmd.identity {
+    let identifier = match &cmd.identity {
         Some(identity_name) => {
             debug!(name=%identity_name, "getting identity from state");
             opts.state
@@ -251,12 +251,12 @@ async fn start_authority_node(
                 .get(identity_name)
                 .context("Identity not found")?
                 .config()
-                .identity()
+                .identifier()
         }
         None => {
             debug!("getting default identity from state");
             match opts.state.identities.default() {
-                Ok(state) => state.config().identity(),
+                Ok(state) => state.config().identifier(),
                 Err(_) => {
                     debug!("creating default identity");
                     let cmd = identity::CreateCommand::new("authority".into(), None);
@@ -265,7 +265,7 @@ async fn start_authority_node(
             }
         }
     };
-    debug!(identifier=%identity.identifier(), "authority identifier");
+    debug!(identifier=%identifier, "authority identifier");
 
     let okta_configuration = match (&cmd.tenant_base_url, &cmd.certificate, &cmd.attributes) {
         (Some(tenant_base_url), Some(certificate), Some(attributes)) => Some(OktaConfiguration {
@@ -296,10 +296,10 @@ async fn start_authority_node(
             )?),
     )?;
 
-    let trusted_identities = cmd.trusted_identities(&identity.identifier())?;
+    let trusted_identities = cmd.trusted_identities(&identifier)?;
 
     let configuration = authority_node::Configuration {
-        identity,
+        identifier,
         storage_path: opts.state.identities.identities_repository_path()?,
         vault_path: opts.state.vaults.default()?.vault_file_path().clone(),
         project_identifier: cmd.project_identifier.clone(),

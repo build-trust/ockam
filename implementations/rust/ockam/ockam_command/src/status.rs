@@ -45,7 +45,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) ->
     let tcp = TcpTransport::create(ctx).await?;
     for node_state in &node_states {
         let node_infos = NodeDetails {
-            identifier: node_state.config().identity().await?.identifier(),
+            identifier: node_state.config().identifier().await?,
             state: node_state.clone(),
             status: get_node_status(ctx, &opts, node_state, &tcp).await?,
         };
@@ -106,16 +106,14 @@ async fn print_status(
 
     for (i_idx, identity) in identities.iter().enumerate() {
         println!("Identity[{i_idx}]");
-        if default_identity.config().identity.identifier()
-            == identity.config().identity.identifier()
-        {
+        if default_identity.config().identifier() == identity.config().identifier() {
             println!("{:2}Default: yes", "")
         }
         for line in identity.to_string().lines() {
             println!("{:2}{}", "", line);
         }
 
-        node_details.retain(|nd| nd.identifier == identity.config().identity.identifier());
+        node_details.retain(|nd| nd.identifier == identity.config().identifier());
         if !node_details.is_empty() {
             println!("{:2}Linked Nodes:", "");
             for (n_idx, node) in node_details.iter().enumerate() {

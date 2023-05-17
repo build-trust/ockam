@@ -2,7 +2,7 @@ use ockam::compat::sync::Arc;
 use ockam::identity::{Identities, IdentitiesCreation, IdentitiesKeys};
 use ockam::identity::{IdentitiesVault, Identity};
 use ockam::Result;
-use ockam_identity::IdentitiesRepository;
+use ockam_identity::{IdentitiesRepository, IdentityIdentifier};
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::CliState;
@@ -31,18 +31,18 @@ impl NodeIdentities {
     }
 
     /// Return an identity if it has been created with that name before
-    /// If a vault name is specified, use it to validate the identity against that vault before returning it
-    pub(crate) async fn get_identity(
-        &self,
-        identity_name: String,
-        vault_name: Option<String>,
-    ) -> Result<Option<Identity>> {
-        let vault = self.get_identities_vault(vault_name).await?;
+    pub(crate) async fn get_identity(&self, identity_name: String) -> Result<Option<Identity>> {
+        let repository = self.identities_repository();
         if let Ok(idt_state) = self.cli_state.identities.get(identity_name.as_str()) {
-            Ok(Some(idt_state.get(vault).await?))
+            Ok(repository.get_identity(&idt_state.identifier()).await.ok())
         } else {
             Ok(None)
         }
+    }
+
+    pub(crate) async fn get_identifier(&self, identity_name: String) -> Result<IdentityIdentifier> {
+        let identity_state = self.cli_state.identities.get(identity_name.as_str())?;
+        Ok(identity_state.identifier())
     }
 
     /// Return an identities creation service backed up by the default vault
@@ -58,15 +58,17 @@ impl NodeIdentities {
             .identities_keys())
     }
 
-    /// Return an identities service for a specific identity
+    /// Return an identities service, possibly backed by a specific vault
     pub(crate) async fn get_identities(
         &self,
         vault_name: Option<String>,
-        identity_name: String,
     ) -> Result<Arc<Identities>> {
         let vault = self.get_identities_vault(vault_name).await?;
-        let idt_state = self.cli_state.identities.get(identity_name.as_str())?;
-        Ok(idt_state.make_identities(vault.clone()).await?)
+        let repository = self.cli_state.identities.identities_repository().await?;
+        Ok(Identities::builder()
+            .with_identities_vault(vault)
+            .with_identities_repository(repository)
+            .build())
     }
 
     /// Return an identities creations service

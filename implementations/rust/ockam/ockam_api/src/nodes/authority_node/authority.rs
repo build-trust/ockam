@@ -57,7 +57,7 @@ impl Authority {
             .with_identities_repository(repository)
             .build();
 
-        let identifier = configuration.identity.identifier();
+        let identifier = configuration.identifier();
         info!(identifier=%identifier, "retrieved the authority identifier");
 
         Ok(Authority {

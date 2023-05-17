@@ -54,7 +54,7 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Resu
             .await?
     };
     let idt_name = cli_state::random_name();
-    let idt_config = IdentityConfig::new(&idt).await;
+    let idt_config = IdentityConfig::new(&idt.identifier()).await;
     opts.state.identities.create(&idt_name, idt_config)?;
     println!("Identity attached to vault: {idt_name}");
     Ok(())

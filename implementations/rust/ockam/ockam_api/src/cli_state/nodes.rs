@@ -6,13 +6,12 @@ use crate::cli_state::{
 use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use nix::errno::Errno;
-use ockam_identity::{IdentitiesVault, Identity, LmdbStorage};
+use ockam_identity::{IdentityIdentifier, LmdbStorage};
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
 use sysinfo::{Pid, System, SystemExt};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -200,11 +199,10 @@ impl NodeConfig {
         Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 
-    pub async fn identity(&self) -> Result<Identity> {
-        let vault: Arc<dyn IdentitiesVault> = self.vault().await?;
+    pub async fn identifier(&self) -> Result<IdentityIdentifier> {
         let state_path = std::fs::canonicalize(&self.default_identity)?;
         let state = IdentityState::load(state_path)?;
-        state.get(vault).await
+        Ok(state.identifier())
     }
 }
 
