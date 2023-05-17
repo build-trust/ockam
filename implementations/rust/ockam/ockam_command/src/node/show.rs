@@ -161,7 +161,7 @@ pub async fn print_query_status(
     wait_until_ready: bool,
     is_default: bool,
 ) -> Result<()> {
-    let cli_state = cli_state::CliState::try_default()?;
+    let cli_state = rpc.opts.state.clone();
     if !is_node_up(rpc, wait_until_ready).await? {
         let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state
@@ -258,7 +258,7 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
     let timeout =
         FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
 
-    let cli_state = cli_state::CliState::try_default()?;
+    let cli_state = rpc.opts.state.clone();
     let node_name = rpc.node_name().to_owned();
     let now = std::time::Instant::now();
     for t in timeout {
