@@ -3,13 +3,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Iso8601;
 use time::OffsetDateTime;
 
 use ockam_identity::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
-    IdentityChangeHistory, IdentityHistoryComparison, IdentityIdentifier, LmdbStorage,
+    IdentitiesRepository, IdentitiesStorage, Identity, IdentityChangeHistory, IdentityIdentifier,
+    LmdbStorage,
 };
 
 use crate::cli_state::nodes::NodeState;
@@ -37,7 +37,7 @@ impl IdentitiesState {
 
         let identity_state = identities
             .into_iter()
-            .find(|ident_state| &ident_state.config.identity.identifier() == identifier);
+            .find(|ident_state| &ident_state.config.identifier() == identifier);
 
         match identity_state {
             Some(is) => Ok(is),
@@ -58,7 +58,7 @@ impl IdentitiesState {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IdentityState {
     name: String,
     path: PathBuf,
@@ -68,25 +68,8 @@ pub struct IdentityState {
 }
 
 impl IdentityState {
-    pub async fn get(&self, vault: Arc<dyn IdentitiesVault>) -> Result<Identity> {
-        let data = self.config.identity.export()?;
-        Ok(self
-            .make_identities(vault)
-            .await?
-            .identities_creation()
-            .decode_identity(&data)
-            .await?)
-    }
-
-    pub async fn make_identities(
-        &self,
-        vault: Arc<dyn IdentitiesVault>,
-    ) -> Result<Arc<Identities>> {
-        let repository = self.cli_state()?.identities.identities_repository().await?;
-        Ok(Identities::builder()
-            .with_identities_vault(vault)
-            .with_identities_repository(repository)
-            .build())
+    pub fn identifier(&self) -> IdentityIdentifier {
+        self.config.identifier()
     }
 
     pub fn set_enrollment_status(&mut self) -> Result<()> {
@@ -104,9 +87,7 @@ impl IdentityState {
 
     fn in_use_by(&self, nodes: &[NodeState]) -> Result<()> {
         for node in nodes {
-            if node.config().identity_config()?.identity.identifier()
-                == self.config.identity.identifier()
-            {
+            if node.config().identity_config()?.identifier() == self.config.identifier() {
                 return Err(CliStateError::Invalid(format!(
                     "Can't delete identity '{}' because is currently in use by node '{}'",
                     &self.name,
@@ -130,11 +111,7 @@ impl Display for IdentityState {
             self.path.as_path().file_stem().unwrap().to_str().unwrap()
         )?;
         writeln!(f, "State Path: {}", self.path.clone().to_str().unwrap())?;
-        writeln!(
-            f,
-            "Config Identifier: {}",
-            self.config.identity.identifier()
-        )?;
+        writeln!(f, "Config Identifier: {}", self.config.identifier())?;
         match &self.config.enrollment_status {
             Some(enrollment) => {
                 writeln!(f, "Enrollment Status:")?;
@@ -148,69 +125,32 @@ impl Display for IdentityState {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IdentityConfig {
-    pub identity: Identity,
+    pub identifier: IdentityIdentifier,
     pub enrollment_status: Option<EnrollmentStatus>,
-}
-
-impl<'de> Deserialize<'de> for IdentityConfig {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize, Debug, Clone)]
-        struct IdentityConfigV1 {
-            identifier: IdentityIdentifier,
-            change_history: IdentityChangeHistory,
-            enrollment_status: Option<EnrollmentStatus>,
-        }
-        #[derive(Deserialize, Debug, Clone)]
-        struct IdentityConfigV2 {
-            identity: Identity,
-            enrollment_status: Option<EnrollmentStatus>,
-        }
-        #[derive(Deserialize, Debug, Clone)]
-        #[serde(untagged)]
-        enum IdentityConfigs {
-            V1(IdentityConfigV1),
-            V2(IdentityConfigV2),
-        }
-
-        match IdentityConfigs::deserialize(deserializer) {
-            Ok(IdentityConfigs::V1(config)) => Ok(IdentityConfig {
-                identity: Identity::new(config.identifier, config.change_history),
-                enrollment_status: config.enrollment_status,
-            }),
-            Ok(IdentityConfigs::V2(config)) => Ok(IdentityConfig {
-                identity: config.identity,
-                enrollment_status: config.enrollment_status,
-            }),
-            Err(e) => Err(e),
-        }
-    }
-}
-
-impl IdentityConfig {
-    pub async fn new(identity: &Identity) -> Self {
-        Self {
-            identity: identity.clone(),
-            enrollment_status: None,
-        }
-    }
-
-    pub fn identity(&self) -> Identity {
-        self.identity.clone()
-    }
 }
 
 impl PartialEq for IdentityConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.identity.compare(&other.identity) == IdentityHistoryComparison::Equal
+        self.identifier == other.identifier
     }
 }
 
 impl Eq for IdentityConfig {}
+
+impl IdentityConfig {
+    pub async fn new(identifier: &IdentityIdentifier) -> Self {
+        Self {
+            identifier: identifier.clone(),
+            enrollment_status: None,
+        }
+    }
+
+    pub fn identifier(&self) -> IdentityIdentifier {
+        self.identifier.clone()
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EnrollmentStatus {
@@ -246,6 +186,34 @@ impl Display for EnrollmentStatus {
 
         Ok(())
     }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct IdentityConfigV1 {
+    identifier: IdentityIdentifier,
+    #[allow(dead_code)]
+    change_history: IdentityChangeHistory,
+    enrollment_status: Option<EnrollmentStatus>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct IdentityConfigV2 {
+    identity: Identity,
+    enrollment_status: Option<EnrollmentStatus>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct IdentityConfigV3 {
+    identifier: IdentityIdentifier,
+    enrollment_status: Option<EnrollmentStatus>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum IdentityConfigs {
+    V1(IdentityConfigV1),
+    V2(IdentityConfigV2),
+    V3(IdentityConfigV3),
 }
 
 mod traits {
@@ -373,7 +341,7 @@ mod tests {
             IdentityChangeHistory::import(data.to_vec().as_slice()).unwrap(),
         );
         IdentityConfig {
-            identity,
+            identifier: identity.identifier(),
             enrollment_status: Some(EnrollmentStatus {
                 is_enrolled: true,
                 created_at: SystemTime::from(OffsetDateTime::from_unix_timestamp(0).unwrap()),
@@ -382,7 +350,7 @@ mod tests {
     }
 
     fn create_identity_config_json() -> String {
-        r#"{"identity":{"identifier":"Pfa804b7fca12a19eed206ae180b5b576860ae6512f196c189d90661bcc434b50","change_history":[{"identifier":[68,199,235,114,221,30,99,63,56,224,208,82,30,157,94,181,7,47,100,24,23,101,41,235,27,0,24,158,77,105,173,46],"change":{"CreateKey":{"prev_change_id":[5,71,201,50,57,186,61,129,142,194,108,156,218,221,42,53,203,223,31,163,182,209,167,49,224,97,100,177,7,159,183,184],"key_attributes":{"label":"OCKAM_RK","secret_attributes":{"stype":"Ed25519","persistence":"Persistent","length":32}},"public_key":{"data":[198,197,35,128,18,93,66,176,180,218,146,43,28,255,133,3,162,88,195,73,126,200,172,11,74,59,170,13,156,167,179,120],"stype":"Ed25519"}}},"signatures":[{"stype":"SelfSign","data":[117,6,75,144,43,218,157,22,219,129,171,95,56,251,207,34,106,14,144,78,81,122,140,8,125,55,158,161,57,223,31,45,127,238,72,74,199,225,194,183,171,45,167,95,133,173,239,106,247,221,176,94,127,168,250,241,128,130,12,185,232,109,239,2]}]}]},"enrollment_status":{"is_enrolled":true,"created_at":{"secs_since_epoch":0,"nanos_since_epoch":0}}}"#.into()
+        r#"{"identifier":"Pfa804b7fca12a19eed206ae180b5b576860ae6512f196c189d90661bcc434b50","enrollment_status":{"is_enrolled":true,"created_at":{"secs_since_epoch":0,"nanos_since_epoch":0}}}"#.into()
     }
 
     fn create_identity_config_json_legacy() -> String {

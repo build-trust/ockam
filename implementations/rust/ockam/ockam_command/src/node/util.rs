@@ -142,9 +142,19 @@ pub(crate) async fn init_node_state(
     debug!(name=%node_name, "initializing node state");
     // Get vault specified in the argument, or get the default
     let vault_state = opts.state.create_vault_state(vault_name).await?;
+
+    // create an identity for the node
+    let identity = opts
+        .state
+        .get_identities(vault_state.get().await?)
+        .await?
+        .identities_creation()
+        .create_identity()
+        .await?;
+
     let identity_state = opts
         .state
-        .create_identity_state(identity_name, vault_state.get().await?)
+        .create_identity_state(&identity.identifier(), identity_name)
         .await?;
 
     // Create the node with the given vault and identity

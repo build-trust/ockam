@@ -16,6 +16,7 @@ pub use crate::cli_state::vaults::*;
 use ockam::identity::Identities;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
+use ockam_identity::IdentityIdentifier;
 use ockam_vault::Vault;
 use rand::random;
 use std::path::{Path, PathBuf};
@@ -162,28 +163,22 @@ impl CliState {
 
     pub async fn create_identity_state(
         &self,
+        identifier: &IdentityIdentifier,
         identity_name: Option<&str>,
-        vault: Arc<Vault>,
     ) -> Result<IdentityState> {
         if let Ok(identity) = self.identities.get_or_default(identity_name) {
             Ok(identity)
         } else {
-            self.make_identity_state(vault, identity_name).await
+            self.make_identity_state(identifier, identity_name).await
         }
     }
 
     async fn make_identity_state(
         &self,
-        vault: Arc<Vault>,
+        identifier: &IdentityIdentifier,
         name: Option<&str>,
     ) -> Result<IdentityState> {
-        let identity = self
-            .get_identities(vault)
-            .await?
-            .identities_creation()
-            .create_identity()
-            .await?;
-        let identity_config = IdentityConfig::new(&identity).await;
+        let identity_config = IdentityConfig::new(identifier).await;
         let identity_name = name
             .map(|x| x.to_string())
             .unwrap_or_else(|| hex::encode(random::<[u8; 4]>()));
@@ -226,12 +221,17 @@ mod tests {
     #[tokio::test]
     async fn test_create_default_identity_state() {
         let state = CliState::test().unwrap();
-        let vault = Vault::create();
+        let identifier = "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638"
+            .try_into()
+            .unwrap();
         let identity1 = state
-            .create_identity_state(None, vault.clone())
+            .create_identity_state(&identifier, None)
             .await
             .unwrap();
-        let identity2 = state.create_identity_state(None, vault).await.unwrap();
+        let identity2 = state
+            .create_identity_state(&identifier, None)
+            .await
+            .unwrap();
 
         let default_identity = state.identities.default().unwrap();
         assert_eq!(identity1, default_identity);
@@ -244,13 +244,15 @@ mod tests {
     #[tokio::test]
     async fn test_create_named_identity_state() {
         let state = CliState::test().unwrap();
-        let vault = Vault::create();
+        let alice = "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638"
+            .try_into()
+            .unwrap();
         let identity1 = state
-            .create_identity_state(Some("alice"), vault.clone())
+            .create_identity_state(&alice, Some("alice"))
             .await
             .unwrap();
         let identity2 = state
-            .create_identity_state(Some("alice"), vault)
+            .create_identity_state(&alice, Some("alice"))
             .await
             .unwrap();
 
@@ -299,7 +301,7 @@ mod tests {
                 .create_identity()
                 .await
                 .unwrap();
-            let config = IdentityConfig::new(&identity).await;
+            let config = IdentityConfig::new(&identity.identifier()).await;
 
             let state = sut.identities.create(&name, config).unwrap();
             let got = sut.identities.get(&name).unwrap();

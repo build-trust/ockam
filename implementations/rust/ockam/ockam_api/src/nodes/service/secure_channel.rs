@@ -16,7 +16,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
 
 use crate::cli_state::traits::StateDirTrait;
-use crate::cli_state::{CliStateError, StateItemTrait};
+use crate::cli_state::StateItemTrait;
 use crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::secure_channel::{
@@ -101,7 +101,7 @@ impl NodeManager {
         ctx: &Context,
         credential_name: Option<String>,
     ) -> Result<(Address, FlowControlId)> {
-        let identifier = self.get_identifier(None, identity_name.clone()).await?;
+        let identifier = self.get_identifier(identity_name.clone()).await?;
         let provided_credential = if let Some(credential_name) = credential_name {
             Some(
                 self.cli_state
@@ -202,12 +202,8 @@ impl NodeManager {
             address
         );
 
-        let secure_channels = self
-            .get_secure_channels(vault_name.clone(), identity_name.clone())
-            .await?;
-        let identifier = self
-            .get_identifier(vault_name.clone(), identity_name.clone())
-            .await?;
+        let secure_channels = self.get_secure_channels(vault_name.clone()).await?;
+        let identifier = self.get_identifier(identity_name.clone()).await?;
 
         let flow_control_id = self.flow_controls.generate_id();
         let options =
@@ -259,24 +255,15 @@ impl NodeManager {
     pub(crate) async fn get_secure_channels(
         &mut self,
         vault_name: Option<String>,
-        identity_name: Option<String>,
     ) -> Result<Arc<SecureChannels>> {
-        let secure_channels = if let Some(identity) = identity_name {
-            let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
-            let identities = self.get_identities(vault_name, identity).await?;
-            let registry = self.secure_channels.secure_channel_registry();
-            SecureChannels::builder()
-                .with_identities_vault(vault)
-                .with_identities(identities)
-                .with_secure_channels_registry(registry)
-                .build()
-        } else {
-            if vault_name.is_some() {
-                warn!("The optional vault is ignored when an optional identity is not specified. Using the default identity.");
-            }
-            self.secure_channels.clone()
-        };
-        Ok(secure_channels)
+        let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
+        let identities = self.get_identities(vault_name).await?;
+        let registry = self.secure_channels.secure_channel_registry();
+        Ok(SecureChannels::builder()
+            .with_identities_vault(vault)
+            .with_identities(identities)
+            .with_secure_channels_registry(registry)
+            .build())
     }
 
     pub(super) fn node_identities(&self) -> NodeIdentities {
@@ -285,32 +272,17 @@ impl NodeManager {
 
     pub(crate) async fn get_identifier(
         &self,
-        vault_name: Option<String>,
         identity_name: Option<String>,
     ) -> Result<IdentityIdentifier> {
         if let Some(name) = identity_name {
-            if let Some(identity) = self
-                .node_identities()
-                .get_identity(name.clone(), vault_name)
-                .await?
-            {
-                Ok(identity.identifier())
-            } else {
-                Err(CliStateError::NotFound.into())
-            }
+            self.node_identities().get_identifier(name.clone()).await
         } else {
             Ok(self.identifier())
         }
     }
 
-    async fn get_identities(
-        &mut self,
-        vault_name: Option<String>,
-        identity_name: String,
-    ) -> Result<Arc<Identities>> {
-        self.node_identities()
-            .get_identities(vault_name, identity_name)
-            .await
+    async fn get_identities(&mut self, vault_name: Option<String>) -> Result<Arc<Identities>> {
+        self.node_identities().get_identities(vault_name).await
     }
 
     async fn get_secure_channels_vault(

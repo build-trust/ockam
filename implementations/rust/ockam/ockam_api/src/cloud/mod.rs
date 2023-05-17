@@ -169,16 +169,12 @@ mod node {
             let identity_name = ident.map(|i| i.to_string()).clone();
             let identifier = {
                 let node_manager = self.get().read().await;
-                node_manager
-                    .get_identifier(None, identity_name.clone())
-                    .await?
+                node_manager.get_identifier(identity_name.clone()).await?
             };
 
             let secure_channels = {
                 let mut node_manager = self.get().write().await;
-                node_manager
-                    .get_secure_channels(None, identity_name.clone())
-                    .await?
+                node_manager.get_secure_channels(None).await?
             };
 
             let (sc_address, flow_controls, _sc_flow_control_id) = {

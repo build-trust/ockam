@@ -68,7 +68,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
     let ident_state = opts.state.identities.get(&cmd.as_identity)?;
-    let auth_identity_identifier = ident_state.config().identity.identifier().clone();
+    let auth_identity_identifier = ident_state.config().identifier().clone();
 
     let mut attrs = cmd.attributes()?;
     attrs.insert(
@@ -81,17 +81,14 @@ async fn run_impl(
     );
 
     let vault = opts.state.vaults.get(&cmd.vault)?.get().await?;
-    let issuer = ident_state.get(vault.clone()).await?;
-    let identities = ident_state.make_identities(vault).await?;
+    let identities = opts.state.get_identities(vault).await?;
+    let issuer = ident_state.identifier();
 
-    let credential_data = CredentialData::from_attributes(
-        cmd.identity().await?.identifier(),
-        issuer.identifier(),
-        attrs,
-    )?;
+    let credential_data =
+        CredentialData::from_attributes(cmd.identity().await?.identifier(), issuer.clone(), attrs)?;
     let credential = identities
         .credentials()
-        .issue_credential(&issuer.identifier(), credential_data)
+        .issue_credential(&issuer, credential_data)
         .await?;
 
     print_encodable(credential, &cmd.encode_format)?;

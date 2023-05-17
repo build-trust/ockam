@@ -411,7 +411,7 @@ pub mod test {
             .unwrap();
 
         drop(secure_channels);
-        let config = IdentityConfig::new(&identity).await;
+        let config = IdentityConfig::new(&identity.identifier()).await;
         cli_state.identities.create(&identity_name, config).unwrap();
 
         let node_name = hex::encode(rand::random::<[u8; 4]>());

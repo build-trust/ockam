@@ -672,7 +672,7 @@ mod tests {
             .identities_creation()
             .create_identity()
             .await?;
-        let idt_config = IdentityConfig::new(&idt).await;
+        let idt_config = IdentityConfig::new(&idt.identifier()).await;
         cli_state
             .identities
             .create(&cli_state::random_name(), idt_config)?;

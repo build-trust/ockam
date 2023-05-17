@@ -1,5 +1,5 @@
 use crate::util::output::Output;
-use crate::util::println_output;
+use crate::util::{node_rpc, println_output};
 use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
 use anyhow::anyhow;
 use clap::Args;
@@ -8,6 +8,7 @@ use ockam::identity::identity::IdentityChangeHistory;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -35,33 +36,44 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        if let Err(e) = run_impl(options, self) {
-            eprintln!("{e:?}");
-            std::process::exit(e.code());
-        }
+        node_rpc(Self::run_impl, (options, self))
     }
-}
 
-fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
-    if cmd.name.is_empty() {
-        return Err(
-            anyhow!("Default identity not found. Have you run 'ockam identity create'?").into(),
-        );
-    }
-    let state = opts.state.identities.get(&cmd.name)?;
-    if cmd.full {
-        let identity = state.config().identity.export()?;
-        if Some(EncodeFormat::Hex) == cmd.encoding {
-            println_output(identity, &opts.global_args.output_format)?;
+    async fn run_impl(
+        _ctx: Context,
+        options: (CommandGlobalOpts, ShowCommand),
+    ) -> crate::Result<()> {
+        let (opts, cmd) = options;
+        if cmd.name.is_empty() {
+            return Err(anyhow!(
+                "Default identity not found. Have you run 'ockam identity create'?"
+            )
+            .into());
+        }
+        let state = opts.state.identities.get(&cmd.name)?;
+        if cmd.full {
+            let identifier = state.config().identifier();
+            let identity = opts
+                .state
+                .identities
+                .identities_repository()
+                .await?
+                .get_identity(&identifier)
+                .await?
+                .export()?;
+
+            if Some(EncodeFormat::Hex) == cmd.encoding {
+                println_output(identity, &opts.global_args.output_format)?;
+            } else {
+                let output = LongIdentityResponse::new(identity);
+                println_output(output, &opts.global_args.output_format)?;
+            }
         } else {
-            let output = LongIdentityResponse::new(identity);
+            let output = ShortIdentityResponse::new(state.config().identifier().to_string());
             println_output(output, &opts.global_args.output_format)?;
         }
-    } else {
-        let output = ShortIdentityResponse::new(state.config().identity.identifier().to_string());
-        println_output(output, &opts.global_args.output_format)?;
+        Ok(())
     }
-    Ok(())
 }
 
 impl Output for LongIdentityResponse<'_> {

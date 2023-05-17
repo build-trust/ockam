@@ -189,7 +189,7 @@ pub async fn print_query_status(
         let node_state = cli_state.nodes.get(node_name)?;
         // Get short id for the node
         let default_id = match node_state.config().identity_config() {
-            Ok(resp) => resp.identity.identifier().to_string(),
+            Ok(resp) => resp.identifier().to_string(),
             Err(_) => String::from("None"),
         };
 

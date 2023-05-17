@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use either::Either;
 use minicbor::Decoder;
@@ -7,7 +6,6 @@ use minicbor::Decoder;
 use ockam::identity::Credential;
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
-use ockam_identity::IdentitiesVault;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
 
@@ -30,15 +28,11 @@ impl NodeManagerWorker {
         let request: GetCredentialRequest = dec.decode()?;
 
         let identifier = if let Some(identity) = &request.identity_name {
-            let idt_state = node_manager.cli_state.identities.get(identity)?;
-            match idt_state.get(node_manager.identities_vault()).await {
-                Ok(idt) => idt.identifier(),
-                Err(_) => {
-                    let default_vault = &node_manager.cli_state.vaults.default()?.get().await?;
-                    let vault: Arc<dyn IdentitiesVault> = default_vault.clone();
-                    idt_state.get(vault).await?.identifier()
-                }
-            }
+            node_manager
+                .cli_state
+                .identities
+                .get(identity)?
+                .identifier()
         } else {
             node_manager.identifier()
         };

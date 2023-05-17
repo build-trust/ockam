@@ -507,8 +507,8 @@ async fn start_authority_node(
 
         // retrieve the authority identity if it has been created before
         // otherwise create a new one
-        let identity = match opts.state.identities.default() {
-            Ok(state) => state.config().identity(),
+        let identifier = match opts.state.identities.default() {
+            Ok(state) => state.config().identifier(),
             Err(_) => {
                 let cmd = identity::CreateCommand::new("authority".into(), None);
                 cmd.create_identity(opts.clone()).await?
@@ -520,7 +520,7 @@ async fn start_authority_node(
             .map_err(|e| crate::Error::new(exitcode::CONFIG, anyhow!("{e}")))?;
 
         let configuration = authority_node::Configuration {
-            identity,
+            identifier,
             storage_path: opts.state.identities.identities_repository_path()?,
             vault_path: opts.state.vaults.default()?.vault_file_path().clone(),
             project_identifier: authenticator_config.project.clone(),
