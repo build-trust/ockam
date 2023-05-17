@@ -48,14 +48,9 @@ pub(crate) fn list_tcp_listeners() -> RequestBuilder<'static, ()> {
 /// Construct a request to create node tcp connection
 pub(crate) fn create_tcp_connection(
     cmd: &crate::tcp::connection::CreateCommand,
-) -> RequestBuilder<'static, models::transport::CreateTransport<'static>> {
-    let (tt, addr) = (
-        models::transport::TransportMode::Connect,
-        cmd.address.clone(),
-    );
+) -> RequestBuilder<'static, models::transport::CreateTcpConnection> {
+    let payload = models::transport::CreateTcpConnection::new(cmd.address.clone());
 
-    let payload =
-        models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
     Request::post("/node/tcp/connection").body(payload)
 }
 
