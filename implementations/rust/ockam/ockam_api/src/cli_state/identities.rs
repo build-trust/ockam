@@ -12,7 +12,6 @@ use ockam_identity::{
     LmdbStorage,
 };
 
-use crate::cli_state::nodes::NodeState;
 use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
 use crate::cli_state::CliStateError;
 
@@ -79,23 +78,6 @@ impl IdentityState {
 
     fn build_data_path(path: &Path) -> PathBuf {
         path.parent().expect("Should have parent").join("data")
-    }
-
-    fn in_use(&self) -> Result<()> {
-        self.in_use_by(&self.cli_state()?.nodes.list()?)
-    }
-
-    fn in_use_by(&self, nodes: &[NodeState]) -> Result<()> {
-        for node in nodes {
-            if node.config().identity_config()?.identifier() == self.config.identifier() {
-                return Err(CliStateError::Invalid(format!(
-                    "Can't delete identity '{}' because is currently in use by node '{}'",
-                    &self.name,
-                    &node.name()
-                )));
-            }
-        }
-        Ok(())
     }
 
     pub fn name(&self) -> &str {
@@ -246,8 +228,7 @@ mod traits {
                 Err(CliStateError::NotFound) => return Ok(()),
                 Err(e) => return Err(e),
             };
-            // Abort if identity is being used by some running node.
-            identity.in_use()?;
+
             // If it's the default, remove link
             if let Ok(default) = self.default() {
                 if default.path == identity.path {
