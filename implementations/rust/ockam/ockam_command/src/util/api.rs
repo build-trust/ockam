@@ -354,6 +354,7 @@ pub struct TrustContextOpts {
 }
 
 pub struct TrustContextConfigBuilder {
+    cli_state: CliState,
     project_path: Option<PathBuf>,
     trust_context: Option<TrustContextConfig>,
     project: Option<String>,
@@ -363,8 +364,9 @@ pub struct TrustContextConfigBuilder {
 }
 
 impl TrustContextConfigBuilder {
-    pub fn new(tco: &TrustContextOpts) -> Self {
+    pub fn new(cli_state: &CliState, tco: &TrustContextOpts) -> Self {
         Self {
+            cli_state: cli_state.clone(),
             project_path: tco.project_path.clone(),
             trust_context: tco.trust_context.clone(),
             project: tco.project.clone(),
@@ -425,9 +427,8 @@ impl TrustContextConfigBuilder {
 
     fn get_from_authority_identity(&self) -> Option<TrustContextConfig> {
         let authority_identity = self.authority_identity.clone();
-        let state = CliState::try_default().ok()?;
         let credential = match &self.credential_name {
-            Some(c) => Some(state.credentials.get(c).ok()?),
+            Some(c) => Some(self.cli_state.credentials.get(c).ok()?),
             None => None,
         };
 
@@ -435,9 +436,8 @@ impl TrustContextConfigBuilder {
     }
 
     fn get_from_credential(&self) -> Option<TrustContextConfig> {
-        let state = CliState::try_default().ok()?;
         let cred_name = self.credential_name.clone()?;
-        let cred_state = state.credentials.get(&cred_name).ok()?;
+        let cred_state = self.cli_state.credentials.get(&cred_name).ok()?;
 
         cred_state.try_into().ok()
     }
@@ -447,15 +447,18 @@ impl TrustContextConfigBuilder {
             return None;
         }
 
-        let state = CliState::try_default().ok()?;
-        let tc = state.trust_contexts.default().ok()?.config().clone();
+        let tc = self
+            .cli_state
+            .trust_contexts
+            .default()
+            .ok()?
+            .config()
+            .clone();
         Some(tc)
     }
 
     fn get_from_default_project(&self) -> Option<TrustContextConfig> {
-        let state = CliState::try_default().ok()?;
-        let proj = state.projects.default().ok()?;
-
+        let proj = self.cli_state.projects.default().ok()?;
         self.get_from_project_path(proj.path())
     }
 }

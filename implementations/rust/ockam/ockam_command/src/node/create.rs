@@ -243,7 +243,7 @@ async fn run_foreground_node(
 
     add_project_info_to_node_state(&node_name, &opts, cfg, &cmd.trust_context_opts).await?;
 
-    let trust_context_config = TrustContextConfigBuilder::new(&cmd.trust_context_opts)
+    let trust_context_config = TrustContextConfigBuilder::new(&opts.state, &cmd.trust_context_opts)
         .with_authority_identity(cmd.authority_identity.as_ref())
         .with_credential_name(cmd.credential.as_ref())
         .build();
