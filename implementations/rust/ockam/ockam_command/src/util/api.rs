@@ -26,7 +26,6 @@ use ockam_core::env::{get_env_with_default, FromString};
 use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
-use crate::identity::{default_identity_name, identity_name_parser};
 use crate::project::ProjectInfo;
 use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::DEFAULT_CONTROLLER_ADDRESS;
@@ -335,8 +334,8 @@ pub(crate) const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 
 #[derive(Clone, Debug, Args)]
 pub struct CloudOpts {
-    #[arg(global = true, value_name = "IDENTITY", long, default_value_t = default_identity_name(), value_parser = identity_name_parser)]
-    pub identity: String,
+    #[arg(global = true, value_name = "IDENTITY", long)]
+    pub identity: Option<String>,
 }
 
 #[derive(Clone, Debug, Args, Default)]

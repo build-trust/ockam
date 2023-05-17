@@ -11,10 +11,10 @@ pub(crate) use list::ListCommand;
 use ockam_api::cli_state::CliState;
 pub(crate) use show::ShowCommand;
 
+use crate::identity::default::DefaultCommand;
 use crate::terminal::OckamColor;
 use crate::util::OckamConfig;
 use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, GlobalArgs, Result, PARSER_LOGS};
-use crate::{error::Error, identity::default::DefaultCommand};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
 
@@ -53,36 +53,29 @@ impl IdentityCommand {
     }
 }
 
-pub fn default_identity_name() -> String {
-    let res_cli = CliState::try_default();
-
-    let cli_state = match res_cli {
-        Ok(cli_state) => cli_state,
-        Err(err) => {
-            eprintln!("Error initializing command state. \n\n {err:?}");
-            let command_err: Error = err.into();
-            std::process::exit(command_err.code());
-        }
-    };
-
-    cli_state
-        .identities
-        .default()
-        .map_or("default".to_string(), |i| i.name().to_string())
+// If a name is given try to parse it as an identity name, otherwise return the default identity name
+pub fn get_identity_name(cli_state: &CliState, name: Option<String>) -> Result<String> {
+    match name.clone() {
+        Some(n) => identity_name_parser(&cli_state, &n),
+        None => Ok(default_identity_name(&cli_state)),
+    }
 }
 
-pub fn identity_name_parser(identity_name: &str) -> Result<String> {
-    if identity_name == "default"
-        && CliState::try_default()
-            .unwrap()
-            .identities
-            .default()
-            .is_err()
-    {
+pub fn identity_name_parser(cli_state: &CliState, identity_name: &str) -> Result<String> {
+    if identity_name == "default" && cli_state.identities.default().is_err() {
         return Ok(create_default_identity(identity_name));
     }
 
     Ok(identity_name.to_string())
+}
+
+pub fn default_identity_name(cli_state: &CliState) -> String {
+    cli_state
+        .identities
+        .default()
+        .map(|i| i.name().to_string())
+        // Return empty string so we can return a proper error message from the command
+        .unwrap_or_else(|_| "".to_string())
 }
 
 pub fn create_default_identity(identity_name: &str) -> String {

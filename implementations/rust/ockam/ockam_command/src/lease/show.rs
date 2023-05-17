@@ -8,6 +8,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 use termimad::{minimad::TextTemplate, MadSkin};
 
+use crate::identity::get_identity_name;
 use crate::{
     docs,
     util::{
@@ -51,8 +52,9 @@ async fn run_impl(
         TrustContextOpts,
     ),
 ) -> crate::Result<()> {
+    let identity = get_identity_name(&opts.state, cloud_opts.identity.clone())?;
     let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
-        .as_identity(cloud_opts.identity.clone())
+        .as_identity(identity)
         .with_new_embbeded_node()
         .await?
         .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)

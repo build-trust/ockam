@@ -8,6 +8,7 @@ use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
+use crate::identity::get_identity_name;
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
@@ -60,11 +61,12 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             let tcp = TcpTransport::create(ctx).await?;
             (api_node, Some(tcp))
         } else {
+            let identity = get_identity_name(&opts.state, cmd.cloud_opts.identity.clone())?;
             let api_node = start_embedded_node_with_vault_and_identity(
                 ctx,
                 opts,
                 None,
-                Some(cmd.cloud_opts.identity.clone()),
+                Some(identity),
                 Some(&cmd.trust_context_opts),
             )
             .await?;

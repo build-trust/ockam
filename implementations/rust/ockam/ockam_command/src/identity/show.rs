@@ -1,3 +1,4 @@
+use crate::identity::default_identity_name;
 use crate::util::output::Output;
 use crate::util::{node_rpc, println_output};
 use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
@@ -6,7 +7,6 @@ use clap::Args;
 use core::fmt::Write;
 use ockam::identity::identity::IdentityChangeHistory;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_node::Context;
 
@@ -20,8 +20,8 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
-    #[arg(default_value_t = default_identity_name())]
-    name: String,
+    #[arg(long)]
+    name: Option<String>,
 
     #[arg(short, long)]
     full: bool,
@@ -44,13 +44,14 @@ impl ShowCommand {
         options: (CommandGlobalOpts, ShowCommand),
     ) -> crate::Result<()> {
         let (opts, cmd) = options;
-        if cmd.name.is_empty() {
+        let name = default_identity_name(&opts.state);
+        if name.is_empty() {
             return Err(anyhow!(
                 "Default identity not found. Have you run 'ockam identity create'?"
             )
             .into());
         }
-        let state = opts.state.identities.get(&cmd.name)?;
+        let state = opts.state.identities.get(&name)?;
         if cmd.full {
             let identifier = state.config().identifier();
             let identity = opts
@@ -91,15 +92,4 @@ impl Output for ShortIdentityResponse<'_> {
         write!(w, "{}", self.identity_id)?;
         Ok(w)
     }
-}
-
-fn default_identity_name() -> String {
-    let state = CliState::try_default()
-        .expect("Failed to load the local Ockam configuration. Try running 'ockam reset'");
-    state
-        .identities
-        .default()
-        .map(|i| i.name().to_string())
-        // Return empty string so we can return a proper error message from the command
-        .unwrap_or_else(|_| "".to_string())
 }
