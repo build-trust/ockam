@@ -172,9 +172,8 @@ pub struct NodeConfig {
 }
 
 impl NodeConfig {
-    pub fn try_default() -> Result<Self> {
-        let cli_state = CliState::try_default()?;
-        Self::try_from(&cli_state)
+    pub fn new(cli_state: &CliState) -> Result<Self> {
+        Self::try_from(cli_state)
     }
 
     pub fn setup(&self) -> &NodeSetupConfig {
@@ -252,7 +251,7 @@ impl NodeConfigBuilder {
         Ok(NodeConfig {
             default_vault: vault,
             default_identity: identity,
-            ..NodeConfig::try_default()?
+            ..NodeConfig::new(cli_state)?
         })
     }
 }

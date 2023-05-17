@@ -5,7 +5,7 @@ use ockam::Context;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
 
-use crate::node::{default_node_name, get_node_name};
+use crate::node::default_node_name;
 use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
