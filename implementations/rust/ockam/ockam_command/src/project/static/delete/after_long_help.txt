@@ -1,0 +1,4 @@
+```sh
+# To delete a project given its name
+$ ockam project delete myspace myproject
+```

@@ -27,7 +27,7 @@ use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_node::RpcClient;
 
-/// Authenticate with a project node
+/// Use an OTC to enroll an identity with a project node
 #[derive(Clone, Debug, Args)]
 pub struct AuthenticateCommand {
     #[arg(long = "okta", group = "authentication_method")]

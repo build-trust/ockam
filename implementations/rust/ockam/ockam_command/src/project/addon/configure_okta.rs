@@ -23,10 +23,17 @@ use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, Rpc};
-use crate::{CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
+
+const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_long_help.txt");
 
 /// Configure the Okta addon for a project
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct AddonConfigureOktaSubcommand {
     /// Ockam Project name
     #[arg(

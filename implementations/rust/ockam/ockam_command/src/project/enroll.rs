@@ -21,7 +21,7 @@ use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{CommandGlobalOpts, Result};
 
-/// An authorised enroller can add members to a project.
+/// Add members to a project as an authorised enroller.
 #[derive(Clone, Debug, Args)]
 pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument

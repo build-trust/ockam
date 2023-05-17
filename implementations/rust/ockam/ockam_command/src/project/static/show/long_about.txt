@@ -1,0 +1,1 @@
+This command will show all the details of a project such as its name, ID, and associated space.

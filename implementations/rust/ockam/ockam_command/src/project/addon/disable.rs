@@ -14,6 +14,7 @@ use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, Rpc};
 use crate::{CommandGlobalOpts, Result};
 
+/// Disable an addon for a project
 #[derive(Clone, Debug, Args)]
 pub struct AddonDisableSubcommand {
     /// Project name
