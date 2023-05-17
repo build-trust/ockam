@@ -16,7 +16,7 @@ use tracing::error;
 use crate::node::util::{add_project_info_to_node_state, init_node_state, spawn_node};
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
-use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
+use crate::util::api::{parse_trust_context, TrustContextConfigBuilder, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::util::{api, parse_node_name, RpcBuilder};
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
@@ -243,10 +243,11 @@ async fn run_foreground_node(
 
     add_project_info_to_node_state(&node_name, &opts, cfg, &cmd.trust_context_opts).await?;
 
-    let trust_context_config = TrustContextConfigBuilder::new(&opts.state, &cmd.trust_context_opts)
-        .with_authority_identity(cmd.authority_identity.as_ref())
-        .with_credential_name(cmd.credential.as_ref())
-        .build();
+    let trust_context_config =
+        TrustContextConfigBuilder::new(&opts.state, &cmd.trust_context_opts)?
+            .with_authority_identity(cmd.authority_identity.as_ref())
+            .with_credential_name(cmd.credential.as_ref())
+            .build();
 
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = &cmd.tcp_listener_address;
@@ -460,6 +461,14 @@ async fn spawn_background_node(
     )
     .await?;
 
+    let trust_context_path = match cmd.trust_context_opts.trust_context.clone() {
+        Some(tc) => {
+            let config = parse_trust_context(&opts.state, &tc)?;
+            Some(config.path().unwrap().clone())
+        }
+        None => None,
+    };
+
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
     spawn_node(
@@ -476,10 +485,7 @@ async fn spawn_background_node(
             .map(|config| serde_json::to_string(config).unwrap()),
         cmd.authority_identity.as_ref(),
         cmd.credential.as_ref(),
-        cmd.trust_context_opts
-            .trust_context
-            .as_ref()
-            .map(|tc| tc.path().unwrap()),
+        trust_context_path.as_ref(),
         cmd.trust_context_opts.project.as_ref(),
     )?;
 

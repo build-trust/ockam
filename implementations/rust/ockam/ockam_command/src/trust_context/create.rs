@@ -32,7 +32,7 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd, tco): (CommandGlobalOpts, CreateCommand, TrustContextOpts),
 ) -> crate::Result<()> {
-    let tcc = TrustContextConfigBuilder::new(&opts.state, &tco)
+    let tcc = TrustContextConfigBuilder::new(&opts.state, &tco)?
         .with_credential_name(cmd.credential.as_ref())
         .use_default_trust_context(false)
         .build();
