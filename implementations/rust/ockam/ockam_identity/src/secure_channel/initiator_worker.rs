@@ -8,7 +8,9 @@ use crate::secure_channel::Addresses;
 use crate::{
     to_xx_vault, IdentityError, IdentityIdentifier, SecureChannels, TrustContext, TrustPolicy,
 };
+use alloc::boxed::Box;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::time::Duration;
 use ockam_core::{
     Address, AllowAll, Any, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox, Mailboxes,

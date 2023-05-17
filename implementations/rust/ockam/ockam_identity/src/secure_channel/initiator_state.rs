@@ -3,9 +3,11 @@ use crate::secure_channel::completer::ExchangeCompleter;
 use crate::secure_channel::decryptor_worker::DecryptorWorker;
 use crate::secure_channel::{Addresses, Role};
 use crate::{Identity, IdentityIdentifier, TrustContext, TrustPolicy};
+use alloc::boxed::Box;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 use ockam_core::vault::Signature;
 use ockam_core::{CompletedKeyExchange, KeyExchanger, Route};
-use std::sync::Arc;
 
 pub(super) struct SendPacket1 {
     pub(super) key_exchanger: Box<dyn KeyExchanger>,
