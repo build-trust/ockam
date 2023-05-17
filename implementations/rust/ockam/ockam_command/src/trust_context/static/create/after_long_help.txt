@@ -1,0 +1,10 @@
+```sh
+# To create a trust context with a random name
+$ ockam trust-context create
+
+# To create a trust context with a specific name
+$ ockam trust-context create t
+
+# To create a trust context with a specific credential
+$ ockam trust-context create --credential c
+```

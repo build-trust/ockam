@@ -1,0 +1,18 @@
+```sh
+# Create an authority node which can be accessed by users of project 93c6455c5f
+# The default node name is 'authority'.
+$ ockam authority create \
+    --tcp-listener-address 127.0.0.1:4200 \
+    --project-identifier 93c6455c5f \
+    --trusted-identities "[{\"identifier\": \"P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94\", \"attributes\": {\"ockam-role\": \"enroller\"}}]"
+
+# Create an authority node which can be accessed by users of project 93c6455c5f
+# Trusted identities come from a file which is always reloaded where searching for an identity attribute
+$ ockam authority create \
+    --tcp-listener-address 127.0.0.1:4200 \
+    --project-identifier 93c6455c5f \
+    --reload-from-trusted-identities-file trust-anchors.json
+
+# Delete an authority node
+$ ockam node delete authority
+```

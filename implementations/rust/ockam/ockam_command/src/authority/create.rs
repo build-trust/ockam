@@ -1,4 +1,3 @@
-use crate::authority::HELP_DETAIL;
 use crate::node::util::init_node_state;
 use crate::node::util::run_ockam;
 use crate::util::node_rpc;
@@ -21,9 +20,15 @@ use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use tracing::{debug, error};
 
-/// Create a node
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
+/// Create an Authority node
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(HELP_DETAIL))]
+#[command(
+    long_about = docs::after_help(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 #[clap(group(ArgGroup::new("trusted").required(true).args(& ["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {
     /// Name of the node
