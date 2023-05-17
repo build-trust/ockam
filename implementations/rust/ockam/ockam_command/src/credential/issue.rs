@@ -1,7 +1,7 @@
 use ockam_core::compat::collections::HashMap;
 
+use crate::identity::default_identity_name;
 use crate::{
-    identity::default_identity_name,
     util::{node_rpc, print_encodable},
     vault::default_vault_name,
     CommandGlobalOpts, EncodeFormat, Result,
@@ -15,8 +15,8 @@ use ockam_identity::{identities, Identity};
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
-    #[arg(long = "as", default_value_t = default_identity_name())]
-    pub as_identity: String,
+    #[arg(long = "as")]
+    pub as_identity: Option<String>,
 
     #[arg(long = "for", value_name = "IDENTITY_ID")]
     pub for_identity: String,
@@ -67,7 +67,12 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
-    let ident_state = opts.state.identities.get(&cmd.as_identity)?;
+    let identity_name = cmd
+        .as_identity
+        .clone()
+        .unwrap_or_else(|| default_identity_name(&opts.state));
+
+    let ident_state = opts.state.identities.get(&identity_name)?;
     let auth_identity_identifier = ident_state.config().identifier().clone();
 
     let mut attrs = cmd.attributes()?;

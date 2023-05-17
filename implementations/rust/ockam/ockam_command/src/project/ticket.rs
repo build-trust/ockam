@@ -15,6 +15,7 @@ use ockam_core::route;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use ockam_node::RpcClient;
 
+use crate::identity::get_identity_name;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, TrustContextOpts};
@@ -96,25 +97,29 @@ impl Runner {
                         .into());
                     }
                 };
+                let identity =
+                    get_identity_name(&self.opts.state, self.cmd.cloud_opts.identity.clone())?;
                 let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
                     &self.ctx,
                     &self.opts,
                     &node_name,
                     tc.authority()?.identity().await?.identifier().clone(),
                     addr,
-                    Some(self.cmd.cloud_opts.identity.clone()),
+                    Some(identity),
                 )
                 .await?;
 
                 (sc_addr, Some(sc_flow_control_id))
             } else if let (Some(p), Some(a)) = get_project(&self.cmd.to, &map)? {
+                let identity =
+                    get_identity_name(&self.opts.state, self.cmd.cloud_opts.identity.clone())?;
                 let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
                     &self.ctx,
                     &self.opts,
                     &node_name,
                     a.identity_id().clone(),
                     a.address(),
-                    Some(self.cmd.cloud_opts.identity.clone()),
+                    Some(identity),
                 )
                 .await?;
 

@@ -9,6 +9,7 @@ use colorful::Colorful;
 use ockam_core::api::Request;
 use serde_json::json;
 
+use crate::identity::get_identity_name;
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
@@ -163,11 +164,12 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     // Delegate the request to create a secure channel to the from node.
     let mut rpc = RpcBuilder::new(&ctx, &opts, from).tcp(&tcp)?.build();
 
+    let identity = get_identity_name(&opts.state, cmd.cloud_opts.identity.clone())?;
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         to,
         authorized_identifiers,
         CredentialExchangeMode::Mutual,
-        Some(cmd.cloud_opts.identity.clone()),
+        Some(identity),
         cmd.credential.clone(),
     );
     let request = Request::post("/node/secure_channel").body(payload);

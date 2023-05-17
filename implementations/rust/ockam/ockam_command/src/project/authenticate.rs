@@ -17,6 +17,7 @@ use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{CommandGlobalOpts, Result};
 
+use crate::identity::get_identity_name;
 use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -104,13 +105,14 @@ async fn run_impl(
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
                 .ok_or_else(|| anyhow!("Authority details not configured"))?;
+        let identity = get_identity_name(&opts.state, cmd.cloud_opts.identity.clone())?;
         create_secure_channel_to_authority(
             &ctx,
             &opts,
             &node_name,
             authority.identity_id().clone(),
             authority.address(),
-            Some(cmd.cloud_opts.identity.to_string()),
+            Some(identity),
         )
         .await?
     };

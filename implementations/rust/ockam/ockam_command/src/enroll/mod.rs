@@ -29,6 +29,7 @@ use crate::space::util::config;
 use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
 
+use crate::identity::get_identity_name;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, fmt_err, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts, Result, PARSER_LOGS};
 
@@ -112,11 +113,11 @@ async fn default_space<'a>(
     cloud_opts: &CloudOpts,
     node_name: &str,
 ) -> Result<Space<'a>> {
+    let identity = get_identity_name(&opts.state, cloud_opts.identity.clone())?;
     // Get available spaces for node's identity
     opts.terminal.write_line(&fmt_log!(
         "Getting available spaces for {}",
-        cloud_opts
-            .identity
+        identity
             .to_string()
             .color(OckamColor::PrimaryResource.color())
     ))?;
@@ -210,12 +211,10 @@ async fn default_project(
     space: &Space<'_>,
 ) -> Result<Project> {
     // Get available project for the given space
+    let identity = get_identity_name(&opts.state, cloud_opts.identity.clone())?;
     opts.terminal.write_line(&fmt_log!(
         "Getting avaiable projects for {}",
-        cloud_opts
-            .identity
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
+        identity.color(OckamColor::PrimaryResource.color())
     ))?;
 
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
