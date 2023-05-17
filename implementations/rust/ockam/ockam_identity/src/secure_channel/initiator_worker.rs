@@ -164,7 +164,7 @@ impl InitiatorWorker {
         context: &Context,
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
-        identifier: &IdentityIdentifier,
+        identity_identifier: &IdentityIdentifier,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         credentials: Vec<Credential>,
@@ -177,7 +177,7 @@ impl InitiatorWorker {
         let identity = secure_channels
             .identities()
             .repository()
-            .get_identity(identifier)
+            .get_identity(identity_identifier)
             .await?;
 
         let (static_key_id, signature) = secure_channels
@@ -195,7 +195,7 @@ impl InitiatorWorker {
         let worker = Self {
             state: Some(State::new(
                 remote_route,
-                identifier.clone(),
+                identity_identifier.clone(),
                 addresses.clone(),
                 Box::new(key_exchanger),
                 trust_policy,
