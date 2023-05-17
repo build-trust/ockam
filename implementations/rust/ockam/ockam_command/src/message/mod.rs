@@ -4,7 +4,7 @@ pub use send::SendCommand;
 
 mod send;
 
-/// Send and Receive Messages
+/// Send and receive messages
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct MessageCommand {

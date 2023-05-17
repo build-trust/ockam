@@ -1,0 +1,1 @@
+This command starts an authority node with the needed services to issue and verify cryptographically signed credentials.
