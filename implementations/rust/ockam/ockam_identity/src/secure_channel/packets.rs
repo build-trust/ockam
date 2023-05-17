@@ -2,6 +2,7 @@ use crate::credential::Credential;
 use crate::secure_channel::key_exchange_with_payload::KeyExchangeWithPayload;
 use crate::{IdentitiesCreation, IdentitiesRepository, IdentitiesVault, Identity};
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use ockam_core::vault::Signature;
 use ockam_core::Message;
 use serde::{Deserialize, Serialize};
