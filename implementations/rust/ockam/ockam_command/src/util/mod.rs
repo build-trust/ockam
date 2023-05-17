@@ -102,7 +102,7 @@ impl<'a> RpcBuilder<'a> {
 pub struct Rpc<'a> {
     ctx: &'a Context,
     buf: Vec<u8>,
-    opts: &'a CommandGlobalOpts,
+    pub opts: &'a CommandGlobalOpts,
     node_name: String,
     to: Route,
     mode: RpcMode<'a>,
