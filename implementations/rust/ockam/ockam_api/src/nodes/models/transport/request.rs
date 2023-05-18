@@ -10,7 +10,7 @@ pub struct CreateTcpConnection {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<1503320>,
     /// The address payload for the transport
-    #[b(3)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl CreateTcpConnection {
@@ -31,7 +31,7 @@ pub struct CreateTcpListener {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7461454>,
     /// The address payload for the transport
-    #[b(3)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl CreateTcpListener {

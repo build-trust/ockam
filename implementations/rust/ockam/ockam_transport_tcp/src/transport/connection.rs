@@ -59,6 +59,7 @@ impl TcpTransport {
 
         Ok(TcpConnection::new(
             addresses.sender_address().clone(),
+            addresses.receiver_address().clone(),
             socket,
             mode,
             flow_control_id,

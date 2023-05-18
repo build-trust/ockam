@@ -6,10 +6,7 @@ use crate::{
 };
 use clap::Args;
 use colorful::Colorful;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models;
-use ockam_multiaddr::proto::{DnsAddr, Tcp, Worker};
-use ockam_multiaddr::MultiAddr;
 use serde_json::json;
 
 #[derive(Clone, Debug, Args)]
@@ -38,7 +35,6 @@ impl CreateCommand {
 
     fn print_output(
         &self,
-        node_name: &str,
         opts: &CommandGlobalOpts,
         response: &models::transport::TransportStatus,
     ) -> crate::Result<()> {
@@ -46,11 +42,7 @@ impl CreateCommand {
         match opts.global_args.output_format {
             OutputFormat::Plain => {
                 if !is_tty(std::io::stdout()) {
-                    let worker_addr = response
-                        .worker_addr
-                        .strip_prefix("0#")
-                        .unwrap_or(response.worker_addr.as_ref());
-                    println!("/service/{worker_addr}");
+                    println!("{}", response.multiaddr()?);
                     return Ok(());
                 }
                 let from = get_node_name(&opts.state, &self.node_opts.from);
@@ -59,6 +51,7 @@ impl CreateCommand {
                     println!("\n  TCP Connection:");
                     println!("    From: /node/{from}");
                     println!("    To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
+                    println!("    Address: {}", response.multiaddr()?);
                 } else {
                     println!("\n  TCP Connection:");
                     println!("{}", format!("    From: /node/{from}").light_magenta());
@@ -67,23 +60,14 @@ impl CreateCommand {
                         format!("    To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port())
                             .light_magenta()
                     );
+                    println!(
+                        "{}",
+                        format!("    Address: {}", response.multiaddr()?).light_magenta()
+                    );
                 }
             }
             OutputFormat::Json => {
-                let port = opts
-                    .state
-                    .nodes
-                    .get(node_name)?
-                    .config()
-                    .setup()
-                    .default_tcp_listener()?
-                    .addr
-                    .port();
-                let mut multiaddr = MultiAddr::default();
-                multiaddr.push_back(DnsAddr::new("localhost"))?;
-                multiaddr.push_back(Tcp::new(port))?;
-                multiaddr.push_back(Worker::new(response.worker_addr.to_string()))?;
-                let json = json!([{"route": multiaddr.to_string() }]);
+                let json = json!([{"route": response.multiaddr()? }]);
                 println!("{json}");
             }
         }
@@ -102,5 +86,5 @@ async fn run_impl(
     rpc.request(request).await?;
     let response = rpc.parse_response::<models::transport::TransportStatus>()?;
 
-    cmd.print_output(&node_name, &opts, &response)
+    cmd.print_output(&opts, &response)
 }
