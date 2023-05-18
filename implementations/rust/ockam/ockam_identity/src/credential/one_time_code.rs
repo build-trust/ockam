@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 /// A one-time code can be used to enroll
 /// a node with some authenticated attributes
-/// It can be retrieve with a command like `ockam project enroll --attribute component=control`
+/// It can be retrieve with a command like `ockam project ticket --attribute component=control`
 #[derive(Debug, Clone, Decode, Encode, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]

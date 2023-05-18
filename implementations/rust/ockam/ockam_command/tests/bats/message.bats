@@ -43,7 +43,7 @@ teardown() {
   assert_success
   m1_identifier=$($OCKAM identity show m1)
 
-  run "$OCKAM" project enroll --member "$m1_identifier" --attribute role=member
+  run "$OCKAM" project ticket --member "$m1_identifier" --attribute role=member
   assert_success
 
   # m1' identity was added by enroller

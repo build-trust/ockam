@@ -56,14 +56,14 @@ teardown() {
   assert_success
   sleep 1 # wait for authority to start TCP listener
 
-  run "$OCKAM" project enroll --identity enroller --project-path "$PROJECT_JSON_PATH" --member $m2_identifier --attribute sample_attr=m2_member
+  run "$OCKAM" project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --member $m2_identifier --attribute sample_attr=m2_member
   assert_success
 
   run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity m2
   assert_success
   assert_output --partial "m2_member"
 
-  token=$($OCKAM project enroll --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member)
+  token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member)
   run "$OCKAM" project authenticate $token --identity m3
   assert_success
   assert_output --partial "m3_member"
