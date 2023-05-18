@@ -1,12 +1,12 @@
-use crate::{Kms, PublicKey, SecretsStore, Signature, Signer, VaultKms};
+use crate::{PublicKey, SecretsStore, SecurityModule, Signature, Signer, VaultSecurityModule};
 use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
 
 #[async_trait]
-impl<T: SecretsStore + Kms> Signer for T {
+impl<T: SecretsStore + SecurityModule> Signer for T {
     /// Sign data. The key can either come from the ephemeral storage or the persistent one
     async fn sign(&self, key_id: &KeyId, data: &[u8]) -> Result<Signature> {
         if let Ok(stored_secret) = self.get_ephemeral_secret(key_id, "signing secret").await {
-            VaultKms::sign_with_secret(stored_secret, data)
+            VaultSecurityModule::sign_with_secret(stored_secret, data)
         } else {
             self.sign(key_id, data).await
         }

@@ -2,8 +2,8 @@
 use crate::storage::PersistentStorage;
 use crate::vault::secrets_store_impl::VaultSecretsStore;
 use crate::{
-    AsymmetricVault, Implementation, Kms, SecretsStore, Signer, SymmetricVault, Vault, VaultKms,
-    VaultStorage,
+    AsymmetricVault, Implementation, SecretsStore, SecurityModule, Signer, SymmetricVault, Vault,
+    VaultSecurityModule, VaultStorage,
 };
 use ockam_core::compat::sync::Arc;
 #[cfg(feature = "storage")]
@@ -29,9 +29,10 @@ pub struct VaultBuilder {
 
 impl VaultBuilder {
     pub(crate) fn new_builder() -> VaultBuilder {
-        let kms = VaultKms::create_with_storage(InMemoryKeyValueStorage::create());
+        let security_module =
+            VaultSecurityModule::create_with_storage(InMemoryKeyValueStorage::create());
         let secrets_store = Arc::new(VaultSecretsStore::new(
-            kms.clone(),
+            security_module.clone(),
             InMemoryKeyValueStorage::create(),
         ));
         let asymmetric_vault = secrets_store.clone();
@@ -55,14 +56,14 @@ impl VaultBuilder {
     /// Set a persistent storage
     /// Note: this overrides all previously set implementations
     pub fn with_persistent_storage(&mut self, persistent_storage: VaultStorage) -> &mut Self {
-        self.with_kms(VaultKms::create_with_storage(persistent_storage))
+        self.with_security_module(VaultSecurityModule::create_with_storage(persistent_storage))
     }
 
     /// Set a KMS implementation
     /// Note: this overrides all previously set implementations
-    pub fn with_kms(&mut self, kms: Arc<dyn Kms>) -> &mut Self {
+    pub fn with_security_module(&mut self, security_module: Arc<dyn SecurityModule>) -> &mut Self {
         self.with_secrets_store(VaultSecretsStore::new(
-            kms.clone(),
+            security_module.clone(),
             InMemoryKeyValueStorage::create(),
         ))
     }
@@ -71,7 +72,7 @@ impl VaultBuilder {
     /// Note: this overrides all previously set implementations
     pub fn with_secrets_store(
         &mut self,
-        secrets_store: impl SecretsStore + Clone + Implementation + Kms + 'static,
+        secrets_store: impl SecretsStore + Clone + Implementation + SecurityModule + 'static,
     ) -> &mut Self {
         self.secrets_store = Arc::new(secrets_store.clone());
         // changing the secrets store resets all other implementations to default ones

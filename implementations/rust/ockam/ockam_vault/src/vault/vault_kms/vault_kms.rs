@@ -2,7 +2,8 @@ use crate::constants::CURVE25519_PUBLIC_LENGTH_USIZE;
 use crate::constants::CURVE25519_SECRET_LENGTH_U32;
 
 use crate::{
-    Kms, PublicKey, Secret, SecretAttributes, SecretType, Signature, StoredSecret, VaultError,
+    PublicKey, Secret, SecretAttributes, SecretType, SecurityModule, Signature, StoredSecret,
+    VaultError,
 };
 use arrayref::array_ref;
 use ockam_core::compat::rand::{thread_rng, RngCore};
@@ -14,28 +15,28 @@ use ockam_core::{Error, KeyId};
 use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
 use sha2::{Digest, Sha256};
 
-/// Ockam implementation of a KMS
+/// Ockam implementation of a security module
 /// An alternative implementation can be found in the ockam_vault_aws crate
-pub struct VaultKms {
+pub struct VaultSecurityModule {
     storage: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>,
 }
 
-impl VaultKms {
-    /// Create a new Kms
-    pub fn create() -> Arc<dyn Kms> {
+impl VaultSecurityModule {
+    /// Create a new security module
+    pub fn create() -> Arc<dyn SecurityModule> {
         Self::create_with_storage(InMemoryKeyValueStorage::create())
     }
 
     /// Create a new Kms backed by a specific key value storage
     pub fn create_with_storage(
         storage: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>,
-    ) -> Arc<dyn Kms> {
-        Arc::new(VaultKms { storage })
+    ) -> Arc<dyn SecurityModule> {
+        Arc::new(VaultSecurityModule { storage })
     }
 }
 
 #[async_trait]
-impl Kms for VaultKms {
+impl SecurityModule for VaultSecurityModule {
     /// Generate fresh secret
     async fn create_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
         let secret = Self::create_secret_from_attributes(attributes)?;
@@ -103,12 +104,14 @@ impl Kms for VaultKms {
     }
 
     async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature> {
-        let stored_secret = self.get_secret(key_id, "kms signing key").await?;
+        let stored_secret = self
+            .get_secret(key_id, "security module signing key")
+            .await?;
         Self::sign_with_secret(stored_secret, message)
     }
 }
 
-impl VaultKms {
+impl VaultSecurityModule {
     pub(crate) fn create_secret_from_attributes(attributes: SecretAttributes) -> Result<Secret> {
         let secret = match attributes.secret_type() {
             SecretType::X25519 | SecretType::Ed25519 | SecretType::Buffer | SecretType::Aes => {
@@ -288,7 +291,7 @@ impl VaultKms {
     }
 }
 
-impl VaultKms {
+impl VaultSecurityModule {
     /// The key is expected to be found, otherwise an error is returned
     async fn get_secret(&self, secret: &KeyId, description: &str) -> Result<StoredSecret> {
         self.storage.get(secret).await?.ok_or_else(|| {
@@ -304,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_sha256() {
-        let digest = VaultKms::sha256(b"a");
+        let digest = VaultSecurityModule::sha256(b"a");
         assert_eq!(
             encode(digest),
             "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"

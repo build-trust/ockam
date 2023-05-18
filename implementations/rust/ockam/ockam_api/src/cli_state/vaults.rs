@@ -3,7 +3,7 @@ use crate::cli_state::traits::StateItemTrait;
 use crate::cli_state::{CliStateError, StateDirTrait};
 use ockam_identity::IdentitiesVault;
 use ockam_vault::Vault;
-use ockam_vault_aws::{AwsKms, AwsKmsConfig};
+use ockam_vault_aws::{AwsKmsConfig, AwsSecurityModule};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
@@ -41,7 +41,9 @@ impl VaultState {
     pub async fn get(&self) -> Result<Arc<Vault>> {
         if self.config.aws_kms {
             let config = AwsKmsConfig::new();
-            Ok(Vault::create_with_kms(AwsKms::create(config).await?))
+            Ok(Vault::create_with_security_module(
+                AwsSecurityModule::create(config).await?,
+            ))
         } else {
             let vault =
                 Vault::create_with_persistent_storage_path(self.vault_file_path().as_path())

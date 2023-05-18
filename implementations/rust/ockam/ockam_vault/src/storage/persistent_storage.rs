@@ -214,7 +214,7 @@ impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::{Secret, SecretType, VaultKms};
+    use crate::{Secret, SecretType, VaultSecurityModule};
     use ockam_core::compat::rand::RngCore;
     use rand::thread_rng;
     use std::fs::File;
@@ -229,7 +229,7 @@ pub(crate) mod tests {
         // create and retrieve a persistent secret
         let secret = Secret::new(vec![1; 32]);
         let attributes = SecretAttributes::Ed25519;
-        let key_id = VaultKms::compute_key_id(&secret, &attributes).await?;
+        let key_id = VaultSecurityModule::compute_key_id(&secret, &attributes).await?;
         let stored_secret = StoredSecret::new(secret.clone(), attributes);
         storage.put(key_id.clone(), stored_secret.clone()).await?;
 
