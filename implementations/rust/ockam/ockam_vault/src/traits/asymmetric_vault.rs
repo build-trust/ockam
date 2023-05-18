@@ -22,6 +22,7 @@ pub trait AsymmetricVault: Send + Sync {
 }
 
 /// Tests for implementations of the AsymmetricVault trait
+#[cfg(feature = "vault_tests")]
 pub mod tests {
     use super::*;
     use crate::{EphemeralSecretsStore, Secret, SecretAttributes};

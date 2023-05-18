@@ -23,6 +23,7 @@ pub trait SymmetricVault: Send + Sync {
     ) -> Result<Buffer<u8>>;
 }
 
+#[cfg(feature = "vault_tests")]
 pub mod tests {
     use crate::{EphemeralSecretsStore, SecretAttributes, SymmetricVault};
 

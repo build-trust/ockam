@@ -17,6 +17,7 @@ pub trait Signer: Send + Sync {
 }
 
 /// Tests for implementations of the Signer trait
+#[cfg(feature = "vault_tests")]
 pub mod tests {
     use super::*;
     use crate::{SecretAttributes, SecretsStore};

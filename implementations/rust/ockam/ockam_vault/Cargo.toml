@@ -67,6 +67,9 @@ alloc = [
 
 storage = ["ockam_node/storage", "std", "serde", "serde_cbor"]
 
+# Feature: this gives access to test suites for testing the implementation of the Vault traits
+vault_tests = []
+
 # FIXME: Either remove that feature, or avoid unneccessary dependencies when it's disabled
 rustcrypto = []
 

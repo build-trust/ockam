@@ -1,5 +1,4 @@
 use crate::{PublicKey, Secret, SecretAttributes, StoredSecret};
-use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
 
 /// This traits provides all the functionalities related to the management of secrets
@@ -54,10 +53,12 @@ pub trait SecretsStoreReader: Sync + Send {
 }
 
 /// Tests for implementations of the SecretsStore trait
+#[cfg(feature = "vault_tests")]
 pub mod tests {
     use super::*;
     use crate::{PublicKey, SecretAttributes, SecretType};
     use hex::decode;
+    use ockam_core::compat::vec::Vec;
     use SecretType::*;
 
     /// This test checks the creation of ephemeral keys of different types
