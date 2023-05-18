@@ -185,17 +185,11 @@ struct IdentityConfigV2 {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-struct IdentityConfigV3 {
-    identifier: IdentityIdentifier,
-    enrollment_status: Option<EnrollmentStatus>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum IdentityConfigs {
     V1(IdentityConfigV1),
     V2(IdentityConfigV2),
-    V3(IdentityConfigV3),
+    V3(IdentityConfig),
 }
 
 mod traits {
@@ -237,6 +231,46 @@ mod traits {
             }
             // Remove identity file
             identity.delete()?;
+            Ok(())
+        }
+
+        async fn migrate(&self, path: &Path) -> Result<()> {
+            let contents = match std::fs::read_to_string(&path).ok() {
+                Some(contents) => contents,
+                None => return Ok(()),
+            };
+
+            // read the configuration and migrate to the most recent format if an old format is found
+            // the most recent configuration only contains an identity identifier, so if we find an
+            // old format we store the full identity in the shared identities repository before
+            // writing the most recent configuration format
+            match serde_json::from_str(&contents)? {
+                IdentityConfigs::V1(config) => {
+                    let identifier = config.identifier.clone();
+                    let new_config = IdentityConfig {
+                        identifier: identifier.clone(),
+                        enrollment_status: config.enrollment_status,
+                    };
+                    let identity = Identity::new(identifier, config.change_history);
+                    self.identities_repository()
+                        .await?
+                        .update_identity(&identity)
+                        .await?;
+                    std::fs::write(&path, serde_json::to_string(&new_config)?)?;
+                }
+                IdentityConfigs::V2(config) => {
+                    let new_config = IdentityConfig {
+                        identifier: config.identity.identifier(),
+                        enrollment_status: config.enrollment_status,
+                    };
+                    self.identities_repository()
+                        .await?
+                        .update_identity(&config.identity)
+                        .await?;
+                    std::fs::write(&path, serde_json::to_string(&new_config)?)?;
+                }
+                IdentityConfigs::V3(_) => (),
+            }
             Ok(())
         }
     }

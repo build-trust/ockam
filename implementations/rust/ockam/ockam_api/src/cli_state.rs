@@ -17,6 +17,7 @@ use ockam::identity::Identities;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
 use ockam_identity::IdentityIdentifier;
+use ockam_node::Executor;
 use ockam_vault::Vault;
 use rand::random;
 use std::path::{Path, PathBuf};
@@ -69,31 +70,30 @@ pub struct CliState {
 }
 
 impl CliState {
-    pub fn try_default() -> Result<Self> {
+    /// Return an initialized CliState
+    /// There should only be one call to this function since it also performs a migration
+    /// of configuration files if necessary
+    pub fn initialize() -> Result<Self> {
         let dir = Self::default_dir()?;
-        Self::new(&dir)
+        std::fs::create_dir_all(dir.join("defaults"))?;
+        Executor::new().execute_future(Self::initialize_cli_state())?
     }
 
-    pub fn new(dir: &Path) -> Result<Self> {
-        std::fs::create_dir_all(dir.join("defaults"))?;
+    /// Create a new CliState by initializing all of its components
+    /// The calls to 'init(dir)' are loading each piece of configuration and possibly doing some
+    /// configuration migration if necessary
+    async fn initialize_cli_state() -> Result<CliState> {
+        let default = Self::default_dir()?;
+        let dir = default.as_path();
         Ok(Self {
-            vaults: VaultsState::load(dir)?,
-            identities: IdentitiesState::load(dir)?,
-            nodes: NodesState::load(dir)?,
-            projects: ProjectsState::load(dir)?,
-            credentials: CredentialsState::load(dir)?,
-            trust_contexts: TrustContextsState::load(dir)?,
+            vaults: VaultsState::init(dir).await?,
+            identities: IdentitiesState::init(dir).await?,
+            nodes: NodesState::init(dir).await?,
+            projects: ProjectsState::init(dir).await?,
+            credentials: CredentialsState::init(dir).await?,
+            trust_contexts: TrustContextsState::init(dir).await?,
             dir: dir.to_path_buf(),
         })
-    }
-
-    pub fn test() -> Result<Self> {
-        let tests_dir = home::home_dir()
-            .ok_or(CliStateError::NotFound)?
-            .join(".ockam")
-            .join(".tests")
-            .join(random_name());
-        Self::new(&tests_dir)
     }
 
     pub fn delete(&self, force: bool) -> Result<()> {
@@ -211,6 +211,33 @@ impl CliState {
             .with_identities_vault(self.vaults.default()?.identities_vault().await?)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
+    }
+}
+
+/// Test support
+impl CliState {
+    /// Create a new CliState (but do not run migrations)
+    fn new(dir: &Path) -> Result<Self> {
+        std::fs::create_dir_all(dir.join("defaults"))?;
+        Ok(Self {
+            vaults: VaultsState::load(dir)?,
+            identities: IdentitiesState::load(dir)?,
+            nodes: NodesState::load(dir)?,
+            projects: ProjectsState::load(dir)?,
+            credentials: CredentialsState::load(dir)?,
+            trust_contexts: TrustContextsState::load(dir)?,
+            dir: dir.to_path_buf(),
+        })
+    }
+
+    /// Return a test CliState with a random root directory
+    pub fn test() -> Result<Self> {
+        let tests_dir = home::home_dir()
+            .ok_or(CliStateError::NotFound)?
+            .join(".ockam")
+            .join(".tests")
+            .join(random_name());
+        Self::new(&tests_dir)
     }
 }
 
