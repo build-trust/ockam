@@ -160,7 +160,7 @@ impl NodeManager {
         identity_name: Option<String>,
         ctx: &Context,
     ) -> Result<SecureChannelListener> {
-        info!(
+        debug!(
             "Handling request to create a new secure channel listener: {}",
             address
         );
