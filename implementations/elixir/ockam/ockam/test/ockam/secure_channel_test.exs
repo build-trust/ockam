@@ -2,6 +2,7 @@ defmodule Ockam.SecureChannel.Tests do
   use ExUnit.Case, async: true
   doctest Ockam.SecureChannel
 
+  alias Ockam.Credential.AttributeStorageETS, as: AttributeStorage
   alias Ockam.Identity
   alias Ockam.Message
   alias Ockam.Node
@@ -18,6 +19,9 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, alice, alice_id} = Identity.create(@identity_impl)
     {:ok, bob, bob_id} = Identity.create(@identity_impl)
     on_exit(fn -> Node.unregister_address("test") end)
+
+    # TODO: rework the relationship on credential exchange API, attribute storage and secure channel
+    :ok = AttributeStorage.init()
     {:ok, alice: alice, alice_id: alice_id, bob: bob, bob_id: bob_id}
   end
 
@@ -456,6 +460,162 @@ defmodule Ockam.SecureChannel.Tests do
       return_route: [_channel, ^me],
       local_metadata: %{identity_id: _id, identity: _identity, channel: :secure_channel}
     }
+  end
+
+  defmodule FakeVerifier do
+    @moduledoc """
+    Just for testing purposes.
+    """
+
+    alias Ockam.Credential.AttributeSet
+    alias Ockam.Credential.AttributeSet.Attributes
+
+    def verify(credential, identity_id, authorities) do
+      with {:credential, authority_id, ^identity_id, attributes, expiration} <-
+             :erlang.binary_to_term(credential),
+           {:ok, _} <- Map.fetch(authorities, authority_id) do
+        {:ok,
+         %AttributeSet{attributes: %Attributes{attributes: attributes}, expiration: expiration}}
+      else
+        _other ->
+          {:error, :rejected}
+      end
+    end
+
+    def credential(subject_id, authority, attributes, expiration) do
+      with {:ok, authority_id} <- Identity.validate_identity_change_history(authority) do
+        {:ok,
+         :erlang.term_to_binary({:credential, authority_id, subject_id, attributes, expiration})}
+      end
+    end
+  end
+
+  test "credential in handshake accepted", %{
+    alice: alice,
+    bob: bob,
+    bob_id: bob_id,
+    alice_id: alice_id
+  } do
+    {:ok, vault} = SoftwareVault.init()
+
+    {:ok, authority, _authority_id} = Identity.create(@identity_impl)
+
+    alice_attributes = %{"role" => "server"}
+    expiration = System.os_time(:second) + 100
+
+    {:ok, alice_credential} =
+      FakeVerifier.credential(alice_id, authority, alice_attributes, expiration)
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [vault: vault],
+        credential_verifier: {FakeVerifier, [authority]},
+        credentials: [alice_credential]
+      )
+
+    bob_attributes = %{"role" => "member"}
+    expiration = System.os_time(:second) + 100
+    {:ok, bob_credential} = FakeVerifier.credential(bob_id, authority, bob_attributes, expiration)
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        [
+          identity: bob,
+          encryption_options: [vault: vault],
+          route: [listener],
+          credential_verifier: {FakeVerifier, [authority]},
+          credentials: [bob_credential]
+        ],
+        3000
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    # This to make sure receiver end has fully completed the handshake, and so processes our
+    # credentials.
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: [_channel, ^me],
+      local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
+    }
+
+    # Check that attributes had been stored
+    assert bob_attributes == AttributeStorage.get_attributes(bob_id)
+    # The client itself also store server' credential presented
+    assert alice_attributes == AttributeStorage.get_attributes(alice_id)
+
+    # Secure channel is terminated if we present invalid credential
+
+    # Credential by unknown authority
+    {:ok, wrong_authority, _authority_id} = Identity.create(@identity_impl)
+    attributes = %{"role" => "attacker"}
+    expiration = System.os_time(:second) + 100
+
+    {:ok, wrong_credential} =
+      FakeVerifier.credential(bob_id, wrong_authority, attributes, expiration)
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        [
+          identity: bob,
+          encryption_options: [vault: vault],
+          route: [listener],
+          credentials: [wrong_credential],
+          credential_verifier: {FakeVerifier, [authority]}
+        ],
+        1000
+      )
+
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    refute_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: [_channel, ^me],
+      local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
+    }
+
+    # Credential for another identifier
+    attributes = %{"role" => "attacker"}
+    expiration = System.os_time(:second) + 100
+    {:ok, wrong_credential} = FakeVerifier.credential(alice_id, authority, attributes, expiration)
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        [
+          identity: bob,
+          encryption_options: [vault: vault],
+          route: [listener],
+          credentials: [wrong_credential],
+          credential_verifier: {FakeVerifier, [authority]}
+        ],
+        1000
+      )
+
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    refute_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: [_channel, ^me],
+      local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
+    }
+
+    # Credential by wrong authority on server side
+    {:error, _} =
+      SecureChannel.create_channel(
+        [
+          identity: bob,
+          encryption_options: [vault: vault],
+          route: [listener],
+          credential_verifier: {FakeVerifier, [wrong_authority]}
+        ],
+        1000
+      )
   end
 
   defp create_secure_channel_listener() do
