@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 use super::Result;
+pub const DATA_DIR_NAME: &str = "data";
 
 /// Represents the directory of a type of state. This directory contains a list of items, uniquely
 /// identified by a name, and represented by the same `Item` type.
@@ -33,14 +34,13 @@ pub trait StateDirTrait: Sized + Send + Sync {
     /// and migrate each entry if necessary
     async fn init(root_path: &Path) -> Result<Self> {
         let root = Self::load(root_path)?;
-        let root_dir = root.dir();
-        for entry in std::fs::read_dir(root_dir)? {
-            let item_path = root.path(&file_stem(&entry?.path())?);
-            root.migrate(item_path.as_path()).await?;
+        for path in root.list_items_paths()? {
+            root.migrate(path.as_path()).await?;
         }
         Ok(root)
     }
 
+    /// Do not run any migration by default
     async fn migrate(&self, _item_path: &Path) -> Result<()> {
         Ok(())
     }
@@ -48,7 +48,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn load(root_path: &Path) -> Result<Self> {
         let dir = Self::build_dir(root_path);
         if Self::has_data_dir() {
-            std::fs::create_dir_all(dir.join("data"))?;
+            std::fs::create_dir_all(dir.join(DATA_DIR_NAME))?;
         } else {
             std::fs::create_dir_all(&dir)?;
         }
@@ -101,11 +101,30 @@ pub trait StateDirTrait: Sized + Send + Sync {
 
     fn list(&self) -> Result<Vec<Self::Item>> {
         let mut items = Vec::default();
-        for entry in std::fs::read_dir(self.dir())? {
-            let name = file_stem(&entry?.path())?;
+        for name in self.list_items_names()? {
             if let Ok(item) = self.get(&name) {
                 items.push(item);
             }
+        }
+        Ok(items)
+    }
+
+    fn list_items_names(&self) -> Result<Vec<String>> {
+        let mut items = Vec::default();
+        for entry in std::fs::read_dir(self.dir())? {
+            let name = file_stem(&entry?.path())?;
+            if name != DATA_DIR_NAME {
+                items.push(name);
+            }
+        }
+        Ok(items)
+    }
+
+    fn list_items_paths(&self) -> Result<Vec<PathBuf>> {
+        let mut items = Vec::default();
+        for name in self.list_items_names()? {
+            let path = self.path(&name);
+            items.push(path);
         }
         Ok(items)
     }

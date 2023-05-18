@@ -4,6 +4,7 @@ mod delete;
 mod list;
 mod show;
 
+use anyhow::anyhow;
 use colorful::Colorful;
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
@@ -57,7 +58,7 @@ impl IdentityCommand {
 pub fn get_identity_name(cli_state: &CliState, name: Option<String>) -> Result<String> {
     match name.clone() {
         Some(n) => identity_name_parser(&cli_state, &n),
-        None => Ok(default_identity_name(&cli_state)),
+        None => default_identity_name(&cli_state),
     }
 }
 
@@ -69,13 +70,13 @@ pub fn identity_name_parser(cli_state: &CliState, identity_name: &str) -> Result
     Ok(identity_name.to_string())
 }
 
-pub fn default_identity_name(cli_state: &CliState) -> String {
-    cli_state
-        .identities
-        .default()
-        .map(|i| i.name().to_string())
-        // Return empty string so we can return a proper error message from the command
-        .unwrap_or_else(|_| "".to_string())
+pub fn default_identity_name(cli_state: &CliState) -> Result<String> {
+    match cli_state.identities.default().ok() {
+        Some(i) => Ok(i.name().to_string()),
+        None => {
+            Err(anyhow!("Default identity not found. Have you run 'ockam identity create'?").into())
+        }
+    }
 }
 
 pub fn create_default_identity(identity_name: &str) -> String {

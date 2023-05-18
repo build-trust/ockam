@@ -430,7 +430,7 @@ mod tests {
                         let entry_name = entry.file_name().into_string().unwrap();
                         found_entries.push(format!("{dir_name}/{entry_name}"));
                         if entry.path().is_dir() {
-                            assert_eq!(entry_name, "data");
+                            assert_eq!(entry_name, DATA_DIR_NAME);
                             entry.path().read_dir().unwrap().for_each(|entry| {
                                 let entry = entry.unwrap();
                                 let file_name = entry.file_name().into_string().unwrap();
@@ -452,7 +452,7 @@ mod tests {
                         let entry = entry.unwrap();
                         let entry_name = entry.file_name().into_string().unwrap();
                         if entry.path().is_dir() {
-                            assert_eq!(entry_name, "data");
+                            assert_eq!(entry_name, DATA_DIR_NAME);
                             entry.path().read_dir().unwrap().for_each(|entry| {
                                 let entry = entry.unwrap();
                                 let file_name = entry.file_name().into_string().unwrap();

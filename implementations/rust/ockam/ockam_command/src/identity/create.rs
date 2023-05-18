@@ -64,6 +64,11 @@ impl CreateCommand {
             .create_identity()
             .await?;
 
+        options
+            .state
+            .create_identity_state(&identity.identifier(), Some(&self.name))
+            .await?;
+
         let identifier = identity.identifier();
         output.push_str(&format!("Identity created: {}", identifier.clone()));
 
