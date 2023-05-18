@@ -112,12 +112,19 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn list_items_names(&self) -> Result<Vec<String>> {
         let mut items = Vec::default();
         for entry in std::fs::read_dir(self.dir())? {
-            let name = file_stem(&entry?.path())?;
-            if name != DATA_DIR_NAME {
-                items.push(name);
+            let entry_path = entry?.path();
+            if self.is_item_path(&entry_path)? {
+                items.push(file_stem(&entry_path)?);
             }
         }
         Ok(items)
+    }
+
+    // If a path has been created with the self.path function
+    // then we know that the current name is an item name
+    fn is_item_path(&self, path: &PathBuf) -> Result<bool> {
+        let name = file_stem(path)?;
+        Ok(path.eq(&self.path(&name)))
     }
 
     fn list_items_paths(&self) -> Result<Vec<PathBuf>> {
@@ -220,4 +227,70 @@ pub trait StateItemTrait: Sized + Send {
     }
     fn path(&self) -> &PathBuf;
     fn config(&self) -> &Self::Config;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::cli_state::{StateDirTrait, StateItemTrait};
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_is_item_path() {
+        let config = TestConfig::new("dir".into());
+        let path = config.path("name");
+        assert!(config.is_item_path(&path).unwrap())
+    }
+
+    /// Dummy configuration
+    struct TestConfig {
+        dir: PathBuf,
+    }
+    impl StateDirTrait for TestConfig {
+        type Item = TestConfigItem;
+        const DEFAULT_FILENAME: &'static str = "";
+        const DIR_NAME: &'static str = "";
+        const HAS_DATA_DIR: bool = false;
+
+        fn new(dir: PathBuf) -> Self {
+            Self { dir }
+        }
+
+        fn dir(&self) -> &PathBuf {
+            &self.dir
+        }
+    }
+
+    struct TestConfigItem {
+        path: PathBuf,
+        config: String,
+    }
+    impl StateItemTrait for TestConfigItem {
+        type Config = String;
+
+        fn new(path: PathBuf, config: Self::Config) -> crate::cli_state::Result<Self> {
+            Ok(TestConfigItem { path, config })
+        }
+
+        fn load(path: PathBuf) -> crate::cli_state::Result<Self> {
+            Ok(TestConfigItem {
+                path,
+                config: "config".into(),
+            })
+        }
+
+        fn path(&self) -> &PathBuf {
+            &self.path
+        }
+
+        fn config(&self) -> &Self::Config {
+            &self.config
+        }
+    }
+}
+
+trait FileSystem {
+    fn create_dir_all(dir: PathBuf) -> Result<()>;
+    fn read_dir(path: PathBuf) -> Result<Vec<PathBuf>>;
+    fn remove_file(path: PathBuf) -> Result<()>;
+    fn write(path: PathBuf, contents: &str) -> Result<()>;
 }
