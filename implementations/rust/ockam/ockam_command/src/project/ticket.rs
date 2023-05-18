@@ -84,7 +84,7 @@ impl Runner {
 
         let (base_addr, _flow_control_id) =
             if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
-                let tc = parse_trust_context(&self.opts.state, &tc)?;
+                let tc = parse_trust_context(&self.opts.state, tc)?;
                 trust_context = Some(tc.clone());
                 let cred_retr = tc.authority()?.own_credential()?;
                 let addr = match cred_retr {

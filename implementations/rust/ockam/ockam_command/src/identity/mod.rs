@@ -56,9 +56,9 @@ impl IdentityCommand {
 
 // If a name is given try to parse it as an identity name, otherwise return the default identity name
 pub fn get_identity_name(cli_state: &CliState, name: Option<String>) -> Result<String> {
-    match name.clone() {
-        Some(n) => identity_name_parser(&cli_state, &n),
-        None => default_identity_name(&cli_state),
+    match name {
+        Some(n) => identity_name_parser(cli_state, &n),
+        None => default_identity_name(cli_state),
     }
 }
 
