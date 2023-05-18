@@ -25,7 +25,7 @@ crate-type = ["rlib"]
 path = "src/lib.rs"
 
 [features]
-default = ["std", "storage", "rustcrypto"]
+default = ["std", "storage"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -40,8 +40,6 @@ std = [
   "x25519-dalek/std",
   "x25519-dalek/u64_backend",
   "alloc",
-  # required for p256
-  "rustcrypto",
   "p256/std",
 ]
 
@@ -69,9 +67,6 @@ storage = ["ockam_node/storage", "std", "serde", "serde_cbor"]
 
 # Feature: this gives access to test suites for testing the implementation of the Vault traits
 vault_tests = []
-
-# FIXME: Either remove that feature, or avoid unneccessary dependencies when it's disabled
-rustcrypto = []
 
 [dependencies]
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }

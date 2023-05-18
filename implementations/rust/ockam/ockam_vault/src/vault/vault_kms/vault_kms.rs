@@ -8,7 +8,6 @@ use crate::{
 use arrayref::array_ref;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::Arc;
-#[cfg(feature = "rustcrypto")]
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_core::{Error, KeyId};
@@ -88,7 +87,6 @@ impl SecurityModule for VaultSecurityModule {
                 let public_key = ed25519_dalek::PublicKey::from_bytes(public_key.data()).unwrap();
                 Ok(public_key.verify(data.as_ref(), &signature).is_ok())
             }
-            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => {
                 use p256::ecdsa::{signature::Verifier as _, Signature, VerifyingKey};
                 use p256::pkcs8::DecodePublicKey;
@@ -123,7 +121,6 @@ impl VaultSecurityModule {
                 };
                 Secret::new(bytes)
             }
-            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => {
                 use p256::ecdsa::SigningKey;
                 use p256::pkcs8::EncodePrivateKey;
@@ -157,7 +154,6 @@ impl VaultSecurityModule {
                 let pk = ed25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::Ed25519))
             }
-            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => Self::public_key(stored_secret.secret().as_ref()),
             SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
@@ -183,7 +179,6 @@ impl VaultSecurityModule {
                 let sig = kp.sign(data.as_ref());
                 Ok(Signature::new(sig.to_bytes().to_vec()))
             }
-            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => {
                 let key = stored_secret.secret().as_ref();
                 use p256::ecdsa::signature::Signer;
@@ -241,7 +236,6 @@ impl VaultSecurityModule {
                 rng.fill_bytes(&mut rand);
                 hex::encode(rand)
             }
-            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => {
                 let pk = Self::public_key(secret.as_ref())?;
                 Self::compute_key_id_for_public_key(&pk).await?
@@ -254,7 +248,6 @@ impl VaultSecurityModule {
         Ok(hex::encode(key_id))
     }
 
-    #[cfg(feature = "rustcrypto")]
     fn public_key(secret: &[u8]) -> Result<PublicKey> {
         use p256::pkcs8::{DecodePrivateKey, EncodePublicKey};
         let sec = p256::ecdsa::SigningKey::from_pkcs8_der(secret).map_err(Self::from_pkcs8)?;
@@ -272,12 +265,10 @@ impl VaultSecurityModule {
         *array_ref![digest, 0, 32]
     }
 
-    #[cfg(feature = "rustcrypto")]
     pub(crate) fn from_ecdsa(e: p256::ecdsa::Error) -> Error {
         Error::new(Origin::Vault, Kind::Unknown, e)
     }
 
-    #[cfg(feature = "rustcrypto")]
     pub(crate) fn from_pkcs8<T: core::fmt::Display>(e: T) -> Error {
         #[cfg(feature = "no_std")]
         use ockam_core::compat::string::ToString;
@@ -285,7 +276,6 @@ impl VaultSecurityModule {
         Error::new(Origin::Vault, Kind::Unknown, e.to_string())
     }
 
-    #[cfg(feature = "rustcrypto")]
     pub(crate) fn from_ecurve(e: p256::elliptic_curve::Error) -> Error {
         Error::new(Origin::Vault, Kind::Unknown, e)
     }

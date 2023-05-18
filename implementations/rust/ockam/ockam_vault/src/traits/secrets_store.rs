@@ -130,7 +130,6 @@ pub mod tests {
         for attributes in [
             SecretAttributes::Ed25519,
             SecretAttributes::X25519,
-            #[cfg(feature = "rustcrypto")]
             SecretAttributes::NistP256,
         ] {
             let public =
@@ -153,7 +152,6 @@ pub mod tests {
         for attributes in [
             SecretAttributes::Ed25519,
             SecretAttributes::X25519,
-            #[cfg(feature = "rustcrypto")]
             SecretAttributes::NistP256,
         ] {
             let secret = vault.create_persistent_secret(attributes).await.unwrap();
@@ -171,7 +169,6 @@ pub mod tests {
             SecretAttributes::Buffer(32),
             SecretAttributes::Aes128,
             SecretAttributes::Aes256,
-            #[cfg(feature = "rustcrypto")]
             SecretAttributes::NistP256,
         ]
     }

@@ -18,12 +18,7 @@ and trustfully with cloud services and other devices.
 [features]
 default = ["std", "software_vault", "noise_xx"]
 noise_xx = ["ockam_key_exchange_xx"]
-software_vault = [
-  "ockam_vault",
-  "ockam_vault/rustcrypto",
-  "rustcrypto",
-]
-rustcrypto = []
+software_vault = ["ockam_vault"]
 lease_proto_json = ["serde_json"]
 
 # Feature (enabled by default): "std" enables functionality expected to
