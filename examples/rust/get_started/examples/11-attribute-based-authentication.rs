@@ -65,7 +65,7 @@
 ///
 ///
 ///   - we create initially some secure channels to the Authority in order to retrieve credential
-///     based on a one-time token generated with `ockam project enroll --attribute component=<name of node>`
+///     based on a one-time token generated with `ockam project ticket --attribute component=<name of node>`
 ///
 ///   - then the control node creates a forwarder on the Orchestrator in order to accept TCP traffic without
 ///     having to open a port to the internet. It also starts a channel listener ("untrusted", accept all incoming requests for now)

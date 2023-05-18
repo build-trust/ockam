@@ -30,11 +30,11 @@ use ockam_transport_tcp::TcpTransportExtension;
 /// The node needs to be started with:
 ///
 ///  - a project.json file created with `ockam project information --output json  > project.json`
-///  - a token created by an enroller node with `ockam project enroll --attribute component=edge`
+///  - a token created by an enroller node with `ockam project ticket --attribute component=edge`
 ///
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // create a token (with `ockam project enroll --attribute component=edge`)
+    // create a token (with `ockam project ticket --attribute component=edge`)
     // In principle this token is provided by another node which has enrolling privileges for the
     // current project
     let token: OneTimeCode = create_token("component", "edge").await?;

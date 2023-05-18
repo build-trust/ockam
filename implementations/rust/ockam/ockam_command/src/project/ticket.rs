@@ -23,7 +23,7 @@ use crate::{CommandGlobalOpts, Result};
 
 /// Add members to a project as an authorised enroller.
 #[derive(Clone, Debug, Args)]
-pub struct EnrollCommand {
+pub struct TicketCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
     cloud_opts: CloudOpts,
@@ -42,7 +42,7 @@ pub struct EnrollCommand {
     attributes: Vec<String>,
 }
 
-impl EnrollCommand {
+impl TicketCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(
             |ctx, (opts, cmd)| Runner::new(ctx, opts, cmd).run(),
@@ -65,11 +65,11 @@ impl EnrollCommand {
 struct Runner {
     ctx: Context,
     opts: CommandGlobalOpts,
-    cmd: EnrollCommand,
+    cmd: TicketCommand,
 }
 
 impl Runner {
-    fn new(ctx: Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Self {
+    fn new(ctx: Context, opts: CommandGlobalOpts, cmd: TicketCommand) -> Self {
         Self { ctx, opts, cmd }
     }
 

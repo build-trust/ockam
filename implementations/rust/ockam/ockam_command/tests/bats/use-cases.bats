@@ -82,9 +82,9 @@ teardown() {
 
   # Administrator
   ADMIN_OCKAM_HOME=$OCKAM_HOME
-  cp1_token=$($OCKAM project enroll --attribute component=control)
-  ep1_token=$($OCKAM project enroll --attribute component=edge)
-  x_token=$($OCKAM project enroll --attribute component=x)
+  cp1_token=$($OCKAM project ticket --attribute component=control)
+  ep1_token=$($OCKAM project ticket --attribute component=edge)
+  x_token=$($OCKAM project ticket --attribute component=x)
 
   # Control plane
   setup_home_dir

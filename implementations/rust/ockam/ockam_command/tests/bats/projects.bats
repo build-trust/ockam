@@ -45,8 +45,8 @@ teardown() {
   assert_failure
 
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  $OCKAM project enroll --member "$green_identifier" --attribute role=member
-  blue_token=$($OCKAM project enroll --attribute role=member)
+  $OCKAM project ticket --member "$green_identifier" --attribute role=member
+  blue_token=$($OCKAM project ticket --attribute role=member)
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
 
   # Green' identity was added by enroller
@@ -82,7 +82,7 @@ teardown() {
 
   # Add node as a member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project enroll --member "$green_identifier" --attribute role=member
+  run "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
   assert_success
 
   # The node can now access the project's services
@@ -105,7 +105,7 @@ teardown() {
   m1_identifier=$($OCKAM identity show m1)
 
   unset OCKAM_HOME
-  $OCKAM project enroll --member $m1_identifier --attribute role=member
+  $OCKAM project ticket --member $m1_identifier --attribute role=member
 
   export OCKAM_HOME=/tmp/ockam
   # m1' identity was added by enroller
@@ -176,8 +176,8 @@ teardown() {
   m2_identifier=$($OCKAM identity show m2)
 
   unset OCKAM_HOME
-  $OCKAM project enroll --member $m1_identifier --attribute service=sensor
-  $OCKAM project enroll --member $m2_identifier --attribute service=web
+  $OCKAM project ticket --member $m1_identifier --attribute service=sensor
+  $OCKAM project ticket --member $m2_identifier --attribute service=web
 
   export OCKAM_HOME=/tmp/ockam
 

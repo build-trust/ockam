@@ -13,13 +13,13 @@ pub async fn create_token(attribute_name: &str, attribute_value: &str) -> Result
     let token_output = Command::new("ockam")
         .args(vec![
             "project",
-            "enroll",
+            "ticket",
             "--attribute",
             format!("{attribute_name}={attribute_value}").as_str(),
         ])
         .env_remove("OCKAM_LOG") // make sure that OCKAM_LOG is not set, otherwise the output will contain more than the token
         .output()
-        .map_err(|e| error(format!("could not run the `ockam project enroll` successfully: {e:?}")))?;
+        .map_err(|e| error(format!("could not run the `ockam project ticket` successfully: {e:?}")))?;
 
     // we unwrap the result of decoding the token as UTF-8 since it should be some valid UTF-8 string
     let token_string = str::from_utf8(token_output.stdout.as_slice()).unwrap().trim();

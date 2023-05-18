@@ -96,7 +96,7 @@ teardown() {
 
   # Green isn't enrolled as project member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project enroll --member "$blue_identifier" --attribute role=member
+  run "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
   assert_success
 
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
@@ -138,7 +138,7 @@ teardown() {
 
   # Green isn't enrolled as project member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project enroll --member "$blue_identifier" --attribute role=member
+  run "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
   assert_success
 
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
@@ -174,9 +174,9 @@ teardown() {
   assert_success
 
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project enroll --member "$blue_identifier" --attribute role=member
+  run "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
   assert_success
-  run "$OCKAM" project enroll --member "$green_identifier" --attribute role=member
+  run "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
   assert_success
 
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
@@ -200,8 +200,8 @@ teardown() {
   port=7105
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  green_token=$($OCKAM project enroll --attribute app=app1)
-  blue_token=$($OCKAM project enroll --attribute app=app1)
+  green_token=$($OCKAM project ticket --attribute app=app1)
+  blue_token=$($OCKAM project ticket --attribute app=app1)
 
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
