@@ -97,7 +97,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         )),
     );
 
-    let bob_credential_1st = secure_channels
+    let _bob_credential_1st = secure_channels
         .identities()
         .credentials()
         .issue_credential(
@@ -126,12 +126,11 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
             "bob_listener",
             SecureChannelListenerOptions::new()
                 .with_trust_context(trust_context.clone())
-                .with_credential(bob_credential_1st)
                 .with_credential(bob_credential_2nd),
         )
         .await?;
 
-    let alice_credential_1st = secure_channels
+    let _alice_credential_1st = secure_channels
         .identities()
         .credentials()
         .issue_credential(
@@ -160,7 +159,6 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
             route!["bob_listener"],
             SecureChannelOptions::new()
                 .with_trust_context(trust_context)
-                .with_credential(alice_credential_1st)
                 .with_credential(alice_credential_2nd),
         )
         .await?;

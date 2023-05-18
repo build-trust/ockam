@@ -67,6 +67,11 @@ impl ExchangeCompleter {
         );
 
         if let Some(trust_context) = self.trust_context {
+            if self.their_credentials.len() >= 2 {
+                //FIXME: remove as soon as we start supporting multiple credentials
+                return Err(IdentityError::SecureChannelVerificationFailed.into());
+            }
+
             for credential in self.their_credentials {
                 let result = secure_channels
                     .identities()
