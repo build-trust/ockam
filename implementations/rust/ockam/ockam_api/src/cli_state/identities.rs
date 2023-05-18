@@ -13,7 +13,7 @@ use ockam_identity::{
 };
 
 use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
-use crate::cli_state::CliStateError;
+use crate::cli_state::{CliStateError, DATA_DIR_NAME};
 
 use super::Result;
 
@@ -52,7 +52,10 @@ impl IdentitiesState {
     }
 
     pub fn identities_repository_path(&self) -> Result<PathBuf> {
-        let lmdb_path = self.dir.join("data").join("authenticated_storage.lmdb");
+        let lmdb_path = self
+            .dir
+            .join(DATA_DIR_NAME)
+            .join("authenticated_storage.lmdb");
         Ok(lmdb_path)
     }
 }
@@ -77,7 +80,9 @@ impl IdentityState {
     }
 
     fn build_data_path(path: &Path) -> PathBuf {
-        path.parent().expect("Should have parent").join("data")
+        path.parent()
+            .expect("Should have parent")
+            .join(DATA_DIR_NAME)
     }
 
     pub fn name(&self) -> &str {
@@ -235,10 +240,7 @@ mod traits {
         }
 
         async fn migrate(&self, path: &Path) -> Result<()> {
-            let contents = match std::fs::read_to_string(&path).ok() {
-                Some(contents) => contents,
-                None => return Ok(()),
-            };
+            let contents = std::fs::read_to_string(path)?;
 
             // read the configuration and migrate to the most recent format if an old format is found
             // the most recent configuration only contains an identity identifier, so if we find an
@@ -256,7 +258,7 @@ mod traits {
                         .await?
                         .update_identity(&identity)
                         .await?;
-                    std::fs::write(&path, serde_json::to_string(&new_config)?)?;
+                    std::fs::write(path, serde_json::to_string(&new_config)?)?;
                 }
                 IdentityConfigs::V2(config) => {
                     let new_config = IdentityConfig {
@@ -267,7 +269,7 @@ mod traits {
                         .await?
                         .update_identity(&config.identity)
                         .await?;
-                    std::fs::write(&path, serde_json::to_string(&new_config)?)?;
+                    std::fs::write(path, serde_json::to_string(&new_config)?)?;
                 }
                 IdentityConfigs::V3(_) => (),
             }

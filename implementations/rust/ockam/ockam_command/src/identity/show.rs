@@ -1,8 +1,7 @@
-use crate::identity::default_identity_name;
+use crate::identity::get_identity_name;
 use crate::util::output::Output;
 use crate::util::{node_rpc, println_output};
 use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
-use anyhow::anyhow;
 use clap::Args;
 use core::fmt::Write;
 use ockam::identity::identity::IdentityChangeHistory;
@@ -20,7 +19,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
-    #[arg(long)]
+    #[arg()]
     name: Option<String>,
 
     #[arg(short, long)]
@@ -44,13 +43,7 @@ impl ShowCommand {
         options: (CommandGlobalOpts, ShowCommand),
     ) -> crate::Result<()> {
         let (opts, cmd) = options;
-        let name = default_identity_name(&opts.state);
-        if name.is_empty() {
-            return Err(anyhow!(
-                "Default identity not found. Have you run 'ockam identity create'?"
-            )
-            .into());
-        }
+        let name = get_identity_name(&opts.state, cmd.name)?;
         let state = opts.state.identities.get(&name)?;
         if cmd.full {
             let identifier = state.config().identifier();
