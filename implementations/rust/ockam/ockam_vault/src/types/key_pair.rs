@@ -2,7 +2,7 @@ use crate::PublicKey;
 use ockam_core::KeyId;
 use zeroize::Zeroize;
 
-/// A public key
+/// A key pair with a public key and a reference to the private key (which should be stored in a Vault)
 #[derive(Clone, Debug, Zeroize)]
 #[zeroize(drop)]
 pub struct KeyPair {
