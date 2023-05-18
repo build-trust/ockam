@@ -11,7 +11,7 @@ use super::Result;
 /// One item can be set as the "default" item, which is used in some CLI commands when no
 /// argument is provided for that type of `Item`.
 #[async_trait]
-pub trait StateDirTrait: Sized {
+pub trait StateDirTrait: Sized + Send + Sync {
     type Item: StateItemTrait;
     const DEFAULT_FILENAME: &'static str;
     const DIR_NAME: &'static str;
@@ -27,6 +27,22 @@ pub trait StateDirTrait: Sized {
     }
     fn has_data_dir() -> bool {
         Self::HAS_DATA_DIR
+    }
+
+    /// Load the root configuration
+    /// and migrate each entry if necessary
+    async fn init(root_path: &Path) -> Result<Self> {
+        let root = Self::load(root_path)?;
+        let root_dir = root.dir();
+        for entry in std::fs::read_dir(root_dir)? {
+            let item_path = root.path(&file_stem(&entry?.path())?);
+            root.migrate(item_path.as_path()).await?;
+        }
+        Ok(root)
+    }
+
+    async fn migrate(&self, _item_path: &Path) -> Result<()> {
+        Ok(())
     }
 
     fn load(root_path: &Path) -> Result<Self> {
@@ -164,7 +180,7 @@ pub trait StateDirTrait: Sized {
 /// This trait defines the methods to retrieve an item from a state directory.
 /// The details of the item are defined in the `Config` type.
 #[async_trait]
-pub trait StateItemTrait: Sized {
+pub trait StateItemTrait: Sized + Send {
     type Config: Serialize + for<'a> Deserialize<'a> + Send;
 
     /// Create a new item with the given config.

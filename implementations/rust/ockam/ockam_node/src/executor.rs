@@ -113,6 +113,19 @@ impl Executor {
         Ok(res)
     }
 
+    /// Execute a future and block until a result is returned
+    #[cfg(feature = "std")]
+    pub fn execute_future<F>(&mut self, future: F) -> Result<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        let join_body = self.rt.spawn(future);
+        self.rt
+            .block_on(join_body)
+            .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))
+    }
+
     #[cfg(not(feature = "std"))]
     /// Initialise and run the Ockam node executor context
     ///
