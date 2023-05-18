@@ -1,5 +1,5 @@
 use crate::{
-    AsymmetricVault, Buffer, EphemeralSecretsStore, PersistentSecretsStore, PublicKey, Secret,
+    AsymmetricVault, Buffer, EphemeralSecretsStore, Kms, PersistentSecretsStore, PublicKey, Secret,
     SecretAttributes, SecretsStore, SecretsStoreReader, Signature, Signer, StoredSecret,
     SymmetricVault, VaultBuilder, VaultKms,
 };
@@ -8,6 +8,8 @@ use ockam_core::compat::fmt::Vec;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, KeyId, Result};
 use ockam_node::KeyValueStorage;
+#[cfg(feature = "std")]
+use std::path::Path;
 
 /// A Vault provides high-level interfaces to manage secrets:
 ///
@@ -75,6 +77,25 @@ impl Vault {
     /// This is used in examples only where we don't need to really persist secrets
     pub fn create() -> Arc<Vault> {
         Vault::builder().build()
+    }
+
+    /// Create a new vault with a persistent storage
+    #[cfg(feature = "std")]
+    pub async fn create_with_persistent_storage_path(path: &Path) -> Result<Arc<Vault>> {
+        Ok(Vault::builder()
+            .with_persistent_storage_path(path)
+            .await?
+            .build())
+    }
+
+    /// Create a new vault with a specific storage
+    pub fn create_with_persistent_storage(storage: VaultStorage) -> Arc<Vault> {
+        Vault::builder().with_persistent_storage(storage).build()
+    }
+
+    /// Create a new vault with a kms backend
+    pub fn create_with_kms(kms: Arc<dyn Kms>) -> Arc<Vault> {
+        Vault::builder().with_kms(kms).build()
     }
 
     /// The sha256 is a constant function which must always refer to the same implementation
@@ -238,9 +259,7 @@ mod tests {
         let storage = PersistentStorage::create(create_temp_file().as_path())
             .await
             .unwrap();
-        let vault = Vault::builder()
-            .with_persistent_storage(storage.clone())
-            .build();
+        let vault = Vault::create_with_persistent_storage(storage.clone());
 
         // create 3 secrets, 2 persistent, one ephemeral
         let attributes1 = SecretAttributes::Ed25519;
@@ -257,7 +276,7 @@ mod tests {
         let key_id2 = key_id2.unwrap();
         let key_id3 = key_id3.unwrap();
 
-        let vault = Vault::builder().with_persistent_storage(storage).build();
+        let vault = Vault::create_with_persistent_storage(storage);
         let (attributes12, attributes22, attributes32) = join!(
             vault.get_secret_attributes(&key_id1),
             vault.get_secret_attributes(&key_id2),

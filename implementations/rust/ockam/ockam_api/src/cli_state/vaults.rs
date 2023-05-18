@@ -41,14 +41,12 @@ impl VaultState {
     pub async fn get(&self) -> Result<Arc<Vault>> {
         if self.config.aws_kms {
             let config = AwsKmsConfig::new();
-            Ok(Vault::builder()
-                .with_kms(AwsKms::create(config).await?)
-                .build())
+            Ok(Vault::create_with_kms(AwsKms::create(config).await?))
         } else {
-            Ok(Vault::builder()
-                .with_persistent_storage_path(self.vault_file_path().as_path())
-                .await?
-                .build())
+            let vault =
+                Vault::create_with_persistent_storage_path(self.vault_file_path().as_path())
+                    .await?;
+            Ok(vault)
         }
     }
 
@@ -65,10 +63,7 @@ impl VaultState {
 
     pub async fn identities_vault(&self) -> Result<Arc<dyn IdentitiesVault>> {
         let path = self.vault_file_path().clone();
-        let vault = Vault::builder()
-            .with_persistent_storage_path(path.as_path())
-            .await?
-            .build();
+        let vault = Vault::create_with_persistent_storage_path(path.as_path()).await?;
         Ok(vault)
     }
 

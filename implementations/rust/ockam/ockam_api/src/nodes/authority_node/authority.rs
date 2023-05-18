@@ -309,10 +309,7 @@ impl Authority {
     ) -> Result<Arc<dyn IdentitiesVault>> {
         let vault_path = &configuration.vault_path;
         Self::create_ockam_directory_if_necessary(vault_path)?;
-        let vault: Arc<dyn IdentitiesVault> = Vault::builder()
-            .with_persistent_storage_path(vault_path)
-            .await?
-            .build();
+        let vault = Vault::create_with_persistent_storage_path(vault_path).await?;
         Ok(vault)
     }
 
