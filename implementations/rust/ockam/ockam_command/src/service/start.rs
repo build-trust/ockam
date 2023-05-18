@@ -25,6 +25,10 @@ pub struct StartCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum StartSubCommand {
+    Hop {
+        #[arg(default_value_t = hop_default_addr())]
+        addr: String,
+    },
     Identity {
         #[arg(default_value_t = identity_default_addr())]
         addr: String,
@@ -54,6 +58,10 @@ pub enum StartSubCommand {
         #[arg(long)]
         project: String,
     },
+}
+
+fn hop_default_addr() -> String {
+    DefaultAddress::HOP_SERVICE.to_string()
 }
 
 fn identity_default_addr() -> String {
@@ -98,6 +106,10 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
     let tcp = TcpTransport::create(ctx).await?;
     let addr = match cmd.create_subcommand {
+        StartSubCommand::Hop { addr, .. } => {
+            start_hop_service(ctx, &opts, &node_name, &addr, Some(&tcp)).await?;
+            addr
+        }
         StartSubCommand::Identity { addr, .. } => {
             start_identity_service(ctx, &opts, &node_name, &addr, Some(&tcp)).await?;
             addr
@@ -156,6 +168,18 @@ where
         Some(Status::Ok) => Ok(()),
         _ => Err(anyhow!("Failed to start {serv_name} service").into()),
     }
+}
+
+/// Public so `ockam_command::node::create` can use it.
+pub async fn start_hop_service(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    serv_addr: &str,
+    tcp: Option<&'_ TcpTransport>,
+) -> Result<()> {
+    let req = api::start_hop_service(serv_addr);
+    start_service_impl(ctx, opts, node_name, "Hop", req, tcp).await
 }
 
 /// Public so `ockam_command::node::create` can use it.

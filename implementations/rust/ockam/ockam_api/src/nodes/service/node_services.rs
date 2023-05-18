@@ -8,6 +8,7 @@ use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
+use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, AllowAll, IncomingAccessControl};
 use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
 use ockam_multiaddr::proto::Project;
@@ -183,6 +184,12 @@ impl NodeManager {
         if self.registry.hop_services.contains_key(&addr) {
             return Err(ApiError::generic("Hop service exists at this address"));
         }
+
+        ctx.flow_controls().add_consumer(
+            addr.clone(),
+            &self.api_transport.flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
 
         ctx.start_worker(
             addr.clone(),

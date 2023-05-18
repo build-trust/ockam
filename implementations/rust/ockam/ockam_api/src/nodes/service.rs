@@ -412,8 +412,6 @@ impl NodeManager {
         );
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
-        self.start_hop_service_impl(ctx, DefaultAddress::HOP_SERVICE.into())
-            .await?;
 
         ForwardingService::create(
             ctx,
