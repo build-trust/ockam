@@ -69,17 +69,18 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) fn get_tcp_connections<'a>(
+    pub(super) fn get_tcp_connections(
         &self,
-        req: &Request<'a>,
+        req: &Request,
         tcp: &TcpTransport,
-    ) -> ResponseBuilder<TransportList<'a>> {
+    ) -> ResponseBuilder<TransportList> {
         let map = |info: &TcpSenderInfo| {
             TransportStatus::new(ApiTransport {
                 tt: TransportType::Tcp,
                 tm: (*info.mode()).into(),
                 socket_address: info.socket_address(),
-                worker_address: info.address().clone(),
+                worker_address: info.address().to_string(),
+                processor_address: info.receiver_address().to_string(),
                 flow_control_id: info.flow_control_id().clone(),
             })
         };
@@ -93,12 +94,12 @@ impl NodeManagerWorker {
         ))
     }
 
-    pub(super) fn get_tcp_connection<'a>(
+    pub(super) fn get_tcp_connection(
         &self,
-        req: &Request<'a>,
+        req: &Request,
         tcp: &TcpTransport,
         address: String,
-    ) -> ResponseBuilder<TransportStatus<'a>> {
+    ) -> ResponseBuilder<TransportStatus> {
         let sender = match Self::find_connection(tcp, address) {
             None => {
                 return Response::bad_request(req.id()).body(TransportStatus::new(ApiTransport {
@@ -106,6 +107,7 @@ impl NodeManagerWorker {
                     tm: TransportMode::Outgoing,
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
+                    processor_address: "<none>".into(),
                     flow_control_id: FlowControls::generate_id(), // FIXME
                 }));
             }
@@ -116,24 +118,26 @@ impl NodeManagerWorker {
             tt: TransportType::Tcp,
             tm: (*sender.mode()).into(),
             socket_address: sender.socket_address(),
-            worker_address: sender.address().clone(),
+            worker_address: sender.address().to_string(),
+            processor_address: sender.receiver_address().to_string(),
             flow_control_id: sender.flow_control_id().clone(),
         });
 
         Response::ok(req.id()).body(status)
     }
 
-    pub(super) fn get_tcp_listeners<'a>(
+    pub(super) fn get_tcp_listeners(
         &self,
-        req: &Request<'a>,
+        req: &Request,
         tcp: &TcpTransport,
-    ) -> ResponseBuilder<TransportList<'a>> {
+    ) -> ResponseBuilder<TransportList> {
         let map = |info: &TcpListenerInfo| {
             TransportStatus::new(ApiTransport {
                 tt: TransportType::Tcp,
                 tm: TransportMode::Listen,
                 socket_address: info.socket_address(),
-                worker_address: info.address().clone(),
+                worker_address: "<none>".into(),
+                processor_address: info.address().to_string(),
                 flow_control_id: info.flow_control_id().clone(),
             })
         };
@@ -143,12 +147,12 @@ impl NodeManagerWorker {
         ))
     }
 
-    pub(super) fn get_tcp_listener<'a>(
+    pub(super) fn get_tcp_listener(
         &self,
-        req: &Request<'a>,
+        req: &Request,
         tcp: &TcpTransport,
         address: String,
-    ) -> ResponseBuilder<TransportStatus<'a>> {
+    ) -> ResponseBuilder<TransportStatus> {
         let listener = match Self::find_listener(tcp, address) {
             None => {
                 return Response::bad_request(req.id()).body(TransportStatus::new(ApiTransport {
@@ -156,6 +160,7 @@ impl NodeManagerWorker {
                     tm: TransportMode::Listen,
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
+                    processor_address: "<none>".into(),
                     flow_control_id: FlowControls::generate_id(), // FIXME
                 }));
             }
@@ -166,7 +171,8 @@ impl NodeManagerWorker {
             tt: TransportType::Tcp,
             tm: TransportMode::Listen,
             socket_address: listener.socket_address(),
-            worker_address: listener.address().clone(),
+            worker_address: "<none>".into(),
+            processor_address: listener.address().to_string(),
             flow_control_id: listener.flow_control_id().clone(),
         });
 
@@ -178,8 +184,8 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         _ctx: &Context,
-    ) -> Result<ResponseBuilder<TransportStatus<'a>>> {
-        let node_manager = self.node_manager.write().await;
+    ) -> Result<ResponseBuilder<TransportStatus>> {
+        let node_manager = self.node_manager.read().await;
         let CreateTcpConnection { addr, .. } = dec.decode()?;
 
         info!("Handling request to create a new TCP connection: {}", addr);
@@ -200,7 +206,8 @@ impl NodeManagerWorker {
                     tt: Tcp,
                     tm: Outgoing,
                     socket_address: *connection.socket_address(),
-                    worker_address: connection.sender_address().clone(),
+                    worker_address: connection.sender_address().to_string(),
+                    processor_address: connection.receiver_address().to_string(),
                     flow_control_id: connection.flow_control_id().clone(),
                 };
                 Response::ok(req.id()).body(TransportStatus::new(api_transport))
@@ -212,6 +219,7 @@ impl NodeManagerWorker {
                     tm: Outgoing,
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
+                    processor_address: "<none>".into(),
                     flow_control_id: FlowControls::generate_id(), // FIXME
                 }))
             }
@@ -224,7 +232,7 @@ impl NodeManagerWorker {
         &self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<TransportStatus<'a>>> {
+    ) -> Result<ResponseBuilder<TransportStatus>> {
         let node_manager = self.node_manager.read().await;
         let CreateTcpListener { addr, .. } = dec.decode()?;
 
@@ -241,7 +249,8 @@ impl NodeManagerWorker {
                     tt: Tcp,
                     tm: Listen,
                     socket_address: *listener.socket_address(),
-                    worker_address: listener.processor_address().clone(),
+                    worker_address: "<none>".into(),
+                    processor_address: listener.processor_address().to_string(),
                     flow_control_id: listener.flow_control_id().clone(),
                 };
                 Response::ok(req.id()).body(TransportStatus::new(api_transport))
@@ -253,6 +262,7 @@ impl NodeManagerWorker {
                     tm: Listen,
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
+                    processor_address: "<none>".into(),
                     flow_control_id: FlowControls::generate_id(), // FIXME
                 }))
             }
