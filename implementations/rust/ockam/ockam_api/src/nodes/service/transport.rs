@@ -6,7 +6,7 @@ use crate::nodes::service::ApiTransport;
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::flow_control::FlowControls;
+use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::Address;
 use ockam_node::Context;
 use ockam_transport_tcp::{
@@ -183,7 +183,7 @@ impl NodeManagerWorker {
         &self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-        _ctx: &Context,
+        ctx: &Context,
     ) -> Result<ResponseBuilder<TransportStatus>> {
         let node_manager = self.node_manager.read().await;
         let CreateTcpConnection { addr, .. } = dec.decode()?;
@@ -192,6 +192,16 @@ impl NodeManagerWorker {
         let socket_addr = addr.to_string();
 
         let options = TcpConnectionOptions::new();
+
+        // Add all Hop workers as consumers for Demo purposes
+        // Production nodes should not run any Hop workers
+        for hop in node_manager.registry.hop_services.keys() {
+            ctx.flow_controls().add_consumer(
+                hop.clone(),
+                &options.producer_flow_control_id(),
+                FlowControlPolicy::ProducerAllowMultiple,
+            );
+        }
 
         let res = node_manager
             .tcp_transport

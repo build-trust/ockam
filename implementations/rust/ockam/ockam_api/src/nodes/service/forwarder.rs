@@ -41,6 +41,12 @@ impl NodeManagerWorker {
         let connection_instance =
             NodeManager::connect(self.node_manager.clone(), connection).await?;
 
+        // Add all Hop workers as consumers for Demo purposes
+        // Production nodes should not run any Hop workers
+        for hop in manager.read().await.registry.hop_services.keys() {
+            connection_instance.add_consumer(ctx, hop);
+        }
+
         let options = RemoteForwarderOptions::new();
 
         let route = local_multiaddr_to_route(&connection_instance.normalized_addr)

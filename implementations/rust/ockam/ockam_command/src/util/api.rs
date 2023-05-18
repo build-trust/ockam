@@ -17,7 +17,8 @@ use ockam_api::config::cli::TrustContextConfig;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartIdentityServiceRequest, StartOktaIdentityProviderRequest, StartVerifierService,
+    StartHopServiceRequest, StartIdentityServiceRequest, StartOktaIdentityProviderRequest,
+    StartVerifierService,
 };
 use ockam_api::nodes::*;
 use ockam_api::DefaultAddress;
@@ -133,6 +134,12 @@ pub(crate) fn show_secure_channel_listener(
 ) -> RequestBuilder<'static, models::secure_channel::ShowSecureChannelListenerRequest<'static>> {
     let payload = models::secure_channel::ShowSecureChannelListenerRequest::new(addr);
     Request::get("/node/show_secure_channel_listener").body(payload)
+}
+
+/// Construct a request to start a Hop Service
+pub(crate) fn start_hop_service(addr: &str) -> RequestBuilder<'static, StartHopServiceRequest> {
+    let payload = StartHopServiceRequest::new(addr);
+    Request::post(node_service(DefaultAddress::HOP_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Identity Service
