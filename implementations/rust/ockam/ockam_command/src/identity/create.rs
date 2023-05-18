@@ -70,7 +70,7 @@ impl CreateCommand {
             .await?;
 
         let identifier = identity.identifier();
-        output.push_str(&format!("Identity created: {}", identifier.clone()));
+        output.push_str(&format!("Identity created: {}", identifier));
 
         options
             .terminal

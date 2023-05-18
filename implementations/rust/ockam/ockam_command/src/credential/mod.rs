@@ -68,7 +68,7 @@ pub async fn validate_encoded_cred(
 ) -> Result<()> {
     let vault = opts.state.vaults.get(vault)?.get().await?;
     let identities = opts.state.get_identities(vault).await?;
-    let identity = identities.repository().get_identity(&issuer).await?;
+    let identity = identities.repository().get_identity(issuer).await?;
 
     let bytes = match hex::decode(encoded_cred) {
         Ok(b) => b,

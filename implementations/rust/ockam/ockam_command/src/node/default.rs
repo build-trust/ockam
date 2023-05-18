@@ -28,7 +28,7 @@ impl DefaultCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, cmd.node_name.clone())?;
+    let node_name = get_node_name(&opts.state, cmd.node_name)?;
     if check_default(&opts, &node_name) {
         println!("Already set to default node");
     } else {
