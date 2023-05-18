@@ -26,6 +26,7 @@ defmodule Ockam.SecureChannel.Channel do
   use Ockam.AsymmetricWorker
   use TypedStruct
 
+  alias Ockam.Credential.AttributeStorageETS, as: AttributeStorage
   alias Ockam.Identity
   alias Ockam.Identity.TrustPolicy
   alias Ockam.Message
@@ -58,6 +59,8 @@ defmodule Ockam.SecureChannel.Channel do
           | {:authorization, Ockam.Worker.Authorization.config()}
           | {:additional_metadata, map()}
           | {:idle_timeout, non_neg_integer() | :infinity}
+          | {:credential_verifier, {module :: atom(), authorities :: [Identity.t()]}}
+          | {:credentials, [binary()]}
 
   # Note: we could split each of these into their own file as proper modules and delegate
   # the handling of messages to them.  We can do that after the 3-packet handshake that
@@ -89,6 +92,21 @@ defmodule Ockam.SecureChannel.Channel do
     field(:trust_policies, trust_policies())
     field(:additional_metadata, map())
     field(:channel_state, Handshaking.t() | Established.t())
+
+    field(
+      :credential_verifier,
+      {module :: atom(), authorities :: %{(identity_id :: binary()) => identity_data :: binary()}}
+    )
+
+    field(:credentials, [binary()])
+  end
+
+  defmodule CredentialRejecter do
+    @moduledoc """
+    A verifier that just reject every credential.  It's the one used by default if none is specified.
+    """
+    def verify(_credential, _peer_identity_id, _authorities),
+      do: {:error, :no_credential_verified_configured}
   end
 
   @handshake_timeout 30_000
@@ -292,12 +310,17 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  defp setup_noise_key_exchange(vault, opts, role, identity, vault_name) do
+  defp setup_noise_key_exchange(vault, opts, role, identity, vault_name, credentials) do
     with {:ok, static_keypair} <- get_static_keypair(vault, opts),
          contact_data = Identity.get_data(identity),
          {:ok, signature} <-
            Identity.create_signature(identity, static_keypair.public, vault_name) do
-      proof = %IdentityProof{contact: contact_data, signature: signature, credentials: []}
+      proof = %IdentityProof{
+        contact: contact_data,
+        signature: signature,
+        credentials: credentials
+      }
+
       encoded_proof = IdentityProof.encode(proof)
       payloads = noise_payloads(role, encoded_proof)
       options = [vault: vault, payloads: payloads, static_keypair: static_keypair]
@@ -310,6 +333,18 @@ defmodule Ockam.SecureChannel.Channel do
       {:ok, vault} -> {:ok, vault}
       :error -> Ockam.Vault.Software.init()
     end
+  end
+
+  defp credential_verifier_from_opts(options) do
+    {mod, authorities} = Keyword.get(options, :credential_verifier, {CredentialRejecter, []})
+
+    authorities =
+      Map.new(authorities, fn authority_identity ->
+        {:ok, identity_id} = Identity.validate_identity_change_history(authority_identity)
+        {identity_id, Identity.get_data(authority_identity)}
+      end)
+
+    {:ok, {mod, authorities}}
   end
 
   defp identity_from_opts(options) do
@@ -337,12 +372,21 @@ defmodule Ockam.SecureChannel.Channel do
     key_exchange_timeout = Keyword.get(options, :key_exchange_timeout, @handshake_timeout)
     vault_name = Keyword.get(options, :vault_name)
     noise_key_exchange_options = Keyword.take(encryption_options, [:static_keypair])
+    credentials = Keyword.get(options, :credentials, [])
 
     with {:ok, role} <- Keyword.fetch(options, :role),
          {:ok, vault} <- vault_from_opts(encryption_options),
          {:ok, identity} <- identity_from_opts(options),
+         {:ok, credential_verifier} <- credential_verifier_from_opts(options),
          {:ok, key_exchange_state} <-
-           setup_noise_key_exchange(vault, noise_key_exchange_options, role, identity, vault_name) do
+           setup_noise_key_exchange(
+             vault,
+             noise_key_exchange_options,
+             role,
+             identity,
+             vault_name,
+             credentials
+           ) do
       {:ok, tref} = :timer.apply_after(key_exchange_timeout, Ockam.Node, :stop, [address])
 
       state = %Channel{
@@ -352,7 +396,8 @@ defmodule Ockam.SecureChannel.Channel do
         identity: identity,
         vault_name: vault_name,
         trust_policies: trust_policies,
-        additional_metadata: additional_metadata
+        additional_metadata: additional_metadata,
+        credential_verifier: credential_verifier
       }
 
       complete_inner_setup(state, options, key_exchange_state, vault, tref)
@@ -396,9 +441,14 @@ defmodule Ockam.SecureChannel.Channel do
          {:ok, peer_identity, peer_identity_id} <-
            Ockam.Identity.validate_contact_data(state.identity, identity_proof.contact),
          :ok <- Ockam.Identity.verify_signature(peer_identity, identity_proof.signature, rs),
-         :ok <- check_trust(state.trust_policies, state.identity, peer_identity, peer_identity_id) do
-      ## TODO:  process received credentials
-
+         :ok <-
+           check_trust(state.trust_policies, state.identity, peer_identity, peer_identity_id),
+         :ok <-
+           process_credentials(
+             identity_proof.credentials,
+             peer_identity_id,
+             state.credential_verifier
+           ) do
       {encrypt_st, decrypt_st} = split(state.channel_state.vault, k1, k2, state.role)
 
       {:ok, :cancel} = :timer.cancel(state.channel_state.timer)
@@ -422,6 +472,21 @@ defmodule Ockam.SecureChannel.Channel do
         {:error, {:rejected_identity_proof, error}}
     end
   end
+
+  defp process_credentials([], _peer_identity_id, _cred_verifier), do: :ok
+
+  defp process_credentials([cred], peer_identity_id, {cred_verifier_module, authorities}) do
+    case cred_verifier_module.verify(cred, peer_identity_id, authorities) do
+      {:ok, attribute_set} ->
+        AttributeStorage.put_attribute_set(peer_identity_id, attribute_set)
+
+      other ->
+        {:error, {:rejected_credential, other}}
+    end
+  end
+
+  defp process_credentials(_creds, _peer_identity_id, _cred_verifier),
+    do: {:error, :multiple_credentials}
 
   defp split(vault, k1, k2, :initiator),
     do: {Encryptor.new(vault, k2, 0), Decryptor.new(vault, k1, 0)}
