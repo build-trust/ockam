@@ -1,4 +1,3 @@
-#[cfg(feature = "rustcrypto")]
 use crate::constants::NISTP256_SECRET_LENGTH_U32;
 use crate::constants::{
     AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32, CURVE25519_SECRET_LENGTH_U32,
@@ -26,7 +25,6 @@ pub enum SecretAttributes {
     /// X225519 secret with length 32
     X25519,
     /// NistP256 secret with length 32
-    #[cfg(feature = "rustcrypto")]
     NistP256,
 }
 
@@ -39,7 +37,6 @@ impl SecretAttributes {
             SecretAttributes::Aes256 => SecretType::Aes,
             SecretAttributes::Ed25519 => SecretType::Ed25519,
             SecretAttributes::X25519 => SecretType::X25519,
-            #[cfg(feature = "rustcrypto")]
             SecretAttributes::NistP256 => SecretType::NistP256,
         }
     }
@@ -52,7 +49,6 @@ impl SecretAttributes {
             SecretAttributes::Aes256 => AES256_SECRET_LENGTH_U32,
             SecretAttributes::Ed25519 => CURVE25519_SECRET_LENGTH_U32,
             SecretAttributes::X25519 => CURVE25519_SECRET_LENGTH_U32,
-            #[cfg(feature = "rustcrypto")]
             SecretAttributes::NistP256 => NISTP256_SECRET_LENGTH_U32,
         }
     }
@@ -72,7 +68,7 @@ pub enum SecretType {
     /// Ed 22519 key
     #[n(4)] Ed25519,
     /// NIST P-256 key
-    #[cfg(feature = "rustcrypto")] #[n(5)] NistP256
+    #[n(5)] NistP256
 }
 
 impl Display for SecretType {
@@ -82,7 +78,6 @@ impl Display for SecretType {
             SecretType::Aes => write!(f, "Aes"),
             SecretType::X25519 => write!(f, "X25519"),
             SecretType::Ed25519 => write!(f, "Ed25519"),
-            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => write!(f, "NistP256"),
         }
     }

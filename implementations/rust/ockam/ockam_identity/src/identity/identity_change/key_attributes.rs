@@ -31,7 +31,6 @@ impl KeyAttributes {
             }
             SecretType::X25519 => SecretAttributes::X25519,
             SecretType::Ed25519 => SecretAttributes::Ed25519,
-            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => SecretAttributes::NistP256,
         }
     }

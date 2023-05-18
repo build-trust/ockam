@@ -117,7 +117,6 @@ impl Vault {
             SecretType::Buffer | SecretType::Aes | SecretType::Ed25519 => {
                 Err(VaultError::UnknownEcdhKeyType.into())
             }
-            #[cfg(feature = "rustcrypto")]
             SecretType::NistP256 => Err(VaultError::UnknownEcdhKeyType.into()),
         }
     }
