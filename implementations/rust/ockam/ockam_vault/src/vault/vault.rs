@@ -1,7 +1,7 @@
 use crate::{
-    AsymmetricVault, Buffer, EphemeralSecretsStore, Kms, PersistentSecretsStore, PublicKey, Secret,
-    SecretAttributes, SecretsStore, SecretsStoreReader, Signature, Signer, StoredSecret,
-    SymmetricVault, VaultBuilder, VaultKms,
+    AsymmetricVault, Buffer, EphemeralSecretsStore, PersistentSecretsStore, PublicKey, Secret,
+    SecretAttributes, SecretsStore, SecretsStoreReader, SecurityModule, Signature, Signer,
+    StoredSecret, SymmetricVault, VaultBuilder, VaultSecurityModule,
 };
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::fmt::Vec;
@@ -93,21 +93,23 @@ impl Vault {
         Vault::builder().with_persistent_storage(storage).build()
     }
 
-    /// Create a new vault with a kms backend
-    pub fn create_with_kms(kms: Arc<dyn Kms>) -> Arc<Vault> {
-        Vault::builder().with_kms(kms).build()
+    /// Create a new vault with a specific security module backend
+    pub fn create_with_security_module(security_module: Arc<dyn SecurityModule>) -> Arc<Vault> {
+        Vault::builder()
+            .with_security_module(security_module)
+            .build()
     }
 
     /// The sha256 is a constant function which must always refer to the same implementation
     /// wherever it is used
     pub fn sha256(data: &[u8]) -> [u8; 32] {
-        VaultKms::sha256(data)
+        VaultSecurityModule::sha256(data)
     }
 
     /// This function is compute_sha256 used in the ockam_vault_ffi crate
     /// where we always call functions on a Vault instance
     pub fn compute_sha256(&self, data: &[u8]) -> [u8; 32] {
-        VaultKms::sha256(data)
+        VaultSecurityModule::sha256(data)
     }
 }
 

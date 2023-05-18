@@ -2,15 +2,19 @@ use crate::{PublicKey, SecretAttributes, Signature};
 use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, KeyId, Result};
 
-/// This trait provides the main functions of a KMS
+/// A SecurityModule provides several functions related to secrets:
 ///   - create and persist secrets
 ///   - delete secrets
 ///   - return the public key for a given key id
 ///   - return the key id for a given public key
 ///   - use a secret to sign a message
 ///   - use a public key to verify a message signature
+///
+/// The concrete implementations for a security module can range from full KMSes like the AWS KMS
+/// to yubikeys or hardware security modules
+///
 #[async_trait]
-pub trait Kms: Sync + Send {
+pub trait SecurityModule: Sync + Send {
     /// Create a new secret and return its key id
     async fn create_secret(&self, attributes: SecretAttributes) -> Result<KeyId>;
 

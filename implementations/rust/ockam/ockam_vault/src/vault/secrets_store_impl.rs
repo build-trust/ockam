@@ -1,13 +1,14 @@
 use crate::{
-    EphemeralSecretsStore, Implementation, Kms, PersistentSecretsStore, PublicKey, Secret,
-    SecretAttributes, SecretsStoreReader, Signature, StoredSecret, VaultError, VaultKms,
+    EphemeralSecretsStore, Implementation, PersistentSecretsStore, PublicKey, Secret,
+    SecretAttributes, SecretsStoreReader, SecurityModule, Signature, StoredSecret, VaultError,
+    VaultSecurityModule,
 };
 use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, KeyId, Result};
 use ockam_node::KeyValueStorage;
 
 #[derive(Clone)]
 pub struct VaultSecretsStore {
-    kms: Arc<dyn Kms>,
+    security_module: Arc<dyn SecurityModule>,
     ephemeral_secrets: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>,
 }
 
@@ -15,11 +16,11 @@ impl Implementation for VaultSecretsStore {}
 
 impl VaultSecretsStore {
     pub fn new(
-        kms: Arc<dyn Kms>,
+        security_module: Arc<dyn SecurityModule>,
         ephemeral_secrets: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>,
     ) -> VaultSecretsStore {
         VaultSecretsStore {
-            kms,
+            security_module,
             ephemeral_secrets,
         }
     }
@@ -28,7 +29,7 @@ impl VaultSecretsStore {
 #[async_trait]
 impl EphemeralSecretsStore for VaultSecretsStore {
     async fn create_ephemeral_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        let secret = VaultKms::create_secret_from_attributes(attributes)?;
+        let secret = VaultSecurityModule::create_secret_from_attributes(attributes)?;
         self.import_ephemeral_secret(secret, attributes).await
     }
 
@@ -37,7 +38,7 @@ impl EphemeralSecretsStore for VaultSecretsStore {
         secret: Secret,
         attributes: SecretAttributes,
     ) -> Result<KeyId> {
-        let key_id = VaultKms::compute_key_id(&secret, &attributes).await?;
+        let key_id = VaultSecurityModule::compute_key_id(&secret, &attributes).await?;
         let stored_secret = StoredSecret::create(secret, attributes)?;
         self.ephemeral_secrets
             .put(key_id.clone(), stored_secret)
@@ -68,12 +69,12 @@ impl EphemeralSecretsStore for VaultSecretsStore {
 #[async_trait]
 impl PersistentSecretsStore for VaultSecretsStore {
     async fn create_persistent_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        self.kms.create_secret(attributes).await
+        self.security_module.create_secret(attributes).await
     }
 
     /// Remove secret from in memory storage
     async fn delete_persistent_secret(&self, key_id: KeyId) -> Result<bool> {
-        self.kms.delete_secret(key_id.clone()).await
+        self.security_module.delete_secret(key_id.clone()).await
     }
 }
 
@@ -85,7 +86,7 @@ impl SecretsStoreReader for VaultSecretsStore {
         if let Some(stored_secret) = self.ephemeral_secrets.get(key_id).await? {
             Ok(stored_secret.attributes())
         } else {
-            self.kms.get_attributes(key_id).await
+            self.security_module.get_attributes(key_id).await
         }
     }
 
@@ -93,41 +94,41 @@ impl SecretsStoreReader for VaultSecretsStore {
     async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
         // search in the ephemeral secrets first, otherwise export the public key from the Kms
         if let Some(stored_secret) = self.ephemeral_secrets.get(key_id).await? {
-            VaultKms::compute_public_key_from_secret(stored_secret)
+            VaultSecurityModule::compute_public_key_from_secret(stored_secret)
         } else {
-            self.kms.get_public_key(key_id).await
+            self.security_module.get_public_key(key_id).await
         }
     }
 
     async fn get_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {
-        self.kms.get_key_id(public_key).await
+        self.security_module.get_key_id(public_key).await
     }
 }
 
 #[async_trait]
-impl Kms for VaultSecretsStore {
+impl SecurityModule for VaultSecretsStore {
     async fn create_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        self.kms.create_secret(attributes).await
+        self.security_module.create_secret(attributes).await
     }
 
     async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
-        self.kms.get_public_key(key_id).await
+        self.security_module.get_public_key(key_id).await
     }
 
     async fn get_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {
-        self.kms.get_key_id(public_key).await
+        self.security_module.get_key_id(public_key).await
     }
 
     async fn get_attributes(&self, key_id: &KeyId) -> Result<SecretAttributes> {
-        self.kms.get_attributes(key_id).await
+        self.security_module.get_attributes(key_id).await
     }
 
     async fn delete_secret(&self, key_id: KeyId) -> Result<bool> {
-        self.kms.delete_secret(key_id).await
+        self.security_module.delete_secret(key_id).await
     }
 
     async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature> {
-        self.kms.sign(key_id, message).await
+        self.security_module.sign(key_id, message).await
     }
 
     async fn verify(
@@ -136,7 +137,9 @@ impl Kms for VaultSecretsStore {
         message: &[u8],
         signature: &Signature,
     ) -> Result<bool> {
-        self.kms.verify(public_key, message, signature).await
+        self.security_module
+            .verify(public_key, message, signature)
+            .await
     }
 }
 

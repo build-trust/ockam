@@ -2,28 +2,28 @@ use crate::vault::aws_kms_client::{AwsKmsClient, AwsKmsConfig};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, KeyId, Result};
 use ockam_vault::SecretType::NistP256;
-use ockam_vault::{Kms, PublicKey, SecretAttributes, Signature, VaultError};
+use ockam_vault::{PublicKey, SecretAttributes, SecurityModule, Signature, VaultError};
 
-/// Kms implementation using an AWS KMS
-pub struct AwsKms {
+/// Security module implementation using an AWS KMS
+pub struct AwsSecurityModule {
     client: AwsKmsClient,
 }
 
-impl AwsKms {
-    /// Create a new AWS KMS
+impl AwsSecurityModule {
+    /// Create a new AWS security module
     pub async fn new(config: AwsKmsConfig) -> Result<Self> {
-        Ok(AwsKms {
+        Ok(AwsSecurityModule {
             client: AwsKmsClient::new(config).await?,
         })
     }
-    /// Create a new AWS KMS
-    pub async fn create(config: AwsKmsConfig) -> Result<Arc<dyn Kms>> {
+    /// Create a new AWS security module
+    pub async fn create(config: AwsKmsConfig) -> Result<Arc<dyn SecurityModule>> {
         Ok(Arc::new(Self::new(config).await?))
     }
 }
 
 #[async_trait]
-impl Kms for AwsKms {
+impl SecurityModule for AwsSecurityModule {
     async fn create_secret(&self, attributes: SecretAttributes) -> Result<KeyId> {
         if attributes.secret_type() == NistP256 {
             self.client.create_key().await
