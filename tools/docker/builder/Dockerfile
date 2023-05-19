@@ -79,26 +79,10 @@ RUN set -xe; \
 # set user to root in order to be able to install global dependencies
     npm --global config set user root && \
     npm install --global @commitlint/cli@${COMMITLINT_VERSION}; \
-# Setup rust
+# Setup rust rerequisites
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes \
       libssl-dev pkg-config procps qemu-system-arm libdbus-1-dev cmake; \
-    curl --proto '=https' --tlsv1.2 -sSOL \
-      "https://static.rust-lang.org/rustup/archive/${RUSTUP_INIT_VERSION}/${OS}/rustup-init"; \
-    echo "${RUSTUP_INIT_SHA256}  rustup-init" | sha256sum -c -; \
-    chmod +x rustup-init; \
-    ./rustup-init -y --no-modify-path --profile minimal \
-      --default-toolchain "$RUST_VERSION" --default-host ${OS}; \
-    rm rustup-init; \
-    chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
-    PATH="${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:$PATH"; \
-    rustup component add rustfmt; \
-    rustup install nightly; \
-    rustup component add clippy; \
-    cargo install --locked cargo-deny; \
-    cargo install --locked cargo-nextest; \
-    cargo install --locked cargo-readme; \
-    chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
@@ -165,6 +149,17 @@ RUN set -xe; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
+WORKDIR /work
+RUN curl --proto '=https' --tlsv1.2 -sSOL \
+      "https://static.rust-lang.org/rustup/archive/${RUSTUP_INIT_VERSION}/${OS}/rustup-init"; \
+    echo "${RUSTUP_INIT_SHA256}  rustup-init" | sha256sum -c -; \
+    chmod +x rustup-init; \
+    ./rustup-init -y; \
+    rm rustup-init; \
+    rustup self update
+COPY rust-toolchain.toml .
+RUN rustup install
+
 ENV PATH="${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:${MOLD_HOME}/bin:$PATH" \
     AR=/usr/bin/ar \
     AS=/usr/bin/as \
@@ -174,4 +169,3 @@ ENV PATH="${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:${MOLD_HOME}/bi
     LANG=en_US.UTF-8 \
     BATS_LIB=/usr/lib/bats
 
-WORKDIR /work
