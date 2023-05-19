@@ -9,11 +9,8 @@ use crate::identity::{
 };
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::{
-    KeyId, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32,
-};
 use ockam_core::{Encodable, KeyId, Result};
-use ockam_vault::Vault;
+use ockam_vault::{SecretAttributes, Vault};
 
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {
@@ -157,17 +154,13 @@ impl IdentitiesKeys {
     pub async fn create_signed_static_key(
         &self,
         identity: &Identity,
-    ) -> Result<(KeyId, ockam_core::vault::Signature)> {
+    ) -> Result<(KeyId, ockam_vault::Signature)> {
         let static_key_id = self
             .vault
-            .secret_generate(SecretAttributes::new(
-                SecretType::X25519,
-                SecretPersistence::Ephemeral,
-                CURVE25519_SECRET_LENGTH_U32,
-            ))
+            .create_ephemeral_secret(SecretAttributes::X25519)
             .await?;
 
-        let public_static_key = self.vault.secret_public_key_get(&static_key_id).await?;
+        let public_static_key = self.vault.get_public_key(&static_key_id).await?;
 
         let signature = self
             .create_signature(identity, public_static_key.data(), None)

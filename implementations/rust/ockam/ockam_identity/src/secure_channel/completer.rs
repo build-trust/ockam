@@ -9,12 +9,12 @@ use crate::{
 };
 use alloc::vec::Vec;
 use ockam_core::compat::sync::Arc;
-use ockam_core::vault::Signature;
 use ockam_core::{
     AllowAll, AllowOnwardAddress, CompletedKeyExchange, LocalOnwardOnly, LocalSourceOnly, Mailbox,
     Mailboxes, Route,
 };
 use ockam_node::{Context, WorkerBuilder};
+use ockam_vault::Signature;
 use tracing::info;
 
 pub(crate) struct ExchangeCompleter {
@@ -45,7 +45,7 @@ impl ExchangeCompleter {
             .verify_signature(
                 &self.their_identity,
                 &self.their_signature,
-                self.keys.public_static_key().data(),
+                self.keys.public_static_key(),
                 None,
             )
             .await?;

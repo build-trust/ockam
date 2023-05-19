@@ -6,8 +6,8 @@ use crate::{Identity, IdentityIdentifier, TrustContext, TrustPolicy};
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use ockam_core::vault::Signature;
 use ockam_core::{CompletedKeyExchange, KeyExchanger, Route};
+use ockam_vault::Signature;
 
 pub(super) struct SendPacket1 {
     pub(super) key_exchanger: Box<dyn KeyExchanger>,
