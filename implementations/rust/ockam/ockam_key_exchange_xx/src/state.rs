@@ -179,7 +179,7 @@ impl State {
             h,
             encrypt_key,
             decrypt_key,
-            public_static_key,
+            public_static_key.data().into(),
         ))
     }
 }

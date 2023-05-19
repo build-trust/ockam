@@ -6,8 +6,8 @@ use crate::{Identity, IdentityIdentifier, TrustContext, TrustPolicy};
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use ockam_core::vault::Signature;
 use ockam_core::{route, CompletedKeyExchange, KeyExchanger, Route};
+use ockam_vault::Signature;
 
 pub(crate) struct DecodeMessage1 {
     pub(crate) key_exchanger: Box<dyn KeyExchanger>,

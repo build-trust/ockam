@@ -1,9 +1,8 @@
 use crate::state::State;
 use crate::{Initiator, Responder, XXVault};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, compat::boxed::Box, Result};
+use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
 
-use ockam_core::vault::KeyId;
 use ockam_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger

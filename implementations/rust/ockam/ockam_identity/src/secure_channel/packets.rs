@@ -3,8 +3,8 @@ use crate::secure_channel::key_exchange_with_payload::KeyExchangeWithPayload;
 use crate::{IdentitiesCreation, IdentitiesRepository, IdentitiesVault, Identity};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use ockam_core::vault::Signature;
 use ockam_core::Message;
+use ockam_vault::Signature;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Message)]
