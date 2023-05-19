@@ -28,16 +28,16 @@ use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_node::RpcClient;
 
-const LONG_ABOUT: &str = include_str!("./static/authenticate/long_about.txt");
-const AFTER_LONG_HELP: &str = include_str!("./static/authenticate/after_long_help.txt");
+const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
 
 /// Use an OTC to enroll an identity with a project node
 #[derive(Clone, Debug, Args)]
 #[command(
     long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
-pub struct AuthenticateCommand {
+pub struct EnrollCommand {
     #[arg(long = "okta", group = "authentication_method")]
     okta: bool,
 
@@ -60,7 +60,7 @@ fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
     Ok(serde_json::from_slice(&decoded)?)
 }
 
-impl AuthenticateCommand {
+impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(run_impl, (opts, self));
@@ -69,7 +69,7 @@ impl AuthenticateCommand {
 
 async fn run_impl(
     ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, AuthenticateCommand),
+    (opts, cmd): (CommandGlobalOpts, EnrollCommand),
 ) -> crate::Result<()> {
     let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.trust_opts)).await?;
     let project_as_string: String;
@@ -186,7 +186,7 @@ async fn run_impl(
 
 async fn authenticate_through_okta(
     ctx: &Context,
-    cmd: &AuthenticateCommand,
+    cmd: &EnrollCommand,
     opts: &CommandGlobalOpts,
     node_name: &str,
     p: ProjectInfo<'_>,

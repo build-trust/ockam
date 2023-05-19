@@ -3,5 +3,5 @@
 $ ticket=$(ockam project ticket --attribute component=user)
 
 # From the user machine, enroll the local identity to the project using the enrollment ticket
-$ ockam project authenticate $ticket --identity control_identity
+$ ockam project enroll $ticket --identity control_identity
 ```

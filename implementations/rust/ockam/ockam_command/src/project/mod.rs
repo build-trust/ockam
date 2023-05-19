@@ -1,7 +1,7 @@
 mod addon;
-mod authenticate;
 mod create;
 mod delete;
+mod enroll;
 mod info;
 mod list;
 mod show;
@@ -23,7 +23,7 @@ pub use show::ShowCommand;
 pub use ticket::TicketCommand;
 
 use crate::docs;
-use crate::project::authenticate::AuthenticateCommand;
+use crate::project::enroll::EnrollCommand;
 use crate::CommandGlobalOpts;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -49,7 +49,7 @@ pub enum ProjectSubcommand {
     Information(InfoCommand),
     Ticket(TicketCommand),
     Addon(AddonCommand),
-    Authenticate(AuthenticateCommand),
+    Enroll(EnrollCommand),
 }
 
 impl ProjectCommand {
@@ -62,7 +62,7 @@ impl ProjectCommand {
             ProjectSubcommand::Ticket(c) => c.run(options),
             ProjectSubcommand::Information(c) => c.run(options),
             ProjectSubcommand::Addon(c) => c.run(options),
-            ProjectSubcommand::Authenticate(c) => c.run(options),
+            ProjectSubcommand::Enroll(c) => c.run(options),
         }
     }
 }

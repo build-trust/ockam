@@ -20,7 +20,7 @@ teardown() {
 
   run "$OCKAM" identity create authority
   run "$OCKAM" identity create enroller
-  # m1 will be pre-authenticated on authority.  m2 will be added directly, m3 will be added through enrollment token
+  # m1 will be pre-enrolled on authority.  m2 will be added directly, m3 will be added through enrollment token
   run "$OCKAM" identity create m1
   run "$OCKAM" identity create m2
   run "$OCKAM" identity create m3
@@ -46,12 +46,12 @@ teardown() {
   \"authority_identity\" : \"$authority_identity_full\"}" >"$PROJECT_JSON_PATH"
 
   # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
-  run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity m1
+  run "$OCKAM" project enroll --project-path "$PROJECT_JSON_PATH" --identity m1
   assert_success
   assert_output --partial "sample_val"
 
   echo "$trusted" >"$OCKAM_HOME/trusted-anchors.json"
-  # Restart the authority node with a trusted identities file and check that m1 can still authenticate
+  # Restart the authority node with a trusted identities file and check that m1 can still enroll
   run "$OCKAM" node delete authority
   run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:$port --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
   assert_success
@@ -60,12 +60,12 @@ teardown() {
   run "$OCKAM" project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --member $m2_identifier --attribute sample_attr=m2_member
   assert_success
 
-  run "$OCKAM" project authenticate --project-path "$PROJECT_JSON_PATH" --identity m2
+  run "$OCKAM" project enroll --project-path "$PROJECT_JSON_PATH" --identity m2
   assert_success
   assert_output --partial "m2_member"
 
   token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member)
-  run "$OCKAM" project authenticate $token --identity m3
+  run "$OCKAM" project enroll $token --identity m3
   assert_success
   assert_output --partial "m3_member"
 }

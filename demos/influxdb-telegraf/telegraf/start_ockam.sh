@@ -1,7 +1,7 @@
 #!/bin/sh
 NODE="telegraf"
 ockam identity create telegraf
-ockam project authenticate --identity telegraf --token $OCKAM_TOKEN --project-path /config/project.json
+ockam project enroll --identity telegraf --token $OCKAM_TOKEN --project-path /config/project.json
 ockam node create $NODE --project-path /config/project.json --identity telegraf
 ockam policy create --at $NODE --resource tcp-inlet --expression '(= subject.component "influxdb")'
 sleep 30

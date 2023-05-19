@@ -32,9 +32,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut cmd = Command::cargo_bin("ockam")?;
     let enrollment_ticket = include_str!("./fixtures/user.enrollment.ticket").trim();
-    cmd.args(prefix_args)
-        .arg("authenticate")
-        .arg(enrollment_ticket);
+    cmd.args(prefix_args).arg("enroll").arg(enrollment_ticket);
     cmd.assert().success();
 
     Ok(())
