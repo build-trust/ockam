@@ -13,7 +13,7 @@ use tokio::{sync::Mutex, try_join};
 
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::{
-    fmt_log, fmt_ok,
+    display_parse_logs, fmt_log, fmt_ok,
     kafka::{
         kafka_default_producer_port_range, kafka_default_producer_server,
         kafka_default_project_route, kafka_producer_default_addr,
@@ -56,7 +56,9 @@ impl CreateCommand {
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
     opts.terminal
-        .write_line(&fmt_log!("Creating KafkaProducer service"))?;
+        .write_line(&fmt_log!("Creating KafkaProducer service...\n"))?;
+
+    display_parse_logs(&opts);
 
     let CreateCommand {
         node_opts,

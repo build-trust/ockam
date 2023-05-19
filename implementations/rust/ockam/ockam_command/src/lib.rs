@@ -398,6 +398,16 @@ impl OckamCommand {
     }
 }
 
+/// Display and clear any known messages from parsing.
+pub(crate) fn display_parse_logs(opts: &CommandGlobalOpts) {
+    if let Ok(mut logs) = PARSER_LOGS.lock() {
+        logs.iter().for_each(|msg| {
+            let _ = opts.terminal.write_line(msg);
+        });
+
+        logs.clear();
+    }
+}
 pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {
     let input_stream = std::io::stdin();
     if s.contains("/-") {
