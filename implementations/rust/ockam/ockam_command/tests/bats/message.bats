@@ -47,7 +47,7 @@ teardown() {
   assert_success
 
   # m1' identity was added by enroller
-  run "$OCKAM" project authenticate --identity m1
+  run "$OCKAM" project enroll --identity m1
   assert_success
 
   # m1 is a member, must be able to contact the project' service
