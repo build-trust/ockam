@@ -17,19 +17,19 @@ use Status::*;
 #[async_trait]
 impl StateMachine for ResponderStateMachine {
     async fn on_event(&mut self, event: Event) -> Result<Action> {
-        let mut state = self.handshake.state.clone();
+        let state = self.handshake.state.clone();
         match (state.status, event) {
             // Initialize the handshake and wait for message 1
             (Initial, Initialize) => {
                 self.initialize_handshake().await?;
-                state.status = WaitingForMessage1;
+                self.handshake.state.status = WaitingForMessage1;
                 Ok(NoAction)
             }
             // Process message 1 and send message 2
             (WaitingForMessage1, ReceivedMessage(message)) => {
                 self.decode_message1(message).await?;
                 let message2 = self.encode_message2().await?;
-                state.status = WaitingForMessage3;
+                self.handshake.state.status = WaitingForMessage3;
                 Ok(SendMessage(message2))
             }
             // Process message 3
@@ -50,13 +50,12 @@ impl StateMachine for ResponderStateMachine {
             )),
         }
     }
-
+    /// Implementation of the state machine actions, delegated to the Handshake module
     fn get_handshake_results(&self) -> Option<HandshakeResults> {
         self.get_handshake_results()
     }
 }
 
-/// Implementation of the state machine actions, delegated to the Handshake module
 pub struct ResponderStateMachine {
     handshake: Handshake,
 }

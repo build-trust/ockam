@@ -17,7 +17,7 @@ use Status::*;
 #[async_trait]
 impl StateMachine for InitiatorStateMachine {
     async fn on_event(&mut self, event: Event) -> Result<Action> {
-        let mut state = self.handshake.state.clone();
+        let state = self.handshake.state.clone();
         match (state.status, event) {
             // Initialize the handshake and send message 1
             (Initial, Initialize) => {
@@ -25,7 +25,7 @@ impl StateMachine for InitiatorStateMachine {
                 let message1 = self.encode_message1().await?;
 
                 // Send message 1 and wait for message 2
-                state.status = WaitingForMessage2;
+                self.handshake.state.status = WaitingForMessage2;
                 Ok(SendMessage(message1))
             }
             // Process message 2 and send message 3

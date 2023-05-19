@@ -20,13 +20,13 @@ use crate::{
 use alloc::sync::Arc;
 use core::time::Duration;
 use ockam_core::{
-    Address, AllowAll, Any, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox, Mailboxes,
-    OutgoingAccessControl, Route, Routed,
+    Address, AllowAll, Any, Decodable, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox,
+    Mailboxes, OutgoingAccessControl, Route, Routed,
 };
 use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 pub(crate) struct HandshakeWorker {
     secure_channels: Arc<SecureChannels>,
@@ -47,6 +47,11 @@ impl Worker for HandshakeWorker {
     async fn initialize(&mut self, context: &mut Self::Context) -> Result<()> {
         match self.state_machine.on_event(Initialize).await? {
             SendMessage(message) => {
+                info!(
+                    "remote route {:?}, decryptor remote {:?}",
+                    self.remote_route.clone(),
+                    self.addresses.decryptor_remote.clone()
+                );
                 context
                     .send_from_address(
                         self.remote_route(),
@@ -73,7 +78,9 @@ impl Worker for HandshakeWorker {
         self.remote_route = Some(message.return_route());
         match self
             .state_machine
-            .on_event(ReceivedMessage(message.into_transport_message().payload))
+            .on_event(ReceivedMessage(Vec::<u8>::decode(
+                &message.into_transport_message().payload,
+            )?))
             .await?
         {
             SendMessage(message) => {
@@ -162,20 +169,26 @@ impl HandshakeWorker {
 
         let decryptor_remote = addresses.decryptor_remote.clone();
         debug!(
-            "Starting SecureChannel Initiator at remote: {}",
+            "Starting SecureChannel {} at remote: {}",
+            role.clone(),
             &decryptor_remote
+        );
+        trace!(
+            "SecureChannel {} started for addresses: {:?}",
+            role.clone(),
+            addresses.clone(),
         );
 
         if role.is_initiator() {
             if let Some(timeout) = timeout {
                 callback_waiter.receive_timeout(timeout).await?;
             }
+            Ok(addresses.encryptor)
         } else {
             // wait until the worker is ready to receive messages
             context.wait_for(addresses.decryptor_remote.clone()).await?;
+            Ok(addresses.decryptor_remote)
         }
-
-        Ok(addresses.encryptor)
     }
 
     fn remote_route(&self) -> Route {

@@ -75,7 +75,7 @@ impl SymmetricVault for Vault {
             .ok_or(VaultError::EntryNotFound(format!("aes key {key_id:?}")))?;
 
         if entry.key_attributes().stype() != SecretType::Aes {
-            return Err(VaultError::AeadAesGcmEncrypt.into());
+            return Err(VaultError::AeadAesGcmDecrypt.into());
         }
 
         let nonce = GenericArray::from_slice(nonce);
@@ -88,24 +88,24 @@ impl SymmetricVault for Vault {
             AES128_SECRET_LENGTH_U32 => {
                 let key = entry.secret().try_as_key()?.as_ref();
                 if key.len() != AES128_SECRET_LENGTH_USIZE {
-                    return Err(VaultError::AeadAesGcmEncrypt.into());
+                    return Err(VaultError::AeadAesGcmDecrypt.into());
                 }
                 let key = GenericArray::from_slice(key);
                 Aes128Gcm::new(key)
                     .decrypt(nonce, payload)
-                    .map_err(|_| VaultError::AeadAesGcmEncrypt.into())
+                    .map_err(|_| VaultError::AeadAesGcmDecrypt.into())
             }
             AES256_SECRET_LENGTH_U32 => {
                 let key = entry.secret().try_as_key()?.as_ref();
                 if key.len() != AES256_SECRET_LENGTH_USIZE {
-                    return Err(VaultError::AeadAesGcmEncrypt.into());
+                    return Err(VaultError::AeadAesGcmDecrypt.into());
                 }
                 let key = GenericArray::from_slice(key);
                 Aes256Gcm::new(key)
                     .decrypt(nonce, payload)
-                    .map_err(|_| VaultError::AeadAesGcmEncrypt.into())
+                    .map_err(|_| VaultError::AeadAesGcmDecrypt.into())
             }
-            _ => Err(VaultError::AeadAesGcmEncrypt.into()),
+            _ => Err(VaultError::AeadAesGcmDecrypt.into()),
         }
     }
 }

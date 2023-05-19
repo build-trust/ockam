@@ -1,7 +1,23 @@
-#[derive(Clone)]
+use core::fmt::{Display, Formatter};
+
+#[derive(Clone, Debug)]
 pub(crate) enum Role {
     Initiator,
     Responder,
+}
+
+impl Display for Role {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "{}",
+            if self.is_initiator() {
+                "Initiator"
+            } else {
+                "Responder"
+            }
+        )
+    }
 }
 
 impl Role {
