@@ -7,7 +7,7 @@ use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
     process_nodes_multiaddr, RpcBuilder,
 };
-use crate::{fmt_log, fmt_ok, CommandGlobalOpts, Result};
+use crate::{display_parse_logs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
 use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
@@ -78,7 +78,14 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
-    opts.terminal.write_line(&fmt_log!("Creating TCP Inlet"))?;
+    opts.terminal.write_line(&fmt_log!(
+        "Creating TCP Inlet at {}...\n",
+        cmd.from
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    ))?;
+    display_parse_logs(&opts);
+
     cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state)?;
 
     let node_name = get_node_name(&opts.state, &cmd.at);
