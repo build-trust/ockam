@@ -2,8 +2,9 @@ mod parser;
 
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use clap::Args;
+use miette::miette;
 use ockam::Context;
 use std::path::PathBuf;
 
@@ -42,7 +43,7 @@ async fn run_impl(_ctx: &Context, opts: CommandGlobalOpts, cmd: RunCommand) -> R
                 path.pop();
             }
             if !found {
-                return Err(anyhow!(
+                return Err(miette!(
                     "No default configuration file found in current directory.\n\
                     Try passing the path to the config file with the --config-path flag."
                 )

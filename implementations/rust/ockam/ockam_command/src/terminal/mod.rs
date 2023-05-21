@@ -2,14 +2,17 @@ use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use miette::miette;
 
 use mode::*;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::errcode::Kind;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
+
+use crate::error::Error;
 
 use crate::{OutputFormat, Result};
 
@@ -253,7 +256,9 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
         if self.quiet {
             return Ok(self);
         }
-        self.stderr.write_line(msg)?;
+        self.stderr
+            .write_line(msg)
+            .map_err(|e| Error::new_software_error("Unable to write to stderr.", &e.to_string()))?;
         Ok(self)
     }
 
@@ -298,7 +303,7 @@ impl<W: TerminalWriter> Terminal<W, ToStdOut> {
             && self.mode.output.machine.is_none()
             && self.mode.output.json.is_none()
         {
-            return Err(anyhow!("At least one output format must be defined").into());
+            return Err(miette!("At least one output format must be defined").into());
         }
 
         let plain = self.mode.output.plain.as_ref();

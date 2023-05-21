@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 
 use ockam::Context;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
@@ -39,7 +39,7 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -
     if response.is_empty() {
         return Err(crate::Error::new(
             exitcode::IOERR,
-            anyhow!("No relays found on node {node_name}"),
+            miette!("No relays found on node {}", node_name),
         ));
     }
 

@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::{docs, CommandGlobalOpts};
@@ -27,7 +27,7 @@ impl ListCommand {
 fn run_impl(opts: CommandGlobalOpts) -> crate::Result<()> {
     let states = opts.state.vaults.list()?;
     if states.is_empty() {
-        return Err(anyhow!("No vaults registered on this system!").into());
+        return Err(miette!("No vaults registered on this system!").into());
     }
     for (idx, vault) in states.iter().enumerate() {
         println!("Vault[{idx}]:");

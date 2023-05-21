@@ -1,8 +1,9 @@
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam::identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Project;
 
@@ -94,7 +95,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
             let body = if cmd.at.matches(0, &[Project::CODE.into()]) {
                 if cmd.authorized.is_some() {
                     return Err(
-                        anyhow!("--authorized can not be used with project addresses").into(),
+                        miette!("--authorized can not be used with project addresses").into(),
                     );
                 }
                 CreateForwarder::at_project(ma, Some(alias.clone()))

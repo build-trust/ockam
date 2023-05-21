@@ -1,8 +1,8 @@
 use crate::util::output::Output;
 use crate::util::{exitcode, node_rpc};
 use crate::{docs, CommandGlobalOpts};
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_node::Context;
@@ -35,7 +35,7 @@ impl ListCommand {
         if idts.is_empty() {
             return Err(crate::Error::new(
                 exitcode::IOERR,
-                anyhow!("No identities registered on this system!"),
+                miette!("No identities registered on this system!"),
             ));
         }
         for (idx, identity) in idts.iter().enumerate() {

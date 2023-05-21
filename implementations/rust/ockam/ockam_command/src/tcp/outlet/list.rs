@@ -1,8 +1,8 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 use ockam_api::nodes::models::portal::OutletList;
 use ockam_api::{error::ApiError, route_to_multiaddr};
 use ockam_core::api::Request;
@@ -38,7 +38,7 @@ async fn run_impl(
     if response.list.is_empty() {
         return Err(crate::Error::new(
             exitcode::IOERR,
-            anyhow!("No Outlets found on this system!"),
+            miette!("No Outlets found on this system!"),
         ));
     }
 

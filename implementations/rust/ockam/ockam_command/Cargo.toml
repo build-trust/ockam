@@ -76,6 +76,7 @@ io-lifetimes = "1"
 is-terminal = "0.4"
 itertools = "0.10"
 lazy_static = "1.4.0"
+miette = { version = "5.8.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.19.0", features = ["derive", "alloc", "half"] }
 nix = "0.26"
 ockam = { path = "../ockam", version = "^0.88.0", features = ["software_vault"] }

@@ -1,7 +1,7 @@
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
@@ -42,7 +42,7 @@ async fn run_impl(
         }
         // Return the appropriate error
         Err(err) => match err {
-            CliStateError::NotFound => Err(anyhow!("Identity '{}' not found", &cmd.name).into()),
+            CliStateError::NotFound => Err(miette!("Identity '{}' not found", &cmd.name).into()),
             _ => Err(err.into()),
         },
     }

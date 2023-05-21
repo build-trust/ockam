@@ -111,7 +111,14 @@ pub trait StateDirTrait: Sized + Send + Sync {
 
     fn list_items_names(&self) -> Result<Vec<String>> {
         let mut items = Vec::default();
-        for entry in std::fs::read_dir(self.dir())? {
+        let iter = std::fs::read_dir(self.dir()).map_err(|e| {
+            CliStateError::Invalid(format!(
+                "Unable to read state directory, {}. {}",
+                self.dir().as_path().to_string_lossy(),
+                e
+            ))
+        })?;
+        for entry in iter {
             let entry_path = entry?.path();
             if self.is_item_path(&entry_path)? {
                 items.push(file_stem(&entry_path)?);

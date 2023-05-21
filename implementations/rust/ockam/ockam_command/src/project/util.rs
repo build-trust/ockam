@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
+use miette::miette;
 
 use ockam_core::api::Request;
 use tokio_retry::strategy::FixedInterval;
@@ -33,10 +34,10 @@ pub fn clean_projects_multiaddr(
             ockam_multiaddr::proto::Project::CODE => {
                 let alias = p
                     .cast::<ockam_multiaddr::proto::Project>()
-                    .ok_or_else(|| anyhow!("Invalid project value"))?;
+                    .ok_or_else(|| miette!("Invalid project value"))?;
                 let sc = sc_iter
                     .next()
-                    .ok_or_else(|| anyhow!("Missing secure channel for project {}", &*alias))?;
+                    .ok_or_else(|| miette!("Missing secure channel for project {}", &*alias))?;
                 for v in sc.iter().peekable() {
                     new_ma.push_back_value(&v)?;
                 }
@@ -206,7 +207,7 @@ pub async fn check_project_readiness(
                     return Ok(p.to_owned());
                 }
             }
-            Err(anyhow!("Project creation timed out. Plaese try again."))
+            Err(miette!("Project creation timed out. Plaese try again."))
         })
         .await?;
     }
@@ -224,7 +225,7 @@ pub async fn check_project_readiness(
                 }
             }
 
-            Err(anyhow!("Timed out while trying to establish a connection to the project. Please try again."))
+            Err(miette!("Timed out while trying to establish a connection to the project. Please try again."))
         }).await?;
     }
 
@@ -258,7 +259,7 @@ pub async fn check_project_readiness(
                 return Ok(());
             }
 
-            Err(anyhow!("Timed out while trying to establish a secure channel to the project. Please try again."))
+            Err(miette!("Timed out while trying to establish a secure channel to the project. Please try again."))
         })
         .await?;
     }
@@ -291,7 +292,7 @@ pub async fn check_project_readiness(
                 return Ok(());
             }
 
-            Err(anyhow!("Time out while trying to establish a secure channel to the project authority. Please try again."))
+            Err(miette!("Timed out while trying to establish a secure channel to the project authority. Please try again."))
         })
         .await?;
     }

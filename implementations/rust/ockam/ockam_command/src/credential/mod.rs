@@ -6,10 +6,10 @@ pub(crate) mod show;
 pub(crate) mod store;
 pub(crate) mod verify;
 
-use anyhow::anyhow;
 pub(crate) use get::GetCommand;
 pub(crate) use issue::IssueCommand;
 pub(crate) use list::ListCommand;
+use miette::miette;
 use ockam::identity::credential::{Credential, CredentialData, Unverified};
 use ockam::identity::IdentityIdentifier;
 pub(crate) use present::PresentCommand;
@@ -67,7 +67,7 @@ pub async fn validate_encoded_cred(
 
     let bytes = match hex::decode(encoded_cred) {
         Ok(b) => b,
-        Err(e) => return Err(anyhow!(e).into()),
+        Err(e) => return Err(miette!(e).into()),
     };
     let cred: Credential = minicbor::decode(&bytes)?;
     let cred_data: CredentialData<Unverified> = minicbor::decode(cred.unverified_data())?;

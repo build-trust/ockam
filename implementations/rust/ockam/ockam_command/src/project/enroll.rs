@@ -1,6 +1,7 @@
 use clap::Args;
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
+use miette::miette;
 
 use ockam::Context;
 use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
@@ -112,7 +113,7 @@ async fn run_impl(
         let authority =
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
-                .ok_or_else(|| anyhow!("Authority details not configured"))?;
+                .ok_or_else(|| miette!("Authority details not configured"))?;
         let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
         create_secure_channel_to_authority(
             &ctx,
@@ -223,6 +224,6 @@ async fn authenticate_through_okta(
         Ok(())
     } else {
         eprintln!("{}", rpc.parse_err_msg(res, dec));
-        Err(anyhow!("Failed to enroll").into())
+        Err(miette!("Failed to enroll").into())
     }
 }

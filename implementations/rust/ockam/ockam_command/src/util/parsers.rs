@@ -1,5 +1,5 @@
 use crate::Result;
-use anyhow::anyhow;
+use miette::miette;
 use std::net::{Ipv4Addr, SocketAddr};
 
 /// Helper fn for parsing ip and port from user input
@@ -12,7 +12,7 @@ pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
         1 => {
             let port: u16 = addr[0]
                 .parse()
-                .map_err(|_| anyhow!("Invalid port number"))?;
+                .map_err(|_| miette!("Invalid port number"))?;
             let ip: Ipv4Addr = [127, 0, 0, 1].into();
             Ok(SocketAddr::new(ip.into(), port))
         }
@@ -20,13 +20,13 @@ pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
         2 => {
             let port: u16 = addr[1]
                 .parse()
-                .map_err(|_| anyhow!("Invalid port number"))?;
+                .map_err(|_| miette!("Invalid port number"))?;
             let ip = addr[0]
                 .parse::<Ipv4Addr>()
-                .map_err(|_| anyhow!("Invalid IP address"))?;
+                .map_err(|_| miette!("Invalid IP address"))?;
             Ok(SocketAddr::new(ip.into(), port))
         }
-        _ => Err(anyhow!("Argument {} is an invalid IP Address or Port", input).into()),
+        _ => Err(miette!("Argument {} is an invalid IP Address or Port", input).into()),
     }
 }
 

@@ -5,9 +5,9 @@ use crate::{
     },
     CommandGlobalOpts,
 };
-use anyhow::anyhow;
 use clap::Args;
 use indoc::formatdoc;
+use miette::miette;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 
@@ -66,7 +66,7 @@ async fn run_impl(
             .json(serde_json::to_string_pretty(&tcc)?)
             .write_line()?;
     } else {
-        return Err(anyhow!("Unable to create trust context").into());
+        return Err(miette!("Unable to create trust context").into());
     }
 
     Ok(())

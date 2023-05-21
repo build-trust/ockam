@@ -1,6 +1,6 @@
-use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
@@ -67,7 +67,7 @@ async fn run_impl(
         }
         // Else, return the appropriate error
         Err(err) => match err {
-            CliStateError::NotFound => Err(anyhow!("Vault '{name}' not found").into()),
+            CliStateError::NotFound => Err(miette!("Vault '{}' not found", name).into()),
             _ => Err(err.into()),
         },
     }

@@ -1,6 +1,6 @@
 use crate::{docs, CommandGlobalOpts};
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
@@ -35,7 +35,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
         Ok(idt) => {
             // If it exists, warn the user and exit
             if state.is_default(idt.name())? {
-                Err(anyhow!("Identity '{}' is already the default", &cmd.name).into())
+                Err(miette!("Identity '{}' is already the default", &cmd.name).into())
             }
             // Otherwise, set it as default
             else {
@@ -45,7 +45,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
             }
         }
         Err(err) => match err {
-            CliStateError::NotFound => Err(anyhow!("Identity '{}' not found", &cmd.name).into()),
+            CliStateError::NotFound => Err(miette!("Identity '{}' not found", &cmd.name).into()),
             _ => Err(err.into()),
         },
     }

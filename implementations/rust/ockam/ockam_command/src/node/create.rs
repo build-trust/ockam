@@ -3,7 +3,8 @@ use colorful::Colorful;
 use rand::prelude::random;
 use tokio::time::{sleep, Duration};
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
+use miette::miette;
 use minicbor::{Decoder, Encode};
 use std::io::{self, Read};
 use std::{
@@ -170,7 +171,7 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
     match serde_json::from_str::<Config>(config_or_path) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let path = PathBuf::from_str(config_or_path).context(anyhow!("Not a valid path"))?;
+            let path = PathBuf::from_str(config_or_path).context(miette!("Not a valid path"))?;
             Config::read(path)
         }
     }
@@ -185,7 +186,7 @@ pub(crate) async fn run_impl(
     if cmd.child_process {
         return Err(crate::Error::new(
             exitcode::CONFIG,
-            anyhow!("Cannot create a background node from background node"),
+            miette!("Cannot create a background node from background node"),
         ));
     }
 
@@ -317,7 +318,7 @@ async fn run_foreground_node(
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
             ctx.stop().await?;
-            return Err(anyhow!("Failed to start services".to_string()).into());
+            return Err(miette!("Failed to start services".to_string()).into());
         }
     }
 
@@ -439,7 +440,7 @@ where
     let mut dec = Decoder::new(&buf);
     let hdr = dec.decode::<Response>()?;
     if hdr.status() != Some(Status::Ok) {
-        return Err(anyhow!("Request failed with status: {:?}", hdr.status()).into());
+        return Err(miette!("Request failed with status: {:?}", hdr.status()).into());
     }
     Ok(())
 }
@@ -453,7 +454,7 @@ async fn spawn_background_node(
     if !bind_to_port_check(&addr) {
         return Err(crate::Error::new(
             exitcode::IOERR,
-            anyhow!("Another process is listening on the provided port!"),
+            miette!("Another process is listening on the provided port!"),
         ));
     }
 
@@ -511,11 +512,11 @@ async fn start_authority_node(
     if let Some(services) = launch_config.startup_services {
         let authenticator_config = services.authenticator.ok_or(crate::Error::new(
             exitcode::CONFIG,
-            anyhow!("The authenticator service must be specified for an authority node"),
+            miette!("The authenticator service must be specified for an authority node"),
         ))?;
         let secure_channel_config = services.secure_channel_listener.ok_or(crate::Error::new(
             exitcode::CONFIG,
-            anyhow!("The secure channel listener service must be specified for an authority node"),
+            miette!("The secure channel listener service must be specified for an authority node"),
         ))?;
 
         // retrieve the authority identity if it has been created before
@@ -530,7 +531,7 @@ async fn start_authority_node(
 
         let trusted_identities = load_pre_trusted_identities(&cmd)
             .map(|ts| ts.unwrap_or(PreTrustedIdentities::Fixed(Default::default())))
-            .map_err(|e| crate::Error::new(exitcode::CONFIG, anyhow!("{e}")))?;
+            .map_err(|e| crate::Error::new(exitcode::CONFIG, miette!("{}", e)))?;
 
         let configuration = authority_node::Configuration {
             identifier,

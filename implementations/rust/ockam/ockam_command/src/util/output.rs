@@ -1,6 +1,7 @@
 use anyhow::Context;
 use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
+use miette::IntoDiagnostic;
 use ockam::identity::credential::Credential;
 use ockam_api::cloud::project::Project;
 
@@ -54,7 +55,7 @@ impl<O: Output> Output for &O {
 impl Output for Space<'_> {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
-        write!(w, "Space")?;
+        write!(w, "Space").into_diagnostic()?;
         write!(w, "\n  Id: {}", self.id)?;
         write!(w, "\n  Name: {}", self.name)?;
         write!(w, "\n  Users: {}", comma_separated(&self.users))?;

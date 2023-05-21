@@ -2,8 +2,9 @@
 
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Context};
+use anyhow::Context as _;
 use clap::Args;
+use miette::miette;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
 use regex::Regex;
@@ -533,7 +534,7 @@ pub(crate) fn validate_cloud_resource_name(s: &str) -> Result<()> {
     let project_name_regex = Regex::new(r"^[a-zA-Z0-9]+([a-zA-Z0-9-_\.]?[a-zA-Z0-9])*$").unwrap();
     let is_project_name_valid = project_name_regex.is_match(s);
     if !is_project_name_valid {
-        Err(anyhow!("Invalid name").into())
+        Err(miette!("Invalid name").into())
     } else {
         Ok(())
     }

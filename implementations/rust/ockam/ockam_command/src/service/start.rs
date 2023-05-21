@@ -3,8 +3,8 @@ use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{fmt_ok, CommandGlobalOpts};
 use crate::{fmt_warn, Result};
-use anyhow::anyhow;
 use clap::{Args, Subcommand};
+use miette::miette;
 
 use colorful::Colorful;
 use minicbor::Encode;
@@ -173,7 +173,7 @@ where
     let (res, _dec) = rpc.check_response()?;
     match res.status() {
         Some(Status::Ok) => Ok(()),
-        _ => Err(anyhow!("Failed to start {serv_name} service").into()),
+        _ => Err(miette!("Failed to start {} service", serv_name).into()),
     }
 }
 
