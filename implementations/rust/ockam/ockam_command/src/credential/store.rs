@@ -4,7 +4,7 @@ use crate::{
     util::{node_rpc, random_name},
     CommandGlobalOpts, Result,
 };
-use anyhow::anyhow;
+use miette::miette;
 
 use clap::Args;
 use ockam::Context;
@@ -37,7 +37,7 @@ impl StoreCommand {
     pub async fn identity(&self) -> Result<Identity> {
         let identity_as_bytes = match hex::decode(&self.issuer) {
             Ok(b) => b,
-            Err(e) => return Err(anyhow!(e).into()),
+            Err(e) => return Err(miette!(e).into()),
         };
         let identity = identities()
             .identities_creation()
@@ -54,7 +54,7 @@ async fn run_impl(
     let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
         (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
         (Some(credential), _) => credential.to_string(),
-        _ => return Err(anyhow!("Credential or Credential Path argument must be provided").into()),
+        _ => return Err(miette!("Credential or Credential Path argument must be provided").into()),
     };
 
     // store

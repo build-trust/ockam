@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
+use miette::miette;
 
 use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state;
@@ -187,7 +188,7 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> Result<()> {
         }
     }
     if !deletion_errors.is_empty() {
-        return Err(anyhow!("errors while deleting nodes: {:?}", deletion_errors).into());
+        return Err(miette!("errors while deleting nodes: {:?}", deletion_errors).into());
     }
     Ok(())
 }

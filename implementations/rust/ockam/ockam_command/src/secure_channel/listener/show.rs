@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 
 use ockam::Context;
 use ockam_core::Address;
@@ -57,7 +57,7 @@ async fn run_impl(
         }
         Err(e) => Err(crate::error::Error::new(
             exitcode::UNAVAILABLE,
-            anyhow!("An error occurred while retrieving secure channel listener").context(e),
+            miette!("An error occurred while retrieving secure channel listener").context(e),
         )),
     }
 }

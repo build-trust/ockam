@@ -84,7 +84,7 @@ async fn run_impl(
 }
 
 pub mod utils {
-    use anyhow::anyhow;
+    use miette::miette;
 
     use ockam_multiaddr::MultiAddr;
 
@@ -124,7 +124,7 @@ pub mod utils {
         let subscription = subscriptions
             .into_iter()
             .find(|s| s.space_id == Some(CowStr::from(space_id)))
-            .ok_or_else(|| anyhow!("no subscription found for space {}", space_id))?;
+            .ok_or_else(|| miette!("no subscription found for space {}", space_id))?;
         Ok(subscription.id.to_string())
     }
 }

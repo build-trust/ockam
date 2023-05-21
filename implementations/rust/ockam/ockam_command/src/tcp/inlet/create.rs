@@ -8,9 +8,9 @@ use crate::util::{
     process_nodes_multiaddr, RpcBuilder,
 };
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
-use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
 use ockam_abac::Resource;
@@ -103,7 +103,7 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
         if !bind_to_port_check(&cmd.from) {
             return Err(crate::error::Error::new(
                 exitcode::IOERR,
-                anyhow!("Another process is listening on the provided port!"),
+                miette!("Another process is listening on the provided port!"),
             ));
         }
 
@@ -124,7 +124,7 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
 
         let via_project = if cmd.to.clone().matches(0, &[Project::CODE.into()]) {
             if cmd.authorized.is_some() {
-                return Err(anyhow!("--authorized can not be used with project addresses").into());
+                return Err(miette!("--authorized can not be used with project addresses").into());
             }
             true
         } else {

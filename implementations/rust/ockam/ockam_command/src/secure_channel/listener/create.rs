@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
@@ -75,7 +75,7 @@ async fn run_impl(
         }
         Err(e) => Err(crate::error::Error::new(
             exitcode::CANTCREAT,
-            anyhow!("An error occurred while creating secure channel listener").context(e),
+            miette!("An error occurred while creating secure channel listener").context(e),
         )),
     }
 }

@@ -1,7 +1,8 @@
 use crate::util::{api, exitcode, node_rpc, RpcBuilder};
 use crate::{docs, node::show::print_query_status, CommandGlobalOpts};
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use clap::Args;
+use miette::miette;
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
@@ -40,7 +41,7 @@ async fn run_impl(
         if nodes_states.is_empty() {
             return Err(crate::Error::new(
                 exitcode::IOERR,
-                anyhow!("No nodes registered on this system!"),
+                miette!("No nodes registered on this system!"),
             ));
         }
         // default node

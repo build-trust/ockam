@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 
 use ockam::Context;
 use ockam_api::cli_state;
@@ -40,7 +40,7 @@ async fn rpc(
 async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Result<()> {
     let v_state = opts.state.vaults.get(&cmd.vault)?;
     if !v_state.config().is_aws() {
-        return Err(anyhow!("Vault {} is not an AWS KMS vault", cmd.vault).into());
+        return Err(miette!("Vault {} is not an AWS KMS vault", cmd.vault).into());
     }
     let vault = v_state.get().await?;
     let idt = {

@@ -1,9 +1,9 @@
 use crate::node::util::{delete_all_nodes, delete_node};
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::{docs, CommandGlobalOpts};
-use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
+use miette::ErrReport as Report;
 use ockam_api::cli_state::{CliStateError, StateDirTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -33,8 +33,12 @@ impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         initialize_node_if_default(&opts, &self.node_name);
         if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e}");
-            std::process::exit(e.code());
+            let code = e.code();
+
+            let r: Report = e.into();
+            eprintln!("{:?}", r);
+
+            std::process::exit(code);
         }
     }
 }
@@ -63,9 +67,17 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
             // Else, return the appropriate error
             Err(err) => match err {
                 CliStateError::NotFound => {
-                    return Err(anyhow!("Node '{}' not found", &node_name).into())
+                    return Err(crate::Error::NotFound {
+                        resource: "Node".to_string(),
+                        resource_name: node_name,
+                    })
                 }
-                _ => return Err(err.into()),
+                e => {
+                    return Err(crate::Error::new_software_error(
+                        "Unable to delete node:",
+                        &e.to_string(),
+                    ))
+                }
             },
         }
     }

@@ -6,8 +6,9 @@ use crate::{
     vault::default_vault_name,
     CommandGlobalOpts, EncodeFormat, Result,
 };
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use clap::Args;
+use miette::miette;
 use ockam::identity::CredentialData;
 use ockam::Context;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -53,7 +54,7 @@ impl IssueCommand {
     pub async fn identity(&self) -> Result<Identity> {
         let identity_as_bytes = match hex::decode(&self.for_identity) {
             Ok(b) => b,
-            Err(e) => return Err(anyhow!(e).into()),
+            Err(e) => return Err(miette!(e).into()),
         };
 
         let identity = identities()
