@@ -1,0 +1,9 @@
+```sh
+# Create a secure channel listener with a custom name on the default node
+$ ockam secure-channel-listener create test --at n2
+/service/test
+
+# Create a secure channel listener from n1 to our test secure channel listener on n2
+$ ockam secure-channel create --from /node/n1 --to /node/n2/service/test
+/service/09738b73c54b81d48531f659aaa22533
+```

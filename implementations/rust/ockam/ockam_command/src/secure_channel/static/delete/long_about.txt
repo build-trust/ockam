@@ -1,0 +1,3 @@
+This command will delete a secure channel from a node. The user must pass the secure channel address and, optionally, the node where the secure channel was set up. Otherwise, the default node will be used.
+
+Once deleted, it can't be recovered and a new one must be set up.

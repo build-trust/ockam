@@ -5,11 +5,18 @@ use ockam::Context;
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::api;
 use crate::util::{node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
+
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List Secure Channel Listeners
 #[derive(Args, Clone, Debug)]
-#[command(arg_required_else_help = true)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct ListCommand {
     /// Node of which secure listeners shall be listed
     #[command(flatten)]

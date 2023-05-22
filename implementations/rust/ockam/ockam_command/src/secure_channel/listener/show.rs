@@ -4,16 +4,21 @@ use clap::Args;
 use ockam::Context;
 use ockam_core::Address;
 
-use super::common::SecureChannelListenerNodeOpts;
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::secure_channel::listener::utils::SecureChannelListenerNodeOpts;
 use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
-const HELP_DETAIL: &str = "";
+const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 /// Show Secure Channel Listener
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = docs::after_help(HELP_DETAIL))]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct ShowCommand {
     /// Address of the channel listener
     address: Address,

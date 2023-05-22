@@ -1,8 +1,8 @@
-mod common;
 pub mod create;
 pub mod delete;
 pub mod list;
 pub mod show;
+mod utils;
 
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;

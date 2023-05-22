@@ -10,14 +10,21 @@ use serde_json::json;
 
 use crate::util::{is_tty, RpcBuilder};
 use crate::{
-    exitcode,
+    docs, exitcode,
     util::{api, node_rpc},
     CommandGlobalOpts, OutputFormat,
 };
 
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
+
 /// List Secure Channels
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct ListCommand {
     /// Node at which the returned secure channels were initiated (required)
     #[arg(value_name = "NODE", long, display_order = 800)]

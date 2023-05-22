@@ -1,0 +1,3 @@
+```sh
+$ ockam secure-channel delete scaddr --at n1
+```

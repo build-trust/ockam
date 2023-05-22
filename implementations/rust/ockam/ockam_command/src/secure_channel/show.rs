@@ -1,4 +1,5 @@
 use crate::{
+    docs,
     util::{api, extract_address_value, node_rpc, Rpc},
     CommandGlobalOpts, Result,
 };
@@ -8,9 +9,16 @@ use ockam::Context;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_core::Address;
 
+const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
+
 /// Show Secure Channels
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct ShowCommand {
     /// Node
     #[arg(value_name = "NODE", long, display_order = 800)]

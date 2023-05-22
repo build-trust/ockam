@@ -1,0 +1,14 @@
+Every node, created with Ockam Command, starts a secure channel listener at address /service/api. Let's create a secure channel between two nodes and send a message from one node to another.
+
+```sh
+$ ockam node create a
+$ ockam node create b
+$ ockam secure-channel create --from a --to /node/b/service/api
+  Created Secure Channel:
+  • From: /node/a
+  •   To: /node/b/service/api (/ip4/127.0.0.1/tcp/53483/service/api)
+  •   At: /service/d92ef0aea946ec01cdbccc5b9d3f2e16
+
+$ ockam message send hello --from a --to /service/d92ef0aea946ec01cdbccc5b9d3f2e16/service/uppercase
+HELLO
+```

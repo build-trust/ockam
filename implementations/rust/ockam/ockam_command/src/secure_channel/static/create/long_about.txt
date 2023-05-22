@@ -1,0 +1,1 @@
+When a secure channel is created between two nodes they mutually authenticate each other using their Ockam Identity. Once the channel is created, you can send messages through through it using the returned address.

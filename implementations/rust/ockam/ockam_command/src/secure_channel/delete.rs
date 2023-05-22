@@ -7,15 +7,23 @@ use std::str::FromStr;
 use colorful::Colorful;
 use serde_json::json;
 
+use crate::docs;
 use crate::util::is_tty;
 use clap::Parser;
 use ockam::{route, Context};
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
 
+const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
+
 /// Delete Secure Channels
 #[derive(Clone, Debug, Parser)]
-#[command(arg_required_else_help = true)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct DeleteCommand {
     /// Node from which to initiate the secure channel (required)
     #[arg(value_name = "NODE", long, display_order = 800)]

@@ -3,14 +3,21 @@ use clap::Args;
 use ockam::Context;
 use ockam_core::Address;
 
-use super::common::SecureChannelListenerNodeOpts;
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::secure_channel::listener::utils::SecureChannelListenerNodeOpts;
 use crate::util::{api, extract_address_value, node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
+
+const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
 /// Delete Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct DeleteCommand {
     /// Address at which the channel listener to be deleted is running (required)
     address: Address,
