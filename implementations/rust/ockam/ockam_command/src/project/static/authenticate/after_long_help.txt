@@ -1,6 +1,6 @@
 ```sh
 # From the admin machine, generate an enrollment ticket
-$ ticket=$(ockam project enroll --attribute component=user)
+$ ticket=$(ockam project ticket --attribute component=user)
 
 # From the user machine, enroll the local identity to the project using the enrollment ticket
 $ ockam project authenticate $ticket --identity control_identity
