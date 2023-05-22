@@ -39,6 +39,7 @@ mod util;
 mod vault;
 mod version;
 mod worker;
+mod environment;
 
 use crate::admin::AdminCommand;
 use crate::authority::AuthorityCommand;
@@ -56,6 +57,7 @@ use configuration::ConfigurationCommand;
 use console::Term;
 use credential::CredentialCommand;
 use enroll::EnrollCommand;
+use environment::EnvironmentCommand;
 use error::{Error, Result};
 use identity::IdentityCommand;
 use kafka::consumer::KafkaConsumerCommand;
@@ -278,6 +280,7 @@ pub enum OckamSubcommand {
     Markdown(MarkdownCommand),
     Manpages(ManpagesCommand),
     TrustContext(TrustContextCommand),
+    Environment(EnvironmentCommand),
 }
 
 impl OckamSubcommand {
@@ -381,6 +384,7 @@ impl OckamCommand {
             OckamSubcommand::Markdown(c) => c.run(),
             OckamSubcommand::Manpages(c) => c.run(),
             OckamSubcommand::TrustContext(c) => c.run(options),
+            OckamSubcommand::Environment(c) => c.run(),
         }
     }
 
