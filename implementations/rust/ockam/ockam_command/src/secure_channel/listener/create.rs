@@ -8,14 +8,21 @@ use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
-use super::common::SecureChannelListenerNodeOpts;
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::secure_channel::listener::utils::SecureChannelListenerNodeOpts;
 use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
-use crate::{CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
+
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
 /// Create Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct CreateCommand {
     #[command(flatten)]
     node_opts: SecureChannelListenerNodeOpts,

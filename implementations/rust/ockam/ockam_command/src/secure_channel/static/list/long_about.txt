@@ -1,0 +1,1 @@
+This command will list all the secure channels available in a node. If the node is not provided, the default node will be used.

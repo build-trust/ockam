@@ -1,2 +1,1 @@
-Secure Channels provide end-to-end encrypted and mutually authenticated communication
-that is safe against eavesdropping, tampering, and forgery of messages en-route.
+Ockam Secure Channels is an end-to-end protocol built on top of Ockam Routing. This cryptographic protocol guarantees data authenticity, integrity, and confidentiality over any communication topology that can be traversed with Ockam Routing.
