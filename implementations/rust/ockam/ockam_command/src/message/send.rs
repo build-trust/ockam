@@ -33,6 +33,10 @@ pub struct SendCommand {
     #[arg(short, long, value_name = "ROUTE")]
     pub to: MultiAddr,
 
+    /// Message is binary hex flag
+    #[arg(long)]
+    pub hex: bool,
+
     /// Override Default Timeout
     #[arg(long, value_name = "TIMEOUT", default_value = "10")]
     pub timeout: u64,
@@ -91,13 +95,28 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         let mut rpc = RpcBuilder::new(ctx, opts, &api_node)
             .tcp(tcp.as_ref())?
             .build();
-        rpc.request_with_timeout(req(&to, &cmd.message), Duration::from_secs(cmd.timeout))
+        if cmd.hex {
+            rpc.request_with_timeout(
+                req_with_bytes(
+                    &to,
+                    hex::decode(&cmd.message)
+                        .context("Provided message is not a valid hex string")?
+                        .as_slice(),
+                ),
+                Duration::from_secs(cmd.timeout),
+            )
             .await?;
-        let res = rpc.parse_response::<Vec<u8>>()?;
-        println!(
-            "{}",
-            String::from_utf8(res).context("Received content is not a valid utf8 string")?
-        );
+            let res = rpc.parse_response::<Vec<u8>>()?;
+            println!("{}", hex::encode(res));
+        } else {
+            rpc.request_with_timeout(req(&to, &cmd.message), Duration::from_secs(cmd.timeout))
+                .await?;
+            let res = rpc.parse_response::<Vec<u8>>()?;
+            println!(
+                "{}",
+                String::from_utf8(res).context("Received content is not a valid utf8 string")?
+            );
+        }
 
         // only delete node in case 'from' is empty and embedded node was started before
         if cmd.from.is_none() {
@@ -111,4 +130,11 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
 
 pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {
     Request::post("v0/message").body(SendMessage::new(to, message.as_bytes()))
+}
+
+pub(crate) fn req_with_bytes<'a>(
+    to: &'a MultiAddr,
+    message: &'a [u8],
+) -> RequestBuilder<'a, SendMessage<'a>> {
+    Request::post("v0/message").body(SendMessage::new(to, message))
 }
