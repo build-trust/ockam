@@ -7,6 +7,7 @@ use crate::node::NodeOpts;
 use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
+/// List TCP listeners
 #[derive(Args, Clone, Debug)]
 pub struct ListCommand {
     #[command(flatten)]

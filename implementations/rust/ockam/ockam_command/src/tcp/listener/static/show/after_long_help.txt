@@ -1,0 +1,4 @@
+```sh
+# To show a TCP listener given its ID
+$ ockam tcp-listener show d59c01ab8d9683f8c454df746e627b43
+```

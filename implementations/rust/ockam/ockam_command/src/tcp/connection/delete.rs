@@ -4,6 +4,7 @@ use clap::Args;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
+/// Delete a TCP connection
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true)]
 pub struct DeleteCommand {

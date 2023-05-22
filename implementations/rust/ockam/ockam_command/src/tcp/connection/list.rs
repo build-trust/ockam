@@ -8,6 +8,7 @@ use ockam_api::nodes::models;
 use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_core::api::Request;
 
+/// List TCP connections
 #[derive(Args, Clone, Debug)]
 pub struct ListCommand {
     #[command(flatten)]

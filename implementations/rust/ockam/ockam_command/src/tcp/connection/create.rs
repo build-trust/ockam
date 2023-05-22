@@ -19,6 +19,7 @@ pub struct TcpConnectionNodeOpts {
     pub from: String,
 }
 
+/// Create a TCP connection
 #[derive(Args, Clone, Debug)]
 #[command(arg_required_else_help = true)]
 pub struct CreateCommand {

@@ -9,6 +9,7 @@ use ockam_core::api::Request;
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
+/// Show a TCP connection
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
     #[command(flatten)]

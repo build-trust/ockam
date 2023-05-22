@@ -1,0 +1,7 @@
+```sh
+# To list the TCP listeners on the default node
+$ ockam tcp-listener list
+
+# To list the TCP listeners on a specific node
+$ ockam tcp-listener list --node n1
+```

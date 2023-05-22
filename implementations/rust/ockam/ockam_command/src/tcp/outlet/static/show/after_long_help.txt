@@ -1,0 +1,4 @@
+```sh
+# To show a TCP outlet given its alias
+$ ockam tcp-outlet show myoutlet
+```

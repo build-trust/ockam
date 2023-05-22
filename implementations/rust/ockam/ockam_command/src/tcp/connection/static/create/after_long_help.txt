@@ -1,0 +1,7 @@
+```sh
+# To create a new TCP connection at the given address using the default node
+$ ockam tcp-connection create --to 127.0.0.1:5000
+
+# To create a new TCP connection at the given address using a specific node
+$ ockam tcp-connection create --from n1 --to 127.0.0.1:5000
+```

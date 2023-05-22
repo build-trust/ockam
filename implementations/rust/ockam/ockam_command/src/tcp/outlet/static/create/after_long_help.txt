@@ -1,0 +1,7 @@
+```sh
+# To create a new TCP outlet at the given address using the default node
+$ ockam tcp-outlet create --to 127.0.0.1:5000
+
+# To create a new TCP outlet at the given address using a specific node
+$ ockam tcp-outlet create --at n1 --to 127.0.0.1:5000
+```

@@ -1,0 +1,7 @@
+```sh
+# To create a new TCP listener at the given address using the default node
+$ ockam tcp-listener create 127.0.0.1:5000
+
+# To create a new TCP listener at the given address using a specific node
+$ ockam tcp-listener create 127.0.0.1:5000 --at n1
+```

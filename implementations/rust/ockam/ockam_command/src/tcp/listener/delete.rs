@@ -9,6 +9,7 @@ use ockam_core::api::Request;
 use crate::util::{node_rpc, Rpc};
 use crate::{node::NodeOpts, CommandGlobalOpts};
 
+/// Delete a TCP listener
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     #[command(flatten)]
