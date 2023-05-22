@@ -61,7 +61,7 @@ clap_mangen = "0.2.11"
 cli-table = "0.4"
 colorful = "0.2"
 colors-transform = "0.2.11"
-console = "0.15.6"
+console = "0.15.7"
 const-str = "0.5.4"
 crossbeam-channel = "0.5"
 ctrlc = { version = "3.2.5", features = ["termination"] }
