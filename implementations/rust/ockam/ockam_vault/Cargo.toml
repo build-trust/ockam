@@ -93,7 +93,7 @@ x25519-dalek = { version = "1.0", default_features = false }
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-data-encoding = { version = "2.3.3", features = ["alloc"] }
+data-encoding = { version = "2.4.0", features = ["alloc"] }
 serde_bare = { version = "0.5.0" }
 serde_json = { version = "1" }
 tokio = { version = "1.28", features = ["full"] }
