@@ -51,7 +51,7 @@ jobs:
       # Note: Do not update this image has it has installed all binaries
       # to bump crates and generate changelogs which we don't want installed
       # in our CI packages.
-      image: ghcr.io/build-trust/ockam-builder@sha256:a04b6a0aa01a93ba9a5c67392872893b261772dedfcd58f72a1addacf7535c09
+      image: ghcr.io/build-trust/ockam-builder@sha256:b7790a79e5fd4265d8333bb882010e5d4326778f270bd49693fa35763865df82
     steps:
       - name: Checkout Ockam
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -85,6 +85,9 @@ jobs:
         env:
           GIT_TAG: '${{ github.event.inputs.git_tag }}'
         run: bash -ex ./tools/scripts/release/changelog.sh
+
+      - name: Update Readme
+        run: cd implementations/rust && ../../gradlew update_readmes
 
       - name: Push Update
         run: |
