@@ -7,11 +7,16 @@ use ockam_core::api::Request;
 
 use crate::node::get_node_name;
 use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
-use crate::CommandGlobalOpts;
-use crate::Result;
+use crate::{docs, CommandGlobalOpts, Result};
+
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List Relays
 #[derive(Clone, Debug, Args)]
+#[command(
+    arg_required_else_help = false,
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ListCommand {
     /// Node to list relays from
     #[arg(global = true, long, value_name = "NODE")]

@@ -50,7 +50,7 @@ teardown() {
 }
 
 @test "trust context - trust context with an offline authority; Credential Exchange is performed" {
-  port=8005
+  port=33803
   # Create two identities
   run "$OCKAM" identity create alice
   alice_identity=$($OCKAM identity show alice --full --encoding hex)
@@ -75,12 +75,12 @@ teardown() {
   $OCKAM trust-context create bob-trust-context --credential bob-cred
 
   # Create a node for alice that trust authority as a credential authority
-  run "$OCKAM" node create alice --tcp-listener-address 127.0.0.1:$port --identity alice --trust-context alice-trust-context
+  run "$OCKAM" node create alice --tcp-listener-address "127.0.0.1:$port" --identity alice --trust-context alice-trust-context
 
   msg=$(random_str)
 
   # Fail, attacker won't present any credential
-  run $OCKAM message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo $msg
+  run $OCKAM message send --timeout 2 --identity attacker --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
   assert_failure
 
   # Fail, attacker will present an invalid credential (self signed rather than signed by authority)
@@ -108,7 +108,8 @@ teardown() {
 }
 
 @test "trust context - trust context with an online authority; Credential Exchange is performed" {
-  port=8007
+  auth_port=33805
+  node_port=33806
   $OCKAM identity create alice
   $OCKAM identity create bob
   $OCKAM identity create attacker
@@ -118,7 +119,9 @@ teardown() {
   authority_identity=$($OCKAM identity show --full --encoding hex authority)
 
   trusted="{\"$bob_id\": {}, \"$alice_id\": {}}"
-  $OCKAM authority create --identity authority --tcp-listener-address=127.0.0.1:4200 --project-identifier "test-context" --trusted-identities "$trusted"
+  run "$OCKAM" authority create --identity authority --tcp-listener-address="127.0.0.1:$auth_port" --project-identifier "test-context" --trusted-identities "$trusted"
+  assert_success
+  sleep 1
 
   echo "{\"id\": \"test-context\",
         \"authority\" : {
@@ -126,24 +129,26 @@ teardown() {
             \"own_credential\" :{
                 \"FromCredentialIssuer\" : {
                     \"identity\": \"$authority_identity\",
-                    \"multiaddr\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\" }}}}" >"$OCKAM_HOME/trust_context.json"
+                    \"multiaddr\" : \"/dnsaddr/127.0.0.1/tcp/$auth_port/service/api\" }}}}" >"$OCKAM_HOME/trust_context.json"
 
-  $OCKAM node create --identity alice --tcp-listener-address 127.0.0.1:$port --trust-context "$OCKAM_HOME/trust_context.json"
+  run "$OCKAM" node create --identity alice --tcp-listener-address 127.0.0.1:$node_port --trust-context "$OCKAM_HOME/trust_context.json"
+  assert_success
+  sleep 1
 
   # send a message to alice using the trust context
   msg=$(random_str)
-  run "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context "$OCKAM_HOME/trust_context.json" $msg
+  run "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context "$OCKAM_HOME/trust_context.json" $msg
   assert_success
   assert_output "$msg"
 
   # send a message to authority node echo service to make sure we can use it as a healthcheck endpoint
-  run "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/4200/secure/api/service/echo $msg
+  run "$OCKAM" message send --timeout 2 --identity bob --to "/dnsaddr/127.0.0.1/tcp/$auth_port/secure/api/service/echo" $msg
   assert_success
   assert_output "$msg"
 
-  run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context "$OCKAM_HOME/trust_context.json" $msg
+  run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context "$OCKAM_HOME/trust_context.json" $msg
   assert_failure
-  run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context $msg
+  run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context $msg
   assert_failure
 }
 

@@ -15,6 +15,7 @@ teardown() {
 # ===== TESTS
 
 @test "authority - standalone authority, enrollers, members" {
+  port=33000
   PROJECT_JSON_PATH="$OCKAM_HOME/project-authority.json"
 
   run "$OCKAM" identity create authority
@@ -33,7 +34,7 @@ teardown() {
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   # For the first test we start the node with no direct authentication service nor token enrollment
   trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\", \"trust_context_id\" : \"1\"}, \"$enroller_identifier\": {\"project_id\": \"1\", \"trust_context_id\": \"1\", \"ockam-role\": \"enroller\"}}"
-  run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:4200 --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --no-token-enrollment
+  run "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --no-token-enrollment
   assert_success
   sleep 1 # wait for authority to start TCP listener
 
@@ -41,7 +42,7 @@ teardown() {
   \"name\" : \"default\",
   \"identity\" : \"P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94\",
   \"access_route\" : \"/dnsaddr/127.0.0.1/tcp/4000/service/api\",
-  \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\",
+  \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/$port/service/api\",
   \"authority_identity\" : \"$authority_identity_full\"}" >"$PROJECT_JSON_PATH"
 
   # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
@@ -52,7 +53,7 @@ teardown() {
   echo "$trusted" >"$OCKAM_HOME/trusted-anchors.json"
   # Restart the authority node with a trusted identities file and check that m1 can still authenticate
   run "$OCKAM" node delete authority
-  run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:4200 --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
+  run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:$port --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
   assert_success
   sleep 1 # wait for authority to start TCP listener
 
