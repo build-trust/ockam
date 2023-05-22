@@ -1,0 +1,1 @@
+This command will return the details of a secure channel listener. The user must pass the secure channel listener address and, optionally, the node where the secure channel was set up. Otherwise, the default node will be used.

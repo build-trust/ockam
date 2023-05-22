@@ -1,0 +1,3 @@
+```sh
+$ ockam secure-channel-listener show scaddr --at n1
+```

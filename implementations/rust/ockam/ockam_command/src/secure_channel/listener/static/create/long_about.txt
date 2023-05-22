@@ -1,0 +1,3 @@
+All nodes are created with a secure channel listener at `/service/api`.
+
+You can use this command to start a custom listener with a specific name and authorization policies.

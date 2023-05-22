@@ -9,6 +9,7 @@ use colorful::Colorful;
 use ockam_core::api::Request;
 use serde_json::json;
 
+use crate::docs;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
@@ -18,9 +19,16 @@ use ockam_api::{config::lookup::ConfigLookup, nodes::models};
 use ockam_api::{nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr};
 use ockam_multiaddr::MultiAddr;
 
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
 /// Create Secure Channels
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
+#[command(
+    arg_required_else_help = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct CreateCommand {
     /// Node from which to initiate the secure channel (required)
     #[arg(value_name = "NODE", long, display_order = 800)]
