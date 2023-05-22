@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "build": "tsc --build",
-    "clean": "rimraf lib tsconfig.tsbuildinfo"
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "test": "node lib/index.js"
   }
 }
