@@ -5,7 +5,7 @@ use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::node::show::print_query_status;
 use crate::node::util::{check_default, spawn_node};
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 
@@ -33,7 +33,7 @@ pub struct StartCommand {
 
 impl StartCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_name);
+        initialize_node_if_default(&opts, &self.node_name);
         node_rpc(run_impl, (opts, self))
     }
 }

@@ -6,7 +6,7 @@ use ockam::Context;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{node_rpc, Rpc};
 use crate::{node::NodeOpts, CommandGlobalOpts};
 
@@ -21,7 +21,7 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.api_node);
         node_rpc(run_impl, (opts, self));
     }
 }

@@ -14,7 +14,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::OckamColor;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
@@ -51,7 +51,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.to);
+        initialize_node_if_default(&opts, &self.to);
         node_rpc(rpc, (opts, self));
     }
 }

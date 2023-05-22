@@ -1,5 +1,5 @@
 use crate::node::util::check_default;
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
@@ -36,7 +36,7 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_name);
+        initialize_node_if_default(&opts, &self.node_name);
         node_rpc(run_impl, (opts, self))
     }
 }

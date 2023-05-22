@@ -11,7 +11,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 use tokio::{sync::Mutex, try_join};
 
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::{
     fmt_log, fmt_ok,
     kafka::{
@@ -49,7 +49,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.api_node);
         node_rpc(rpc, (opts, self));
     }
 }

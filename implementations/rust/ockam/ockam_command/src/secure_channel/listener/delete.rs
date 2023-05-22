@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_core::Address;
 
 use super::common::SecureChannelListenerNodeOpts;
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{api, extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
@@ -21,7 +21,7 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_opts.at);
+        initialize_node_if_default(&opts, &self.node_opts.at);
         node_rpc(rpc, (opts, self));
     }
 }

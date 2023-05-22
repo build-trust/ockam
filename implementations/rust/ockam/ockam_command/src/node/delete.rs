@@ -1,5 +1,5 @@
 use crate::node::util::{delete_all_nodes, delete_node};
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
@@ -31,7 +31,7 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_name);
+        initialize_node_if_default(&opts, &self.node_name);
         if let Err(e) = run_impl(opts, self) {
             eprintln!("{e}");
             std::process::exit(e.code());

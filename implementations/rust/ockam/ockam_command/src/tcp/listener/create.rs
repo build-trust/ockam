@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::Rpc;
 use crate::util::{node_rpc, parse_node_name};
 use crate::CommandGlobalOpts;
@@ -22,7 +22,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.at);
+        initialize_node_if_default(&opts, &self.at);
         node_rpc(run_impl, (opts, self))
     }
 }

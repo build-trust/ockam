@@ -8,7 +8,7 @@ use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
-use crate::identity::{get_identity_name, initialize_identity};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
@@ -49,7 +49,7 @@ pub struct SendCommand {
 
 impl SendCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity(&opts, &self.cloud_opts.identity);
+        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(rpc, (opts, self))
     }
 }

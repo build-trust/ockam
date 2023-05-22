@@ -1,4 +1,4 @@
-use crate::identity::{get_identity_name, initialize_identity};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::util::output::Output;
 use crate::util::{node_rpc, println_output};
 use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
@@ -35,7 +35,7 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity(&opts, &self.name);
+        initialize_identity_if_default(&opts, &self.name);
         node_rpc(Self::run_impl, (opts, self))
     }
 

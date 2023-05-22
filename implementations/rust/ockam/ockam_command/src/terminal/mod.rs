@@ -226,8 +226,10 @@ impl<W: TerminalWriter> Terminal<W> {
         no_input || get_env_with_default("NO_INPUT", false).unwrap_or(false)
     }
 
-    pub fn set_quiet(&mut self) {
-        self.quiet = true
+    pub fn set_quiet(&self) -> Self {
+        let mut clone = self.clone();
+        clone.quiet = true;
+        clone
     }
 }
 

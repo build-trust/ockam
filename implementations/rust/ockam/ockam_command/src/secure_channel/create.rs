@@ -9,7 +9,7 @@ use colorful::Colorful;
 use ockam_core::api::Request;
 use serde_json::json;
 
-use crate::identity::{get_identity_name, initialize_identity};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
@@ -45,7 +45,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity(&opts, &self.cloud_opts.identity);
+        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(rpc, (opts, self));
     }
 

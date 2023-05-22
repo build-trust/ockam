@@ -182,6 +182,14 @@ impl Default for GlobalArgs {
     }
 }
 
+impl GlobalArgs {
+    pub fn set_quiet(&self) -> Self {
+        let mut clone = self.clone();
+        clone.quiet = true;
+        clone
+    }
+}
+
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
@@ -219,8 +227,11 @@ impl CommandGlobalOpts {
         }
     }
 
-    pub fn set_quiet(&mut self) {
-        self.terminal.set_quiet()
+    pub fn set_quiet(&self) -> Self {
+        let mut clone = self.clone();
+        clone.global_args = clone.global_args.set_quiet();
+        clone.terminal = clone.terminal.set_quiet();
+        clone
     }
 }
 

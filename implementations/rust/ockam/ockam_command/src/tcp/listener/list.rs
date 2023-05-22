@@ -3,7 +3,7 @@ use cli_table::{print_stdout, Cell, Style, Table};
 use ockam::Context;
 use ockam_api::nodes::models::transport::{TransportList, TransportStatus};
 
-use crate::node::{get_node_name, initialize_node, NodeOpts};
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
@@ -15,7 +15,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.api_node);
         node_rpc(rpc, (opts, self));
     }
 }

@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::is_tty;
 use crate::{
     util::{api, extract_address_value, node_rpc, Rpc},
@@ -32,7 +32,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_opts.from);
+        initialize_node_if_default(&opts, &self.node_opts.from);
         node_rpc(run_impl, (opts, self))
     }
 

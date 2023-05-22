@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, initialize_node, NodeOpts};
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::Result;
@@ -78,7 +78,7 @@ fn authenticator_default_addr() -> String {
 
 impl StartCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.api_node);
         node_rpc(rpc, (opts, self));
     }
 }
