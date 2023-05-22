@@ -225,6 +225,10 @@ impl<W: TerminalWriter> Terminal<W> {
         // to ask the user for input.  Otherwise, let the terminal decide based on the `is_tty` value
         no_input || get_env_with_default("NO_INPUT", false).unwrap_or(false)
     }
+
+    pub fn set_quiet(&mut self) {
+        self.quiet = true
+    }
 }
 
 // Logging mode

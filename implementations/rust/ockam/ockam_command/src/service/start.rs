@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, NodeOpts};
+use crate::node::{get_node_name, initialize_node, NodeOpts};
 use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::Result;
@@ -77,8 +77,9 @@ fn authenticator_default_addr() -> String {
 }
 
 impl StartCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.api_node);
+        node_rpc(rpc, (opts, self));
     }
 }
 
@@ -94,7 +95,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: StartCommand,
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
     let tcp = TcpTransport::create(ctx).await?;
     let addr = match cmd.create_subcommand {
         StartSubCommand::Identity { addr, .. } => {

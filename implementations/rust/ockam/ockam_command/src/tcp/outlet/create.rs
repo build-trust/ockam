@@ -1,4 +1,4 @@
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
@@ -41,8 +41,9 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.at);
+        node_rpc(run_impl, (opts, self))
     }
 }
 
@@ -56,7 +57,7 @@ pub async fn run_impl(
 ) -> crate::Result<()> {
     opts.terminal.write_line(&fmt_log!("Creating TCP Outlet"))?;
 
-    let node_name = get_node_name(&opts.state, cmd.at.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.at);
     let node = extract_address_value(&node_name)?;
     let project = opts
         .state

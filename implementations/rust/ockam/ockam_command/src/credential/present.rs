@@ -3,7 +3,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_multiaddr::MultiAddr;
 
-use crate::node::{get_node_name, NodeOpts};
+use crate::node::{get_node_name, initialize_node, NodeOpts};
 use crate::util::api::{self};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
@@ -21,8 +21,9 @@ pub struct PresentCommand {
 }
 
 impl PresentCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.api_node);
+        node_rpc(rpc, (opts, self));
     }
 }
 
@@ -38,7 +39,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: PresentCommand,
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     rpc.request(api::credentials::present_credential(&cmd.to, cmd.oneway))
         .await?;

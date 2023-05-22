@@ -105,7 +105,7 @@ async fn run_impl(
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
                 .ok_or_else(|| anyhow!("Authority details not configured"))?;
-        let identity = get_identity_name(&opts.state, cmd.cloud_opts.identity.clone())?;
+        let identity = get_identity_name(&opts, cmd.cloud_opts.identity.clone())?;
         create_secure_channel_to_authority(
             &ctx,
             &opts,

@@ -76,7 +76,7 @@ impl CliState {
     pub fn initialize() -> Result<Self> {
         let dir = Self::default_dir()?;
         std::fs::create_dir_all(dir.join("defaults"))?;
-        Executor::new().execute_future(Self::initialize_cli_state())?
+        Executor::execute_future(Self::initialize_cli_state())?
     }
 
     /// Create a new CliState by initializing all of its components

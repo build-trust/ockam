@@ -2,7 +2,7 @@ use clap::Args;
 
 use ockam::Context;
 
-use crate::node::{get_node_name, NodeOpts};
+use crate::node::{get_node_name, initialize_node, NodeOpts};
 use crate::util::api;
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
@@ -17,8 +17,9 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.api_node);
+        node_rpc(rpc, (opts, self));
     }
 }
 
@@ -31,7 +32,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     rpc.request(api::list_secure_channel_listener()).await?;
     let res = rpc.parse_response::<Vec<String>>()?;

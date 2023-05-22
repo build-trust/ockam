@@ -67,7 +67,7 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
-    let identity_name = get_identity_name(&opts.state, cmd.as_identity.clone())?;
+    let identity_name = get_identity_name(&opts, cmd.as_identity.clone())?;
     let ident_state = opts.state.identities.get(&identity_name)?;
     let auth_identity_identifier = ident_state.config().identifier().clone();
 

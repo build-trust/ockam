@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, NodeOpts};
+use crate::node::{get_node_name, initialize_node, NodeOpts};
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
@@ -21,25 +21,25 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.api_node);
+        node_rpc(run_impl, (opts, self))
     }
 }
 
 pub async fn run_impl(
     ctx: Context,
-    (options, cmd): (CommandGlobalOpts, DeleteCommand),
+    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
     let alias = cmd.alias.clone();
-    let node_name = get_node_name(&options.state, cmd.node_opts.api_node.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
     let node = extract_address_value(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &options, &node)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     rpc.request(make_api_request(cmd)?).await?;
 
     rpc.is_ok()?;
 
-    options
-        .terminal
+    opts.terminal
         .stdout()
         .plain(format!(
             "{} TCP Inlet with alias {alias} on Node {node} has been deleted.",

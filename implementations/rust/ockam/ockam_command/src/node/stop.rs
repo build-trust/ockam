@@ -1,4 +1,4 @@
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam_api::cli_state::StateDirTrait;
@@ -24,6 +24,7 @@ pub struct StopCommand {
 
 impl StopCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_name);
         if let Err(e) = run_impl(opts, self) {
             eprintln!("{e}");
             std::process::exit(e.code());
@@ -32,7 +33,7 @@ impl StopCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: StopCommand) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, cmd.node_name.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.node_name);
     let node_state = opts.state.nodes.get(&node_name)?;
     node_state.kill_process(cmd.force)?;
     println!("Stopped node '{}'", &node_name);
