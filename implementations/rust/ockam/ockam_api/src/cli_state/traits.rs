@@ -287,10 +287,3 @@ mod tests {
         }
     }
 }
-
-trait FileSystem {
-    fn create_dir_all(dir: PathBuf) -> Result<()>;
-    fn read_dir(path: PathBuf) -> Result<Vec<PathBuf>>;
-    fn remove_file(path: PathBuf) -> Result<()>;
-    fn write(path: PathBuf, contents: &str) -> Result<()>;
-}
