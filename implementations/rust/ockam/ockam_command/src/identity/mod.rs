@@ -4,7 +4,6 @@ mod delete;
 mod list;
 mod show;
 
-use anyhow::anyhow;
 use colorful::Colorful;
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
@@ -13,9 +12,10 @@ pub(crate) use show::ShowCommand;
 
 use crate::identity::default::DefaultCommand;
 use crate::terminal::OckamColor;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, Result, PARSER_LOGS};
+use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, PARSER_LOGS};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_api::cli_state::CliState;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -52,53 +52,48 @@ impl IdentityCommand {
     }
 }
 
-// If a name is given try to parse it as an identity name, otherwise return the default identity name
-pub fn get_identity_name(opts: &CommandGlobalOpts, name: Option<String>) -> Result<String> {
-    match name {
-        Some(n) => identity_name_parser(opts, &n),
-        None => {
-            let name = default_identity_name(opts)?;
-            identity_name_parser(opts, &name)
-        }
+/// If the required identity is the default identity but if it has not been initialized yet
+/// then initialize it
+pub fn initialize_identity(opts: &CommandGlobalOpts, name: &Option<String>) {
+    let name = get_identity_name(&opts.state, name);
+    if name == "default" && opts.state.identities.default().is_err() {
+        create_default_identity(opts);
     }
 }
 
-pub fn identity_name_parser(opts: &CommandGlobalOpts, identity_name: &str) -> Result<String> {
-    if identity_name == "default" && opts.state.identities.default().is_err() {
-        return Ok(create_default_identity(opts, identity_name));
-    }
-
-    Ok(identity_name.to_string())
+/// Return the name if identity_name is Some otherwise return the name of the default identity
+pub fn get_identity_name(cli_state: &CliState, identity_name: &Option<String>) -> String {
+    identity_name
+        .clone()
+        .unwrap_or_else(|| get_default_identity_name(cli_state))
 }
 
-pub fn default_identity_name(opts: &CommandGlobalOpts) -> Result<String> {
-    match opts.state.identities.default().ok() {
-        Some(i) => Ok(i.name().to_string()),
-        None => {
-            Err(anyhow!("Default identity not found. Have you run 'ockam identity create'?").into())
-        }
-    }
+/// Return the name of the default identity
+pub fn get_default_identity_name(cli_state: &CliState) -> String {
+    cli_state
+        .identities
+        .default()
+        .map(|i| i.name().to_string())
+        .unwrap_or_else(|_| "default".to_string())
 }
 
-pub fn create_default_identity(opts: &CommandGlobalOpts, identity_name: &str) -> String {
-    let create_command = CreateCommand::new(identity_name.into(), None);
-    create_command.run(opts.clone());
+/// Create the default identity
+fn create_default_identity(opts: &CommandGlobalOpts) {
+    let default = "default";
+    let create_command = CreateCommand::new(default.into(), None);
+    let mut quiet_opts = opts.clone();
+    quiet_opts.set_quiet();
+    create_command.run(quiet_opts);
 
     if let Ok(mut logs) = PARSER_LOGS.lock() {
         logs.push(fmt_log!("No default identity was found."));
         logs.push(fmt_ok!(
             "Creating default identity {}",
-            identity_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
+            default.color(OckamColor::PrimaryResource.color())
         ));
         logs.push(fmt_log!(
             "Setting identity {} as default for local operations...\n",
-            identity_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
+            default.color(OckamColor::PrimaryResource.color())
         ));
     }
-
-    identity_name.to_string()
 }

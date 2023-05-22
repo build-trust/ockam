@@ -1,4 +1,4 @@
-use crate::identity::get_identity_name;
+use crate::identity::{get_identity_name, initialize_identity};
 use crate::util::output::Output;
 use crate::util::{node_rpc, println_output};
 use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
@@ -34,8 +34,9 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(Self::run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_identity(&opts, &self.name);
+        node_rpc(Self::run_impl, (opts, self))
     }
 
     async fn run_impl(
@@ -43,7 +44,7 @@ impl ShowCommand {
         options: (CommandGlobalOpts, ShowCommand),
     ) -> crate::Result<()> {
         let (opts, cmd) = options;
-        let name = get_identity_name(&opts, cmd.name)?;
+        let name = get_identity_name(&opts.state, &cmd.name);
         let state = opts.state.identities.get(&name)?;
         if cmd.full {
             let identifier = state.config().identifier();
