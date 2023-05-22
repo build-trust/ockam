@@ -38,14 +38,13 @@ impl IncomingAccessControl for LocalSourceOnly {
 
 #[cfg(test)]
 mod tests {
-    use crate::compat::future::poll_once;
     use crate::{
         route, Address, IncomingAccessControl, LocalMessage, LocalOnwardOnly, LocalSourceOnly,
         OutgoingAccessControl, RelayMessage, Result, TransportMessage, TransportType,
     };
 
-    #[test]
-    fn test_onward() -> Result<()> {
+    #[tokio::test]
+    async fn test_onward() -> Result<()> {
         let local_onward_address = Address::random_local();
         let external_onward_address = Address::random(TransportType::new(1));
         let source_address = Address::random_local();
@@ -58,7 +57,7 @@ mod tests {
         );
         let msg = RelayMessage::new(source_address.clone(), local_onward_address.clone(), msg);
 
-        assert!(poll_once(async { ac.is_authorized(&msg).await })?);
+        assert!(ac.is_authorized(&msg).await?);
 
         let msg = LocalMessage::new(
             TransportMessage::v1(external_onward_address.clone(), route![], vec![]),
@@ -66,7 +65,7 @@ mod tests {
         );
         let msg = RelayMessage::new(source_address.clone(), external_onward_address.clone(), msg);
 
-        assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
+        assert!(!ac.is_authorized(&msg).await?);
 
         let msg = LocalMessage::new(
             TransportMessage::v1(local_onward_address.clone(), route![], vec![]),
@@ -74,7 +73,7 @@ mod tests {
         );
         let msg = RelayMessage::new(source_address.clone(), external_onward_address.clone(), msg);
 
-        assert!(poll_once(async { ac.is_authorized(&msg).await })?);
+        assert!(ac.is_authorized(&msg).await?);
 
         let msg = LocalMessage::new(
             TransportMessage::v1(external_onward_address, route![], vec![]),
@@ -82,13 +81,13 @@ mod tests {
         );
         let msg = RelayMessage::new(source_address, local_onward_address, msg);
 
-        assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
+        assert!(!ac.is_authorized(&msg).await?);
 
         Ok(())
     }
 
-    #[test]
-    fn test_source() -> Result<()> {
+    #[tokio::test]
+    async fn test_source() -> Result<()> {
         let local_source_address = Address::random_local();
         let external_source_address = Address::random(TransportType::new(1));
         let onward_address = Address::random_local();
@@ -105,7 +104,7 @@ mod tests {
         );
         let msg = RelayMessage::new(local_source_address.clone(), onward_address.clone(), msg);
 
-        assert!(poll_once(async { ac.is_authorized(&msg).await })?);
+        assert!(ac.is_authorized(&msg).await?);
 
         let msg = LocalMessage::new(
             TransportMessage::v1(
@@ -117,7 +116,7 @@ mod tests {
         );
         let msg = RelayMessage::new(external_source_address.clone(), onward_address.clone(), msg);
 
-        assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
+        assert!(!ac.is_authorized(&msg).await?);
 
         let msg = LocalMessage::new(
             TransportMessage::v1(
@@ -129,7 +128,7 @@ mod tests {
         );
         let msg = RelayMessage::new(external_source_address.clone(), onward_address.clone(), msg);
 
-        assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
+        assert!(!ac.is_authorized(&msg).await?);
 
         let msg = LocalMessage::new(
             TransportMessage::v1(
@@ -141,7 +140,7 @@ mod tests {
         );
         let msg = RelayMessage::new(local_source_address, onward_address, msg);
 
-        assert!(poll_once(async { ac.is_authorized(&msg).await })?);
+        assert!(ac.is_authorized(&msg).await?);
 
         Ok(())
     }
