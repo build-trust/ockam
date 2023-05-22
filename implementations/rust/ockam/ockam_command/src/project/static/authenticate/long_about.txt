@@ -1,3 +1,3 @@
 Ockam offers several pluggable enrollment protocols. One simple option is to use one-time-use enrollment ticket. This is a great option to enroll large fleets of applications, service, or devices. It is also easy to use with automated provisioning scripts and tools.
 
-With this command you can use an enrollment ticket generated with the `ockam project enroll` command to enroll an identity to a project.
+With this command you can use an enrollment ticket generated with the `ockam project ticket` command to enroll an identity to a project.
