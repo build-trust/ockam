@@ -10,6 +10,7 @@ use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{node_rpc, Rpc};
 use crate::{node::NodeOpts, CommandGlobalOpts};
 
+/// Delete a TCP listener
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     #[command(flatten)]

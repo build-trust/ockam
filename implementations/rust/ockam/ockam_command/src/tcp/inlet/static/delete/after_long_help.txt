@@ -1,0 +1,7 @@
+```sh
+# To delete a TCP inlet given its alias on the default node
+$ ockam tcp-inlet delete myinlet
+
+# To delete a TCP inlet given its ID on a specific node
+$ ockam tcp-inlet delete myinlet --node n1
+```

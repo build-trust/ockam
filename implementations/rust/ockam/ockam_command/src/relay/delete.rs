@@ -7,7 +7,7 @@ use colorful::Colorful;
 use ockam::Context;
 use ockam_core::api::{Request, RequestBuilder};
 
-/// Delete a forwarder
+/// Delete a Relay
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     /// Name assigned to Relay that will be deleted

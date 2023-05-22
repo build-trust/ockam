@@ -1,0 +1,7 @@
+```sh
+# To list the TCP inlets on the default node
+$ ockam tcp-inlet list
+
+# To list the TCP inlets on a specific node
+$ ockam tcp-inlet list --node n1
+```

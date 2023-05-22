@@ -1,0 +1,4 @@
+```sh
+# To show a TCP connection given its ID
+$ ockam tcp-connection show d59c01ab8d9683f8c454df746e627b43
+```

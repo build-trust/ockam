@@ -1,0 +1,7 @@
+```sh
+# To delete a TCP outlet given its alias on the default node
+$ ockam tcp-outlet delete myoutlet
+
+# To delete a TCP outlet given its alias on a specific node
+$ ockam tcp-outlet delete myoutlet --node n1
+```

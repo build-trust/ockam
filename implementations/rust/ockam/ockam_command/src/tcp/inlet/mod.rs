@@ -10,14 +10,16 @@ use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
-const AFTER_LONG_HELP: &str = include_str!("../static/inlet/after_long_help.txt");
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
 /// Manage TCP Inlets
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct TcpInletCommand {
     #[command(subcommand)]

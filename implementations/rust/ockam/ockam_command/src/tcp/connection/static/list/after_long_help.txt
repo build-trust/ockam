@@ -1,0 +1,7 @@
+```sh
+# To list the TCP connections on the default node
+$ ockam tcp-connection list
+
+# To list the TCP connections on a specific node
+$ ockam tcp-connection list --node n1
+```
