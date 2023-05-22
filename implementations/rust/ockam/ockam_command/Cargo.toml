@@ -64,7 +64,7 @@ colors-transform = "0.2.11"
 console = "0.15.6"
 const-str = "0.5.4"
 crossbeam-channel = "0.5"
-ctrlc = { version = "3.2.5", features = ["termination"] }
+ctrlc = { version = "3.3.0", features = ["termination"] }
 dialoguer = "0.10"
 duct = "0.13"
 flate2 = "1.0.25"
