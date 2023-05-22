@@ -1,7 +1,10 @@
 import { Address, Message, Router, LOCAL } from "./routing";
 import { Worker, Context } from "./worker";
 
-export type NodeWorkerAddress = string | Uint8Array | [type: 0, value: string | Uint8Array];
+export type NodeWorkerAddress =
+  | string
+  | Uint8Array
+  | [type: 0, value: string | Uint8Array];
 
 export class NodeContext implements Context {
   address: Address;
@@ -19,17 +22,26 @@ export class NodeContext implements Context {
 
 export class Node {
   router: Router;
-  workers: Record<string, { address: NodeWorkerAddress, worker: Worker, context: NodeContext }>;
+  workers: Record<
+    string,
+    { address: NodeWorkerAddress; worker: Worker; context: NodeContext }
+  >;
 
   constructor() {
     let unroutableMessageHandler = (message: Message) => {
-      console.error("could not route message: ", message)
+      console.error("could not route message: ", message);
     };
 
     let localAddressTypeRouterPlugin = {
-      messageHandler: (message: Message) => { return this.handleRoutingMessage(message) },
-      convertAddressToString: (address: Address) => { return this.convertAddressToString(address) },
-      convertAddressToUint8Array: (address: Address) => { return this.convertAddressToUint8Array(address) }
+      messageHandler: (message: Message) => {
+        return this.handleRoutingMessage(message);
+      },
+      convertAddressToString: (address: Address) => {
+        return this.convertAddressToString(address);
+      },
+      convertAddressToUint8Array: (address: Address) => {
+        return this.convertAddressToUint8Array(address);
+      },
     };
 
     let router = new Router(unroutableMessageHandler);
@@ -39,9 +51,12 @@ export class Node {
     this.workers = {};
   }
 
-  startWorker(address: string | Uint8Array, worker: Worker | ((context: Context, message: Message) => void)) {
+  startWorker(
+    address: string | Uint8Array,
+    worker: Worker | ((context: Context, message: Message) => void)
+  ) {
     if (typeof worker === "function") {
-      worker = { handleMessage: worker }
+      worker = { handleMessage: worker };
     }
 
     let context = new NodeContext(address, this);
@@ -55,7 +70,7 @@ export class Node {
   }
 
   route(message: Message) {
-    this.router.route(message)
+    this.router.route(message);
   }
 
   handleRoutingMessage(message: Message) {
@@ -63,28 +78,31 @@ export class Node {
     let firstAddressAsString = this.convertAddressToString(firstAddress);
     if (firstAddress && firstAddressAsString) {
       let stored = this.workers[firstAddress.toString()];
-      setTimeout(() => { stored.worker.handleMessage(stored.context, message) });
+      setTimeout(() => {
+        stored.worker.handleMessage(stored.context, message);
+      });
     } else {
-      console.error("could not route message", message)
+      console.error("could not route message", message);
     }
   }
 
   convertAddressToString(address: Address) {
     // if address is a tuple [LOCAL, address], make address[1] the address.
-    if (Array.isArray(address) && address.length === 2 && address[0] === LOCAL) address = address[1]
+    if (Array.isArray(address) && address.length === 2 && address[0] === LOCAL)
+      address = address[1];
 
     // if address is already a string, return it
     if (typeof address === "string") return address;
 
     if (Array.isArray(address)) {
-      let output: Array<string> = []
+      let output: Array<string> = [];
       for (var i = 0; i < address.length; i++) {
         let item = address[i];
         if (typeof item === "number" && item >= 0 && item <= 255) {
           let o = item.toString(16);
-          output[1] = o.length === 2 ? o : ('0' + o);
+          output[1] = o.length === 2 ? o : "0" + o;
         } else {
-          return undefined
+          return undefined;
         }
       }
     }
@@ -93,6 +111,6 @@ export class Node {
   }
 
   convertAddressToUint8Array(address: Address) {
-    return (new Uint8Array(0))
+    return new Uint8Array(0);
   }
 }
