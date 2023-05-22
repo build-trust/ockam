@@ -3401,6 +3401,7 @@ dependencies = [
  "spin 0.9.8",
  "subtle",
  "tinyvec",
+ "tokio",
  "tracing",
  "tracing-error",
  "zeroize",
