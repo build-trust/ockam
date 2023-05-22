@@ -8,7 +8,7 @@ use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
 use ockam_core::Route;
 
-/// Retrieve inlets information on Node
+/// List TCP Inlets
 #[derive(Args, Clone, Debug)]
 pub struct ListCommand {
     #[command(flatten)]

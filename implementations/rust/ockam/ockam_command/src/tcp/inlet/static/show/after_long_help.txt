@@ -1,0 +1,4 @@
+```sh
+# To show a TCP inlet given its alias
+$ ockam tcp-inlet show myinlet
+```

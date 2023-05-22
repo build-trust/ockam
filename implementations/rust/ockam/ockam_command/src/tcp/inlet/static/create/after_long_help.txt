@@ -1,0 +1,7 @@
+```sh
+# To create a new TCP inlet at the given address using the default node
+$ ockam tcp-inlet create --from 127.0.0.1:5000 --to /node/n1/service/outlet
+
+# To create a new TCP inlet at the given address using a specific node
+$ ockam tcp-inlet create --at n2 --from 127.0.0.1:5000 --to /node/n1/service/outlet
+```

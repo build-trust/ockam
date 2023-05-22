@@ -1,0 +1,7 @@
+```sh
+# To list the TCP outlets on the default node
+$ ockam tcp-outlet list
+
+# To list the TCP outlets on a specific node
+$ ockam tcp-outlet list --node n1
+```

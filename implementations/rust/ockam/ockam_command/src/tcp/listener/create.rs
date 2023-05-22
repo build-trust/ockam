@@ -9,6 +9,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
 
+/// Create a TCP listener
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
     /// Node at which to create the listener
