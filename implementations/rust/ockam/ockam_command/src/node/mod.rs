@@ -11,10 +11,7 @@ use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
 
-use crate::{
-    docs, fmt_log, terminal::OckamColor, util::OckamConfig, CommandGlobalOpts, GlobalArgs, Result,
-    PARSER_LOGS,
-};
+use crate::{docs, fmt_log, terminal::OckamColor, CommandGlobalOpts, PARSER_LOGS};
 
 mod create;
 mod default;
@@ -84,14 +81,24 @@ pub struct NodeOpts {
     pub api_node: Option<String>,
 }
 
-pub fn get_node_name(cli_state: &CliState, node_name: Option<String>) -> Result<String> {
-    match node_name {
-        Some(n) => node_name_parser(cli_state, &n),
-        None => Ok(default_node_name(cli_state)),
+/// If the required node name is the default node but that node has not been initialized yet
+/// then initialize it
+pub fn initialize_node(opts: &CommandGlobalOpts, node_name: &Option<String>) {
+    let node_name = get_node_name(&opts.state, node_name);
+    if node_name == "default" && opts.state.nodes.default().is_err() {
+        spawn_default_node(opts)
     }
 }
 
-pub fn default_node_name(cli_state: &CliState) -> String {
+/// Return the node_name if Some otherwise return the default node name
+pub fn get_node_name(cli_state: &CliState, node_name: &Option<String>) -> String {
+    node_name
+        .clone()
+        .unwrap_or_else(|| get_default_node_name(cli_state))
+}
+
+/// Return the default node name
+pub fn get_default_node_name(cli_state: &CliState) -> String {
     cli_state
         .nodes
         .default()
@@ -99,37 +106,21 @@ pub fn default_node_name(cli_state: &CliState) -> String {
         .unwrap_or_else(|_| "default".to_string())
 }
 
-pub fn node_name_parser(cli_state: &CliState, node_name: &str) -> Result<String> {
-    if node_name == "default" && cli_state.nodes.default().is_err() {
-        return Ok(spawn_default_node(node_name));
-    }
-
-    Ok(node_name.to_string())
-}
-
-pub fn spawn_default_node(node_name: &str) -> String {
-    let config = OckamConfig::load().expect("Failed to load config");
-    let quiet_opts = CommandGlobalOpts::new(
-        GlobalArgs {
-            quiet: true,
-            ..Default::default()
-        },
-        config,
-    );
-
+/// Start the default node
+fn spawn_default_node(opts: &CommandGlobalOpts) {
     let mut create_command = CreateCommand::default();
-    create_command.node_name = node_name.to_string();
+
+    let default = "default";
+    create_command.node_name = default.into();
+    let mut quiet_opts = opts.clone();
+    quiet_opts.set_quiet();
     create_command.run(quiet_opts);
 
     if let Ok(mut logs) = PARSER_LOGS.lock() {
         logs.push(fmt_log!("No default node was found."));
         logs.push(fmt_log!(
             "Created default node, {}",
-            node_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
+            default.color(OckamColor::PrimaryResource.color())
         ));
     }
-
-    node_name.to_string()
 }

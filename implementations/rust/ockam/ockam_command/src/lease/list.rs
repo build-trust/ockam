@@ -56,7 +56,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustContextOpts),
 ) -> crate::Result<()> {
-    let identity = get_identity_name(&opts.state, cloud_opts.identity.clone())?;
+    let identity = get_identity_name(&opts, cloud_opts.identity.clone())?;
     let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
         .as_identity(identity)
         .with_new_embbeded_node()

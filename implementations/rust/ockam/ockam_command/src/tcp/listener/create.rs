@@ -1,4 +1,4 @@
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::util::Rpc;
 use crate::util::{node_rpc, parse_node_name};
 use crate::CommandGlobalOpts;
@@ -21,8 +21,9 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.at);
+        node_rpc(run_impl, (opts, self))
     }
 }
 
@@ -30,7 +31,7 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, cmd.at.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(

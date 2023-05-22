@@ -164,7 +164,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     // Delegate the request to create a secure channel to the from node.
     let mut rpc = RpcBuilder::new(&ctx, &opts, from).tcp(&tcp)?.build();
 
-    let identity = get_identity_name(&opts.state, cmd.cloud_opts.identity.clone())?;
+    let identity = get_identity_name(&opts, cmd.cloud_opts.identity.clone())?;
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         to,
         authorized_identifiers,

@@ -1,4 +1,4 @@
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
@@ -24,8 +24,9 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.at);
+        node_rpc(run_impl, (opts, self))
     }
 }
 
@@ -33,7 +34,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
-    let at = get_node_name(&opts.state, cmd.at.clone())?;
+    let at = get_node_name(&opts.state, &cmd.at);
     if let Ok(node_state) = opts.state.nodes.get(&at) {
         let tcp = TcpTransport::create(&ctx).await?;
         let mut rpc = RpcBuilder::new(&ctx, &opts, node_state.name())

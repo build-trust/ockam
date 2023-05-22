@@ -1,4 +1,4 @@
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::util::is_tty;
 use crate::{
     util::{api, extract_address_value, node_rpc, Rpc},
@@ -32,6 +32,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.from);
         node_rpc(run_impl, (opts, self))
     }
 
@@ -52,7 +53,7 @@ impl CreateCommand {
                     println!("/service/{worker_addr}");
                     return Ok(());
                 }
-                let from = get_node_name(&opts.state, self.node_opts.from.clone())?;
+                let from = get_node_name(&opts.state, &self.node_opts.from);
                 let to = response.socket_addr()?;
                 if opts.global_args.no_color {
                     println!("\n  TCP Connection:");
@@ -94,14 +95,14 @@ impl CreateCommand {
 
 async fn run_impl(
     ctx: ockam::Context,
-    (options, command): (CommandGlobalOpts, CreateCommand),
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let from = get_node_name(&options.state, command.node_opts.from.clone())?;
+    let from = get_node_name(&opts.state, &cmd.node_opts.from);
     let node_name = extract_address_value(&from)?;
-    let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
-    let request = api::create_tcp_connection(&command);
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let request = api::create_tcp_connection(&cmd);
     rpc.request(request).await?;
     let response = rpc.parse_response::<models::transport::TransportStatus>()?;
 
-    command.print_output(&node_name, &options, &response)
+    cmd.print_output(&node_name, &opts, &response)
 }

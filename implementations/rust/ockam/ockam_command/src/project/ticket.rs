@@ -98,8 +98,7 @@ impl Runner {
                         .into());
                     }
                 };
-                let identity =
-                    get_identity_name(&self.opts.state, self.cmd.cloud_opts.identity.clone())?;
+                let identity = get_identity_name(&self.opts, self.cmd.cloud_opts.identity.clone())?;
                 let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
                     &self.ctx,
                     &self.opts,
@@ -112,8 +111,7 @@ impl Runner {
 
                 (sc_addr, Some(sc_flow_control_id))
             } else if let (Some(p), Some(a)) = get_project(&self.cmd.to, &map)? {
-                let identity =
-                    get_identity_name(&self.opts.state, self.cmd.cloud_opts.identity.clone())?;
+                let identity = get_identity_name(&self.opts, self.cmd.cloud_opts.identity.clone())?;
                 let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
                     &self.ctx,
                     &self.opts,

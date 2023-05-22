@@ -1,4 +1,4 @@
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
@@ -71,8 +71,9 @@ fn default_to_addr() -> MultiAddr {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.at);
+        node_rpc(rpc, (opts, self));
     }
 }
 
@@ -80,7 +81,7 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
     opts.terminal.write_line(&fmt_log!("Creating TCP Inlet"))?;
     cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state)?;
 
-    let node_name = get_node_name(&opts.state, cmd.at.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.at);
     let node = extract_address_value(&node_name)?;
 
     let tcp = TcpTransport::create(&ctx).await?;

@@ -1,5 +1,5 @@
-use crate::node::get_node_name;
 use crate::node::util::check_default;
+use crate::node::{get_node_name, initialize_node};
 use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
@@ -35,8 +35,9 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_name);
+        node_rpc(run_impl, (opts, self))
     }
 }
 
@@ -44,7 +45,7 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, cmd.node_name.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.node_name);
 
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();

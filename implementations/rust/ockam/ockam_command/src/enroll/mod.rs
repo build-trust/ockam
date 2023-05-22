@@ -113,7 +113,7 @@ async fn default_space<'a>(
     cloud_opts: &CloudOpts,
     node_name: &str,
 ) -> Result<Space<'a>> {
-    let identity = get_identity_name(&opts.state, cloud_opts.identity.clone())?;
+    let identity = get_identity_name(&opts, cloud_opts.identity.clone())?;
     // Get available spaces for node's identity
     opts.terminal.write_line(&fmt_log!(
         "Getting available spaces for {}",
@@ -211,7 +211,7 @@ async fn default_project(
     space: &Space<'_>,
 ) -> Result<Project> {
     // Get available project for the given space
-    let identity = get_identity_name(&opts.state, cloud_opts.identity.clone())?;
+    let identity = get_identity_name(&opts, cloud_opts.identity.clone())?;
     opts.terminal.write_line(&fmt_log!(
         "Getting avaiable projects for {}",
         identity.color(OckamColor::PrimaryResource.color())

@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, NodeOpts};
+use crate::node::{get_node_name, initialize_node, NodeOpts};
 use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use anyhow::anyhow;
@@ -16,18 +16,19 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.api_node);
+        node_rpc(run_impl, (opts, self))
     }
 }
 
 async fn run_impl(
     ctx: ockam::Context,
-    (options, command): (CommandGlobalOpts, ListCommand),
+    (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&options.state, command.node_opts.api_node.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
     let node_name = extract_address_value(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(Request::get("/node/outlet")).await?;
     let response = rpc.parse_response::<OutletList>()?;
 

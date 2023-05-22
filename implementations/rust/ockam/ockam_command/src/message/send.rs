@@ -61,7 +61,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             let tcp = TcpTransport::create(ctx).await?;
             (api_node, Some(tcp))
         } else {
-            let identity = get_identity_name(&opts.state, cmd.cloud_opts.identity.clone())?;
+            let identity = get_identity_name(&opts, cmd.cloud_opts.identity.clone())?;
             let api_node = start_embedded_node_with_vault_and_identity(
                 ctx,
                 opts,

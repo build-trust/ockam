@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
 
-use crate::node::default_node_name;
+use crate::node::get_node_name;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
@@ -28,10 +28,7 @@ impl ShowCommand {
 }
 
 async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> Result<()> {
-    let at = cmd
-        .at
-        .clone()
-        .unwrap_or_else(|| default_node_name(&opts.state));
+    let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
     let remote_address = &cmd.remote_address;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;

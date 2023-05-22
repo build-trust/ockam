@@ -43,7 +43,7 @@ impl ShowCommand {
         options: (CommandGlobalOpts, ShowCommand),
     ) -> crate::Result<()> {
         let (opts, cmd) = options;
-        let name = get_identity_name(&opts.state, cmd.name)?;
+        let name = get_identity_name(&opts, cmd.name)?;
         let state = opts.state.identities.get(&name)?;
         if cmd.full {
             let identifier = state.config().identifier();

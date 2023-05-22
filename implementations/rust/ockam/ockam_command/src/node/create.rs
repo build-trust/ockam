@@ -174,7 +174,7 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
     }
 }
 
-async fn run_impl(
+pub(crate) async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {

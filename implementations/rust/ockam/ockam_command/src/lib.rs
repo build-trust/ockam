@@ -218,6 +218,10 @@ impl CommandGlobalOpts {
             terminal,
         }
     }
+
+    pub fn set_quiet(&mut self) {
+        self.terminal.set_quiet()
+    }
 }
 
 #[derive(Clone, Debug, Subcommand)]

@@ -11,7 +11,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 use tokio::{sync::Mutex, try_join};
 
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::{
     fmt_log, fmt_ok,
     kafka::{
@@ -48,8 +48,9 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.api_node);
+        node_rpc(rpc, (opts, self));
     }
 }
 
@@ -71,7 +72,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
             StartKafkaConsumerRequest::new(bootstrap_server, brokers_port_range, project_route);
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_consumer").body(payload);
-        let node_name = get_node_name(&opts.state, node_opts.api_node.clone())?;
+        let node_name = get_node_name(&opts.state, &node_opts.api_node);
         start_service_impl(&ctx, &opts, &node_name, "KafkaConsumer", req, Some(&tcp)).await?;
 
         *is_finished.lock().await = true;

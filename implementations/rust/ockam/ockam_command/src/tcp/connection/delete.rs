@@ -1,4 +1,4 @@
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{node::NodeOpts, CommandGlobalOpts};
 use clap::Args;
@@ -16,8 +16,9 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.api_node);
+        node_rpc(run_impl, (opts, self))
     }
 }
 
@@ -25,7 +26,7 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, cmd.node_opts.api_node.clone())?;
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
     let node_name = extract_address_value(&node_name)?;
 
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;

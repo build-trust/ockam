@@ -9,7 +9,7 @@ use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
 use super::common::SecureChannelListenerNodeOpts;
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node};
 use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
 use crate::{CommandGlobalOpts, Result};
 
@@ -36,6 +36,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_node(&opts, &self.node_opts.at);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -48,7 +49,7 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let at = get_node_name(&opts.state, cmd.node_opts.at.clone())?;
+    let at = get_node_name(&opts.state, &cmd.node_opts.at);
     let node = extract_address_value(&at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
     let req = Request::post("/node/secure_channel_listener").body(
