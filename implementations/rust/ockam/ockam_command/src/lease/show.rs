@@ -8,7 +8,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 use termimad::{minimad::TextTemplate, MadSkin};
 
-use crate::identity::get_identity_name;
+use crate::identity::{get_identity_name, initialize_identity};
 use crate::{
     docs,
     util::{
@@ -33,13 +33,9 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(
-        self,
-        options: CommandGlobalOpts,
-        cloud_opts: CloudOpts,
-        trust_opts: TrustContextOpts,
-    ) {
-        node_rpc(run_impl, (options, cloud_opts, self, trust_opts));
+    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustContextOpts) {
+        initialize_identity(&opts, &cloud_opts.identity);
+        node_rpc(run_impl, (opts, cloud_opts, self, trust_opts));
     }
 }
 
@@ -52,7 +48,7 @@ async fn run_impl(
         TrustContextOpts,
     ),
 ) -> crate::Result<()> {
-    let identity = get_identity_name(&opts, cloud_opts.identity.clone())?;
+    let identity = get_identity_name(&opts.state, &cloud_opts.identity);
     let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
         .as_identity(identity)
         .with_new_embbeded_node()

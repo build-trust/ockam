@@ -1,6 +1,6 @@
 use ockam_core::compat::collections::HashMap;
 
-use crate::identity::get_identity_name;
+use crate::identity::{get_identity_name, initialize_identity};
 use crate::{
     util::{node_rpc, print_encodable},
     vault::default_vault_name,
@@ -35,6 +35,7 @@ pub struct IssueCommand {
 
 impl IssueCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_identity(&opts, &self.as_identity);
         node_rpc(run_impl, (opts, self));
     }
 
@@ -67,7 +68,7 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
-    let identity_name = get_identity_name(&opts, cmd.as_identity.clone())?;
+    let identity_name = get_identity_name(&opts.state, &cmd.as_identity);
     let ident_state = opts.state.identities.get(&identity_name)?;
     let auth_identity_identifier = ident_state.config().identifier().clone();
 

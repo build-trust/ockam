@@ -6,6 +6,7 @@ use crate::cli_state::{
 use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use nix::errno::Errno;
+use ockam_core::compat::sync::Arc;
 use ockam_identity::{IdentityIdentifier, LmdbStorage};
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};

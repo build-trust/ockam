@@ -17,7 +17,7 @@ use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{CommandGlobalOpts, Result};
 
-use crate::identity::get_identity_name;
+use crate::identity::{get_identity_name, initialize_identity};
 use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -55,6 +55,7 @@ fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
 
 impl AuthenticateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_identity(&opts, &self.cloud_opts.identity);
         node_rpc(run_impl, (opts, self));
     }
 }
@@ -105,7 +106,7 @@ async fn run_impl(
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
                 .ok_or_else(|| anyhow!("Authority details not configured"))?;
-        let identity = get_identity_name(&opts, cmd.cloud_opts.identity.clone())?;
+        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
         create_secure_channel_to_authority(
             &ctx,
             &opts,
