@@ -29,7 +29,7 @@ use crate::space::util::config;
 use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
 
-use crate::identity::{get_identity_name, initialize_identity};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, fmt_err, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts, Result, PARSER_LOGS};
 
@@ -49,7 +49,7 @@ pub struct EnrollCommand {
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity(&opts, &self.cloud_opts.identity);
+        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(rpc, (opts, self));
     }
 }

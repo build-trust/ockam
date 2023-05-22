@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
@@ -25,7 +25,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.at);
+        initialize_node_if_default(&opts, &self.at);
         node_rpc(run_impl, (opts, self))
     }
 }

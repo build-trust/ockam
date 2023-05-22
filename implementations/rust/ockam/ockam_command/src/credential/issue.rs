@@ -1,6 +1,6 @@
 use ockam_core::compat::collections::HashMap;
 
-use crate::identity::{get_identity_name, initialize_identity};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::{
     util::{node_rpc, print_encodable},
     vault::default_vault_name,
@@ -35,7 +35,7 @@ pub struct IssueCommand {
 
 impl IssueCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity(&opts, &self.as_identity);
+        initialize_identity_if_default(&opts, &self.as_identity);
         node_rpc(run_impl, (opts, self));
     }
 

@@ -5,7 +5,7 @@ use ockam::Context;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
-use crate::identity::{get_identity_name, initialize_identity};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::{
     docs,
     util::{
@@ -29,7 +29,7 @@ pub struct RevokeCommand {
 
 impl RevokeCommand {
     pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustContextOpts) {
-        initialize_identity(&opts, &cloud_opts.identity);
+        initialize_identity_if_default(&opts, &cloud_opts.identity);
         node_rpc(run_impl, (opts, cloud_opts, self, trust_opts));
     }
 }

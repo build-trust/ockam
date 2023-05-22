@@ -3,7 +3,7 @@ use ockam::{Context, TcpTransport};
 
 use ockam_api::nodes::models::services::ServiceList;
 
-use crate::node::{get_node_name, initialize_node, NodeOpts};
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{api, extract_address_value, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
@@ -16,7 +16,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.api_node);
         node_rpc(rpc, (opts, self));
     }
 }

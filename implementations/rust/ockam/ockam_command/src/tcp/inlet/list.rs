@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, initialize_node, NodeOpts};
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use anyhow::anyhow;
@@ -17,7 +17,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node.api_node);
+        initialize_node_if_default(&opts, &self.node.api_node);
         node_rpc(run_impl, (opts, self))
     }
 }

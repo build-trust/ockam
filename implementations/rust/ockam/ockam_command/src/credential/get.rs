@@ -2,7 +2,7 @@ use clap::Args;
 
 use ockam::Context;
 
-use crate::node::{get_node_name, initialize_node, NodeOpts};
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
@@ -20,7 +20,7 @@ pub struct GetCommand {
 
 impl GetCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.api_node);
         node_rpc(rpc, (opts, self));
     }
 }

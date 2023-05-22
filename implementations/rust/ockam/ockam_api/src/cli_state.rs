@@ -232,12 +232,16 @@ impl CliState {
 
     /// Return a test CliState with a random root directory
     pub fn test() -> Result<Self> {
-        let tests_dir = home::home_dir()
+        Self::new(&Self::test_dir()?)
+    }
+
+    /// Return a random root directory
+    pub fn test_dir() -> Result<PathBuf> {
+        Ok(home::home_dir()
             .ok_or(CliStateError::NotFound)?
             .join(".ockam")
             .join(".tests")
-            .join(random_name());
-        Self::new(&tests_dir)
+            .join(random_name()))
     }
 }
 

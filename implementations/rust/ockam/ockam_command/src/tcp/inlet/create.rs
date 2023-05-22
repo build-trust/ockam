@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, initialize_node};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
@@ -72,7 +72,7 @@ fn default_to_addr() -> MultiAddr {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node(&opts, &self.at);
+        initialize_node_if_default(&opts, &self.at);
         node_rpc(rpc, (opts, self));
     }
 }

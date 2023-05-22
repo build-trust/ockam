@@ -15,7 +15,7 @@ use ockam_core::route;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use ockam_node::RpcClient;
 
-use crate::identity::{get_identity_name, initialize_identity};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{parse_trust_context, CloudOpts, TrustContextOpts};
@@ -45,7 +45,7 @@ pub struct TicketCommand {
 
 impl TicketCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        initialize_identity(&options, &self.cloud_opts.identity);
+        initialize_identity_if_default(&options, &self.cloud_opts.identity);
         node_rpc(
             |ctx, (opts, cmd)| Runner::new(ctx, opts, cmd).run(),
             (options, self),

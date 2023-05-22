@@ -1,5 +1,6 @@
 //! Handle local node configuration
 
+use std::path::PathBuf;
 use std::{ops::Deref, sync::RwLockReadGuard};
 
 use crate::Result;
@@ -26,6 +27,10 @@ impl Deref for OckamConfig {
 impl OckamConfig {
     pub fn load() -> Result<OckamConfig> {
         let dir = cli::OckamConfig::dir();
+        Self::load_with_dir(dir)
+    }
+
+    pub fn load_with_dir(dir: PathBuf) -> Result<OckamConfig> {
         let inner = Config::<cli::OckamConfig>::load(&dir, "config")?;
         inner.write().dir = Some(dir);
         Ok(Self { inner })

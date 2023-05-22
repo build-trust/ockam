@@ -17,7 +17,7 @@ use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{CommandGlobalOpts, Result};
 
-use crate::identity::{get_identity_name, initialize_identity};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -55,7 +55,7 @@ fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
 
 impl AuthenticateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity(&opts, &self.cloud_opts.identity);
+        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(run_impl, (opts, self));
     }
 }
