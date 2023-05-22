@@ -1,14 +1,20 @@
 use crate::node::get_node_name;
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::CommandGlobalOpts;
 use crate::Result;
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
 use ockam_core::api::{Request, RequestBuilder};
 
+const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
+
 /// Delete a Relay
 #[derive(Clone, Debug, Args)]
+#[command(
+    arg_required_else_help = false,
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct DeleteCommand {
     /// Name assigned to Relay that will be deleted
     #[arg(display_order = 900, required = true)]
@@ -40,9 +46,8 @@ pub async fn run_impl(
     options
         .terminal
         .stdout()
-        .plain(format!(
-            "{}Relay with name {} on Node {} has been deleted.",
-            "✔︎".light_green(),
+        .plain(fmt_ok!(
+            "Relay with name {} on Node {} has been deleted.",
             relay_name,
             node
         ))
@@ -54,7 +59,6 @@ pub async fn run_impl(
 
 /// Construct a request to delete a relay
 fn make_api_request<'a>(cmd: DeleteCommand) -> Result<RequestBuilder<'a>> {
-    let remote_address = format!("forward_to_{}", cmd.relay_name);
-    let request = Request::delete(format!("/node/forwarder/{remote_address}"));
+    let request = Request::delete(format!("/node/forwarder/{}", cmd.relay_name));
     Ok(request)
 }
