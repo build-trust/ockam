@@ -255,6 +255,9 @@ defmodule Ockam.Worker do
       {:ok, state} ->
         {:noreply, state}
 
+      {:stop, reason, state} ->
+        {:stop, reason, state}
+
       {:error, reason} ->
         {:stop, reason, {:post_init, options}}
     end
@@ -464,6 +467,7 @@ defmodule Ockam.Worker do
       case return_value do
         {:ok, _state} -> :ok
         {:error, _reason} -> :error
+        {:stop, _reason, _state} -> :error
       end
 
     metadata = Map.merge(metadata, %{result: result, return_value: return_value})
