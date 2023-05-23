@@ -43,7 +43,7 @@ impl Worker for KafkaPortalListener {
 
         let inlet_responder_address = message.transport().return_route.next()?.clone();
 
-        let worker_address = KafkaPortalWorker::start_kafka_portal(
+        let worker_address = KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
             self.secure_channel_controller.clone(),
             self.uuid_to_name.clone(),

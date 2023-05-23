@@ -18,12 +18,12 @@ use tracing::warn;
 
 use crate::kafka::portal_worker::InterceptError;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
-use crate::kafka::protocol_aware::{Interceptor, MessageWrapper, RequestInfo};
+use crate::kafka::protocol_aware::{InletInterceptorImpl, MessageWrapper, RequestInfo};
 
-impl Interceptor {
+impl InletInterceptorImpl {
     ///Parse request and map request <=> response
     /// fails if anything in the parsing fails to avoid leaking clear text payloads
-    pub(crate) async fn intercept_request(
+    pub(crate) async fn intercept_request_impl(
         &self,
         context: &mut Context,
         mut original: BytesMut,

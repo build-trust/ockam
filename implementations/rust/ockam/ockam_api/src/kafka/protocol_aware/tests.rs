@@ -2,7 +2,8 @@
 mod test {
     use crate::kafka::inlet_controller::KafkaInletController;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
-    use crate::kafka::protocol_aware::{Interceptor, UniqueSecureChannelId};
+    use crate::kafka::protocol_aware::KafkaMessageInterceptor;
+    use crate::kafka::protocol_aware::{InletInterceptorImpl, UniqueSecureChannelId};
     use crate::kafka::secure_channel_map::{KafkaEncryptedContent, KafkaSecureChannelController};
     use crate::port_range::PortRange;
     use kafka_protocol::messages::ApiKey;
@@ -57,17 +58,18 @@ mod test {
     async fn interceptor__basic_messages_with_several_api_versions__parsed_correctly(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let interceptor = Interceptor::new(
-            Arc::new(DummySecureChannelController {}),
-            Default::default(),
-        );
-
         let inlet_map = KafkaInletController::new(
             MultiAddr::default(),
             route![],
             route![],
             [127, 0, 0, 1].into(),
             PortRange::new(0, 0).unwrap(),
+        );
+
+        let interceptor = InletInterceptorImpl::new(
+            Arc::new(DummySecureChannelController {}),
+            Default::default(),
+            inlet_map,
         );
 
         let mut correlation_id = 0;
@@ -125,7 +127,6 @@ mod test {
                         ApiKey::ApiVersionsKey,
                     )
                     .unwrap(),
-                    &inlet_map,
                 )
                 .await;
 
@@ -191,7 +192,6 @@ mod test {
                         ApiKey::MetadataKey,
                     )
                     .unwrap(),
-                    &inlet_map,
                 )
                 .await;
 

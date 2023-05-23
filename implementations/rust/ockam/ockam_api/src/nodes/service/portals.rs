@@ -94,6 +94,8 @@ impl NodeManagerWorker {
         info!("Handling request to create inlet portal");
 
         debug! {
+            prefix = %req.prefix_route(),
+            suffix = %req.suffix_route(),
             listen_addr = %req.listen_addr(),
             outlet_addr = %req.outlet_addr(),
             %alias,

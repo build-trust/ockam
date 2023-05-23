@@ -4,12 +4,16 @@
 mod inlet_controller;
 mod integration_test;
 mod length_delimited;
+mod outlet_controller;
+mod outlet_service;
 mod portal_listener;
 mod portal_worker;
 mod protocol_aware;
 mod secure_channel_map;
 
 pub(crate) use inlet_controller::KafkaInletController;
+pub(crate) use outlet_service::prefix_forwarder::PrefixForwarderService;
+pub(crate) use outlet_service::OutletManagerService;
 pub(crate) use portal_listener::KafkaPortalListener;
 pub(crate) use secure_channel_map::KafkaSecureChannelControllerImpl;
 

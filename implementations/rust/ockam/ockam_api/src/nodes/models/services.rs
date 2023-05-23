@@ -40,6 +40,25 @@ impl<'a, T> StartServiceRequest<'a, T> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
+pub struct StartKafkaOutletRequest {
+    #[b(1)] pub bootstrap_server_addr: String,
+}
+
+impl StartKafkaOutletRequest {
+    pub fn new(bootstrap_server_addr: impl Into<String>) -> Self {
+        Self {
+            bootstrap_server_addr: bootstrap_server_addr.into(),
+        }
+    }
+
+    pub fn bootstrap_server_addr(&self) -> &str {
+        &self.bootstrap_server_addr
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
 pub struct StartKafkaConsumerRequest<'a> {
     #[b(1)] pub bootstrap_server_addr: SocketAddr,
     #[n(2)] brokers_port_range: (u16, u16),

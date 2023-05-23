@@ -61,7 +61,8 @@ impl Worker for RemoteForwarder {
                         .map_err(|_| OckamError::InvalidHubResponse)?;
                     let payload =
                         String::from_utf8(payload).map_err(|_| OckamError::InvalidHubResponse)?;
-                    if payload != self.registration_payload {
+                    // using ends_with() instead of == to allow for prefixes
+                    if !payload.ends_with(&self.registration_payload) {
                         return Err(OckamError::InvalidHubResponse.into());
                     }
 

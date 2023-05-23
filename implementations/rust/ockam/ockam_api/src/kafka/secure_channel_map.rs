@@ -87,11 +87,17 @@ impl NodeManagerForwarderCreator {
         forwarder_service: MultiAddr,
         alias: String,
     ) -> Result<()> {
+        let is_rust = true;
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
                 Request::post("/node/forwarder")
-                    .body(CreateForwarder::at_project(forwarder_service, Some(alias)))
+                    .body(CreateForwarder::at_node(
+                        forwarder_service,
+                        Some(alias),
+                        is_rust,
+                        None,
+                    ))
                     .to_vec()?,
             )
             .await?;
@@ -211,7 +217,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 SecureChannelControllerListener::<F> {
                     controller: self.clone(),
                 },
-                AllowAll,
+                AllowAll, //TODO: ABAC: check membership of the project
                 AllowAll,
             )
             .await
@@ -306,8 +312,8 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         topic_name: &str,
         partition: i32,
     ) -> Result<(UniqueSecureChannelId, SecureChannelRegistryEntry)> {
-        //here we should have the orchestrator address and expect forwarders to be
-        // present in the orchestrator with the format "consumer_{topic_name}_{partition}"
+        // here we should have the orchestrator address and expect forwarders to be
+        // present in the orchestrator with the format "consumer__{topic_name}_{partition}"
 
         let topic_partition_key = (topic_name.to_string(), partition);
         //consumer__ prefix is added by the orchestrator
