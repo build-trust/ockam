@@ -136,6 +136,9 @@ pub struct CreateOutlet<'a> {
     #[b(2)] pub worker_addr: Cow<'a, str>,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] pub alias: Option<CowStr<'a>>,
+    /// Allow the outlet to be reachable from the default secure channel, useful when we want to
+    /// tighten the flow control
+    #[b(4)] pub reachable_from_default_secure_channel: bool,
 }
 
 impl<'a> CreateOutlet<'a> {
@@ -143,6 +146,7 @@ impl<'a> CreateOutlet<'a> {
         tcp_addr: impl Into<Cow<'a, str>>,
         worker_addr: impl Into<Cow<'a, str>>,
         alias: impl Into<Option<CowStr<'a>>>,
+        reachable_from_default_secure_channel: bool,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -150,6 +154,7 @@ impl<'a> CreateOutlet<'a> {
             tcp_addr: tcp_addr.into(),
             worker_addr: worker_addr.into(),
             alias: alias.into(),
+            reachable_from_default_secure_channel,
         }
     }
 }

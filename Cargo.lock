@@ -3375,7 +3375,6 @@ dependencies = [
  "quickcheck",
  "rand",
  "reqwest",
- "rust-embed",
  "serde",
  "serde_json",
  "sysinfo",
@@ -4424,40 +4423,6 @@ name = "roff"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b833d8d034ea094b1ea68aa6d5c740e0d04bad9d16568d08ba6f76823a114316"
-
-[[package]]
-name = "rust-embed"
-version = "6.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b68543d5527e158213414a92832d2aab11a84d2571a5eb021ebe22c43aab066"
-dependencies = [
- "rust-embed-impl",
- "rust-embed-utils",
- "walkdir",
-]
-
-[[package]]
-name = "rust-embed-impl"
-version = "6.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d4e0f0ced47ded9a68374ac145edd65a6c1fa13a96447b873660b2a568a0fd7"
-dependencies = [
- "proc-macro2",
- "quote",
- "rust-embed-utils",
- "syn 1.0.109",
- "walkdir",
-]
-
-[[package]]
-name = "rust-embed-utils"
-version = "7.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "512b0ab6853f7e14e3c8754acb43d6f748bb9ced66aa5915a6553ac8213f7731"
-dependencies = [
- "sha2 0.10.6",
- "walkdir",
-]
 
 [[package]]
 name = "rustc-demangle"

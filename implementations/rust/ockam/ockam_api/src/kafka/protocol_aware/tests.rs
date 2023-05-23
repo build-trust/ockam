@@ -2,7 +2,8 @@
 mod test {
     use crate::kafka::inlet_controller::KafkaInletController;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
-    use crate::kafka::protocol_aware::{Interceptor, UniqueSecureChannelId};
+    use crate::kafka::protocol_aware::InletInterceptorImpl;
+    use crate::kafka::protocol_aware::KafkaMessageInterceptor;
     use crate::kafka::secure_channel_map::{KafkaEncryptedContent, KafkaSecureChannelController};
     use crate::port_range::PortRange;
     use kafka_protocol::messages::ApiKey;
@@ -10,9 +11,9 @@ mod test {
     use kafka_protocol::messages::{ApiVersionsRequest, MetadataRequest, MetadataResponse};
     use kafka_protocol::messages::{ApiVersionsResponse, RequestHeader, ResponseHeader};
     use kafka_protocol::protocol::{Builder, StrBytes};
-    use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
     use ockam_core::route;
+    use ockam_core::{async_trait, Address};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
@@ -29,14 +30,14 @@ mod test {
         ) -> ockam_core::Result<KafkaEncryptedContent> {
             Ok(KafkaEncryptedContent {
                 content,
-                secure_channel_id: 0,
+                consumer_decryptor_address: Address::from_string("arbitrary string"),
             })
         }
 
         async fn decrypt_content_for(
             &self,
             _context: &mut Context,
-            _secure_channel_id: UniqueSecureChannelId,
+            _consumer_decryptor_address: &Address,
             encrypted_content: Vec<u8>,
         ) -> ockam_core::Result<Vec<u8>> {
             Ok(encrypted_content)
@@ -57,17 +58,18 @@ mod test {
     async fn interceptor__basic_messages_with_several_api_versions__parsed_correctly(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let interceptor = Interceptor::new(
-            Arc::new(DummySecureChannelController {}),
-            Default::default(),
-        );
-
         let inlet_map = KafkaInletController::new(
             MultiAddr::default(),
             route![],
             route![],
             [127, 0, 0, 1].into(),
             PortRange::new(0, 0).unwrap(),
+        );
+
+        let interceptor = InletInterceptorImpl::new(
+            Arc::new(DummySecureChannelController {}),
+            Default::default(),
+            inlet_map,
         );
 
         let mut correlation_id = 0;
@@ -125,7 +127,6 @@ mod test {
                         ApiKey::ApiVersionsKey,
                     )
                     .unwrap(),
-                    &inlet_map,
                 )
                 .await;
 
@@ -191,7 +192,6 @@ mod test {
                         ApiKey::MetadataKey,
                     )
                     .unwrap(),
-                    &inlet_map,
                 )
                 .await;
 

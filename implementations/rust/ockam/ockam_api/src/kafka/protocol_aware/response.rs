@@ -19,14 +19,13 @@ use tracing::{trace, warn};
 use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::portal_worker::InterceptError;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_response, string_to_str_bytes};
-use crate::kafka::protocol_aware::{Interceptor, MessageWrapper, RequestInfo};
+use crate::kafka::protocol_aware::{InletInterceptorImpl, MessageWrapper, RequestInfo};
 
-impl Interceptor {
-    pub(crate) async fn intercept_response(
+impl InletInterceptorImpl {
+    pub(crate) async fn intercept_response_impl(
         &self,
         context: &mut Context,
         mut original: BytesMut,
-        inlet_map: &KafkaInletController,
     ) -> Result<BytesMut, InterceptError> {
         //let's clone the view of the buffer without cloning the content
         let mut buffer = original.peek_bytes(0..original.len());
@@ -80,7 +79,7 @@ impl Interceptor {
                         .handle_find_coordinator_response(
                             context,
                             &mut buffer,
-                            inlet_map,
+                            &self.inlet_map,
                             &request_info,
                             &header,
                         )
@@ -92,7 +91,7 @@ impl Interceptor {
                         .handle_metadata_response(
                             context,
                             &mut buffer,
-                            inlet_map,
+                            &self.inlet_map,
                             request_info,
                             &header,
                         )
@@ -240,7 +239,7 @@ impl Interceptor {
                                 .secure_channel_controller
                                 .decrypt_content_for(
                                     context,
-                                    message_wrapper.secure_channel_identifier,
+                                    &message_wrapper.consumer_decryptor_address,
                                     message_wrapper.content,
                                 )
                                 .await
