@@ -168,6 +168,7 @@ impl DefaultAddress {
     pub const ENROLLMENT_TOKEN_ACCEPTOR: &'static str = "enrollment_token_acceptor";
     pub const VERIFIER: &'static str = "verifier";
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
+    pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
     pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
     pub const RPC_PROXY: &'static str = "rpc_proxy_service";
@@ -212,10 +213,6 @@ pub mod resources {
 use core::fmt;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-#[derive(rust_embed::RustEmbed)]
-#[folder = "./static"]
-pub(crate) struct StaticFiles;
 
 /// Newtype around [`Vec<u8>`] that provides base-16 string encoding using serde.
 #[derive(Debug, Clone, Default, Encode, Decode)]

@@ -1,19 +1,23 @@
 use bytes::{Bytes, BytesMut};
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
+use ockam_abac::AbacAccessControl;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+
+use ockam_core::flow_control::{
+    FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
+};
 use ockam_core::{
     errcode::{Kind, Origin},
-    route, Address, AsyncTryClone, Encodable, Error, LocalInfo, LocalMessage, Route, Routed,
-    TransportMessage, Worker,
+    route, Address, AllowSourceAddress, AnyIncomingAccessControl, Encodable, Error, LocalInfo,
+    LocalMessage, Route, Routed, TransportMessage, Worker,
 };
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
 
 use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::length_delimited::{length_encode, KafkaMessageDecoder};
-use crate::kafka::protocol_aware::{Interceptor, TopicUuidMap};
+use crate::kafka::protocol_aware::{InletInterceptorImpl, KafkaMessageInterceptor, TopicUuidMap};
 use crate::kafka::secure_channel_map::KafkaSecureChannelController;
 
 ///by default kafka supports up to 1MB messages, 16MB is the maximum suggested
@@ -21,12 +25,7 @@ pub(crate) const MAX_KAFKA_MESSAGE_SIZE: u32 = 16 * 1024 * 1024;
 
 enum Receiving {
     Requests,
-
-    // When we are receiving responses we have the responsibility of validating
-    // next step in onward route.
-    // Since we know it beforehand we simply ignore the provided onward route
-    // and use the one we know.
-    Responses(Route),
+    Responses,
 }
 
 /// Acts like a relay for messages between tcp inlet and outlet for both directions.
@@ -48,15 +47,17 @@ enum Receiving {
 /// └────────┘             └─────────┘             └────────┘
 ///```
 pub(crate) struct KafkaPortalWorker {
-    //the instance of worker managing the opposite: request or response
-    //the first one to receive the disconnect message will stop both workers
+    // The instance of worker managing the opposite: request or response
+    // The first one to receive the disconnect message will stop both workers
     other_worker_address: Address,
     receiving: Receiving,
-    shared_protocol_state: Interceptor,
-    inlet_map: KafkaInletController,
+    message_interceptor: Arc<dyn KafkaMessageInterceptor>,
     disconnect_received: Arc<AtomicBool>,
     decoder: KafkaMessageDecoder,
     max_message_size: u32,
+    // Since we know the next step beforehand we simply ignore the provided onward route
+    // and use the one we know.
+    fixed_onward_route: Option<Route>,
 }
 
 #[ockam::worker]
@@ -64,10 +65,10 @@ impl Worker for KafkaPortalWorker {
     type Message = PortalMessage;
     type Context = Context;
 
-    //Every tcp payload message is received gets written into a buffer
+    // Every tcp payload message is received gets written into a buffer
     // when the whole kafka message is received the message is intercepted
     // and then forwarded to the original destination.
-    //As it may take several tcp payload messages to complete a single kafka
+    // As it may take several tcp payload messages to complete a single kafka
     // message or a single message may contain several kafka messages within
     // there is no guaranteed relation between message incoming and messages
     // outgoing.
@@ -114,8 +115,7 @@ impl Worker for KafkaPortalWorker {
             PortalMessage::Disconnect => {
                 self.forward(context, routed_message).await?;
 
-                //the first one to receive disconnect and to swap the atomic will
-                //stop both workers
+                // The first one to receive disconnect and to swap the atomic will stop both workers
                 let disconnect_received = self.disconnect_received.swap(true, Ordering::SeqCst);
                 if !disconnect_received {
                     trace!(
@@ -129,8 +129,35 @@ impl Worker for KafkaPortalWorker {
                     context.stop_worker(context.address()).await?;
                 }
             }
-            PortalMessage::Ping | PortalMessage::Pong => {
-                self.forward(context, routed_message).await?
+            PortalMessage::Ping => self.forward(context, routed_message).await?,
+
+            PortalMessage::Pong => {
+                match self.receiving {
+                    Receiving::Requests => {
+                        // if we receive a pong message it means it must be from the other worker
+                        if routed_message.src_addr() == self.other_worker_address {
+                            if let Some(fixed_onward_route) = self.fixed_onward_route.as_ref() {
+                                debug!(
+                                    "updating onward route from {} to {}",
+                                    fixed_onward_route,
+                                    routed_message.return_route()
+                                );
+                                self.fixed_onward_route = Some(routed_message.return_route());
+                            }
+                        }
+                    }
+                    Receiving::Responses => {
+                        // only the response worker should receive pongs but we forward
+                        // the pong also to the other worker to update the fixed onward route
+                        // with the final route
+                        let mut local_message = routed_message.local_message().clone();
+                        local_message.transport_mut().onward_route =
+                            route![self.other_worker_address.clone()];
+                        context.forward(local_message).await?;
+
+                        self.forward(context, routed_message).await?
+                    }
+                }
             }
         }
 
@@ -159,9 +186,12 @@ impl KafkaPortalWorker {
         let mut local_message = routed_message.into_local_message();
         let transport = local_message.transport_mut();
 
-        if let Receiving::Responses(fixed_onward_route) = &self.receiving {
-            // To correctly proxy messages to the inlet or outlet side we invert the return route
-            // when a message pass through.
+        if let Some(fixed_onward_route) = &self.fixed_onward_route {
+            trace!(
+                "replacing onward_route {:?} with {:?}",
+                transport.onward_route,
+                fixed_onward_route
+            );
             transport.onward_route = fixed_onward_route.clone();
             transport
                 .return_route
@@ -169,8 +199,13 @@ impl KafkaPortalWorker {
                 .prepend(self.other_worker_address.clone());
         } else {
             transport.onward_route.step()?;
-            // Since we force the return route next step (fixed_onward_route), we can
-            // omit the previous return route.
+            // Since we force the return route next step (fixed_onward_route in the other worker),
+            // we can omit the previous return route.
+            trace!(
+                "replacing return_route {:?} with {:?}",
+                transport.return_route,
+                self.other_worker_address
+            );
             transport.return_route = route![self.other_worker_address.clone()];
         }
 
@@ -193,7 +228,7 @@ impl KafkaPortalWorker {
         let return_route: Route;
         let onward_route;
 
-        if let Receiving::Responses(fixed_onward_route) = &self.receiving {
+        if let Some(fixed_onward_route) = &self.fixed_onward_route {
             // To correctly proxy messages to the inlet or outlet side
             // we invert the return route when a message pass through
             return_route = provided_return_route
@@ -203,8 +238,8 @@ impl KafkaPortalWorker {
                 .into();
             onward_route = fixed_onward_route.clone();
         } else {
-            // Since we force the return route next step (fixed_onward_route), we can
-            // omit the previous return route
+            // Since we force the return route next step (fixed_onward_route in the other worker),
+            // we can omit the previous return route.
             return_route = route![self.other_worker_address.clone()];
             onward_route = provided_onward_route.clone().modify().pop_front().into();
         };
@@ -242,13 +277,13 @@ impl KafkaPortalWorker {
         {
             let transformed_message = match self.receiving {
                 Receiving::Requests => {
-                    self.shared_protocol_state
+                    self.message_interceptor
                         .intercept_request(context, complete_kafka_message)
                         .await
                 }
-                Receiving::Responses(_) => {
-                    self.shared_protocol_state
-                        .intercept_response(context, complete_kafka_message, &self.inlet_map)
+                Receiving::Responses => {
+                    self.message_interceptor
+                        .intercept_response(context, complete_kafka_message)
                         .await
                 }
             }?;
@@ -271,10 +306,93 @@ impl KafkaPortalWorker {
 }
 
 impl KafkaPortalWorker {
-    ///returns address used for inlet communications, aka the one facing the client side,
+    /// Creates the two specular kafka workers for the outlet use case
+    /// Returns the address of the worker which handles the Requests
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn create_outlet_side_kafka_portal(
+        context: &mut Context,
+        max_kafka_message_size: Option<u32>,
+        fixed_outlet_route: Route,
+        message_interceptor: Arc<dyn KafkaMessageInterceptor>,
+        flow_controls: &FlowControls,
+        secure_channel_flow_control_id: Option<FlowControlId>,
+        flow_control_id: Option<FlowControlId>,
+        spawner_flow_control_id: Option<FlowControlId>,
+        incoming_access_control: Arc<AbacAccessControl>,
+        outgoing_access_control: Arc<FlowControlOutgoingAccessControl>,
+    ) -> ockam_core::Result<Address> {
+        let requests_worker_address = Address::random_tagged("KafkaPortalWorker.requests");
+        let responses_worker_address = Address::random_tagged("KafkaPortalWorker.responses");
+        let disconnect_received = Arc::new(AtomicBool::new(false));
+
+        let request_worker = Self {
+            message_interceptor: message_interceptor.clone(),
+            other_worker_address: responses_worker_address.clone(),
+            receiving: Receiving::Requests,
+            disconnect_received: disconnect_received.clone(),
+            decoder: KafkaMessageDecoder::new(),
+            max_message_size: max_kafka_message_size.unwrap_or(MAX_KAFKA_MESSAGE_SIZE),
+            fixed_onward_route: Some(fixed_outlet_route),
+        };
+        let response_worker = Self {
+            message_interceptor,
+            other_worker_address: requests_worker_address.clone(),
+            receiving: Receiving::Responses,
+            disconnect_received: disconnect_received.clone(),
+            decoder: KafkaMessageDecoder::new(),
+            max_message_size: max_kafka_message_size.unwrap_or(MAX_KAFKA_MESSAGE_SIZE),
+            fixed_onward_route: None,
+        };
+
+        // allowing the other worker to allow forwarding of the `pong` message
+        WorkerBuilder::new(request_worker)
+            .with_address(requests_worker_address.clone())
+            .with_incoming_access_control_arc(Arc::new(AnyIncomingAccessControl::new(vec![
+                Arc::new(AllowSourceAddress(responses_worker_address.clone())),
+                incoming_access_control,
+            ])))
+            .with_outgoing_access_control_arc(outgoing_access_control)
+            .start(context)
+            .await?;
+
+        if let Some(flow_control_id) = flow_control_id {
+            flow_controls.add_producer(
+                requests_worker_address.clone(),
+                &flow_control_id,
+                spawner_flow_control_id.as_ref(),
+                vec![],
+            );
+
+            // we need to receive the first message from the listener
+            if let Some(spawner_flow_control_id) = spawner_flow_control_id.as_ref() {
+                flow_controls.add_consumer(
+                    requests_worker_address.clone(),
+                    spawner_flow_control_id,
+                    FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+                );
+            }
+        }
+
+        if let Some(secure_channel_flow_control_id) = secure_channel_flow_control_id.as_ref() {
+            flow_controls.add_consumer(
+                requests_worker_address.clone(),
+                secure_channel_flow_control_id,
+                FlowControlPolicy::ProducerAllowMultiple,
+            );
+        }
+
+        WorkerBuilder::new(response_worker)
+            .with_address(responses_worker_address)
+            .start(context)
+            .await?;
+
+        Ok(requests_worker_address)
+    }
+
+    /// Returns address used for inlet communications, aka the one facing the client side,
     /// used for requests.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn start_kafka_portal(
+    pub(crate) async fn create_inlet_side_kafka_portal(
         context: &mut Context,
         secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         uuid_to_name: TopicUuidMap,
@@ -283,29 +401,33 @@ impl KafkaPortalWorker {
         flow_control_id: Option<FlowControlId>,
         inlet_responder_route: Route,
     ) -> ockam_core::Result<Address> {
-        let shared_protocol_state = Interceptor::new(secure_channel_controller, uuid_to_name);
+        let shared_protocol_state = Arc::new(InletInterceptorImpl::new(
+            secure_channel_controller,
+            uuid_to_name,
+            inlet_map,
+        ));
 
         let requests_worker_address = Address::random_tagged("KafkaPortalWorker.requests");
         let responses_worker_address = Address::random_tagged("KafkaPortalWorker.responses");
         let disconnect_received = Arc::new(AtomicBool::new(false));
 
         let request_worker = Self {
-            inlet_map: inlet_map.clone(),
-            shared_protocol_state: shared_protocol_state.async_try_clone().await?,
+            message_interceptor: shared_protocol_state.clone(),
             other_worker_address: responses_worker_address.clone(),
             receiving: Receiving::Requests,
             disconnect_received: disconnect_received.clone(),
             decoder: KafkaMessageDecoder::new(),
             max_message_size: max_kafka_message_size.unwrap_or(MAX_KAFKA_MESSAGE_SIZE),
+            fixed_onward_route: None,
         };
         let response_worker = Self {
-            inlet_map: inlet_map.clone(),
-            shared_protocol_state,
+            message_interceptor: shared_protocol_state,
             other_worker_address: requests_worker_address.clone(),
-            receiving: Receiving::Responses(inlet_responder_route),
+            receiving: Receiving::Responses,
             disconnect_received: disconnect_received.clone(),
             decoder: KafkaMessageDecoder::new(),
             max_message_size: max_kafka_message_size.unwrap_or(MAX_KAFKA_MESSAGE_SIZE),
+            fixed_onward_route: Some(inlet_responder_route),
         };
 
         context
@@ -627,11 +749,14 @@ mod test {
         );
 
         let secure_channels = secure_channels();
-        let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(secure_channels, MultiAddr::default())
-                .into_trait();
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            secure_channels,
+            MultiAddr::default(),
+            "test_trust_context_id".to_string(),
+        )
+        .into_trait();
 
-        KafkaPortalWorker::start_kafka_portal(
+        KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
             secure_channel_controller,
             Default::default(),
@@ -682,6 +807,7 @@ mod test {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handler.secure_channels.clone(),
             MultiAddr::default(),
+            "test_trust_context_id".to_string(),
         )
         .into_trait();
 
@@ -692,7 +818,7 @@ mod test {
             [127, 0, 0, 1].into(),
             PortRange::new(0, 0).unwrap(),
         );
-        let portal_inlet_address = KafkaPortalWorker::start_kafka_portal(
+        let portal_inlet_address = KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
             secure_channel_controller,
             Default::default(),

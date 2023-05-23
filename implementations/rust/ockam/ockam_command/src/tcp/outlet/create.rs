@@ -141,7 +141,7 @@ fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, 
     let tcp_addr = cmd.to.to_string();
     let worker_addr = cmd.from;
     let alias = cmd.alias.map(|a| a.into());
-    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias);
+    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, true);
     let request = Request::post("/node/outlet").body(payload);
     Ok(request)
 }

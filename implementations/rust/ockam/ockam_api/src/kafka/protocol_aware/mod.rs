@@ -1,4 +1,7 @@
-use crate::kafka::secure_channel_map::{KafkaSecureChannelController, UniqueSecureChannelId};
+use crate::kafka::portal_worker::InterceptError;
+use crate::kafka::secure_channel_map::KafkaSecureChannelController;
+use crate::kafka::KafkaInletController;
+use bytes::BytesMut;
 use kafka_protocol::messages::ApiKey;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::{
@@ -6,14 +9,19 @@ use ockam_core::compat::{
     fmt::Debug,
     sync::{Arc, Mutex},
 };
-use ockam_core::AsyncTryClone;
+use ockam_core::{async_trait, Address};
+
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_node::Context;
 
+mod metadata_interceptor;
 mod request;
 mod response;
 mod tests;
+
 pub(super) mod utils;
+pub(crate) use metadata_interceptor::OutletInterceptorImpl;
 
 #[derive(Clone, Debug)]
 struct RequestInfo {
@@ -27,11 +35,46 @@ type CorrelationId = i32;
 /// only from one connection
 pub(super) type TopicUuidMap = Arc<Mutex<HashMap<String, String>>>;
 
-#[derive(AsyncTryClone)]
-pub(crate) struct Interceptor {
+#[async_trait]
+pub(crate) trait KafkaMessageInterceptor: Send + Sync + 'static {
+    async fn intercept_request(
+        &self,
+        context: &mut Context,
+        original: BytesMut,
+    ) -> Result<BytesMut, InterceptError>;
+
+    async fn intercept_response(
+        &self,
+        context: &mut Context,
+        original: BytesMut,
+    ) -> Result<BytesMut, InterceptError>;
+}
+
+#[derive(Clone)]
+pub(crate) struct InletInterceptorImpl {
     request_map: Arc<Mutex<HashMap<CorrelationId, RequestInfo>>>,
     uuid_to_name: TopicUuidMap,
     secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
+    inlet_map: KafkaInletController,
+}
+
+#[async_trait]
+impl KafkaMessageInterceptor for InletInterceptorImpl {
+    async fn intercept_request(
+        &self,
+        context: &mut Context,
+        original: BytesMut,
+    ) -> Result<BytesMut, InterceptError> {
+        self.intercept_request_impl(context, original).await
+    }
+
+    async fn intercept_response(
+        &self,
+        context: &mut Context,
+        original: BytesMut,
+    ) -> Result<BytesMut, InterceptError> {
+        self.intercept_response_impl(context, original).await
+    }
 }
 
 #[derive(Debug, Clone, Decode, Encode)]
@@ -40,20 +83,22 @@ pub(crate) struct Interceptor {
 ///Wraps the content within every record batch
 struct MessageWrapper {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1652220>,
-    #[b(1)] secure_channel_identifier: UniqueSecureChannelId,
+    #[n(0)] tag: TypeTag<1652221>,
+    #[b(1)] consumer_decryptor_address: Address,
     #[b(2)] content: Vec<u8>
 }
 
-impl Interceptor {
+impl InletInterceptorImpl {
     pub(crate) fn new(
         secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         uuid_to_name: TopicUuidMap,
-    ) -> Interceptor {
+        inlet_map: KafkaInletController,
+    ) -> InletInterceptorImpl {
         Self {
             request_map: Arc::new(Mutex::new(Default::default())),
             uuid_to_name,
             secure_channel_controller,
+            inlet_map,
         }
     }
 }

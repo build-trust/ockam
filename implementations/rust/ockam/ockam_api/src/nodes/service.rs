@@ -662,6 +662,9 @@ impl NodeManagerWorker {
                 .start_okta_identity_provider_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
+            (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
+                self.start_kafka_outlet_service(ctx, req, dec).await?
+            }
             (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
                 self.start_kafka_consumer_service(ctx, req, dec).await?
             }

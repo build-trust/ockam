@@ -12,6 +12,7 @@ use ockam_multiaddr::MultiAddr;
 use tokio::{sync::Mutex, try_join};
 
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::util::process_nodes_multiaddr;
 use crate::{
     display_parse_logs, fmt_log, fmt_ok,
     kafka::{
@@ -66,6 +67,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         brokers_port_range,
         project_route,
     } = cmd;
+
+    let project_route = process_nodes_multiaddr(&project_route, &opts.state)?;
+
     let is_finished = Mutex::new(false);
     let send_req = async {
         let tcp = TcpTransport::create(&ctx).await?;

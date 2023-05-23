@@ -54,6 +54,7 @@ use crate::terminal::{Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 
+use crate::kafka::outlet::KafkaOutletCommand;
 use colorful::Colorful;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
@@ -274,6 +275,7 @@ pub enum OckamSubcommand {
     TcpOutlet(TcpOutletCommand),
     TcpInlet(TcpInletCommand),
 
+    KafkaOutlet(KafkaOutletCommand),
     KafkaConsumer(KafkaConsumerCommand),
     KafkaProducer(KafkaProducerCommand),
 
@@ -382,6 +384,7 @@ impl OckamCommand {
             OckamSubcommand::Message(c) => c.run(options),
             OckamSubcommand::Relay(c) => c.run(options),
 
+            OckamSubcommand::KafkaOutlet(c) => c.run(options),
             OckamSubcommand::TcpListener(c) => c.run(options),
             OckamSubcommand::TcpConnection(c) => c.run(options),
             OckamSubcommand::TcpOutlet(c) => c.run(options),

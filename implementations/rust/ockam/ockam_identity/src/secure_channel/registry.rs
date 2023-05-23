@@ -14,10 +14,12 @@ pub struct SecureChannelRegistryEntry {
     is_initiator: bool,
     my_id: IdentityIdentifier,
     their_id: IdentityIdentifier,
+    their_decryptor_address: Address,
 }
 
 impl SecureChannelRegistryEntry {
     /// Create new registry entry
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         encryptor_messaging_address: Address,
         encryptor_api_address: Address,
@@ -26,6 +28,7 @@ impl SecureChannelRegistryEntry {
         is_initiator: bool,
         my_id: IdentityIdentifier,
         their_id: IdentityIdentifier,
+        their_decryptor_address: Address,
     ) -> Self {
         Self {
             encryptor_messaging_address,
@@ -35,6 +38,7 @@ impl SecureChannelRegistryEntry {
             is_initiator,
             my_id,
             their_id,
+            their_decryptor_address,
         }
     }
 
@@ -70,6 +74,11 @@ impl SecureChannelRegistryEntry {
     /// Their `IdentityIdentifier`
     pub fn their_id(&self) -> IdentityIdentifier {
         self.their_id.clone()
+    }
+
+    /// Their `Decryptor` address
+    pub fn their_decryptor_address(&self) -> Address {
+        self.their_decryptor_address.clone()
     }
 }
 
@@ -128,5 +137,18 @@ impl SecureChannelRegistry {
             .unwrap()
             .get(encryptor_address)
             .cloned()
+    }
+
+    /// Get SecureChannel with given decryptor messaging address
+    pub fn get_channel_by_decryptor_address(
+        &self,
+        decryptor_address: &Address,
+    ) -> Option<SecureChannelRegistryEntry> {
+        self.registry
+            .read()
+            .unwrap()
+            .iter()
+            .find(|(_, entry)| entry.decryptor_messaging_address == *decryptor_address)
+            .map(|(_, entry)| entry.clone())
     }
 }

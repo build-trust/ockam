@@ -14,7 +14,7 @@ use ockam::identity::IdentityIdentifier;
 use ockam::{Address, AsyncTryClone, Result};
 
 use ockam_abac::Resource;
-use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::api::{Id, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, IncomingAccessControl, Route};
@@ -94,6 +94,8 @@ impl NodeManagerWorker {
         info!("Handling request to create inlet portal");
 
         debug! {
+            prefix = %req.prefix_route(),
+            suffix = %req.suffix_route(),
             listen_addr = %req.listen_addr(),
             outlet_addr = %req.outlet_addr(),
             %alias,
@@ -306,22 +308,46 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
-        let mut node_manager = self.node_manager.write().await;
         let CreateOutlet {
             tcp_addr,
             worker_addr,
             alias,
+            reachable_from_default_secure_channel,
             ..
         } = dec.decode()?;
+
         let tcp_addr = tcp_addr.to_string();
+
+        self.create_outlet_impl(
+            ctx,
+            req.id(),
+            tcp_addr,
+            worker_addr.into(),
+            alias.map(|a| a.0.into()),
+            reachable_from_default_secure_channel,
+        )
+        .await
+    }
+
+    pub(super) async fn create_outlet_impl<'a>(
+        &mut self,
+        ctx: &Context,
+        request_id: Id,
+        tcp_addr: String,
+        worker_addr: String,
+        alias: Option<String>,
+        reachable_from_default_secure_channel: bool,
+    ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
+        let mut node_manager = self.node_manager.write().await;
         let resource = alias
             .as_deref()
             .map(Resource::new)
             .unwrap_or(resources::OUTLET);
-        let alias = alias.map(|a| a.0.into()).unwrap_or_else(random_alias);
+
+        let alias = alias.unwrap_or_else(random_alias);
 
         info!("Handling request to create outlet portal");
-        let worker_addr = Address::from(worker_addr.as_ref());
+        let worker_addr = Address::from_string(&worker_addr);
 
         let check_credential = node_manager.enable_credential_checks;
         let trust_context_id = if check_credential {
@@ -344,15 +370,19 @@ impl NodeManagerWorker {
             options
         };
 
-        // Accept messages from the default secure channel listener
-        let options = if let Some(flow_control_id) = ctx
-            .flow_controls()
-            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-        {
-            options.as_consumer(
-                &flow_control_id,
-                FlowControlPolicy::SpawnerAllowMultipleMessages,
-            )
+        let options = if reachable_from_default_secure_channel {
+            // Accept messages from the default secure channel listener
+            if let Some(flow_control_id) = ctx
+                .flow_controls()
+                .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+            {
+                options.as_consumer(
+                    &flow_control_id,
+                    FlowControlPolicy::SpawnerAllowMultipleMessages,
+                )
+            } else {
+                options
+            }
         } else {
             options
         };
@@ -370,7 +400,7 @@ impl NodeManagerWorker {
                     OutletInfo::new(&tcp_addr, Some(&worker_addr)),
                 );
 
-                Response::ok(req.id()).body(OutletStatus::new(
+                Response::ok(request_id).body(OutletStatus::new(
                     tcp_addr,
                     worker_addr.to_string(),
                     alias,
@@ -384,7 +414,7 @@ impl NodeManagerWorker {
                     .outlets
                     .insert(alias.clone(), OutletInfo::new(&tcp_addr, None));
 
-                Response::bad_request(req.id()).body(OutletStatus::new(
+                Response::bad_request(request_id).body(OutletStatus::new(
                     tcp_addr,
                     worker_addr.to_string(),
                     alias,
