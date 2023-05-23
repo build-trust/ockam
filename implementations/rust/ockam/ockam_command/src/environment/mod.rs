@@ -11,4 +11,3 @@ impl EnvironmentCommand {
         println!("{}", ENVTEXT);
     }
 }
-

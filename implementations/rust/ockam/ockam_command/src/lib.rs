@@ -12,6 +12,7 @@ mod configuration;
 mod credential;
 mod docs;
 mod enroll;
+mod environment;
 mod error;
 mod identity;
 mod kafka;
@@ -39,7 +40,6 @@ mod util;
 mod vault;
 mod version;
 mod worker;
-mod environment;
 
 use crate::admin::AdminCommand;
 use crate::authority::AuthorityCommand;
