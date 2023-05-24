@@ -122,11 +122,9 @@ impl IdentitiesCreation {
 
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr;
-
-    use crate::identities;
-
     use super::*;
+    use crate::identities;
+    use core::str::FromStr;
 
     #[tokio::test]
     async fn test_identity_creation() -> Result<()> {

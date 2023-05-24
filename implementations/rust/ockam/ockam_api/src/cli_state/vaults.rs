@@ -40,9 +40,13 @@ pub struct VaultState {
 impl VaultState {
     pub async fn get(&self) -> Result<Arc<Vault>> {
         if self.config.aws_kms {
-            let config = AwsKmsConfig::new();
+            let config = AwsKmsConfig::default().await?;
             Ok(Vault::create_with_security_module(
-                AwsSecurityModule::create(config).await?,
+                AwsSecurityModule::create_with_storage_path(
+                    config,
+                    self.vault_file_path().as_path(),
+                )
+                .await?,
             ))
         } else {
             let vault =
