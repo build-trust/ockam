@@ -40,8 +40,10 @@ pub(crate) struct DecodeMessage3 {
     pub(crate) identity_identifier: IdentityIdentifier,
     pub(crate) addresses: Addresses,
     pub(crate) remote_route: Route,
-    pub(crate) trust_context: Option<TrustContext>,
-    pub(crate) trust_policy: Arc<dyn TrustPolicy>,
+
+    // these variables are kept for the next state
+    trust_context: Option<TrustContext>,
+    trust_policy: Arc<dyn TrustPolicy>,
 }
 
 impl DecodeMessage3 {
