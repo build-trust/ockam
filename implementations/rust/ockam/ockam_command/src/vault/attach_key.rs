@@ -59,3 +59,44 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Resu
     println!("Identity attached to vault: {idt_name}");
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ockam_core::Result;
+    use ockam_identity::Identities;
+    use ockam_vault::{PersistentSecretsStore, Vault};
+    use ockam_vault_aws::AwsSecurityModule;
+    use std::sync::Arc;
+
+    /// This test needs to be executed with the following environment variables
+    /// AWS_REGION
+    /// AWS_ACCESS_KEY_ID
+    /// AWS_SECRET_ACCESS_KEY
+    #[tokio::test]
+    #[ignore]
+    async fn test_create_identity_with_external_key_id() -> Result<()> {
+        let vault =
+            Vault::create_with_security_module(Arc::new(AwsSecurityModule::default().await?));
+        let identities = Identities::builder()
+            .with_identities_vault(vault.clone())
+            .build();
+
+        // create a secret key using the AWS KMS
+        let key_id = vault
+            .create_persistent_secret(SecretAttributes::NistP256)
+            .await?;
+        let key_attrs = KeyAttributes::new(
+            IdentityChangeConstants::ROOT_LABEL.to_string(),
+            SecretAttributes::NistP256,
+        );
+
+        let identity = identities
+            .identities_creation()
+            .create_identity_with_existing_key(&key_id, key_attrs)
+            .await;
+        assert!(identity.is_ok());
+
+        Ok(())
+    }
+}

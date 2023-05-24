@@ -55,7 +55,7 @@ impl SecretAttributes {
 }
 
 /// All possible [`SecretType`]s
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Encode, Decode, Eq, PartialEq, Zeroize)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Encode, Decode, Eq, PartialEq, Zeroize, PartialOrd, Ord)]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum SecretType {

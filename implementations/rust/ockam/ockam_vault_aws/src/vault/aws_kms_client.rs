@@ -1,3 +1,4 @@
+use aws_config::SdkConfig;
 use aws_sdk_kms::error::SdkError;
 use aws_sdk_kms::operation::create_key::CreateKeyError;
 use aws_sdk_kms::operation::get_public_key::GetPublicKeyError;
@@ -22,16 +23,23 @@ pub struct AwsKmsClient {
 }
 
 /// AWS KMS configuration.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct AwsKmsConfig {
     multi_region: bool,
+    sdk_config: SdkConfig,
 }
 
 impl AwsKmsConfig {
     /// Create a new configuration for the AWS KMS
-    pub fn new() -> AwsKmsConfig {
+    pub async fn default() -> Result<AwsKmsConfig> {
+        Ok(Self::new(aws_config::load_from_env().await))
+    }
+
+    /// Create a new configuration for the AWS KMS
+    pub fn new(sdk_config: SdkConfig) -> AwsKmsConfig {
         AwsKmsConfig {
             multi_region: false,
+            sdk_config,
         }
     }
 
@@ -44,15 +52,14 @@ impl AwsKmsConfig {
 
 impl AwsKmsClient {
     /// Create a new AWS KMS client.
-    pub async fn new(c: AwsKmsConfig) -> Result<Self> {
-        let config = aws_config::load_from_env().await;
-        let client = Client::new(&config);
-        Ok(Self { client, config: c })
+    pub async fn new(config: AwsKmsConfig) -> Result<Self> {
+        let client = Client::new(&config.sdk_config);
+        Ok(Self { client, config })
     }
 
     /// Create an AWS KMS client using the default configuration.
     pub async fn default() -> Result<Self> {
-        Self::new(AwsKmsConfig::default()).await
+        Self::new(AwsKmsConfig::default().await?).await
     }
 
     /// Create a new NIST P-256 key-pair in AWS KMS and return its ID.
@@ -143,22 +150,24 @@ impl AwsKmsClient {
         Err(Error::UnsupportedKeyType.into())
     }
 
-    pub(crate) async fn compute_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {
-        log::trace!(%public_key, "compute the key id for a public key");
-        let output = self
-            .client
-            .describe_key()
-            .key_id(public_key.to_string())
-            .send()
-            .await
-            .map_err(|err| {
-                log::error!(%public_key, %err, "failed to get the key description");
-                Error::MissingKeyId
-            })?;
-        if let Some(metadata) = output.key_metadata() {
-            log::debug!(%public_key, "received key id");
-            if let Some(key_id) = metadata.key_id() {
-                return Ok(key_id.to_string());
+    /// Return the key id corresponding to a public key from the KMS
+    /// This function is particularly inefficient since it lists all the keys
+    /// This is why there is a cache in the AwsKms module to avoid this call
+    pub(crate) async fn get_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {
+        let output = self.client.list_keys().send().await.map_err(|err| {
+            log::error!(%public_key, %err, "failed to list all keys");
+            Error::MissingKeys
+        })?;
+
+        if let Some(keys) = output.keys() {
+            log::debug!(%public_key, "received keys");
+            for key in keys {
+                if let Some(key_id) = key.key_id() {
+                    let one_public_key = self.public_key(&key_id.to_string()).await?;
+                    if one_public_key == public_key.clone() {
+                        return Ok(key_id.into());
+                    }
+                }
             }
         }
         log::error!(%public_key, "key id not found for public key {}", public_key);
@@ -257,6 +266,8 @@ enum Error {
     },
     #[error("aws did not return a key id")]
     MissingKeyId,
+    #[error("aws did not return the list of existing keys")]
+    MissingKeys,
     #[error("aws did not return a signature")]
     MissingSignature,
     #[error("key type is not supported")]
@@ -266,46 +277,5 @@ enum Error {
 impl From<Error> for ockam_core::Error {
     fn from(e: Error) -> Self {
         ockam_core::Error::new(Origin::Other, Kind::Io, e)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::AwsKmsClient;
-    use ockam_node::tokio;
-    use ockam_vault::{
-        PersistentSecretsStore, SecretAttributes, SecretsStoreReader, Signer, Vault,
-    };
-
-    // A key ID that refers to an existing AWS KMS NIST P-256 key.
-    const PREEXISTING_KEY_ID: &str = "d1583be3-23f6-4ad7-9214-33a1e64e2374";
-
-    #[tokio::test]
-    #[ignore]
-    async fn sign_verify_with_existing_key() {
-        let keyid = PREEXISTING_KEY_ID.to_string();
-        let kms = AwsKmsClient::default().await.unwrap();
-        let msg = b"hello world";
-        let sig = kms.sign(&keyid, &msg[..]).await.unwrap();
-        assert!(kms.verify(&keyid, &msg[..], &sig).await.unwrap())
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn sign_with_aws_verify_locally() {
-        let keyid = PREEXISTING_KEY_ID.to_string();
-        let kms = AwsKmsClient::default().await.unwrap();
-        let msg = b"hello world";
-        let sig = kms.sign(&keyid, &msg[..]).await.unwrap();
-        let pky = kms.public_key(&keyid).await.unwrap();
-        let vault = Vault::create();
-        {
-            let att = SecretAttributes::NistP256;
-            let kid = vault.create_persistent_secret(att).await.unwrap();
-            let pky = vault.get_public_key(&kid).await.unwrap();
-            let sig = vault.sign(&kid, &msg[..]).await.unwrap();
-            assert!(vault.verify(&pky, msg, &sig).await.unwrap())
-        }
-        assert!(vault.verify(&pky, msg, &sig).await.unwrap())
     }
 }

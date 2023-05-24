@@ -3666,12 +3666,14 @@ name = "ockam_vault_aws"
 version = "0.1.0"
 dependencies = [
  "aws-config",
+ "aws-credential-types",
  "aws-sdk-kms",
  "delegate",
  "ockam_core",
  "ockam_macros",
  "ockam_node",
  "ockam_vault",
+ "p256",
  "sha2 0.10.6",
  "thiserror",
  "tokio",

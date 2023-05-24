@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// A public key.
-#[derive(Encode, Decode, Serialize, Deserialize, Clone, Debug, Zeroize)]
+#[derive(Encode, Decode, Serialize, Deserialize, Clone, Debug, Zeroize, PartialOrd, Ord)]
 #[zeroize(drop)]
 #[rustfmt::skip]
 #[cbor(map)]
