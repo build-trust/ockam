@@ -79,7 +79,7 @@ pub(crate) fn render(body: &str) -> &'static str {
     }
 }
 
-/// Use a shell syntax highlighter to render the code in terminals
+/// Use a shell syntax highlighter to render the fenced code blocks in terminals
 fn process_terminal_docs(input: String) -> String {
     let mut output: Vec<String> = Vec::new();
     let mut code_highlighter = FencedCodeBlockHighlighter::new();
