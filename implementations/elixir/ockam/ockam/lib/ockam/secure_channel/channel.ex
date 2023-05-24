@@ -514,14 +514,14 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp handle_inner_message_impl(message, %Channel{channel_state: %Handshaking{xx: xx}} = state) do
-    with {:ok, data, ""} <- :bare.decode(message.payload, :data),
+    with {:ok, data} <- bare_decode_strict(message.payload, :data),
          {:ok, next} <- XX.in_payload(xx, data) do
       continue_handshake(next, %Channel{state | peer_route: message.return_route})
     end
   end
 
   defp handle_inner_message_impl(message, %Channel{channel_state: channel_state} = state) do
-    with {:ok, ciphertext, ""} <- :bare.decode(message.payload, :data),
+    with {:ok, ciphertext} <- bare_decode_strict(message.payload, :data),
          {:ok, plaintext, decrypt_st} <-
            Decryptor.decrypt("", ciphertext, channel_state.decrypt_st) do
       case Wire.decode(plaintext, :secure_channel) do
@@ -618,5 +618,12 @@ defmodule Ockam.SecureChannel.Channel do
       |> Keyword.merge(address_prefix: "ISC_R_", role: :responder, restart_type: :temporary)
 
     Keyword.merge(opts, worker_mod: __MODULE__, worker_options: worker_opts)
+  end
+
+  defp bare_decode_strict(data, type) do
+    case :bare.decode(data, type) do
+      {:ok, result, ""} -> {:ok, result}
+      error -> {:error, {:invalid_bare_data, type, error}}
+    end
   end
 end
