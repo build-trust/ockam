@@ -69,7 +69,7 @@ impl ExchangeCompleter {
         if let Some(trust_context) = self.trust_context {
             if self.their_credentials.len() >= 2 {
                 //FIXME: remove as soon as we start supporting multiple credentials
-                return Err(IdentityError::SecureChannelVerificationFailed.into());
+                return Err(IdentityError::CredentialVerificationFailed.into());
             }
 
             for credential in self.their_credentials {
@@ -84,12 +84,12 @@ impl ExchangeCompleter {
 
                 if let Some(_err) = result.err() {
                     //TODO: consider the possibility of keep going when a credential validation fails
-                    return Err(IdentityError::SecureChannelVerificationFailed.into());
+                    return Err(IdentityError::CredentialVerificationFailed.into());
                 }
             }
         } else if !self.their_credentials.is_empty() {
             //we cannot validate credentials without a trust context
-            return Err(IdentityError::SecureChannelVerificationFailed.into());
+            return Err(IdentityError::UnknownAuthority.into());
         }
 
         //store identity for future validation

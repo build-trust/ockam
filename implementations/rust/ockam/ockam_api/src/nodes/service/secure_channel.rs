@@ -85,6 +85,11 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
+        let options = match self.trust_context.clone() {
+            Some(trust_context) => options.with_trust_context(trust_context),
+            None => options,
+        };
+
         let sc_addr = self
             .secure_channels
             .create_secure_channel(ctx, identifier, sc_route.clone(), options)
