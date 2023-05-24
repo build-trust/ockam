@@ -99,16 +99,14 @@ impl Display for Identity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::str::FromStr;
 
     #[test]
     fn test_display() {
         let data = hex::decode("0144c7eb72dd1e633f38e0d0521e9d5eb5072f6418176529eb1b00189e4d69ad2e000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020c6c52380125d42b0b4da922b1cff8503a258c3497ec8ac0b4a3baa0d9ca7b3780301014075064b902bda9d16db81ab5f38fbcf226a0e904e517a8c087d379ea139df1f2d7fee484ac7e1c2b7ab2da75f85adef6af7ddb05e7fa8faf180820cb9e86def02").unwrap();
         let identity = Identity::new(
-            IdentityIdentifier::from_str(
-                "Pfa804b7fca12a19eed206ae180b5b576860ae6512f196c189d90661bcc434b50",
-            )
-            .unwrap(),
+            IdentityIdentifier::from_string(
+                "fa804b7fca12a19eed206ae180b5b576860ae6512f196c189d90661bcc434b50",
+            ),
             IdentityChangeHistory::import(data.to_vec().as_slice()).unwrap(),
         );
 

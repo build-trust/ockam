@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anyhow::{anyhow, Context as _};
 
 use ockam_core::api::Request;
@@ -112,7 +110,7 @@ pub async fn create_secure_channel_to_project(
     credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
 ) -> crate::Result<(MultiAddr, FlowControlId)> {
-    let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
+    let authorized_identifier = vec![IdentityIdentifier::from_string(project_identity)];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
 
     let payload = models::secure_channel::CreateSecureChannelRequest::new(

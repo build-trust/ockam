@@ -394,10 +394,10 @@ Attributes: {"name": "value"}
 
         CredentialData {
             schema: Some(SchemaId(1)),
-            subject: IdentityIdentifier::from_key_id(
+            subject: IdentityIdentifier::from_string(
                 "6474cfdbf547240b6d716bff89c976810859bc3f47be8ea620df12a392ea6cb7",
             ),
-            issuer: IdentityIdentifier::from_key_id(
+            issuer: IdentityIdentifier::from_string(
                 "0db4fec87ff764485f1311e68d6f474e786f1fdbafcd249a5eb73dd681fd1d5d",
             ),
             attributes,
