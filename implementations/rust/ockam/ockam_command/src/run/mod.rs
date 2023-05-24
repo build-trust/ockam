@@ -1,7 +1,7 @@
 mod parser;
 
 use crate::util::node_rpc;
-use crate::{CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::Context;
@@ -9,6 +9,7 @@ use std::path::PathBuf;
 
 /// Create nodes given a declarative configuration file
 #[derive(Clone, Debug, Args)]
+#[command(hide = docs::hide())]
 pub struct RunCommand {
     /// Path to the configuration file
     #[arg(long)]
