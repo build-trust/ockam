@@ -4,9 +4,10 @@ use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
 
-/// Full Ockam Reset
+/// Removes the local Ockam configuration including all Identities and Nodes
 #[derive(Clone, Debug, Args)]
 pub struct ResetCommand {
+    /// Confirm the reset without prompting
     #[arg(display_order = 901, long, short)]
     yes: bool,
 }

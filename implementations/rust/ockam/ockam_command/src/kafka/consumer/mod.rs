@@ -6,6 +6,7 @@ use crate::CommandGlobalOpts;
 
 use self::create::CreateCommand;
 
+/// Manage Kafka Consumers
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct KafkaConsumerCommand {
