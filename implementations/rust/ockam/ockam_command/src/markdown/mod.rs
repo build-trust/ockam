@@ -10,21 +10,13 @@ use std::path::{Path, PathBuf};
 use std::{cmp, env, io, str};
 use tracing::error;
 
-const LONG_HELP: &str = "\
-markdown pages output directory. Absolute path required. Will be created in case not existing. \
-Fallback: \"ockam_markdown_pages/\" in the current working directory.";
-
-/// Generate Ockam markdown pages
+/// Generate markdown files for all existing Ockam commands
 #[derive(Clone, Debug, Args)]
 #[command(hide = docs::hide())]
 pub struct MarkdownCommand {
-    #[arg(
-        short,
-        long,
-        help = "markdown output directory path",
-        long_help = LONG_HELP,
-        value_parser(NonEmptyStringValueParser::new())
-    )]
+    /// Absolute path to the output directory where the generated markdown files will be stored.
+    /// Defaults to "./ockam_markdown_pages" in the current working directory.
+    #[arg(short, long, value_parser(NonEmptyStringValueParser::new()))]
     dir: Option<String>,
 }
 
@@ -59,7 +51,7 @@ fn get_markdown_page_directory(cmd_mark_dir: &Option<String>) -> io::Result<Path
         }
         None => {
             let mut mark_dir = env::current_dir()?;
-            mark_dir.push("ockam_markdown_pages/");
+            mark_dir.push("ockam_markdown_pages");
             println!("Markdown pages stored at: {}", mark_dir.display());
             mark_dir
         }
@@ -146,27 +138,38 @@ fn generate_markdown_page(
         p_cmd.replace("ockam ", ""),
         cmd.get_name()
     )?;
-    writeln!(buffer, "---")?;
+    writeln!(buffer, "---\n")?;
 
-    // Usage
+    // Usage (e.g. "ockam space create [OPTIONS] [NAME] [-- <ADMINS>...]")
     let mut usage = cmd.clone().render_usage().to_string();
-    // remove `usage:` from the string
+    // remove `Usage:` from the string
     usage = usage.replace("Usage: ", "");
     // append parent commands in beginning of the usage
     writeln!(buffer, "`{}{}`\n", p_cmd, usage)?;
 
-    // Before help: print either the short or the long version
-    if let Some(s) = cmd.get_before_help() {
-        writeln!(buffer, "{}.\n", s)?;
-    } else if let Some(s) = cmd.get_before_long_help() {
-        writeln!(buffer, "{}", process_txt_to_md(s.to_string()))?;
+    // Before help (i.e. the doc string of the command): print either the short or the long version
+    if let Some(s) = cmd.get_before_help().map(|s| s.to_string()) {
+        if !s.is_empty() {
+            writeln!(buffer, "{}.\n", s)?;
+        }
+    } else if let Some(s) = cmd.get_before_long_help().map(|s| s.to_string()) {
+        if !s.is_empty() {
+            writeln!(buffer, "{}", process_txt_to_md(s))?;
+        }
     }
 
-    if let Some(s) = cmd.get_long_about() {
-        writeln!(buffer, "{}", process_txt_to_md(s.to_string()))?;
+    // Long about; fallback to short about
+    if let Some(s) = cmd.get_long_about().map(|s| s.to_string()) {
+        if !s.is_empty() {
+            writeln!(buffer, "{}", process_txt_to_md(s))?;
+        }
+    } else if let Some(s) = cmd.get_about().map(|s| s.to_string()) {
+        if !s.is_empty() {
+            writeln!(buffer, "{}", process_txt_to_md(s))?;
+        }
     }
 
-    // Subcommands list
+    // Subcommands list, if any
     if cmd.get_subcommands().next().is_some() {
         writeln!(buffer, "### Subcommands\n")?;
 
@@ -221,9 +224,13 @@ fn generate_markdown_page(
 
     // After help: print either the long or the short version
     if let Some(s) = cmd.get_after_help() {
-        writeln!(buffer, "{}\n", s)?;
+        if !s.to_string().is_empty() {
+            writeln!(buffer, "{}\n", s)?;
+        }
     } else if let Some(s) = cmd.get_after_long_help() {
-        writeln!(buffer, "{}", process_txt_to_md(s.to_string()))?;
+        if !s.to_string().is_empty() {
+            writeln!(buffer, "{}", process_txt_to_md(s.to_string()))?;
+        }
     }
 
     // make a .md file and add the buffer to it
