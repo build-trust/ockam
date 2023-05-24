@@ -28,10 +28,9 @@ use ockam_core::compat::{
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_core::IncomingAccessControl;
-use ockam_core::{AllowAll, AsyncTryClone, LOCAL};
+use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_identity::TrustContext;
-use ockam_multiaddr::proto::Service;
-use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::tokio;
 use ockam_node::tokio::task::JoinHandle;
@@ -51,8 +50,8 @@ use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::session::sessions::Sessions;
 use crate::session::Medic;
+use crate::DefaultAddress;
 use crate::RpcProxyService;
-use crate::{local_worker, DefaultAddress};
 
 use super::registry::Registry;
 
@@ -460,32 +459,6 @@ impl NodeManager {
         debug!("connecting to {}", &connection.addr);
         let context = Arc::new(connection.ctx.async_try_clone().await?);
 
-        let consumer_worker = {
-            // The rationale is simple: whenever we go outside the node we are using flow
-            // control. The last service before that must be a consumer of that flow control
-            // in order to receive the message coming back.
-            let mut consumer_worker = None;
-            let mut everything_local = true;
-            for protocol_value in connection.addr.iter() {
-                if protocol_value.code() == Service::CODE {
-                    let local = protocol_value
-                        .cast::<Service>()
-                        .ok_or_else(|| ApiError::generic("invalid service address"))?;
-                    consumer_worker = Some(Address::new(LOCAL, &*local));
-                }
-
-                if !local_worker(&protocol_value.code())? {
-                    everything_local = false;
-                    break;
-                }
-            }
-            if everything_local {
-                None
-            } else {
-                consumer_worker
-            }
-        };
-
         let tcp_transport = node_manager
             .clone()
             .read()
@@ -515,11 +488,6 @@ impl NodeManager {
             .build();
 
         debug!("connected to {connection_instance:?}");
-
-        // make sure the service before flow control is a consumer
-        if let Some(address) = consumer_worker {
-            connection_instance.add_consumer(&context, &address);
-        }
 
         if connection.add_default_consumers {
             connection_instance
