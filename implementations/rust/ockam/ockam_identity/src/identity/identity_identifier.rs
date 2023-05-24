@@ -7,6 +7,7 @@ use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::env::FromString;
 use ockam_core::{Error, KeyId, Result};
+use ockam_vault::{PublicKey, VaultSecurityModule};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// An identifier of an Identity.
@@ -19,9 +20,15 @@ pub struct IdentityIdentifier(#[n(0)] KeyId);
 impl IdentityIdentifier {
     const PREFIX: &'static str = "P";
 
-    /// Create an IdentityIdentifier from a KeyId
-    pub fn from_key_id(key_id: &str) -> Self {
-        Self(format!("{}{}", Self::PREFIX, key_id.trim()))
+    /// Create an IdentityIdentifier from a public key
+    pub fn from_public_key(public_key: &PublicKey) -> Self {
+        let hashed = VaultSecurityModule::sha256(public_key.data());
+        Self::from_string(hex::encode(hashed).as_str())
+    }
+
+    /// Create an IdentityIdentifier from a hashed and hex-encoded public key
+    pub fn from_string(string: &str) -> Self {
+        Self(format!("{}{}", Self::PREFIX, string.trim()))
     }
 
     /// Return the wrapped KeyId
@@ -125,7 +132,7 @@ mod test {
 
     impl Arbitrary for Id {
         fn arbitrary(g: &mut Gen) -> Self {
-            Self(IdentityIdentifier::from_key_id(&String::arbitrary(g)))
+            Self(IdentityIdentifier::from_string(&String::arbitrary(g)))
         }
     }
 
@@ -152,12 +159,6 @@ mod test {
             let d = IntoDeserializer::<value::Error>::into_deserializer(s);
             let i = IdentityIdentifier::deserialize(d).unwrap();
             val.0 == i
-        }
-
-        fn prop_eq_key_id(s: String) -> bool {
-            let k = s.trim();
-            let i = IdentityIdentifier::from_key_id(k);
-            i.key_id() == k
         }
 
         fn prop_prefix(val: Id) -> bool {

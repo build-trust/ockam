@@ -77,9 +77,7 @@ impl IdentitiesCreation {
         change_history: &IdentityChangeHistory,
     ) -> Result<IdentityIdentifier> {
         let root_public_key = change_history.get_first_root_public_key()?;
-        let key_id = self.vault.get_key_id(&root_public_key).await?;
-
-        Ok(IdentityIdentifier::from_key_id(&key_id))
+        Ok(IdentityIdentifier::from_public_key(&root_public_key))
     }
 
     /// Create an `Identity` with a key previously created in the Vault. Extended version
@@ -124,7 +122,6 @@ impl IdentitiesCreation {
 mod tests {
     use super::*;
     use crate::identities;
-    use core::str::FromStr;
 
     #[tokio::test]
     async fn test_identity_creation() -> Result<()> {
@@ -149,9 +146,9 @@ mod tests {
         );
 
         let missing = repository
-            .retrieve_identity(&IdentityIdentifier::from_str(
-                "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638",
-            )?)
+            .retrieve_identity(&IdentityIdentifier::from_string(
+                "e92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638",
+            ))
             .await?;
         assert_eq!(missing, None, "a missing identity returns None");
 

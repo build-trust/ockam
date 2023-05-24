@@ -337,18 +337,15 @@ mod tests {
     use super::*;
     use ockam_core::compat::collections::HashMap;
     use ockam_identity::IdentityIdentifier;
-    use std::str::FromStr;
 
     #[test]
     fn test_parse_trusted_identities() {
-        let identity1 = IdentityIdentifier::from_str(
-            "Pe86be15e83d1c93e24dd1967010b01b6df491b459725fd9ae0bebfd7c1bf8ea3",
-        )
-        .unwrap();
-        let identity2 = IdentityIdentifier::from_str(
-            "P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94",
-        )
-        .unwrap();
+        let identity1 = IdentityIdentifier::from_string(
+            "e86be15e83d1c93e24dd1967010b01b6df491b459725fd9ae0bebfd7c1bf8ea3",
+        );
+        let identity2 = IdentityIdentifier::from_string(
+            "6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94",
+        );
 
         let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"project_id\": \"1\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"project_id\" : \"1\", \"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();

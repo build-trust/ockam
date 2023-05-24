@@ -74,7 +74,6 @@ impl<'a> BareCloudRequestWrapper<'a> {
 }
 
 mod node {
-    use std::str::FromStr;
     use std::time::Duration;
 
     use minicbor::Encode;
@@ -109,7 +108,7 @@ mod node {
                         ApiError::generic(&format!("Failed to parse controller identity id: {err}"))
                     })?;
                     trace!(idt = %s, "Read controller identity id from file");
-                    IdentityIdentifier::from_str(s)
+                    Ok(IdentityIdentifier::from_string(s))
                 }
                 None => Err(ApiError::generic(
                     "Failed to import controller identity id from file",
