@@ -8,8 +8,7 @@ export class Node {
   }
 
   async show() {
-    const { code } = await Runner.run("ockam", ["node", "show", this.name]);
-
+    const { code } = await Runner.run(["node", "show", this.name]);
     return code === 0;
   }
 
@@ -18,20 +17,15 @@ export class Node {
   }
 
   async delete() {
-    const { code } = await Runner.run("ockam", ["node", "delete", this.name]);
-
+    const { code } = await Runner.run(["node", "delete", this.name]);
     return code === 0;
   }
 
   static async create(name: string): Promise<Node | null> {
-    const { code } = await Runner.run("ockam", ["node", "create", name]);
+    const { code } = await Runner.run(["node", "create", name]);
 
     return new Promise<Node | null>((resolve, reject) => {
-      if (code === 0) {
-        resolve(new Node(name));
-      } else {
-        reject(null);
-      }
+      code === 0 ? resolve(new Node(name)) : reject();
     });
   }
 }
