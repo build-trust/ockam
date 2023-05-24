@@ -11,10 +11,10 @@ use ockam_api::nodes::models::base::NodeStatus;
 use ockam_identity::IdentityIdentifier;
 use std::time::Duration;
 
-/// Display Ockam Status
+/// Display information about the system's Identities and Nodes
 #[derive(Clone, Debug, Args)]
 pub struct StatusCommand {
-    /// Show status for all identities, default: enrolled only
+    /// Show status for all identities; default: enrolled only
     #[arg(long, short)]
     all: bool,
 }

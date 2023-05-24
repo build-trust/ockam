@@ -10,22 +10,13 @@ use std::path::{Path, PathBuf};
 use std::{env, io, str};
 use tracing::error;
 
-const LONG_HELP: &str = "\
-man pages output directory. Absolute path required. Will be created in case not existing. \
-Default: users home directory \"~/local/.share/man/man1/\". \
-Fallback: \"ockam_man_pages/\" in the current working directory.";
-
-/// Generate Ockam man pages
+/// Generate man pages for all existing Ockam commands
 #[derive(Clone, Debug, Args)]
 #[command(hide = docs::hide())]
 pub struct ManpagesCommand {
-    #[arg(
-        short,
-        long,
-        help = "man pages output directory path",
-        long_help = LONG_HELP,
-        value_parser(NonEmptyStringValueParser::new())
-    )]
+    /// Absolute path to the output directory where the generated man pages will be stored.
+    /// Defaults to "~/local/.share/man/man1/"; fallback to "./ockam_man_pages".
+    #[arg(short, long, value_parser(NonEmptyStringValueParser::new()))]
     dir: Option<String>,
 
     #[arg(
@@ -58,19 +49,18 @@ fn get_man_page_directory(cmd_man_dir: &Option<String>) -> io::Result<PathBuf> {
         }
         None => match home::home_dir() {
             Some(mut home_dir) => {
-                home_dir.push(".local/share/man/man1/");
+                home_dir.push(".local/share/man/man1");
                 home_dir
             }
             None => {
                 let mut man_dir = env::current_dir()?;
-                man_dir.push("ockam_man_pages/");
+                man_dir.push("ockam_man_pages");
                 println!("Man pages stored at: {}", man_dir.display());
                 man_dir
             }
         },
     };
-
-    create_dir_all(man_dir.clone())?;
+    create_dir_all(&man_dir)?;
     Ok(man_dir)
 }
 

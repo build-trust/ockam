@@ -17,18 +17,13 @@ pub(crate) use show::ShowCommand;
 pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
 
-const HELP_DETAIL: &str = "";
-
+/// Manage Credentials
 #[derive(Clone, Debug, Args)]
-#[command(
-    after_long_help = docs::after_help(HELP_DETAIL),
-    arg_required_else_help = true,
-    subcommand_required = true
-)]
+#[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct CredentialCommand {
     #[command(subcommand)]
     subcommand: CredentialSubcommand,
