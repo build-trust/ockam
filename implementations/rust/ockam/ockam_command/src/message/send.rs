@@ -11,7 +11,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
-use crate::Result;
+use crate::{Result};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
@@ -33,7 +33,7 @@ pub struct SendCommand {
     #[arg(short, long, value_name = "ROUTE")]
     pub to: MultiAddr,
 
-    /// Message is binary hex flag
+    /// Flag to indicate that the message is hex encoded
     #[arg(long)]
     pub hex: bool,
 
@@ -95,28 +95,40 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         let mut rpc = RpcBuilder::new(ctx, opts, &api_node)
             .tcp(tcp.as_ref())?
             .build();
-        if cmd.hex {
-            rpc.request_with_timeout(
-                req_with_bytes(
-                    &to,
-                    hex::decode(&cmd.message)
-                        .context("Provided message is not a valid hex string")?
-                        .as_slice(),
-                ),
-                Duration::from_secs(cmd.timeout),
-            )
-            .await?;
-            let res = rpc.parse_response::<Vec<u8>>()?;
-            println!("{}", hex::encode(res));
+
+        // must bind hex decoding vec to later get its slice
+        let hex_decode_result = hex::decode(cmd.message.to_owned());
+        let hex_bytes = match hex_decode_result {
+            Ok(val) => {
+                val
+            },
+            Err(err) => {
+                if cmd.hex {
+                    // only raise hex decoding error if hex flag is set
+                    return Err(err.into())
+                }
+                // return empty vec that will never be used, to satisfy match
+                vec![]
+            }
+        };
+
+        let msg_req = if cmd.hex {
+            req(&to, hex_bytes.as_slice())
         } else {
-            rpc.request_with_timeout(req(&to, &cmd.message), Duration::from_secs(cmd.timeout))
-                .await?;
+            req(&to, cmd.message.as_bytes())
+        };
+
+        rpc.request_with_timeout(msg_req, Duration::from_secs(cmd.timeout))
+            .await?;
+        let res = {
             let res = rpc.parse_response::<Vec<u8>>()?;
-            println!(
-                "{}",
+            if cmd.hex {
+                hex::encode(res)
+            } else {
                 String::from_utf8(res).context("Received content is not a valid utf8 string")?
-            );
-        }
+            }
+        };
+        opts.terminal.write_line(&res)?;
 
         // only delete node in case 'from' is empty and embedded node was started before
         if cmd.from.is_none() {
@@ -128,13 +140,6 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
     go(&mut ctx, &opts, cmd).await
 }
 
-pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {
-    Request::post("v0/message").body(SendMessage::new(to, message.as_bytes()))
-}
-
-pub(crate) fn req_with_bytes<'a>(
-    to: &'a MultiAddr,
-    message: &'a [u8],
-) -> RequestBuilder<'a, SendMessage<'a>> {
+pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a [u8]) -> RequestBuilder<'a, SendMessage<'a>> {
     Request::post("v0/message").body(SendMessage::new(to, message))
 }
