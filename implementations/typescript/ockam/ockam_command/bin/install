@@ -1,7 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env node
 
-if ! command -v ockam &> /dev/null
-then
-  curl --proto '=https' --tlsv1.2 -sSf \
-    https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | bash
-fi
+const installer = require("../lib/installer");
+installer.install(process.argv[2], process.argv[3]);
