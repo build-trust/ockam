@@ -20,10 +20,17 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{parse_trust_context, CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
-use crate::{CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
+
+const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt");
 
 /// Add members to a project as an authorised enroller.
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct TicketCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]

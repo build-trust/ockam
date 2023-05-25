@@ -12,10 +12,17 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{space, CommandGlobalOpts};
+use crate::{docs, space, CommandGlobalOpts};
+
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
 /// Create projects
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct CreateCommand {
     /// Name of the Space the project belongs to.
     #[arg(display_order = 1001)]
