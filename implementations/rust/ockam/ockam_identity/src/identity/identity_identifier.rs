@@ -31,11 +31,6 @@ impl IdentityIdentifier {
         Self(format!("{}{}", Self::PREFIX, string.trim()))
     }
 
-    /// Return the wrapped KeyId
-    pub fn key_id(&self) -> &str {
-        &self.0[Self::PREFIX.len()..]
-    }
-
     pub(crate) fn ct_eq(&self, o: &Self) -> subtle::Choice {
         use subtle::ConstantTimeEq;
         self.0.as_bytes().ct_eq(o.0.as_bytes())

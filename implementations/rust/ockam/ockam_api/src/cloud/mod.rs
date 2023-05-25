@@ -1,7 +1,6 @@
-use std::str::FromStr;
-
 use minicbor::{Decode, Encode};
 
+use ockam_core::compat::str::FromStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{CowStr, Result};
@@ -81,6 +80,7 @@ mod node {
 
     use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_core::api::RequestBuilder;
+    use ockam_core::compat::str::FromStr;
     use ockam_core::env::get_env;
     use ockam_core::{self, route, CowStr, Result};
     use ockam_multiaddr::MultiAddr;
@@ -108,7 +108,7 @@ mod node {
                         ApiError::generic(&format!("Failed to parse controller identity id: {err}"))
                     })?;
                     trace!(idt = %s, "Read controller identity id from file");
-                    Ok(IdentityIdentifier::from_hex(s))
+                    Ok(IdentityIdentifier::from_str(s)?)
                 }
                 None => Err(ApiError::generic(
                     "Failed to import controller identity id from file",
