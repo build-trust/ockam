@@ -164,7 +164,7 @@ impl AwsKmsClient {
             for key in keys {
                 if let Some(key_id) = key.key_id() {
                     let one_public_key = self.public_key(&key_id.to_string()).await?;
-                    if one_public_key == public_key.clone() {
+                    if &one_public_key == public_key {
                         return Ok(key_id.into());
                     }
                 }
