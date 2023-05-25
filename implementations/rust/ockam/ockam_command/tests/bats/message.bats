@@ -62,3 +62,10 @@ teardown() {
   run "$OCKAM" message send --timeout 5 --identity m2 --to /project/default/service/echo "$msg"
   assert_failure
 }
+
+@test "message - send a hex encoded message to a project node from an embedded node" {
+  msg=$(random_str)
+  run "$OCKAM" message send "$msg" --to /project/default/service/echo --hex
+  assert_success
+  assert_output "$msg"
+}

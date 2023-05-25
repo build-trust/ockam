@@ -11,7 +11,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
-use crate::{Result};
+use crate::Result;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
@@ -57,7 +57,7 @@ impl SendCommand {
 }
 
 async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> Result<()> {
-    async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: SendCommand) -> Result<()> {
+    async fn go(ctx: &mut Context, opts: CommandGlobalOpts, cmd: SendCommand) -> Result<()> {
         // Setup environment depending on whether we are sending the message from an embedded node or a background node
         let (api_node, tcp) = if let Some(node) = &cmd.from {
             let api_node = extract_address_value(node)?;
@@ -66,7 +66,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         } else {
             let api_node = start_embedded_node_with_vault_and_identity(
                 ctx,
-                opts,
+                &opts,
                 None,
                 Some(cmd.cloud_opts.identity.clone()),
                 Some(&cmd.trust_context_opts),
@@ -82,7 +82,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         // Replace `/project/<name>` occurrences with their respective secure channel addresses
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
-            opts,
+            &opts,
             &meta,
             &cmd.cloud_opts.route(),
             &api_node,
@@ -92,34 +92,21 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         .await?;
         let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
         // Send request
-        let mut rpc = RpcBuilder::new(ctx, opts, &api_node)
+        let mut rpc = RpcBuilder::new(ctx, &opts, &api_node)
             .tcp(tcp.as_ref())?
             .build();
 
-        // must bind hex decoding vec to later get its slice
-        let hex_decode_result = hex::decode(cmd.message.to_owned());
-        let hex_bytes = match hex_decode_result {
-            Ok(val) => {
-                val
-            },
-            Err(err) => {
-                if cmd.hex {
-                    // only raise hex decoding error if hex flag is set
-                    return Err(err.into())
-                }
-                // return empty vec that will never be used, to satisfy match
-                vec![]
-            }
-        };
-
-        let msg_req = if cmd.hex {
-            req(&to, hex_bytes.as_slice())
+        let msg_bytes = if cmd.hex {
+            hex::decode(cmd.message).context("Invalid hex string")?
         } else {
-            req(&to, cmd.message.as_bytes())
+            cmd.message.as_bytes().to_vec()
         };
 
-        rpc.request_with_timeout(msg_req, Duration::from_secs(cmd.timeout))
-            .await?;
+        rpc.request_with_timeout(
+            req(&to, msg_bytes.as_slice()),
+            Duration::from_secs(cmd.timeout),
+        )
+        .await?;
         let res = {
             let res = rpc.parse_response::<Vec<u8>>()?;
             if cmd.hex {
@@ -128,16 +115,17 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
                 String::from_utf8(res).context("Received content is not a valid utf8 string")?
             }
         };
-        opts.terminal.write_line(&res)?;
 
         // only delete node in case 'from' is empty and embedded node was started before
         if cmd.from.is_none() {
-            delete_embedded_node(opts, rpc.node_name()).await;
+            delete_embedded_node(&opts, rpc.node_name()).await;
         }
+
+        opts.terminal.stdout().plain(&res).write_line()?;
 
         Ok(())
     }
-    go(&mut ctx, &opts, cmd).await
+    go(&mut ctx, opts, cmd).await
 }
 
 pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a [u8]) -> RequestBuilder<'a, SendMessage<'a>> {
