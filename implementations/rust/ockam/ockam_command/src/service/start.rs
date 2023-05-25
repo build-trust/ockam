@@ -1,8 +1,8 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::Result;
 use crate::{fmt_ok, CommandGlobalOpts};
+use crate::{fmt_warn, Result};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
 
@@ -105,8 +105,10 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
     let tcp = TcpTransport::create(ctx).await?;
+    let mut is_hop_service = false;
     let addr = match cmd.create_subcommand {
         StartSubCommand::Hop { addr, .. } => {
+            is_hop_service = true;
             start_hop_service(ctx, &opts, &node_name, &addr, Some(&tcp)).await?;
             addr
         }
@@ -144,6 +146,12 @@ async fn run_impl(
         "Service started at address {}",
         addr.color(OckamColor::PrimaryResource.color())
     ))?;
+
+    if is_hop_service {
+        opts.terminal.write_line(&fmt_warn!(
+            "SECURITY WARNING: Don't use Hop service in production nodes"
+        ))?;
+    }
 
     Ok(())
 }
