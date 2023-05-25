@@ -73,7 +73,7 @@ impl SecureChannelsBuilder {
     pub fn build(&self) -> Arc<SecureChannels> {
         Arc::new(SecureChannels::new(
             self.identities_builder.build(),
-            SecureChannelRegistry::new(),
+            self.registry.clone(),
         ))
     }
 }
