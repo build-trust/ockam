@@ -57,6 +57,12 @@ impl NodeManager {
 
         let service = IdentityService::new(self.node_identities()).await?;
 
+        ctx.flow_controls().add_consumer(
+            addr.clone(),
+            &self.api_transport.flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
+
         ctx.start_worker(
             addr.clone(),
             service,
@@ -542,6 +548,12 @@ impl NodeManagerWorker {
         if node_manager.registry.verifier_services.contains_key(&addr) {
             return Err(ApiError::generic("Verifier service exists at this address"));
         }
+
+        ctx.flow_controls().add_consumer(
+            addr.clone(),
+            &node_manager.api_transport.flow_control_id,
+            FlowControlPolicy::SpawnerAllowMultipleMessages,
+        );
 
         let vs = crate::verifier::Verifier::new(node_manager.identities());
         ctx.start_worker(
