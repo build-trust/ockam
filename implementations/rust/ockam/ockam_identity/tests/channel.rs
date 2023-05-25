@@ -225,7 +225,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
     let bob = identities_creation.create_identity().await?;
 
     let alice_broken_trust_policy =
-        TrustIdentifierPolicy::new(IdentityIdentifier::from_string("random-text"));
+        TrustIdentifierPolicy::new(IdentityIdentifier::from_hex("random-text"));
 
     secure_channels
         .create_secure_channel_listener(

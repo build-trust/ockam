@@ -340,10 +340,10 @@ mod tests {
 
     #[test]
     fn test_parse_trusted_identities() {
-        let identity1 = IdentityIdentifier::from_string(
+        let identity1 = IdentityIdentifier::from_hex(
             "e86be15e83d1c93e24dd1967010b01b6df491b459725fd9ae0bebfd7c1bf8ea3",
         );
-        let identity2 = IdentityIdentifier::from_string(
+        let identity2 = IdentityIdentifier::from_hex(
             "6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94",
         );
 

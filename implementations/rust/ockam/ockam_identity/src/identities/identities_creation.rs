@@ -146,7 +146,7 @@ mod tests {
         );
 
         let missing = repository
-            .retrieve_identity(&IdentityIdentifier::from_string(
+            .retrieve_identity(&IdentityIdentifier::from_hex(
                 "e92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638",
             ))
             .await?;

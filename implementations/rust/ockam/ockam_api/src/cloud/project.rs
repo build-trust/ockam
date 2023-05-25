@@ -407,7 +407,7 @@ mod tests {
                 users: vec![String::arbitrary(g), String::arbitrary(g)],
                 space_id: String::arbitrary(g),
                 identity: bool::arbitrary(g)
-                    .then(|| IdentityIdentifier::from_string(&String::arbitrary(g))),
+                    .then(|| IdentityIdentifier::from_hex(&String::arbitrary(g))),
                 authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g)),
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g))),

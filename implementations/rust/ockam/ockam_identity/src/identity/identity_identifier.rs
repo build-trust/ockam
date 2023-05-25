@@ -23,11 +23,11 @@ impl IdentityIdentifier {
     /// Create an IdentityIdentifier from a public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
         let hashed = VaultSecurityModule::sha256(public_key.data());
-        Self::from_string(hex::encode(hashed).as_str())
+        Self::from_hex(hex::encode(hashed).as_str())
     }
 
     /// Create an IdentityIdentifier from a hashed and hex-encoded public key
-    pub fn from_string(string: &str) -> Self {
+    pub fn from_hex(string: &str) -> Self {
         Self(format!("{}{}", Self::PREFIX, string.trim()))
     }
 
@@ -132,7 +132,7 @@ mod test {
 
     impl Arbitrary for Id {
         fn arbitrary(g: &mut Gen) -> Self {
-            Self(IdentityIdentifier::from_string(&String::arbitrary(g)))
+            Self(IdentityIdentifier::from_hex(&String::arbitrary(g)))
         }
     }
 
