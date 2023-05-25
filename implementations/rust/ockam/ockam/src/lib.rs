@@ -160,6 +160,7 @@ pub mod vault {
 #[cfg(feature = "ockam_transport_tcp")]
 pub use ockam_transport_tcp::{
     TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
+    TcpTransportExtension,
 };
 
 /// List of all top-level services
