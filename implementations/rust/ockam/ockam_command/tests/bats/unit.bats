@@ -66,13 +66,13 @@ teardown() {
   # Create node, check that it has one of the default services running
   run "$OCKAM" node create "$n"
   assert_success
-  assert_output --partial "/service/identity_service"
+  assert_output --partial "/service/echo"
 
   # Stop node, restart it, and check that the service is up again
   $OCKAM node stop "$n"
   run "$OCKAM" node start "$n"
   assert_success
-  assert_output --partial "/service/identity_service"
+  assert_output --partial "/service/echo"
 }
 
 # ===== VAULT
