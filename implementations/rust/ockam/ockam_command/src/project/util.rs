@@ -11,6 +11,7 @@ use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
+use ockam_core::compat::str::FromStr;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
@@ -110,7 +111,7 @@ pub async fn create_secure_channel_to_project(
     credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
 ) -> crate::Result<(MultiAddr, FlowControlId)> {
-    let authorized_identifier = vec![IdentityIdentifier::from_hex(project_identity)];
+    let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
 
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
