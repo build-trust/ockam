@@ -182,12 +182,12 @@ mod tests {
             .await?;
         let message = b"hello world";
         let signature = security_module.sign(&key_id, &message[..]).await?;
+        let public_key = security_module.get_public_key(&key_id).await?;
 
         // Verify locally
         assert!(
             security_module
-                .client
-                .verify(&key_id, &message[..], &signature)
+                .verify(&public_key, message, &signature)
                 .await?
         );
 
