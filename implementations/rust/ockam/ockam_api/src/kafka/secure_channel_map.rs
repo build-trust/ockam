@@ -393,7 +393,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                     Error::new(
                         Origin::Channel,
                         Kind::Unknown,
-                        "secure channel no longer exists",
+                        format!("secure channel no longer exists: {encryptor_address}"),
                     )
                 })
         } else {
