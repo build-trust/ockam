@@ -2,8 +2,7 @@
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
 use ockam::identity::SecureChannelOptions;
-use ockam::{node, route, Context, Result, TcpConnectionOptions};
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

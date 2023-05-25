@@ -5,9 +5,8 @@
 
 use hello_ockam::Forwarder;
 use ockam::access_control::AllowAll;
-use ockam::{node, Context, Result, TcpConnectionOptions, TcpListenerOptions};
-use ockam_core::flow_control::FlowControlPolicy;
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::flow_control::FlowControlPolicy;
+use ockam::{node, Context, Result, TcpConnectionOptions, TcpListenerOptions, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -29,15 +28,14 @@ async fn main(ctx: Context) -> Result<()> {
     )
     .await?;
 
-    let tcp_listener_options = TcpListenerOptions::new();
+    // Create a TCP listener and wait for incoming connections.
+    let listener = tcp.listen("127.0.0.1:3000", TcpListenerOptions::new()).await?;
+
     node.flow_controls().add_consumer(
         "forward_to_bob",
-        &tcp_listener_options.spawner_flow_control_id(),
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-
-    // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:3000", tcp_listener_options).await?;
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())
