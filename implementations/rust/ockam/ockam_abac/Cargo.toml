@@ -40,7 +40,7 @@ ockam_executor = { version = "0.48.0", path = "../ockam_executor", default-featu
 ockam_identity = { version = "0.75.0", path = "../ockam_identity", default-features = false }
 once_cell = { version = "1.17.1", default-features = false, features = ["alloc"] }
 # optional:
-regex = { version = "1.8.2", default-features = false, optional = true }
+regex = { version = "1.8.3", default-features = false, optional = true }
 rustyline = { version = "11.0.0", optional = true }
 rustyline-derive = { version = "0.8.0", optional = true }
 str-buf = "3.0.1"
