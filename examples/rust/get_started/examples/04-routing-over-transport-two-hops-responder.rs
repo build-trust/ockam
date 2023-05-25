@@ -3,9 +3,8 @@
 
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::{node, Context, Result, TcpListenerOptions};
-use ockam_core::flow_control::FlowControlPolicy;
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::flow_control::FlowControlPolicy;
+use ockam::{node, Context, Result, TcpListenerOptions, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -18,16 +17,15 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an echoer worker
     node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
+    // Create a TCP listener and wait for incoming connections.
+    let listener = tcp.listen("127.0.0.1:4000", TcpListenerOptions::new()).await?;
+
     // Allow access to the Echoer via TCP connections from the TCP listener
-    let tcp_listener_options = TcpListenerOptions::new();
     node.flow_controls().add_consumer(
         "echoer",
-        &tcp_listener_options.spawner_flow_control_id(),
+        listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-
-    // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:4000", tcp_listener_options).await?;
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())
