@@ -286,6 +286,7 @@ impl NodeManager {
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             project.clone(),
             self.attributes_writer(),
+            self.attributes_reader(),
         )
         .await?;
 

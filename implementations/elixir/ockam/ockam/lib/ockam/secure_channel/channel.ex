@@ -137,7 +137,8 @@ defmodule Ockam.SecureChannel.Channel do
     }
   end
 
-  @spec start_link_channel([initiator_opt()], non_neg_integer) :: {:ok, pid} | {:error, term()}
+  @spec start_link_channel([initiator_opt()], non_neg_integer) ::
+          {:ok, pid, any} | {:error, term()}
   def start_link_channel(opts, handshake_timeout \\ @handshake_timeout) do
     ref = make_ref()
 
@@ -152,7 +153,7 @@ defmodule Ockam.SecureChannel.Channel do
     {:ok, pid, addr} = start_link(opts)
 
     receive do
-      {:connected, ^ref} -> {:ok, pid}
+      {:connected, ^ref} -> {:ok, pid, addr}
     after
       handshake_timeout ->
         Ockam.Node.stop(addr)
