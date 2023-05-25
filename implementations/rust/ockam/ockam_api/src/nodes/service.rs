@@ -396,15 +396,6 @@ impl NodeManager {
     ) -> Result<()> {
         // Start services
         ctx.flow_controls().add_consumer(
-            DefaultAddress::IDENTITY_SERVICE,
-            api_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
-        self.start_identity_service_impl(ctx, DefaultAddress::IDENTITY_SERVICE.into())
-            .await?;
-        self.start_authenticated_service_impl(ctx, DefaultAddress::AUTHENTICATED_SERVICE.into())
-            .await?;
-        ctx.flow_controls().add_consumer(
             DefaultAddress::UPPERCASE_SERVICE,
             api_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
