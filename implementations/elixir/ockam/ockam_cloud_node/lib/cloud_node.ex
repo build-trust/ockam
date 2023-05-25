@@ -18,7 +18,7 @@ defmodule Ockam.CloudNode do
   end
 
   defp cleanup_schedule() do
-    config = Application.get_env(:ockam_cloud_node, :cleanup)
+    config = Application.get_env(:ockam_cloud_node, :cleanup, [])
     crontab = Keyword.get(config, :crontab)
     idle_timeout = Keyword.get(config, :idle_timeout)
     cleanup_kafka_topics = Keyword.get(config, :cleanup_kafka_topics)
