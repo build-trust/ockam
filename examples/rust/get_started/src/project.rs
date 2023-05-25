@@ -53,7 +53,7 @@ impl Project {
 pub async fn import_project(path: &str, identities: Arc<Identities>) -> Result<Project> {
     match read_json(path)? {
         Value::Object(values) => {
-            let project_identifier = IdentityIdentifier::from_string(get_field_as_str(&values, "identity")?.as_str());
+            let project_identifier = IdentityIdentifier::from_hex(get_field_as_str(&values, "identity")?.as_str());
 
             let authority_identity = get_field_as_str(&values, "authority_identity")?;
             let identities_creation = identities.identities_creation();

@@ -108,7 +108,7 @@ mod node {
                         ApiError::generic(&format!("Failed to parse controller identity id: {err}"))
                     })?;
                     trace!(idt = %s, "Read controller identity id from file");
-                    Ok(IdentityIdentifier::from_string(s))
+                    Ok(IdentityIdentifier::from_hex(s))
                 }
                 None => Err(ApiError::generic(
                     "Failed to import controller identity id from file",
