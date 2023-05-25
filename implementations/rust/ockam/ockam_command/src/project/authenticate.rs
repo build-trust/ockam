@@ -15,7 +15,7 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::ProjectInfo;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::project::util::create_secure_channel_to_authority;
@@ -28,8 +28,15 @@ use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_node::RpcClient;
 
+const LONG_ABOUT: &str = include_str!("./static/authenticate/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/authenticate/after_long_help.txt");
+
 /// Use an OTC to enroll an identity with a project node
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct AuthenticateCommand {
     #[arg(long = "okta", group = "authentication_method")]
     okta: bool,
