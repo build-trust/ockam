@@ -9,7 +9,8 @@ use anyhow::{anyhow, Context as _};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::{DirectAuthenticatorClient, TokenIssuerClient};
-use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority, ProjectLookup};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
 use ockam_api::DefaultAddress;
 use ockam_core::route;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
@@ -86,7 +87,6 @@ impl Runner {
         let node_name =
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
-        let map = self.opts.config.lookup();
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;
 
@@ -118,7 +118,7 @@ impl Runner {
                 .await?;
 
                 (sc_addr, Some(sc_flow_control_id))
-            } else if let (Some(p), Some(a)) = get_project(&self.cmd.to, &map)? {
+            } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
                 let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
                 let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
                     &self.ctx,
@@ -196,22 +196,27 @@ impl Runner {
 /// Get the project authority from the first address protocol.
 ///
 /// If the first protocol is a `/project`, look up the project's config.
-fn get_project<'a>(
+async fn get_project(
+    cli_state: &CliState,
     input: &MultiAddr,
-    map: &'a ConfigLookup,
-) -> Result<(Option<ProjectLookup>, Option<&'a ProjectAuthority>)> {
+) -> Result<(Option<ProjectLookup>, Option<ProjectAuthority>)> {
     if let Some(proto) = input.first() {
         if proto.code() == proto::Project::CODE {
             let proj = proto.cast::<proto::Project>().expect("project protocol");
-            if let Some(p) = map.get_project(&proj) {
-                if let Some(a) = &p.authority {
-                    return Ok((Some(p.clone()), Some(a)));
+            return if let Ok(p) = cli_state.projects.get(proj.to_string()) {
+                let c = p.config();
+                let a =
+                    ProjectAuthority::from_raw(&c.authority_access_route, &c.authority_identity)
+                        .await?;
+                if a.is_some() {
+                    let p = ProjectLookup::from_project(c).await?;
+                    Ok((Some(p), a))
                 } else {
-                    return Err(anyhow!("missing authority in project {:?}", &*proj).into());
+                    Err(anyhow!("missing authority in project {:?}", &*proj).into())
                 }
             } else {
-                return Err(anyhow!("unknown project {}", &*proj).into());
-            }
+                Err(anyhow!("unknown project {}", &*proj).into())
+            };
         }
     }
     Ok((None, None))

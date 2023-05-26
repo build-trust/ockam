@@ -1,5 +1,4 @@
 use anyhow::anyhow;
-use anyhow::Context as _;
 use clap::Args;
 
 use ockam::identity::IdentityIdentifier;
@@ -12,10 +11,11 @@ use ockam_core::CowStr;
 
 use crate::error::Error;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::util::config;
+use crate::project::util::refresh_projects;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Args)]
@@ -119,12 +119,11 @@ async fn run_impl(
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     // Lookup project
-    let id = match config::get_project(&opts.config, &cmd.name) {
-        Some(id) => id,
-        None => {
-            config::refresh_projects(ctx, &opts, &node_name, &cmd.cloud_opts.route(), None).await?;
-            config::get_project(&opts.config, &cmd.name)
-                .context(format!("Project '{}' does not exist", cmd.name))?
+    let id = match opts.state.projects.get(&cmd.name) {
+        Ok(state) => state.config().id.clone(),
+        Err(_) => {
+            refresh_projects(ctx, &opts, &node_name, &cmd.cloud_opts.route(), None).await?;
+            opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };
 

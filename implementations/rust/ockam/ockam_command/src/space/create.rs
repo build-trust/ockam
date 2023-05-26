@@ -4,11 +4,11 @@ use ockam_api::cloud::space::Space;
 use rand::prelude::random;
 
 use crate::node::util::delete_embedded_node;
-use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
+use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -62,7 +62,9 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::space::create(&cmd)).await?;
     let space = rpc.parse_and_print_response::<Space>()?;
-    config::set_space(&opts.config, &space)?;
+    opts.state
+        .spaces
+        .overwrite(&space.name, SpaceConfig::from(&space))?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

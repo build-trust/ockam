@@ -1,22 +1,22 @@
 use crate::CommandGlobalOpts;
 use clap::Args;
-use ockam_api::config::lookup::LookupValue;
+use ockam_api::cli_state::StateDirTrait;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {}
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let lookup = options.config.lookup();
-
-        for (alias, value) in &lookup.map {
-            // Currently we only have this one type of lookup but we
-            // need to be ready for more values.  Remove this "allow"
-            // in the future
-            #[allow(irrefutable_let_patterns)]
-            if let LookupValue::Address(addr) = value {
-                println!("Node:    {alias}\nAddress: {addr}\n");
-            }
+        if let Err(e) = run_impl(options, self) {
+            eprintln!("{e}");
+            std::process::exit(e.code());
         }
     }
+}
+
+fn run_impl(opts: CommandGlobalOpts, _cmd: ListCommand) -> crate::Result<()> {
+    for node in opts.state.nodes.list()? {
+        opts.terminal.write(&format!("Node: {}\n", node.name()))?;
+    }
+    Ok(())
 }

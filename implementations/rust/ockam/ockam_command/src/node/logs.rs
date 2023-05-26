@@ -35,7 +35,7 @@ impl LogCommand {
 
 fn run_impl(opts: CommandGlobalOpts, cmd: LogCommand) -> crate::Result<PathBuf> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
-    let node_state = opts.state.nodes.get(&node_name)?;
+    let node_state = opts.state.nodes.get(node_name)?;
 
     let log_file_path = if cmd.show_err {
         node_state.stderr_log()

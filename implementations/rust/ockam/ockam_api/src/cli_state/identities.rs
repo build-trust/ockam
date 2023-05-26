@@ -220,9 +220,9 @@ mod traits {
             &self.dir
         }
 
-        fn delete(&self, name: &str) -> Result<()> {
+        fn delete(&self, name: impl AsRef<str>) -> Result<()> {
             // Retrieve identity. If doesn't exist do nothing.
-            let identity = match self.get(name) {
+            let identity = match self.get(&name) {
                 Ok(i) => i,
                 Err(CliStateError::NotFound) => return Ok(()),
                 Err(e) => return Err(e),

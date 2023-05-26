@@ -1,11 +1,11 @@
-use anyhow::Context as _;
 use clap::Args;
 
 use ockam::Context;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::util::config;
+use crate::project::util::refresh_projects;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
@@ -47,12 +47,11 @@ async fn run_impl(
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     // Lookup project
-    let id = match config::get_project(&opts.config, &cmd.name) {
-        Some(id) => id,
-        None => {
-            config::refresh_projects(ctx, &opts, &node_name, &cmd.cloud_opts.route(), None).await?;
-            config::get_project(&opts.config, &cmd.name)
-                .context(format!("Project '{}' does not exist", cmd.name))?
+    let id = match &opts.state.projects.get(&cmd.name) {
+        Ok(state) => state.config().id.clone(),
+        Err(_) => {
+            refresh_projects(ctx, &opts, &node_name, &cmd.cloud_opts.route(), None).await?;
+            opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };
 
@@ -61,7 +60,9 @@ async fn run_impl(
     rpc.request(api::project::show(&id, controller_route))
         .await?;
     let project = rpc.parse_and_print_response::<Project>()?;
-    config::set_project(&opts.config, &project).await?;
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

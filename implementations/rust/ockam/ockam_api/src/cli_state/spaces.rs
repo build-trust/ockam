@@ -1,50 +1,47 @@
 use super::Result;
-use crate::cloud::project::Project;
-use crate::config::lookup::ProjectLookup;
+use crate::cloud::space::Space;
+use crate::config::lookup::SpaceLookup;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ProjectsState {
+pub struct SpacesState {
     dir: PathBuf,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ProjectState {
+pub struct SpaceState {
     name: String,
     path: PathBuf,
-    config: ProjectConfig,
+    config: SpaceConfig,
 }
 
-impl ProjectState {
+impl SpaceState {
     pub fn name(&self) -> &str {
         &self.name
     }
 }
 
-pub type ProjectConfig = Project;
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct SpaceConfig {
+    pub name: String,
+    pub id: String,
+}
 
-impl From<ProjectLookup> for Project {
-    fn from(lookup: ProjectLookup) -> Self {
+impl SpaceConfig {
+    pub fn from_lookup(name: &str, lookup: SpaceLookup) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: Default::default(),
+            name: name.to_string(),
             id: lookup.id,
-            name: lookup.name,
-            space_name: "".to_string(),
-            services: vec![],
-            access_route: lookup
-                .node_route
-                .map(|r| r.to_string())
-                .unwrap_or("".to_string()),
-            users: vec![],
-            space_id: "".to_string(),
-            identity: lookup.identity_id,
-            authority_access_route: lookup.authority.as_ref().map(|a| a.address().to_string()),
-            authority_identity: lookup.authority.as_ref().map(|a| hex::encode(a.identity())),
-            okta_config: lookup.okta.map(|o| o.into()),
-            confluent_config: None,
-            version: None,
-            running: None,
+        }
+    }
+}
+
+impl From<&Space<'_>> for SpaceConfig {
+    fn from(s: &Space<'_>) -> Self {
+        Self {
+            name: s.name.to_string(),
+            id: s.id.to_string(),
         }
     }
 }
@@ -56,10 +53,10 @@ mod traits {
     use ockam_core::async_trait;
 
     #[async_trait]
-    impl StateDirTrait for ProjectsState {
-        type Item = ProjectState;
-        const DEFAULT_FILENAME: &'static str = "project";
-        const DIR_NAME: &'static str = "projects";
+    impl StateDirTrait for SpacesState {
+        type Item = SpaceState;
+        const DEFAULT_FILENAME: &'static str = "space";
+        const DIR_NAME: &'static str = "spaces";
         const HAS_DATA_DIR: bool = false;
 
         fn new(dir: PathBuf) -> Self {
@@ -72,8 +69,8 @@ mod traits {
     }
 
     #[async_trait]
-    impl StateItemTrait for ProjectState {
-        type Config = ProjectConfig;
+    impl StateItemTrait for SpaceState {
+        type Config = SpaceConfig;
 
         fn new(path: PathBuf, config: Self::Config) -> Result<Self> {
             let contents = serde_json::to_string(&config)?;

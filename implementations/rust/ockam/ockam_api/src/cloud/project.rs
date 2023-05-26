@@ -14,7 +14,7 @@ use ockam_node::tokio;
 
 use crate::error::ApiError;
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
 pub struct Project {
     #[cfg(feature = "tag")]
@@ -99,7 +99,7 @@ impl Project {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OktaConfig {

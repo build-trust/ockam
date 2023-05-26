@@ -34,8 +34,6 @@ use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::DEFAULT_CONTROLLER_ADDRESS;
 use crate::Result;
 
-use super::OckamConfig;
-
 ////////////// !== generators
 
 /// Construct a request to query node status
@@ -437,12 +435,8 @@ impl TrustContextConfigBuilder {
     }
 
     fn get_from_project_name(&self) -> Option<TrustContextConfig> {
-        let config = OckamConfig::load().expect("Failed to load config");
-        let lookup = config.lookup();
-        let name = self.project.as_ref()?;
-        let project_lookup = lookup.get_project(name)?;
-
-        project_lookup.clone().try_into().ok()
+        let project = self.cli_state.projects.get(self.project.as_ref()?).ok()?;
+        project.config().clone().try_into().ok()
     }
 
     fn get_from_authority_identity(&self) -> Option<TrustContextConfig> {
@@ -457,7 +451,7 @@ impl TrustContextConfigBuilder {
 
     fn get_from_credential(&self) -> Option<TrustContextConfig> {
         let cred_name = self.credential_name.clone()?;
-        let cred_state = self.cli_state.credentials.get(&cred_name).ok()?;
+        let cred_state = self.cli_state.credentials.get(cred_name).ok()?;
 
         cred_state.try_into().ok()
     }

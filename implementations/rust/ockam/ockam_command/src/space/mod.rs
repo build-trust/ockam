@@ -4,7 +4,6 @@ pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
-pub use util::config;
 
 use crate::{docs, CommandGlobalOpts};
 
@@ -12,7 +11,6 @@ mod create;
 mod delete;
 mod list;
 mod show;
-pub mod util;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 

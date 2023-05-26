@@ -7,17 +7,19 @@ use tracing::debug;
 
 use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
-use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
+use ockam_api::config::lookup::{LookupMeta, ProjectAuthority};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
 use ockam_core::compat::str::FromStr;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_node::Context;
 
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
-use crate::{CommandGlobalOpts, OckamConfig, Result};
+use crate::{CommandGlobalOpts, Result};
 
 pub fn clean_projects_multiaddr(
     input: MultiAddr,
@@ -46,46 +48,41 @@ pub fn clean_projects_multiaddr(
 }
 
 pub async fn get_projects_secure_channels_from_config_lookup(
-    ctx: &ockam::Context,
+    ctx: &Context,
     opts: &CommandGlobalOpts,
     meta: &LookupMeta,
-    cloud_addr: &MultiAddr,
     api_node: &str,
     tcp: Option<&TcpTransport>,
     credential_exchange_mode: CredentialExchangeMode,
 ) -> Result<Vec<MultiAddr>> {
-    let cfg_lookup = opts.config.lookup();
     let mut sc = Vec::with_capacity(meta.project.len());
-
-    // In case a project is missing from the config file, we fetch them all from the cloud.
-    if cfg_lookup.has_unresolved_projects(meta) {
-        config::refresh_projects(ctx, opts, api_node, cloud_addr, tcp).await?;
-    }
 
     // Create a secure channel for each project.
     for name in meta.project.iter() {
         // Get the project node's access route + identity id from the config
         let (project_access_route, project_identity_id) = {
             // This shouldn't fail, as we did a refresh above if we found any missing project.
-            let p = cfg_lookup
-                .get_project(name)
-                .context(format!("Failed to get project {name} from config lookup"))?;
+            let p = opts
+                .state
+                .projects
+                .get(name)
+                .context(format!("Failed to get project {name} from config lookup"))?
+                .config()
+                .clone();
             let id = p
-                .identity_id
-                .as_ref()
-                .context("Project should have identity set")?;
-            let node_route = p
-                .node_route
-                .as_ref()
-                .context("Invalid project node route")?;
-            (node_route, id.to_string())
+                .identity
+                .context("Project should have identity set")?
+                .to_string();
+            let node_route =
+                MultiAddr::from_str(&p.access_route).context("Invalid project node route")?;
+            (node_route, id)
         };
         let (sc_address, _sc_flow_control_id) = create_secure_channel_to_project(
             ctx,
             opts,
             api_node,
             tcp,
-            project_access_route,
+            &project_access_route,
             &project_identity_id,
             credential_exchange_mode,
             None,
@@ -180,7 +177,9 @@ pub async fn check_project_readiness(
     let retry_strategy = FixedInterval::from_millis(5000).take(total_sleep_time_ms / 5000);
 
     // Persist project config prior to checking readiness which might take a while
-    config::set_project_id(&opts.config, &project).await?;
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
     let spinner_option = opts.terminal.progress_spinner();
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Waiting for project to be ready...");
@@ -300,86 +299,26 @@ pub async fn check_project_readiness(
     }
 
     // Persist project config with all its fields
-    config::set_project(&opts.config, &project).await?;
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
     Ok(project)
 }
 
-pub mod config {
-    use crate::util::output::Output;
-    use ockam::Context;
-
-    use tracing::trace;
-
-    use super::*;
-
-    async fn set(config: &OckamConfig, project: &Project) -> Result<()> {
-        if !project.is_ready() {
-            trace!("Project is not ready yet {}", project.output()?);
-            return Err(
-                anyhow!("Project is not ready yet, wait a few seconds and try again").into(),
-            );
-        }
-
-        config.set_project_alias(
-            project.name.to_string(),
-            ProjectLookup::from_project(project).await?,
-        )?;
-        Ok(())
+pub async fn refresh_projects(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    api_node: &str,
+    controller_route: &MultiAddr,
+    tcp: Option<&TcpTransport>,
+) -> Result<()> {
+    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
+    rpc.request(api::project::list(controller_route)).await?;
+    let projects = rpc.parse_response::<Vec<Project>>()?;
+    for project in projects {
+        opts.state
+            .projects
+            .overwrite(&project.name, project.clone())?;
     }
-
-    pub(super) async fn set_project_id(config: &OckamConfig, project: &Project) -> Result<()> {
-        config.set_project_alias(
-            project.name.to_string(),
-            ProjectLookup {
-                node_route: None,
-                id: project.id.to_string(),
-                name: project.name.to_string(),
-                identity_id: None,
-                authority: None,
-                okta: None,
-            },
-        )?;
-        config.persist_config_updates()?;
-        Ok(())
-    }
-
-    pub async fn set_project(config: &OckamConfig, project: &Project) -> Result<()> {
-        set(config, project).await?;
-        config.persist_config_updates()?;
-        Ok(())
-    }
-
-    pub async fn set_projects(config: &OckamConfig, projects: &[Project]) -> Result<()> {
-        config.remove_projects_alias();
-        for project in projects.iter() {
-            set(config, project).await?;
-        }
-        config.persist_config_updates()?;
-        Ok(())
-    }
-
-    pub fn remove_project(config: &OckamConfig, name: &str) -> Result<()> {
-        config.remove_project_alias(name);
-        config.persist_config_updates()?;
-        Ok(())
-    }
-
-    pub fn get_project(config: &OckamConfig, name: &str) -> Option<String> {
-        let inner = config.write();
-        inner.lookup.get_project(name).map(|s| s.id.clone())
-    }
-
-    pub async fn refresh_projects(
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        api_node: &str,
-        controller_route: &MultiAddr,
-        tcp: Option<&TcpTransport>,
-    ) -> Result<()> {
-        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
-        rpc.request(api::project::list(controller_route)).await?;
-        let projects = rpc.parse_response::<Vec<Project>>()?;
-        set_projects(&opts.config, &projects).await?;
-        Ok(())
-    }
+    Ok(())
 }
