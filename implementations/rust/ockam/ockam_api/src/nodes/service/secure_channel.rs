@@ -3,10 +3,15 @@ use std::time::Duration;
 use minicbor::Decoder;
 
 use ockam::identity::TrustEveryonePolicy;
+use ockam::identity::{
+    Identities, IdentitiesVault, IdentityIdentifier, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
+};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlPolicy;
+use ockam_identity::Credential;
 use ockam_identity::{SecureChannel, SecureChannelListener};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -27,11 +32,6 @@ use crate::nodes::service::invalid_multiaddr_error;
 use crate::nodes::service::NodeIdentities;
 use crate::nodes::NodeManager;
 use crate::{multiaddr_to_route, DefaultAddress};
-use ockam::identity::{
-    Identities, IdentitiesVault, IdentityIdentifier, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
-};
-use ockam_identity::Credential;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
 
@@ -165,7 +165,7 @@ impl NodeManager {
             address
         );
 
-        let secure_channels = self.get_secure_channels(vault_name.clone()).await?;
+        let secure_channels = self.build_secure_channels(vault_name.clone()).await?;
         let identifier = self.get_identifier(identity_name.clone()).await?;
 
         let options = SecureChannelListenerOptions::new().as_consumer(
@@ -222,10 +222,15 @@ impl NodeManager {
         Ok(listener)
     }
 
-    pub(crate) async fn get_secure_channels(
+    /// Build a SecureChannels struct for a specific vault if one is specified
+    /// Otherwise return the shared SecureChannels
+    pub(crate) async fn build_secure_channels(
         &mut self,
         vault_name: Option<String>,
     ) -> Result<Arc<SecureChannels>> {
+        if vault_name.is_none() {
+            return Ok(self.secure_channels.clone());
+        }
         let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
         let identities = self.get_identities(vault_name).await?;
         let registry = self.secure_channels.secure_channel_registry();

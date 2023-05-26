@@ -172,8 +172,8 @@ mod node {
             };
 
             let secure_channels = {
-                let mut node_manager = self.get().write().await;
-                node_manager.get_secure_channels(None).await?
+                let node_manager = self.get().write().await;
+                node_manager.secure_channels.clone()
             };
 
             let sc = {
