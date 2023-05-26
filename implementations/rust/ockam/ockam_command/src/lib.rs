@@ -88,7 +88,7 @@ use tcp::{
 use terminal::OckamColor;
 use trust_context::TrustContextCommand;
 use upgrade::check_if_an_upgrade_is_available;
-use util::{exitcode, exitcode::ExitCode, OckamConfig};
+use util::{exitcode, exitcode::ExitCode};
 use vault::VaultCommand;
 use version::Version;
 use worker::WorkerCommand;
@@ -209,13 +209,12 @@ pub enum EncodeFormat {
 #[derive(Clone)]
 pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
-    pub config: OckamConfig,
     pub state: CliState,
     pub terminal: Terminal<TerminalStream<Term>>,
 }
 
 impl CommandGlobalOpts {
-    fn new(global_args: GlobalArgs, config: OckamConfig) -> Self {
+    fn new(global_args: GlobalArgs) -> Self {
         let state = CliState::initialize().expect("Failed to load the local Ockam configuration");
         let terminal = Terminal::new(
             global_args.quiet,
@@ -225,7 +224,6 @@ impl CommandGlobalOpts {
         );
         Self {
             global_args,
-            config,
             state,
             terminal,
         }
@@ -310,8 +308,7 @@ pub fn run() {
 
 impl OckamCommand {
     pub fn run(self) {
-        let config = OckamConfig::load().expect("Failed to load config");
-        let options = CommandGlobalOpts::new(self.global_args.clone(), config);
+        let options = CommandGlobalOpts::new(self.global_args.clone());
 
         let _tracing_guard = if !options.global_args.quiet {
             let log_path = self.log_path(&options);

@@ -132,14 +132,12 @@ fn spawn_default_node(opts: &CommandGlobalOpts) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::OckamConfig;
     use crate::GlobalArgs;
     use ockam_api::cli_state::StateItemTrait;
 
     #[test]
     fn test_initialize() {
-        let config = OckamConfig::load_with_dir(CliState::test_dir().unwrap()).unwrap();
-        let opts = CommandGlobalOpts::new(GlobalArgs::default(), config).set_quiet();
+        let opts = CommandGlobalOpts::new(GlobalArgs::default()).set_quiet();
 
         // on start-up there is no default node
         let _ = opts.state.nodes.default().and_then(|n| n.delete());

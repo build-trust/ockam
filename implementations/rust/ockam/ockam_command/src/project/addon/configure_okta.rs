@@ -9,6 +9,7 @@ use reqwest::Url;
 use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 
 use ockam::Context;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use ockam_api::cloud::project::{OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
@@ -18,7 +19,6 @@ use ockam_core::CowStr;
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::delete_embedded_node;
 use crate::project::addon::base_endpoint;
-use crate::project::config;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
@@ -125,7 +125,7 @@ async fn run_impl(
     let addon_id = "okta";
     let endpoint = format!(
         "{}/{}",
-        base_endpoint(&opts.config.lookup(), &project_name)?,
+        base_endpoint(&opts.state, &project_name)?,
         addon_id
     );
     let req = Request::put(endpoint).body(CloudRequestWrapper::new(
@@ -140,8 +140,7 @@ async fn run_impl(
     // Wait until project is ready again
     println!("Reconfiguring project (this can take a few minutes) ...");
     tokio::time::sleep(std::time::Duration::from_secs(45)).await;
-    let project_id =
-        config::get_project(&opts.config, &project_name).context("project not found in lookup")?;
+    let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     rpc.request(api::project::show(&project_id, controller_route))
         .await?;
     let project: Project = rpc.parse_response()?;

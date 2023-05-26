@@ -42,7 +42,7 @@ async fn run_impl(
     let project_name = cmd.project_name;
 
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
-    let req = Request::get(base_endpoint(&opts.config.lookup(), &project_name)?)
+    let req = Request::get(base_endpoint(&opts.state, &project_name)?)
         .body(CloudRequestWrapper::bare(controller_route));
     rpc.request(req).await?;
     rpc.parse_and_print_response::<Vec<Addon>>()?;

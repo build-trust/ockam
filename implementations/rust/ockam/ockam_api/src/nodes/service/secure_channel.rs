@@ -100,7 +100,7 @@ impl NodeManager {
             Some(
                 self.cli_state
                     .credentials
-                    .get(&credential_name)?
+                    .get(credential_name)?
                     .config()
                     .credential()?,
             )

@@ -9,7 +9,6 @@ mod ticket;
 pub mod util;
 
 pub use info::ProjectInfo;
-pub use util::config;
 
 use clap::{Args, Subcommand};
 

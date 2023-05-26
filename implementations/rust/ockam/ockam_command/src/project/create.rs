@@ -5,14 +5,14 @@ use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use rand::prelude::random;
 
 use ockam::Context;
-use ockam_api::cli_state::StateDirTrait;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{docs, space, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -59,7 +59,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> crate::Result<()> {
-    let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)?;
+    let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request_with_timeout(

@@ -55,7 +55,7 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     let endpoint = format!(
         "{}/{}",
-        base_endpoint(&opts.config.lookup(), &project_name)?,
+        base_endpoint(&opts.state, &project_name)?,
         addon_id
     );
     let req = Request::delete(endpoint).body(CloudRequestWrapper::bare(controller_route));

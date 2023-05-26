@@ -105,15 +105,15 @@ teardown() {
 
   fwd="$(random_str)"
   run "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_output --partial "forward_to_$fwd"
   assert_success
+  assert_output --partial "forward_to_$fwd"
 
   run bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
   assert_success
 
   # Green can't establish secure channel with blue, because it didn't exchange credential with it.
-  run curl --fail --head --max-time 10 "127.0.0.1:$port"
+  run curl --fail --head --max-time 5 "127.0.0.1:$port"
   assert_failure
 }
 

@@ -83,7 +83,6 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             ctx,
             opts,
             &meta,
-            &cmd.cloud_opts.route(),
             &api_node,
             tcp.as_ref(),
             CredentialExchangeMode::Oneway,

@@ -33,8 +33,11 @@ use super::lookup::ProjectLookup;
 /// CLI.  Furthermore the data is only relevant for user-facing
 /// `ockam` CLI instances.  As such writes to this config don't have
 /// to be synchronised to detached consumers.
+///
+/// ## Legacy status
+/// It's maintained for backwards compatibility with the legacy CLI
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct OckamConfig {
+pub struct LegacyCliConfig {
     /// We keep track of the project directories at runtime but don't
     /// persist this data to the configuration
     #[serde(skip)]
@@ -47,7 +50,7 @@ fn default_lookup() -> ConfigLookup {
     ConfigLookup::default()
 }
 
-impl ConfigValues for OckamConfig {
+impl ConfigValues for LegacyCliConfig {
     fn default_values() -> Self {
         Self {
             dir: Some(Self::dir()),
@@ -56,7 +59,7 @@ impl ConfigValues for OckamConfig {
     }
 }
 
-impl OckamConfig {
+impl LegacyCliConfig {
     /// Determine the default storage location for the ockam config
     pub fn dir() -> PathBuf {
         cli_state::CliState::default_dir().unwrap()

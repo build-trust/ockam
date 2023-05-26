@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Context as _};
+use anyhow::anyhow;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 
 use ockam::Context;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use ockam_api::cloud::project::{InfluxDBTokenLeaseManagerConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
@@ -13,7 +14,6 @@ use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
 use crate::project::addon::base_endpoint;
-use crate::project::config;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
@@ -172,7 +172,7 @@ async fn run_impl(
     let add_on_id = "influxdb_token_lease_manager";
     let endpoint = format!(
         "{}/{}",
-        base_endpoint(&opts.config.lookup(), &project_name)?,
+        base_endpoint(&opts.state, &project_name)?,
         add_on_id
     );
     let req = Request::put(endpoint).body(CloudRequestWrapper::new(
@@ -189,8 +189,7 @@ async fn run_impl(
     println!("Reconfiguring project (this can take a few minutes) ...");
     tokio::time::sleep(std::time::Duration::from_secs(45)).await;
 
-    let project_id =
-        config::get_project(&opts.config, &project_name).context("project not found in lookup")?;
+    let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
 
     // Give the sever ~20 seconds
     // in intervals of 5s for the project to be available.
