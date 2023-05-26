@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.88.0 - 2023-05-26
+
+### Changed
+
+- Rename import identity to decode identity since it is not importing anything
+- Use identity identifiers for the creation of secure channels
+- Regroup all the vault related types and traits in the same crate
+- Extract a file storage
+- Use a key value file storage for the vault
+- Extract the vault_aws crate
+- First implementation of 3 packet exchange
+- Move `FlowControls` to `Context` and make it mandatory
+- Improve forwarding service topology
+- Make `FlowControl` more mistake-resistant
+- Improve `TCP` `::connect()` and `::listen()` outputs
+- Improve `::create_secure_channel()` and `::create_secure_channel_listener()` output
+- Expose `TcpTransportExtension` from `ockam` crate
+- Updated dependencies
+
+### Fixed
+
+- Fix the doc tests
+
 ## 0.87.0 - 2023-05-12
 
 ### Changed

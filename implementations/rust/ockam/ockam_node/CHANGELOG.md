@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.84.0 - 2023-05-26
+
+### Changed
+
+- First implementation of 3 packet exchange
+- Present credentials during secure channel exchange by default
+- Migrate the identities configuration
+- Initialize the default node outside of the command run impl
+- Move `FlowControls` to `Context` and make it mandatory
+- Updated dependencies
+
+### Fixed
+
+- Fix minor typos
+
 ## 0.83.0 - 2023-05-04
 
 ### Added

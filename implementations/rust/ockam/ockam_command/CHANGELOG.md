@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.88.0 - 2023-05-26
+
+### Added
+
+- Add unit tests for the node and identity initialization
+- Add `ockam flow-control add-consumer FLOW_CONTROL_ID ADDRESS` command
+
+### Changed
+
+- Use an identity identifier for node details
+- Use an identity identifier for the node manager worker in kafka
+- Simplify the identity state config
+- Migrate the identities configuration
+- Initialize the default node outside of the command run impl
+- Environment command & moved text
+- Improve on text and outputs of enroll, influx and kafka commands
+- Move `FlowControls` to `Context` and make it mandatory
+- Update cli manual docs some commands
+- Updated dependencies
+
+### Fixed
+
+- Fix the formatting
+- Rename ockam `project authenticate` clap command to ockam `project enroll`
+
 ## 0.87.0 - 2023-05-12
 
 ### Added

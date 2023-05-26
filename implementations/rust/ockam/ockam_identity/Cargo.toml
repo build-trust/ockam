@@ -1,6 +1,6 @@
 [package]
 name = "ockam_identity"
-version = "0.75.0"
+version = "0.76.0"
 authors = ["Ockam Developers"]
 categories = ["cryptography", "authentication"]
 edition = "2021"
@@ -68,11 +68,11 @@ heapless = "0.7"
 hex = { version = "0.4", default-features = false }
 lmdb-rkv = { version = "0.14.0", optional = true }
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
-ockam_core = { path = "../ockam_core", version = "^0.80.0", default-features = false }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.77.0", default-features = false, optional = true }
-ockam_macros = { path = "../ockam_macros", version = "^0.29.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.83.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.76.0", default-features = false, optional = true }
+ockam_core = { path = "../ockam_core", version = "^0.81.0", default-features = false }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.78.0", default-features = false, optional = true }
+ockam_macros = { path = "../ockam_macros", version = "^0.30.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.84.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.77.0", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.5"
@@ -86,7 +86,7 @@ tracing = { version = "0.1", default_features = false }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
-ockam_vault = { path = "../ockam_vault", version = "^0.76.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.77.0" }
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 rand_xorshift = "0"

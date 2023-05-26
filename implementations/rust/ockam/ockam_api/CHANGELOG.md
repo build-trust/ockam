@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.31.0 - 2023-05-26
+
+### Added
+
+- Add unit tests for the node and identity initialization
+
+### Changed
+
+- Rename import identity to decode identity since it is not importing anything
+- Introduce a retrieve identity function returning an option
+- Use identity identifiers for the creation of secure channels
+- Use identity identifier for credentials
+- Use an identity identifier for the node manager worker in kafka
+- Use an identity identifier for the authority service
+- Use a key value file storage for the vault
+- Extract the vault_aws crate
+- Simplify the identity state config
+- Migrate the identities configuration
+- Migrate only item paths
+- Initialize the default node outside of the command run impl
+- Move `FlowControls` to `Context` and make it mandatory
+- Make `FlowControl` more mistake-resistant
+- Improve `RpcProxyService`
+- Improve `TCP` `::connect()` and `::listen()` outputs
+- Improve `::create_secure_channel()` and `::create_secure_channel_listener()` output
+- Improve tcp command ux
+- Updated dependencies
+
+### Removed
+
+- Remove the need for a state item to know about the global state
+- Remove unneeded `FlowControls` instance from `Auth API`
+
 ## 0.30.0 - 2023-05-12
 
 ### Changed

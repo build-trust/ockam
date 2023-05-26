@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.76.0 - 2023-05-26
+
+### Changed
+
+- Introduce a retrieve identity function returning an option
+- Use identity identifiers for the creation of secure channels
+- Use identity identifier for credentials
+- Use an identity identifier for the authority service
+- Regroup all the vault related types and traits in the same crate
+- Extract the vault_aws crate
+- First implementation of 3 packet exchange
+- Move `FlowControls` to `Context` and make it mandatory
+- Make `FlowControl` more mistake-resistant
+- Improve `TCP` `::connect()` and `::listen()` outputs
+- Improve `::create_secure_channel()` and `::create_secure_channel_listener()` output
+- Improve `ockam_transport_tcp` registry
+- Rename identity identifier from_string to from_hex for clarity
+- Updated dependencies
+
+### Fixed
+
+- Fix compilation errors after rebasing
+
+### Removed
+
+- Remove the relationship between identity identifier and key id
+
 ## 0.75.0 - 2023-05-12
 
 ### Changed

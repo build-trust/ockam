@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.74.0 - 2023-05-26
+
+### Changed
+
+- Regroup all the vault related types and traits in the same crate
+- Extract the vault_aws crate
+- Separated the ephemeral and persistent secrets store interfaces
+- Updated dependencies
+
+### Fixed
+
+- Fix the vault tests for elixir
+
 ## 0.73.0 - 2023-05-12
 
 ### Changed
