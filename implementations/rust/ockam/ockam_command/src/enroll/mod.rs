@@ -375,7 +375,7 @@ impl Auth0Service {
 
         opts.terminal
             .write_line(&fmt_log!(
-                "To enroll we need to associate yyour Ockam identifier with an Orchestrator account\n"
+                "To enroll we need to associate your Ockam identifier with an Orchestrator account\n"
             ))?
             .write_line(&fmt_para!(
                 "First copy this one-time code: {}",
