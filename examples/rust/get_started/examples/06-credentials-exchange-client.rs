@@ -1,4 +1,4 @@
-use ockam::identity::{CredentialsIssuerClient, SecureChannelOptions};
+use ockam::identity::{AuthorityService, CredentialsIssuerClient, SecureChannelOptions, TrustContext};
 use ockam::{node, route, Context, Result, TcpConnectionOptions};
 use ockam_transport_tcp::TcpTransportExtension;
 
@@ -47,20 +47,27 @@ async fn main(ctx: Context) -> Result<()> {
         .verify_credential(&client.identifier(), &[issuer.clone()], credential.clone())
         .await?;
 
+    // Create a trust context that will be used to authenticate credential exchanges
+    let trust_context = TrustContext::new(
+        "trust_context_id".to_string(),
+        Some(AuthorityService::new(
+            node.identities().identities_reader(),
+            node.credentials(),
+            issuer.identifier(),
+            None,
+        )),
+    );
+
     // Create a secure channel to the node that is running the Echoer service.
     let server_connection = tcp.connect("127.0.0.1:4000", TcpConnectionOptions::new()).await?;
     let channel = node
         .create_secure_channel(
             &client.identifier(),
             route![server_connection, "secure"],
-            SecureChannelOptions::new(),
+            SecureChannelOptions::new()
+                .with_trust_context(trust_context)
+                .with_credential(credential),
         )
-        .await?;
-
-    // Present credentials over the secure channel
-    let r = route![channel.clone(), "credentials"];
-    node.credentials_server()
-        .present_credential_mutual(node.context(), r, &[issuer], credential)
         .await?;
 
     // Send a message to the worker at address "echoer".

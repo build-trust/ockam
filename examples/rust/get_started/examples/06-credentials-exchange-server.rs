@@ -5,12 +5,10 @@ use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::{
-    AuthorityService, CredentialsIssuerClient, CredentialsMemoryRetriever, SecureChannelListenerOptions,
-    SecureChannelOptions, TrustContext,
+    AuthorityService, CredentialsIssuerClient, SecureChannelListenerOptions, SecureChannelOptions, TrustContext,
 };
 use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpListenerOptions};
 use ockam_transport_tcp::TcpTransportExtension;
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -64,7 +62,7 @@ async fn main(ctx: Context) -> Result<()> {
             node.identities().identities_reader(),
             node.credentials(),
             issuer.identifier(),
-            Some(Arc::new(CredentialsMemoryRetriever::new(credential))),
+            None,
         )),
     );
 
@@ -73,10 +71,13 @@ async fn main(ctx: Context) -> Result<()> {
     // issuer. These credentials must also attest that requesting identity is
     // a member of the production cluster.
     let tcp_listener_options = TcpListenerOptions::new();
-    let sc_listener_options = SecureChannelListenerOptions::new().as_consumer(
-        &tcp_listener_options.spawner_flow_control_id(),
-        FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-    );
+    let sc_listener_options = SecureChannelListenerOptions::new()
+        .with_trust_context(trust_context)
+        .with_credential(credential)
+        .as_consumer(
+            &tcp_listener_options.spawner_flow_control_id(),
+            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+        );
 
     node.flow_controls().add_consumer(
         "echoer",
@@ -85,22 +86,6 @@ async fn main(ctx: Context) -> Result<()> {
     );
     let allow_production = AbacAccessControl::create(node.repository(), "cluster", "production");
     node.start_worker("echoer", Echoer, allow_production, AllowAll).await?;
-
-    // Start a worker which will receive credentials sent by the client and issued by the issuer node
-    node.flow_controls().add_consumer(
-        "credentials",
-        &sc_listener_options.spawner_flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
-    node.credentials_server()
-        .start(
-            node.context(),
-            trust_context,
-            server.identifier(),
-            "credentials".into(),
-            true,
-        )
-        .await?;
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
