@@ -83,14 +83,21 @@ fn create_default_identity(opts: &CommandGlobalOpts) {
     let create_command = CreateCommand::new(default.into(), None);
     create_command.run(opts.clone().set_quiet());
 
+    // Retrieve the identifier if available
+    // Otherwise, use the name of the identity
+    let identity = match opts.state.identities.get(default) {
+        Ok(i) => i.identifier().to_string(),
+        Err(_) => default.to_string(),
+    };
+
     if let Ok(mut logs) = PARSER_LOGS.lock() {
         logs.push(fmt_log!(
             "There is no identity, on this machine, marked as your default."
         ));
         logs.push(fmt_log!("Creating a new Ockam identity for you..."));
         logs.push(fmt_ok!(
-            "Created identity {}",
-            default.color(OckamColor::PrimaryResource.color())
+            "Created: {}",
+            identity.color(OckamColor::PrimaryResource.color())
         ));
         logs.push(fmt_log!(
             "Marked this new identity as your default, on this machine.\n"

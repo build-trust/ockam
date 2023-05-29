@@ -78,12 +78,8 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     delete_embedded_node(&opts, &node_name).await;
 
     opts.terminal.write_line(&fmt_ok!(
-        "Enrolled {} as one of the Ockam identities within the Orchestrator space {}",
+        "Enrolled {} as one of the Ockam identities of your Orchestrator account.",
         identifier
-            .to_string()
-            .color(OckamColor::PrimaryResource.color()),
-        space
-            .name
             .to_string()
             .color(OckamColor::PrimaryResource.color())
     ))?;
@@ -382,7 +378,7 @@ impl Auth0Service {
 
         opts.terminal
             .write_line(&fmt_log!(
-                "To enroll we need to associate your Ockam identifier with an Orchestrator account\n"
+                " To enroll we need to associate your Ockam identity with an Orchestrator account:\n"
             ))?
             .write_line(&fmt_para!(
                 "First copy this one-time code: {}",
