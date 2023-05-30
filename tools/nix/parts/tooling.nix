@@ -10,6 +10,8 @@ _: {
       packages = with pkgs; [
         config.packages.bats
         commitlint
+        curl
+        git
         gradle_7
         graphviz
         jq
