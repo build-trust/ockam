@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use colorful::Colorful;
 use reqwest::Url;
 use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 
@@ -25,7 +26,7 @@ use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_long_help.txt");
@@ -147,7 +148,8 @@ async fn run_impl(
     let project: Project = rpc.parse_response()?;
     check_project_readiness(&ctx, &opts, &cloud_opts, rpc.node_name(), None, project).await?;
 
-    println!("Okta addon configured successfully");
+    opts.terminal
+        .write_line(&fmt_ok!("Okta addon configured successfully"))?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

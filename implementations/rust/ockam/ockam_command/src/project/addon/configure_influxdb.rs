@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use colorful::Colorful;
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -20,7 +21,7 @@ use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, exitcode, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_long_help.txt");
@@ -197,7 +198,8 @@ async fn run_impl(
     let project: Project = rpc.parse_response()?;
     check_project_readiness(&ctx, &opts, &cloud_opts, rpc.node_name(), None, project).await?;
 
-    println!("InfluxDB addon configured successfully");
+    opts.terminal
+        .write_line(&fmt_ok!("InfluxDB addon configured successfully"))?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
