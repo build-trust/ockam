@@ -74,7 +74,8 @@ impl<V: Default + Serialize + for<'de> Deserialize<'de>> FileValueStorage<V> {
 
     // Flush vault to target, using temp_path as intermediary file.
     fn flush_to_file(target: &Path, temp_path: &Path, value: &V) -> Result<()> {
-        let data = serde_json::to_vec(value).map_err(|_| ValueStorageError::StorageError)?;
+        let data = serde_json::to_vec(value)
+            .map_err(|e| ValueStorageError::InvalidStorageData(e.to_string()))?;
         use std::io::prelude::*;
         cfg_if! {
             if #[cfg(windows)] {
