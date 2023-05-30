@@ -42,7 +42,7 @@ root
 │  │  ├─ setup.json
 │  │  ├─ stderr.log
 │  │  ├─ stdout.log
-│  │  └─ version
+│  │  └─ version.log
 │  ├─ node2
 │  └─ ...
 ├─ projects
@@ -85,13 +85,17 @@ The `data` directory contains a LMDB database with other information about ident
  - the credential attributes that have been verified for this identity. Those attributes are
    generally used in ABAC rules that are specified on secure channels. For example when sending messages
    via a secure channel and using the Orchestrator the `project` attribute will be checked and the LMDB database accessed
- - the list of key changes for each identity. This information is accessed in order to get the latest public key
-   associated to a given identity when checking its signature during the creation of a secure channel.
-   It is also accessed to retrieve the key id associated to that key and then use a Vault to create a signature
+
+ - the list of key changes for each identity. These key changes are created (or updated) when an identity
+   is created either by using the command line or by using the identity service.
+   The key changes are accessed in order to get the latest public key associated to a given identity
+   when checking its signature during the creation of a secure channel.
+   They are also accessed to retrieve the key id associated to that key and then use a Vault to create a signature
    for an identity
 
 Note: for each `.lmdb` file there is a corresponding `lmdb-lock` file which is used to control
 the exclusive access to the LMDB database even if several OS processes are trying to modify it.
+For example when several nodes are started using the same `NodeManager`.
 
 ## `nodes`
 
@@ -99,7 +103,8 @@ This directory contains:
 
  - symlinks to default values for the node: identity and vault
  - a database for ABAC policies
- - a setup file containing some configuration information for the node (is it an authority node?, what is the TCP listener address?,...)
+ - a setup file containing some configuration information for the node (is it an authority node?, what is the TCP listener address?,...).
+   That file is created when a node is created and read again if the node is restarted
  - log files: for system errors and system outputs. The stdout.log file is where almost all the node logs are written
  - a version number for the configuration
 
@@ -114,9 +119,9 @@ or via the `ockam project create` command. A project file contains:
 
 ## `trust_context`
 
-This directory contains a list of files, one per trust context. A trust context can be created with
+This directory contains a list of files, one per trust context. A trust context can created with
 the `ockam trust_context create` command. It can then be referred to during the creation of a
-secure channel as a way to specify which authority can attest to the validity of which attributes.
+secure channel as a way to specify which authority can attest to the validity of which attributes
 
 ## `vaults`
 
