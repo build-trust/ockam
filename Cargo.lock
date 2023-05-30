@@ -3682,6 +3682,7 @@ dependencies = [
  "aws-credential-types",
  "aws-sdk-kms",
  "delegate",
+ "hex",
  "ockam_core",
  "ockam_macros",
  "ockam_node",
