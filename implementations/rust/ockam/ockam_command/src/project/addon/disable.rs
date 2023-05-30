@@ -1,5 +1,6 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use colorful::Colorful;
 
 use ockam::Context;
 
@@ -16,7 +17,7 @@ use crate::project::addon::disable_addon_endpoint;
 use crate::util::api::CloudOpts;
 
 use crate::util::{node_rpc, Rpc};
-use crate::{CommandGlobalOpts, Result};
+use crate::{fmt_ok, CommandGlobalOpts, Result};
 
 /// Disable an addon for a project
 #[derive(Clone, Debug, Args)]
@@ -71,7 +72,8 @@ async fn run_impl(
 
     check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
 
-    println!("Addon disabled successfully");
+    opts.terminal
+        .write_line(&fmt_ok!("Addon disabled successfully"))?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
