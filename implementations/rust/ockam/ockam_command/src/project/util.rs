@@ -9,6 +9,7 @@ use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
+use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
@@ -173,8 +174,8 @@ pub async fn check_project_readiness(
     mut project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
-    let total_sleep_time_ms = 10 * 60 * 1000;
-    let retry_strategy = FixedInterval::from_millis(5000).take(total_sleep_time_ms / 5000);
+    let retry_strategy =
+        FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
 
     // Persist project config prior to checking readiness which might take a while
     opts.state
