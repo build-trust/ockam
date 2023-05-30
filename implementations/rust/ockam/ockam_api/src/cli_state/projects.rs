@@ -45,6 +45,7 @@ impl From<ProjectLookup> for Project {
             confluent_config: None,
             version: None,
             running: None,
+            operation_id: None,
         }
     }
 }

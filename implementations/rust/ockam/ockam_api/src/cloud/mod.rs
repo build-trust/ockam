@@ -26,6 +26,9 @@ pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY
 /// A default timeout in seconds
 pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
 
+/// Total time in milliseconds to wait for Orchestrator long-running operations to complete
+pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
+
 pub type ProjectAddress = CowStr<'static>;
 
 /// A wrapper around a cloud request with extra fields.

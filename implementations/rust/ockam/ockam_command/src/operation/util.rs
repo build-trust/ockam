@@ -3,6 +3,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
 use ockam_api::cloud::operation::Operation;
+use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
@@ -15,8 +16,8 @@ pub async fn check_for_completion<'a>(
     api_node: &str,
     operation_id: &str,
 ) -> Result<()> {
-    let total_sleep_time_ms = 10 * 60 * 1000;
-    let retry_strategy = FixedInterval::from_millis(5000).take(total_sleep_time_ms / 5000);
+    let retry_strategy =
+        FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
 
     let spinner_option = opts.terminal.progress_spinner();
     if let Some(spinner) = spinner_option.as_ref() {
