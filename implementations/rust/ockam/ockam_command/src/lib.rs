@@ -11,11 +11,11 @@ mod completion;
 mod configuration;
 mod credential;
 mod docs;
-mod enroll;
+pub mod enroll;
 mod environment;
-mod error;
+pub mod error;
 mod flow_control;
-mod identity;
+pub mod identity;
 mod kafka;
 mod lease;
 mod logs;
@@ -39,7 +39,7 @@ mod tcp;
 mod terminal;
 mod trust_context;
 mod upgrade;
-mod util;
+pub mod util;
 mod vault;
 mod version;
 mod worker;
@@ -215,7 +215,7 @@ pub struct CommandGlobalOpts {
 }
 
 impl CommandGlobalOpts {
-    fn new(global_args: GlobalArgs) -> Self {
+    pub fn new(global_args: GlobalArgs, config: OckamConfig) -> Self {
         let state = CliState::initialize().expect("Failed to load the local Ockam configuration");
         let terminal = Terminal::new(
             global_args.quiet,

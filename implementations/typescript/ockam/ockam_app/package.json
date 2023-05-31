@@ -1,0 +1,25 @@
+{
+  "name": "ockam-app",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "1.0.0-next.50",
+    "@sveltejs/kit": "^1.5.0",
+    "svelte": "^3.54.0",
+    "svelte-check": "^3.0.1",
+    "tslib": "^2.4.1",
+    "typescript": "^5.0.0",
+    "vite": "^4.3.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "@tauri-apps/api": "2.0.0-alpha.4"
+  }
+}
