@@ -7,10 +7,13 @@ use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
 use crate::util::{node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
+
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 /// Show a TCP connection
 #[derive(Clone, Debug, Args)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ShowCommand {
     #[command(flatten)]
     pub node_opts: NodeOpts,
