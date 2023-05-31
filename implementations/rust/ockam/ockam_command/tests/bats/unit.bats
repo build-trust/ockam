@@ -37,15 +37,15 @@ teardown() {
   assert_success
 
   # Check we can start service, but only once with the same name
-  run "$OCKAM" service start identity my_identity --node n1
+  run "$OCKAM" service start identity --addr my_identity --node n1
   assert_success
-  run "$OCKAM" service start identity my_identity --node n1
+  run "$OCKAM" service start identity --addr my_identity --node n1
   assert_failure
 
   # Check we can start service, but only once with the same name
-  run "$OCKAM" service start authenticated my_authenticated --node n1
+  run "$OCKAM" service start authenticated --addr my_authenticated --node n1
   assert_success
-  run "$OCKAM" service start authenticated my_authenticated --node n1
+  run "$OCKAM" service start authenticated --addr my_authenticated --node n1
   assert_failure
 
   # Check we can start service, but only once with the same name

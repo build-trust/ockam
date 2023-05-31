@@ -16,25 +16,24 @@ use ockam_core::api::{RequestBuilder, Status};
 /// Start a specified service
 #[derive(Clone, Debug, Args)]
 pub struct StartCommand {
-    #[command(flatten)]
-    pub node_opts: NodeOpts,
-
     #[command(subcommand)]
     pub create_subcommand: StartSubCommand,
+    #[command(flatten)]
+    pub node_opts: NodeOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum StartSubCommand {
     Hop {
-        #[arg(default_value_t = hop_default_addr())]
+        #[arg(long, default_value_t = hop_default_addr())]
         addr: String,
     },
     Identity {
-        #[arg(default_value_t = identity_default_addr())]
+        #[arg(long, default_value_t = identity_default_addr())]
         addr: String,
     },
     Authenticated {
-        #[arg(default_value_t = authenticated_default_addr())]
+        #[arg(long, default_value_t = authenticated_default_addr())]
         addr: String,
     },
     Verifier {
