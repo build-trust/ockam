@@ -23,7 +23,7 @@ teardown() {
 
 # https://docs.ockam.io/guides/use-cases/add-end-to-end-encryption-to-any-client-and-server-application-with-no-code-change
 @test "use-case - end-to-end encryption, local" {
-  port=9000
+  port="$(random_port)"
   run "$OCKAM" node create relay
   assert_success
 
@@ -53,7 +53,7 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
   copy_local_orchestrator_data
 
-  port=9001
+  port="$(random_port)"
 
   # Service
   run "$OCKAM" node create s
