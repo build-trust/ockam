@@ -1,0 +1,51 @@
+[package]
+name = "ockam_app"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+categories = [
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "network-programming",
+  "embedded",
+]
+default-run = "ockam_app"
+edition = "2021"
+homepage = "https://github.com/build-trust/ockam"
+keywords = [
+  "ockam",
+  "crypto",
+  "cryptography",
+  "network-programming",
+  "encryption",
+]
+license = "Apache-2.0"
+publish = false
+readme = "README.md"
+repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_app"
+rust-version = "1.58.1"
+description = "End-to-end encryption and mutual authentication for distributed applications."
+
+[lib]
+name = "ockam_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0.0-alpha.5", features = [] }
+
+[dependencies]
+ockam = { path = "../ockam", version = "^0.89.0", features = ["software_vault"] }
+ockam_api = { path = "../ockam_api", version = "0.32.0", features = ["std", "authenticators"] }
+ockam_command = { path = "../ockam_command", version = "^0.89.0" }
+ockam_core = { path = "../ockam_core", version = "^0.82.0" }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.23.0", features = ["cbor", "serde"] }
+open = "4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2.0.0-alpha.9", features = ["system-tray"] }
+
+[features]
+# this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
+# If you use cargo directly instead of tauri's cli you can use this feature flag to switch between tauri's `dev` and `build` modes.
+# DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]

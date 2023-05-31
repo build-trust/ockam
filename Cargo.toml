@@ -8,6 +8,7 @@ members = [
   "examples/rust/mitm_node",
   "implementations/rust/ockam/ockam",
   "implementations/rust/ockam/ockam_abac",
+  "implementations/rust/ockam/ockam_app",
   "implementations/rust/ockam/ockam_api",
   "implementations/rust/ockam/ockam_command",
   "implementations/rust/ockam/ockam_core",

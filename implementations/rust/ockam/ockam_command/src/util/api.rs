@@ -236,7 +236,7 @@ fn node_service(service_name: &str) -> String {
 }
 
 /// Helpers to create enroll API requests
-pub(crate) mod enroll {
+pub mod enroll {
     use ockam_api::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
 
     use crate::enroll::*;

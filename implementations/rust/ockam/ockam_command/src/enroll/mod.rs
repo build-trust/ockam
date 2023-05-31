@@ -470,7 +470,7 @@ impl Auth0Service {
     }
 
     /// Request device code
-    async fn device_code(&self) -> Result<DeviceCode<'_>> {
+    pub async fn device_code(&self) -> Result<DeviceCode<'_>> {
         // More on how to use scope and audience in https://auth0.com/docs/quickstart/native/device#device-code-parameters
         let client = self.provider().build_http_client()?;
         let req = || {
@@ -505,7 +505,7 @@ impl Auth0Service {
     }
 
     /// Poll for token until it's ready
-    async fn poll_token<'a>(
+    pub async fn poll_token<'a>(
         &'a self,
         dc: DeviceCode<'a>,
         opts: &CommandGlobalOpts,
