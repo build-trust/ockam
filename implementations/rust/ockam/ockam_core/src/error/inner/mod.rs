@@ -23,7 +23,7 @@ pub(super) struct ErrorData {
     #[cfg(feature = "std")]
     payload: Vec<PayloadEntry>,
     #[cfg(feature = "std")]
-    source_loc: Location,
+    pub(super) source_loc: Location,
     #[cfg(feature = "std")]
     #[serde(skip, default)]
     cause: Option<BoxDynErr>,
