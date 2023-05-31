@@ -1,7 +1,7 @@
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::Rpc;
 use crate::util::{node_rpc, parse_node_name};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::transport::CreateTcpListener;
@@ -9,8 +9,11 @@ use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
 
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
 /// Create a TCP listener
 #[derive(Args, Clone, Debug)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
     /// Node at which to create the listener
     #[arg(global = true, long, value_name = "NODE")]

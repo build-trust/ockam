@@ -8,10 +8,13 @@ use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{node_rpc, Rpc};
-use crate::{node::NodeOpts, CommandGlobalOpts};
+use crate::{docs, node::NodeOpts, CommandGlobalOpts};
+
+const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
 /// Delete a TCP listener
 #[derive(Clone, Debug, Args)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct DeleteCommand {
     #[command(flatten)]
     node_opts: NodeOpts,

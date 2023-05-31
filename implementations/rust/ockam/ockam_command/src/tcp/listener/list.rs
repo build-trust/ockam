@@ -5,10 +5,13 @@ use ockam_api::nodes::models::transport::{TransportList, TransportStatus};
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{api, node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
+
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List TCP listeners
 #[derive(Args, Clone, Debug)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ListCommand {
     #[command(flatten)]
     node_opts: NodeOpts,

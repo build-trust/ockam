@@ -1,13 +1,15 @@
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{node::NodeOpts, CommandGlobalOpts};
+use crate::{docs, node::NodeOpts, CommandGlobalOpts};
 use clap::Args;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
+const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
+
 /// Delete a TCP connection
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
+#[command(arg_required_else_help = true, after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct DeleteCommand {
     #[command(flatten)]
     node_opts: NodeOpts,

@@ -1,6 +1,6 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
 use ockam_api::nodes::models::portal::OutletList;
@@ -8,8 +8,11 @@ use ockam_api::{error::ApiError, route_to_multiaddr};
 use ockam_core::api::Request;
 use ockam_core::route;
 
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
+
 /// List TCP Outlets
 #[derive(Clone, Debug, Args)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ListCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
