@@ -78,7 +78,7 @@ pub fn get_default_identity_name(cli_state: &CliState) -> String {
 }
 
 /// Create the default identity
-fn create_default_identity(opts: &CommandGlobalOpts) {
+pub fn create_default_identity(opts: &CommandGlobalOpts) {
     let default = "default";
     let create_command = CreateCommand::new(default.into(), None);
     create_command.run(opts.clone().set_quiet());

@@ -26,11 +26,11 @@
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1683560683,
-        "narHash": "sha256-XAygPMN5Xnk/W2c1aW0jyEa6lfMDZWlQgiNtmHXytPc=",
+        "lastModified": 1685457039,
+        "narHash": "sha256-bEFtQm+YyLxQjKQAaBHJyPN1z2wbhBnr2g1NJWSYjwM=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "006c75898cf814ef9497252b022e91c946ba8e17",
+        "rev": "80717d11615b6f42d1ad2e18ead51193fc15de69",
         "type": "github"
       },
       "original": {
@@ -123,11 +123,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1685413459,
-        "narHash": "sha256-+ELexqS2yN0wj1WnmWdF24OfjRBIgTN6Ltcpjvp2dEo=",
+        "lastModified": 1685500416,
+        "narHash": "sha256-P6wLC+P8o9w4XNLZAbZy3BwKkp1xi/+H9dF+7SXDP70=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "9b3284e2412f76bd68ff46f8cf1c7af44d7ffac0",
+        "rev": "9651f0beee6e7a9783cc02eac722854851c65ae7",
         "type": "github"
       },
       "original": {

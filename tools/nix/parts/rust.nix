@@ -55,6 +55,7 @@ in {
             IOKit
             pkgs.libiconv
             Security
+            WebKit
           ]);
 
         cargoPlugins = with pkgs;

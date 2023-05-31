@@ -22,8 +22,11 @@
 
       shellHook = ''
         ${config.devShells.rust.shellHook or ""}
-        export HOME=$PWD/.home
         export DYLD_FALLBACK_LIBRARY_PATH=$(rustc --print sysroot)/lib
+
+        export HOME=$PWD/.home
+        export PATH=$PWD/.home/.cargo/bin:$PATH
+        cargo install tauri-cli --version "^2.0.0-alpha"
       '';
     };
   };
