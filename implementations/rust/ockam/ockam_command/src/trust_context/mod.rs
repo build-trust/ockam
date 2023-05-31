@@ -1,9 +1,18 @@
 mod create;
+mod default;
+mod delete;
+mod list;
+mod show;
+
 use clap::{Args, Subcommand};
 
-pub use create::CreateCommand;
+use crate::{docs, CommandGlobalOpts};
 
-use crate::{docs, util::api::TrustContextOpts, CommandGlobalOpts};
+use crate::trust_context::default::DefaultCommand;
+use crate::trust_context::delete::DeleteCommand;
+use crate::trust_context::list::ListCommand;
+use crate::trust_context::show::ShowCommand;
+pub use create::CreateCommand;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -17,20 +26,25 @@ const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 pub struct TrustContextCommand {
     #[command(subcommand)]
     subcommand: TrustContextSubcommand,
-
-    #[command(flatten)]
-    trust_context_opts: TrustContextOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum TrustContextSubcommand {
     Create(CreateCommand),
+    Show(ShowCommand),
+    Delete(DeleteCommand),
+    List(ListCommand),
+    Default(DefaultCommand),
 }
 
 impl TrustContextCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) {
         match self.subcommand {
-            TrustContextSubcommand::Create(c) => c.run(options, self.trust_context_opts),
+            TrustContextSubcommand::Create(c) => c.run(opts),
+            TrustContextSubcommand::Show(cmd) => cmd.run(opts),
+            TrustContextSubcommand::List(cmd) => cmd.run(opts),
+            TrustContextSubcommand::Delete(cmd) => cmd.run(opts),
+            TrustContextSubcommand::Default(cmd) => cmd.run(opts),
         }
     }
 }

@@ -25,20 +25,20 @@ impl TerminalWriter for TerminalStream<Term> {
         self.writer.is_tty()
     }
 
-    fn write(&mut self, s: &str) -> Result<()> {
+    fn write(&mut self, s: impl AsRef<str>) -> Result<()> {
         let s = self.prepare_msg(s)?;
         self.writer.write_all(s.as_bytes())?;
         Ok(())
     }
 
-    fn rewrite(&mut self, s: &str) -> Result<()> {
+    fn rewrite(&mut self, s: impl AsRef<str>) -> Result<()> {
         let s = self.prepare_msg(s)?;
         self.writer.clear_line()?;
         self.writer.write_all(s.as_bytes())?;
         Ok(())
     }
 
-    fn write_line(&self, s: &str) -> Result<()> {
+    fn write_line(&self, s: impl AsRef<str>) -> Result<()> {
         let s = self.prepare_msg(s)?;
         self.writer.write_line(&s)?;
         Ok(())

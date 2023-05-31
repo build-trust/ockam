@@ -127,9 +127,9 @@ pub struct TerminalStream<T: Write + Debug + Clone> {
 }
 
 impl<T: Write + Debug + Clone> TerminalStream<T> {
-    fn prepare_msg(&self, msg: &str) -> Result<String> {
+    fn prepare_msg(&self, msg: impl AsRef<str>) -> Result<String> {
         let mut buffer = Vec::new();
-        write!(buffer, "{}", msg)?;
+        write!(buffer, "{}", msg.as_ref())?;
         if self.no_color {
             buffer = strip_ansi_escapes::strip(&buffer)?;
         }
@@ -177,9 +177,9 @@ pub trait TerminalWriter: Clone {
     fn stderr(no_color: bool) -> Self;
     fn is_tty(&self) -> bool;
 
-    fn write(&mut self, s: &str) -> Result<()>;
-    fn rewrite(&mut self, s: &str) -> Result<()>;
-    fn write_line(&self, s: &str) -> Result<()>;
+    fn write(&mut self, s: impl AsRef<str>) -> Result<()>;
+    fn rewrite(&mut self, s: impl AsRef<str>) -> Result<()>;
+    fn write_line(&self, s: impl AsRef<str>) -> Result<()>;
 }
 
 // Core functions
@@ -238,21 +238,21 @@ impl<W: TerminalWriter> Terminal<W> {
 
 // Logging mode
 impl<W: TerminalWriter> Terminal<W, ToStdErr> {
-    pub fn write(&self, msg: &str) -> Result<()> {
+    pub fn write(&self, msg: impl AsRef<str>) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
         self.stderr.clone().write(msg)
     }
 
-    pub fn rewrite(&self, msg: &str) -> Result<()> {
+    pub fn rewrite(&self, msg: impl AsRef<str>) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
         self.stderr.clone().rewrite(msg)
     }
 
-    pub fn write_line(&self, msg: &str) -> Result<&Self> {
+    pub fn write_line(&self, msg: impl AsRef<str>) -> Result<&Self> {
         if self.quiet {
             return Ok(self);
         }
