@@ -354,7 +354,7 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
   copy_local_orchestrator_data
 
-  port=7100
+  port="$(random_port)"
 
   run "$OCKAM" node create blue
   assert_success
@@ -443,8 +443,8 @@ teardown() {
 # ===== PORTALS (INLET/OUTLET)
 
 @test "portals - tcp inlet CRUD" {
-  outlet_port=6100
-  inlet_port=6101
+  outlet_port="$(random_port)"
+  inlet_port="$(random_port)"
 
   # Create nodes for inlet/outlet pair
   run "$OCKAM" node create n1
@@ -479,11 +479,11 @@ teardown() {
 }
 
 @test "portals - tcp outlet CRUD" {
-  port=6103
+  port="$(random_port)"
   run "$OCKAM" node create n1
   assert_success
 
-  only_port=6104
+  only_port="$(random_port)"
   run "$OCKAM" node create n2
   assert_success
 
@@ -509,7 +509,7 @@ teardown() {
 }
 
 @test "portals - list inlets on a node" {
-  port=6104
+  port="$(random_port)"
   run "$OCKAM" node create n1
   assert_success
   run "$OCKAM" node create n2
@@ -525,7 +525,7 @@ teardown() {
 }
 
 @test "portals - list outlets on a node" {
-  port=6105
+  port="$(random_port)"
   run "$OCKAM" node create n1
 
   run $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
@@ -540,7 +540,7 @@ teardown() {
 }
 
 @test "portals - show a tcp inlet" {
-  port=6106
+  port="$(random_port)"
   run "$OCKAM" node create n1
   assert_success
   run "$OCKAM" node create n2
@@ -558,7 +558,7 @@ teardown() {
 }
 
 @test "portals - show a tcp outlet" {
-  port=6107
+  port="$(random_port)"
   run "$OCKAM" node create n1
   assert_success
 
@@ -575,7 +575,7 @@ teardown() {
 }
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it" {
-  port=6000
+  port="$(random_port)"
   run "$OCKAM" node create n1
   assert_success
   run "$OCKAM" node create n2
@@ -589,7 +589,7 @@ teardown() {
 }
 
 @test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
-  port=6001
+  port="$(random_port)"
   run "$OCKAM" node create relay
   assert_success
   run "$OCKAM" node create blue
