@@ -108,10 +108,10 @@ mod tests {
             .await
             .err();
 
-        assert_eq!(
-            result.unwrap().to_string(),
-            "only one transport hop is allowed in a route"
-        );
+        assert!(result
+            .unwrap()
+            .to_string()
+            .contains("only one transport hop is allowed in a route"));
         ctx.stop().await
     }
 
