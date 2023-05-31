@@ -427,7 +427,7 @@ impl Auth0Service {
                 "First copy this one-time code: {}",
                 format!(" {} ", dc.user_code).bg_white().black()
             ))?
-            .write(&fmt_para!(
+            .write(fmt_para!(
                 "Then press {} to open {} in your browser.",
                 " ENTER ↵ ".bg_white().black().blink(),
                 dc.verification_uri
