@@ -15,7 +15,7 @@ use crate::{eval, Env, Expr};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
-use ockam_identity::{IdentitiesRepository, IdentitySecureChannelLocalInfo};
+use ockam_identity::{IdentitiesRepository, IdentityIdentifier, IdentitySecureChannelLocalInfo};
 
 /// This AccessControl uses a storage for authenticated attributes in order
 /// to verify if a policy expression is valid
@@ -66,21 +66,8 @@ where {
     }
 }
 
-#[async_trait]
-impl IncomingAccessControl for AbacAccessControl {
-    /// Return true if the sender of the message is validated by the expression stored in AbacAccessControl
-    async fn is_authorized(&self, msg: &RelayMessage) -> Result<bool> {
-        // Get identity identifier from message metadata:
-        let id = if let Ok(info) = IdentitySecureChannelLocalInfo::find_info(msg.local_message()) {
-            info.their_identity_id().clone()
-        } else {
-            log::debug! {
-                policy = %self.expression,
-                "identity identifier not found; access denied"
-            }
-            return Ok(false);
-        };
-
+impl AbacAccessControl {
+    pub async fn is_identity_authorized(&self, id: IdentityIdentifier) -> Result<bool> {
         let mut environment = self.environment.clone();
 
         // Get identity attributes and populate the environment:
@@ -153,5 +140,24 @@ impl IncomingAccessControl for AbacAccessControl {
                 Ok(false)
             }
         }
+    }
+}
+
+#[async_trait]
+impl IncomingAccessControl for AbacAccessControl {
+    /// Return true if the sender of the message is validated by the expression stored in AbacAccessControl
+    async fn is_authorized(&self, msg: &RelayMessage) -> Result<bool> {
+        // Get identity identifier from message metadata:
+        let id = if let Ok(info) = IdentitySecureChannelLocalInfo::find_info(msg.local_message()) {
+            info.their_identity_id()
+        } else {
+            log::debug! {
+                policy = %self.expression,
+                "identity identifier not found; access denied"
+            }
+            return Ok(false);
+        };
+
+        self.is_identity_authorized(id).await
     }
 }

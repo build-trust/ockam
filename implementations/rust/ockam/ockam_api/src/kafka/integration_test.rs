@@ -32,10 +32,8 @@ mod test {
     use ockam::Context;
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
-    use ockam_core::flow_control::FlowControlPolicy;
     use ockam_core::route;
     use ockam_core::{Address, AllowAll};
-    use ockam_identity::SecureChannelListenerOptions;
     use ockam_multiaddr::proto::Service;
     use ockam_multiaddr::MultiAddr;
     use ockam_node::compat::tokio;
@@ -47,9 +45,7 @@ mod test {
     use crate::kafka::{
         KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
     };
-    use crate::nodes::registry::KafkaServiceKind;
     use crate::test::NodeManagerHandle;
-    use crate::DefaultAddress;
 
     //TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
@@ -75,42 +71,16 @@ mod test {
 
     async fn create_kafka_service(
         context: &Context,
-        handle: &NodeManagerHandle,
+        handler: &NodeManagerHandle,
         listener_address: Address,
         outlet_address: Address,
-        kind: KafkaServiceKind,
     ) -> ockam::Result<u16> {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
-            handle.secure_channels.clone(),
+            handler.secure_channels.clone(),
             MultiAddr::try_from("/service/api")?,
             HopForwarderCreator {},
+            "test_trust_context_id".to_string(),
         );
-
-        //the possibility to accept secure channels is the only real
-        //difference between consumer and producer
-        if let KafkaServiceKind::Consumer = kind {
-            secure_channel_controller
-                .create_consumer_listener(context)
-                .await?;
-
-            let options = SecureChannelListenerOptions::new();
-            context.flow_controls().add_consumer(
-                crate::kafka::KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS,
-                &options.spawner_flow_control_id(),
-                FlowControlPolicy::SpawnerAllowMultipleMessages,
-            );
-
-            // in a normal setup the secure channel listener is already created
-            handle
-                .secure_channels
-                .create_secure_channel_listener(
-                    context,
-                    &handle.identifier,
-                    DefaultAddress::SECURE_CHANNEL_LISTENER,
-                    options,
-                )
-                .await?;
-        }
 
         let mut interceptor_multiaddr = MultiAddr::default();
         interceptor_multiaddr.push_back(Service::new(listener_address.address()))?;
@@ -123,7 +93,7 @@ mod test {
             (0, 0).try_into().unwrap(),
         );
 
-        let (socket_address, _) = handle
+        let (socket_address, _) = handler
             .tcp
             .create_inlet(
                 "127.0.0.1:0",
@@ -155,7 +125,6 @@ mod test {
             &handler,
             "kafka_consumer_listener".into(),
             "kafka_consumer_outlet".into(),
-            KafkaServiceKind::Consumer,
         )
         .await?;
 
@@ -164,7 +133,6 @@ mod test {
             &handler,
             "kafka_producer_listener".into(),
             "kafka_producer_outlet".into(),
-            KafkaServiceKind::Producer,
         )
         .await?;
 

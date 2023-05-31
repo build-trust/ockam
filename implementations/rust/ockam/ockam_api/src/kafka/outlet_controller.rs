@@ -1,22 +1,15 @@
-use core::str::FromStr;
+use crate::kafka::kafka_outlet_address;
+use crate::nodes::models::portal::{CreateOutlet, OutletStatus};
+use crate::nodes::NODEMANAGER_ADDR;
 use minicbor::Decoder;
-use ockam_core::compat::net::IpAddr;
-
 use ockam::compat::tokio::sync::Mutex;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Result;
 use ockam_core::{route, Error};
-use ockam_core::{Result, Route};
-use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-
-use crate::kafka::kafka_outlet_address;
-use crate::nodes::models::portal::{CreateInlet, CreateOutlet, InletStatus, OutletStatus};
-use crate::nodes::NODEMANAGER_ADDR;
-use crate::port_range::PortRange;
 
 type BrokerId = i32;
 
@@ -40,12 +33,6 @@ impl KafkaOutletController {
                 broker_map: HashMap::new(),
             })),
         }
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn retrieve_outlet(&self, broker_id: BrokerId) -> Option<String> {
-        let inner = self.inner.lock().await;
-        inner.broker_map.get(&broker_id).copied()
     }
 
     /// Asserts the presence of an inlet for a broker

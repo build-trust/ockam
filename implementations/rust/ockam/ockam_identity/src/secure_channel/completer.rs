@@ -150,6 +150,8 @@ impl ExchangeCompleter {
             &self.addresses.decryptor_remote
         );
 
+        let their_decryptor_address = self.remote_route.iter().last();
+
         let info = SecureChannelRegistryEntry::new(
             self.addresses.encryptor.clone(),
             self.addresses.encryptor_api.clone(),
@@ -158,6 +160,7 @@ impl ExchangeCompleter {
             self.role.is_initiator(),
             self.identity_identifier,
             self.their_identity.identifier(),
+            their_decryptor_address.unwrap().clone(),
         );
 
         secure_channels

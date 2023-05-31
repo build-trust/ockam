@@ -18,10 +18,7 @@ use ockam_node::Context;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::StateItemTrait;
-use crate::kafka::{
-    KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS, ORCHESTRATOR_KAFKA_CONSUMERS,
-    ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-};
+use crate::kafka::{ORCHESTRATOR_KAFKA_CONSUMERS, ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS};
 use crate::nodes::connection::Connection;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -212,12 +209,6 @@ impl NodeManager {
 
         ctx.flow_controls().add_consumer(
             DefaultAddress::CREDENTIALS_SERVICE,
-            listener.flow_control_id(),
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
-
-        ctx.flow_controls().add_consumer(
-            KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS,
             listener.flow_control_id(),
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );

@@ -1,14 +1,9 @@
 use crate::kafka::outlet_controller::KafkaOutletController;
-use crate::kafka::portal_worker::{KafkaPortalWorker, MAX_KAFKA_MESSAGE_SIZE};
-use crate::kafka::protocol_aware::{KafkaMessageInterceptor, OutletInterceptorImpl};
-use crate::kafka::{
-    ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS, ORCHESTRATOR_KAFKA_CONSUMERS,
-    ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-};
-use crate::DefaultAddress;
+use crate::kafka::portal_worker::KafkaPortalWorker;
+use crate::kafka::protocol_aware::OutletInterceptorImpl;
+use crate::kafka::ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS;
 use ockam::{Any, Context, Result, Routed, Worker};
-use ockam_core::flow_control::{FlowControlId, FlowControls};
-use ockam_core::{route, Address, AllowAll, AllowOnwardAddresses};
+use ockam_core::{Address, AllowAll};
 use std::sync::Arc;
 
 pub(crate) struct OutletManagerService {

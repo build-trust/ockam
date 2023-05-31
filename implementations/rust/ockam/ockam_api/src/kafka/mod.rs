@@ -21,8 +21,6 @@ pub const ORCHESTRATOR_KAFKA_CONSUMERS: &str = "kafka_consumers";
 pub const ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS: &str = "kafka_interceptor";
 pub const ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS: &str = "kafka_bootstrap";
 
-pub const KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS: &str = "kafka_secure_channel_controller";
-
 pub fn kafka_outlet_address(broker_id: i32) -> String {
     format!("kafka_outlet_{}", broker_id)
 }

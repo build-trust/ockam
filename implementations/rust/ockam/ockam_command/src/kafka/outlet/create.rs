@@ -1,15 +1,14 @@
-use std::net::SocketAddr;
+
 
 use clap::{command, Args};
 use colorful::Colorful;
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::{
-    nodes::models::services::{StartKafkaConsumerRequest, StartServiceRequest},
-    port_range::PortRange,
+    nodes::models::services::{StartServiceRequest},
 };
 use ockam_core::api::Request;
-use ockam_multiaddr::MultiAddr;
+
 use tokio::{sync::Mutex, try_join};
 
 use crate::node::get_node_name;
@@ -19,7 +18,7 @@ use crate::{
     node::NodeOpts,
     service::start::start_service_impl,
     terminal::OckamColor,
-    util::{node_rpc, parsers::socket_addr_parser},
+    util::{node_rpc},
     CommandGlobalOpts, Result,
 };
 

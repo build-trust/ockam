@@ -188,7 +188,8 @@ impl InletInterceptorImpl {
                             let wrapper = MessageWrapper {
                                 #[cfg(feature = "tag")]
                                 tag: TypeTag,
-                                secure_channel_identifier: encrypted_content.secure_channel_id,
+                                consumer_decryptor_address: encrypted_content
+                                    .consumer_decryptor_address,
                                 content: encrypted_content.content,
                             };
 

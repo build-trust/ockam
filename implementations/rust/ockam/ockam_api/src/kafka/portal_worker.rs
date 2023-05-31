@@ -2,12 +2,12 @@ use bytes::{Bytes, BytesMut};
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::sync::Mutex;
+
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{
     errcode::{Kind, Origin},
-    route, Address, AllowAll, AsyncTryClone, Encodable, Error, LocalInfo, LocalMessage, Route,
-    Routed, TransportMessage, Worker,
+    route, Address, AllowAll, Encodable, Error, LocalInfo, LocalMessage, Route, Routed,
+    TransportMessage, Worker,
 };
 use ockam_node::Context;
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -734,9 +734,12 @@ mod test {
         );
 
         let secure_channels = secure_channels();
-        let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(secure_channels, MultiAddr::default())
-                .into_trait();
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            secure_channels,
+            MultiAddr::default(),
+            "test_trust_context_id".to_string(),
+        )
+        .into_trait();
 
         KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
@@ -789,6 +792,7 @@ mod test {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handler.secure_channels.clone(),
             MultiAddr::default(),
+            "test_trust_context_id".to_string(),
         )
         .into_trait();
 

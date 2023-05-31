@@ -344,12 +344,13 @@ pub mod test {
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
-    use ockam_identity::IdentityIdentifier;
+    use ockam_identity::{CredentialData, Credentials, IdentityIdentifier};
     use ockam_node::compat::asynchronous::RwLock;
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
     use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
+    use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
         ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
         NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -407,7 +408,20 @@ pub mod test {
             .await
             .unwrap();
 
+        let credential = secure_channels
+            .identities()
+            .issue_credential(
+                &identity.identifier(),
+                CredentialData::builder(identity.identifier(), identity.identifier())
+                    .with_attribute("trust_context_id", b"test_trust_context_id")
+                    .build()
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
         drop(secure_channels);
+
         let config = IdentityConfig::new(&identity.identifier()).await;
         cli_state.identities.create(&identity_name, config).unwrap();
 
@@ -417,7 +431,7 @@ pub mod test {
 
         let node_manager = NodeManager::create(
             context,
-            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
             NodeManagerProjectsOptions::new(Default::default()),
             NodeManagerTransportOptions::new(
                 ApiTransport {
@@ -430,7 +444,13 @@ pub mod test {
                 },
                 tcp.async_try_clone().await?,
             ),
-            NodeManagerTrustOptions::new(None),
+            NodeManagerTrustOptions::new(Some(TrustContextConfig::new(
+                "test_trust_context".to_string(),
+                Some(TrustAuthorityConfig::new(
+                    identity.export_hex().unwrap(),
+                    Some(CredentialRetrieverConfig::FromMemory(credential)),
+                )),
+            ))),
         )
         .await?;
 

@@ -239,7 +239,7 @@ impl InletInterceptorImpl {
                                 .secure_channel_controller
                                 .decrypt_content_for(
                                     context,
-                                    message_wrapper.secure_channel_identifier,
+                                    &message_wrapper.consumer_decryptor_address,
                                     message_wrapper.content,
                                 )
                                 .await

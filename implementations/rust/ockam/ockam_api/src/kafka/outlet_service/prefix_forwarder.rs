@@ -1,9 +1,9 @@
 use crate::kafka::ORCHESTRATOR_KAFKA_CONSUMERS;
-use crate::DefaultAddress;
+
 use core::str::from_utf8;
-use ockam::{Any, Context, Result, Routed, Worker};
+use ockam::{Context, Result, Routed, Worker};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Address, AllowAll, AllowOnwardAddresses};
+use ockam_core::{Address, AllowAll};
 
 pub struct PrefixForwarderService {
     prefix: String,
@@ -36,11 +36,6 @@ impl Worker for PrefixForwarderService {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         // blindly forward if it comes from the forwarding service
-
-        debug!("msg.return_route(): {:?}", msg.return_route());
-        debug!("msg.onward_route(): {:?}", msg.onward_route());
-        debug!("msg.payload(): {:?}", msg.payload());
-
         let address = match msg.payload().get(1..) {
             Some(address) => match from_utf8(address) {
                 Ok(v) => v.to_string(),
@@ -61,9 +56,7 @@ impl Worker for PrefixForwarderService {
             }
         };
 
-        let is_from_forwarding_service = msg.src_addr().address() == address;
-        debug!("msg.src_addr(): {}", msg.src_addr());
-        let new_address = if is_from_forwarding_service {
+        let new_address = if msg.src_addr().address() == address {
             address.replace(&format!("{}_", &self.prefix), "")
         } else {
             format!("{}_{}", &self.prefix, address)
@@ -86,19 +79,6 @@ impl Worker for PrefixForwarderService {
 
         //prefix consumer_ to the address
         transport_message.payload = new_payload;
-
-        // Insert my address at the beginning return_route if it's not a response from the
-        // the forwarded service, in that case we want to be removed as the initiation is
-        // finished
-        // if !is_from_forwarding_service {
-        //     transport_message
-        //         .return_route
-        //         .modify()
-        //         .prepend(ctx.address());
-        // }
-
-        debug!("msg.return_route(): {:?}", transport_message.return_route);
-        debug!("msg.onward_route(): {:?}", transport_message.onward_route);
 
         // Send the message on its onward_route
         ctx.forward(message).await

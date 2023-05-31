@@ -1,16 +1,14 @@
 use crate::kafka::outlet_controller::KafkaOutletController;
 use alloc::sync::Arc;
-use bytes::{Bytes, BytesMut};
-use kafka_protocol::messages::fetch_request::FetchRequest;
-use kafka_protocol::messages::produce_request::ProduceRequest;
+use bytes::{BytesMut};
+
+
 use kafka_protocol::messages::request_header::RequestHeader;
 use kafka_protocol::messages::{ApiKey, MetadataResponse, ResponseHeader};
 use kafka_protocol::protocol::buf::ByteBuf;
 use kafka_protocol::protocol::Decodable;
-use kafka_protocol::records::{
-    Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions,
-};
-use minicbor::encode::Encoder;
+
+
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Mutex;
@@ -19,14 +17,14 @@ use ockam_core::TypeTag;
 use ockam_node::Context;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind};
-use std::net::SocketAddr;
+
 use tinyvec::alloc;
 use tracing::warn;
 
 use crate::kafka::portal_worker::InterceptError;
-use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
+use crate::kafka::protocol_aware::utils::{decode_body};
 use crate::kafka::protocol_aware::{
-    CorrelationId, InletInterceptorImpl, KafkaMessageInterceptor, MessageWrapper, RequestInfo,
+    CorrelationId, KafkaMessageInterceptor, RequestInfo,
 };
 
 #[derive(Clone)]
@@ -150,7 +148,7 @@ impl KafkaMessageInterceptor for OutletInterceptorImpl {
             );
 
             if request_info.request_api_key == ApiKey::MetadataKey {
-                let mut response: MetadataResponse =
+                let response: MetadataResponse =
                     decode_body(&mut buffer, request_info.request_api_version)?;
 
                 for (broker_id, metadata) in response.brokers {

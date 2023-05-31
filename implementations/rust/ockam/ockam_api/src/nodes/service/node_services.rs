@@ -4,19 +4,20 @@ use minicbor::Decoder;
 
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{and, eq, ident, str};
-use ockam_abac::Expr::Bool;
+
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
-use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
+use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, AllowAll, IncomingAccessControl};
 use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
-use ockam_multiaddr::proto::Project;
+
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
 use ockam_transport_tcp::TcpOutletOptions;
 
+use crate::actions;
 use crate::auth::Server;
 use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::echoer::Echoer;
@@ -44,7 +45,6 @@ use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
 use crate::DefaultAddress;
-use crate::{actions, resources};
 
 use super::NodeManagerWorker;
 
@@ -622,7 +622,7 @@ impl NodeManagerWorker {
         PrefixForwarderService::create(context).await?;
         OutletManagerService::create(context).await?;
 
-        let mut node_manager = self.node_manager.write().await;
+        let node_manager = self.node_manager.write().await;
         node_manager
             .tcp_transport
             .create_outlet(
@@ -701,19 +701,19 @@ impl NodeManagerWorker {
     ) -> Result<()> {
         debug!("project_multiaddr: {}", project_multiaddr.to_string());
 
-        let secure_channels = {
+        let trust_context_id;
+        let secure_channels;
+        {
             let node_manager = self.node_manager.read().await;
-            node_manager.secure_channels.clone()
-        };
-
-        let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(secure_channels, project_multiaddr.clone());
-
-        if let KafkaServiceKind::Consumer = kind {
-            secure_channel_controller
-                .create_consumer_listener(context)
-                .await?;
+            trust_context_id = node_manager.trust_context()?.id().to_string();
+            secure_channels = node_manager.secure_channels.clone();
         }
+
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            secure_channels,
+            project_multiaddr.clone(),
+            trust_context_id,
+        );
 
         let inlet_controller = KafkaInletController::new(
             project_multiaddr.clone(),

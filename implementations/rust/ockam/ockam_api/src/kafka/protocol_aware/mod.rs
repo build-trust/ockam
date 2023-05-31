@@ -1,16 +1,16 @@
 use crate::kafka::portal_worker::InterceptError;
-use crate::kafka::secure_channel_map::{KafkaSecureChannelController, UniqueSecureChannelId};
+use crate::kafka::secure_channel_map::KafkaSecureChannelController;
 use crate::kafka::KafkaInletController;
 use bytes::BytesMut;
 use kafka_protocol::messages::ApiKey;
 use minicbor::{Decode, Encode};
-use ockam_core::async_trait;
 use ockam_core::compat::{
     collections::HashMap,
     fmt::Debug,
     sync::{Arc, Mutex},
 };
-use ockam_core::AsyncTryClone;
+use ockam_core::{async_trait, Address};
+
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_node::Context;
@@ -83,8 +83,8 @@ impl KafkaMessageInterceptor for InletInterceptorImpl {
 ///Wraps the content within every record batch
 struct MessageWrapper {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1652220>,
-    #[b(1)] secure_channel_identifier: UniqueSecureChannelId,
+    #[n(0)] tag: TypeTag<1652221>,
+    #[b(1)] consumer_decryptor_address: Address,
     #[b(2)] content: Vec<u8>
 }
 
