@@ -20,8 +20,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct ShowCommand {
-    /// Node
-    #[arg(value_name = "NODE", long, display_order = 800)]
+    /// Node at which the secure channel was initiated
+    #[arg(value_name = "NODE_NAME", long, display_order = 800)]
     at: String,
 
     /// Channel address

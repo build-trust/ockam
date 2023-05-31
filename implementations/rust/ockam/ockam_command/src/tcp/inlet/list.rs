@@ -17,7 +17,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node.api_node);
+        initialize_node_if_default(&opts, &self.node.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -26,7 +26,7 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node.api_node);
+    let node_name = get_node_name(&opts.state, &cmd.node.at_node);
     let node_name = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(Request::get("/node/inlet")).await?;

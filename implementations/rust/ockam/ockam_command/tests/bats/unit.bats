@@ -37,27 +37,27 @@ teardown() {
   assert_success
 
   # Check we can start service, but only once with the same name
-  run "$OCKAM" service start identity --addr my_identity --node n1
+  run "$OCKAM" service start identity --addr my_identity --at n1
   assert_success
-  run "$OCKAM" service start identity --addr my_identity --node n1
+  run "$OCKAM" service start identity --addr my_identity --at n1
   assert_failure
 
   # Check we can start service, but only once with the same name
-  run "$OCKAM" service start authenticated --addr my_authenticated --node n1
+  run "$OCKAM" service start authenticated --addr my_authenticated --at n1
   assert_success
-  run "$OCKAM" service start authenticated --addr my_authenticated --node n1
+  run "$OCKAM" service start authenticated --addr my_authenticated --at n1
   assert_failure
 
   # Check we can start service, but only once with the same name
-  run "$OCKAM" service start verifier --addr my_verifier --node n1
+  run "$OCKAM" service start verifier --addr my_verifier --at n1
   assert_success
-  run "$OCKAM" service start verifier --addr my_verifier --node n1
+  run "$OCKAM" service start verifier --addr my_verifier --at n1
   assert_failure
 
   # Check we can start service, but only once with the same name
-  run "$OCKAM" service start credentials --addr my_credentials --node n1 --identity 0134dabe4f886af3bd5d2b3ab50891a6dfe90c99099668ce8cb680888cac7d67db000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e1acf2670f5bfc34c466910949618c68a53183976e8e57d5fc07b6a3d02d22a3030101407e6332d0deeccf8d12de9972e31b54200f1597db2a195d08b15b251d6293c180611c66acc26913a16d5ea5536227c8baefb4fa95bd709212fdc1ca4fc3370e02
+  run "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 0134dabe4f886af3bd5d2b3ab50891a6dfe90c99099668ce8cb680888cac7d67db000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e1acf2670f5bfc34c466910949618c68a53183976e8e57d5fc07b6a3d02d22a3030101407e6332d0deeccf8d12de9972e31b54200f1597db2a195d08b15b251d6293c180611c66acc26913a16d5ea5536227c8baefb4fa95bd709212fdc1ca4fc3370e02
   assert_success
-  run "$OCKAM" service start credentials --addr my_credentials --node n1 --identity 0134dabe4f886af3bd5d2b3ab50891a6dfe90c99099668ce8cb680888cac7d67db000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e1acf2670f5bfc34c466910949618c68a53183976e8e57d5fc07b6a3d02d22a3030101407e6332d0deeccf8d12de9972e31b54200f1597db2a195d08b15b251d6293c180611c66acc26913a16d5ea5536227c8baefb4fa95bd709212fdc1ca4fc3370e02
+  run "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 0134dabe4f886af3bd5d2b3ab50891a6dfe90c99099668ce8cb680888cac7d67db000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e1acf2670f5bfc34c466910949618c68a53183976e8e57d5fc07b6a3d02d22a3030101407e6332d0deeccf8d12de9972e31b54200f1597db2a195d08b15b251d6293c180611c66acc26913a16d5ea5536227c8baefb4fa95bd709212fdc1ca4fc3370e02
   assert_failure
 }
 
@@ -196,23 +196,23 @@ teardown() {
   assert_output --regexp '[{"route":"/dnsaddr/localhost/tcp/[[:digit:]]+/worker/[[:graph:]]+"}]'
 
   # Check that the connection is listed
-  run "$OCKAM" tcp-connection list --node n1
+  run "$OCKAM" tcp-connection list --at n1
   assert_success
   assert_output --partial "$id"
 
-  id=$($OCKAM tcp-connection list --node n1 | grep -o "[0-9a-f]\{32\}" | head -1)
+  id=$($OCKAM tcp-connection list --at n1 | grep -o "[0-9a-f]\{32\}" | head -1)
 
   # Show the connection details
-  run "$OCKAM" tcp-connection show --node n1 "$id"
+  run "$OCKAM" tcp-connection show --at n1 "$id"
   assert_success
   assert_output --partial "$id"
 
   # Delete the connection
-  run "$OCKAM" tcp-connection delete --node n1 "$id"
+  run "$OCKAM" tcp-connection delete --at n1 "$id"
   assert_success
 
   # Check that it's no longer listed
-  run "$OCKAM" tcp-connection list --node n1
+  run "$OCKAM" tcp-connection list --at n1
   assert_success
   refute_output --partial "$id"
 }
@@ -227,23 +227,23 @@ teardown() {
   assert_output --regexp '/dnsaddr/localhost/tcp/[[:digit:]]+'
 
   # Check that the listener is listed
-  run "$OCKAM" tcp-listener list --node n1
+  run "$OCKAM" tcp-listener list --at n1
   assert_success
   assert_output --partial "127.0.0.1:7000"
 
-  addr=$($OCKAM tcp-listener list --node n1 | tail -3 | head -1 | grep -o "[0-9a-f]\{32\}" | head -1)
+  addr=$($OCKAM tcp-listener list --at n1 | tail -3 | head -1 | grep -o "[0-9a-f]\{32\}" | head -1)
 
   # Show the listener details
-  run "$OCKAM" tcp-listener show --node n1 "$addr"
+  run "$OCKAM" tcp-listener show --at n1 "$addr"
   assert_success
   assert_output --partial "$addr"
 
 #  # Delete the listener
-  run "$OCKAM" tcp-listener delete --node n1 "$addr"
+  run "$OCKAM" tcp-listener delete --at n1 "$addr"
   assert_success
 
   # Check that it's no longer listed
-  run "$OCKAM" tcp-listener list --node n1
+  run "$OCKAM" tcp-listener list --at n1
   assert_success
   refute_output --partial "$addr"
 }
@@ -464,17 +464,17 @@ teardown() {
   assert_success
 
   # Check that inlet is available for deletion and delete it
-  run $OCKAM tcp-inlet show test-inlet --node /node/n2
+  run $OCKAM tcp-inlet show test-inlet --at /node/n2
   assert_output --partial "Alias: test-inlet"
   assert_output --partial "TCP Address: 127.0.0.1:$inlet_port"
   assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
   assert_success
 
-  run $OCKAM tcp-inlet delete "test-inlet" --node /node/n2
+  run $OCKAM tcp-inlet delete "test-inlet" --at /node/n2
   assert_success
 
   # Test deletion of a previously deleted TCP inlet
-  run $OCKAM tcp-inlet delete "test-inlet" --node /node/n2
+  run $OCKAM tcp-inlet delete "test-inlet" --at /node/n2
   assert_output --partial "NotFound"
 }
 
@@ -494,7 +494,7 @@ teardown() {
   run $OCKAM tcp-outlet create --at /node/n2 --to $only_port
   assert_success
 
-  run $OCKAM tcp-outlet show test-outlet --node /node/n1
+  run $OCKAM tcp-outlet show test-outlet --at /node/n1
   assert_output --partial "Alias: test-outlet"
   assert_output --partial "From Outlet: /service/outlet"
   assert_output --regexp "To TCP: 127.0.0.1:$port"
@@ -516,7 +516,7 @@ teardown() {
   assert_success
 
   run $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias tcp-inlet-2
-  run $OCKAM tcp-inlet list --node /node/n2
+  run $OCKAM tcp-inlet list --at /node/n2
 
   assert_output --partial "Alias: tcp-inlet-2"
   assert_output --partial "TCP Address: 127.0.0.1:$port"
@@ -532,7 +532,7 @@ teardown() {
   assert_output --partial "/service/outlet"
   assert_success
 
-  run $OCKAM tcp-outlet list --node /node/n1
+  run $OCKAM tcp-outlet list --at /node/n1
   assert_output --partial "Alias: test-outlet"
   assert_output --partial "From Outlet: /service/outlet"
   assert_output --regexp "To TCP: 127.0.0.1:$port"
@@ -549,7 +549,7 @@ teardown() {
   run $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias "test-inlet"
   assert_success
 
-  run $OCKAM tcp-inlet show "test-inlet" --node /node/n2
+  run $OCKAM tcp-inlet show "test-inlet" --at /node/n2
   assert_success
 
   # Test if non-existing TCP inlet returns NotFound

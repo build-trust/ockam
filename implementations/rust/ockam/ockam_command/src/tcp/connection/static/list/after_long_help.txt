@@ -3,5 +3,5 @@
 $ ockam tcp-connection list
 
 # To list the TCP connections on a specific node
-$ ockam tcp-connection list --node n1
+$ ockam tcp-connection list --at n1
 ```

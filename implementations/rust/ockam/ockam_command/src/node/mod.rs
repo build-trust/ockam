@@ -76,9 +76,8 @@ impl NodeCommand {
 
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
-    /// Override the default API node
-    #[arg(global = true, id = "node", value_name = "NODE", short, long)]
-    pub api_node: Option<String>,
+    #[arg(global = true, id = "at", value_name = "NODE_NAME", long)]
+    pub at_node: Option<String>,
 }
 
 /// If the required node name is the default node but that node has not been initialized yet

@@ -85,7 +85,7 @@ fn authenticator_default_addr() -> String {
 
 impl StartCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -102,7 +102,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: StartCommand,
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let tcp = TcpTransport::create(ctx).await?;
     let mut is_hop_service = false;
     let addr = match cmd.create_subcommand {
