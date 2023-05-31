@@ -25,7 +25,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -39,7 +39,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     rpc.request(api::list_secure_channel_listener()).await?;
     let res = rpc.parse_response::<Vec<String>>()?;

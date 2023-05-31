@@ -59,7 +59,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: AddConsumerCommand,
 ) -> Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
     let tcp = TcpTransport::create(ctx).await?;
 

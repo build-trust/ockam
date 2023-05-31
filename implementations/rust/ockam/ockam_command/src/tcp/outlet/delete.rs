@@ -22,7 +22,7 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -32,7 +32,7 @@ pub async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
     let alias = cmd.alias.clone();
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     rpc.request(make_api_request(cmd)?).await?;

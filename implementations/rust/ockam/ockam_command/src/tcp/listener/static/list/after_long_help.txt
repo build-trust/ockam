@@ -3,5 +3,5 @@
 $ ockam tcp-listener list
 
 # To list the TCP listeners on a specific node
-$ ockam tcp-listener list --node n1
+$ ockam tcp-listener list --at n1
 ```

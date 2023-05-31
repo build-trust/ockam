@@ -25,7 +25,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct DeleteCommand {
-    /// Node from which to initiate the secure channel (required)
+    /// Node at which the secure channel was initiated (required)
     #[arg(value_name = "NODE", long, display_order = 800)]
     at: String,
 

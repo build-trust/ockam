@@ -49,7 +49,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -71,7 +71,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> c
 
     let send_req = async {
         let tcp = TcpTransport::create(&ctx).await?;
-        let node_name = get_node_name(&opts.state, &node_opts.api_node);
+        let node_name = get_node_name(&opts.state, &node_opts.at_node);
 
         let payload =
             StartKafkaProducerRequest::new(bootstrap_server, brokers_port_range, project_route);

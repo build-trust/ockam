@@ -27,7 +27,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 )]
 pub struct ListCommand {
     /// Node at which the returned secure channels were initiated (required)
-    #[arg(value_name = "NODE", long, display_order = 800)]
+    #[arg(value_name = "NODE_NAME", long, display_order = 800)]
     at: String,
 }
 
