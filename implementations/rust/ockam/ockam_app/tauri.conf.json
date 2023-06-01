@@ -54,7 +54,7 @@
       {
         "fullscreen": false,
         "height": 600,
-        "resizable": true,
+        "resizable": false,
         "title": "Ockam",
         "width": 800
       }
