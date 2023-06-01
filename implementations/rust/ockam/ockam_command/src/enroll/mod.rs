@@ -197,7 +197,9 @@ async fn default_space<'a>(
         ))?;
         space
     };
-
+    opts.state
+        .spaces
+        .overwrite(&default_space.name, SpaceConfig::from(&default_space))?;
     opts.terminal.write_line(&fmt_ok!(
         "Marked this space as your default space, on this machine.\n"
     ))?;

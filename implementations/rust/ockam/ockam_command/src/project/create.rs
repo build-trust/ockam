@@ -70,10 +70,12 @@ async fn run_impl(
     let project = rpc.parse_response::<Project>()?;
     let project =
         check_project_readiness(ctx, &opts, &cmd.cloud_opts, &node_name, None, project).await?;
-    opts.state.projects.create(&project.name, project.clone())?;
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
     opts.state
         .trust_contexts
-        .create(&project.name, project.clone().try_into()?)?;
+        .overwrite(&project.name, project.clone().try_into()?)?;
     rpc.print_response(project)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
