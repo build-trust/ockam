@@ -1,5 +1,6 @@
 use clap::Args;
 
+use colorful::Colorful;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
@@ -7,7 +8,7 @@ use crate::node::show::print_query_status;
 use crate::node::util::{check_default, spawn_node};
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, fmt_err, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt");
@@ -26,9 +27,6 @@ pub struct StartCommand {
 
     #[arg(long, default_value = "false")]
     aws_kms: bool,
-
-    #[arg(long, default_value = "false")]
-    force: bool,
 }
 
 impl StartCommand {
@@ -45,12 +43,15 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_name);
 
     let node_state = opts.state.nodes.get(&node_name)?;
-    // Check if node is already running
-    if node_state.is_running() && !cmd.force {
-        println!(
-            "Restart aborted, node: {} already running",
-            node_state.name()
-        );
+    // Abort if node is already running
+    if node_state.is_running() {
+        let n = node_state.name();
+        opts.terminal
+            .stdout()
+            .plain(fmt_err!(
+                "The node '{n}' is already running. If you want to restart it you can call `ockam node stop {n}` and then `ockam node start {n}`"
+            ))
+            .write_line()?;
         return Ok(());
     }
     node_state.kill_process(false)?;
@@ -67,7 +68,7 @@ async fn run_impl(
         None,               // "
         None,               // "
         None,               // Launch config
-        None,               // Authoritiy Identity
+        None,               // Authority Identity
         None,               // Credential
         None,               // Trust Context
         None,               // Project Name
