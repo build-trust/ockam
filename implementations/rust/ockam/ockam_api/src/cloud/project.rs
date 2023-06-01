@@ -31,9 +31,6 @@ pub struct Project {
     #[cbor(n(3))]
     pub space_name: String,
 
-    #[cbor(n(4))]
-    pub services: Vec<String>,
-
     #[cbor(n(5))]
     pub access_route: String,
 
@@ -240,21 +237,15 @@ pub struct CreateProject<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8669570>,
     #[b(1)] pub name: CowStr<'a>,
-    #[b(2)] pub services: Vec<CowStr<'a>>,
     #[b(3)] pub users: Vec<CowStr<'a>>,
 }
 
 impl<'a> CreateProject<'a> {
-    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(
-        name: S,
-        users: &'a [T],
-        services: &'a [T],
-    ) -> Self {
+    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(name: S, users: &'a [T]) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
-            services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
             users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
         }
     }
@@ -401,7 +392,6 @@ mod tests {
                 id: String::arbitrary(g),
                 name: String::arbitrary(g),
                 space_name: String::arbitrary(g),
-                services: vec![String::arbitrary(g), String::arbitrary(g)],
                 access_route: String::arbitrary(g),
                 users: vec![String::arbitrary(g), String::arbitrary(g)],
                 space_id: String::arbitrary(g),
@@ -428,7 +418,6 @@ mod tests {
                 #[cfg(feature = "tag")]
                 tag: Default::default(),
                 name: String::arbitrary(g).into(),
-                services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
             })
         }
