@@ -303,7 +303,7 @@ pub(crate) mod project {
         space_id: &'a str,
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, CloudRequestWrapper<'a, CreateProject<'a>>> {
-        let b = CreateProject::new::<&str, &str>(project_name, &[], &[]);
+        let b = CreateProject::new::<&str, &str>(project_name, &[]);
         Request::post(format!("v1/spaces/{space_id}/projects")).body(CloudRequestWrapper::new(
             b,
             cloud_route,
