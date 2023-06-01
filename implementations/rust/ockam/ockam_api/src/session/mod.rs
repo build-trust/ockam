@@ -229,3 +229,43 @@ impl Worker for Collector {
         Ok(())
     }
 }
+
+use ockam_core::{ AsyncTryClone, Result};
+
+#[ockam::test]
+async fn test_session_monitoring(ctx: &mut Context) -> Result<()> {
+    // Create a new Medic instance
+    let medic = Medic::new();
+    
+    let sessions_guard: Arc<Mutex<Sessions>> = medic.sessions();
+    // Start the Medic in a separate task
+    let new_ctx = ctx.async_try_clone().await?;
+    ctx.stop().await?;
+
+    let medic_task: tokio::task::JoinHandle<std::result::Result<(), Error>> = tokio::spawn(medic.start(new_ctx));    
+
+    let mut sessions: std::sync::MutexGuard<Sessions> = sessions_guard.lock().unwrap();
+
+    for (&_key, session) in sessions.iter_mut() {
+        assert_eq!(session.status(), Status::Up);
+        assert_eq!(session.ping_route(), &route!["relay", "ping"]);
+    }
+
+    // Replace the ping route
+    let new_route: Route = route!["relay", "new"];
+    for (&_key, session) in sessions.iter_mut() {
+        session.set_status(Status::Down);
+        session.set_ping_address(new_route.clone());
+    
+    }
+
+    // Wait for the Medic to replace the ping route
+    for (&_key, session) in sessions.iter_mut() {
+        assert_eq!(session.status(), Status::Degraded);
+        assert_eq!(session.ping_route(), &new_route);
+    }
+
+    // Shut down the test
+    medic_task.abort();
+    Ok(())
+}
