@@ -38,11 +38,11 @@ impl PartialEq for CredentialConfig {
 impl Eq for CredentialConfig {}
 
 impl CredentialConfig {
-    pub fn new(issuer: Identity, encoded_credential: String) -> Result<Self> {
-        Ok(Self {
+    pub fn new(issuer: Identity, encoded_credential: String) -> Self {
+        Self {
             issuer,
             encoded_credential,
-        })
+        }
     }
 
     pub fn credential(&self) -> Result<Credential> {

@@ -60,7 +60,7 @@ async fn run_impl(
     // store
     opts.state.credentials.create(
         &cmd.credential_name,
-        CredentialConfig::new(cmd.identity().await?, cred_as_str)?,
+        CredentialConfig::new(cmd.identity().await?, cred_as_str),
     )?;
 
     println!("Credential {} stored", &cmd.credential_name);
