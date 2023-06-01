@@ -271,10 +271,9 @@ impl NodeManager {
     pub(super) async fn delete_secure_channel_listener_impl(
         &mut self,
         addr: &Address,
-    ) -> Result<()> {
-        info!("Handling request to delete secure channel listener: {addr}");
-        self.registry.secure_channel_listeners.remove(addr);
-        Ok(())
+    ) -> Option<SecureChannelListenerInfo> {
+        debug!("deleting secure channel listener: {addr}");
+        self.registry.secure_channel_listeners.remove(addr)
     }
 }
 
@@ -470,25 +469,31 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<DeleteSecureChannelListenerResponse<'_>>> {
+    ) -> Result<Vec<u8>> {
         let body: DeleteSecureChannelListenerRequest = dec.decode()?;
         let addr = Address::from(body.addr.as_ref());
         info!(%addr, "Handling request to delete secure channel listener");
         let mut node_manager = self.node_manager.write().await;
-        let res = match node_manager
-            .delete_secure_channel_listener_impl(&addr)
-            .await
-        {
-            Ok(()) => {
-                trace!(%addr, "Removed secure channel listener");
-                Some(addr)
-            }
-            Err(err) => {
-                trace!(%addr, %err, "Error removing secure channel listener");
-                None
-            }
-        };
-        Ok(Response::ok(req.id()).body(DeleteSecureChannelListenerResponse::new(res)))
+        let id = req.id();
+        Ok(
+            match node_manager
+                .delete_secure_channel_listener_impl(&addr)
+                .await
+            {
+                Some(_) => {
+                    trace!(%addr, "Removed secure channel listener");
+                    Response::ok(id)
+                        .body(DeleteSecureChannelListenerResponse::new(addr))
+                        .to_vec()?
+                }
+                None => {
+                    trace!(%addr, "No such secure channel listener to delete");
+                    let err_body = Error::new(req.path())
+                        .with_message(format!("Secure Channel Listener, {}, not found.", addr));
+                    Response::not_found(id).body(err_body).to_vec()?
+                }
+            },
+        )
     }
 
     pub(super) async fn show_secure_channel_listener<'a>(

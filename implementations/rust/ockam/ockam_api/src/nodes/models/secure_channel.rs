@@ -148,18 +148,18 @@ impl<'a> DeleteSecureChannelListenerRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct DeleteSecureChannelListenerResponse<'a> {
+pub struct DeleteSecureChannelListenerResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8642885>,
-    #[b(1)] pub addr: Option<Cow<'a, str>>,
+    #[b(1)] pub addr: Address,
 }
 
-impl<'a> DeleteSecureChannelListenerResponse<'a> {
-    pub fn new(addr: Option<Address>) -> Self {
+impl DeleteSecureChannelListenerResponse {
+    pub fn new(addr: Address) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.map(|ch| ch.to_string().into()),
+            addr,
         }
     }
 }

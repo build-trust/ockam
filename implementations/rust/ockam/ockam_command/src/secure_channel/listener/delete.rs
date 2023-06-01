@@ -2,6 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
+use ockam_api::nodes::models::secure_channel::DeleteSecureChannelListenerResponse;
 use ockam_core::Address;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
@@ -47,8 +48,8 @@ async fn run_impl(
     let req = api::delete_secure_channel_listener(&cmd.address);
     rpc.request(req).await?;
     rpc.is_ok()?;
-
-    let addr = format!("/service/{}", cmd.address.address());
+    let res = rpc.parse_response::<DeleteSecureChannelListenerResponse>()?;
+    let addr = res.addr;
     opts.terminal
         .stdout()
         .plain(fmt_ok!(

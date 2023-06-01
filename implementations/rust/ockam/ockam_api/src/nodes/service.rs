@@ -631,7 +631,7 @@ impl NodeManagerWorker {
             (Delete, ["node", "secure_channel_listener"]) => self
                 .delete_secure_channel_listener(req, dec)
                 .await?
-                .to_vec()?,
+                .to_vec(),
             (Get, ["node", "show_secure_channel_listener"]) => {
                 self.show_secure_channel_listener(req, dec).await?
             }
