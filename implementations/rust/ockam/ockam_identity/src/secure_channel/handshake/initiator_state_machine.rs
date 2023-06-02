@@ -10,7 +10,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::{KeyId, PublicKey};
+use ockam_vault::{KeyId, PublicKey, SecretAttributes};
 use Action::*;
 use Event::*;
 use Role::*;
@@ -103,9 +103,17 @@ impl InitiatorStateMachine {
             trust_policy,
             trust_context,
         );
+
+        // generate a the handshake static key
+        // for now this is an ephemeral key but it the future we can use a more permanent key
+        // for the current identity
+        let static_key = vault
+            .create_ephemeral_secret(SecretAttributes::X25519)
+            .await?;
+
         Ok(InitiatorStateMachine {
             common,
-            handshake: Handshake::new(vault.clone()).await?,
+            handshake: Handshake::new(vault.clone(), static_key).await?,
         })
     }
 }

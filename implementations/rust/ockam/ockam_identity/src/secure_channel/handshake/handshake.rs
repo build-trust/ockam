@@ -213,15 +213,12 @@ impl Handshake {
 }
 
 impl Handshake {
-    /// Create a new handshake initialized with a static key and an ephemeral key
-    pub(super) async fn new(vault: Arc<dyn XXVault>) -> Result<Handshake> {
-        // 1. generate a static key pair for this handshake and set it to s
-        let static_key = Self::generate_static_key(vault.clone()).await?;
-
-        // 2. generate an ephemeral key pair for this handshake and set it to e
+    /// Create a new handshake
+    pub(super) async fn new(vault: Arc<dyn XXVault>, static_key: KeyId) -> Result<Handshake> {
+        // 1. generate an ephemeral key pair for this handshake and set it to e
         let ephemeral_key = Self::generate_ephemeral_key(vault.clone()).await?;
 
-        // 3. initialize the handshake
+        // 2. initialize the handshake
         // We currently don't use any payload for message 1
         Self::new_with_keys(vault, static_key, ephemeral_key, vec![]).await
     }
@@ -331,14 +328,6 @@ impl Handshake {
     /// Protocol name, used as a secret during the handshake initialization, padded to 32 bytes
     fn protocol_name() -> &'static [u8; 32] {
         b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"
-    }
-
-    /// Generate a static key for the key exchange
-    /// At the moment that key is actually an ephemeral key (not persisted if the current process stops)
-    async fn generate_static_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
-        vault
-            .create_ephemeral_secret(SecretAttributes::X25519)
-            .await
     }
 
     /// Generate an ephemeral key for the key exchange
@@ -483,7 +472,10 @@ mod tests {
         let identities = identities();
         let vault = to_xx_vault(identities.vault());
 
-        let mut handshake = Handshake::new(vault.clone()).await?;
+        let static_key = vault
+            .create_ephemeral_secret(SecretAttributes::X25519)
+            .await?;
+        let mut handshake = Handshake::new(vault.clone(), static_key).await?;
         handshake.initialize().await?;
 
         let exp_h = [
