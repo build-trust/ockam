@@ -3397,6 +3397,7 @@ dependencies = [
  "assert_cmd",
  "async-recursion",
  "async-trait",
+ "atty",
  "clap 4.3.2",
  "clap_complete",
  "clap_mangen",
