@@ -308,13 +308,13 @@ impl Handshake {
     }
 
     /// Encrypt a plaintext 'c' using the key 'k' and the additional data 'h'
-    async fn encrypt_and_hash(&self, state: &mut HandshakeState, c: &[u8]) -> Result<Vec<u8>> {
+    async fn encrypt_and_hash(&self, state: &mut HandshakeState, p: &[u8]) -> Result<Vec<u8>> {
         let mut nonce = [0u8; 12];
         nonce[4..].copy_from_slice(&state.n.to_be_bytes());
 
         let result = self
             .vault
-            .aead_aes_gcm_encrypt(&state.k, c, nonce.as_ref(), &state.h)
+            .aead_aes_gcm_encrypt(&state.k, p, nonce.as_ref(), &state.h)
             .await?
             .to_vec();
         state.mix_hash(result.as_slice());
