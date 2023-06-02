@@ -689,7 +689,7 @@ mod test {
     async fn kafka_portal_worker__metadata_exchange__response_changed(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let handler = crate::test::start_manager_for_tests(context).await?;
+        let handler = crate::test_utils::start_manager_for_tests(context).await?;
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handler.secure_channels.clone(),
