@@ -213,11 +213,7 @@ impl Handshake {
 }
 
 impl Handshake {
-    /// Create a new handshake initialized with
-    ///   - a static key
-    ///   - an ephemeral key
-    ///   - a payload containing the identity, a signature of the static key and the credential of
-    ///     the current party
+    /// Create a new handshake initialized with a static key and an ephemeral key
     pub(super) async fn new(vault: Arc<dyn XXVault>) -> Result<Handshake> {
         // 1. generate a static key pair for this handshake and set it to s
         let static_key = Self::generate_static_key(vault.clone()).await?;
