@@ -39,6 +39,12 @@ impl Credential {
         &self.data
     }
 
+    /// Returns an hex encoded version of the credential
+    pub fn export_to_hex(&self) -> String {
+        let bytes = minicbor::to_vec(self).expect("encoding credential to vec never errors");
+        hex::encode(bytes)
+    }
+
     pub(crate) fn new(data: Vec<u8>, signature: Vec<u8>) -> Self {
         Credential {
             #[cfg(feature = "tag")]
