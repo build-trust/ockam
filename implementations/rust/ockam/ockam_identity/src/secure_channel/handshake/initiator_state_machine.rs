@@ -10,7 +10,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::{KeyId, PublicKey, SecretAttributes};
+use ockam_vault::PublicKey;
 use Action::*;
 use Event::*;
 use Role::*;
@@ -38,8 +38,7 @@ impl StateMachine for InitiatorStateMachine {
                     CommonStateMachine::deserialize_payload(message2_payload)?;
                 self.verify_identity(their_identity_payload, &self.handshake.state.rs.clone())
                     .await?;
-                let identity_payload = self.make_identity_payload(&self.handshake.state.s).await?;
-                let message3 = self.encode_message3(identity_payload).await?;
+                let message3 = self.encode_message3(self.identity_payload.clone()).await?;
                 self.set_final_state(Initiator).await?;
                 Ok(SendMessage(message3))
             }
@@ -64,12 +63,12 @@ impl StateMachine for InitiatorStateMachine {
 pub(super) struct InitiatorStateMachine {
     pub(super) common: CommonStateMachine,
     pub(super) handshake: Handshake,
+    pub(super) identity_payload: Vec<u8>,
 }
 
 impl InitiatorStateMachine {
     delegate! {
         to self.common {
-            async fn make_identity_payload(&self, static_key: &KeyId) -> Result<Vec<u8>>;
             async fn verify_identity(&mut self, peer: IdentityAndCredentials, peer_public_key: &PublicKey) -> Result<()>;
             fn make_handshake_results(&self, handshake_keys: Option<HandshakeKeys>) -> Option<HandshakeResults>;
         }
@@ -104,17 +103,13 @@ impl InitiatorStateMachine {
             trust_policy,
             trust_context,
         );
-
-        // generate a the handshake static key
-        // for now this is an ephemeral key but it the future we can use a more permanent key
-        // for the current identity
-        let static_key = vault
-            .create_ephemeral_secret(SecretAttributes::X25519)
-            .await?;
+        let static_key = common.get_static_key().await?;
+        let identity_payload = common.make_identity_payload(&static_key).await?;
 
         Ok(InitiatorStateMachine {
             common,
             handshake: Handshake::new(vault.clone(), static_key).await?,
+            identity_payload,
         })
     }
 }
