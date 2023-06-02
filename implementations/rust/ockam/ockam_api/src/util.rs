@@ -338,7 +338,7 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 }
 
 #[cfg(test)]
-pub mod test {
+pub mod test_utils {
     use ockam::identity::SecureChannels;
     use ockam::Result;
     use ockam_core::compat::sync::Arc;

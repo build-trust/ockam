@@ -27,11 +27,11 @@ use crate::kafka::{
 };
 use crate::nodes::models::portal::CreateInlet;
 use crate::nodes::models::services::{
-    ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
-    StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
-    StartIdentityServiceRequest, StartKafkaConsumerRequest, StartKafkaProducerRequest,
-    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
-    StartVerifierService,
+    DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
+    StartAuthenticatorRequest, StartCredentialsService, StartEchoerServiceRequest,
+    StartHopServiceRequest, StartIdentityServiceRequest, StartKafkaConsumerRequest,
+    StartKafkaProducerRequest, StartOktaIdentityProviderRequest, StartServiceRequest,
+    StartUppercaseServiceRequest, StartVerifierService,
 };
 use crate::nodes::registry::{
     AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
@@ -732,6 +732,32 @@ impl NodeManagerWorker {
         Ok(())
     }
 
+    pub(crate) async fn delete_kafka_service<'a>(
+        &'a self,
+        ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+        kind: KafkaServiceKind,
+    ) -> Result<ResponseBuilder> {
+        let body: DeleteServiceRequest = dec.decode()?;
+        let address = body.address();
+        let mut node_manager = self.node_manager.write().await;
+        let res = match node_manager.registry.kafka_services.get(&address) {
+            None => Response::not_found(req.id()),
+            Some(e) => {
+                if kind.eq(e.kind()) {
+                    ctx.stop_worker(address.clone()).await?;
+                    node_manager.registry.kafka_services.remove(&address);
+                    Response::ok(req.id())
+                } else {
+                    error!(address = %address, "Service is not a kafka {}", kind.to_string());
+                    Response::internal_error(req.id())
+                }
+            }
+        };
+        Ok(res)
+    }
+
     fn extract_project<'a>(
         &self,
         req: &'a Request<'_>,
@@ -743,11 +769,36 @@ impl NodeManagerWorker {
             .ok_or_else(|| bad_request(req, "invalid project route"))
     }
 
-    pub(super) fn list_services<'a>(
+    pub(super) async fn list_services_of_type<'a>(
         &self,
         req: &Request<'a>,
-        registry: &'a Registry,
-    ) -> ResponseBuilder<ServiceList<'a>> {
+        service_type: &'a str,
+    ) -> Result<Vec<u8>> {
+        if !DefaultAddress::is_valid(service_type) {
+            return Ok(Response::bad_request(req.id())
+                .body(format!("Service type '{service_type}' doesn't exist"))
+                .to_vec()?);
+        }
+        let n = self.node_manager.read().await;
+        let services = Self::list_services_impl(&n.registry);
+        let filtered = services
+            .into_iter()
+            .filter(|service| service.service_type == service_type)
+            .collect();
+        Ok(Response::ok(req.id())
+            .body(ServiceList::new(filtered))
+            .to_vec()?)
+    }
+
+    pub(super) async fn list_services<'a>(&self, req: &Request<'a>) -> Result<Vec<u8>> {
+        let n = self.node_manager.read().await;
+        let services = Self::list_services_impl(&n.registry);
+        Ok(Response::ok(req.id())
+            .body(ServiceList::new(services))
+            .to_vec()?)
+    }
+
+    fn list_services_impl(registry: &Registry) -> Vec<ServiceStatus> {
         let mut list = Vec::new();
         registry.identity_services.keys().for_each(|addr| {
             list.push(ServiceStatus::new(
@@ -804,6 +855,6 @@ impl NodeManagerWorker {
             .keys()
             .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "Authority")));
 
-        Response::ok(req.id()).body(ServiceList::new(list))
+        list
     }
 }

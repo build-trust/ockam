@@ -1,6 +1,6 @@
 use minicbor::{Decode, Encode};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::{CowBytes, CowStr};
+use ockam_core::{Address, CowBytes, CowStr};
 
 use serde::Serialize;
 
@@ -34,6 +34,29 @@ impl<'a, T> StartServiceRequest<'a, T> {
 
     pub fn request(&'a self) -> &'a T {
         &self.req
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct DeleteServiceRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<9359178>,
+    #[b(1)] addr: CowStr<'a>,
+}
+
+impl<'a> DeleteServiceRequest<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(addr: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.into(),
+        }
+    }
+
+    pub fn address(&'a self) -> Address {
+        Address::from(self.addr.as_ref())
     }
 }
 

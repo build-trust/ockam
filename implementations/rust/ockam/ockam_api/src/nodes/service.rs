@@ -48,6 +48,7 @@ use crate::nodes::connection::{
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
+use crate::nodes::registry::KafkaServiceKind;
 use crate::session::sessions::Sessions;
 use crate::session::Medic;
 use crate::DefaultAddress;
@@ -664,12 +665,20 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
                 self.start_kafka_consumer_service(ctx, req, dec).await?
             }
+            (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => self
+                .delete_kafka_service(ctx, req, dec, KafkaServiceKind::Consumer)
+                .await?
+                .to_vec()?,
             (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
                 self.start_kafka_producer_service(ctx, req, dec).await?
             }
-            (Get, ["node", "services"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.list_services(req, &node_manager.registry).to_vec()?
+            (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => self
+                .delete_kafka_service(ctx, req, dec, KafkaServiceKind::Producer)
+                .await?
+                .to_vec()?,
+            (Get, ["node", "services"]) => self.list_services(req).await?,
+            (Get, ["node", "services", service_type]) => {
+                self.list_services_of_type(req, service_type).await?
             }
 
             // ==*== Forwarder commands ==*==

@@ -86,7 +86,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> c
 
     let msgs = vec![
         format!(
-            "Buildling KafkaConsumer service {}",
+            "Building KafkaProducer service {}",
             &addr.to_string().color(OckamColor::PrimaryResource.color())
         ),
         format!(
