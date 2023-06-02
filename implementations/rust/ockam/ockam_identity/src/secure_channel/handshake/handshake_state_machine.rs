@@ -6,7 +6,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error, Message, Result};
-use ockam_vault::{KeyId, PublicKey, Signature};
+use ockam_vault::{KeyId, PublicKey, SecretAttributes, Signature};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
@@ -86,6 +86,15 @@ impl CommonStateMachine {
             trust_context,
             their_identifier: None,
         }
+    }
+
+    /// Generate a handshake static key
+    /// for now this is an ephemeral key but it the future we can use a more permanent key
+    /// for the current identity
+    pub(super) async fn get_static_key(&self) -> Result<KeyId> {
+        self.vault
+            .create_ephemeral_secret(SecretAttributes::X25519)
+            .await
     }
 
     /// Prepare a payload containing the identity of the current party and serialize it.

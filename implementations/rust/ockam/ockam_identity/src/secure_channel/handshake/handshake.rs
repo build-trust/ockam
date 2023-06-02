@@ -443,7 +443,7 @@ impl HandshakeState {
     /// Create a new HandshakeState with:
     ///   - a static key
     ///   - an ephemeral key
-    ///   - an encoded identity payload (identity + signature + credentials)
+    ///   - a payload
     pub(super) fn new(s: KeyId, e: KeyId, message1_payload: Vec<u8>) -> HandshakeState {
         HandshakeState {
             s,
