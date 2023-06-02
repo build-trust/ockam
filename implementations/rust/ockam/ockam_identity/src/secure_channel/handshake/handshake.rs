@@ -315,8 +315,8 @@ impl Handshake {
         let result = self
             .vault
             .aead_aes_gcm_encrypt(&state.k, c, nonce.as_ref(), &state.h)
-            .await
-            .map(|b| b.to_vec())?;
+            .await?
+            .to_vec();
         state.mix_hash(result.as_slice());
         state.n += 1;
         Ok(result)
