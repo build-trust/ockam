@@ -55,6 +55,7 @@ path = "src/bin/ockam.rs"
 anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
+atty = "0.2.14"
 clap = { version = "4.3.2", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.3.1"
 clap_mangen = "0.2.12"
