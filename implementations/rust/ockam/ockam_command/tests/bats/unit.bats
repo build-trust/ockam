@@ -98,10 +98,10 @@ teardown() {
 
   run "$OCKAM" vault list
   assert_success
-  assert_output --partial "Name: ${v1}"
-  assert_output --partial "Type: OCKAM"
-  assert_output --partial "Name: ${v2}"
-  assert_output --partial "Type: AWS KMS"
+  assert_output --partial "Vault ${v1}"
+  assert_output --partial "Type OCKAM"
+  assert_output --partial "Vault ${v2}"
+  assert_output --partial "Type AWS KMS"
 }
 
 @test "vault - CRUD" {
@@ -231,7 +231,7 @@ teardown() {
   assert_success
   assert_output --partial "127.0.0.1:7000"
 
-  addr=$($OCKAM tcp-listener list --at n1 | tail -3 | head -1 | grep -o "[0-9a-f]\{32\}" | head -1)
+  addr=$($OCKAM tcp-listener list --at n1 | tail -4 | head -1 | grep -o "[0-9a-f]\{32\}" | head -1)
 
   # Show the listener details
   run "$OCKAM" tcp-listener show --at n1 "$addr"
@@ -405,12 +405,8 @@ teardown() {
   assert_success
 
   run $OCKAM relay list --at /node/n2
-  assert_output --regexp "Relay Route:.* => 0#forward_to_blue"
-  assert_output --partial "Remote Address: /service/forward_to_blue"
-  assert_output --regexp "Worker Address: /service/.*"
-  assert_output --regexp "Relay Route:.* => 0#forward_to_red"
-  assert_output --partial "Remote Address: /service/forward_to_red"
-  assert_output --regexp "Worker Address: /service/.*"
+  assert_output --partial "Relay forward_to_blue"
+  assert_output --partial "Relay forward_to_red"
   assert_success
 
   # Test listing node with no relays
@@ -523,9 +519,8 @@ teardown() {
   run $OCKAM tcp-inlet list --at /node/n2
   assert_success
 
-  assert_output --partial "Alias: tcp-inlet-2"
-  assert_output --partial "TCP Address: 127.0.0.1:$port"
-  assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
+  assert_output --partial "Inlet tcp-inlet-2"
+  assert_output --partial "127.0.0.1:$port"
   assert_success
 }
 
@@ -538,9 +533,8 @@ teardown() {
   assert_success
 
   run $OCKAM tcp-outlet list --at /node/n1
-  assert_output --partial "Alias: test-outlet"
-  assert_output --partial "From Outlet: /service/outlet"
-  assert_output --regexp "To TCP: 127.0.0.1:$port"
+  assert_output --partial "Outlet test-outlet"
+  assert_output --partial "From /service/outlet to 127.0.0.1:$port"
   assert_success
 }
 

@@ -1,12 +1,16 @@
-use crate::util::{api, exitcode, node_rpc, RpcBuilder};
-use crate::{docs, node::show::print_query_status, CommandGlobalOpts};
+use crate::terminal::OckamColor;
+use crate::util::output::Output;
+use crate::util::{api, node_rpc, Rpc};
+use crate::{docs, CommandGlobalOpts, Result};
 use anyhow::Context as _;
 use clap::Args;
-use miette::miette;
-use ockam::{Context, TcpTransport};
+use colorful::Colorful;
+use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
-use std::time::Duration;
+
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
@@ -38,55 +42,115 @@ async fn run_impl(
     let mut default = String::new();
     let node_names: Vec<_> = {
         let nodes_states = opts.state.nodes.list()?;
-        if nodes_states.is_empty() {
-            return Err(crate::Error::new(
-                exitcode::IOERR,
-                miette!("No nodes registered on this system!"),
-            ));
-        }
         // default node
         if let Ok(state) = opts.state.nodes.default() {
             default = state.name().to_string();
         }
         nodes_states.iter().map(|s| s.name().to_string()).collect()
     };
-    let tcp = TcpTransport::create(&ctx).await?;
-    verify_pids(&ctx, &opts, &tcp, &node_names).await?;
 
-    // Print node states
-    for node_name in &node_names {
-        let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-        let is_default = node_name == &default;
-        print_query_status(&mut rpc, node_name, false, is_default).await?;
+    let mut nodes: Vec<NodeListOutput> = Vec::new();
+    for node_name in node_names {
+        let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+
+        let is_finished: Mutex<bool> = Mutex::new(false);
+
+        let send_req = async {
+            let node_status = if let Ok(_) = rpc.request(api::query_status()).await {
+                let resp = rpc.parse_response::<NodeStatus>()?;
+                if let Ok(node_state) = opts.state.nodes.get(&node_name) {
+                    // Update the persisted configuration data with the pids
+                    // responded by nodes.
+                    if node_state.pid()? != Some(resp.pid) {
+                        node_state
+                            .set_pid(resp.pid)
+                            .context("Failed to update pid for node {node_name}")?;
+                    }
+                }
+                resp
+            } else {
+                NodeStatus::new(node_name.to_string(), "Not running".to_string(), 0, 0)
+            };
+
+            *is_finished.lock().await = true;
+            Ok(node_status)
+        };
+
+        let output_messages = vec![format!(
+            "Retrieving node {}...\n",
+            node_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )];
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
+
+        let (node_status, _) = try_join!(send_req, progress_output)?;
+
+        nodes.push(NodeListOutput::new(
+            node_status.node_name.to_string(),
+            node_status.status.to_string(),
+            node_status.pid,
+            node_status.node_name == default,
+        ));
     }
 
+    let list = opts
+        .terminal
+        .build_list(&nodes, "Nodes", "No nodes found on this system.")?;
+    opts.terminal.stdout().plain(list).write_line()?;
     Ok(())
 }
 
-/// Update the persisted configuration data with the pids
-/// responded by nodes.
-async fn verify_pids(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    tcp: &TcpTransport,
-    nodes: &Vec<String>,
-) -> crate::Result<()> {
-    for node_name in nodes {
-        if let Ok(node_state) = opts.state.nodes.get(node_name) {
-            let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp)?.build();
-            if rpc
-                .request_with_timeout(api::query_status(), Duration::from_millis(200))
-                .await
-                .is_ok()
-            {
-                let resp = rpc.parse_response::<NodeStatus>()?;
-                if node_state.pid()? != Some(resp.pid) {
-                    node_state
-                        .set_pid(resp.pid)
-                        .context("Failed to update pid for node {node_name}")?;
-                }
-            }
+pub struct NodeListOutput {
+    pub node_name: String,
+    pub status: String,
+    pub pid: i32,
+    pub is_default: bool,
+}
+
+impl NodeListOutput {
+    pub fn new(node_name: String, status: String, pid: i32, is_default: bool) -> Self {
+        Self {
+            node_name,
+            status,
+            pid,
+            is_default,
         }
     }
-    Ok(())
+}
+
+impl Output for NodeListOutput {
+    fn output(&self) -> Result<String> {
+        let (status, pid) = match self.status.as_str() {
+            "Running" => (
+                "UP".color(OckamColor::Success.color()),
+                format!(
+                    "Process id {}",
+                    self.pid
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ),
+            ),
+            _ => (
+                "DOWN".color(OckamColor::Failure.color()),
+                "No process running".to_string(),
+            ),
+        };
+        let default = match self.is_default {
+            true => "(default)".to_string(),
+            false => "".to_string(),
+        };
+
+        let output = format!(
+            r#"Node {node_name} {default} {status}
+{pid}"#,
+            node_name = self
+                .node_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+        );
+        Ok(output)
+    }
 }

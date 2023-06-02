@@ -1,12 +1,17 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::terminal::OckamColor;
+use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
-use anyhow::Context;
+
 use clap::Args;
-use cli_table::{print_stdout, Cell, Style, Table};
+use colorful::Colorful;
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_core::api::Request;
+use std::fmt::Write;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
@@ -32,46 +37,79 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(Request::get("/node/tcp/connection")).await?;
-    let response = rpc.parse_response::<models::transport::TransportList>()?;
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let table = response
-        .list
-        .iter()
-        .fold(
-            vec![],
-            |mut acc,
-             TransportStatus {
-                 tt,
-                 tm,
-                 socket_addr,
-                 worker_addr,
-                 processor_address,
-                 flow_control_id,
-                 ..
-             }| {
-                let row = vec![
-                    tt.cell(),
-                    tm.cell(),
-                    socket_addr.cell(),
-                    worker_addr.cell(),
-                    processor_address.cell(),
-                    flow_control_id.cell(),
-                ];
-                acc.push(row);
-                acc
-            },
-        )
-        .table()
-        .title(vec![
-            "Type".cell().bold(true),
-            "Mode".cell().bold(true),
-            "Socket address".cell().bold(true),
-            "Worker address".cell().bold(true),
-            "Processor address".cell().bold(true),
-            "Flow Control Id".cell().bold(true),
-        ]);
+    let send_req = async {
+        rpc.request(Request::get("/node/tcp/connection")).await?;
 
-    print_stdout(table).context("failed to print node status")?;
+        *is_finished.lock().await = true;
+        rpc.parse_response::<models::transport::TransportList>()
+    };
+
+    let output_messages = vec![format!(
+        "Listing TCP Connections on {}...\n",
+        node_name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    )];
+
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (transports, _) = try_join!(send_req, progress_output)?;
+
+    let list = opts.terminal.build_list(
+        &transports.list,
+        &format!("TCP Connections on {}", node_name),
+        &format!(
+            "No TCP Connections found on {}",
+            node_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ),
+    )?;
+
+    opts.terminal.stdout().plain(list).write_line()?;
+
     Ok(())
+}
+
+impl Output for TransportStatus {
+    fn output(&self) -> crate::Result<String> {
+        let mut output = String::new();
+
+        writeln!(
+            output,
+            "{} {}",
+            self.tt,
+            self.tm
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+        writeln!(
+            output,
+            "Worker {}",
+            self.worker_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+        writeln!(
+            output,
+            "Processor {}",
+            self.processor_address
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+
+        write!(
+            output,
+            "{}",
+            self.socket_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+
+        Ok(output)
+    }
 }

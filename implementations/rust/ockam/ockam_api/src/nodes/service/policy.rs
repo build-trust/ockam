@@ -1,4 +1,4 @@
-use crate::nodes::models::policy::{Policy, PolicyList};
+use crate::nodes::models::policy::{Expression, Policy, PolicyList};
 use either::Either;
 use minicbor::Decoder;
 use ockam_abac::{Action, Resource};
@@ -48,6 +48,7 @@ impl NodeManager {
     ) -> Result<ResponseBuilder<PolicyList>> {
         let r = Resource::new(res);
         let p = self.policies.policies(&r).await?;
+        let p = p.into_iter().map(|(a, e)| Expression::new(a, e)).collect();
         Ok(Response::ok(req.id()).body(PolicyList::new(p)))
     }
 

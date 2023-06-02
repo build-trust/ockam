@@ -45,6 +45,24 @@ macro_rules! fmt_para {
 }
 
 #[macro_export]
+macro_rules! fmt_list {
+    ($input:expr) => {
+        format!("{} {}",
+        "     │"
+            .color($crate::terminal::OckamColor::FmtLISTBackground.color())
+            .bold(),
+        format!($input))
+    };
+    ($input:expr, $($args:expr),+) => {
+        format!("{} {}",
+        "     │"
+            .color($crate::terminal::OckamColor::FmtLISTBackground.color())
+            .bold(),
+        format!($input, $($args),+))
+    };
+}
+
+#[macro_export]
 macro_rules! fmt_info {
     ($input:expr) => {
         format!("{} {}",
