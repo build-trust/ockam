@@ -93,7 +93,7 @@ impl Handshake {
 
         // ck, k = HKDF(ck, DH(e, re), 2)
         let dh = self.dh(&state.e, &state.re).await?;
-        (state.ck, state.k) = self.hkdf(&mut state, Some(&dh)).await?;
+        self.hkdf(&mut state, &dh).await?;
 
         // encrypt and output s.pubKey
         let s_pub_key = self.get_public_key(&state.s).await?;
@@ -102,7 +102,7 @@ impl Handshake {
 
         // ck, k = HKDF(ck, DH(s, re), 2)
         let dh = self.dh(&state.s, &state.re).await?;
-        (state.ck, state.k) = self.hkdf(&mut state, Some(&dh)).await?;
+        self.hkdf(&mut state, &dh).await?;
 
         // encrypt and output payload
         let c = self
@@ -123,7 +123,7 @@ impl Handshake {
 
         // ck, k = HKDF(ck, DH(e, re), 2)
         let dh = self.dh(&state.e, &state.re).await?;
-        (state.ck, state.k) = self.hkdf(&mut state, Some(&dh)).await?;
+        self.hkdf(&mut state, &dh).await?;
 
         // decrypt rs.pubKey
         let rs_pub_key = Self::read_message2_encrypted_key(&message)?;
@@ -131,7 +131,7 @@ impl Handshake {
 
         // ck, k = HKDF(ck, DH(e, rs), 2)
         let dh = self.dh(&state.e, &state.rs).await?;
-        (state.ck, state.k) = self.hkdf(&mut state, Some(&dh)).await?;
+        self.hkdf(&mut state, &dh).await?;
 
         // decrypt payload
         let c = Self::read_message2_payload(&message)?;
@@ -153,7 +153,7 @@ impl Handshake {
 
         // ck, k = HKDF(ck, DH(s, re), 2)
         let dh = self.dh(&state.s, &state.re).await?;
-        (state.ck, state.k) = self.hkdf(&mut state, Some(&dh)).await?;
+        self.hkdf(&mut state, &dh).await?;
 
         // encrypt payload
         let c = self
@@ -174,7 +174,7 @@ impl Handshake {
 
         // ck, k = HKDF(ck, DH(e, rs), 2), n = 0
         let dh = self.dh(&state.e, &state.rs).await?;
-        (state.ck, state.k) = self.hkdf(&mut state, Some(&dh)).await?;
+        self.hkdf(&mut state, &dh).await?;
 
         // decrypt payload
         let c = Self::read_message3_payload(&message)?;
@@ -186,20 +186,17 @@ impl Handshake {
     /// Set the final state of the state machine by creating the encryption / decryption keys
     /// and return the other party identity
     pub(super) async fn set_final_state(&mut self, role: Role) -> Result<()> {
-        let mut state = self.state.clone();
         // k1, k2 = HKDF(ck, zerolen, 2)
-        let (k1, k2) = self.hkdf(&mut state, None).await?;
+        let (k1, k2) = self.compute_final_keys(&self.state).await?;
         let (encryption_key, decryption_key) = if role.is_initiator() {
             (k2, k1)
         } else {
             (k1, k2)
         };
-        state.status = Ready(HandshakeKeys {
+        self.state.status = Ready(HandshakeKeys {
             encryption_key,
             decryption_key,
         });
-
-        self.state = state;
         Ok(())
     }
 
@@ -262,23 +259,14 @@ impl Handshake {
 
     /// Compute two derived ck, and k keys based on existing ck and k keys + an optional
     /// Diffie-Hellman key
-    async fn hkdf(&self, state: &mut HandshakeState, dh: Option<&KeyId>) -> Result<(KeyId, KeyId)> {
-        // if dh is not defined that means that we are doing the last step in the noise protocol and splitting
-        // an encryption key and a decryption key. In that case this means that we produce AES keys for both
-        // keys
-        let ck_attributes = if dh.is_none() {
-            Self::k_attributes()
-        } else {
-            Self::ck_attributes()
-        };
-
+    async fn hkdf(&self, state: &mut HandshakeState, dh: &KeyId) -> Result<()> {
         let hkdf_output = self
             .vault
             .hkdf_sha256(
                 &state.ck,
                 b"",
-                dh,
-                vec![ck_attributes, Self::k_attributes()],
+                Some(dh),
+                vec![Self::ck_attributes(), Self::k_attributes()],
             )
             .await?;
 
@@ -287,7 +275,31 @@ impl Handshake {
                 self.vault.delete_ephemeral_secret(state.ck.clone()).await?;
                 self.vault.delete_ephemeral_secret(state.k.clone()).await?;
                 state.n = 0;
-                Ok((new_ck.into(), new_k.into()))
+                state.ck = new_ck.into();
+                state.k = new_k.into();
+                Ok(())
+            }
+            _ => Err(XXError::InternalVaultError.into()),
+        }
+    }
+
+    /// Compute the final encryption and decryption keys
+    async fn compute_final_keys(&self, state: &HandshakeState) -> Result<(KeyId, KeyId)> {
+        let hkdf_output = self
+            .vault
+            .hkdf_sha256(
+                &state.ck,
+                b"",
+                None,
+                vec![Self::k_attributes(), Self::k_attributes()],
+            )
+            .await?;
+
+        match hkdf_output.as_slice() {
+            [k1, k2] => {
+                self.vault.delete_ephemeral_secret(state.ck.clone()).await?;
+                self.vault.delete_ephemeral_secret(state.k.clone()).await?;
+                Ok((k1.into(), k2.into()))
             }
             _ => Err(XXError::InternalVaultError.into()),
         }
