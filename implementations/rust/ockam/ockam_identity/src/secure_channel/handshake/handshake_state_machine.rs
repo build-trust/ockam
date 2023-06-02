@@ -127,7 +127,7 @@ impl CommonStateMachine {
     }
 
     /// Deserialize a payload as D from a bare encoding
-    pub(super) fn deserialize<D: for<'a> Deserialize<'a>>(payload: Vec<u8>) -> Result<D> {
+    pub(super) fn deserialize_payload<D: for<'a> Deserialize<'a>>(payload: Vec<u8>) -> Result<D> {
         serde_bare::from_slice(payload.as_slice())
             .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))
     }

@@ -40,7 +40,8 @@ impl StateMachine for ResponderStateMachine {
             // Process message 3
             (WaitingForMessage3, ReceivedMessage(message)) => {
                 let message3_payload = self.decode_message3(message).await?;
-                let their_identity_payload = CommonStateMachine::deserialize(message3_payload)?;
+                let their_identity_payload =
+                    CommonStateMachine::deserialize_payload(message3_payload)?;
                 self.verify_identity(their_identity_payload, &self.handshake.state.rs.clone())
                     .await?;
                 self.set_final_state(Responder).await?;
