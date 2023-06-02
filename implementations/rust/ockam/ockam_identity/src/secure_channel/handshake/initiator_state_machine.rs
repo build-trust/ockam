@@ -34,7 +34,8 @@ impl StateMachine for InitiatorStateMachine {
             // Process message 2 and send message 3
             (WaitingForMessage2, ReceivedMessage(message)) => {
                 let message2_payload = self.decode_message2(message).await?;
-                let their_identity_payload = CommonStateMachine::deserialize(message2_payload)?;
+                let their_identity_payload =
+                    CommonStateMachine::deserialize_payload(message2_payload)?;
                 self.verify_identity(their_identity_payload, &self.handshake.state.rs.clone())
                     .await?;
                 let identity_payload = self.make_identity_payload(&self.handshake.state.s).await?;
