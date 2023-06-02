@@ -296,7 +296,7 @@ impl Handshake {
     /// Decrypt a ciphertext 'c' using the key 'k' and the additional data 'h'
     async fn hash_and_decrypt(&self, state: &mut HandshakeState, c: &[u8]) -> Result<Vec<u8>> {
         let mut nonce = [0u8; 12];
-        nonce[10..].copy_from_slice(&state.n.to_be_bytes());
+        nonce[4..].copy_from_slice(&state.n.to_be_bytes());
         let result = self
             .vault
             .aead_aes_gcm_decrypt(&state.k, c, nonce.as_ref(), &state.h)
@@ -310,7 +310,7 @@ impl Handshake {
     /// Encrypt a plaintext 'c' using the key 'k' and the additional data 'h'
     async fn encrypt_and_hash(&self, state: &mut HandshakeState, c: &[u8]) -> Result<Vec<u8>> {
         let mut nonce = [0u8; 12];
-        nonce[10..].copy_from_slice(&state.n.to_be_bytes());
+        nonce[4..].copy_from_slice(&state.n.to_be_bytes());
 
         let result = self
             .vault
@@ -420,7 +420,7 @@ pub(super) struct HandshakeState {
     k: KeyId,
     re: PublicKey,
     pub(super) rs: PublicKey,
-    n: u16,
+    n: u64,
     h: [u8; SHA256_SIZE_USIZE],
     ck: KeyId,
     message1_payload: Vec<u8>,
