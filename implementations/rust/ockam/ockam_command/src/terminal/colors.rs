@@ -6,10 +6,13 @@ pub enum OckamColor {
     OckamBlue,
     HeaderGradient,
     PrimaryResource,
+    Success,
+    Failure,
     FmtOKBackground,
     FmtINFOBackground,
     FmtWARNBackground,
     FmtERRORBackground,
+    FmtLISTBackground,
 }
 
 impl OckamColor {
@@ -18,10 +21,13 @@ impl OckamColor {
             OckamColor::OckamBlue => "#52c7ea",
             OckamColor::HeaderGradient => "#4FDAB8",
             OckamColor::PrimaryResource => "#4FDAB8",
+            OckamColor::Success => "#A8C97D",
+            OckamColor::Failure => "#ff0000",
             OckamColor::FmtOKBackground => "#A8C97D",
             OckamColor::FmtINFOBackground => "#0DCAF0",
             OckamColor::FmtWARNBackground => "#ff9a00",
             OckamColor::FmtERRORBackground => "#ff0000",
+            OckamColor::FmtLISTBackground => "#0DCAF0",
         }
     }
 

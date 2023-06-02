@@ -6,17 +6,20 @@ pub(crate) mod show;
 pub(crate) mod store;
 pub(crate) mod verify;
 
+use colorful::Colorful;
 pub(crate) use get::GetCommand;
 pub(crate) use issue::IssueCommand;
 pub(crate) use list::ListCommand;
 use miette::miette;
 use ockam::identity::credential::{Credential, CredentialData, Unverified};
 use ockam::identity::IdentityIdentifier;
+use ockam_api::cli_state::{CredentialState, StateItemTrait};
 pub(crate) use present::PresentCommand;
 pub(crate) use show::ShowCommand;
 pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
+use crate::util::output::Output;
 use crate::{CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
@@ -78,4 +81,58 @@ pub async fn validate_encoded_cred(
         .await?;
 
     Ok(())
+}
+
+pub struct CredentialOutput {
+    name: String,
+    credential: String,
+    is_verified: bool,
+}
+
+impl CredentialOutput {
+    pub async fn try_from_state(
+        opts: &CommandGlobalOpts,
+        state: &CredentialState,
+        vault_name: &str,
+    ) -> Result<Self> {
+        let config = state.config();
+        let is_verified = match validate_encoded_cred(
+            &config.encoded_credential,
+            &config.issuer.identifier(),
+            vault_name,
+            opts,
+        )
+        .await
+        {
+            Ok(_) => true,
+            Err(_) => false,
+        };
+
+        let output = Self {
+            name: state.name().to_string(),
+
+            credential: config.credential()?.to_string(),
+            is_verified,
+        };
+
+        Ok(output)
+    }
+}
+
+impl Output for CredentialOutput {
+    fn output(&self) -> Result<String> {
+        let is_verified = if self.is_verified {
+            "✔︎".light_green()
+        } else {
+            "✕".light_red()
+        };
+        let output = format!(
+            "Credential: {cred_name} {is_verified}\n{cred}",
+            cred_name = self.name,
+            is_verified = is_verified,
+            cred = self.credential
+        );
+
+        Ok(output)
+    }
 }

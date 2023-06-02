@@ -1,14 +1,19 @@
+use clap::Args;
+use colorful::Colorful;
+use std::fmt::Write;
 use std::str::FromStr;
 
-use clap::Args;
-
+use chrono::DateTime;
 use ockam::Context;
 use ockam_api::cloud::lease_manager::models::influxdb::Token;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
-use termimad::{minimad::TextTemplate, MadSkin};
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::terminal::OckamColor;
+use crate::util::output::Output;
 use crate::{
     docs,
     util::{
@@ -20,21 +25,6 @@ use crate::{
 };
 
 const HELP_DETAIL: &str = "";
-
-const LIST_VIEW: &str = r#"
-## Tokens
-
-${token
-> **ID:** ${id}
-> **Issued For:** ${issued_for}
-> **Created At:** ${created_at}
-> **Expires At:** ${expires_at}
-> **Token:** ${token}
-> **Status:** ${status}
-
-
-}
-"#;
 
 /// List tokens within the lease token manager
 #[derive(Clone, Debug, Args)]
@@ -53,43 +43,67 @@ async fn run_impl(
     (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustContextOpts),
 ) -> crate::Result<()> {
     let identity = get_identity_name(&opts.state, &cloud_opts.identity);
-    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
-        .as_identity(identity)
-        .with_new_embbeded_node()
-        .await?
-        .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
-        .await?;
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let req = Request::get("/");
+    let send_req = async {
+        let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
+            .as_identity(identity)
+            .with_new_embbeded_node()
+            .await?
+            .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
+            .await?;
 
-    let resp_leases: Vec<Token> = orchestrator_client.request_with_response(req).await?;
+        let req = Request::get("/");
 
-    let token_template = TextTemplate::from(LIST_VIEW);
-    let mut expander = token_template.expander();
+        let response: Vec<Token> = orchestrator_client.request_with_response(req).await?;
+        *is_finished.lock().await = true;
+        Ok(response)
+    };
 
-    resp_leases.iter().for_each(
-        |Token {
-             id,
-             issued_for,
-             created_at,
-             expires,
-             token,
-             status,
-         }| {
-            expander
-                .sub("token")
-                .set("id", id)
-                .set("issued_for", issued_for)
-                .set("created_at", created_at)
-                .set("expires_at", expires)
-                .set("token", token)
-                .set("status", status);
-        },
-    );
+    let output_messages = vec![format!("Listing Tokens...\n")];
 
-    let skin = MadSkin::default();
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
 
-    skin.print_expander(expander);
+    let (tokens, _) = try_join!(send_req, progress_output)?;
 
+    let list =
+        opts.terminal
+            .build_list(&tokens, "Tokens", "No active tokens found within service.")?;
+    opts.terminal.stdout().plain(list).write_line()?;
     Ok(())
+}
+
+impl Output for Token {
+    fn output(&self) -> crate::error::Result<String> {
+        let mut output = String::new();
+        let status = match self.status.as_str() {
+            "active" => self
+                .status
+                .to_uppercase()
+                .color(OckamColor::Success.color()),
+            _ => self
+                .status
+                .to_uppercase()
+                .color(OckamColor::Failure.color()),
+        };
+        let expires_at = {
+            let expires = DateTime::parse_from_rfc3339(&self.expires)?;
+            expires
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        };
+        let id = self
+            .id
+            .to_string()
+            .color(OckamColor::PrimaryResource.color());
+
+        writeln!(output, "Token {id}")?;
+        writeln!(output, "Expires {expires_at} {status}")?;
+        write!(output, "{}", self.token)?;
+
+        Ok(output)
+    }
 }

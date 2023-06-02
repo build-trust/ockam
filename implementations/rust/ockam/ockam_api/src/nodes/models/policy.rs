@@ -33,11 +33,11 @@ impl Policy {
 pub struct PolicyList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3521457>,
-    #[n(1)] expressions: Vec<(Action, Expr)>,
+    #[n(1)] expressions: Vec<Expression>,
 }
 
 impl PolicyList {
-    pub fn new(e: Vec<(Action, Expr)>) -> Self {
+    pub fn new(e: Vec<Expression>) -> Self {
         PolicyList {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -45,7 +45,32 @@ impl PolicyList {
         }
     }
 
-    pub fn expressions(&self) -> &[(Action, Expr)] {
+    pub fn expressions(&self) -> &Vec<Expression> {
         &self.expressions
+    }
+}
+
+#[derive(Debug, Decode, Encode)]
+pub struct Expression {
+    #[cfg(feature = "tag")]
+    #[n(0)]
+    tag: TypeTag<3521458>,
+    #[n(1)]
+    action: Action,
+    #[n(2)]
+    expr: Expr,
+}
+
+impl Expression {
+    pub fn new(action: Action, expr: Expr) -> Self {
+        Self { action, expr }
+    }
+
+    pub fn action(&self) -> &Action {
+        &self.action
+    }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
     }
 }

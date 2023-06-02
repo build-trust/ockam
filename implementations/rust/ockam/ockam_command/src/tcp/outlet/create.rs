@@ -58,7 +58,7 @@ pub async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     opts.terminal.write_line(&fmt_log!(
-        "Creating TCP Outlet to {}\n",
+        "Creating TCP Outlet to {}...\n",
         &cmd.to
             .to_string()
             .color(OckamColor::PrimaryResource.color())
@@ -122,9 +122,10 @@ pub async fn run_impl(
     opts.terminal
         .stdout()
         .plain(fmt_ok!(
-            "Created a new TCP Outlet on node {} from address /service/{} to {}",
+            "Created a new TCP Outlet on node {} from address {} to {}",
             &node.to_string().color(OckamColor::PrimaryResource.color()),
-            extract_address_value(&cmd.from)?.color(OckamColor::PrimaryResource.color()),
+            format!("/service/{}", extract_address_value(&cmd.from)?)
+                .color(OckamColor::PrimaryResource.color()),
             &cmd.to
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
