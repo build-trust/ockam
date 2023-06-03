@@ -57,7 +57,7 @@ async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
 clap = { version = "4.3.1", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.3.1"
-clap_mangen = "0.2.11"
+clap_mangen = "0.2.12"
 cli-table = "0.4"
 colorful = "0.2"
 colors-transform = "0.2.11"
