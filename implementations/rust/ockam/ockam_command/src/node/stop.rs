@@ -19,7 +19,7 @@ pub struct StopCommand {
     #[arg()]
     node_name: Option<String>,
     /// Whether to use the SIGTERM or SIGKILL signal to stop the node
-    #[arg(long)]
+    #[arg(short, long)]
     force: bool,
 }
 
