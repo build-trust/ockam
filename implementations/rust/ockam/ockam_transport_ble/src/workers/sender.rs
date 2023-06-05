@@ -64,13 +64,7 @@ where
         let sender = BleSendWorker::new(stream, peer.clone());
 
         debug!("start send worker({:?})", tx_addr.clone());
-        ctx.start_worker(
-            tx_addr.clone(),
-            sender,
-            AllowAll, // FIXME: @ac
-            AllowAll, // FIXME: @ac
-        )
-        .await?;
+        ctx.start_worker(tx_addr.clone(), sender).await?;
 
         Ok(WorkerPair {
             servicenames,

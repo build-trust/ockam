@@ -1,7 +1,7 @@
 use core::time::Duration;
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::flow_control::FlowControlPolicy;
-use ockam_core::{route, AllowAll, Result, Routed, Worker};
+use ockam_core::{route, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 
@@ -26,8 +26,7 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
         &options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
@@ -76,8 +75,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         &options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
@@ -151,8 +149,7 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
     let listener = transport.listen("127.0.0.1:0", options).await?;

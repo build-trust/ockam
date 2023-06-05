@@ -5,8 +5,8 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
 use ockam_core::{
     errcode::{Kind, Origin},
-    route, Address, AllowAll, AsyncTryClone, Encodable, Error, LocalInfo, LocalMessage, Route,
-    Routed, TransportMessage, Worker,
+    route, Address, AsyncTryClone, Encodable, Error, LocalInfo, LocalMessage, Route, Routed,
+    TransportMessage, Worker,
 };
 use ockam_node::Context;
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -309,12 +309,7 @@ impl KafkaPortalWorker {
         };
 
         context
-            .start_worker(
-                requests_worker_address.clone(),
-                request_worker,
-                AllowAll,
-                AllowAll,
-            )
+            .start_worker(requests_worker_address.clone(), request_worker)
             .await?;
 
         if let Some(flow_control_id) = flow_control_id {
@@ -325,12 +320,7 @@ impl KafkaPortalWorker {
             );
         }
         context
-            .start_worker(
-                responses_worker_address,
-                response_worker,
-                AllowAll,
-                AllowAll,
-            )
+            .start_worker(responses_worker_address, response_worker)
             .await?;
 
         Ok(requests_worker_address)
@@ -351,7 +341,7 @@ mod test {
     use kafka_protocol::protocol::StrBytes;
     use ockam::identity::secure_channels;
     use ockam_core::compat::sync::{Arc, Mutex};
-    use ockam_core::{route, Address, AllowAll, Routed, Worker};
+    use ockam_core::{route, Address, Routed, Worker};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
     use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -594,8 +584,6 @@ mod test {
             .start_worker(
                 Address::from_string("tcp_payload_receiver"),
                 receiver.clone(),
-                AllowAll,
-                AllowAll,
             )
             .await?;
 

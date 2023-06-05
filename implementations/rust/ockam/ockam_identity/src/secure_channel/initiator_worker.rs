@@ -207,12 +207,13 @@ impl InitiatorWorker {
             callback_sender,
         };
 
-        WorkerBuilder::with_mailboxes(
-            Self::create_mailboxes(&addresses, decryptor_outgoing_access_control),
-            worker,
-        )
-        .start(context)
-        .await?;
+        WorkerBuilder::new(worker)
+            .with_mailboxes(Self::create_mailboxes(
+                &addresses,
+                decryptor_outgoing_access_control,
+            ))
+            .start(context)
+            .await?;
 
         debug!(
             "Starting SecureChannel Initiator at remote: {}",

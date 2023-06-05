@@ -24,7 +24,6 @@
 //! // Now we can write the main function that will run the previous worker. In this case, our worker will be listening for new connections on port 8000 until the process is manually killed.
 //!
 //! use ockam_transport_websocket::WebSocketTransport;
-//! use ockam_core::{AllowAll};
 //! use ockam_node::NodeBuilder;
 //! use ockam_macros::node;
 //!
@@ -34,7 +33,7 @@
 //!     ws.listen("localhost:8000").await?; // Listen on port 8000
 //!
 //!     // Start a worker, of type MyWorker, at address "my_worker"
-//!     ctx.start_worker("my_worker", MyWorker, AllowAll, AllowAll).await?;
+//!     ctx.start_worker("my_worker", MyWorker).await?;
 //!
 //!     // Run worker indefinitely in the background
 //!     Ok(())

@@ -66,7 +66,8 @@ impl Worker for PipeListener {
             ),
             additional_mailboxes,
         );
-        WorkerBuilder::with_mailboxes(mailboxes, worker)
+        WorkerBuilder::new(worker)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 

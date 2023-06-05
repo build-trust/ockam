@@ -44,7 +44,7 @@ use ockam_api::{
 };
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::flow_control::FlowControlPolicy;
-use ockam_core::{route, AllowAll, LOCAL};
+use ockam_core::{route, LOCAL};
 
 use super::show::is_node_up;
 use super::util::check_default;
@@ -303,7 +303,7 @@ async fn run_foreground_node(
         listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;
 
     if let Some(config) = &cmd.launch_config {

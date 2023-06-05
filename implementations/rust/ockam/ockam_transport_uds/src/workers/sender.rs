@@ -150,7 +150,8 @@ impl UdsSendWorker {
             Arc::new(ockam_core::DenyAll),
         );
 
-        WorkerBuilder::with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]), worker)
+        WorkerBuilder::new(worker)
+            .with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]))
             .start(ctx)
             .await?;
 

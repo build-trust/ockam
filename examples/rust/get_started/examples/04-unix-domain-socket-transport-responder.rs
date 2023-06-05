@@ -2,7 +2,7 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::{access_control::AllowAll, node, Context, Result};
+use ockam::{node, Context, Result};
 use ockam_transport_uds::UdsTransportExtension;
 
 #[ockam::node]
@@ -17,7 +17,7 @@ async fn main(ctx: Context) -> Result<()> {
     uds.listen("/tmp/ockam-example-echoer").await?;
 
     // Create an echoer worker
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())

@@ -859,13 +859,8 @@ impl Worker for NodeManagerWorker {
             &api_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
-        ctx.start_worker(
-            DefaultAddress::RPC_PROXY,
-            RpcProxyService::new(),
-            AllowAll,
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(DefaultAddress::RPC_PROXY, RpcProxyService::new())
+            .await?;
 
         Ok(())
     }

@@ -438,12 +438,7 @@ pub mod test {
         let node_manager = node_manager_worker.get().clone();
         let secure_channels = node_manager.read().await.secure_channels.clone();
         context
-            .start_worker(
-                NODEMANAGER_ADDR,
-                node_manager_worker,
-                ockam_core::AllowAll,
-                ockam_core::AllowAll,
-            )
+            .start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .await?;
 
         Ok(NodeManagerHandle {

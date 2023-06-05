@@ -105,7 +105,8 @@ impl Processor for UdsListenProcessor {
         );
 
         let mailboxes = Mailboxes::new(tx_mailbox, vec![internal_mailbox]);
-        WorkerBuilder::with_mailboxes(mailboxes, send_worker)
+        WorkerBuilder::new(send_worker)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 

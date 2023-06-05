@@ -2,7 +2,6 @@ use crate::forwarding_service::forwarder::Forwarder;
 use crate::{Context, ForwardingServiceOptions};
 use core::str::from_utf8;
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Any, DenyAll, Result, Routed, Worker};
 use ockam_node::WorkerBuilder;
 
@@ -31,14 +30,12 @@ impl ForwardingService {
 
         let s = Self { options };
 
-        WorkerBuilder::with_access_control(
-            service_incoming_access_control,
-            Arc::new(DenyAll),
-            address,
-            s,
-        )
-        .start(ctx)
-        .await?;
+        WorkerBuilder::new(s)
+            .with_address(address)
+            .with_incoming_access_control_arc(service_incoming_access_control)
+            .with_outgoing_access_control(DenyAll)
+            .start(ctx)
+            .await?;
 
         Ok(())
     }

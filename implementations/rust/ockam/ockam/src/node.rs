@@ -149,19 +149,26 @@ impl Node {
     }
 
     /// Start a new worker instance at the given address
-    pub async fn start_worker<NM, NW>(
+    pub async fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
+    where
+        W: Worker<Context = Context>,
+    {
+        self.context.start_worker(address, worker).await
+    }
+
+    /// Start a new worker instance at the given address with given Access Controls
+    pub async fn start_worker_with_access_control<W>(
         &self,
         address: impl Into<Address>,
-        worker: NW,
+        worker: W,
         incoming: impl IncomingAccessControl,
         outgoing: impl OutgoingAccessControl,
     ) -> Result<()>
     where
-        NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
+        W: Worker<Context = Context>,
     {
         self.context
-            .start_worker(address, worker, incoming, outgoing)
+            .start_worker_with_access_control(address, worker, incoming, outgoing)
             .await
     }
 

@@ -115,8 +115,7 @@ async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_worker("simple_worker", worker, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("simple_worker", worker).await?;
 
     let msg: String = ctx
         .send_and_receive(route!["simple_worker"], "Hello".to_string())
@@ -374,7 +373,8 @@ impl Worker for BadWorker {
 #[ockam_macros::test]
 async fn abort_blocked_shutdown(ctx: &mut Context) -> Result<()> {
     // Create an executor
-    ctx.start_worker("bad", BadWorker, DenyAll, DenyAll).await?;
+    ctx.start_worker_with_access_control("bad", BadWorker, DenyAll, DenyAll)
+        .await?;
 
     ockam_node::tokio::time::timeout(Duration::from_secs(2), ctx.stop())
         .await
@@ -399,7 +399,7 @@ impl Worker for WaitForWorker {
 #[ockam_macros::test]
 async fn wait_for_worker(ctx: &mut Context) -> Result<()> {
     let t1 = tokio::time::Instant::now();
-    ctx.start_worker("slow", WaitForWorker, DenyAll, DenyAll)
+    ctx.start_worker_with_access_control("slow", WaitForWorker, DenyAll, DenyAll)
         .await
         .unwrap();
 
@@ -456,9 +456,7 @@ async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result
                 counter_b: counter_b_clone.clone(),
             };
             let addr = Address::random(LOCAL);
-            ctx.start_worker(addr.clone(), worker, AllowAll, AllowAll)
-                .await
-                .unwrap();
+            ctx.start_worker(addr.clone(), worker).await.unwrap();
             addrs.push(addr);
         }
 
@@ -518,7 +516,7 @@ enum SendReceiveResponse {
 /// See https://github.com/build-trust/ockam/issues/2628.
 #[ockam_macros::test]
 async fn use_context_send_and_receive(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("SendReceiveWorker", SendReceiveWorker, AllowAll, AllowAll)
+    ctx.start_worker("SendReceiveWorker", SendReceiveWorker)
         .await?;
 
     let msg_tx = SendReceiveRequest::Connect();
@@ -556,10 +554,10 @@ impl Worker for DummyWorker {
 
 #[ockam_macros::test]
 async fn starting_worker_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("dummy_worker", DummyWorker, DenyAll, DenyAll)
+    ctx.start_worker_with_access_control("dummy_worker", DummyWorker, DenyAll, DenyAll)
         .await?;
     assert!(ctx
-        .start_worker("dummy_worker", DummyWorker, DenyAll, DenyAll)
+        .start_worker_with_access_control("dummy_worker", DummyWorker, DenyAll, DenyAll)
         .await
         .is_err());
     ctx.stop().await

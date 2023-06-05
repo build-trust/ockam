@@ -3,7 +3,7 @@ use crate::{
     UDP,
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, AllowAll, Error, Result, Route, Routed, Worker};
+use ockam_core::{async_trait, Address, Error, Result, Route, Routed, Worker};
 use ockam_node::Context;
 use std::collections::BTreeMap;
 use tracing::{debug, trace, warn};
@@ -35,13 +35,8 @@ pub struct UdpRendezvousService;
 impl UdpRendezvousService {
     /// Start a new Rendezvous service with the given local address
     pub async fn start(ctx: &Context, address: impl Into<Address>) -> Result<()> {
-        ctx.start_worker(
-            address.into(),
-            RendezvousWorker::new(),
-            AllowAll, // FIXME: @ac
-            AllowAll, // FIXME: @ac
-        )
-        .await
+        ctx.start_worker(address.into(), RendezvousWorker::new())
+            .await
     }
 }
 
@@ -150,7 +145,7 @@ mod tests {
     use crate::rendezvous_service::{RendezvousRequest, RendezvousResponse};
     use crate::{UdpRendezvousService, UdpTransport, UDP};
     use ockam_core::errcode::Origin;
-    use ockam_core::{route, AllowAll, Error, Result, Route, Routed, TransportType, Worker};
+    use ockam_core::{route, Error, Result, Route, Routed, TransportType, Worker};
     use ockam_node::Context;
     use std::net::SocketAddr;
     use tokio::net::UdpSocket;
@@ -243,8 +238,7 @@ mod tests {
         let transport = UdpTransport::create(ctx).await?;
         UdpRendezvousService::start(ctx, "rendezvous").await?;
         let rendezvous_route = route![(UDP, bind_addr.to_string()), "rendezvous"];
-        ctx.start_worker("echo", EchoUDPAddress, AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker("echo", EchoUDPAddress).await?;
         let route_echo = route![(UDP, bind_addr.to_string()), "echo"];
         transport.listen(bind_addr.to_string()).await?;
 

@@ -135,12 +135,10 @@ impl ExchangeCompleter {
                 Arc::new(LocalOnwardOnly),
             );
 
-            WorkerBuilder::with_mailboxes(
-                Mailboxes::new(main_mailbox, vec![api_mailbox]),
-                encryptor,
-            )
-            .start(context)
-            .await?;
+            WorkerBuilder::new(encryptor)
+                .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
+                .start(context)
+                .await?;
         }
 
         info!(

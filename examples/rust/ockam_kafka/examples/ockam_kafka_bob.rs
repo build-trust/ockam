@@ -1,4 +1,3 @@
-use ockam::access_control::AllowAll;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, route, Context, Result, Routed, TcpConnectionOptions, Worker};
 use ockam_transport_tcp::TcpTransportExtension;
@@ -66,7 +65,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     // We won't call ctx.stop() here, this program will run until you stop it with Ctrl-C
     Ok(())

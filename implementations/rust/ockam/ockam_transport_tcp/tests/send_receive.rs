@@ -1,6 +1,6 @@
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::flow_control::FlowControlPolicy;
-use ockam_core::{route, AllowAll, Result, Routed, Worker};
+use ockam_core::{route, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 
@@ -24,8 +24,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
         &options.spawner_flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
     let listener = transport.listen("127.0.0.1:0", options).await?;

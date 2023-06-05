@@ -1,5 +1,4 @@
 use hello_ockam::Echoer;
-use ockam::access_control::AllowAll;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, route, Context, Result, TcpConnectionOptions};
 use ockam_transport_tcp::TcpTransportExtension;
@@ -11,7 +10,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = node.create_tcp_transport().await?;
 
     // Start an echoer worker
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
