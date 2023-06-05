@@ -62,7 +62,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> R
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
     opts.terminal.write_line(&fmt_log!(
-        "Enrolling your default Ockam identity with Ockam Orchestrator ...\n"
+        "Enrolling your default Ockam identity with Ockam Orchestrator...\n"
     ))?;
 
     display_parse_logs(&opts);
@@ -378,7 +378,7 @@ impl Auth0Service {
 
         opts.terminal
             .write_line(&fmt_log!(
-                " To enroll we need to associate your Ockam identity with an Orchestrator account:\n"
+                "To enroll we need to associate your Ockam identity with an Orchestrator account:\n"
             ))?
             .write_line(&fmt_para!(
                 "First copy this one-time code: {}",
@@ -387,7 +387,9 @@ impl Auth0Service {
             .write(&fmt_para!(
                 "Then press {} to open {} in your browser.",
                 " ENTER ↵ ".bg_white().black().blink(),
-                dc.verification_uri.to_string().color(OckamColor::PrimaryResource.color())
+                dc.verification_uri
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
             ))?;
 
         let mut input = String::new();
