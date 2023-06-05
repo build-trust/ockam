@@ -53,7 +53,7 @@ pub enum Error {
         url("https://docs.ockam.io/errors/OCK500")
     )]
     #[error("{error_message}")]
-    InteralError {
+    InternalError {
         error_message: String,
         exit_code: ExitCode,
     },
@@ -75,13 +75,13 @@ pub enum Error {
 impl Error {
     pub fn new(code: ExitCode, err: miette::ErrReport) -> Self {
         assert_ne!(code, 0, "Error's exit code can't be OK");
-        Error::InteralError {
+        Error::InternalError {
             error_message: err.to_string(),
             exit_code: code,
         }
     }
 
-    pub fn new_software_error(human_err: &str, inner_err_msg: &str) -> Self {
+    pub fn new_internal_error(human_err: &str, inner_err_msg: &str) -> Self {
         let msg = format!("{}\n{}", human_err, fmt_log!("{}", inner_err_msg));
         Self::new(exitcode::SOFTWARE, miette!("{}", msg))
     }
@@ -91,7 +91,7 @@ impl Error {
             Error::NotFound { .. } => exitcode::SOFTWARE,
             Error::Unauthorized { .. } => exitcode::NOPERM,
             Error::Conflict { .. } => exitcode::SOFTWARE,
-            Error::InteralError { exit_code, .. } => *exit_code,
+            Error::InternalError { exit_code, .. } => *exit_code,
             Error::Unavailable { .. } => exitcode::UNAVAILABLE,
         }
     }

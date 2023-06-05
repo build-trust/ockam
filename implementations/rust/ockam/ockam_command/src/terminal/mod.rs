@@ -258,7 +258,7 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
         }
         self.stderr
             .write_line(msg)
-            .map_err(|e| Error::new_software_error("Unable to write to stderr.", &e.to_string()))?;
+            .map_err(|e| Error::new_internal_error("Unable to write to stderr.", &e.to_string()))?;
         Ok(self)
     }
 
