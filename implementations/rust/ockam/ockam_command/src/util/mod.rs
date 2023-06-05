@@ -532,7 +532,7 @@ pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate:
             Node::CODE => {
                 let alias = proto
                     .cast::<Node>()
-                    .ok_or_else(|| anyhow!("invalid node address protocol"))?;
+                    .ok_or_else(|| miette!("invalid node address protocol"))?;
                 let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
                 let addr = node_setup.default_tcp_listener()?.maddr()?;

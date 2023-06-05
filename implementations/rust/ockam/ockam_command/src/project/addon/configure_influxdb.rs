@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use anyhow::Context as _;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;

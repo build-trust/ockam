@@ -318,7 +318,7 @@ async fn run_foreground_node(
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
             ctx.stop().await?;
-            return Err(miette!("Failed to start services".to_string()).into());
+            return Err(miette!("Failed to start services").into());
         }
     }
 
