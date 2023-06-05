@@ -35,7 +35,7 @@ impl UdpListenProcessor {
         let addr = Address::random_tagged("UdpListenProcessor");
 
         // FIXME: @ac
-        ctx.start_processor(addr.clone(), processor, AllowAll, AllowAll)
+        ctx.start_processor_with_access_control(addr.clone(), processor, AllowAll, AllowAll)
             .await?;
 
         Ok(())

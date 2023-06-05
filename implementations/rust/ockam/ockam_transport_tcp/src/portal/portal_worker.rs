@@ -175,15 +175,12 @@ impl TcpPortalWorker {
                 onward_route,
             );
 
-            let mailbox = Mailbox::new(
-                self.addresses.receiver.clone(),
-                Arc::new(DenyAll),
-                Arc::new(AllowOnwardAddresses(vec![
+            ProcessorBuilder::new(receiver)
+                .with_address(self.addresses.receiver.clone())
+                .with_outgoing_access_control(AllowOnwardAddresses(vec![
                     next_hop,
                     self.addresses.internal.clone(),
-                ])), // Only sends messages to `onward_route` and Sender
-            );
-            ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
+                ])) // Only sends messages to `onward_route` and Sender
                 .start(ctx)
                 .await?;
 

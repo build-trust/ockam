@@ -1,8 +1,7 @@
 use crate::{Context, NodeError, NodeMessage, NodeReason};
 use crate::{ProcessorBuilder, WorkerBuilder};
-use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    Address, IncomingAccessControl, Mailboxes, OutgoingAccessControl, Processor, Result, Worker,
+    Address, IncomingAccessControl, OutgoingAccessControl, Processor, Result, Worker,
 };
 
 enum AddressType {
@@ -20,7 +19,7 @@ impl AddressType {
 }
 
 impl Context {
-    /// Start a new worker instance at the given address
+    /// Start a new worker instance at the given address. Default AccessControl is AllowAll
     ///
     /// A worker is an asynchronous piece of code that can send and
     /// receive messages of a specific type.  This type is encoded via
@@ -114,6 +113,26 @@ impl Context {
         Ok(())
     }
 
+    /// Start a new processor instance at the given address. Default AccessControl is DenyAll
+    ///
+    /// A processor is an asynchronous piece of code that runs a
+    /// custom run loop, with access to a worker context to send and
+    /// receive messages.  If your code is built around responding to
+    /// message events, consider using
+    /// [`start_worker()`](Self::start_worker) instead!
+    ///
+    pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
+    where
+        P: Processor<Context = Context>,
+    {
+        ProcessorBuilder::new(processor)
+            .with_address(address.into())
+            .start(self)
+            .await?;
+
+        Ok(())
+    }
+
     /// Start a new processor instance at the given address
     ///
     /// A processor is an asynchronous piece of code that runs a
@@ -122,7 +141,7 @@ impl Context {
     /// message events, consider using
     /// [`start_worker()`](Self::start_worker) instead!
     ///
-    pub async fn start_processor<P>(
+    pub async fn start_processor_with_access_control<P>(
         &self,
         address: impl Into<Address>,
         processor: P,
@@ -132,12 +151,12 @@ impl Context {
     where
         P: Processor<Context = Context>,
     {
-        ProcessorBuilder::with_mailboxes(
-            Mailboxes::main(address.into(), Arc::new(incoming), Arc::new(outgoing)),
-            processor,
-        )
-        .start(self)
-        .await?;
+        ProcessorBuilder::new(processor)
+            .with_address(address)
+            .with_incoming_access_control(incoming)
+            .with_outgoing_access_control(outgoing)
+            .start(self)
+            .await?;
 
         Ok(())
     }

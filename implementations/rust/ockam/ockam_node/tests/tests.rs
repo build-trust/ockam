@@ -145,10 +145,10 @@ impl Processor for DummyProcessor {
 
 #[ockam_macros::test]
 async fn starting_processor_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
-    ctx.start_processor("dummy_processor", DummyProcessor, DenyAll, DenyAll)
+    ctx.start_processor("dummy_processor", DummyProcessor)
         .await?;
     assert!(ctx
-        .start_processor("dummy_processor", DummyProcessor, DenyAll, DenyAll)
+        .start_processor("dummy_processor", DummyProcessor)
         .await
         .is_err());
     ctx.stop().await
@@ -205,8 +205,7 @@ async fn counting_processor__run_node_lifecycle__processor_lifecycle_should_be_f
         run_called_count: run_called_count_clone,
     };
 
-    ctx.start_processor("counting_processor", processor, DenyAll, DenyAll)
-        .await?;
+    ctx.start_processor("counting_processor", processor).await?;
     sleep(Duration::new(1, 0)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
@@ -261,8 +260,7 @@ async fn waiting_processor__shutdown__should_be_interrupted(ctx: &mut Context) -
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_processor("waiting_processor", processor, DenyAll, DenyAll)
-        .await?;
+    ctx.start_processor("waiting_processor", processor).await?;
     sleep(Duration::new(1, 0)).await;
 
     ctx.stop_processor("waiting_processor").await?;
@@ -331,7 +329,7 @@ async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_processor("messaging_processor", processor, AllowAll, AllowAll)
+    ctx.start_processor_with_access_control("messaging_processor", processor, AllowAll, AllowAll)
         .await?;
     sleep(Duration::new(1, 0)).await;
 

@@ -5,7 +5,7 @@ use ockam_core::{
     Mailboxes, Processor, Result,
 };
 
-use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
+use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use tokio::net::UnixListener;
 use tracing::{debug, error, trace};
@@ -49,9 +49,7 @@ impl UdsListenProcessor {
             router_handle,
         };
 
-        let mailbox = Mailbox::deny_all(Address::random_tagged("UdsListenProcessor"));
-        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), processor)
-            .start(ctx)
+        ctx.start_processor(Address::random_tagged("UdsListenProcessor"), processor)
             .await?;
 
         Ok(std_sock_addr)

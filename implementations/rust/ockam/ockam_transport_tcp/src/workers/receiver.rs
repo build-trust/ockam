@@ -81,7 +81,8 @@ impl TcpRecvProcessor {
                 addresses.sender_internal_address().clone(),
             )),
         );
-        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![internal]), receiver)
+        ProcessorBuilder::new(receiver)
+            .with_mailboxes(Mailboxes::new(mailbox, vec![internal]))
             .start(ctx)
             .await?;
 

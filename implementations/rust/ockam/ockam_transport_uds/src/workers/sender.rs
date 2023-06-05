@@ -4,7 +4,7 @@ use ockam_core::{
     async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, DenyAll, Encodable,
     LocalMessage, Mailbox, Mailboxes, Message, Result, Routed, TransportMessage, Worker,
 };
-use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
+use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use socket2::SockRef;
@@ -228,14 +228,7 @@ impl Worker for UdsSendWorker {
             self.internal_addr.clone(),
         );
 
-        let mailbox = Mailbox::new(
-            self.rx_addr().clone(),
-            Arc::new(DenyAll),
-            Arc::new(AllowAll),
-        );
-
-        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
-            .start(ctx)
+        ctx.start_processor_with_access_control(self.rx_addr.clone(), receiver, DenyAll, AllowAll)
             .await?;
 
         Ok(())

@@ -38,7 +38,7 @@ where
             "BleListenProcessor::start Starting processor with address: {:?}",
             waddr
         );
-        ctx.start_processor(
+        ctx.start_processor_with_access_control(
             waddr, processor, AllowAll, // FIXME: @ac
             AllowAll, // FIXME: @ac
         )
