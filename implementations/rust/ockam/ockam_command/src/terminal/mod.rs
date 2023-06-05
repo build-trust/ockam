@@ -302,7 +302,7 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
             item.split('\n').for_each(|line| {
                 let _ = writeln!(output, "{}", &fmt_list!("{line}"));
             });
-            writeln!(output, "")?;
+            writeln!(output)?;
         }
 
         Ok(output)

@@ -3,11 +3,12 @@ use colorful::Colorful;
 use std::fmt::Write;
 use std::str::FromStr;
 
-use chrono::DateTime;
 use ockam::Context;
 use ockam_api::cloud::lease_manager::models::influxdb::Token;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
+use time::format_description::well_known::Iso8601;
+use time::PrimitiveDateTime;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -89,9 +90,7 @@ impl Output for Token {
                 .color(OckamColor::Failure.color()),
         };
         let expires_at = {
-            let expires = DateTime::parse_from_rfc3339(&self.expires)?;
-            expires
-                .format("%Y-%m-%d %H:%M:%S")
+            PrimitiveDateTime::parse(&self.expires, &Iso8601::DEFAULT)?
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         };
