@@ -1,6 +1,6 @@
 use crate::workers::{Addresses, TcpRecvProcessor};
 use crate::{TcpConnectionMode, TcpListenerInfo, TcpListenerOptions, TcpRegistry, TcpSendWorker};
-use ockam_core::{async_trait, compat::net::SocketAddr, DenyAll};
+use ockam_core::{async_trait, compat::net::SocketAddr};
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -42,8 +42,7 @@ impl TcpListenProcessor {
             options,
         };
 
-        ctx.start_processor(address.clone(), processor, DenyAll, DenyAll)
-            .await?;
+        ctx.start_processor(address.clone(), processor).await?;
 
         Ok((saddr, address))
     }

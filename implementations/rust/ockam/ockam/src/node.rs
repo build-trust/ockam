@@ -148,7 +148,7 @@ impl Node {
             .await
     }
 
-    /// Start a new worker instance at the given address
+    /// Start a new worker instance at the given address. Default Access Control is AllowAll
     pub async fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
     where
         W: Worker<Context = Context>,
@@ -172,8 +172,16 @@ impl Node {
             .await
     }
 
-    /// Start a new processor instance at the given address
-    pub async fn start_processor<P>(
+    /// Start a new processor instance at the given address. Default Access Control is DenyAll
+    pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
+    where
+        P: Processor<Context = Context>,
+    {
+        self.context.start_processor(address, processor).await
+    }
+
+    /// Start a new processor instance at the given address with given Access Controls
+    pub async fn start_processor_with_access_control<P>(
         &self,
         address: impl Into<Address>,
         processor: P,
@@ -184,7 +192,7 @@ impl Node {
         P: Processor<Context = Context>,
     {
         self.context
-            .start_processor(address, processor, incoming, outgoing)
+            .start_processor_with_access_control(address, processor, incoming, outgoing)
             .await
     }
 

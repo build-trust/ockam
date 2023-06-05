@@ -23,7 +23,7 @@ impl<W> WorkerBuilder<W>
 where
     W: Worker<Context = Context>,
 {
-    /// Create a new builder for a given Worker
+    /// Create a new builder for a given Worker. Default AccessControl is AllowAll
     pub fn new(worker: W) -> Self {
         Self { worker }
     }
@@ -60,7 +60,7 @@ where
     worker: W,
 }
 
-impl<W: Worker> WorkerBuilderMultipleAddresses<W>
+impl<W> WorkerBuilderMultipleAddresses<W>
 where
     W: Worker<Context = Context>,
 {
@@ -80,7 +80,7 @@ where
     worker: W,
 }
 
-impl<W: Worker> WorkerBuilderOneAddress<W>
+impl<W> WorkerBuilderOneAddress<W>
 where
     W: Worker<Context = Context>,
 {
@@ -95,7 +95,7 @@ where
     }
 }
 
-impl<W: Worker> WorkerBuilderOneAddress<W>
+impl<W> WorkerBuilderOneAddress<W>
 where
     W: Worker<Context = Context>,
 {

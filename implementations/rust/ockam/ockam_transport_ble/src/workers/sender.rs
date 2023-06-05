@@ -91,7 +91,7 @@ where
             let rx_addr = Address::random_local();
             let receiver =
                 BleRecvProcessor::new(rx_stream, format!("{}#{}", crate::BLE, self.peer).into());
-            ctx.start_processor(
+            ctx.start_processor_with_access_control(
                 rx_addr.clone(),
                 receiver,
                 AllowAll, // FIXME: @ac
