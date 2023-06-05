@@ -2,10 +2,17 @@ use anyhow::anyhow;
 use clap::Args;
 use ockam_api::cli_state::traits::StateDirTrait;
 
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
+
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List vaults
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ListCommand;
 
 impl ListCommand {

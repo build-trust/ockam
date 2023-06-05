@@ -1,6 +1,7 @@
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
+use colorful::Colorful;
 use ockam_api::cli_state::StateDirTrait;
 
 const LONG_ABOUT: &str = include_str!("./static/stop/long_about.txt");
@@ -18,7 +19,7 @@ pub struct StopCommand {
     #[arg()]
     node_name: Option<String>,
     /// Whether to use the SIGTERM or SIGKILL signal to stop the node
-    #[arg(long)]
+    #[arg(short, long)]
     force: bool,
 }
 
@@ -36,6 +37,9 @@ fn run_impl(opts: CommandGlobalOpts, cmd: StopCommand) -> crate::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
     let node_state = opts.state.nodes.get(&node_name)?;
     node_state.kill_process(cmd.force)?;
-    println!("Stopped node '{}'", &node_name);
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!("Stopped node '{}'", &node_name))
+        .write_line()?;
     Ok(())
 }

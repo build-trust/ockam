@@ -27,6 +27,7 @@ use crate::{
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::{ApiTransport, NodeManagerTrustOptions};
@@ -221,11 +222,10 @@ async fn run_foreground_node(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let cfg = &opts.config;
     let node_name = parse_node_name(&cmd.node_name)?;
 
     // TODO: remove this special case once the Orchestrator has migrated to the
-    // new ockam authority create command
+    //  new ockam authority create command
     if node_name == "authority" && cmd.launch_config.is_some() {
         return start_authority_node(ctx, (opts, cmd)).await;
     };
@@ -242,7 +242,7 @@ async fn run_foreground_node(
         .await?;
     }
 
-    add_project_info_to_node_state(&node_name, &opts, cfg, &cmd.trust_context_opts).await?;
+    add_project_info_to_node_state(&node_name, &opts, &cmd.trust_context_opts).await?;
 
     let trust_context_config =
         TrustContextConfigBuilder::new(&opts.state, &cmd.trust_context_opts)?
@@ -269,7 +269,7 @@ async fn run_foreground_node(
             )?),
     )?;
 
-    let projects = cfg.inner().lookup().projects().collect();
+    let projects = ProjectLookup::from_state(opts.state.projects.list()?).await?;
     let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
 
     let node_man = NodeManager::create(

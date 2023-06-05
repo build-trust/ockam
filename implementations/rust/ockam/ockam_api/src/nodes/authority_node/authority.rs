@@ -3,8 +3,8 @@ use std::path::Path;
 use tracing::info;
 
 use ockam::identity::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, IdentityAttributesWriter,
-    SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, IdentityAttributesReader,
+    IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
 };
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
@@ -118,6 +118,7 @@ impl Authority {
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             configuration.clone().trust_context_identifier(),
             self.attributes_writer(),
+            self.attributes_reader(),
         )
         .await?;
 
@@ -287,9 +288,14 @@ impl Authority {
         self.identities().repository().clone()
     }
 
-    /// Return the identities repository used by the authority
+    /// Return the identities repository as writer used by the authority
     fn attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
         self.identities_repository().as_attributes_writer().clone()
+    }
+
+    /// Return the identities repository as reader used by the authority
+    fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
+        self.identities_repository().as_attributes_reader().clone()
     }
 
     /// Create an identity vault backed by a FileStorage

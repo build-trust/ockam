@@ -1,8 +1,8 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::CommandGlobalOpts;
 use crate::Result;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam::{route, Context};
 use ockam_api::error::ApiError;
@@ -10,9 +10,11 @@ use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::{Request, RequestBuilder};
 
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
+
 /// Delete a TCP Outlet
 #[derive(Clone, Debug, Args)]
-#[command()]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ShowCommand {
     /// Name assigned to outlet that will be shown
     #[arg(display_order = 900, required = true, id = "ALIAS", value_parser = alias_parser)]
@@ -25,7 +27,7 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -34,7 +36,7 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(make_api_request(cmd)?).await?;

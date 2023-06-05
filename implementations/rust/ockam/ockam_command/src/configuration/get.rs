@@ -18,7 +18,7 @@ impl GetCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: GetCommand) -> crate::Result<()> {
-    let node_state = opts.state.nodes.get(&cmd.alias)?;
+    let node_state = opts.state.nodes.get(cmd.alias)?;
     let addr = &node_state.config().setup().default_tcp_listener()?.addr;
     println!("Address: {addr}");
     Ok(())

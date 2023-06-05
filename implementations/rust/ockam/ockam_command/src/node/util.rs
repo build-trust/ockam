@@ -5,7 +5,7 @@ use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateItemTrait;
 use ockam_api::config::lookup::ProjectLookup;
 
-use ockam_api::cli_state::StateDirTrait;
+use ockam_api::cli_state::{ProjectConfig, StateDirTrait};
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
@@ -23,7 +23,7 @@ use tracing::{debug, info};
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
 use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
-use crate::{project, CommandGlobalOpts, OckamConfig, Result};
+use crate::{CommandGlobalOpts, Result};
 
 pub async fn start_embedded_node(
     ctx: &Context,
@@ -40,7 +40,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
     identity: Option<String>,
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
-    let cfg = &opts.config;
     let cmd = CreateCommand::default();
 
     // This node was initially created as a foreground node
@@ -49,9 +48,9 @@ pub async fn start_embedded_node_with_vault_and_identity(
     }
 
     if let Some(p) = trust_opts {
-        add_project_info_to_node_state(&cmd.node_name, opts, cfg, p).await?;
+        add_project_info_to_node_state(&cmd.node_name, opts, p).await?;
     } else {
-        add_project_info_to_node_state(&cmd.node_name, opts, cfg, &cmd.trust_context_opts).await?;
+        add_project_info_to_node_state(&cmd.node_name, opts, &cmd.trust_context_opts).await?;
     };
 
     let trust_context_config = match trust_opts {
@@ -65,7 +64,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let options = TcpListenerOptions::new();
     let listener = tcp.listen(&bind, options).await?;
 
-    let projects = cfg.inner().lookup().projects().collect();
+    let projects = ProjectLookup::from_state(opts.state.projects.list()?).await?;
 
     let node_man = NodeManager::create(
         ctx,
@@ -108,7 +107,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
 pub async fn add_project_info_to_node_state(
     node_name: &str,
     opts: &CommandGlobalOpts,
-    cfg: &OckamConfig,
     project_opts: &TrustContextOpts,
 ) -> Result<Option<String>> {
     let proj_path = if let Some(path) = project_opts.project_path.clone() {
@@ -124,11 +122,12 @@ pub async fn add_project_info_to_node_state(
             let s = tokio::fs::read_to_string(path).await?;
             let proj_info: ProjectInfo = serde_json::from_str(&s)?;
             let proj_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
-
+            let proj_config = ProjectConfig::from(&proj_info);
             let state = opts.state.nodes.get(node_name)?;
             state.set_setup(state.config().setup_mut().set_project(proj_lookup.clone()))?;
-
-            project::config::set_project(cfg, &(&proj_info).into()).await?;
+            opts.state
+                .projects
+                .overwrite(proj_lookup.name, proj_config)?;
             Ok(Some(proj_lookup.id))
         }
         None => Ok(None),

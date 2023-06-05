@@ -3,5 +3,5 @@
 $ ockam tcp-inlet list
 
 # To list the TCP inlets on a specific node
-$ ockam tcp-inlet list --node n1
+$ ockam tcp-inlet list --at n1
 ```

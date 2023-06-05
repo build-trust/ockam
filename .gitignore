@@ -7,7 +7,6 @@ Changelog-INCOMING.md
 .apple-codesign
 CMakeCache.txt
 CMakeFiles
-Makefile
 cmake_install.cmake
 *.a
 *.DS_store
@@ -20,3 +19,4 @@ vendor
 .cargo
 # nix build
 /result*
+.home

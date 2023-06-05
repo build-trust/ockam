@@ -49,7 +49,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -74,7 +74,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
             StartKafkaConsumerRequest::new(bootstrap_server, brokers_port_range, project_route);
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_consumer").body(payload);
-        let node_name = get_node_name(&opts.state, &node_opts.api_node);
+        let node_name = get_node_name(&opts.state, &node_opts.at_node);
         start_service_impl(&ctx, &opts, &node_name, "KafkaConsumer", req, Some(&tcp)).await?;
 
         *is_finished.lock().await = true;

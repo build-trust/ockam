@@ -50,7 +50,7 @@ teardown() {
 }
 
 @test "trust context - trust context with an offline authority; Credential Exchange is performed" {
-  port=33803
+  port="$(random_port)"
   # Create two identities
   run "$OCKAM" identity create alice
   alice_identity=$($OCKAM identity show alice --full --encoding hex)
@@ -108,8 +108,8 @@ teardown() {
 }
 
 @test "trust context - trust context with an online authority; Credential Exchange is performed" {
-  auth_port=33805
-  node_port=33806
+  auth_port="$(random_port)"
+  node_port="$(random_port)"
   $OCKAM identity create alice
   $OCKAM identity create bob
   $OCKAM identity create attacker

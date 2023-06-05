@@ -1,3 +1,4 @@
+use crate::cli_state::{ProjectState, StateItemTrait};
 use crate::cloud::project::{OktaAuth0, Project};
 use crate::error::ApiError;
 use anyhow::Context as _;
@@ -40,6 +41,17 @@ impl ConfigLookup {
         Self {
             map: Default::default(),
         }
+    }
+
+    pub fn spaces(&self) -> impl Iterator<Item = (String, SpaceLookup)> + '_ {
+        self.map.iter().filter_map(|(k, v)| {
+            if let LookupValue::Space(p) = v {
+                let name = k.strip_prefix("/space/").unwrap_or(k).to_string();
+                Some((name, p.clone()))
+            } else {
+                None
+            }
+        })
     }
 
     pub fn set_space(&mut self, id: &str, name: &str) {
@@ -245,6 +257,17 @@ impl ProjectLookup {
             authority,
             okta,
         })
+    }
+
+    pub async fn from_state(projects: Vec<ProjectState>) -> anyhow::Result<BTreeMap<String, Self>> {
+        let mut lookups = BTreeMap::new();
+        for p in projects {
+            let l = ProjectLookup::from_project(p.config())
+                .await
+                .context("Failed to read project configuration")?;
+            lookups.insert(l.name.clone(), l);
+        }
+        Ok(lookups)
     }
 }
 

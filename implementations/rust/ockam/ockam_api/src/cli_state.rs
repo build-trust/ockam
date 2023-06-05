@@ -2,6 +2,7 @@ pub mod credentials;
 pub mod identities;
 pub mod nodes;
 pub mod projects;
+pub mod spaces;
 pub mod traits;
 pub mod trust_contexts;
 pub mod vaults;
@@ -10,9 +11,11 @@ pub use crate::cli_state::credentials::*;
 pub use crate::cli_state::identities::*;
 pub use crate::cli_state::nodes::*;
 pub use crate::cli_state::projects::*;
+pub use crate::cli_state::spaces::*;
 pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
 pub use crate::cli_state::vaults::*;
+use crate::config::cli::LegacyCliConfig;
 use ockam::identity::Identities;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
@@ -63,6 +66,7 @@ pub struct CliState {
     pub vaults: VaultsState,
     pub identities: IdentitiesState,
     pub nodes: NodesState,
+    pub spaces: SpacesState,
     pub projects: ProjectsState,
     pub credentials: CredentialsState,
     pub trust_contexts: TrustContextsState,
@@ -85,15 +89,42 @@ impl CliState {
     async fn initialize_cli_state() -> Result<CliState> {
         let default = Self::default_dir()?;
         let dir = default.as_path();
-        Ok(Self {
+        let state = Self {
             vaults: VaultsState::init(dir).await?,
             identities: IdentitiesState::init(dir).await?,
             nodes: NodesState::init(dir).await?,
+            spaces: SpacesState::init(dir).await?,
             projects: ProjectsState::init(dir).await?,
             credentials: CredentialsState::init(dir).await?,
             trust_contexts: TrustContextsState::init(dir).await?,
             dir: dir.to_path_buf(),
-        })
+        };
+        state.migrate()?;
+        Ok(state)
+    }
+
+    fn migrate(&self) -> Result<()> {
+        // If there is a `config.json` file, migrate its contents to the spaces and project states.
+        let legacy_config_path = self.dir.join("config.json");
+        if legacy_config_path.exists() {
+            let contents = std::fs::read_to_string(&legacy_config_path)?;
+            let legacy_config: LegacyCliConfig = serde_json::from_str(&contents)?;
+            let spaces = self.spaces.list()?;
+            for (name, lookup) in legacy_config.lookup.spaces() {
+                if !spaces.iter().any(|s| s.name() == name) {
+                    let config = SpaceConfig::from_lookup(&name, lookup);
+                    self.spaces.create(name, config)?;
+                }
+            }
+            let projects = self.projects.list()?;
+            for (name, lookup) in legacy_config.lookup.projects() {
+                if !projects.iter().any(|p| p.name() == name) {
+                    self.projects.create(name, lookup.into())?;
+                }
+            }
+            std::fs::remove_file(legacy_config_path)?;
+        }
+        Ok(())
     }
 
     pub fn delete(&self, force: bool) -> Result<()> {
@@ -107,6 +138,7 @@ impl CliState {
             (self.nodes.dir()),
             self.identities.dir(),
             self.vaults.dir(),
+            self.spaces.dir(),
             self.projects.dir(),
             self.credentials.dir(),
             self.trust_contexts.dir(),
@@ -196,7 +228,7 @@ impl CliState {
         let identity_name = name
             .map(|x| x.to_string())
             .unwrap_or_else(|| hex::encode(random::<[u8; 4]>()));
-        self.identities.create(&identity_name, identity_config)
+        self.identities.create(identity_name, identity_config)
     }
 
     pub async fn get_identities(&self, vault: Arc<Vault>) -> Result<Arc<Identities>> {
@@ -216,6 +248,24 @@ impl CliState {
 
 /// Test support
 impl CliState {
+    #[cfg(test)]
+    /// Initialize CliState at the given directory
+    async fn initialize_at(dir: &Path) -> Result<Self> {
+        std::fs::create_dir_all(dir.join("defaults"))?;
+        let state = Self {
+            vaults: VaultsState::init(dir).await?,
+            identities: IdentitiesState::init(dir).await?,
+            nodes: NodesState::init(dir).await?,
+            spaces: SpacesState::init(dir).await?,
+            projects: ProjectsState::init(dir).await?,
+            credentials: CredentialsState::init(dir).await?,
+            trust_contexts: TrustContextsState::init(dir).await?,
+            dir: dir.to_path_buf(),
+        };
+        state.migrate()?;
+        Ok(state)
+    }
+
     /// Create a new CliState (but do not run migrations)
     fn new(dir: &Path) -> Result<Self> {
         std::fs::create_dir_all(dir.join("defaults"))?;
@@ -223,6 +273,7 @@ impl CliState {
             vaults: VaultsState::load(dir)?,
             identities: IdentitiesState::load(dir)?,
             nodes: NodesState::load(dir)?,
+            spaces: SpacesState::load(dir)?,
             projects: ProjectsState::load(dir)?,
             credentials: CredentialsState::load(dir)?,
             trust_contexts: TrustContextsState::load(dir)?,
@@ -261,7 +312,10 @@ fn file_stem(path: &Path) -> Result<String> {
 mod tests {
     use super::*;
     use crate::config::cli::TrustContextConfig;
+    use crate::config::lookup::{ConfigLookup, LookupValue, ProjectLookup, SpaceLookup};
     use ockam_identity::IdentitiesVault;
+    use ockam_multiaddr::MultiAddr;
+    use std::str::FromStr;
 
     #[tokio::test]
     async fn test_create_default_identity_state() {
@@ -311,6 +365,64 @@ mod tests {
         // make sure that a named identity is not recreated twice
         assert_eq!(identity1.name(), identity2.name());
         assert_eq!(identity1.path(), identity2.path());
+    }
+
+    #[tokio::test]
+    async fn migrate_legacy_cli_config() {
+        // Before this migration, there was a `config.json` file in the root $OCKAM_HOME directory
+        // that contained a map of space names to space and project lookups. This test ensures that
+        // the migration correctly moves the space and project lookups into the new `spaces` and
+        // `projects` directories, respectively.
+        let space_name = "sname";
+        let space_lookup = SpaceLookup {
+            id: "sid".to_string(),
+        };
+        let project_lookup = ProjectLookup {
+            node_route: Some(MultiAddr::from_str("/node/p").unwrap()),
+            id: "pid".to_string(),
+            name: "pname".to_string(),
+            identity_id: Some(
+                IdentityIdentifier::from_str(
+                    "Pbb37445cacb3ca7a20040a9b36469e321a57d2cdd8c9e24fd1002897a012a610",
+                )
+                .unwrap(),
+            ),
+            authority: None,
+            okta: None,
+        };
+        let test_dir = CliState::test_dir().unwrap();
+        let legacy_config = {
+            let map = vec![
+                (space_name.to_string(), LookupValue::Space(space_lookup)),
+                (
+                    project_lookup.name.clone(),
+                    LookupValue::Project(project_lookup.clone()),
+                ),
+            ];
+            let lookup = ConfigLookup {
+                map: map.into_iter().collect(),
+            };
+            LegacyCliConfig {
+                dir: Some(test_dir.clone()),
+                lookup,
+            }
+        };
+        std::fs::create_dir_all(&test_dir).unwrap();
+        std::fs::write(
+            test_dir.join("config.json"),
+            serde_json::to_string(&legacy_config).unwrap(),
+        )
+        .unwrap();
+        let state = CliState::initialize_at(&test_dir).await.unwrap();
+        let space = state.spaces.get(space_name).unwrap();
+        assert_eq!(space.config().id, "sid");
+        let project = state.projects.get(&project_lookup.name).unwrap();
+        assert_eq!(project.config().id, project_lookup.id);
+        assert_eq!(
+            project.config().access_route,
+            project_lookup.node_route.unwrap().to_string()
+        );
+        assert!(!test_dir.join("config.json").exists());
     }
 
     #[ockam_macros::test(crate = "ockam")]
@@ -373,6 +485,22 @@ mod tests {
             name
         };
 
+        // Spaces
+        let space_name = {
+            let name = hex::encode(random::<[u8; 4]>());
+            let id = hex::encode(random::<[u8; 4]>());
+            let config = SpaceConfig {
+                name: name.clone(),
+                id,
+            };
+
+            let state = sut.spaces.create(&name, config).unwrap();
+            let got = sut.spaces.get(&name).unwrap();
+            assert_eq!(got, state);
+
+            name
+        };
+
         // Projects
         let project_name = {
             let name = hex::encode(random::<[u8; 4]>());
@@ -408,6 +536,8 @@ mod tests {
             "identities/data/authenticated_storage.lmdb".to_string(),
             "nodes".to_string(),
             format!("nodes/{node_name}"),
+            "spaces".to_string(),
+            format!("spaces/{space_name}.json"),
             "projects".to_string(),
             format!("projects/{project_name}.json"),
             "trust_contexts".to_string(),
@@ -417,6 +547,7 @@ mod tests {
             "defaults/vault".to_string(),
             "defaults/identity".to_string(),
             "defaults/node".to_string(),
+            "defaults/space".to_string(),
             "defaults/project".to_string(),
             "defaults/trust_context".to_string(),
         ];
@@ -483,7 +614,7 @@ mod tests {
                         found_entries.push(format!("{dir_name}/{file_name}"));
                     });
                 }
-                "defaults" => {
+                "defaults" | "spaces" | "projects" | "credentials" | "trust_contexts" => {
                     assert!(entry.path().is_dir());
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
@@ -492,42 +623,13 @@ mod tests {
                         found_entries.push(format!("{dir_name}/{entry_name}"));
                     });
                 }
-                "projects" => {
-                    assert!(entry.path().is_dir());
-                    found_entries.push(dir_name.clone());
-                    entry.path().read_dir().unwrap().for_each(|entry| {
-                        let entry = entry.unwrap();
-                        assert!(entry.path().is_file());
-                        let file_name = entry.file_name().into_string().unwrap();
-                        found_entries.push(format!("{dir_name}/{file_name}"));
-                    });
-                }
-                "credentials" => {
-                    assert!(entry.path().is_dir());
-                    found_entries.push(dir_name.clone());
-                    entry.path().read_dir().unwrap().for_each(|entry| {
-                        let entry = entry.unwrap();
-                        assert!(entry.path().is_dir());
-                        let file_name = entry.file_name().into_string().unwrap();
-                        found_entries.push(format!("{dir_name}/{file_name}"));
-                    });
-                }
-                "trust_contexts" => {
-                    assert!(entry.path().is_dir());
-                    found_entries.push(dir_name.clone());
-                    entry.path().read_dir().unwrap().for_each(|entry| {
-                        let entry = entry.unwrap();
-                        assert!(entry.path().is_file());
-                        let file_name = entry.file_name().into_string().unwrap();
-                        found_entries.push(format!("{dir_name}/{file_name}"));
-                    });
-                }
                 _ => panic!("unexpected file"),
             }
         });
         found_entries.sort();
         assert_eq!(expected_entries, found_entries);
 
+        sut.spaces.delete(&space_name).unwrap();
         sut.projects.delete(&project_name).unwrap();
         sut.nodes.delete(&node_name).unwrap();
         sut.identities.delete(&identity_name).unwrap();

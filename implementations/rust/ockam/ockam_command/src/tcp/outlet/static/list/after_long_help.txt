@@ -3,5 +3,5 @@
 $ ockam tcp-outlet list
 
 # To list the TCP outlets on a specific node
-$ ockam tcp-outlet list --node n1
+$ ockam tcp-outlet list --at n1
 ```

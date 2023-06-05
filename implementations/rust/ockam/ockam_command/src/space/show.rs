@@ -1,10 +1,10 @@
 use clap::Args;
 
 use ockam::Context;
+use ockam_api::cli_state::{SpaceConfig, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::Space;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts};
@@ -43,17 +43,18 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ShowCommand,
 ) -> crate::Result<()> {
+    let id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
+
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let controller_route = &cmd.cloud_opts.route();
-
-    // Lookup space
-    let id = config::get_space(ctx, &opts, &cmd.name, &node_name, &cmd.cloud_opts.route()).await?;
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::space::show(&id, controller_route)).await?;
     let space = rpc.parse_and_print_response::<Space>()?;
-    config::set_space(&opts.config, &space)?;
+    opts.state
+        .spaces
+        .overwrite(&cmd.name, SpaceConfig::from(&space))?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

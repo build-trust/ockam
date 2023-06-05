@@ -55,22 +55,22 @@ path = "src/bin/ockam.rs"
 anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
-clap = { version = "4.3.0", features = ["derive", "cargo", "wrap_help"] }
-clap_complete = "4.3.0"
-clap_mangen = "0.2.11"
+clap = { version = "4.3.1", features = ["derive", "cargo", "wrap_help"] }
+clap_complete = "4.3.1"
+clap_mangen = "0.2.12"
 cli-table = "0.4"
 colorful = "0.2"
 colors-transform = "0.2.11"
 console = "0.15.7"
 const-str = "0.5.4"
 crossbeam-channel = "0.5"
-ctrlc = { version = "3.3.1", features = ["termination"] }
+ctrlc = { version = "3.4.0", features = ["termination"] }
 dialoguer = "0.10"
 duct = "0.13"
 flate2 = "1.0.25"
 hex = "0.4"
 home = "0.5"
-indicatif = "0.17.3"
+indicatif = "0.17.4"
 indoc = "2.0"
 io-lifetimes = "1"
 is-terminal = "0.4"
@@ -107,7 +107,7 @@ termcolor = "1.2.0"
 termimad = "0.23"
 thiserror = "1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
-tokio = { version = "1.28.1", features = ["full"] }
+tokio = { version = "1.28.2", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-appender = "0.2.2"

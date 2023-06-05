@@ -1,5 +1,6 @@
 use super::Result;
 use crate::cloud::project::Project;
+use crate::config::lookup::ProjectLookup;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -11,6 +12,7 @@ pub struct ProjectsState {
 pub struct ProjectState {
     name: String,
     path: PathBuf,
+    config: ProjectConfig,
 }
 
 impl ProjectState {
@@ -20,6 +22,32 @@ impl ProjectState {
 }
 
 pub type ProjectConfig = Project;
+
+impl From<ProjectLookup> for Project {
+    fn from(lookup: ProjectLookup) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: Default::default(),
+            id: lookup.id,
+            name: lookup.name,
+            space_name: "".to_string(),
+            services: vec![],
+            access_route: lookup
+                .node_route
+                .map(|r| r.to_string())
+                .unwrap_or("".to_string()),
+            users: vec![],
+            space_id: "".to_string(),
+            identity: lookup.identity_id,
+            authority_access_route: lookup.authority.as_ref().map(|a| a.address().to_string()),
+            authority_identity: lookup.authority.as_ref().map(|a| hex::encode(a.identity())),
+            okta_config: lookup.okta.map(|o| o.into()),
+            confluent_config: None,
+            version: None,
+            running: None,
+        }
+    }
+}
 
 mod traits {
     use super::*;
@@ -51,12 +79,14 @@ mod traits {
             let contents = serde_json::to_string(&config)?;
             std::fs::write(&path, contents)?;
             let name = file_stem(&path)?;
-            Ok(Self { name, path })
+            Ok(Self { name, path, config })
         }
 
         fn load(path: PathBuf) -> Result<Self> {
             let name = file_stem(&path)?;
-            Ok(Self { name, path })
+            let contents = std::fs::read_to_string(&path)?;
+            let config = serde_json::from_str(&contents)?;
+            Ok(Self { name, path, config })
         }
 
         fn path(&self) -> &PathBuf {
@@ -64,7 +94,7 @@ mod traits {
         }
 
         fn config(&self) -> &Self::Config {
-            unreachable!()
+            &self.config
         }
     }
 }

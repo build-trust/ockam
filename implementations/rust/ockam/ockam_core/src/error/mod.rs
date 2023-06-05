@@ -1,6 +1,8 @@
 //! Error and Result types
 #![allow(missing_docs, dead_code)] // FIXME DONOTLAND
 use crate::compat::{boxed::Box, error::Error as ErrorTrait};
+#[cfg(feature = "std")]
+use crate::error::inner::Location;
 use serde::{Deserialize, Serialize};
 
 use self::code::ErrorCode;
@@ -87,6 +89,12 @@ impl Error {
         self.0.code
     }
 
+    /// Return the source location for this error
+    #[cfg(feature = "std")]
+    pub(super) fn source_location(&self) -> Location {
+        self.0.source_loc.clone()
+    }
+
     /// Attach additional unstructured information to the error.
     #[must_use]
     pub fn context(mut self, key: &str, val: impl core::fmt::Display) -> Self {
@@ -103,7 +111,25 @@ impl core::fmt::Debug for Error {
 
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        self.0.fmt(f)
+        #[cfg(feature = "std")]
+        match self.source() {
+            None => write!(
+                f,
+                "{}, source location: {}",
+                self.code(),
+                self.source_location()
+            )?,
+            Some(e) => write!(
+                f,
+                "{} ({}, source location: {})",
+                e,
+                self.code(),
+                self.source_location()
+            )?,
+        }
+        #[cfg(not(feature = "std"))]
+        write!(f, "{}", self.code())?;
+        Ok(())
     }
 }
 
@@ -111,10 +137,28 @@ impl ErrorTrait for Error {
     #[cfg(feature = "std")]
     fn source(&self) -> Option<&(dyn ErrorTrait + 'static)> {
         if let Some(e) = self.0.cause() {
-            let force_coersion: &(dyn ErrorTrait + 'static) = e;
-            Some(force_coersion)
+            let force_coercion: &(dyn ErrorTrait + 'static) = e;
+            Some(force_coercion)
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::errcode::{Kind, Origin};
+
+    #[test]
+    fn test_error_display() {
+        let e = Error::new(Origin::Node, Kind::NotFound, "address not found");
+        assert_eq!(e.to_string(), "address not found (origin: Node, kind: NotFound, source location: implementations/rust/ockam/ockam_core/src/error/mod.rs:155:17)")
+    }
+
+    #[test]
+    fn test_error_without_cause_display() {
+        let e = Error::new_without_cause(Origin::Node, Kind::NotFound);
+        assert_eq!(e.to_string(), "origin: Node, kind: NotFound, source location: implementations/rust/ockam/ockam_core/src/error/mod.rs:161:17")
     }
 }

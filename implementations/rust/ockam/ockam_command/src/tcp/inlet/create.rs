@@ -7,7 +7,7 @@ use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
     process_nodes_multiaddr, RpcBuilder,
 };
-use crate::{display_parse_logs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
+use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
 use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
@@ -28,8 +28,11 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
 /// Create TCP Inlets
 #[derive(Clone, Debug, Args)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
     #[arg(long, display_order = 900, id = "NODE")]

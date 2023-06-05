@@ -96,4 +96,9 @@ random_str() {
   echo "$(openssl rand -hex 8)"
 }
 
+# Returns a random port in the range 49152-65535
+random_port() {
+  shuf -i 49152-65535 -n 1
+}
+
 bats_require_minimum_version 1.5.0

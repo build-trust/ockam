@@ -1,12 +1,19 @@
-use crate::{fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
+const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
+
 /// Change the default vault
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct DefaultCommand {
     /// Name of the vault to be set as default
     name: String,

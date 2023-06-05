@@ -8,12 +8,13 @@ use aws_sdk_kms::operation::verify::VerifyError;
 use aws_sdk_kms::primitives::Blob;
 use aws_sdk_kms::types::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::Client;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{KeyId, Result};
-use ockam_vault::{PublicKey, SecretType, Signature};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 use tracing as log;
+
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{async_trait, KeyId, Result};
+use ockam_vault::{PublicKey, SecretType, Signature};
 
 /// AWS KMS client.
 #[derive(Debug, Clone)]
@@ -52,7 +53,7 @@ impl AwsKmsConfig {
 
 impl AwsKmsClient {
     /// Create a new AWS KMS client.
-    pub async fn new(config: AwsKmsConfig) -> Result<Self> {
+    pub async fn new(config: AwsKmsConfig) -> Result<AwsKmsClient> {
         let client = Client::new(&config.sdk_config);
         Ok(Self { client, config })
     }
@@ -150,34 +151,6 @@ impl AwsKmsClient {
         Err(Error::UnsupportedKeyType.into())
     }
 
-    /// Return the key id corresponding to a public key from the KMS
-    /// This function is particularly inefficient since it lists all the keys
-    /// This is why there is a cache in the AwsKms module to avoid this call
-    pub(crate) async fn get_key_id(&self, public_key: &PublicKey) -> Result<KeyId> {
-        let output = self.client.list_keys().send().await.map_err(|err| {
-            log::error!(%public_key, %err, "failed to list all keys");
-            Error::MissingKeys
-        })?;
-
-        if let Some(keys) = output.keys() {
-            log::debug!(%public_key, "received keys");
-            for key in keys {
-                if let Some(key_id) = key.key_id() {
-                    let one_public_key = self.public_key(&key_id.to_string()).await?;
-                    if &one_public_key == public_key {
-                        return Ok(key_id.into());
-                    }
-                }
-            }
-        }
-        log::error!(%public_key, "key id not found for public key {}", public_key);
-        Err(ockam_core::Error::new(
-            Origin::Vault,
-            Kind::NotFound,
-            Error::MissingKeyId,
-        ))
-    }
-
     /// Have AWS KMS verify a message signature.
     pub async fn verify(
         &self,
@@ -232,12 +205,70 @@ impl AwsKmsClient {
     }
 }
 
+/// This trait is introduced to help with the testing of the AwsSecurityModule
+#[async_trait]
+pub(crate) trait KmsClient {
+    async fn create_key(&self) -> Result<KeyId>;
+
+    async fn delete_key(&self, key_id: &KeyId) -> Result<bool>;
+
+    async fn public_key(&self, key_id: &KeyId) -> Result<PublicKey>;
+
+    async fn list_keys(&self) -> Result<Vec<KeyId>>;
+
+    async fn verify(&self, key_id: &KeyId, message: &[u8], signature: &Signature) -> Result<bool>;
+
+    async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature>;
+}
+
+#[async_trait]
+impl KmsClient for AwsKmsClient {
+    async fn create_key(&self) -> Result<KeyId> {
+        self.create_key().await
+    }
+
+    async fn delete_key(&self, key_id: &KeyId) -> Result<bool> {
+        self.delete_key(key_id).await
+    }
+
+    async fn list_keys(&self) -> Result<Vec<KeyId>> {
+        let output = self.client.list_keys().send().await.map_err(|err| {
+            log::error!(%err, "failed to list all keys");
+            Error::MissingKeys
+        })?;
+
+        if let Some(keys) = output.keys() {
+            let mut result = vec![];
+            for key in keys {
+                if let Some(key_id) = key.key_id() {
+                    result.push(key_id.to_string())
+                }
+            }
+            return Ok(result);
+        }
+
+        Ok(vec![])
+    }
+
+    async fn public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
+        self.public_key(key_id).await
+    }
+
+    async fn verify(&self, key_id: &KeyId, message: &[u8], signature: &Signature) -> Result<bool> {
+        self.verify(key_id, message, signature).await
+    }
+
+    async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature> {
+        self.sign(key_id, message).await
+    }
+}
+
 fn digest(data: &[u8]) -> Blob {
     Blob::new(Sha256::digest(data).to_vec())
 }
 
 #[derive(Error, Debug)]
-enum Error {
+pub(crate) enum Error {
     #[error("aws sdk error creating new key")]
     Create(#[from] SdkError<CreateKeyError>),
     #[error("aws sdk error signing message with key {keyid}")]

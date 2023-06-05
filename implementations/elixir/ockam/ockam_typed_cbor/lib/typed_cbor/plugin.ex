@@ -93,6 +93,8 @@ defmodule Ockam.TypedCBOR.Plugin do
       def decode_list!(data), do: Ockam.TypedCBOR.decode!({:list, minicbor_schema()}, data)
 
       def decode_list(data), do: Ockam.TypedCBOR.decode({:list, minicbor_schema()}, data)
+
+      def decode_list_strict(data), do: Ockam.TypedCBOR.decode_strict({:list, minicbor_schema()}, data)
     end
   end
 end

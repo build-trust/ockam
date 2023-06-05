@@ -7,12 +7,10 @@ mod list;
 use core::fmt::Write;
 
 use anyhow::Context as _;
-
 use clap::{Args, Subcommand};
 
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::Addon;
-
-use ockam_api::config::lookup::ConfigLookup;
 
 use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
 use crate::project::addon::configure_influxdb::AddonConfigureInfluxdbSubcommand;
@@ -99,12 +97,15 @@ impl Output for Vec<Addon<'_>> {
     }
 }
 
-pub fn base_endpoint(lookup: &ConfigLookup, project_name: &str) -> Result<String> {
-    let project_id = &lookup
-        .get_project(project_name)
+pub fn base_endpoint(cli_state: &CliState, project_name: &str) -> Result<String> {
+    let project_id = cli_state
+        .projects
+        .get(project_name)
         .context(format!(
             "Failed to get project {project_name} from config lookup"
         ))?
-        .id;
+        .config()
+        .id
+        .clone();
     Ok(format!("{project_id}/addons"))
 }

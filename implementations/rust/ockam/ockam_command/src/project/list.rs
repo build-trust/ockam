@@ -1,10 +1,10 @@
 use clap::Args;
 use ockam::Context;
+use ockam_api::cli_state::StateDirTrait;
 
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::delete_embedded_node;
-use crate::project::util::config;
 use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
@@ -42,7 +42,11 @@ async fn run_impl(
     rpc.request(api::project::list(&cmd.cloud_opts.route()))
         .await?;
     let projects = rpc.parse_and_print_response::<Vec<Project>>()?;
-    config::set_projects(&opts.config, &projects).await?;
+    for project in projects {
+        opts.state
+            .projects
+            .overwrite(&project.name, project.clone())?;
+    }
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

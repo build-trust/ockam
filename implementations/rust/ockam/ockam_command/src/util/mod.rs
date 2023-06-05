@@ -10,7 +10,6 @@ use anyhow::{anyhow, Context as _};
 use minicbor::{data::Type, Decode, Decoder, Encode};
 use tracing::{debug, error, trace};
 
-pub use config::*;
 use ockam::{
     Address, Context, MessageSendReceiveOptions, NodeBuilder, Route, TcpConnectionOptions,
     TcpTransport,
@@ -35,7 +34,6 @@ pub mod exitcode;
 pub mod orchestrator_api;
 pub mod parsers;
 
-mod config;
 pub(crate) mod output;
 
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -533,7 +531,7 @@ pub fn process_nodes_multiaddr(
                 let alias = proto
                     .cast::<Node>()
                     .ok_or_else(|| anyhow!("invalid node address protocol"))?;
-                let node_state = cli_state.nodes.get(&alias)?;
+                let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
                 let addr = node_setup.default_tcp_listener()?.maddr()?;
                 processed_addr.try_extend(&addr)?
@@ -558,7 +556,7 @@ pub fn clean_nodes_multiaddr(
         match p.code() {
             Node::CODE => {
                 let alias = p.cast::<Node>().expect("Failed to parse node name");
-                let node_state = cli_state.nodes.get(&alias)?;
+                let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
                 let addr = &node_setup.default_tcp_listener()?.addr;
                 match addr {
