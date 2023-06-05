@@ -1,7 +1,7 @@
 use core::ops::Deref;
 use ockam_core::{
-    async_trait, compat::sync::Arc, Address, Any, Decodable, LocalMessage, LocalOnwardOnly,
-    LocalSourceOnly, Mailbox, Mailboxes, Result, Routed, Worker,
+    async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, LocalMessage, Mailbox,
+    Mailboxes, Result, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
@@ -51,16 +51,8 @@ impl UdsRouter {
         };
 
         let handle = router.create_self_handle().await?;
-        let main_mailbox = Mailbox::new(
-            main_addr.clone(),
-            Arc::new(LocalSourceOnly),
-            Arc::new(LocalOnwardOnly),
-        );
-        let api_mailbox = Mailbox::new(
-            api_addr.clone(),
-            Arc::new(LocalSourceOnly),
-            Arc::new(LocalOnwardOnly),
-        );
+        let main_mailbox = Mailbox::new(main_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll));
+        let api_mailbox = Mailbox::new(api_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll));
 
         WorkerBuilder::new(router)
             .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))

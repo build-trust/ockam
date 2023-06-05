@@ -1,8 +1,8 @@
 use std::os::unix::net::SocketAddr;
 
 use ockam_core::{
-    async_trait, compat::sync::Arc, Address, Any, Decodable, DenyAll, Encodable, LocalMessage,
-    LocalOnwardOnly, Mailbox, Mailboxes, Message, Result, Routed, TransportMessage, Worker,
+    async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, DenyAll, Encodable,
+    LocalMessage, Mailbox, Mailboxes, Message, Result, Routed, TransportMessage, Worker,
 };
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
@@ -231,7 +231,7 @@ impl Worker for UdsSendWorker {
         let mailbox = Mailbox::new(
             self.rx_addr().clone(),
             Arc::new(DenyAll),
-            Arc::new(LocalOnwardOnly),
+            Arc::new(AllowAll),
         );
 
         ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
