@@ -105,7 +105,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn list(&self) -> Result<Vec<Self::Item>> {
         let mut items = Vec::default();
         for name in self.list_items_names()? {
-            if let Ok(item) = self.get(&name) {
+            if let Ok(item) = self.get(name) {
                 items.push(item);
             }
         }
@@ -140,7 +140,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn list_items_paths(&self) -> Result<Vec<PathBuf>> {
         let mut items = Vec::default();
         for name in self.list_items_names()? {
-            let path = self.path(&name);
+            let path = self.path(name);
             items.push(path);
         }
         Ok(items)
@@ -203,7 +203,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn is_empty(&self) -> Result<bool> {
         for entry in std::fs::read_dir(self.dir())? {
             let name = file_stem(&entry?.path())?;
-            if self.get(&name).is_ok() {
+            if self.get(name).is_ok() {
                 return Ok(false);
             }
         }
