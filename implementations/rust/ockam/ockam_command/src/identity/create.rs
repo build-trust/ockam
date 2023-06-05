@@ -24,7 +24,7 @@ pub struct CreateCommand {
     name: String,
 
     /// Vault name to store the identity key
-    #[arg(long)]
+    #[arg(long, value_name = "VAULT_NAME", global = true)]
     vault: Option<String>,
 }
 

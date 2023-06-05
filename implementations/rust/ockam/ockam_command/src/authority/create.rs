@@ -57,7 +57,7 @@ pub struct CreateCommand {
 
     /// Set this option if the authority node should not support
     /// the issuing of enrollment tokens
-    #[arg(long, value_name = "BOOL", default_value_t = false)]
+    #[arg(long, default_value_t = false)]
     no_token_enrollment: bool,
 
     /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage.
