@@ -309,6 +309,9 @@ pub fn run() {
 
 impl OckamCommand {
     pub fn run(self) {
+        // Sets a hook using our own Error Report Handler
+        // This allows us to customize how we
+        // format the error messages and their content.
         let _hook_result = miette::set_hook(Box::new(|_| Box::new(ErrorReportHandler::new())));
 
         let options = CommandGlobalOpts::new(self.global_args.clone());

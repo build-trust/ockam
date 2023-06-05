@@ -73,7 +73,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                     })
                 }
                 e => {
-                    return Err(crate::Error::new_software_error(
+                    return Err(crate::Error::new_internal_error(
                         "Unable to delete node:",
                         &e.to_string(),
                     ))

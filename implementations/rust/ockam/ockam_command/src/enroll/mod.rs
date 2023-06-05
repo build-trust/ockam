@@ -69,11 +69,11 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     display_parse_logs(&opts);
 
     let node_name = start_embedded_node(ctx, &opts, None).await.map_err(|e| {
-        Error::new_software_error("Failed to start an embedded node:", &e.to_string())
+        Error::new_internal_error("Failed to start an embedded node:", &e.to_string())
     })?;
 
     enroll(ctx, &opts, &cmd, &node_name).await.map_err(|e| {
-        Error::new_software_error(
+        Error::new_internal_error(
             "Failed to enroll your local identity with Ockam Orchestrator:",
             &e.to_string(),
         )
@@ -83,7 +83,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let space = default_space(ctx, &opts, &cloud_opts, &node_name)
         .await
         .map_err(|e| {
-            Error::new_software_error(
+            Error::new_internal_error(
                 "Unable to retrieve and set a space as default:",
                 &e.to_string(),
             )
@@ -91,7 +91,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let project = default_project(ctx, &opts, &cloud_opts, &node_name, &space)
         .await
         .map_err(|e| {
-            Error::new_software_error(
+            Error::new_internal_error(
                 &format!(
                     "Unable to retrieve and set a project as default with space: {}:",
                     space
@@ -105,7 +105,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let identifier = update_enrolled_identity(&opts, &node_name)
         .await
         .map_err(|e| {
-            Error::new_software_error(
+            Error::new_internal_error(
                 &format!(
                     "Unable to set the local identity as enrolled with project {}:",
                     project
