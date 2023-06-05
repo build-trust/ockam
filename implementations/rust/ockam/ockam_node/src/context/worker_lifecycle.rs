@@ -2,8 +2,7 @@ use crate::{Context, NodeError, NodeMessage, NodeReason};
 use crate::{ProcessorBuilder, WorkerBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    Address, IncomingAccessControl, Mailboxes, Message, OutgoingAccessControl, Processor, Result,
-    Worker,
+    Address, IncomingAccessControl, Mailboxes, OutgoingAccessControl, Processor, Result, Worker,
 };
 
 enum AddressType {
@@ -37,6 +36,49 @@ impl Context {
     /// [`wait_for()`](Self::wait_for).
     ///
     /// ```rust
+    /// use ockam_core::{Result, Worker, worker};
+    /// use ockam_node::Context;
+    ///
+    /// struct MyWorker;
+    ///
+    /// #[worker]
+    /// impl Worker for MyWorker {
+    ///     type Context = Context;
+    ///     type Message = String;
+    /// }
+    ///
+    /// async fn start_my_worker(ctx: &mut Context) -> Result<()> {
+    ///     ctx.start_worker("my-worker-address", MyWorker).await
+    /// }
+    /// ```
+    pub async fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
+    where
+        W: Worker<Context = Context>,
+    {
+        WorkerBuilder::new(worker)
+            .with_address(address)
+            .start(self)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Start a new worker instance at the given address
+    ///
+    /// A worker is an asynchronous piece of code that can send and
+    /// receive messages of a specific type.  This type is encoded via
+    /// the [`Worker`](ockam_core::Worker) trait.  If your code relies
+    /// on a manual run-loop you may want to use
+    /// [`start_processor()`](Self::start_processor) instead!
+    ///
+    /// Each address in the set must be unique and unused on the
+    /// current node.  Workers must implement the Worker trait and be
+    /// thread-safe.  Workers run asynchronously and will be scheduled
+    /// independently of each other.  To wait for the initialisation
+    /// of your worker to complete you can use
+    /// [`wait_for()`](Self::wait_for).
+    ///
+    /// ```rust
     /// use ockam_core::{AllowAll, Result, Worker, worker};
     /// use ockam_node::Context;
     ///
@@ -49,26 +91,25 @@ impl Context {
     /// }
     ///
     /// async fn start_my_worker(ctx: &mut Context) -> Result<()> {
-    ///     ctx.start_worker("my-worker-address", MyWorker, AllowAll, AllowAll).await
+    ///     ctx.start_worker_with_access_control("my-worker-address", MyWorker, AllowAll, AllowAll).await
     /// }
     /// ```
-    pub async fn start_worker<NM, NW>(
+    pub async fn start_worker_with_access_control<W>(
         &self,
         address: impl Into<Address>,
-        worker: NW,
+        worker: W,
         incoming: impl IncomingAccessControl,
         outgoing: impl OutgoingAccessControl,
     ) -> Result<()>
     where
-        NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
+        W: Worker<Context = Context>,
     {
-        WorkerBuilder::with_mailboxes(
-            Mailboxes::main(address, Arc::new(incoming), Arc::new(outgoing)),
-            worker,
-        )
-        .start(self)
-        .await?;
+        WorkerBuilder::new(worker)
+            .with_address(address)
+            .with_incoming_access_control(incoming)
+            .with_outgoing_access_control(outgoing)
+            .start(self)
+            .await?;
 
         Ok(())
     }

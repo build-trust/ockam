@@ -85,7 +85,8 @@ async fn main(ctx: Context) -> Result<()> {
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
     let allow_production = AbacAccessControl::create(node.repository(), "cluster", "production");
-    node.start_worker("echoer", Echoer, allow_production, AllowAll).await?;
+    node.start_worker_with_access_control("echoer", Echoer, allow_production, AllowAll)
+        .await?;
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.

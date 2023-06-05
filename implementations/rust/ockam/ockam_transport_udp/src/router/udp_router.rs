@@ -82,7 +82,8 @@ impl UdpRouter {
             Arc::new(AllowAll), // FIXME: @ac
             Arc::new(AllowAll), // FIXME: @ac
         );
-        WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]), router)
+        WorkerBuilder::new(router)
+            .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
             .start(ctx)
             .await?;
 
@@ -124,8 +125,7 @@ impl UdpRouter {
         let sender_addr = Address::random_tagged("UdpSendWorker");
         let sender = UdpSendWorker::new(sink);
         // FIXME: @ac
-        ctx.start_worker(sender_addr.clone(), sender, AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker(sender_addr.clone(), sender).await?;
 
         // Create listener
         UdpListenProcessor::start(ctx, stream, sender_addr.clone()).await?;

@@ -13,7 +13,6 @@ use ockam_api::nodes::service::{
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_core::flow_control::FlowControlPolicy;
-use ockam_core::AllowAll;
 use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
@@ -98,7 +97,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
-    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;
 
     Ok(cmd.node_name.clone())

@@ -129,7 +129,8 @@ impl RemoteForwarder {
             Some(heartbeat_source_address),
             outgoing_access_control,
         );
-        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+        WorkerBuilder::new(forwarder)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
@@ -175,7 +176,8 @@ impl RemoteForwarder {
             &addresses.main_internal
         );
         let mailboxes = Self::mailboxes(addresses, None, outgoing_access_control);
-        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+        WorkerBuilder::new(forwarder)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
@@ -225,7 +227,8 @@ impl RemoteForwarder {
             &addresses.main_internal
         );
         let mailboxes = Self::mailboxes(addresses, None, outgoing_access_control);
-        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+        WorkerBuilder::new(forwarder)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 

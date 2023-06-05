@@ -172,7 +172,8 @@ impl BleRouter {
                 Arc::new(AllowAll),
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, router)
+        WorkerBuilder::new(router)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 

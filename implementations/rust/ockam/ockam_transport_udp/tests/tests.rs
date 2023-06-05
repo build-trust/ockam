@@ -23,8 +23,7 @@ async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
 
     // Listener
     {
-        ctx.start_worker("echoer", Echoer::new(), AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker("echoer", Echoer::new()).await?;
         transport.listen(bind_addr.to_string()).await?;
     };
 
@@ -80,8 +79,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
     let transport = UdpTransport::create(ctx).await?;
 
     // Listener
-    ctx.start_worker("echoer", Echoer::new(), AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer::new()).await?;
     transport.listen(addr_ok.clone()).await?;
 
     // Send message to try and cause a socket send error
@@ -125,8 +123,7 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
 
     // Listeners
     // Note: it is the Echoer which is checking the UDP ports for this test
-    ctx.start_worker("echoer", Echoer::new(), AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer::new()).await?;
     for addr in &bind_addrs {
         transport.listen(addr.to_string()).await?;
     }
@@ -165,8 +162,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
 
     // Listener
     {
-        ctx.start_worker("echoer", Echoer::new(), AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker("echoer", Echoer::new()).await?;
         transport.listen(bind_addr.clone()).await?;
     };
 

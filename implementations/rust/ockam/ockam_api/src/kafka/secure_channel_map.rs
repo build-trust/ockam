@@ -11,7 +11,7 @@ use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Message;
-use ockam_core::{async_trait, route, Address, AllowAll, Error, Result, Routed, Worker};
+use ockam_core::{async_trait, route, Address, Error, Result, Routed, Worker};
 use ockam_identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
     SecureChannelRegistryEntry, SecureChannels,
@@ -211,8 +211,6 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 SecureChannelControllerListener::<F> {
                     controller: self.clone(),
                 },
-                AllowAll,
-                AllowAll,
             )
             .await
     }

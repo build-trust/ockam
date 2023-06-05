@@ -34,7 +34,7 @@ mod test {
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControlPolicy;
     use ockam_core::route;
-    use ockam_core::{Address, AllowAll};
+    use ockam_core::Address;
     use ockam_identity::SecureChannelListenerOptions;
     use ockam_multiaddr::proto::Service;
     use ockam_multiaddr::MultiAddr;
@@ -62,12 +62,7 @@ mod test {
             trace!("creating mock forwarder for: {alias}");
             //replicating the same logic of the orchestrator by adding consumer__
             context
-                .start_worker(
-                    Address::from_string(format!("consumer__{alias}")),
-                    Hop,
-                    AllowAll,
-                    AllowAll,
-                )
+                .start_worker(Address::from_string(format!("consumer__{alias}")), Hop)
                 .await?;
             Ok(())
         }

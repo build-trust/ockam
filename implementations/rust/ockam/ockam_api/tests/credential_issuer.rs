@@ -5,7 +5,7 @@ use ockam_api::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrus
 use ockam_core::compat::collections::{BTreeMap, HashMap};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlPolicy;
-use ockam_core::{Address, AllowAll, Result};
+use ockam_core::{Address, Result};
 use ockam_identity::{
     CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions,
     SecureChannelOptions, SecureChannels,
@@ -73,13 +73,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         "project42".into(),
     )
     .await?;
-    ctx.start_worker(
-        auth_worker_addr.clone(),
-        auth,
-        AllowAll, // In reality there is ABAC rule here.
-        AllowAll,
-    )
-    .await?;
+    ctx.start_worker(auth_worker_addr.clone(), auth).await?;
 
     // Connect to the API channel from the member:
     let e2a = secure_channels

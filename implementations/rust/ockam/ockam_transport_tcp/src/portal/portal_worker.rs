@@ -144,12 +144,10 @@ impl TcpPortalWorker {
         );
 
         // start worker
-        WorkerBuilder::with_mailboxes(
-            Mailboxes::new(internal_mailbox, vec![remote_mailbox]),
-            worker,
-        )
-        .start(ctx)
-        .await?;
+        WorkerBuilder::new(worker)
+            .with_mailboxes(Mailboxes::new(internal_mailbox, vec![remote_mailbox]))
+            .start(ctx)
+            .await?;
 
         Ok(())
     }

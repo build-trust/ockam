@@ -70,7 +70,8 @@ impl WorkerPair {
                 Arc::new(AllowAll), // FIXME: @ac
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, sender)
+        WorkerBuilder::new(sender)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
@@ -113,7 +114,8 @@ impl WorkerPair {
                 Arc::new(AllowAll), // FIXME: @ac
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, sender)
+        WorkerBuilder::new(sender)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 

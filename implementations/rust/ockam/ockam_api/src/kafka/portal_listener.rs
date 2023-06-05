@@ -1,5 +1,5 @@
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, Address, AllowAll, Any, Routed, Worker};
+use ockam_core::{route, Address, Any, Routed, Worker};
 use ockam_node::Context;
 use tracing::trace;
 
@@ -88,8 +88,6 @@ impl KafkaPortalListener {
                     secure_channel_controller,
                     uuid_to_name: Default::default(),
                 },
-                AllowAll,
-                AllowAll,
             )
             .await
     }

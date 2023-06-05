@@ -2,7 +2,6 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::access_control::AllowAll;
 use ockam::flow_control::FlowControlPolicy;
 use ockam::{node, Context, Result, TcpListenerOptions, TcpTransportExtension};
 
@@ -15,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = node.create_tcp_transport().await?;
 
     // Create an echoer worker
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     // Create a TCP listener and wait for incoming connections.
     let listener = tcp.listen("127.0.0.1:4000", TcpListenerOptions::new()).await?;

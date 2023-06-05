@@ -41,14 +41,12 @@ impl Forwarder {
             payload: Some(registration_payload.clone()),
         };
 
-        WorkerBuilder::with_access_control(
-            incoming_access_control,
-            outgoing_access_control,
-            address,
-            forwarder,
-        )
-        .start(ctx)
-        .await?;
+        WorkerBuilder::new(forwarder)
+            .with_address(address)
+            .with_incoming_access_control_arc(incoming_access_control)
+            .with_outgoing_access_control_arc(outgoing_access_control)
+            .start(ctx)
+            .await?;
 
         Ok(())
     }

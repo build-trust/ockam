@@ -9,7 +9,7 @@ use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlPolicy;
-use ockam_core::{route, AllowAll, IncomingAccessControl};
+use ockam_core::{route, IncomingAccessControl};
 use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
@@ -63,13 +63,7 @@ impl NodeManager {
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        ctx.start_worker(
-            addr.clone(),
-            service,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(addr.clone(), service).await?;
 
         self.registry
             .identity_services
@@ -114,13 +108,7 @@ impl NodeManager {
         }
 
         let server = Server::new(self.attributes_reader());
-        ctx.start_worker(
-            addr.clone(),
-            server,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(addr.clone(), server).await?;
 
         self.registry
             .authenticated_services
@@ -140,8 +128,7 @@ impl NodeManager {
             ));
         }
 
-        ctx.start_worker(addr.clone(), Uppercase, AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker(addr.clone(), Uppercase).await?;
 
         self.registry
             .uppercase_services
@@ -170,10 +157,11 @@ impl NodeManager {
             )
             .await?;
 
-        WorkerBuilder::with_access_control(ac, Arc::new(AllowAll), addr.clone(), Echoer)
+        WorkerBuilder::new(Echoer)
+            .with_address(addr.clone())
+            .with_incoming_access_control_arc(ac)
             .start(ctx)
-            .await
-            .map(|_| ())?;
+            .await?;
 
         self.registry
             .echoer_services
@@ -197,13 +185,7 @@ impl NodeManager {
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        ctx.start_worker(
-            addr.clone(),
-            Hop,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(addr.clone(), Hop).await?;
 
         self.registry.hop_services.insert(addr, Default::default());
 
@@ -254,10 +236,11 @@ impl NodeManager {
             .build_access_control(&resource, &action, project.as_str(), &rule)
             .await?;
         let issuer = CredentialsIssuer::new(self.identities(), self.identifier(), project).await?;
-        WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), addr.clone(), issuer)
+        WorkerBuilder::new(issuer)
+            .with_address(addr.clone())
+            .with_incoming_access_control_arc(abac)
             .start(ctx)
-            .await
-            .map(|_| ())?;
+            .await?;
         self.registry
             .authenticator_service
             .insert(addr, AuthenticatorServiceInfo::default());
@@ -290,10 +273,11 @@ impl NodeManager {
         )
         .await?;
 
-        WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), addr.clone(), direct)
+        WorkerBuilder::new(direct)
+            .with_address(addr.clone())
+            .with_incoming_access_control_arc(abac)
             .start(ctx)
-            .await
-            .map(|_| ())?;
+            .await?;
 
         self.registry
             .authenticator_service
@@ -301,8 +285,7 @@ impl NodeManager {
 
         // TODO: remove this once compatibility with old clients is not required anymore
         let legacy_api = crate::authenticator::direct::LegacyApiConverter::new();
-        ctx.start_worker("authenticator", legacy_api, AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker("authenticator", legacy_api).await?;
 
         Ok(())
     }
@@ -340,20 +323,13 @@ impl NodeManager {
         let abac = self
             .build_access_control(&resource, &action, project.as_str(), &rule)
             .await?;
-        let allow_all = Arc::new(AllowAll);
-        WorkerBuilder::with_access_control(abac, allow_all.clone(), issuer_addr.clone(), issuer)
+        WorkerBuilder::new(issuer)
+            .with_address(issuer_addr.clone())
+            .with_incoming_access_control_arc(abac)
             .start(ctx)
-            .await
-            .map(|_| ())?;
-        WorkerBuilder::with_access_control(
-            allow_all.clone(),
-            allow_all,
-            acceptor_addr.clone(),
-            acceptor,
-        )
-        .start(ctx)
-        .await
-        .map(|_| ())?;
+            .await?;
+        ctx.start_worker(acceptor_addr.clone(), acceptor).await?;
+
         self.registry
             .authenticator_service
             .insert(issuer_addr, AuthenticatorServiceInfo::default());
@@ -389,13 +365,7 @@ impl NodeManager {
             certificate,
             attributes,
         )?;
-        ctx.start_worker(
-            addr.clone(),
-            au,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(addr.clone(), au).await?;
         self.registry
             .okta_identity_provider_services
             .insert(addr, OktaIdentityProviderServiceInfo::default());
@@ -557,13 +527,7 @@ impl NodeManagerWorker {
         );
 
         let vs = crate::verifier::Verifier::new(node_manager.identities());
-        ctx.start_worker(
-            addr.clone(),
-            vs,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(addr.clone(), vs).await?;
 
         node_manager
             .registry

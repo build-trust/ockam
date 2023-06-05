@@ -1,7 +1,7 @@
 use ockam::identity::IdentityAttributesReader;
 use ockam_api::auth;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
-use ockam_core::{AllowAll, Result};
+use ockam_core::Result;
 use ockam_node::Context;
 use std::sync::Arc;
 
@@ -13,8 +13,7 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
            }"#,
     )?;
     let s: Arc<dyn IdentityAttributesReader> = Arc::new(s);
-    ctx.start_worker("auth", auth::Server::new(s), AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("auth", auth::Server::new(s)).await?;
 
     let mut client = auth::Client::new("auth".into(), ctx).await?;
 

@@ -74,7 +74,8 @@ impl ChannelWorker {
                 Arc::new(AllowAll),
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, worker)
+        WorkerBuilder::new(worker)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
@@ -117,7 +118,8 @@ impl ChannelWorker {
                 Arc::new(AllowAll),
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, worker)
+        WorkerBuilder::new(worker)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 

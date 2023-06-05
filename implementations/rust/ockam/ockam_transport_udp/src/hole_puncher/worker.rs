@@ -184,7 +184,8 @@ impl UdpHolePunchWorker {
             peer_received_at: Instant::now(),
             wait_for_hole_open_addr: None,
         };
-        WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![local_mailbox]), worker)
+        WorkerBuilder::new(worker)
+            .with_mailboxes(Mailboxes::new(main_mailbox, vec![local_mailbox]))
             .start(ctx)
             .await?;
 

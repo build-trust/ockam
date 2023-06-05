@@ -63,7 +63,7 @@ async fn main(ctx: Context) -> Result<()> {
         &sc_listener_flow_control_id,
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-    node.start_worker("issuer", credential_issuer, allow_known, AllowAll)
+    node.start_worker_with_access_control("issuer", credential_issuer, allow_known, AllowAll)
         .await?;
 
     // Initialize TCP Transport, create a TCP listener, and wait for connections.

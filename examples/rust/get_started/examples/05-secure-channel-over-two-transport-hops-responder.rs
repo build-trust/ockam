@@ -2,7 +2,6 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::access_control::AllowAll;
 use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, Context, Result, TcpListenerOptions, TcpTransportExtension};
@@ -15,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = node.create_tcp_transport().await?;
 
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     let bob = node.create_identity().await?;
 

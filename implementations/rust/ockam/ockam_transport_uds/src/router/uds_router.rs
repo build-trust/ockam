@@ -62,7 +62,8 @@ impl UdsRouter {
             Arc::new(LocalOnwardOnly),
         );
 
-        WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]), router)
+        WorkerBuilder::new(router)
+            .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
             .start(ctx)
             .await?;
 

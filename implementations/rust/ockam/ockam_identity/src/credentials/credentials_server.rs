@@ -10,7 +10,7 @@ use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Address, AllowAll, Error, Mailboxes, Result, Route};
+use ockam_core::{Address, Error, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
 use ockam_node::{Context, WorkerBuilder};
 
@@ -150,16 +150,10 @@ impl CredentialsServer for CredentialsServerModule {
             present_back,
         );
 
-        WorkerBuilder::with_mailboxes(
-            Mailboxes::main(
-                address,
-                Arc::new(AllowAll), // We check for Identity secure channel inside the worker
-                Arc::new(AllowAll), // FIXME: @ac Allow to respond anywhere using return_route
-            ),
-            worker,
-        )
-        .start(ctx)
-        .await?;
+        WorkerBuilder::new(worker)
+            .with_address(address)
+            .start(ctx)
+            .await?;
 
         Ok(())
     }
