@@ -9,10 +9,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{
-    AllowAll, AllowOnwardAddress, CompletedKeyExchange, LocalOnwardOnly, LocalSourceOnly, Mailbox,
-    Mailboxes, Route,
-};
+use ockam_core::{AllowAll, AllowOnwardAddress, CompletedKeyExchange, Mailbox, Mailboxes, Route};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::Signature;
 use tracing::info;
@@ -131,8 +128,8 @@ impl ExchangeCompleter {
             );
             let api_mailbox = Mailbox::new(
                 self.addresses.encryptor_api.clone(),
-                Arc::new(LocalSourceOnly),
-                Arc::new(LocalOnwardOnly),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
             );
 
             WorkerBuilder::new(encryptor)

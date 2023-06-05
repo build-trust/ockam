@@ -13,8 +13,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::time::Duration;
 use ockam_core::{
-    AllowAll, Any, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox, Mailboxes, NewKeyExchanger,
-    OutgoingAccessControl, Route, Routed,
+    AllowAll, Any, DenyAll, Mailbox, Mailboxes, NewKeyExchanger, OutgoingAccessControl, Route,
+    Routed,
 };
 use ockam_core::{Decodable, Worker};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
@@ -245,8 +245,8 @@ impl InitiatorWorker {
         );
         let api_mailbox = Mailbox::new(
             addresses.decryptor_api.clone(),
-            Arc::new(LocalSourceOnly),
-            Arc::new(LocalOnwardOnly),
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
         );
 
         Mailboxes::new(remote_mailbox, vec![internal_mailbox, api_mailbox])
