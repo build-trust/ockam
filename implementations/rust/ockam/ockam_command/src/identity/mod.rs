@@ -106,10 +106,10 @@ mod tests {
 
     #[test]
     fn test_initialize() {
-        let opts = CommandGlobalOpts::new(GlobalArgs::default()).set_quiet();
+        let state = CliState::test().unwrap();
+        let opts = CommandGlobalOpts::new_for_test(GlobalArgs::default(), state);
 
         // on start-up there is no default identity
-        let _ = opts.state.identities.default().and_then(|i| i.delete());
         assert!(opts.state.identities.default().is_err());
 
         // if no name is given then the default identity is initialized
