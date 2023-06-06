@@ -12,11 +12,11 @@ use ockam_core::{
         sync::Arc,
         vec::Vec,
     },
+    flow_control::FlowControls,
     Address, RelayMessage, Result,
 };
 
 /// Address states and associated logic
-#[derive(Default)]
 pub struct InternalMap {
     /// Registry of primary address to worker address record state
     address_records_map: BTreeMap<Address, AddressRecord>,
@@ -26,11 +26,28 @@ pub struct InternalMap {
     cluster_order: Vec<String>,
     /// Cluster data records
     clusters: BTreeMap<String, BTreeSet<Address>>,
-    /// Track stop information
+    /// Track stop information for Clusters
     stopping: BTreeSet<Address>,
+    /// Access to [`FlowControls`] to clean resources
+    flow_controls: FlowControls,
     /// Metrics collection and sharing
     #[cfg(feature = "metrics")]
     metrics: (Arc<AtomicUsize>, Arc<AtomicUsize>),
+}
+
+impl InternalMap {
+    pub(super) fn new(flow_controls: &FlowControls) -> Self {
+        Self {
+            address_records_map: Default::default(),
+            alias_map: Default::default(),
+            cluster_order: Default::default(),
+            clusters: Default::default(),
+            stopping: Default::default(),
+            flow_controls: flow_controls.clone(),
+            #[cfg(feature = "metrics")]
+            metrics: Default::default(),
+        }
+    }
 }
 
 impl InternalMap {
@@ -57,6 +74,7 @@ impl InternalMap {
         &mut self,
         primary_address: &Address,
     ) -> Option<AddressRecord> {
+        self.flow_controls.cleanup_address(primary_address);
         self.address_records_map.remove(primary_address)
     }
 
@@ -69,6 +87,7 @@ impl InternalMap {
     }
 
     pub(super) fn remove_alias(&mut self, alias_address: &Address) -> Option<Address> {
+        self.flow_controls.cleanup_address(alias_address);
         self.alias_map.remove(alias_address)
     }
 
@@ -197,7 +216,7 @@ impl InternalMap {
     /// Permanently free all remaining resources associated to a particular address
     pub(super) fn free_address(&mut self, primary: Address) {
         self.stopping.remove(&primary);
-        if let Some(record) = self.address_records_map.remove(&primary) {
+        if let Some(record) = self.remove_address_record(&primary) {
             for addr in record.address_set {
                 self.alias_map.remove(&addr);
             }

@@ -47,11 +47,11 @@ impl NodeBuilder {
 
         info!("Initializing ockam node");
 
-        let mut exe = Executor::new();
-        let addr: Address = "app".into();
-
         // Shared instance of FlowControls
         let flow_controls = FlowControls::new();
+
+        let mut exe = Executor::new(&flow_controls);
+        let addr: Address = "app".into();
 
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.

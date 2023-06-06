@@ -20,6 +20,7 @@ use crate::{
     NodeMessage, NodeReplyResult, RouterReply, ShutdownType,
 };
 use ockam_core::compat::{collections::BTreeMap, sync::Arc};
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{Address, RelayMessage, Result, TransportType};
 
 /// A pair of senders to a worker relay
@@ -63,11 +64,11 @@ fn determine_type(next: &Address) -> RouteType {
 }
 
 impl Router {
-    pub fn new() -> Self {
+    pub fn new(flow_controls: &FlowControls) -> Self {
         let (sender, receiver) = router_channel();
         Self {
             state: RouterState::new(sender),
-            map: InternalMap::default(),
+            map: InternalMap::new(flow_controls),
             external: BTreeMap::new(),
             receiver: Some(receiver),
         }
@@ -224,11 +225,7 @@ impl Router {
 
             StopAck(addr) if self.state.running() => {
                 trace!("Received shutdown ACK for address {}", addr);
-                if let Some(rec) = self.map.remove_address_record(&addr) {
-                    rec.address_set().iter().for_each(|addr| {
-                        self.map.remove_alias(addr);
-                    });
-                }
+                self.map.free_address(addr);
             }
 
             StopAck(addr) => {

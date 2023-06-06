@@ -17,6 +17,7 @@ use crate::metrics::Metrics;
 #[cfg(feature = "metrics")]
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::{
     errcode::{Kind, Origin},
@@ -38,10 +39,11 @@ pub struct Executor {
     metrics: Arc<Metrics>,
 }
 
-impl Default for Executor {
-    fn default() -> Self {
+impl Executor {
+    /// Create a new Ockam node [`Executor`] instance
+    pub fn new(flow_controls: &FlowControls) -> Self {
         let rt = Runtime::new().unwrap();
-        let router = Router::new();
+        let router = Router::new(flow_controls);
         #[cfg(feature = "metrics")]
         let metrics = Metrics::new(&rt, router.get_metrics_readout());
         Self {
@@ -50,13 +52,6 @@ impl Default for Executor {
             #[cfg(feature = "metrics")]
             metrics,
         }
-    }
-}
-
-impl Executor {
-    /// Create a new Ockam node [`Executor`] instance
-    pub fn new() -> Self {
-        Executor::default()
     }
 
     /// Get access to the internal message sender
