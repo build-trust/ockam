@@ -238,6 +238,23 @@ impl CommandGlobalOpts {
     }
 }
 
+#[cfg(test)]
+impl CommandGlobalOpts {
+    pub fn new_for_test(global_args: GlobalArgs, state: CliState) -> Self {
+        let terminal = Terminal::new(
+            global_args.quiet,
+            global_args.no_color,
+            global_args.no_input,
+            global_args.output_format.clone(),
+        );
+        Self {
+            global_args,
+            state,
+            terminal,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Subcommand)]
 pub enum OckamSubcommand {
     #[command(display_order = 800)]
