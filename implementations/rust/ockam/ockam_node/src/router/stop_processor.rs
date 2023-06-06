@@ -14,7 +14,7 @@ pub(super) async fn exec(
     trace!("Stopping processor '{}'", main_addr);
 
     // First check if the processor exists
-    let mut record = match router.map.internal.remove(main_addr) {
+    let mut record = match router.map.remove_address_record(main_addr) {
         Some(proc) => proc,
         None => {
             reply
@@ -27,7 +27,7 @@ pub(super) async fn exec(
     };
 
     // Remove  main address from addr_map too
-    router.map.addr_map.remove(main_addr);
+    router.map.remove_alias(main_addr);
 
     // Then send processor shutdown signal
     record.stop().await?;

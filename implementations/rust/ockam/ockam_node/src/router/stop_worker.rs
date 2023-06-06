@@ -15,7 +15,7 @@ pub(super) async fn exec(
     trace!("Stopping worker '{}'", addr);
 
     // Resolve any secondary address to the primary address
-    let primary_address = match router.map.addr_map.get(addr) {
+    let primary_address = match router.map.get_primary_address(addr) {
         Some(p) => p.clone(),
         None => {
             reply
@@ -28,7 +28,7 @@ pub(super) async fn exec(
     };
 
     // Get the internal address record
-    let record = match router.map.internal.get_mut(&primary_address) {
+    let record = match router.map.get_address_record_mut(&primary_address) {
         Some(r) => r,
         None => {
             // Actually should not happen
@@ -41,14 +41,6 @@ pub(super) async fn exec(
         }
     };
 
-    // Remove all secondary addresses
-    for addr in record.address_set().iter() {
-        router.map.addr_map.remove(addr);
-    }
-
-    // removes aliases from the address record to allow for reuse right after stop
-    record.keep_only_primary_address();
-
     reply
         .send(RouterReply::ok())
         .await
@@ -60,7 +52,7 @@ pub(super) async fn exec(
     // For detached workers (i.e. Context's without a mailbox relay
     // running) we simply drop the record
     if !detached {
-        record.sender_drop();
+        record.drop_sender();
     } else {
         router.map.free_address(primary_address);
     }

@@ -113,7 +113,7 @@ pub(super) async fn immediate(
     router: &mut Router,
     reply: SmallSender<NodeReplyResult>,
 ) -> Result<()> {
-    router.map.internal.clear();
+    router.map.clear_address_records_map();
     router.state.kill();
     reply
         .send(RouterReply::ok())

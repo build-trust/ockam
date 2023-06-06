@@ -86,7 +86,7 @@ impl Router {
     }
 
     pub fn init(&mut self, addr: Address, senders: SenderPair) {
-        self.map.internal.insert(
+        self.map.insert_address_record(
             addr.clone(),
             AddressRecord::new(
                 vec![addr.clone()],
@@ -99,7 +99,7 @@ impl Router {
                 },
             ),
         );
-        self.map.addr_map.insert(addr.clone(), addr);
+        self.map.insert_alias(&addr, &addr);
     }
 
     pub fn sender(&self) -> SmallSender<NodeMessage> {
@@ -130,7 +130,7 @@ impl Router {
         addr: &Address,
         reply: &SmallSender<NodeReplyResult>,
     ) -> Result<()> {
-        if self.map.internal.contains_key(addr) {
+        if self.map.address_records_map().contains_key(addr) {
             let node = NodeError::Address(addr.clone());
 
             reply
@@ -217,16 +217,16 @@ impl Router {
                         .send(RouterReply::ok())
                         .await
                         .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
-                    self.map.internal.clear();
+                    self.map.clear_address_records_map();
                     return Ok(true);
                 }
             }
 
             StopAck(addr) if self.state.running() => {
                 trace!("Received shutdown ACK for address {}", addr);
-                if let Some(rec) = self.map.internal.remove(&addr) {
+                if let Some(rec) = self.map.remove_address_record(&addr) {
                     rec.address_set().iter().for_each(|addr| {
-                        self.map.addr_map.remove(addr);
+                        self.map.remove_alias(addr);
                     });
                 }
             }
@@ -246,7 +246,7 @@ impl Router {
 
             ListWorkers(sender) => sender
                 .send(RouterReply::workers(
-                    self.map.internal.keys().cloned().collect(),
+                    self.map.address_records_map().keys().cloned().collect(),
                 ))
                 .await
                 .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?,
