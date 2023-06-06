@@ -238,7 +238,7 @@ teardown() {
   assert_success
   assert_output --partial "$addr"
 
-#  # Delete the listener
+  # Delete the listener
   run "$OCKAM" tcp-listener delete --at n1 "$addr"
   assert_success
 

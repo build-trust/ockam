@@ -98,7 +98,23 @@ random_str() {
 
 # Returns a random port in the range 49152-65535
 random_port() {
-  shuf -i 49152-65535 -n 1
+  port=0
+  max_retries=10
+  i=0
+  while [[ $i -lt $max_retries ]]; do
+    port=$(shuf -i 10000-65535 -n 1)
+    netstat -latn -p tcp | grep $port >/dev/null
+    if [[ $? == 1 ]]; then
+      break
+    fi
+    ((i++))
+    continue
+  done
+  if [ $i -eq $max_retries ]; then
+    echo "Failed to find an open port" >&3
+    exit 1
+  fi
+  echo "$port"
 }
 
 bats_require_minimum_version 1.5.0

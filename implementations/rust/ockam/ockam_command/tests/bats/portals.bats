@@ -240,7 +240,6 @@ teardown() {
   assert_success
 }
 
-
 @test "portals - local inlet and outlet, removing and re-creating the outlet" {
   port="$(random_port)"
   node_port="$(random_port)"
@@ -277,7 +276,6 @@ teardown() {
   run curl --head --retry-connrefused --retry 20 --retry-max-time 20 --max-time 1 "127.0.0.1:$port"
   assert_success
 }
-
 
 @test "portals - local inlet and outlet passing though a relay, removing and re-creating the outlet" {
   port="$(random_port)"
