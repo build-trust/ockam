@@ -32,6 +32,10 @@ impl FlowControls {
         policy: FlowControlPolicy,
     ) {
         let address = address.into();
+        debug!(
+            "Add Consumer {address} to {flow_control_id} with {:?}",
+            policy
+        );
         let mut consumers = self.consumers.write().unwrap();
         if !consumers.contains_key(flow_control_id) {
             consumers.insert(flow_control_id.clone(), Default::default());
@@ -53,6 +57,9 @@ impl FlowControls {
         additional_addresses: Vec<Address>,
     ) {
         let address = address.into();
+        debug!(
+            "Add Producer {address} with additional_addresses {:?} to {flow_control_id} with spawner {:?}", additional_addresses, spawner_flow_control_id
+        );
         let mut producers = self.producers.write().unwrap();
         producers.insert(
             address.clone(),
@@ -74,6 +81,7 @@ impl FlowControls {
     /// Mark that given [`Address`] is a Spawner for to the given [`FlowControlId`]
     pub fn add_spawner(&self, address: impl Into<Address>, flow_control_id: &FlowControlId) {
         let address = address.into();
+        debug!("Add Spawner {address} with {flow_control_id}");
         let mut spawners = self.spawners.write().unwrap();
 
         spawners.insert(address, flow_control_id.clone());

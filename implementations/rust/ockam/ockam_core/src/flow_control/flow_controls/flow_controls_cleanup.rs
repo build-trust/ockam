@@ -116,15 +116,20 @@ impl FlowControls {
 
     fn cleanup_consumer(&self, address: &Address) {
         // Just remove this Address from Consumers
-        self.consumers
-            .write()
-            .unwrap()
+        let mut consumers = self.consumers.write().unwrap();
+
+        consumers
             .iter_mut()
-            .for_each(|(_flow_control_id, info)| _ = info.0.remove(address))
+            .for_each(|(_flow_control_id, info)| _ = info.0.remove(address));
+
+        // Remove empty Maps
+        consumers.retain(|_, info| !info.0.is_empty());
     }
 
     /// Clean everything that is possible after [`Address`] no longer exists
     pub fn cleanup_address(&self, address: &Address) {
+        debug!("Cleanup FlowControls for {address}");
+
         self.cleanup_spawner(address);
         self.cleanup_producer(address);
         self.cleanup_consumer(address);
