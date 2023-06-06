@@ -51,18 +51,18 @@ async fn start(
         },
     );
 
-    router.map.internal.insert(addr.clone(), record);
+    router.map.insert_address_record(addr.clone(), record);
 
     #[cfg(feature = "std")]
     if let Ok(Some(dump_internals)) = get_env::<bool>("OCKAM_DUMP_INTERNALS") {
         if dump_internals {
-            trace!("{:#?}", router.map.internal);
+            trace!("{:#?}", router.map.address_records_map());
         }
     }
     #[cfg(all(not(feature = "std"), feature = "dump_internals"))]
-    trace!("{:#?}", router.map.internal);
+    trace!("{:#?}", router.map.address_records_map());
 
-    router.map.addr_map.insert(addr.clone(), addr.clone());
+    router.map.insert_alias(&addr, &addr);
 
     // For now we just send an OK back -- in the future we need to
     // communicate the current executor state

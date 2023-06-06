@@ -63,21 +63,17 @@ async fn start(
 
     router
         .map
-        .internal
-        .insert(primary_addr.clone(), address_record);
+        .insert_address_record(primary_addr.clone(), address_record);
 
     #[cfg(feature = "std")]
     if let Ok(Some(_)) = get_env::<String>("OCKAM_DUMP_INTERNALS") {
-        trace!("{:#?}", router.map.internal);
+        trace!("{:#?}", router.map.address_records_map());
     }
     #[cfg(all(not(feature = "std"), feature = "dump_internals"))]
     trace!("{:#?}", router.map.internal);
 
     addrs.iter().for_each(|addr| {
-        router
-            .map
-            .addr_map
-            .insert(addr.clone(), primary_addr.clone());
+        router.map.insert_alias(addr, primary_addr);
     });
 
     // For now we just send an OK back -- in the future we need to
