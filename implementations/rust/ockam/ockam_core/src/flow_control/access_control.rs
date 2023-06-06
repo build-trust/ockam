@@ -51,7 +51,7 @@ impl OutgoingAccessControl for FlowControlOutgoingAccessControl {
 
         let consumers_info = self.flow_controls.get_consumers_info(&self.flow_control_id);
 
-        if let Some(policy) = consumers_info.0.get(next) {
+        if let Some(policy) = consumers_info.get_policy(next) {
             match policy {
                 FlowControlPolicy::ProducerAllowMultiple => {
                     return crate::allow();
@@ -66,7 +66,7 @@ impl OutgoingAccessControl for FlowControlOutgoingAccessControl {
                 .flow_controls
                 .get_consumers_info(spawner_flow_control_id);
 
-            if let Some(policy) = consumers_info.0.get(next) {
+            if let Some(policy) = consumers_info.get_policy(next) {
                 match policy {
                     FlowControlPolicy::SpawnerAllowOnlyOneMessage => {
                         // We haven't yet sent a message to this address
