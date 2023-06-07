@@ -127,36 +127,31 @@ fn generate_markdown_page(
     let buffer = &mut buffer;
 
     let mut p_cmd = get_parent_commands(parent_cmd, " ");
-    if !p_cmd.is_empty() {
-        p_cmd.push(' ');
-    }
 
     // Title
-    writeln!(
+    write!(
         buffer,
-        "## {} {}\n",
+        "## {} {} ",
         p_cmd.replace("ockam ", ""),
         cmd.get_name()
     )?;
-    writeln!(buffer, "---\n")?;
+
+    // Separator after title
+    writeln!(buffer, "\n---\n")?;
+
+    // Before help: used to print the `Preview` tag
+    if let Some(s) = cmd.get_before_help().map(|s| s.to_string()) {
+        if !s.is_empty() {
+            writeln!(buffer, "{}", s)?;
+        }
+    }
 
     // Usage (e.g. "ockam space create [OPTIONS] [NAME] [-- <ADMINS>...]")
     let mut usage = cmd.clone().render_usage().to_string();
     // remove `Usage:` from the string
     usage = usage.replace("Usage: ", "");
     // append parent commands in beginning of the usage
-    writeln!(buffer, "`{}{}`\n", p_cmd, usage)?;
-
-    // Before help (i.e. the doc string of the command): print either the short or the long version
-    if let Some(s) = cmd.get_before_help().map(|s| s.to_string()) {
-        if !s.is_empty() {
-            writeln!(buffer, "{}.\n", s)?;
-        }
-    } else if let Some(s) = cmd.get_before_long_help().map(|s| s.to_string()) {
-        if !s.is_empty() {
-            writeln!(buffer, "{}", process_txt_to_md(s))?;
-        }
-    }
+    writeln!(buffer, "`{} {} `\n", p_cmd, usage)?;
 
     // Long about; fallback to short about
     if let Some(s) = cmd.get_long_about().map(|s| s.to_string()) {
