@@ -411,8 +411,8 @@ teardown() {
 
   # Test listing node with no relays
   run $OCKAM relay list --at /node/n1
-  assert_output --partial "No relays found on node n1"
-  assert_failure
+  assert_output --partial "No Relays found on node n1"
+  assert_success
 }
 
 @test "relay - show a relay on a node" {
