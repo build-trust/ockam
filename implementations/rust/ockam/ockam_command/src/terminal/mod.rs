@@ -253,9 +253,10 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
     }
 
     pub fn write_line(&self, msg: impl AsRef<str>) -> Result<&Self> {
-        if self.quiet {
+        if self.quiet || !self.stdout.is_tty() || self.output_format != OutputFormat::Plain {
             return Ok(self);
         }
+
         self.stderr
             .write_line(msg)
             .map_err(|e| Error::new_internal_error("Unable to write to stderr.", &e.to_string()))?;

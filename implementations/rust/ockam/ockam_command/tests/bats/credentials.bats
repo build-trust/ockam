@@ -28,11 +28,9 @@ teardown() {
 
   run "$OCKAM" credential verify --issuer "$idt1" --credential-path "$OCKAM_HOME/credential"
   assert_success
-  assert_output --partial "Verified Credential"
 
   run "$OCKAM" credential store smart_nyc_cred --issuer "$idt1" --credential-path "$OCKAM_HOME/credential"
   assert_success
-  assert_output --partial "Credential smart_nyc_cred stored"
 
   run "$OCKAM" credential show smart_nyc_cred
   assert_success
