@@ -376,7 +376,7 @@ pub struct TrustContextOpts {
     )]
     pub trust_context: Option<String>,
 
-    #[arg(global = true, long = "project")]
+    #[arg(global = true, long = "project", value_name = "PROJECT_NAME")]
     pub project: Option<String>,
 }
 
