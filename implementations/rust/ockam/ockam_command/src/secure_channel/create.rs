@@ -1,18 +1,23 @@
 use crate::{
+    error::Error,
+    fmt_log, fmt_ok,
+    terminal::OckamColor,
     util::{exitcode, extract_address_value, node_rpc},
-    CommandGlobalOpts, OutputFormat, Result,
+    CommandGlobalOpts, Result,
 };
 
 use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam_core::api::Request;
 use serde_json::json;
+use tokio::{sync::Mutex, try_join};
 
 use crate::docs;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::util::api::CloudOpts;
-use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
+use crate::util::{clean_nodes_multiaddr, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::secure_channel::{
@@ -87,79 +92,12 @@ impl CreateCommand {
     fn parse_from_node(&self) -> String {
         extract_address_value(&self.from).unwrap_or_else(|_| "".to_string())
     }
-
-    fn print_output(
-        &self,
-        parsed_from: &String,
-        parsed_to: &MultiAddr,
-        options: &CommandGlobalOpts,
-        response: CreateSecureChannelResponse,
-    ) {
-        let route = &route![response.addr.to_string()];
-        match route_to_multiaddr(route) {
-            Some(multiaddr) => {
-                // if stdout is not interactive/tty write the secure channel address to it
-                // in case some other program is trying to read it as piped input
-                if !is_tty(std::io::stdout()) {
-                    println!("{multiaddr}")
-                }
-
-                // if output format is json, write json to stdout.
-                if options.global_args.output_format == OutputFormat::Json {
-                    let json = json!([{ "address": multiaddr.to_string() }]);
-                    println!("{json}");
-                }
-
-                // if stderr is interactive/tty and we haven't been asked to be quiet
-                // and output format is plain then write a plain info to stderr.
-                if is_tty(std::io::stderr())
-                    && !options.global_args.quiet
-                    && options.global_args.output_format == OutputFormat::Plain
-                {
-                    if options.global_args.no_color {
-                        eprintln!("\n  Created Secure Channel:");
-                        eprintln!("  • From: /node/{parsed_from}");
-                        eprintln!("  •   To: {} ({})", &self.to, &parsed_to);
-                        eprintln!("  •   At: {multiaddr}");
-                    } else {
-                        eprintln!("\n  Created Secure Channel:");
-
-                        // From:
-                        eprint!("{}", "  • From: ".light_magenta());
-                        eprintln!("{}", format!("/node/{parsed_from}").light_yellow());
-
-                        // To:
-                        eprint!("{}", "  •   To: ".light_magenta());
-                        let t = format!("{} ({})", &self.to, &parsed_to);
-                        eprintln!("{}", t.light_yellow());
-
-                        // At:
-                        eprint!("{}", "  •   At: ".light_magenta());
-                        eprintln!("{}", multiaddr.to_string().light_yellow());
-                    }
-                }
-            }
-            None => {
-                // if stderr is interactive/tty and we haven't been asked to be quiet
-                // and output format is plain then write a plain info to stderr.
-                if is_tty(std::io::stderr())
-                    && !options.global_args.quiet
-                    && options.global_args.output_format == OutputFormat::Plain
-                {
-                    eprintln!(
-                        "Could not convert returned secure channel address {route} into a multiaddr"
-                    );
-                }
-
-                // return the exitcode::PROTOCOL since if things are going as expected
-                // a route in the response should be convertible to multiaddr.
-                std::process::exit(exitcode::PROTOCOL);
-            }
-        };
-    }
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    opts.terminal
+        .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
+
     let tcp = TcpTransport::create(&ctx).await?;
 
     let from = &cmd.parse_from_node();
@@ -169,21 +107,64 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 
     // Delegate the request to create a secure channel to the from node.
     let mut rpc = RpcBuilder::new(&ctx, &opts, from).tcp(&tcp)?.build();
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
-    let payload = models::secure_channel::CreateSecureChannelRequest::new(
-        to,
-        authorized_identifiers,
-        CredentialExchangeMode::Mutual,
-        Some(identity),
-        cmd.credential.clone(),
-    );
-    let request = Request::post("/node/secure_channel").body(payload);
+    let send_req = async {
+        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+        let payload = models::secure_channel::CreateSecureChannelRequest::new(
+            to,
+            authorized_identifiers,
+            CredentialExchangeMode::Mutual,
+            Some(identity),
+            cmd.credential.clone(),
+        );
+        let request = Request::post("/node/secure_channel").body(payload);
 
-    rpc.request(request).await?;
-    let response = rpc.parse_response::<CreateSecureChannelResponse>()?;
+        rpc.request(request).await?;
+        let resp = rpc.parse_response::<CreateSecureChannelResponse>()?;
+        *is_finished.lock().await = true;
 
-    cmd.print_output(from, to, &opts, response);
+        Ok(resp)
+    };
+
+    let output_messages = vec!["Creating Secure Channel...".to_string()];
+
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (secure_channel, _) = try_join!(send_req, progress_output)?;
+
+    let route = &route![secure_channel.addr.to_string()];
+    let multi_addr = route_to_multiaddr(route).ok_or_else(|| {
+        Error::new(
+            exitcode::PROTOCOL,
+            miette!("Failed to convert route {route} to multi-address"),
+        )
+    })?;
+
+    let from = format!("/node/{}", from);
+    opts.terminal
+        .stdout()
+        .plain(
+            fmt_ok!(
+                "Secure Channel at {} created successfully\n",
+                multi_addr
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ) + &fmt_log!(
+                "From {} to {}",
+                from.color(OckamColor::PrimaryResource.color()),
+                cmd.to
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ),
+        )
+        .machine(multi_addr.to_string())
+        .json(json!([{ "address": multi_addr.to_string() }]))
+        .write_line()?;
+
+    //    cmd.print_output(from, to, &opts, response);
 
     Ok(())
 }
