@@ -56,7 +56,7 @@ async fn run_impl(
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let send_req = async {
-            let node_status = if (rpc.request(api::query_status()).await.is_ok()) {
+            let node_status = if rpc.request(api::query_status()).await.is_ok() {
                 let resp = rpc.parse_response::<NodeStatus>()?;
                 if let Ok(node_state) = opts.state.nodes.get(&node_name) {
                     // Update the persisted configuration data with the pids
