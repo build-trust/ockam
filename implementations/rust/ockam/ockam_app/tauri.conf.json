@@ -53,10 +53,17 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
+        "height": 580,
         "resizable": false,
         "title": "Ockam",
-        "width": 800
+        "width": 380,
+        "y": 0,
+        "x": 400,
+        "focus": true,
+        "visible": true,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "hiddenTitle": true
       }
     ]
   }

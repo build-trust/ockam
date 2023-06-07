@@ -5,7 +5,7 @@
 <style>
 .container {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: flex-start;    
@@ -15,6 +15,7 @@
 
     height: 100%;
     padding: 10px;
+    width: 100%;
 
 }
 </style>

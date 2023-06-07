@@ -10,16 +10,24 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
   "devDependencies": {
+    "@skeletonlabs/skeleton": "^1.6.2",
     "@sveltejs/adapter-static": "1.0.0-next.50",
     "@sveltejs/kit": "^1.5.0",
+    "@tailwindcss/forms": "^0.5.3",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.23",
+    "postcss-load-config": "^4.0.1",
     "svelte": "^3.54.0",
     "svelte-check": "^3.0.1",
+    "svelte-preprocess": "^5.0.3",
+    "tailwindcss": "^3.3.1",
     "tslib": "^2.4.1",
     "typescript": "^5.0.0",
     "vite": "^4.3.0"
   },
   "type": "module",
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-alpha.4"
+    "@tauri-apps/api": "2.0.0-alpha.4",
+    "svelte-material-icons": "^3.0.4"
   }
 }
