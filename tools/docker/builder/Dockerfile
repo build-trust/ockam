@@ -154,6 +154,7 @@ RUN set -xe; \
     echo "deb http://deb.debian.org/debian experimental main" >> /etc/apt/sources.list; \
     echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list; \
     apt update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes -t experimental libgtk-4-dev vite -y; \
     DEBIAN_FRONTEND=noninteractive apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y; \
     npm install -g pnpm@${PNPM_VERSION}; \
     npm install -g vite@${VITE_VERSION}; \
