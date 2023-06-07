@@ -63,7 +63,12 @@ pub struct Expression {
 
 impl Expression {
     pub fn new(action: Action, expr: Expr) -> Self {
-        Self { action, expr }
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            action,
+            expr,
+        }
     }
 
     pub fn action(&self) -> &Action {
