@@ -660,7 +660,7 @@ mod tests {
         let idt_config = IdentityConfig::new(&idt.identifier()).await;
         cli_state
             .identities
-            .create(&cli_state::random_name(), idt_config)?;
+            .create(cli_state::random_name(), idt_config)?;
 
         let n_state = cli_state
             .nodes
