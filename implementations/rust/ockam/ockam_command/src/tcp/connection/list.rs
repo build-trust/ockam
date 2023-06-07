@@ -15,11 +15,14 @@ use std::fmt::Write;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List TCP connections
 #[derive(Args, Clone, Debug)]
-#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
+#[command(
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ListCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
