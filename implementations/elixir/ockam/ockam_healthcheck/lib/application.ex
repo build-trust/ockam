@@ -29,6 +29,9 @@ defmodule Ockam.Healthcheck.Application do
               when is_integer(port) ->
                 api_worker = Map.get(target, "api_worker", "api")
                 healthcheck_worker = Map.get(target, "healthcheck_worker", "healthcheck")
+                path = Map.get(target, "path")
+                method = target |> Map.get("method", "nil") |> String.to_existing_atom()
+                body = Map.get(target, "body")
 
                 {:ok,
                  [
@@ -36,6 +39,9 @@ defmodule Ockam.Healthcheck.Application do
                      name: name,
                      host: host,
                      port: port,
+                     path: path,
+                     method: method,
+                     body: body,
                      api_worker: api_worker,
                      healthcheck_worker: healthcheck_worker
                    }
@@ -60,25 +66,50 @@ defmodule Ockam.Healthcheck.Application do
 
   def healthcheck_schedule() do
     tab = Application.get_env(:ockam_healthcheck, :crontab)
+    api_endpoint_tab = Application.get_env(:ockam_healthcheck, :api_crontab)
 
-    case tab do
-      nil ->
-        []
+    default_schedule =
+      case tab do
+        nil ->
+          []
 
-      _string ->
-        [
-          %{
-            id: "healthcheck_schedule",
-            start:
-              {SchedEx, :run_every,
-               [
-                 Ockam.Healthcheck,
-                 :check_targets,
-                 [],
-                 tab
-               ]}
-          }
-        ]
-    end
+        _string ->
+          [
+            %{
+              id: "healthcheck_schedule",
+              start:
+                {SchedEx, :run_every,
+                 [
+                   Ockam.Healthcheck,
+                   :check_targets,
+                   [],
+                   tab
+                 ]}
+            }
+          ]
+      end
+
+    api_endpoint_schedule =
+      case api_endpoint_tab do
+        nil ->
+          []
+
+        _string ->
+          [
+            %{
+              id: "api_healthcheck_schedule",
+              start:
+                {SchedEx, :run_every,
+                 [
+                   Ockam.Healthcheck,
+                   :check_api_endpoints,
+                   [],
+                   api_endpoint_tab
+                 ]}
+            }
+          ]
+      end
+
+    default_schedule ++ api_endpoint_schedule
   end
 end

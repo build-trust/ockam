@@ -15,16 +15,22 @@ defmodule Ockam.Healthcheck do
   def check_targets() do
     targets = Application.get_env(:ockam_healthcheck, :targets, [])
     ## TODO: parallel check for multiple targets
-    Enum.each(targets, &Ockam.Healthcheck.check_target/1)
+    Enum.each(targets, &Ockam.Healthcheck.check_target(&1, :ping_target))
+  end
+
+  def check_api_endpoints() do
+    targets = Application.get_env(:ockam_healthcheck, :api_targets, [])
+    Enum.each(targets, &Ockam.Healthcheck.check_target(&1, :check_api_endpoint))
   end
 
   def check_target(
         %Target{} = target,
+        fun,
         timeout \\ 5000
       ) do
     start_time = System.monotonic_time(:millisecond)
 
-    case ping_target(target, timeout) do
+    case apply(__MODULE__, fun, [target, timeout]) do
       :ok ->
         report_check_ok(target, start_time)
         :ok
@@ -66,6 +72,72 @@ defmodule Ockam.Healthcheck do
       end)
     end)
   end
+
+  def check_api_endpoint(target, timeout) do
+    %{
+      host: host,
+      path: path,
+      method: method,
+      body: body,
+      port: port,
+      api_worker: api_worker,
+      healthcheck_worker: healthcheck_worker
+    } = target
+
+    body = decode_body(body)
+
+    with_tcp(host, port, fn conn ->
+      with_channel(conn, api_worker, fn channel ->
+        {:ok, me} = Ockam.Node.register_random_address()
+        request_id = Enum.random(1..65_534)
+
+        message =
+          Ockam.API.Request.to_message(
+            %Ockam.API.Request{
+              id: request_id,
+              path: path,
+              method: method,
+              body: body,
+              to_route: [channel, healthcheck_worker]
+            },
+            [me]
+          )
+
+        Ockam.Router.route(message)
+
+        result =
+          receive do
+            %Message{
+              onward_route: [^me],
+              return_route: _return_route
+            } = message ->
+              case Ockam.API.Response.from_message(message) do
+                {:ok, %{request_id: ^request_id, status: status}} when status < 300 ->
+                  :ok
+
+                {:ok, %{request_id: ^request_id}} ->
+                  {:error, :internal_server_error}
+
+                {:ok, _message} ->
+                  {:error, :unknown_response}
+
+                {:error, {:decode_error, _, _}} ->
+                  {:error, :invalid_response}
+              end
+          after
+            timeout ->
+              {:error, :timeout}
+          end
+
+        Ockam.Node.unregister_address(me)
+
+        result
+      end)
+    end)
+  end
+
+  defp decode_body(nil), do: nil
+  defp decode_body(body), do: Base.decode64!(body)
 
   defp with_conn(conn_fun, op_fun, cleanup_fun, error_type) do
     case conn_fun.() do
@@ -231,6 +303,8 @@ defmodule Ockam.Healthcheck do
   defp identity_from_file(file) do
     case File.read(file) do
       {:ok, data} ->
+        data = :erlang.binary_to_term(data)
+
         with {:ok, identity} <- Ockam.Identity.make_identity(data) do
           {:ok, identity, nil}
         end
