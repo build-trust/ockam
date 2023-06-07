@@ -7,5 +7,14 @@ defmodule Ockam.Healthcheck.Target do
   """
 
   @enforce_keys [:name, :host, :port]
-  defstruct [:name, :host, :port, api_worker: "api", healthcheck_worker: "healthcheck"]
+  defstruct [
+    :name,
+    :host,
+    :port,
+    :path,
+    :method,
+    :body,
+    api_worker: "api",
+    healthcheck_worker: "healthcheck"
+  ]
 end
