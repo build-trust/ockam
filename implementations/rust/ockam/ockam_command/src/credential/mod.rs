@@ -96,17 +96,14 @@ impl CredentialOutput {
         vault_name: &str,
     ) -> Result<Self> {
         let config = state.config();
-        let is_verified = match validate_encoded_cred(
+        let is_verified = validate_encoded_cred(
             &config.encoded_credential,
             &config.issuer.identifier(),
             vault_name,
             opts,
         )
         .await
-        {
-            Ok(_) => true,
-            Err(_) => false,
-        };
+        .is_ok();
 
         let output = Self {
             name: state.name().to_string(),
