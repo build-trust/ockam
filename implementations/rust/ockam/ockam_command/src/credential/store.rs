@@ -67,9 +67,10 @@ async fn run_impl(
             (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
             (Some(credential), _) => credential.to_string(),
             _ => {
+                *is_finished.lock().await = true;
                 return crate::Result::Err(
                     miette!("Credential or Credential Path argument must be provided").into(),
-                )
+                );
             }
         };
 
