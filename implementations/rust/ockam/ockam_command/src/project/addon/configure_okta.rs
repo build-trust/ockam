@@ -29,12 +29,14 @@ use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_long_help.txt");
 
 /// Configure the Okta addon for a project
 #[derive(Clone, Debug, Args)]
 #[command(
     long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct AddonConfigureOktaSubcommand {

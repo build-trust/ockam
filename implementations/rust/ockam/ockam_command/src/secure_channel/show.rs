@@ -10,6 +10,7 @@ use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_core::Address;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 /// Show Secure Channels
@@ -17,6 +18,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 #[command(
     arg_required_else_help = true,
     long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct ShowCommand {

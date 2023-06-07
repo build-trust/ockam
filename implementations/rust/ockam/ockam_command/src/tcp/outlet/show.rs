@@ -10,11 +10,14 @@ use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::{Request, RequestBuilder};
 
+const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 /// Delete a TCP Outlet
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
+#[command(
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ShowCommand {
     /// Name assigned to outlet that will be shown
     #[arg(display_order = 900, required = true, id = "ALIAS", value_parser = alias_parser)]

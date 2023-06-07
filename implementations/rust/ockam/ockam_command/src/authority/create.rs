@@ -22,12 +22,14 @@ use std::path::PathBuf;
 use tracing::{debug, error};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
 /// Create an Authority node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::after_help(LONG_ABOUT),
+    long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 #[clap(group(ArgGroup::new("trusted").required(true).args(& ["trusted_identities", "reload_from_trusted_identities_file"])))]

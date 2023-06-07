@@ -12,12 +12,14 @@ use crate::terminal::OckamColor;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List Relays
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = false,
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {

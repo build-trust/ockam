@@ -11,7 +11,7 @@ const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 #[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    long_about = docs::after_help(LONG_ABOUT),
+    long_about = docs::about(LONG_ABOUT),
 )]
 pub struct AuthorityCommand {
     #[command(subcommand)]

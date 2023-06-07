@@ -1,0 +1,5 @@
+Preview features are available for use, but are still under rapid development.
+
+There may be some minor gaps in functionality or documentation.
+
+Your feedback on the enhancements you'd like to see on this feature are especially valuable, please send them through at https://github.com/build-trust/ockam/discussions/new
