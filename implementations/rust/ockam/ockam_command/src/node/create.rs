@@ -207,11 +207,7 @@ pub(crate) async fn run_impl(
 
         spawn_background_node(&opts, &cmd, addr).await?;
 
-        // let is_default = check_default(&opts, node_name);
-
         let is_node_up = is_node_up(&mut rpc, true).await?;
-
-        // print_query_status(&mut rpc, node_name, true, is_default).await?;
 
         *is_finished.lock().await = true;
         Ok(is_node_up)
