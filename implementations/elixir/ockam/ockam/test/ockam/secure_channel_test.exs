@@ -275,8 +275,9 @@ defmodule Ockam.SecureChannel.Tests do
 
     ref1 = Process.monitor(channel_pid)
 
-    assert alice == SecureChannel.get_remote_identity(channel)
-    assert alice_id == SecureChannel.get_remote_identity_id(channel)
+    assert {:ok, alice} == SecureChannel.get_remote_identity(channel)
+    assert {:ok, alice_id} == SecureChannel.get_remote_identity_id(channel)
+    assert {:ok, alice, alice_id} == SecureChannel.get_remote_identity_with_id(channel)
 
     {:ok, me} = Ockam.Node.register_random_address()
     Ockam.Router.route("PING!", [channel, me], [me])
