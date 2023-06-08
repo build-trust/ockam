@@ -76,8 +76,8 @@ defmodule Ockam.SecureChannel.Channel do
     field(:peer_identity, Identity.t())
     field(:peer_identity_id, binary())
     field(:h, binary())
-    field(:encrypt_st, XX.Encryptor.t())
-    field(:decrypt_st, XX.Decryptor.t())
+    field(:encrypt_st, Encryptor.t())
+    field(:decrypt_st, Decryptor.t())
   end
 
   # Secure channel' data.  Contains general fields used in every channel state, and
