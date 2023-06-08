@@ -16,7 +16,6 @@ use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustConte
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
 
-use crate::actions;
 use crate::auth::Server;
 use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::echoer::Echoer;
@@ -44,6 +43,7 @@ use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
 use crate::DefaultAddress;
+use crate::{actions, resources};
 
 use super::NodeManagerWorker;
 
@@ -695,6 +695,24 @@ impl NodeManagerWorker {
             let node_manager = self.node_manager.read().await;
             trust_context_id = node_manager.trust_context()?.id().to_string();
             secure_channels = node_manager.secure_channels.clone();
+
+            if let Some(project) = outlet_node_multiaddr.first().and_then(|value| {
+                value
+                    .cast::<ockam_multiaddr::proto::Project>()
+                    .map(|p| p.to_string())
+            }) {
+                let (_, project_identifier) = node_manager.resolve_project(&project)?;
+                // if we are using the project we need to allow safe communication based on the
+                // project identifier
+                node_manager
+                    .policies
+                    .set_policy(
+                        &resources::INLET,
+                        &actions::HANDLE_MESSAGE,
+                        &eq([ident("subject.identifier"), str(project_identifier)]),
+                    )
+                    .await?;
+            }
         }
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
