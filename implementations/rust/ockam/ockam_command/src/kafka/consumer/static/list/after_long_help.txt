@@ -3,5 +3,5 @@
 $ ockam kafka-consumer list
 
 # To list the kafka consumers on a specific node
-$ ockam kafka-consumer list --node n
+$ ockam kafka-consumer list --at n
 ```

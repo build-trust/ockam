@@ -3,5 +3,5 @@
 $ ockam kafka-consumer delete kcaddr
 
 # To delete a kafka consumers on a specific node
-$ ockam kafka-consumer delete kcaddr --node n
+$ ockam kafka-consumer delete kcaddr --at n
 ```
