@@ -89,6 +89,20 @@ defmodule Ockam.Credential.Authenticator.Direct.Client do
     end
   end
 
+  @spec list_member_ids(Ockam.Address.route()) :: {:ok, [String.t()]} | {:error, any()}
+  def list_member_ids(api_route) do
+    case ApiClient.sync_request(:get, "/member_ids", "", api_route) do
+      {:ok, %ApiResponse{status: 200, body: response}} ->
+        Ockam.TypedCBOR.decode_strict({:list, :string}, response)
+
+      {:ok, %ApiResponse{status: status, body: body}} ->
+        {:error, {:api_error, status, body}}
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
   @spec list_members(Ockam.Address.route()) ::
           {:ok, %{String.t() => AttributesEntry.t()}} | {:error, any()}
   def list_members(api_route) do
