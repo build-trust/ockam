@@ -87,10 +87,10 @@ impl Worker for IdentityChannelListener {
 
         let credentials = self.get_credentials(ctx).await?;
 
-        let decryptor_remote_address = HandshakeWorker::create(
+        HandshakeWorker::create(
             ctx,
             self.secure_channels.clone(),
-            addresses,
+            addresses.clone(),
             self.identifier.clone(),
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
@@ -107,7 +107,7 @@ impl Worker for IdentityChannelListener {
             .transport_mut()
             .onward_route
             .modify()
-            .replace(decryptor_remote_address);
+            .replace(addresses.decryptor_remote);
 
         ctx.forward(local_message).await
     }

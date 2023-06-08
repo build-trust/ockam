@@ -21,8 +21,7 @@ use alloc::sync::Arc;
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    Address, AllowAll, Any, Decodable, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl, Route,
-    Routed,
+    AllowAll, Any, Decodable, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl, Route, Routed,
 };
 use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
@@ -108,6 +107,7 @@ impl Worker for HandshakeWorker {
             self.decryptor = Some(self.finalize(context, final_state).await?);
             self.callback_sender.send(()).await?;
         };
+
         Ok(())
     }
 }
@@ -127,7 +127,7 @@ impl HandshakeWorker {
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
-    ) -> Result<Address> {
+    ) -> Result<()> {
         let vault = to_xx_vault(secure_channels.vault());
         let identities = secure_channels.identities();
         let state_machine: Box<dyn StateMachine> = if role.is_initiator() {
@@ -193,12 +193,11 @@ impl HandshakeWorker {
             if let Some(timeout) = timeout {
                 callback_waiter.receive_timeout(timeout).await?;
             }
-            Ok(addresses.encryptor)
         } else {
             // wait until the worker is ready to receive messages
             context.wait_for(addresses.decryptor_remote.clone()).await?;
-            Ok(addresses.decryptor_remote)
         }
+        Ok(())
     }
 
     /// Return the route for the other party's handshake worker
