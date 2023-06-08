@@ -3,5 +3,5 @@
 $ ockam kafka-producer list
 
 # To list the kafka producers on a specific node
-$ ockam kafka-producer list --node n
+$ ockam kafka-producer list --at n
 ```
