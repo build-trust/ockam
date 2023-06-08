@@ -8,6 +8,8 @@ defmodule Ockam.API.Response do
 
   defstruct [:id, :request_id, :status, :body, from_route: [], to_route: []]
 
+  @type t :: %__MODULE__{}
+
   @max_id 65_534
 
   defmodule Header do
