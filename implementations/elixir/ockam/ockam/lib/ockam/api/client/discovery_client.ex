@@ -34,7 +34,7 @@ defmodule Ockam.API.Client.DiscoveryClient do
   def list_services(access_route, discovery_route, timeout \\ 5_000) do
     api_route = access_route ++ discovery_route
 
-    case Client.sync_request(:get, "", nil, api_route, timeout) do
+    case Client.sync_request(:get, _path = "", _body = "", api_route, timeout) do
       {:ok, %Response{status: 200, body: service_infos}} ->
         {:ok,
          extend_routes_with_access_route(ServiceInfo.decode_list(service_infos), access_route)}
