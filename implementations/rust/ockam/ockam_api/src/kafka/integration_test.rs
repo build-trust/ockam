@@ -200,6 +200,10 @@ mod test {
                 TcpOutletOptions::new(),
             )
             .await?;
+
+        // give the secure channel between producer and consumer to finish initialization
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
         let plain_fetch_response = simulate_kafka_consumer_and_read_response(
             consumer_bootstrap_port,
             &mut consumer_mock_kafka,
