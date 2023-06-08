@@ -21,8 +21,8 @@ use alloc::sync::Arc;
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    Address, AllowAll, Any, Decodable, DenyAll, LocalOnwardOnly, LocalSourceOnly, Mailbox,
-    Mailboxes, OutgoingAccessControl, Route, Routed,
+    Address, AllowAll, Any, Decodable, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl, Route,
+    Routed,
 };
 use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
@@ -169,12 +169,13 @@ impl HandshakeWorker {
             decryptor: None,
         };
 
-        WorkerBuilder::with_mailboxes(
-            Self::create_mailboxes(&addresses, decryptor_outgoing_access_control),
-            worker,
-        )
-        .start(context)
-        .await?;
+        WorkerBuilder::new(worker)
+            .with_mailboxes(Self::create_mailboxes(
+                &addresses,
+                decryptor_outgoing_access_control,
+            ))
+            .start(context)
+            .await?;
 
         let decryptor_remote = addresses.decryptor_remote.clone();
         debug!(
@@ -229,8 +230,8 @@ impl HandshakeWorker {
         );
         let api_mailbox = Mailbox::new(
             addresses.decryptor_api.clone(),
-            Arc::new(LocalSourceOnly),
-            Arc::new(LocalOnwardOnly),
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
         );
 
         Mailboxes::new(remote_mailbox, vec![internal_mailbox, api_mailbox])
@@ -276,16 +277,14 @@ impl HandshakeWorker {
             );
             let api_mailbox = Mailbox::new(
                 self.addresses.encryptor_api.clone(),
-                Arc::new(LocalSourceOnly),
-                Arc::new(LocalOnwardOnly),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
             );
 
-            WorkerBuilder::with_mailboxes(
-                Mailboxes::new(main_mailbox, vec![api_mailbox]),
-                encryptor,
-            )
-            .start(context)
-            .await?;
+            WorkerBuilder::new(encryptor)
+                .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
+                .start(context)
+                .await?;
         }
 
         info!(
