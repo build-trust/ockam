@@ -33,7 +33,7 @@ defmodule Ockam.Worker.Authorization do
           | {atom(), atom()}
           | {atom(), atom(), list()}
 
-  @type config :: list(step()) | %{Address.t() => list(step())}
+  @type config :: list(step()) | %{Ockam.Address.t() => list(step())}
 
   @doc """
   Allow any messages to be handled by the worker
