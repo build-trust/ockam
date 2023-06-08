@@ -44,7 +44,7 @@ defmodule Ockam.SecureChannel.Channel do
 
   require Logger
 
-  @type encryption_options :: [{:vault, Vault.t()}, {:static_keypair, reference()}]
+  @type encryption_options :: [{:vault, Vault}, {:static_keypair, reference()}]
   @type authorization :: list() | map()
   @type trust_policies :: list()
   @type secure_channel_opt ::
@@ -66,7 +66,7 @@ defmodule Ockam.SecureChannel.Channel do
   # the handling of messages to them.  We can do that after the 3-packet handshake that
   # will simplify the handshaking anyway.
   typedstruct module: Handshaking do
-    field(:vault, Vault.t())
+    field(:vault, Vault)
     field(:waiting, {pid(), reference()})
     field(:xx, XX.t())
     field(:timer, reference())
