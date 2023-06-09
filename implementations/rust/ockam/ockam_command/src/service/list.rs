@@ -65,12 +65,17 @@ async fn run_impl(
 
     let (services, _) = try_join!(send_req, progress_output)?;
 
-    let list = opts.terminal.build_list(
+    let plain = opts.terminal.build_list(
         &services.list,
         &format!("Services on {}", node_name),
         &format!("No services found on {}", node_name),
     )?;
-    opts.terminal.stdout().plain(list).write_line()?;
+    let json = serde_json::to_string_pretty(&services.list)?;
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
 
     Ok(())
 }
