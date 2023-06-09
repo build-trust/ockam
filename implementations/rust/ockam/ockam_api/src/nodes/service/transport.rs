@@ -6,7 +6,7 @@ use crate::nodes::service::ApiTransport;
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::FlowControls;
 use ockam_core::Address;
 use ockam_node::Context;
 use ockam_transport_tcp::{
@@ -81,7 +81,7 @@ impl NodeManagerWorker {
                 socket_address: info.socket_address(),
                 worker_address: info.address().to_string(),
                 processor_address: info.receiver_address().to_string(),
-                flow_control_id: info.flow_control_id().clone(),
+                flow_control_id: info.flow_control_id().clone().into(),
             })
         };
 
@@ -108,7 +108,7 @@ impl NodeManagerWorker {
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
                     processor_address: "<none>".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
+                    flow_control_id: FlowControls::generate_producer_flow_control_id().into(), // FIXME
                 }));
             }
             Some(sender) => sender,
@@ -120,7 +120,7 @@ impl NodeManagerWorker {
             socket_address: sender.socket_address(),
             worker_address: sender.address().to_string(),
             processor_address: sender.receiver_address().to_string(),
-            flow_control_id: sender.flow_control_id().clone(),
+            flow_control_id: sender.flow_control_id().clone().into(),
         });
 
         Response::ok(req.id()).body(status)
@@ -138,7 +138,7 @@ impl NodeManagerWorker {
                 socket_address: info.socket_address(),
                 worker_address: "<none>".into(),
                 processor_address: info.address().to_string(),
-                flow_control_id: info.flow_control_id().clone(),
+                flow_control_id: info.flow_control_id().clone().into(),
             })
         };
 
@@ -161,7 +161,7 @@ impl NodeManagerWorker {
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
                     processor_address: "<none>".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
+                    flow_control_id: FlowControls::generate_producer_flow_control_id().into(), // FIXME
                 }));
             }
             Some(listener) => listener,
@@ -173,7 +173,7 @@ impl NodeManagerWorker {
             socket_address: listener.socket_address(),
             worker_address: "<none>".into(),
             processor_address: listener.address().to_string(),
-            flow_control_id: listener.flow_control_id().clone(),
+            flow_control_id: listener.flow_control_id().clone().into(),
         });
 
         Response::ok(req.id()).body(status)
@@ -196,11 +196,8 @@ impl NodeManagerWorker {
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
         for hop in node_manager.registry.hop_services.keys() {
-            ctx.flow_controls().add_consumer(
-                hop.clone(),
-                &options.producer_flow_control_id(),
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            ctx.flow_controls()
+                .add_consumer_for_producer(hop.clone(), &options.flow_control_id());
         }
 
         let res = node_manager
@@ -218,7 +215,7 @@ impl NodeManagerWorker {
                     socket_address: *connection.socket_address(),
                     worker_address: connection.sender_address().to_string(),
                     processor_address: connection.receiver_address().to_string(),
-                    flow_control_id: connection.flow_control_id().clone(),
+                    flow_control_id: connection.flow_control_id().clone().into(),
                 };
                 Response::ok(req.id()).body(TransportStatus::new(api_transport))
             }
@@ -230,7 +227,7 @@ impl NodeManagerWorker {
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
                     processor_address: "<none>".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
+                    flow_control_id: FlowControls::generate_producer_flow_control_id().into(), // FIXME
                 }))
             }
         };
@@ -261,7 +258,7 @@ impl NodeManagerWorker {
                     socket_address: *listener.socket_address(),
                     worker_address: "<none>".into(),
                     processor_address: listener.processor_address().to_string(),
-                    flow_control_id: listener.flow_control_id().clone(),
+                    flow_control_id: listener.flow_control_id().clone().into(),
                 };
                 Response::ok(req.id()).body(TransportStatus::new(api_transport))
             }
@@ -273,7 +270,7 @@ impl NodeManagerWorker {
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
                     processor_address: "<none>".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
+                    flow_control_id: FlowControls::generate_producer_flow_control_id().into(), // FIXME
                 }))
             }
         };

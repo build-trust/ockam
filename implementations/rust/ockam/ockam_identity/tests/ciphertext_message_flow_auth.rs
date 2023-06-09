@@ -6,7 +6,7 @@ use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 
 use crate::common::{
-    create_secure_channel, create_secure_channel_listener, message_should_not_pass,
+    create_secure_channel, create_secure_channel_listener, message_should_not_pass, FId,
 };
 
 mod common;
@@ -37,7 +37,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     message_should_not_pass(ctx, connection_to_alice.address()).await?;
 
     let bob_listener_info =
-        create_secure_channel_listener(ctx, listener.flow_control_id(), true).await?;
+        create_secure_channel_listener(ctx, FId::Spawner(listener.flow_control_id().clone()))
+            .await?;
 
     let channel_to_bob = create_secure_channel(ctx, &connection_to_bob.clone().into()).await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
@@ -75,7 +76,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let tcp_alice = TcpTransport::create(ctx).await?;
     let alice_tcp_options = TcpConnectionOptions::new();
-    let alice_flow_control_id = alice_tcp_options.producer_flow_control_id();
+    let alice_flow_control_id = alice_tcp_options.flow_control_id();
     let connection_to_bob = tcp_alice
         .connect(listener.socket_string(), alice_tcp_options)
         .await?;
@@ -91,7 +92,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     message_should_not_pass(ctx, connection_to_alice.address()).await?;
 
     let alice_listener_info =
-        create_secure_channel_listener(ctx, &alice_flow_control_id, false).await?;
+        create_secure_channel_listener(ctx, FId::Producer(alice_flow_control_id.clone())).await?;
 
     let channel_to_alice = create_secure_channel(ctx, connection_to_alice.address()).await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry

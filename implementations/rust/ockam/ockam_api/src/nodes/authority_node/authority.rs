@@ -10,7 +10,7 @@ use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::{SpawnerFlowControlId, SpawnerFlowControlPolicy};
 use ockam_core::{Error, Result, Worker};
 use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
@@ -73,7 +73,7 @@ impl Authority {
         &self,
         ctx: &Context,
         configuration: &Configuration,
-    ) -> Result<FlowControlId> {
+    ) -> Result<SpawnerFlowControlId> {
         // Start a secure channel listener that only allows channels with
         // authenticated identities.
         let tcp_listener_options = TcpListenerOptions::new();
@@ -81,9 +81,9 @@ impl Authority {
 
         let options = SecureChannelListenerOptions::new()
             .with_trust_policy(TrustEveryonePolicy)
-            .as_consumer(
+            .as_consumer_for_spawner(
                 &tcp_listener_flow_control_id,
-                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+                SpawnerFlowControlPolicy::AllowOnlyOneMessage,
             );
         let secure_channel_listener_flow_control_id = options.spawner_flow_control_id().clone();
 
@@ -108,7 +108,7 @@ impl Authority {
     pub async fn start_direct_authenticator(
         &self,
         ctx: &Context,
-        secure_channel_flow_control_id: &FlowControlId,
+        secure_channel_flow_control_id: &SpawnerFlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if configuration.no_direct_authentication {
@@ -123,10 +123,10 @@ impl Authority {
         .await?;
 
         let name = configuration.clone().authenticator_name();
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             name.clone(),
             secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
         self.start(ctx, configuration, name.clone(), EnrollerOnly, direct)
@@ -140,7 +140,7 @@ impl Authority {
     pub async fn start_enrollment_services(
         &self,
         ctx: &Context,
-        secure_channel_flow_control_id: &FlowControlId,
+        secure_channel_flow_control_id: &SpawnerFlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if configuration.no_token_enrollment {
@@ -155,10 +155,10 @@ impl Authority {
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             issuer_address.clone(),
             secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
         self.start(
@@ -175,10 +175,10 @@ impl Authority {
         // that service is to access a one-time token stating that the sender of the message
         // is a project member
         let acceptor_address: String = DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into();
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             acceptor_address.clone(),
             secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
         ctx.start_worker(acceptor_address.clone(), acceptor).await?;
@@ -193,7 +193,7 @@ impl Authority {
     pub async fn start_credential_issuer(
         &self,
         ctx: &Context,
-        secure_channel_flow_control_id: &FlowControlId,
+        secure_channel_flow_control_id: &SpawnerFlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         // create and start a credential issuer worker
@@ -205,10 +205,10 @@ impl Authority {
         .await?;
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             address.clone(),
             secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
         self.start(ctx, configuration, address.clone(), AnyMember, issuer)
@@ -222,7 +222,7 @@ impl Authority {
     pub async fn start_okta(
         &self,
         ctx: &Context,
-        secure_channel_flow_control_id: &FlowControlId,
+        secure_channel_flow_control_id: &SpawnerFlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if let Some(okta) = configuration.clone().okta {
@@ -234,10 +234,10 @@ impl Authority {
                 okta.attributes().as_slice(),
             )?;
 
-            ctx.flow_controls().add_consumer(
+            ctx.flow_controls().add_consumer_for_spawner(
                 okta.address.clone(),
                 secure_channel_flow_control_id,
-                FlowControlPolicy::SpawnerAllowMultipleMessages,
+                SpawnerFlowControlPolicy::AllowMultipleMessages,
             );
 
             ctx.start_worker(okta.address, okta_worker).await?;
@@ -249,14 +249,14 @@ impl Authority {
     pub async fn start_echo_service(
         &self,
         ctx: &Context,
-        secure_channel_flow_control_id: &FlowControlId,
+        secure_channel_flow_control_id: &SpawnerFlowControlId,
     ) -> Result<()> {
         let address = DefaultAddress::ECHO_SERVICE;
 
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             address,
             secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
         ctx.start_worker(address, Echoer).await

@@ -16,7 +16,7 @@ use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Id, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::FlowControlPolicy;
+use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_core::{route, IncomingAccessControl, Route};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
@@ -362,9 +362,9 @@ impl NodeManagerWorker {
 
         let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
         let options = if !check_credential {
-            options.as_consumer(
-                &node_manager.api_transport.flow_control_id,
-                FlowControlPolicy::SpawnerAllowMultipleMessages,
+            options.as_consumer_for_spawner(
+                &node_manager.api_transport_flow_control_id,
+                SpawnerFlowControlPolicy::AllowMultipleMessages,
             )
         } else {
             options
@@ -376,9 +376,9 @@ impl NodeManagerWorker {
                 .flow_controls()
                 .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
             {
-                options.as_consumer(
+                options.as_consumer_for_spawner(
                     &flow_control_id,
-                    FlowControlPolicy::SpawnerAllowMultipleMessages,
+                    SpawnerFlowControlPolicy::AllowMultipleMessages,
                 )
             } else {
                 options

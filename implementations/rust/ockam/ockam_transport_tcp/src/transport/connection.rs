@@ -30,7 +30,7 @@ impl TcpTransport {
         let addresses = Addresses::generate(mode);
 
         options.setup_flow_control(self.ctx.flow_controls(), &addresses);
-        let flow_control_id = options.producer_flow_control_id.clone();
+        let flow_control_id = options.flow_control_id.clone();
         let access_control = options.create_access_control(self.ctx.flow_controls());
 
         TcpSendWorker::start(

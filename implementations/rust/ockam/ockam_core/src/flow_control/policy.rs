@@ -4,11 +4,9 @@ use minicbor::{Decode, Encode};
 #[derive(Copy, Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(index_only)]
-pub enum FlowControlPolicy {
-    /// Producer is allowed to send any number of messages to the Consumer
-    #[n(0)] ProducerAllowMultiple,
+pub enum SpawnerFlowControlPolicy {
     /// Spawner is allowed to send only one message to the Consumer
-    #[n(1)] SpawnerAllowOnlyOneMessage,
+    #[n(0)] AllowOnlyOneMessage,
     /// Spawner is allowed to send any number of messages to the Consumer
-    #[n(2)] SpawnerAllowMultipleMessages,
+    #[n(1)] AllowMultipleMessages,
 }

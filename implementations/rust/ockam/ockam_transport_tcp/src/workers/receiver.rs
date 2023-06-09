@@ -2,7 +2,7 @@ use crate::workers::Addresses;
 use crate::{TcpConnectionMode, TcpReceiverInfo, TcpRegistry, TcpSendWorkerMsg};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::FlowControlId;
+use ockam_core::flow_control::ProducerFlowControlId;
 use ockam_core::{
     async_trait, AllowOnwardAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl,
 };
@@ -26,7 +26,7 @@ pub(crate) struct TcpRecvProcessor {
     socket_address: SocketAddr,
     addresses: Addresses,
     mode: TcpConnectionMode,
-    flow_control_id: FlowControlId,
+    flow_control_id: ProducerFlowControlId,
 }
 
 impl TcpRecvProcessor {
@@ -37,7 +37,7 @@ impl TcpRecvProcessor {
         socket_address: SocketAddr,
         addresses: Addresses,
         mode: TcpConnectionMode,
-        flow_control_id: FlowControlId,
+        flow_control_id: ProducerFlowControlId,
     ) -> Self {
         Self {
             registry,
@@ -57,7 +57,7 @@ impl TcpRecvProcessor {
         addresses: &Addresses,
         socket_address: SocketAddr,
         mode: TcpConnectionMode,
-        flow_control_id: &FlowControlId,
+        flow_control_id: &ProducerFlowControlId,
         receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Result<()> {
         let receiver = TcpRecvProcessor::new(

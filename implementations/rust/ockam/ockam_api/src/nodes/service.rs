@@ -26,7 +26,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::{FlowControlId, SpawnerFlowControlId, SpawnerFlowControlPolicy};
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_identity::TrustContext;
@@ -91,7 +91,7 @@ pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Err
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
     node_name: String,
-    api_transport: ApiTransport,
+    api_transport_flow_control_id: SpawnerFlowControlId,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
@@ -268,14 +268,17 @@ pub struct ApiTransport {
 }
 
 pub struct NodeManagerTransportOptions {
-    api_transport: ApiTransport,
+    api_transport_flow_control_id: SpawnerFlowControlId,
     tcp_transport: TcpTransport,
 }
 
 impl NodeManagerTransportOptions {
-    pub fn new(api_transport: ApiTransport, tcp_transport: TcpTransport) -> Self {
+    pub fn new(
+        api_transport_flow_control_id: SpawnerFlowControlId,
+        tcp_transport: TcpTransport,
+    ) -> Self {
         Self {
-            api_transport,
+            api_transport_flow_control_id,
             tcp_transport,
         }
     }
@@ -306,7 +309,7 @@ impl NodeManager {
         let mut transports = BTreeMap::new();
         transports.insert(
             api_transport_id.clone(),
-            transport_options.api_transport.clone(),
+            transport_options.api_transport_flow_control_id.clone(),
         );
 
         let cli_state = general_options.cli_state;
@@ -340,7 +343,7 @@ impl NodeManager {
         let mut s = Self {
             cli_state,
             node_name: general_options.node_name,
-            api_transport: transport_options.api_transport,
+            api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults: general_options.skip_defaults,
@@ -393,13 +396,13 @@ impl NodeManager {
     async fn initialize_defaults(
         &mut self,
         ctx: &Context,
-        api_flow_control_id: &FlowControlId,
+        api_flow_control_id: &SpawnerFlowControlId,
     ) -> Result<()> {
         // Start services
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             DefaultAddress::UPPERCASE_SERVICE,
             api_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
@@ -408,13 +411,13 @@ impl NodeManager {
             ctx,
             DefaultAddress::FORWARDING_SERVICE,
             ForwardingServiceOptions::new()
-                .service_as_consumer(
+                .service_as_consumer_for_spawner(
                     api_flow_control_id,
-                    FlowControlPolicy::SpawnerAllowMultipleMessages,
+                    SpawnerFlowControlPolicy::AllowMultipleMessages,
                 )
-                .forwarder_as_consumer(
+                .forwarder_as_consumer_for_spawner(
                     api_flow_control_id,
-                    FlowControlPolicy::SpawnerAllowMultipleMessages,
+                    SpawnerFlowControlPolicy::AllowMultipleMessages,
                 ),
         )
         .await?;
@@ -729,8 +732,11 @@ impl NodeManagerWorker {
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Flow Controls ==*==
-            (Post, ["node", "flow_controls", "add_consumer"]) => {
-                self.add_consumer(ctx, req, dec)?.to_vec()?
+            (Post, ["node", "flow_controls", "add_consumer_for_spawner"]) => {
+                self.add_consumer_for_spawner(ctx, req, dec)?.to_vec()?
+            }
+            (Post, ["node", "flow_controls", "add_consumer_for_producer"]) => {
+                self.add_consumer_for_producer(ctx, req, dec)?.to_vec()?
             }
 
             // ==*== Workers ==*==
@@ -847,7 +853,7 @@ impl Worker for NodeManagerWorker {
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let mut node_manager = self.node_manager.write().await;
-        let api_flow_control_id = node_manager.api_transport.flow_control_id.clone();
+        let api_flow_control_id = node_manager.api_transport_flow_control_id.clone();
 
         if !node_manager.skip_defaults {
             node_manager
@@ -857,19 +863,19 @@ impl Worker for NodeManagerWorker {
 
         // Always start the echoer service as ockam_api::Medic assumes it will be
         // started unconditionally on every node. It's used for liveness checks.
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             DefaultAddress::ECHO_SERVICE,
             &api_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
         node_manager
             .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
 
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             DefaultAddress::RPC_PROXY,
             &api_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
         ctx.start_worker(DefaultAddress::RPC_PROXY, RpcProxyService::new())
             .await?;

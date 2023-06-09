@@ -1,7 +1,7 @@
 // examples/receiver.rs
 
 use file_transfer::FileData;
-use ockam::flow_control::FlowControlPolicy;
+use ockam::flow_control::SpawnerFlowControlPolicy;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{
@@ -87,15 +87,13 @@ async fn main(ctx: Context) -> Result<()> {
     let receiver = node.create_identity().await?;
 
     let tcp_options = TcpConnectionOptions::new();
-    let secure_channel_listener_options = SecureChannelListenerOptions::new().as_consumer(
-        &tcp_options.producer_flow_control_id(),
-        FlowControlPolicy::ProducerAllowMultiple,
-    );
+    let secure_channel_listener_options =
+        SecureChannelListenerOptions::new().as_consumer_for_producer(&tcp_options.flow_control_id());
 
-    node.flow_controls().add_consumer(
+    node.flow_controls().add_consumer_for_spawner(
         "receiver",
         &secure_channel_listener_options.spawner_flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
+        SpawnerFlowControlPolicy::AllowMultipleMessages,
     );
 
     // Create a secure channel listener for Receiver that will wait for requests to

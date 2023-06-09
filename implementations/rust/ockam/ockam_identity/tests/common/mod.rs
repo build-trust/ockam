@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use rand::random;
 
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::{
+    ProducerFlowControlId, SpawnerFlowControlId, SpawnerFlowControlPolicy,
+};
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::{
     secure_channels, IdentityIdentifier, SecureChannelListenerOptions, SecureChannelOptions,
@@ -92,7 +94,7 @@ async fn check_message_flow_with_ctx(
 pub struct SecureChannelListenerInfo {
     pub identifier: IdentityIdentifier,
     pub secure_channels: Arc<SecureChannels>,
-    pub flow_control_id: FlowControlId,
+    pub flow_control_id: SpawnerFlowControlId,
 }
 
 impl SecureChannelListenerInfo {
@@ -109,10 +111,15 @@ impl SecureChannelListenerInfo {
 }
 
 #[allow(dead_code)]
+pub enum FId {
+    Spawner(SpawnerFlowControlId),
+    Producer(ProducerFlowControlId),
+}
+
+#[allow(dead_code)]
 pub async fn create_secure_channel_listener(
     ctx: &Context,
-    flow_control_id: &FlowControlId,
-    with_tcp_listener: bool,
+    flow_control_id: FId,
 ) -> Result<SecureChannelListenerInfo> {
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
@@ -120,12 +127,12 @@ pub async fn create_secure_channel_listener(
     let identity = identities_creation.create_identity().await?;
 
     let options = SecureChannelListenerOptions::new();
-    let policy = if with_tcp_listener {
-        FlowControlPolicy::SpawnerAllowOnlyOneMessage
-    } else {
-        FlowControlPolicy::ProducerAllowMultiple
+    let options = match flow_control_id {
+        FId::Spawner(id) => {
+            options.as_consumer_for_spawner(&id, SpawnerFlowControlPolicy::AllowOnlyOneMessage)
+        }
+        FId::Producer(id) => options.as_consumer_for_producer(&id),
     };
-    let options = options.as_consumer(flow_control_id, policy);
 
     let identifier = identity.identifier();
     let listener = secure_channels

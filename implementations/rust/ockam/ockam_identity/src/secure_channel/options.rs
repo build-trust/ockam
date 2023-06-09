@@ -6,7 +6,8 @@ use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{
-    FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
+    FlowControlOutgoingAccessControl, FlowControls, ProducerFlowControlId, SpawnerFlowControlId,
+    SpawnerFlowControlPolicy,
 };
 use ockam_core::{Address, OutgoingAccessControl, Result};
 
@@ -14,7 +15,7 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Trust options for a Secure Channel
 pub struct SecureChannelOptions {
-    pub(crate) producer_flow_control_id: FlowControlId,
+    pub(crate) flow_control_id: ProducerFlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) credentials: Vec<Credential>,
@@ -23,7 +24,7 @@ pub struct SecureChannelOptions {
 
 impl fmt::Debug for SecureChannelOptions {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "FlowId: {}", self.producer_flow_control_id)
+        write!(f, "FlowId: {}", self.flow_control_id)
     }
 }
 
@@ -36,7 +37,7 @@ impl SecureChannelOptions {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            producer_flow_control_id: FlowControls::generate_id(),
+            flow_control_id: FlowControls::generate_producer_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
             trust_context: None,
             credentials: vec![],
@@ -75,8 +76,8 @@ impl SecureChannelOptions {
     }
 
     /// Freshly generated [`FlowControlId`]
-    pub fn producer_flow_control_id(&self) -> FlowControlId {
-        self.producer_flow_control_id.clone()
+    pub fn producer_flow_control_id(&self) -> ProducerFlowControlId {
+        self.flow_control_id.clone()
     }
 }
 
@@ -92,16 +93,13 @@ impl SecureChannelOptions {
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(
-                addresses.decryptor_remote.clone(),
-                &flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            flow_controls
+                .add_consumer_for_producer(addresses.decryptor_remote.clone(), &flow_control_id);
         }
 
         flow_controls.add_producer(
             addresses.decryptor_internal.clone(),
-            &self.producer_flow_control_id,
+            &self.flow_control_id,
             None,
             vec![addresses.encryptor.clone()],
         );
@@ -115,7 +113,7 @@ impl SecureChannelOptions {
     ) -> SecureChannelAccessControl {
         let ac = FlowControlOutgoingAccessControl::new(
             flow_controls,
-            self.producer_flow_control_id.clone(),
+            self.flow_control_id.clone(),
             None,
         );
 
@@ -126,15 +124,16 @@ impl SecureChannelOptions {
 }
 
 #[derive(Debug)]
-pub(crate) struct CiphertextFlowControl {
-    pub(crate) id: FlowControlId,
-    pub(crate) policy: FlowControlPolicy,
+pub(crate) struct SpawnerConsumer {
+    pub(crate) id: SpawnerFlowControlId,
+    pub(crate) policy: SpawnerFlowControlPolicy,
 }
 
 /// Trust options for a Secure Channel Listener
 pub struct SecureChannelListenerOptions {
-    pub(crate) consumer_flow_control: Vec<CiphertextFlowControl>,
-    pub(crate) spawner_flow_control_id: FlowControlId,
+    pub(crate) consumer_for_spawner_flow_control: Vec<SpawnerConsumer>,
+    pub(crate) consumer_for_producer_flow_control: Vec<ProducerFlowControlId>,
+    pub(crate) flow_control_id: SpawnerFlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) credentials: Vec<Credential>,
@@ -142,7 +141,7 @@ pub struct SecureChannelListenerOptions {
 
 impl fmt::Debug for SecureChannelListenerOptions {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "SpawnerFlowId: {}", self.spawner_flow_control_id)
+        write!(f, "SpawnerFlowId: {}", self.flow_control_id)
     }
 }
 
@@ -153,26 +152,37 @@ impl SecureChannelListenerOptions {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            consumer_flow_control: vec![],
-            spawner_flow_control_id: FlowControls::generate_id(),
+            consumer_for_spawner_flow_control: vec![],
+            consumer_for_producer_flow_control: vec![],
+            flow_control_id: FlowControls::generate_spawner_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
             trust_context: None,
             credentials: vec![],
         }
     }
 
-    /// Mark that this Secure Channel Listener is a Consumer for to the given [`FlowControlId`]
-    /// Also, in this case spawned Secure Channels will be marked as Consumers with [`FlowControlId`]
+    /// Mark that this Secure Channel Listener is a Consumer for to the given [`SpawnerFlowControlId`]
+    /// Also, in this case spawned Secure Channels will be marked as Consumers with [`ProducerFlowControlId`]
     /// of the message that was used to create the Secure Channel
-    pub fn as_consumer(
+    pub fn as_consumer_for_spawner(
         mut self,
-        flow_control_id: &FlowControlId,
-        flow_control_policy: FlowControlPolicy,
+        id: &SpawnerFlowControlId,
+        policy: SpawnerFlowControlPolicy,
     ) -> Self {
-        self.consumer_flow_control.push(CiphertextFlowControl {
-            id: flow_control_id.clone(),
-            policy: flow_control_policy,
-        });
+        self.consumer_for_spawner_flow_control
+            .push(SpawnerConsumer {
+                id: id.clone(),
+                policy,
+            });
+
+        self
+    }
+
+    /// Mark that this Secure Channel Listener is a Consumer for to the given [`ProducerFlowControlId`]
+    /// Also, in this case spawned Secure Channels will be marked as Consumers with [`ProducerFlowControlId`]
+    /// of the message that was used to create the Secure Channel
+    pub fn as_consumer_for_producer(mut self, id: &ProducerFlowControlId) -> Self {
+        self.consumer_for_producer_flow_control.push(id.clone());
 
         self
     }
@@ -202,8 +212,8 @@ impl SecureChannelListenerOptions {
     }
 
     /// Freshly generated [`FlowControlId`]
-    pub fn spawner_flow_control_id(&self) -> FlowControlId {
-        self.spawner_flow_control_id.clone()
+    pub fn spawner_flow_control_id(&self) -> SpawnerFlowControlId {
+        self.flow_control_id.clone()
     }
 }
 
@@ -213,15 +223,19 @@ impl SecureChannelListenerOptions {
         flow_controls: &FlowControls,
         address: &Address,
     ) {
-        for consumer_flow_control in &self.consumer_flow_control {
-            flow_controls.add_consumer(
+        for spawner_consumer in &self.consumer_for_spawner_flow_control {
+            flow_controls.add_consumer_for_spawner(
                 address.clone(),
-                &consumer_flow_control.id,
-                consumer_flow_control.policy,
+                &spawner_consumer.id,
+                spawner_consumer.policy,
             );
         }
 
-        flow_controls.add_spawner(address.clone(), &self.spawner_flow_control_id);
+        for id in &self.consumer_for_producer_flow_control {
+            flow_controls.add_consumer_for_producer(address.clone(), id);
+        }
+
+        flow_controls.add_spawner(address.clone(), &self.flow_control_id);
     }
 
     pub(crate) fn setup_flow_control_for_channel(
@@ -229,7 +243,7 @@ impl SecureChannelListenerOptions {
         flow_controls: &FlowControls,
         addresses: &Addresses,
         src_addr: &Address,
-    ) -> FlowControlId {
+    ) -> ProducerFlowControlId {
         // Check if the Worker that send us this message is a Producer
         // If yes - decryptor will be added to that flow_control to be able to receive further messages
         // from that Producer
@@ -238,18 +252,17 @@ impl SecureChannelListenerOptions {
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(
+            flow_controls.add_consumer_for_producer(
                 addresses.decryptor_remote.clone(),
                 &producer_flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
             );
         }
 
-        let flow_control_id = FlowControls::generate_id();
+        let flow_control_id = FlowControls::generate_producer_flow_control_id();
         flow_controls.add_producer(
             addresses.decryptor_internal.clone(),
             &flow_control_id,
-            Some(&self.spawner_flow_control_id),
+            Some(&self.flow_control_id),
             vec![addresses.encryptor.clone()],
         );
 
@@ -259,12 +272,12 @@ impl SecureChannelListenerOptions {
     pub(crate) fn create_access_control(
         &self,
         flow_controls: &FlowControls,
-        flow_control_id: FlowControlId,
+        flow_control_id: ProducerFlowControlId,
     ) -> SecureChannelAccessControl {
         let ac = FlowControlOutgoingAccessControl::new(
             flow_controls,
             flow_control_id,
-            Some(self.spawner_flow_control_id.clone()),
+            Some(self.flow_control_id.clone()),
         );
 
         SecureChannelAccessControl {

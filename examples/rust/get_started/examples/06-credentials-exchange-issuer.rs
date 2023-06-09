@@ -1,6 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
-use ockam::flow_control::FlowControlPolicy;
+use ockam::flow_control::SpawnerFlowControlPolicy;
 use ockam::identity::CredentialsIssuer;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::TcpTransportExtension;
@@ -43,9 +43,9 @@ async fn main(ctx: Context) -> Result<()> {
     }
 
     let tcp_listener_options = TcpListenerOptions::new();
-    let sc_listener_options = SecureChannelListenerOptions::new().as_consumer(
+    let sc_listener_options = SecureChannelListenerOptions::new().as_consumer_for_spawner(
         &tcp_listener_options.spawner_flow_control_id(),
-        FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+        SpawnerFlowControlPolicy::AllowOnlyOneMessage,
     );
     let sc_listener_flow_control_id = sc_listener_options.spawner_flow_control_id();
 
@@ -58,10 +58,10 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a credential issuer worker that will only accept incoming requests from
     // authenticated secure channels with our known public identifiers.
     let allow_known = IdentityIdAccessControl::new(known_identifiers);
-    node.flow_controls().add_consumer(
+    node.flow_controls().add_consumer_for_spawner(
         "issuer",
         &sc_listener_flow_control_id,
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
+        SpawnerFlowControlPolicy::AllowMultipleMessages,
     );
     node.start_worker_with_access_control("issuer", credential_issuer, allow_known, AllowAll)
         .await?;

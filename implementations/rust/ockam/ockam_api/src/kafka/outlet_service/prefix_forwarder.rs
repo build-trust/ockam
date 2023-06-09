@@ -4,7 +4,7 @@ use crate::DefaultAddress;
 use core::str::from_utf8;
 use ockam::{Context, Result, Routed, Worker};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::{SpawnerFlowControlId, SpawnerFlowControlPolicy};
 use ockam_core::{Address, AllowAll, AllowOnwardAddress};
 
 /// This service applies a prefix to the provided static forwarding address.
@@ -12,19 +12,19 @@ use ockam_core::{Address, AllowAll, AllowOnwardAddress};
 /// erlang implementation.
 pub struct PrefixForwarderService {
     prefix: String,
-    secure_channel_listener_flow_control_id: FlowControlId,
+    secure_channel_listener_flow_control_id: SpawnerFlowControlId,
 }
 impl PrefixForwarderService {
     pub async fn create(
         context: &Context,
-        secure_channel_listener_flow_control_id: FlowControlId,
+        secure_channel_listener_flow_control_id: SpawnerFlowControlId,
     ) -> Result<()> {
         // add the this worker as consumer for the secure channel listener
         let worker_address = Address::from_string(KAFKA_OUTLET_CONSUMERS);
-        context.flow_controls().add_consumer(
+        context.flow_controls().add_consumer_for_spawner(
             worker_address.clone(),
             &secure_channel_listener_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
         let worker = Self {
@@ -96,10 +96,10 @@ impl Worker for PrefixForwarderService {
         ctx.forward(message).await?;
 
         // The new forwarder needs to be reachable by the default secure channel listener
-        ctx.flow_controls().add_consumer(
+        ctx.flow_controls().add_consumer_for_spawner(
             Address::from_string(new_address),
             &self.secure_channel_listener_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
         Ok(())

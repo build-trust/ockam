@@ -2,7 +2,7 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::flow_control::FlowControlPolicy;
+use ockam::flow_control::SpawnerFlowControlPolicy;
 use ockam::{node, Context, Result, TcpListenerOptions, TcpTransportExtension};
 
 #[ockam::node]
@@ -20,10 +20,10 @@ async fn main(ctx: Context) -> Result<()> {
     let listener = tcp.listen("127.0.0.1:4000", TcpListenerOptions::new()).await?;
 
     // Allow access to the Echoer via TCP connections from the TCP listener
-    node.flow_controls().add_consumer(
+    node.flow_controls().add_consumer_for_spawner(
         "echoer",
         listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
+        SpawnerFlowControlPolicy::AllowMultipleMessages,
     );
 
     // Don't call node.stop() here so this node runs forever.

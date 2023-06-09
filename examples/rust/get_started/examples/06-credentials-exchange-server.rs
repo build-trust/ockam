@@ -3,7 +3,7 @@
 use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
-use ockam::flow_control::FlowControlPolicy;
+use ockam::flow_control::SpawnerFlowControlPolicy;
 use ockam::identity::{
     AuthorityService, CredentialsIssuerClient, SecureChannelListenerOptions, SecureChannelOptions, TrustContext,
 };
@@ -74,15 +74,15 @@ async fn main(ctx: Context) -> Result<()> {
     let sc_listener_options = SecureChannelListenerOptions::new()
         .with_trust_context(trust_context)
         .with_credential(credential)
-        .as_consumer(
+        .as_consumer_for_spawner(
             &tcp_listener_options.spawner_flow_control_id(),
-            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+            SpawnerFlowControlPolicy::AllowOnlyOneMessage,
         );
 
-    node.flow_controls().add_consumer(
+    node.flow_controls().add_consumer_for_spawner(
         "echoer",
         &sc_listener_options.spawner_flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
+        SpawnerFlowControlPolicy::AllowMultipleMessages,
     );
     let allow_production = AbacAccessControl::create(node.repository(), "cluster", "production");
     node.start_worker_with_access_control("echoer", Echoer, allow_production, AllowAll)
