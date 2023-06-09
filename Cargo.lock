@@ -3003,12 +3003,9 @@ dependencies = [
 
 [[package]]
 name = "mips-mcu"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cb9dfcb19ab4530dec67e8f47b696a1480346382983a42db41248b8dc81e945"
-dependencies = [
- "bare-metal 1.0.0",
-]
+checksum = "f03a97ce7dfe942a6601816d623c8bf7d84263fb1a85e4aefbd94be5a24ff5dd"
 
 [[package]]
 name = "mips-rt"
@@ -3945,10 +3942,11 @@ checksum = "9b2a4787296e9989611394c33f193f676704af1686e70b8f8033ab5ba9a35a94"
 
 [[package]]
 name = "pic32-hal"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b30a419e8d1bbd91312470645b1bc313366c236aa6099140fb412af4cf6494f2"
+checksum = "9f6393dd973e257ad9652c2aa8402de1ad71ce4fadd52579ea83e229db94748b"
 dependencies = [
+ "critical-section",
  "embedded-hal 0.2.7",
  "enumflags2",
  "mips-mcu",
@@ -3959,11 +3957,11 @@ dependencies = [
 
 [[package]]
 name = "pic32mx2xx"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "033c29676aa7003e3a99ff6b129de3ee2fc5a1d8d206bf054d45628dc24a2cb3"
+checksum = "799c0d6a647a779daa1808604268ec564384d5f2e94a32df9c5bf04204acf821"
 dependencies = [
- "mips-mcu",
+ "critical-section",
  "mips-rt",
  "vcell",
 ]
