@@ -1,4 +1,4 @@
-use ockam::flow_control::FlowControlPolicy;
+use ockam::flow_control::SpawnerFlowControlPolicy;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, Context, Result, TcpConnectionOptions, TcpOutletOptions};
@@ -13,10 +13,10 @@ async fn main(ctx: Context) -> Result<()> {
     let e = node.create_identity().await?;
 
     let tcp_options = TcpConnectionOptions::new();
-    let tcp_flow_control_id = tcp_options.producer_flow_control_id();
+    let tcp_flow_control_id = tcp_options.flow_control_id();
 
     let secure_channel_listener_options =
-        SecureChannelListenerOptions::new().as_consumer(&tcp_flow_control_id, FlowControlPolicy::ProducerAllowMultiple);
+        SecureChannelListenerOptions::new().as_consumer_for_producer(&tcp_flow_control_id);
     let secure_channel_flow_control_id = secure_channel_listener_options.spawner_flow_control_id();
     node.create_secure_channel_listener(&e, "secure_channel_listener", secure_channel_listener_options)
         .await?;
@@ -41,9 +41,9 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_outlet(
         "outlet",
         outlet_target,
-        TcpOutletOptions::new().as_consumer(
+        TcpOutletOptions::new().as_consumer_for_spawner(
             &secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         ),
     )
     .await?;

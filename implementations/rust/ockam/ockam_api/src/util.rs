@@ -3,7 +3,7 @@ use std::net::{SocketAddrV4, SocketAddrV6};
 use anyhow::anyhow;
 
 use ockam::TcpTransport;
-use ockam_core::flow_control::FlowControlId;
+use ockam_core::flow_control::ProducerFlowControlId;
 use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
 use ockam_multiaddr::proto::{
     DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
@@ -48,7 +48,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
 }
 
 pub struct MultiAddrToRouteResult {
-    pub flow_control_id: Option<FlowControlId>,
+    pub flow_control_id: Option<ProducerFlowControlId>,
     pub route: Route,
     pub tcp_worker: Option<Address>,
 }
@@ -76,7 +76,7 @@ pub async fn multiaddr_to_route(
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
 
                 let options = TcpConnectionOptions::new();
-                flow_control_id = Some(options.producer_flow_control_id().clone());
+                flow_control_id = Some(options.flow_control_id().clone());
 
                 let addr = tcp
                     .connect(socket_addr.to_string(), options)
@@ -99,7 +99,7 @@ pub async fn multiaddr_to_route(
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
 
                 let options = TcpConnectionOptions::new();
-                flow_control_id = Some(options.producer_flow_control_id().clone());
+                flow_control_id = Some(options.flow_control_id().clone());
 
                 let addr = tcp
                     .connect(socket_addr.to_string(), options)
@@ -123,7 +123,7 @@ pub async fn multiaddr_to_route(
                         let port = p.cast::<Tcp>()?;
 
                         let options = TcpConnectionOptions::new();
-                        flow_control_id = Some(options.producer_flow_control_id().clone());
+                        flow_control_id = Some(options.flow_control_id().clone());
 
                         let addr = tcp
                             .connect(format!("{}:{}", &*host, *port), options)
@@ -355,8 +355,8 @@ pub mod test_utils {
     use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
-        ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
-        NodeManagerTransportOptions, NodeManagerTrustOptions,
+        NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+        NodeManagerTrustOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 
@@ -439,14 +439,7 @@ pub mod test_utils {
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
             NodeManagerProjectsOptions::new(Default::default()),
             NodeManagerTransportOptions::new(
-                ApiTransport {
-                    tt: crate::nodes::models::transport::TransportType::Tcp,
-                    tm: crate::nodes::models::transport::TransportMode::Listen,
-                    socket_address: "127.0.0.1:123".parse().unwrap(),
-                    worker_address: "".into(),
-                    processor_address: "".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
-                },
+                FlowControls::generate_spawner_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,
             ),
             NodeManagerTrustOptions::new(Some(TrustContextConfig::new(

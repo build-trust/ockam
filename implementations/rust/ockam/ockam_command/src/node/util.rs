@@ -7,13 +7,12 @@ use ockam_api::cli_state::traits::StateItemTrait;
 use ockam_api::config::lookup::ProjectLookup;
 
 use ockam_api::cli_state::{ProjectConfig, StateDirTrait};
-use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
-    ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
-    NodeManagerTransportOptions, NodeManagerTrustOptions,
+    NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+    NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-use ockam_core::flow_control::FlowControlPolicy;
+use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
@@ -75,27 +74,17 @@ pub async fn start_embedded_node_with_vault_and_identity(
             None,
         ),
         NodeManagerProjectsOptions::new(projects),
-        NodeManagerTransportOptions::new(
-            ApiTransport {
-                tt: TransportType::Tcp,
-                tm: TransportMode::Listen,
-                socket_address: *listener.socket_address(),
-                worker_address: "<none>".into(),
-                processor_address: listener.processor_address().to_string(),
-                flow_control_id: listener.flow_control_id().clone(),
-            },
-            tcp,
-        ),
+        NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )
     .await?;
 
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.flow_controls().add_consumer(
+    ctx.flow_controls().add_consumer_for_spawner(
         NODEMANAGER_ADDR,
         listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
+        SpawnerFlowControlPolicy::AllowMultipleMessages,
     );
 
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)

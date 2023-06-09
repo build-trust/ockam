@@ -4,7 +4,7 @@ use crate::compat::string::{String, ToString};
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 use core::fmt;
-use core::fmt::Formatter;
+use core::fmt::{Debug, Formatter};
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +29,7 @@ impl FlowControlId {
         }
     }
 }
+
 impl fmt::Display for FlowControlId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_str(&self.id)
@@ -37,8 +38,8 @@ impl fmt::Display for FlowControlId {
 
 impl Distribution<FlowControlId> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> FlowControlId {
-        let address: [u8; 16] = rng.gen();
-        FlowControlId::new(&hex::encode(address))
+        let data: [u8; 16] = rng.gen();
+        FlowControlId::new(&hex::encode(data))
     }
 }
 

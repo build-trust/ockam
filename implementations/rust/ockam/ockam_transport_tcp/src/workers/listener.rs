@@ -58,7 +58,7 @@ impl Processor for TcpListenProcessor {
         self.registry.add_listener_processor(TcpListenerInfo::new(
             ctx.address(),
             self.socket_address,
-            self.options.spawner_flow_control_id.clone(),
+            self.options.flow_control_id.clone(),
         ));
 
         Ok(())

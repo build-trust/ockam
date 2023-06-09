@@ -5,7 +5,6 @@ use crate::DefaultAddress;
 use minicbor::{Decode, Encode};
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
 use ockam_node::tokio::sync::mpsc;
 use ockam_node::tokio::task::JoinSet;
@@ -102,10 +101,9 @@ impl Medic {
                                 .find_flow_control_with_producer_address(next)
                                 .map(|x| x.flow_control_id().clone())
                             {
-                                ctx.flow_controls().add_consumer(
+                                ctx.flow_controls().add_consumer_for_producer(
                                     Collector::address(),
                                     &flow_control_id,
-                                    FlowControlPolicy::ProducerAllowMultiple,
                                 );
                             }
                             let t = TransportMessage::v1(echo_route, Collector::address(), v);

@@ -4,7 +4,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 use ockam_core::compat::rand::random;
-use ockam_core::flow_control::FlowControlPolicy;
+use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_core::{route, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::{
@@ -144,9 +144,9 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
     tcp.create_outlet(
         "outlet",
         bind_address.clone(),
-        TcpOutletOptions::new().as_consumer(
+        TcpOutletOptions::new().as_consumer_for_spawner(
             &outlet_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
+            SpawnerFlowControlPolicy::AllowMultipleMessages,
         ),
     )
     .await?;
