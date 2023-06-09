@@ -22,7 +22,7 @@ mod logs;
 mod manpages;
 mod markdown;
 mod message;
-mod node;
+pub mod node;
 mod operation;
 mod pager;
 mod policy;
@@ -214,7 +214,7 @@ pub struct CommandGlobalOpts {
 }
 
 impl CommandGlobalOpts {
-    pub fn new(global_args: GlobalArgs, config: OckamConfig) -> Self {
+    pub fn new(global_args: GlobalArgs) -> Self {
         let state = CliState::initialize().expect("Failed to load the local Ockam configuration");
         let terminal = Terminal::new(
             global_args.quiet,

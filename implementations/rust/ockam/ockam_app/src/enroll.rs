@@ -6,7 +6,7 @@ use ockam_command::{
     enroll::{Auth0Provider, Auth0Service},
     identity::create_default_identity,
     node::util::start_embedded_node,
-    util::{node_rpc, OckamConfig, RpcBuilder, DEFAULT_CONTROLLER_ADDRESS},
+    util::{node_rpc, RpcBuilder, DEFAULT_CONTROLLER_ADDRESS},
     CommandGlobalOpts, GlobalArgs,
 };
 use ockam_core::{env::FromString, CowStr};
@@ -14,8 +14,7 @@ use ockam_multiaddr::MultiAddr;
 
 #[tauri::command]
 pub fn enroll() -> String {
-    let config = OckamConfig::load().expect("Failed to load config");
-    let options = CommandGlobalOpts::new(GlobalArgs::default(), config);
+    let options = CommandGlobalOpts::new(GlobalArgs::default());
 
     if options.state.identities.default().is_err() {
         create_default_identity(&options);
