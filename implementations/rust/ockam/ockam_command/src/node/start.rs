@@ -79,7 +79,7 @@ async fn run_impl(
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&mut rpc, &node_name, true, is_default).await?;
+    print_query_status(&opts, &mut rpc, &node_name, true, is_default).await?;
 
     Ok(())
 }
