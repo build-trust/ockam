@@ -1,5 +1,5 @@
 # Stage 1 - Build elixir release of ockam_healthcheck elixir app
-FROM ghcr.io/build-trust/ockam-builder@sha256:cecb1860acd571278b2e7f8ecb3ffe405447ee844615134f93ddd11b1f3e2ca8 as elixir-app-release-build
+FROM ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68 as elixir-app-release-build
 COPY . /work
 RUN set -xe; \
     cd implementations/elixir; \
