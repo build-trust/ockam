@@ -7,8 +7,8 @@ use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::{
     AuthorityService, CredentialsIssuerClient, SecureChannelListenerOptions, SecureChannelOptions, TrustContext,
 };
+use ockam::TcpTransportExtension;
 use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpListenerOptions};
-use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
