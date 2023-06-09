@@ -59,9 +59,10 @@ async fn run_impl(
 
     let (spaces, _) = try_join!(send_req, progress_output)?;
 
-    let list = opts
+    let plain = opts
         .terminal
         .build_list(&spaces, "Spaces", "No spaces found.")?;
+    let json = serde_json::to_string_pretty(&spaces)?;
 
     for space in spaces {
         opts.state
@@ -70,6 +71,10 @@ async fn run_impl(
     }
     delete_embedded_node(&opts, rpc.node_name()).await;
 
-    opts.terminal.stdout().plain(list).write_line()?;
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
     Ok(())
 }

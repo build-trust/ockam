@@ -58,12 +58,17 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -
 
     let (relays, _) = try_join!(send_req, progress_output)?;
 
-    let list = opts.terminal.build_list(
+    let plain = opts.terminal.build_list(
         &relays,
         &format!("Relays on Node {node_name}"),
         &format!("No Relays found on node {node_name}."),
     )?;
+    let json = serde_json::to_string_pretty(&relays)?;
 
-    opts.terminal.stdout().plain(list).write_line()?;
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
     Ok(())
 }

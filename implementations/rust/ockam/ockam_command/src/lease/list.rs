@@ -69,10 +69,15 @@ async fn run_impl(
 
     let (tokens, _) = try_join!(send_req, progress_output)?;
 
-    let list =
+    let plain =
         opts.terminal
             .build_list(&tokens, "Tokens", "No active tokens found within service.")?;
-    opts.terminal.stdout().plain(list).write_line()?;
+    let json = serde_json::to_string_pretty(&tokens)?;
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
     Ok(())
 }
 

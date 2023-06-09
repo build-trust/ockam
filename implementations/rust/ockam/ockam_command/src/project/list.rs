@@ -59,18 +59,23 @@ async fn run_impl(
 
     let (projects, _) = try_join!(send_req, progress_output)?;
 
-    let list =
+    let plain =
         &opts
             .terminal
             .build_list(&projects, "Projects", "No projects found on this system.")?;
+    let json = serde_json::to_string_pretty(&projects)?;
 
-    for project in projects {
+    for project in &projects {
         opts.state
             .projects
             .overwrite(&project.name, project.clone())?;
     }
     delete_embedded_node(&opts, rpc.node_name()).await;
 
-    opts.terminal.stdout().plain(list).write_line()?;
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
     Ok(())
 }
