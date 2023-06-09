@@ -1,5 +1,5 @@
+use ockam::flow_control::FlowControlPolicy;
 use ockam::{Address, Any, Context, LocalMessage, Result, Routed, Worker};
-use ockam_core::flow_control::FlowControlPolicy;
 
 pub struct Forwarder(pub Address);
 
