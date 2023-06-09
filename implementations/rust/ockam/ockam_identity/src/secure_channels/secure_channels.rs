@@ -66,7 +66,7 @@ impl SecureChannels {
     ) -> Result<SecureChannelListener> {
         let address = address.into();
         let options = options.into();
-        let flow_control_id = options.spawner_flow_control_id.clone();
+        let flow_control_id = options.flow_control_id.clone();
 
         IdentityChannelListener::create(
             ctx,
@@ -90,7 +90,7 @@ impl SecureChannels {
     ) -> Result<SecureChannel> {
         let addresses = Addresses::generate(Role::Initiator);
         let options = options.into();
-        let flow_control_id = options.producer_flow_control_id.clone();
+        let flow_control_id = options.flow_control_id.clone();
 
         let route = route.into();
         let next = route.next()?;

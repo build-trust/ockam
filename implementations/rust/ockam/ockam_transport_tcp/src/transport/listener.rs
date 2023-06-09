@@ -24,7 +24,7 @@ impl TcpTransport {
         bind_addr: impl AsRef<str>,
         options: TcpListenerOptions,
     ) -> Result<TcpListener> {
-        let flow_control_id = options.spawner_flow_control_id.clone();
+        let flow_control_id = options.flow_control_id.clone();
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
         // Could be different from the bind_addr, e.g., if binding to port 0\
         let (socket_addr, address) =

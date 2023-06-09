@@ -1,6 +1,6 @@
 use core::fmt;
 use core::fmt::Formatter;
-use ockam_core::flow_control::FlowControlId;
+use ockam_core::flow_control::{ProducerFlowControlId, SpawnerFlowControlId};
 use ockam_core::Address;
 
 /// Result of [`super::SecureChannels::create_secure_channel()`] call.
@@ -8,7 +8,7 @@ use ockam_core::Address;
 pub struct SecureChannel {
     encryptor_address: Address,
     encryptor_api_address: Address,
-    flow_control_id: FlowControlId,
+    flow_control_id: ProducerFlowControlId,
 }
 
 impl From<SecureChannel> for Address {
@@ -32,7 +32,7 @@ impl SecureChannel {
     pub fn new(
         encryptor_address: Address,
         encryptor_api_address: Address,
-        flow_control_id: FlowControlId,
+        flow_control_id: ProducerFlowControlId,
     ) -> Self {
         Self {
             encryptor_address,
@@ -46,7 +46,7 @@ impl SecureChannel {
         &self.encryptor_address
     }
     /// Freshly generated [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &FlowControlId {
+    pub fn flow_control_id(&self) -> &ProducerFlowControlId {
         &self.flow_control_id
     }
     /// API [`Address`] of the corresponding`EncryptorWorker` Worker that can be used to encrypt
@@ -60,7 +60,7 @@ impl SecureChannel {
 #[derive(Debug, Clone)]
 pub struct SecureChannelListener {
     address: Address,
-    flow_control_id: FlowControlId,
+    flow_control_id: SpawnerFlowControlId,
 }
 
 impl fmt::Display for SecureChannelListener {
@@ -75,7 +75,7 @@ impl fmt::Display for SecureChannelListener {
 
 impl SecureChannelListener {
     /// Constructor.
-    pub fn new(address: Address, flow_control_id: FlowControlId) -> Self {
+    pub fn new(address: Address, flow_control_id: SpawnerFlowControlId) -> Self {
         Self {
             address,
             flow_control_id,
@@ -88,7 +88,7 @@ impl SecureChannelListener {
         &self.address
     }
     /// Freshly generated [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &FlowControlId {
+    pub fn flow_control_id(&self) -> &SpawnerFlowControlId {
         &self.flow_control_id
     }
 }

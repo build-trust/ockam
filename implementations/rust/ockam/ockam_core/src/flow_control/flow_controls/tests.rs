@@ -1,4 +1,4 @@
-use crate::flow_control::{FlowControlPolicy, FlowControls};
+use crate::flow_control::{FlowControls, SpawnerFlowControlPolicy};
 use crate::Address;
 use rand::distributions::Distribution;
 use rand::distributions::Uniform;
@@ -13,13 +13,9 @@ fn add_random_consumer(flow_controls: &FlowControls, mut rng: &mut ThreadRng) ->
     match choice {
         0 => {
             // Add a Consumer to a non-existent FlowControlId
-            let flow_control_id = FlowControls::generate_id();
+            let flow_control_id = FlowControls::generate_producer_flow_control_id();
 
-            flow_controls.add_consumer(
-                address.clone(),
-                &flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            flow_controls.add_consumer_for_producer(address.clone(), &flow_control_id);
 
             vec![address]
         }
@@ -34,10 +30,10 @@ fn add_random_consumer(flow_controls: &FlowControls, mut rng: &mut ThreadRng) ->
                 .cloned();
             match spawner_flow_control_id {
                 Some(spawner_flow_control_id) => {
-                    flow_controls.add_consumer(
+                    flow_controls.add_consumer_for_spawner(
                         address.clone(),
                         &spawner_flow_control_id,
-                        FlowControlPolicy::SpawnerAllowMultipleMessages,
+                        SpawnerFlowControlPolicy::AllowMultipleMessages,
                     );
                     vec![address]
                 }
@@ -57,11 +53,8 @@ fn add_random_consumer(flow_controls: &FlowControls, mut rng: &mut ThreadRng) ->
             match producer_flow_control_id {
                 None => vec![],
                 Some(producer_flow_control_id) => {
-                    flow_controls.add_consumer(
-                        address.clone(),
-                        &producer_flow_control_id,
-                        FlowControlPolicy::ProducerAllowMultiple,
-                    );
+                    flow_controls
+                        .add_consumer_for_producer(address.clone(), &producer_flow_control_id);
                     vec![address]
                 }
             }
@@ -77,7 +70,7 @@ fn add_random_spawner(flow_controls: &FlowControls, mut rng: &mut ThreadRng) -> 
 
     if choice < 0.8 {
         // Add a Spawner to a new FlowControlId
-        let flow_control_id = FlowControls::generate_id();
+        let flow_control_id = FlowControls::generate_spawner_flow_control_id();
 
         flow_controls.add_spawner(address.clone(), &flow_control_id);
 
@@ -109,14 +102,14 @@ fn add_random_producer(flow_controls: &FlowControls, mut rng: &mut ThreadRng) ->
 
     if choice < 0.5 {
         // Add a Producer without a Spawner
-        let flow_control_id = FlowControls::generate_id();
+        let flow_control_id = FlowControls::generate_producer_flow_control_id();
 
         flow_controls.add_producer(address.clone(), &flow_control_id, None, vec![]);
 
         vec![address]
     } else {
         // Add a Producer with a Spawner
-        let flow_control_id = FlowControls::generate_id();
+        let flow_control_id = FlowControls::generate_producer_flow_control_id();
 
         let spawner_flow_control_id = flow_controls
             .spawners
@@ -198,7 +191,16 @@ fn test_cleanup() {
         flow_controls.cleanup_address(&address);
     }
 
-    assert!(flow_controls.consumers.read().unwrap().is_empty());
+    assert!(flow_controls
+        .consumers_for_producers
+        .read()
+        .unwrap()
+        .is_empty());
+    assert!(flow_controls
+        .consumers_for_spawners
+        .read()
+        .unwrap()
+        .is_empty());
     assert!(flow_controls.producers.read().unwrap().is_empty());
     assert!(flow_controls
         .producers_additional_addresses

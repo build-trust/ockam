@@ -1,19 +1,23 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::{
+    FlowControls, ProducerFlowControlId, SpawnerFlowControlId, SpawnerFlowControlPolicy,
+};
 use ockam_core::{Address, AllowAll, IncomingAccessControl};
 
 /// Trust Options for a Forwarding Service
 pub struct ForwardingServiceOptions {
     pub(super) service_incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(super) forwarders_incoming_access_control: Arc<dyn IncomingAccessControl>,
-    pub(super) consumer_service_flow_control: Vec<ConsumerFlowControl>,
-    pub(super) consumer_forwarder_flow_control: Vec<ConsumerFlowControl>,
+    pub(super) consumer_for_spawner_service_flow_control: Vec<SpawnerConsumer>,
+    pub(super) consumer_for_producer_service_flow_control: Vec<ProducerFlowControlId>,
+    pub(super) consumer_for_spawner_forwarder_flow_control: Vec<SpawnerConsumer>,
+    pub(super) consumer_for_producer_forwarder_flow_control: Vec<ProducerFlowControlId>,
 }
 
-pub(super) struct ConsumerFlowControl {
-    pub(super) flow_control_id: FlowControlId,
-    pub(super) flow_control_policy: FlowControlPolicy,
+pub(super) struct SpawnerConsumer {
+    pub(super) id: SpawnerFlowControlId,
+    pub(super) policy: SpawnerFlowControlPolicy,
 }
 
 impl ForwardingServiceOptions {
@@ -22,36 +26,54 @@ impl ForwardingServiceOptions {
         Self {
             service_incoming_access_control: Arc::new(AllowAll),
             forwarders_incoming_access_control: Arc::new(AllowAll),
-            consumer_service_flow_control: vec![],
-            consumer_forwarder_flow_control: vec![],
+            consumer_for_spawner_service_flow_control: vec![],
+            consumer_for_producer_service_flow_control: vec![],
+            consumer_for_spawner_forwarder_flow_control: vec![],
+            consumer_for_producer_forwarder_flow_control: vec![],
         }
     }
 
-    /// Mark that this Forwarding service is a Consumer for to the given [`FlowControlId`]
-    pub fn service_as_consumer(
+    /// Mark that this Forwarding service is a Consumer for to the given [`ProducerFlowControlId`]
+    pub fn service_as_consumer_for_producer(mut self, id: &ProducerFlowControlId) -> Self {
+        self.consumer_for_producer_service_flow_control
+            .push(id.clone());
+
+        self
+    }
+
+    /// Mark that this Forwarding service is a Consumer for to the given [`SpawnerFlowControlId`]
+    pub fn service_as_consumer_for_spawner(
         mut self,
-        flow_control_id: &FlowControlId,
-        flow_control_policy: FlowControlPolicy,
+        id: &SpawnerFlowControlId,
+        policy: SpawnerFlowControlPolicy,
     ) -> Self {
-        self.consumer_service_flow_control
-            .push(ConsumerFlowControl {
-                flow_control_id: flow_control_id.clone(),
-                flow_control_policy,
+        self.consumer_for_spawner_service_flow_control
+            .push(SpawnerConsumer {
+                id: id.clone(),
+                policy,
             });
 
         self
     }
 
-    /// Mark that spawned Forwarders are Consumers for to the given [`FlowControlId`]
-    pub fn forwarder_as_consumer(
+    /// Mark that spawned Forwarders are Consumers for to the given [`ProducerFlowControlId`]
+    pub fn forwarder_as_consumer_for_producer(mut self, id: &ProducerFlowControlId) -> Self {
+        self.consumer_for_producer_forwarder_flow_control
+            .push(id.clone());
+
+        self
+    }
+
+    /// Mark that spawned Forwarders are Consumers for to the given [`SpawnerFlowControlId`]
+    pub fn forwarder_as_consumer_for_spawner(
         mut self,
-        flow_control_id: &FlowControlId,
-        flow_control_policy: FlowControlPolicy,
+        id: &SpawnerFlowControlId,
+        policy: SpawnerFlowControlPolicy,
     ) -> Self {
-        self.consumer_forwarder_flow_control
-            .push(ConsumerFlowControl {
-                flow_control_id: flow_control_id.clone(),
-                flow_control_policy,
+        self.consumer_for_spawner_forwarder_flow_control
+            .push(SpawnerConsumer {
+                id: id.clone(),
+                policy,
             });
 
         self
@@ -98,12 +120,15 @@ impl ForwardingServiceOptions {
         flow_controls: &FlowControls,
         address: &Address,
     ) {
-        for consumer_flow_control in &self.consumer_service_flow_control {
-            flow_controls.add_consumer(
+        for spawner_consumer in &self.consumer_for_spawner_service_flow_control {
+            flow_controls.add_consumer_for_spawner(
                 address.clone(),
-                &consumer_flow_control.flow_control_id,
-                consumer_flow_control.flow_control_policy,
+                &spawner_consumer.id,
+                spawner_consumer.policy,
             );
+        }
+        for id in &self.consumer_for_producer_service_flow_control {
+            flow_controls.add_consumer_for_producer(address.clone(), id);
         }
     }
 
@@ -112,12 +137,15 @@ impl ForwardingServiceOptions {
         flow_controls: &FlowControls,
         address: &Address,
     ) {
-        for consumer_flow_control in &self.consumer_forwarder_flow_control {
-            flow_controls.add_consumer(
+        for spawner_consumer in &self.consumer_for_spawner_forwarder_flow_control {
+            flow_controls.add_consumer_for_spawner(
                 address.clone(),
-                &consumer_flow_control.flow_control_id,
-                consumer_flow_control.flow_control_policy,
+                &spawner_consumer.id,
+                spawner_consumer.policy,
             );
+        }
+        for id in &self.consumer_for_producer_forwarder_flow_control {
+            flow_controls.add_consumer_for_producer(address.clone(), id);
         }
     }
 }

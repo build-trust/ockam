@@ -5,7 +5,7 @@ use minicbor::{Decode, Encode};
 use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
 use ockam::identity::IdentityIdentifier;
 use ockam_core::compat::borrow::Cow;
-use ockam_core::flow_control::FlowControlId;
+use ockam_core::flow_control::{ProducerFlowControlId, SpawnerFlowControlId};
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{route, Address, CowStr, Result};
@@ -69,11 +69,11 @@ pub struct CreateSecureChannelResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6056513>,
     #[n(1)] pub addr: Address,
-    #[n(2)] pub flow_control_id: FlowControlId
+    #[n(2)] pub flow_control_id: ProducerFlowControlId
 }
 
 impl CreateSecureChannelResponse {
-    pub fn new(addr: &Address, flow_control_id: &FlowControlId) -> Self {
+    pub fn new(addr: &Address, flow_control_id: &ProducerFlowControlId) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -82,7 +82,7 @@ impl CreateSecureChannelResponse {
         }
     }
 
-    pub fn flow_control_id(&self) -> FlowControlId {
+    pub fn flow_control_id(&self) -> ProducerFlowControlId {
         self.flow_control_id.clone()
     }
 
@@ -192,7 +192,7 @@ pub struct ShowSecureChannelListenerResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9365445>,
     #[n(1)] pub addr: Address,
-    #[n(2)] pub flow_control_id: FlowControlId,
+    #[n(2)] pub flow_control_id: SpawnerFlowControlId,
 }
 
 impl ShowSecureChannelListenerResponse {
@@ -273,7 +273,7 @@ pub struct ShowSecureChannelResponse<'a> {
     #[b(1)] pub channel: Option<Cow<'a, str>>,
     #[b(2)] pub route: Option<Cow<'a, str>>,
     #[b(3)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
-    #[n(4)] pub flow_control_id: Option<FlowControlId>,
+    #[n(4)] pub flow_control_id: Option<ProducerFlowControlId>,
 }
 
 impl<'a> ShowSecureChannelResponse<'a> {

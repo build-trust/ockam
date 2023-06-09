@@ -1,5 +1,4 @@
 use ockam::{Any, Context, Result, Routed, Worker};
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, Address, AllowAll, LocalMessage, TransportMessage};
 
 /// This service allows `ockam_command` to send messages on behalf of a background node
@@ -52,11 +51,9 @@ impl RpcProxyService {
             .find_flow_control_with_producer_address(&next)
             .map(|x| x.flow_control_id().clone())
         {
-            child_ctx.flow_controls().add_consumer(
-                child_ctx.address(),
-                &flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            child_ctx
+                .flow_controls()
+                .add_consumer_for_producer(child_ctx.address(), &flow_control_id);
         }
 
         // Send the request to the intended destination

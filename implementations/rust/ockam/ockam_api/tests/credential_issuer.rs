@@ -4,7 +4,7 @@ use ockam::route;
 use ockam_api::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
 use ockam_core::compat::collections::{BTreeMap, HashMap};
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::FlowControlPolicy;
+use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_core::{Address, Result};
 use ockam_identity::{
     CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions,
@@ -62,10 +62,10 @@ async fn credential(ctx: &mut Context) -> Result<()> {
             options,
         )
         .await?;
-    ctx.flow_controls().add_consumer(
+    ctx.flow_controls().add_consumer_for_spawner(
         auth_worker_addr.clone(),
         &sc_flow_control_id,
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
+        SpawnerFlowControlPolicy::AllowMultipleMessages,
     );
     let auth = CredentialsIssuer::new(
         identities.clone(),
