@@ -1,15 +1,17 @@
-FROM gcc:11.2.0@sha256:0eaeaee298c154ecd383cabe5301a5df9fde0cd3a729124caf574500b936389b
+FROM gcc:12.3.0@sha256:5e1768ffd3230192358cfbde63443750f8f78f160a449d25007de9828c41976d
 
 ARG RUSTUP_INIT_VERSION=1.25.2
 ARG RUST_VERSION=1.68.0
 ARG ERLANG_VERSION=24.1.7-1~debian~buster
 ARG ELIXIR_VERSION=1.13.0-1~debian~buster
-ARG NODEJS_VERSION=16.13.1
+ARG NODEJS_VERSION=16.14.2
 ARG COSIGN_VERSION=1.9.0
 ARG MOLD_VERSION=1.3.1
 ARG SHFMT_VERSION=3.5.1
 ARG COMMITLINT_VERSION=17.1.1
 ARG GH_CLI_VERSION=2.29.0
+ARG PNPM_VERSION=6.11.0
+ARG VITE_VERSION=4.3.9
 
 ARG ELIXIR_SHA256=fb7a7f1ad171f87c2670e4759334daab18e4440a23f0d85802397b7e9d8b2b2f
 
@@ -26,7 +28,7 @@ RUN set -xe; \
         echo "Using AMD64"; \
         COSIGN_SHA256="47e2596a38e619b72e736fd171eeeaadaf6bd22d6e87a767b339168a87b62761" && COSIGN_OS="amd64"; \
         RUSTUP_INIT_SHA256="bb31eaf643926b2ee9f4d8d6fc0e2835e03c0a60f34d324048aa194f0b29a71c"; \
-        NODEJS_SHA256="a3721f87cecc0b52b0be8587c20776ac7305db413751db02c55aa2bffac15198" && NODEJS_OS="linux-x64"; \
+        NODEJS_SHA256="e40c6f81bfd078976d85296b5e657be19e06862497741ad82902d0704b34bb1b" && NODEJS_OS="linux-x64"; \
         ERLANG_SHA256="89c98e177f70593a9f64f3c9962393a51e6730d16071820600d19d4aaa732412" && ERLANG_OS="amd64"; \
         JDK_SHA256="81f5bed21077f9fbb04909b50391620c78b9a3c376593c0992934719c0de6b73" && JDK_OS="x64"; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
@@ -40,7 +42,7 @@ RUN set -xe; \
         echo "Using ARM64"; \
         COSIGN_SHA256="abd7ec116dd7e7980f08e67d2c7478ae1cdc97adf778aff76d8a737a908670d8" && COSIGN_OS="arm64"; \
         RUSTUP_INIT_SHA256="4ccaa7de6b8be1569f6b764acc28e84f5eca342f5162cd5c810891bff7ed7f74"; \
-        NODEJS_SHA256="af1127594d6dae96d3f1d307174daa5084d9c9027eb6fc02548022257f4b0a6a" && NODEJS_OS="linux-arm64"; \
+        NODEJS_SHA256="f7c5a573c06a520d6c2318f6ae204141b8420386553a692fc359f8ae3d88df96" && NODEJS_OS="linux-arm64"; \
         ERLANG_SHA256="80e95df44cba03f9abefa54ab1452d97b9969a6d164792e827e59a1116377bbd" && ERLANG_OS="arm64"; \
         JDK_SHA256="2e3c19c1707205c6b90cc04b416e8d83078ed98417d5a69dce3cf7dc0d7cfbca" && JDK_OS="aarch64"; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
@@ -106,7 +108,7 @@ RUN set -xe; \
 # Setup erlang
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
-      libncurses5 libwxbase3.0-0v5 libwxgtk3.0-gtk3-0v5 libsctp1; \
+      libncurses5 libwxbase3.0-0v5 libwxgtk3.0-gtk3-0v5 libsctp1 libgtk-3-dev; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*; \
     ERLANG_PACKAGE="esl-erlang_${ERLANG_VERSION}_${ERLANG_OS}.deb"; \
@@ -148,6 +150,13 @@ RUN set -xe; \
     echo "${GH_CLI_SHA256}  gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" | sha256sum -c; \
     tar -xf "gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" -C /opt/; \
     mv "/opt/gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}" "${GH_CLI_HOME}"; \
+# Setup Tauri dependencies
+    echo "deb http://deb.debian.org/debian experimental main" >> /etc/apt/sources.list; \
+    echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list; \
+    apt update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y; \
+    npm install -g pnpm@${PNPM_VERSION}; \
+    npm install -g vite@${VITE_VERSION}; \
 # Setup cosign
     cd /tmp; \
     COSIGN_PACKAGE="cosign-linux-${COSIGN_OS}"; \
