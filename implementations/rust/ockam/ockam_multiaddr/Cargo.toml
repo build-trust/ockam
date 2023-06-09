@@ -17,7 +17,7 @@ cbor = ["minicbor"]
 [dependencies]
 minicbor = { version = "0.19.0", default-features = false, features = ["alloc"], optional = true }
 once_cell = { version = "1.18.0", default-features = false, features = ["alloc"] }
-serde = { version = "1.0.163", default-features = false, optional = true }
+serde = { version = "1.0.164", default-features = false, optional = true }
 tinyvec = { version = "1.5.1", features = ["alloc"] }
 unsigned-varint = "0.7.1"
 
