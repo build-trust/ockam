@@ -1,6 +1,6 @@
 [package]
 name = "ockam_command"
-version = "0.88.0"
+version = "0.89.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -80,15 +80,15 @@ lazy_static = "1.4.0"
 miette = { version = "5.8.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.19.0", features = ["derive", "alloc", "half"] }
 nix = "0.26"
-ockam = { path = "../ockam", version = "^0.88.0", features = ["software_vault"] }
-ockam_abac = { path = "../ockam_abac", version = "0.22.0", features = ["std"] }
-ockam_api = { path = "../ockam_api", version = "0.31.0", features = ["std", "authenticators"] }
-ockam_core = { path = "../ockam_core", version = "^0.81.0" }
-ockam_identity = { path = "../ockam_identity", version = "^0.76.0" }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.22.0", features = ["std"] }
-ockam_node = { path = "../ockam_node", version = "^0.84.0" }
-ockam_vault = { path = "../ockam_vault", version = "^0.77.0", features = ["storage"] }
-ockam_vault_aws = { path = "../ockam_vault_aws", version = "^0.2.0" }
+ockam = { path = "../ockam", version = "^0.89.0", features = ["software_vault"] }
+ockam_abac = { path = "../ockam_abac", version = "0.23.0", features = ["std"] }
+ockam_api = { path = "../ockam_api", version = "0.32.0", features = ["std", "authenticators"] }
+ockam_core = { path = "../ockam_core", version = "^0.82.0" }
+ockam_identity = { path = "../ockam_identity", version = "^0.77.0" }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.23.0", features = ["std"] }
+ockam_node = { path = "../ockam_node", version = "^0.85.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.78.0", features = ["storage"] }
+ockam_vault_aws = { path = "../ockam_vault_aws", version = "^0.3.0" }
 once_cell = "1.18"
 open = "4"
 pem-rfc7468 = { version = "0.7.0", features = ["std"] }
@@ -119,7 +119,7 @@ validator = "0.16"
 
 [dev-dependencies]
 assert_cmd = "2"
-ockam_api = { path = "../ockam_api", version = "0.31.0", features = ["std", "authenticators"] }
+ockam_api = { path = "../ockam_api", version = "0.32.0", features = ["std", "authenticators"] }
 ockam_macros = { path = "../ockam_macros", version = "^0.30.0" }
 tempfile = "3"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }

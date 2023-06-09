@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.89.0 - 2023-06-09
+
+### Added
+
+- Add standard list output and implement for all list commands
+
+### Changed
+
+- Use async configure addon endpoint
+- Improve error definitions within ockam command and error handling within ockam enroll
+- Paginate help texts
+- Full local kafka implementation which credential validation and flow control
+- Updated dependencies
+
+### Fixed
+
+- Fix test where the real `CliState` was being used instead of an isolated instance
+
+### Removed
+
+- Remove old config.json file and add migration
+- Remove usage of chrono, fix clippy issues
+
 ## 0.88.0 - 2023-05-26
 
 ### Added
