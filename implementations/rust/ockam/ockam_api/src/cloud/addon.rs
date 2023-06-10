@@ -45,7 +45,7 @@ impl<'a> ConfluentConfig<'a> {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ConfluentConfigResponse {

@@ -408,13 +408,10 @@ impl From<u8> for Kind {
 
 impl core::fmt::Display for ErrorCode {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        // Kind of halfway between debug and display, TBH, but it's only used in
-        // the Error debug output.
-        write!(f, "[Origin::{:?}; Kind::{:?}", self.origin, self.kind,)?;
+        write!(f, "origin: {:?}, kind: {:?}", self.origin, self.kind,)?;
         if self.extra != 0 {
-            write!(f, "; code = {}]", self.extra)
-        } else {
-            write!(f, "]")
-        }
+            write!(f, ", code = {}", self.extra)?
+        };
+        Ok(())
     }
 }

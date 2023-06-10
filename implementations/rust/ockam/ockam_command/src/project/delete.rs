@@ -2,13 +2,13 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cli_state::StateDirTrait;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::util::config;
+use crate::project::util::refresh_projects;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{docs, space, CommandGlobalOpts};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -50,26 +50,26 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> crate::Result<()> {
-    let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)?;
+    let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let controller_route = &cmd.cloud_opts.route();
 
     // Try to remove from config, in case the project was removed from the cloud but not from the config file.
-    let _ = config::remove_project(&opts.config, &cmd.project_name);
+    opts.state.projects.delete(&cmd.project_name)?;
 
     // Lookup project
-    let project_id = match config::get_project(&opts.config, &cmd.project_name) {
-        Some(id) => id,
-        None => {
+    let project_id = match opts.state.projects.get(&cmd.project_name) {
+        Ok(ref state) => state.config().id.clone(),
+        Err(_) => {
             // The project is not in the config file.
             // Fetch all available projects from the cloud.
-            config::refresh_projects(ctx, &opts, &node_name, controller_route, None).await?;
+            refresh_projects(ctx, &opts, &node_name, controller_route, None).await?;
 
             // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
-            match config::get_project(&opts.config, &cmd.project_name) {
-                Some(id) => id,
-                None => {
+            match opts.state.projects.get(&cmd.project_name) {
+                Ok(ref state) => state.config().id.clone(),
+                Err(_) => {
                     return Ok(());
                 }
             }
@@ -87,7 +87,6 @@ async fn run_impl(
     rpc.is_ok()?;
 
     // Try to remove from config again, in case it was re-added after the refresh.
-    let _ = config::remove_project(&opts.config, &cmd.project_name);
     opts.state.projects.delete(&cmd.project_name)?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
@@ -95,9 +94,8 @@ async fn run_impl(
     // log the deletion
     opts.terminal
         .stdout()
-        .plain(format!(
-            "{}Project with name '{}' has been deleted.",
-            "✔︎".light_green(),
+        .plain(fmt_ok!(
+            "Project with name '{}' has been deleted.",
             &cmd.project_name
         ))
         .machine(&cmd.project_name)

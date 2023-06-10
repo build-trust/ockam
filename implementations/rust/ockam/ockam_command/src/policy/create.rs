@@ -9,8 +9,7 @@ use ockam_core::api::Request;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
-    /// Node on which to start the tcp inlet.
-    #[arg(long, display_order = 900, id = "NODE")]
+    #[arg(long, display_order = 900, id = "NODE_NAME")]
     at: String,
 
     #[arg(short, long)]

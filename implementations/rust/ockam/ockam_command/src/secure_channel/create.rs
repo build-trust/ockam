@@ -14,9 +14,11 @@ use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
-use ockam_api::{config::lookup::ConfigLookup, nodes::models};
-use ockam_api::{nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr};
+use ockam_api::nodes::models;
+use ockam_api::nodes::models::secure_channel::{
+    CreateSecureChannelResponse, CredentialExchangeMode,
+};
+use ockam_api::route_to_multiaddr;
 use ockam_multiaddr::MultiAddr;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -63,7 +65,6 @@ impl CreateCommand {
         &self,
         ctx: &Context,
         opts: &CommandGlobalOpts,
-        cloud_addr: &MultiAddr,
         api_node: &str,
         tcp: &TcpTransport,
     ) -> Result<MultiAddr> {
@@ -74,7 +75,6 @@ impl CreateCommand {
             ctx,
             opts,
             &meta,
-            cloud_addr,
             api_node,
             Some(tcp),
             CredentialExchangeMode::Oneway,
@@ -84,7 +84,7 @@ impl CreateCommand {
     }
 
     // Read the `from` argument and return node name
-    fn parse_from_node(&self, _config: &ConfigLookup) -> String {
+    fn parse_from_node(&self) -> String {
         extract_address_value(&self.from).unwrap_or_else(|_| "".to_string())
     }
 
@@ -162,11 +162,8 @@ impl CreateCommand {
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
-    let config = &opts.config.lookup();
-    let from = &cmd.parse_from_node(config);
-    let to = &cmd
-        .parse_to_route(&ctx, &opts, &cmd.cloud_opts.route(), from, &tcp)
-        .await?;
+    let from = &cmd.parse_from_node();
+    let to = &cmd.parse_to_route(&ctx, &opts, from, &tcp).await?;
 
     let authorized_identifiers = cmd.authorized.clone();
 

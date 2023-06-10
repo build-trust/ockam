@@ -60,43 +60,43 @@ pub trait StateDirTrait: Sized + Send + Sync {
         self.dir().to_string_lossy().to_string()
     }
 
-    fn path(&self, name: &str) -> PathBuf {
-        self.dir().join(format!("{name}.json"))
+    fn path(&self, name: impl AsRef<str>) -> PathBuf {
+        self.dir().join(format!("{}.json", name.as_ref()))
     }
 
     fn overwrite(
         &self,
-        name: &str,
+        name: impl AsRef<str>,
         config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
     ) -> Result<Self::Item> {
-        let path = self.path(name);
+        let path = self.path(&name);
         let state = Self::Item::new(path, config)?;
         if !self.default_path()?.exists() {
-            self.set_default(name)?;
+            self.set_default(&name)?;
         }
         Ok(state)
     }
 
     fn create(
         &self,
-        name: &str,
+        name: impl AsRef<str>,
         config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
     ) -> Result<Self::Item> {
-        if self.exists(name) {
+        if self.exists(&name) {
             return Err(CliStateError::AlreadyExists);
         }
-        let state = Self::Item::new(self.path(name), config)?;
+        let state = Self::Item::new(self.path(&name), config)?;
         if !self.default_path()?.exists() {
-            self.set_default(name)?;
+            self.set_default(&name)?;
         }
         Ok(state)
     }
 
-    fn get(&self, name: &str) -> Result<Self::Item> {
-        if !self.exists(name) {
+    fn get(&self, name: impl AsRef<str>) -> Result<Self::Item> {
+        if !self.exists(&name) {
             return Err(CliStateError::NotFound);
         }
-        Self::Item::load(self.path(name))
+        Self::Item::load(self.path(&name))
     }
 
     fn list(&self) -> Result<Vec<Self::Item>> {
@@ -124,7 +124,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     // then we know that the current name is an item name
     fn is_item_path(&self, path: &PathBuf) -> Result<bool> {
         let name = file_stem(path)?;
-        Ok(path.eq(&self.path(&name)))
+        Ok(path.eq(&self.path(name)))
     }
 
     fn list_items_paths(&self) -> Result<Vec<PathBuf>> {
@@ -137,9 +137,9 @@ pub trait StateDirTrait: Sized + Send + Sync {
     }
 
     // TODO: move to StateItemTrait
-    fn delete(&self, name: &str) -> Result<()> {
+    fn delete(&self, name: impl AsRef<str>) -> Result<()> {
         // Retrieve state. If doesn't exist do nothing.
-        let s = match self.get(name) {
+        let s = match self.get(&name) {
             Ok(project) => project,
             Err(CliStateError::NotFound) => return Ok(()),
             Err(e) => return Err(e),
@@ -164,11 +164,11 @@ pub trait StateDirTrait: Sized + Send + Sync {
         Self::Item::load(path)
     }
 
-    fn set_default(&self, name: &str) -> Result<()> {
-        if !self.exists(name) {
+    fn set_default(&self, name: impl AsRef<str>) -> Result<()> {
+        if !self.exists(&name) {
             return Err(CliStateError::NotFound);
         }
-        let original = self.path(name);
+        let original = self.path(&name);
         let link = self.default_path()?;
         // Remove link if it exists
         let _ = std::fs::remove_file(&link);
@@ -177,15 +177,15 @@ pub trait StateDirTrait: Sized + Send + Sync {
         Ok(())
     }
 
-    fn is_default(&self, name: &str) -> Result<bool> {
-        if !self.exists(name) {
+    fn is_default(&self, name: impl AsRef<str>) -> Result<bool> {
+        if !self.exists(&name) {
             return Ok(false);
         }
         let default_name = {
             let path = std::fs::canonicalize(self.default_path()?)?;
             file_stem(&path)?
         };
-        Ok(default_name.eq(name))
+        Ok(default_name.eq(name.as_ref()))
     }
 
     fn is_empty(&self) -> Result<bool> {
@@ -198,8 +198,8 @@ pub trait StateDirTrait: Sized + Send + Sync {
         Ok(true)
     }
 
-    fn exists(&self, name: &str) -> bool {
-        self.path(name).exists()
+    fn exists(&self, name: impl AsRef<str>) -> bool {
+        self.path(&name).exists()
     }
 }
 

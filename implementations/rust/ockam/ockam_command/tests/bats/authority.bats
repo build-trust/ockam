@@ -15,7 +15,7 @@ teardown() {
 # ===== TESTS
 
 @test "authority - standalone authority, enrollers, members" {
-  port=33000
+  port="$(random_port)"
   PROJECT_JSON_PATH="$OCKAM_HOME/project-authority.json"
 
   run "$OCKAM" identity create authority

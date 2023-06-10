@@ -20,7 +20,7 @@ pub struct GetCommand {
 
 impl GetCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -34,7 +34,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: GetCommand,
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     rpc.request(api::credentials::get_credential(
         cmd.overwrite,

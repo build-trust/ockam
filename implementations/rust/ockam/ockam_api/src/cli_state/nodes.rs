@@ -25,18 +25,18 @@ impl NodesState {
         self._delete(name, sigkill)
     }
 
-    fn _delete(&self, name: &str, sigkill: bool) -> Result<()> {
+    fn _delete(&self, name: impl AsRef<str>, sigkill: bool) -> Result<()> {
         // If doesn't exist do nothing
-        if !self.exists(name) {
+        if !self.exists(&name) {
             return Ok(());
         }
-        let node = self.get(name)?;
+        let node = self.get(&name)?;
         // Set default to another node if it's the default
-        if self.is_default(name)? {
+        if self.is_default(&name)? {
             // Remove link if it exists
             let _ = std::fs::remove_file(self.default_path()?);
             for node in self.list()? {
-                if node.name() != name && self.set_default(node.name()).is_ok() {
+                if node.name() != name.as_ref() && self.set_default(node.name()).is_ok() {
                     debug!(name=%node.name(), "set default node");
                     break;
                 }
@@ -405,27 +405,27 @@ mod traits {
             &self.dir
         }
 
-        fn path(&self, name: &str) -> PathBuf {
-            self.dir().join(name)
+        fn path(&self, name: impl AsRef<str>) -> PathBuf {
+            self.dir().join(name.as_ref())
         }
 
         fn create(
             &self,
-            name: &str,
+            name: impl AsRef<str>,
             config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
         ) -> Result<Self::Item> {
-            if self.exists(name) {
+            if self.exists(&name) {
                 return Err(CliStateError::AlreadyExists);
             }
-            let state = Self::Item::init(self.path(name), config)?;
+            let state = Self::Item::init(self.path(&name), config)?;
             if !self.default_path()?.exists() {
-                self.set_default(name)?;
+                self.set_default(&name)?;
             }
             Ok(state)
         }
 
-        fn delete(&self, name: &str) -> Result<()> {
-            self._delete(name, false)
+        fn delete(&self, name: impl AsRef<str>) -> Result<()> {
+            self._delete(&name, false)
         }
     }
 

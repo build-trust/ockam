@@ -17,6 +17,7 @@ use tracing::{debug, info};
 
 use ockam::Context;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::SpaceConfig;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
@@ -24,8 +25,6 @@ use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::check_project_readiness;
-
-use crate::space::util::config;
 
 use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
@@ -129,7 +128,6 @@ async fn default_space<'a>(
     let send_req = async {
         rpc.request(api::space::list(&cloud_opts.route())).await?;
         *is_finished.lock().await = true;
-
         rpc.parse_response::<Vec<Space>>()
     };
 
@@ -178,6 +176,12 @@ async fn default_space<'a>(
     }
     // If it has, return the first one on the list
     else {
+        for space in &available_spaces {
+            opts.state
+                .spaces
+                .overwrite(&space.name, SpaceConfig::from(space))?;
+        }
+
         let space = available_spaces
             .drain(..1)
             .next()
@@ -193,7 +197,6 @@ async fn default_space<'a>(
         ))?;
         space
     };
-    config::set_space(&opts.config, &default_space)?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked this space as your default space, on this machine.\n"
@@ -222,7 +225,6 @@ async fn default_project(
     let send_req = async {
         rpc.request(api::project::list(&cloud_opts.route())).await?;
         *is_finished.lock().await = true;
-
         rpc.parse_response::<Vec<Project>>()
     };
 
@@ -274,6 +276,11 @@ async fn default_project(
     }
     // If it has, return the "default" project or first one on the list
     else {
+        for project in &available_projects {
+            opts.state
+                .projects
+                .overwrite(&project.name, project.clone())?;
+        }
         let p = match available_projects.iter().find(|ns| ns.name == "default") {
             None => available_projects
                 .drain(..1)

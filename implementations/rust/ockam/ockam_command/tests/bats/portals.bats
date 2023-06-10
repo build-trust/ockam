@@ -22,7 +22,7 @@ teardown() {
 # ===== TESTS
 
 @test "portals - create an inlet/outlet pair, a relay in an orchestrator project and move tcp traffic through it" {
-  port=7100
+  port="$(random_port)"
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
@@ -41,7 +41,7 @@ teardown() {
 }
 
 @test "portals - create an inlet using only default arguments, an outlet, a relay in an orchestrator project and move tcp traffic through it" {
-  port=7101
+  port="$(random_port)"
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
@@ -57,7 +57,7 @@ teardown() {
 }
 
 @test "portals - create an inlet (with implicit secure channel creation), an outlet, a relay in an orchestrator project and move tcp traffic through it" {
-  port=7102
+  port="$(random_port)"
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
   assert_success
@@ -75,7 +75,7 @@ teardown() {
 }
 
 @test "portals - inlet/outlet example with credential, not provided" {
-  port=7103
+  port="$(random_port)"
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
   # Setup nodes from a non-enrolled environment
@@ -105,20 +105,20 @@ teardown() {
 
   fwd="$(random_str)"
   run "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_output --partial "forward_to_$fwd"
   assert_success
+  assert_output --partial "forward_to_$fwd"
 
   run bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
   assert_success
 
   # Green can't establish secure channel with blue, because it didn't exchange credential with it.
-  run curl --fail --head --max-time 10 "127.0.0.1:$port"
+  run curl --fail --head --max-time 5 "127.0.0.1:$port"
   assert_failure
 }
 
 @test "portals - inlet (with implicit secure channel creation) / outlet example with credential, not provided" {
-  port=7104
+  port="$(random_port)"
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
@@ -156,7 +156,7 @@ teardown() {
 }
 
 @test "portals - inlet/outlet example with credential" {
-  port=7105
+  port="$(random_port)"
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
@@ -197,7 +197,7 @@ teardown() {
 }
 
 @test "portals - inlet (with implicit secure channel creation) / outlet example with enrollment token" {
-  port=7106
+  port="$(random_port)"
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
   green_token=$($OCKAM project ticket --attribute app=app1)
@@ -242,8 +242,8 @@ teardown() {
 
 
 @test "portals - local inlet and outlet, removing and re-creating the outlet" {
-  port=7107
-  node_port=7108
+  port="$(random_port)"
+  node_port="$(random_port)"
 
   setup_home_dir
 
@@ -280,8 +280,8 @@ teardown() {
 
 
 @test "portals - local inlet and outlet passing though a relay, removing and re-creating the outlet" {
-  port=7109
-  node_port=7110
+  port="$(random_port)"
+  node_port="$(random_port)"
 
   run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --tcp-listener-address "127.0.0.1:$node_port"
   assert_success

@@ -3,5 +3,5 @@
 $ ockam tcp-connection delete d59c01ab8d9683f8c454df746e627b43
 
 # To delete a TCP connection given its ID on a specific node
-$ ockam tcp-connection delete d59c01ab8d9683f8c454df746e627b43 --node n1
+$ ockam tcp-connection delete d59c01ab8d9683f8c454df746e627b43 --at n1
 ```

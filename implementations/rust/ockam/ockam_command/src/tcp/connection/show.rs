@@ -7,10 +7,13 @@ use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
 use crate::util::{node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
+
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 /// Show a TCP connection
 #[derive(Clone, Debug, Args)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ShowCommand {
     #[command(flatten)]
     pub node_opts: NodeOpts,
@@ -21,7 +24,7 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.api_node);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self));
     }
 }
@@ -30,7 +33,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.api_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     rpc.request(Request::get(format!(

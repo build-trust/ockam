@@ -1,6 +1,7 @@
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::is_tty;
 use crate::{
+    docs,
     util::{api, extract_address_value, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat,
 };
@@ -9,7 +10,10 @@ use colorful::Colorful;
 use ockam_api::nodes::models;
 use serde_json::json;
 
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
 #[derive(Clone, Debug, Args)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct TcpConnectionNodeOpts {
     /// Node that will initiate the connection
     #[arg(global = true, short, long, value_name = "NODE")]

@@ -21,10 +21,10 @@
 //! ```
 //! use example_test_helper::{CmdBuilder};
 //!
-//! let (exitcode, stdout) = CmdBuilder::new("rustup --version").run().unwrap();
+//! let (exitcode, stdout) = CmdBuilder::new("rustc --version").run().unwrap();
 //!
 //! assert_eq!(Some(0), exitcode);
-//! assert!(stdout.contains("rustup"));
+//! assert!(stdout.contains("rustc"));
 //! ```
 //!
 //! Spawn a command to run in the background and wait to match a regex on its stdout.
@@ -33,9 +33,9 @@
 //! ```
 //! use example_test_helper::{CmdBuilder};
 //!
-//! let cmd = CmdBuilder::new("rustup --version").spawn().unwrap();
+//! let cmd = CmdBuilder::new("rustc --version").spawn().unwrap();
 //!
-//! let mut captures = cmd.match_stdout(r"(?im)^rustup (\d+\.\d+.\d+)").unwrap();
+//! let mut captures = cmd.match_stdout(r"rustc (\d+\.\d+\.\d+)").unwrap();
 //! let version = captures.swap_remove(1).unwrap();
 //!
 //! assert_eq!(version.matches(".").count(), 2);

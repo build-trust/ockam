@@ -132,18 +132,18 @@ mod traits {
 
         fn create(
             &self,
-            _name: &str,
+            _name: impl AsRef<str>,
             _config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
         ) -> Result<Self::Item> {
             unreachable!()
         }
 
-        fn delete(&self, name: &str) -> Result<()> {
+        fn delete(&self, name: impl AsRef<str>) -> Result<()> {
             // If doesn't exist do nothing.
-            if !self.exists(name) {
+            if !self.exists(&name) {
                 return Ok(());
             }
-            let vault = self.get(name)?;
+            let vault = self.get(&name)?;
             // If it's the default, remove link
             if let Ok(default) = self.default() {
                 if default.path == vault.path {

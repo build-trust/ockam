@@ -6,7 +6,7 @@ use crate::terminal::OckamColor;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{display_parse_logs, fmt_log};
-use crate::{fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 use clap::Args;
 use colorful::Colorful;
@@ -19,8 +19,11 @@ use std::net::SocketAddr;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
     #[arg(long, display_order = 900, id = "NODE")]

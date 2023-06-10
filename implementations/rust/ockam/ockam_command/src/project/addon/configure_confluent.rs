@@ -1,8 +1,8 @@
-use anyhow::Context as _;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 
 use ockam::Context;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::ConfluentConfig;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::CloudRequestWrapper;
@@ -11,7 +11,6 @@ use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
 use crate::project::addon::base_endpoint;
-use crate::project::config;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
@@ -73,7 +72,7 @@ async fn run_impl(
     let addon_id = "confluent";
     let endpoint = format!(
         "{}/{}",
-        base_endpoint(&opts.config.lookup(), &project_name)?,
+        base_endpoint(&opts.state, &project_name)?,
         addon_id
     );
     let req = Request::put(endpoint).body(CloudRequestWrapper::new(
@@ -89,8 +88,7 @@ async fn run_impl(
     println!("Reconfiguring project (this can take a few minutes) ...");
     tokio::time::sleep(std::time::Duration::from_secs(45)).await;
 
-    let project_id =
-        config::get_project(&opts.config, &project_name).context("project not found in lookup")?;
+    let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     let mut rpc = rpc.clone();
     rpc.request(api::project::show(&project_id, controller_route))
         .await?;

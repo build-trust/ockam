@@ -76,9 +76,8 @@ impl NodeCommand {
 
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
-    /// Override the default API node
-    #[arg(global = true, id = "node", value_name = "NODE", short, long)]
-    pub api_node: Option<String>,
+    #[arg(global = true, id = "at", value_name = "NODE_NAME", long)]
+    pub at_node: Option<String>,
 }
 
 /// If the required node name is the default node but that node has not been initialized yet
@@ -132,14 +131,12 @@ fn spawn_default_node(opts: &CommandGlobalOpts) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::OckamConfig;
     use crate::GlobalArgs;
     use ockam_api::cli_state::StateItemTrait;
 
     #[test]
     fn test_initialize() {
-        let config = OckamConfig::load_with_dir(CliState::test_dir().unwrap()).unwrap();
-        let opts = CommandGlobalOpts::new(GlobalArgs::default(), config).set_quiet();
+        let opts = CommandGlobalOpts::new(GlobalArgs::default()).set_quiet();
 
         // on start-up there is no default node
         let _ = opts.state.nodes.default().and_then(|n| n.delete());
