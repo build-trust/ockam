@@ -169,8 +169,36 @@ fn generate_markdown_page(
         }
     }
 
-    // Subcommands list, if any
-    if cmd.get_subcommands().next().is_some() {
+    // Arguments and options if the command has no subcommands
+    if cmd.get_subcommands().next().is_none() {
+        // Arguments
+        if cmd.get_positionals().next().is_some() {
+            writeln!(buffer, "### Arguments\n")?;
+
+            for pos_arg in cmd.get_positionals() {
+                generate_arg_markdown(buffer, pos_arg)?;
+            }
+
+            writeln!(buffer)?;
+        }
+
+        // Options
+        let non_pos: Vec<_> = cmd
+            .get_arguments()
+            .filter(|arg| !arg.is_positional())
+            .collect();
+
+        if !non_pos.is_empty() {
+            writeln!(buffer, "### Options\n")?;
+
+            for arg in non_pos {
+                generate_arg_markdown(buffer, arg)?;
+            }
+
+            writeln!(buffer)?;
+        }
+    } else {
+        // Subcommands list
         writeln!(buffer, "### Subcommands\n")?;
 
         for s_cmd in cmd.get_subcommands() {
@@ -191,34 +219,6 @@ fn generate_markdown_page(
                 s_cmd.get_name()
             )?;
         }
-
-        writeln!(buffer)?;
-    }
-
-    // Arguments
-    if cmd.get_positionals().next().is_some() {
-        writeln!(buffer, "### Arguments\n")?;
-
-        for pos_arg in cmd.get_positionals() {
-            generate_arg_markdown(buffer, pos_arg)?;
-        }
-
-        writeln!(buffer)?;
-    }
-
-    // Options
-    let non_pos: Vec<_> = cmd
-        .get_arguments()
-        .filter(|arg| !arg.is_positional())
-        .collect();
-
-    if !non_pos.is_empty() {
-        writeln!(buffer, "### Options\n")?;
-
-        for arg in non_pos {
-            generate_arg_markdown(buffer, arg)?;
-        }
-
         writeln!(buffer)?;
     }
 

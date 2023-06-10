@@ -1,15 +1,19 @@
 use std::path::PathBuf;
 
 use crate::{
+    fmt_log, fmt_ok,
+    terminal::OckamColor,
     util::{node_rpc, random_name},
     CommandGlobalOpts, Result,
 };
+use colorful::Colorful;
 use miette::miette;
 
 use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::{CredentialConfig, StateDirTrait};
 use ockam_identity::{identities, Identity};
+use tokio::{sync::Mutex, try_join};
 
 #[derive(Clone, Debug, Args)]
 pub struct StoreCommand {
@@ -51,19 +55,60 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, StoreCommand),
 ) -> crate::Result<()> {
-    let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
-        (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
-        (Some(credential), _) => credential.to_string(),
-        _ => return Err(miette!("Credential or Credential Path argument must be provided").into()),
+    opts.terminal.write_line(&fmt_log!(
+        "Storing credential {}...\n",
+        cmd.credential_name.clone()
+    ))?;
+
+    let is_finished: Mutex<bool> = Mutex::new(false);
+
+    let send_req = async {
+        let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
+            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
+            (Some(credential), _) => credential.to_string(),
+            _ => {
+                *is_finished.lock().await = true;
+                return crate::Result::Err(
+                    miette!("Credential or Credential Path argument must be provided").into(),
+                );
+            }
+        };
+
+        // store
+        opts.state.credentials.create(
+            &cmd.credential_name,
+            CredentialConfig::new(cmd.identity().await?, cred_as_str.to_string())?,
+        )?;
+
+        *is_finished.lock().await = true;
+        Ok(cred_as_str)
     };
 
-    // store
-    opts.state.credentials.create(
-        &cmd.credential_name,
-        CredentialConfig::new(cmd.identity().await?, cred_as_str)?,
-    )?;
+    let output_messages = vec![format!("Storing credential...")];
 
-    println!("Credential {} stored", &cmd.credential_name);
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (cred_as_str, _) = try_join!(send_req, progress_output)?;
+
+    opts.terminal
+        .stdout()
+        .machine(cred_as_str.to_string())
+        .json(serde_json::json!(
+            {
+                "name": cmd.credential_name,
+                "issuer": cmd.issuer,
+                "credential": cred_as_str
+            }
+        ))
+        .plain(fmt_ok!(
+            "Credential {} stored\n",
+            cmd.credential_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))
+        .write_line()?;
 
     Ok(())
 }

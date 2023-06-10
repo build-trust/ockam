@@ -53,6 +53,7 @@ impl Instantiator for SecureChannelInstantiator {
             ConnectionInstanceBuilder::extract(&builder.current_multiaddr, match_start, 1);
 
         let transport_route = builder.transport_route.clone();
+
         debug!(%secure_piece, %transport_route, "creating secure channel");
         let route = local_multiaddr_to_route(&secure_piece)
             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;

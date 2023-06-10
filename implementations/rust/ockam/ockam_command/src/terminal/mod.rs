@@ -1,8 +1,10 @@
+use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::time::Duration;
 
 use anyhow::Context as _;
+use colorful::Colorful;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::miette;
 
@@ -13,8 +15,7 @@ use tokio::sync::Mutex;
 use tokio::time::sleep;
 
 use crate::error::Error;
-
-use crate::{OutputFormat, Result};
+use crate::{fmt_list, fmt_log, fmt_warn, OutputFormat, Result};
 
 pub mod colors;
 pub mod fmt;
@@ -127,9 +128,9 @@ pub struct TerminalStream<T: Write + Debug + Clone> {
 }
 
 impl<T: Write + Debug + Clone> TerminalStream<T> {
-    fn prepare_msg(&self, msg: &str) -> Result<String> {
+    fn prepare_msg(&self, msg: impl AsRef<str>) -> Result<String> {
         let mut buffer = Vec::new();
-        write!(buffer, "{}", msg)?;
+        write!(buffer, "{}", msg.as_ref())?;
         if self.no_color {
             buffer = strip_ansi_escapes::strip(&buffer)?;
         }
@@ -177,9 +178,9 @@ pub trait TerminalWriter: Clone {
     fn stderr(no_color: bool) -> Self;
     fn is_tty(&self) -> bool;
 
-    fn write(&mut self, s: &str) -> Result<()>;
-    fn rewrite(&mut self, s: &str) -> Result<()>;
-    fn write_line(&self, s: &str) -> Result<()>;
+    fn write(&mut self, s: impl AsRef<str>) -> Result<()>;
+    fn rewrite(&mut self, s: impl AsRef<str>) -> Result<()>;
+    fn write_line(&self, s: impl AsRef<str>) -> Result<()>;
 }
 
 // Core functions
@@ -238,28 +239,74 @@ impl<W: TerminalWriter> Terminal<W> {
 
 // Logging mode
 impl<W: TerminalWriter> Terminal<W, ToStdErr> {
-    pub fn write(&self, msg: &str) -> Result<()> {
+    pub fn write(&self, msg: impl AsRef<str>) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
         self.stderr.clone().write(msg)
     }
 
-    pub fn rewrite(&self, msg: &str) -> Result<()> {
+    pub fn rewrite(&self, msg: impl AsRef<str>) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
         self.stderr.clone().rewrite(msg)
     }
 
-    pub fn write_line(&self, msg: &str) -> Result<&Self> {
-        if self.quiet {
+    pub fn write_line(&self, msg: impl AsRef<str>) -> Result<&Self> {
+        if self.quiet || !self.stdout.is_tty() || self.output_format != OutputFormat::Plain {
             return Ok(self);
         }
+
         self.stderr
             .write_line(msg)
             .map_err(|e| Error::new_internal_error("Unable to write to stderr.", &e.to_string()))?;
         Ok(self)
+    }
+
+    pub fn build_list(
+        &self,
+        items: &Vec<impl crate::util::output::Output>,
+        header: &str,
+        empty_message: &str,
+    ) -> Result<String> {
+        let mut output = String::new();
+
+        // Display header
+        let header_len = header.len();
+        let padding = 7;
+        writeln!(
+            output,
+            "{}",
+            &fmt_log!("┌{}┐", "─".repeat(header_len + (padding * 2)))
+        )?;
+        writeln!(
+            output,
+            "{}",
+            &fmt_log!("│{}{header}{}│", " ".repeat(padding), " ".repeat(padding))
+        )?;
+        writeln!(
+            output,
+            "{}",
+            &fmt_log!("└{}┘\n", "─".repeat(header_len + (padding * 2)))
+        )?;
+
+        // Display empty message if items is empty
+        if items.is_empty() {
+            writeln!(output, "{}", &fmt_warn!("{empty_message}"))?;
+            return Ok(output);
+        }
+
+        // Display items with alternating colors
+        for item in items {
+            let item = item.list_output()?;
+            item.split('\n').for_each(|line| {
+                let _ = writeln!(output, "{}", &fmt_list!("{line}"));
+            });
+            writeln!(output)?;
+        }
+
+        Ok(output)
     }
 
     pub fn stdout(self) -> Terminal<W, ToStdOut> {

@@ -237,9 +237,15 @@ impl Worker for DirectAuthenticator {
                         .await?;
                     Response::ok(req.id()).to_vec()?
                 }
+                (Some(Method::Get), ["member_ids"]) => {
+                    let entries = self.list_members(&from).await?;
+                    let ids: Vec<IdentityIdentifier> = entries.into_keys().collect();
+                    Response::ok(req.id()).body(ids).to_vec()?
+                }
                 // List members attested by our identity (enroller)
                 (Some(Method::Get), [""]) | (Some(Method::Get), ["members"]) => {
                     let entries = self.list_members(&from).await?;
+
                     Response::ok(req.id()).body(entries).to_vec()?
                 }
                 // Delete member if they were attested by our identity (enroller)
@@ -462,6 +468,10 @@ impl DirectAuthenticatorClient {
                 &Request::post("/").body(AddMember::new(id).with_attributes(attributes)),
             )
             .await
+    }
+
+    pub async fn list_member_ids(&self) -> Result<Vec<IdentityIdentifier>> {
+        self.0.request(&Request::get("/member_ids")).await
     }
 
     pub async fn list_members(&self) -> Result<HashMap<IdentityIdentifier, AttributesEntry>> {

@@ -4,14 +4,15 @@ use minicbor::Decoder;
 
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{and, eq, ident, str};
+
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
-use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
+use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, IncomingAccessControl};
 use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
-use ockam_multiaddr::proto::Project;
+
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
 
@@ -23,15 +24,16 @@ use crate::hop::Hop;
 use crate::identity::IdentityService;
 use crate::kafka::{
     KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
-    ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS, ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+    KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
+use crate::kafka::{OutletManagerService, PrefixForwarderService};
 use crate::nodes::models::portal::CreateInlet;
 use crate::nodes::models::services::{
-    ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
-    StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
-    StartIdentityServiceRequest, StartKafkaConsumerRequest, StartKafkaProducerRequest,
-    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
-    StartVerifierService,
+    DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
+    StartAuthenticatorRequest, StartCredentialsService, StartEchoerServiceRequest,
+    StartHopServiceRequest, StartIdentityServiceRequest, StartKafkaConsumerRequest,
+    StartKafkaOutletRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
+    StartServiceRequest, StartUppercaseServiceRequest, StartVerifierService,
 };
 use crate::nodes::registry::{
     AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
@@ -573,34 +575,70 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
+    pub(super) async fn start_kafka_outlet_service<'a>(
+        &mut self,
+        context: &Context,
+        request: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<Vec<u8>> {
+        let body: StartServiceRequest<StartKafkaOutletRequest> = dec.decode()?;
+
+        let default_secure_channel_listener_flow_control_id = context
+            .flow_controls()
+            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+            .ok_or_else(|| {
+                ApiError::generic("Unable to get flow control for secure channel listener")
+            })?;
+
+        PrefixForwarderService::create(
+            context,
+            default_secure_channel_listener_flow_control_id.clone(),
+        )
+        .await?;
+
+        {
+            let node_manager = self.node_manager.write().await;
+            OutletManagerService::create(
+                context,
+                node_manager.secure_channels.clone(),
+                node_manager.trust_context()?.id(),
+                default_secure_channel_listener_flow_control_id,
+            )
+            .await?;
+        }
+
+        self.create_outlet_impl(
+            context,
+            request.id(),
+            body.request().bootstrap_server_addr.clone(),
+            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
+            Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
+            false,
+        )
+        .await?;
+
+        Ok(Response::ok(request.id()).to_vec()?)
+    }
+
     pub(super) async fn start_kafka_consumer_service<'a>(
         &mut self,
         context: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        // let mut node_manager = self.node_manager.write().await;
         let body: StartServiceRequest<StartKafkaConsumerRequest> = dec.decode()?;
         let listener_address: Address = body.address().into();
         let body_req = body.request();
-
-        let project_route = body_req.project_route().to_string().parse()?;
-        let project_name = match self.extract_project(req, &project_route) {
-            Ok(project_name) => project_name,
-            Err(err) => {
-                return Ok(err.to_vec()?);
-            }
-        };
+        let outlet_node_multiaddr = body_req.project_route().to_string().parse()?;
 
         self.start_kafka_service_impl(
             context,
             req,
-            project_name,
             listener_address,
             body_req.bootstrap_server_addr.ip(),
             body_req.bootstrap_server_addr.port(),
             body_req.brokers_port_range(),
-            project_route,
+            outlet_node_multiaddr,
             KafkaServiceKind::Consumer,
         )
         .await?;
@@ -614,28 +652,19 @@ impl NodeManagerWorker {
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        // let mut node_manager = self.node_manager.write().await;
         let body: StartServiceRequest<StartKafkaProducerRequest> = dec.decode()?;
         let listener_address: Address = body.address().into();
         let body_req = body.request();
-
-        let project_route = body_req.project_route().to_string().parse()?;
-        let project_name = match self.extract_project(req, &project_route) {
-            Ok(project_name) => project_name,
-            Err(err) => {
-                return Ok(err.to_vec()?);
-            }
-        };
+        let outlet_node_multiaddr = body_req.project_route().to_string().parse()?;
 
         self.start_kafka_service_impl(
             context,
             req,
-            project_name,
             listener_address,
             body_req.bootstrap_server_addr.ip(),
             body_req.bootstrap_server_addr.port(),
             body_req.brokers_port_range(),
-            body_req.project_route().to_string().parse()?,
+            outlet_node_multiaddr,
             KafkaServiceKind::Producer,
         )
         .await?;
@@ -648,48 +677,54 @@ impl NodeManagerWorker {
         &mut self,
         context: &Context,
         request: &'a Request<'_>,
-        project_name: String,
         local_interceptor_address: Address,
         bind_ip: IpAddr,
         server_bootstrap_port: u16,
         brokers_port_range: (u16, u16),
-        project_multiaddr: MultiAddr,
+        outlet_node_multiaddr: MultiAddr,
         kind: KafkaServiceKind,
     ) -> Result<()> {
-        debug!("project_multiaddr: {}", project_multiaddr.to_string());
+        debug!(
+            "outlet_node_multiaddr: {}",
+            outlet_node_multiaddr.to_string()
+        );
 
-        let secure_channels = {
-            // override default policy to allow incoming packets from the project
+        let trust_context_id;
+        let secure_channels;
+        {
             let node_manager = self.node_manager.read().await;
-            let (_addr, identity_identifier) = node_manager.resolve_project(&project_name)?;
-            node_manager
-                .policies
-                .set_policy(
-                    &resources::INLET,
-                    &actions::HANDLE_MESSAGE,
-                    &eq([
-                        ident("subject.identifier"),
-                        str(identity_identifier.to_string()),
-                    ]),
-                )
-                .await?;
+            trust_context_id = node_manager.trust_context()?.id().to_string();
+            secure_channels = node_manager.secure_channels.clone();
 
-            node_manager.secure_channels.clone()
-        };
-
-        let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(secure_channels, project_multiaddr.clone());
-
-        if let KafkaServiceKind::Consumer = kind {
-            secure_channel_controller
-                .create_consumer_listener(context)
-                .await?;
+            if let Some(project) = outlet_node_multiaddr.first().and_then(|value| {
+                value
+                    .cast::<ockam_multiaddr::proto::Project>()
+                    .map(|p| p.to_string())
+            }) {
+                let (_, project_identifier) = node_manager.resolve_project(&project)?;
+                // if we are using the project we need to allow safe communication based on the
+                // project identifier
+                node_manager
+                    .policies
+                    .set_policy(
+                        &resources::INLET,
+                        &actions::HANDLE_MESSAGE,
+                        &eq([ident("subject.identifier"), str(project_identifier)]),
+                    )
+                    .await?;
+            }
         }
 
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            secure_channels,
+            outlet_node_multiaddr.clone(),
+            trust_context_id,
+        );
+
         let inlet_controller = KafkaInletController::new(
-            project_multiaddr.clone(),
+            outlet_node_multiaddr.clone(),
             route![local_interceptor_address.clone()],
-            route![ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS],
+            route![KAFKA_OUTLET_INTERCEPTOR_ADDRESS],
             bind_ip,
             PortRange::try_from(brokers_port_range)
                 .map_err(|_| ApiError::message("invalid port range"))?,
@@ -701,11 +736,11 @@ impl NodeManagerWorker {
             request.id(),
             CreateInlet::to_node(
                 SocketAddr::new(bind_ip, server_bootstrap_port),
-                project_multiaddr,
+                outlet_node_multiaddr,
                 route![local_interceptor_address.clone()],
                 route![
-                    ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-                    ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS
+                    KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
+                    KAFKA_OUTLET_BOOTSTRAP_ADDRESS
                 ],
                 None,
             ),
@@ -732,22 +767,62 @@ impl NodeManagerWorker {
         Ok(())
     }
 
-    fn extract_project<'a>(
-        &self,
+    pub(crate) async fn delete_kafka_service<'a>(
+        &'a self,
+        ctx: &Context,
         req: &'a Request<'_>,
-        project_route_multiaddr: &MultiAddr,
-    ) -> std::result::Result<String, ResponseBuilder<Error<'a>>> {
-        project_route_multiaddr
-            .first()
-            .and_then(|value| value.cast::<Project>().map(|p| p.to_string()))
-            .ok_or_else(|| bad_request(req, "invalid project route"))
+        dec: &mut Decoder<'_>,
+        kind: KafkaServiceKind,
+    ) -> Result<ResponseBuilder> {
+        let body: DeleteServiceRequest = dec.decode()?;
+        let address = body.address();
+        let mut node_manager = self.node_manager.write().await;
+        let res = match node_manager.registry.kafka_services.get(&address) {
+            None => Response::not_found(req.id()),
+            Some(e) => {
+                if kind.eq(e.kind()) {
+                    ctx.stop_worker(address.clone()).await?;
+                    node_manager.registry.kafka_services.remove(&address);
+                    Response::ok(req.id())
+                } else {
+                    error!(address = %address, "Service is not a kafka {}", kind.to_string());
+                    Response::internal_error(req.id())
+                }
+            }
+        };
+        Ok(res)
     }
 
-    pub(super) fn list_services<'a>(
+    pub(super) async fn list_services_of_type<'a>(
         &self,
         req: &Request<'a>,
-        registry: &'a Registry,
-    ) -> ResponseBuilder<ServiceList<'a>> {
+        service_type: &'a str,
+    ) -> Result<Vec<u8>> {
+        if !DefaultAddress::is_valid(service_type) {
+            return Ok(Response::bad_request(req.id())
+                .body(format!("Service type '{service_type}' doesn't exist"))
+                .to_vec()?);
+        }
+        let n = self.node_manager.read().await;
+        let services = Self::list_services_impl(&n.registry);
+        let filtered = services
+            .into_iter()
+            .filter(|service| service.service_type == service_type)
+            .collect();
+        Ok(Response::ok(req.id())
+            .body(ServiceList::new(filtered))
+            .to_vec()?)
+    }
+
+    pub(super) async fn list_services<'a>(&self, req: &Request<'a>) -> Result<Vec<u8>> {
+        let n = self.node_manager.read().await;
+        let services = Self::list_services_impl(&n.registry);
+        Ok(Response::ok(req.id())
+            .body(ServiceList::new(services))
+            .to_vec()?)
+    }
+
+    fn list_services_impl(registry: &Registry) -> Vec<ServiceStatus> {
         let mut list = Vec::new();
         registry.identity_services.keys().for_each(|addr| {
             list.push(ServiceStatus::new(
@@ -804,6 +879,6 @@ impl NodeManagerWorker {
             .keys()
             .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "Authority")));
 
-        Response::ok(req.id()).body(ServiceList::new(list))
+        list
     }
 }

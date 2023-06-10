@@ -32,10 +32,6 @@ pub struct CreateCommand {
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
-
-    /// Services enabled for this project.
-    #[arg(display_order = 1100, last = true)]
-    pub services: Vec<String>,
     //TODO:  list of admins
 }
 

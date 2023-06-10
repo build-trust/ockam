@@ -1,10 +1,10 @@
 use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
+use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::CredentialsIssuer;
 use ockam::identity::SecureChannelListenerOptions;
+use ockam::TcpTransportExtension;
 use ockam::{node, Context, Result, TcpListenerOptions};
-use ockam_core::flow_control::FlowControlPolicy;
-use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

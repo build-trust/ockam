@@ -1,0 +1,7 @@
+```sh
+# To delete a kafka producers on the default node
+$ ockam kafka-producer delete kcaddr
+
+# To delete a kafka producers on a specific node
+$ ockam kafka-producer delete kcaddr --at n
+```

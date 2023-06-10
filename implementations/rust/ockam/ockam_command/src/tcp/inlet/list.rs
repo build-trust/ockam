@@ -1,12 +1,16 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
+use crate::terminal::OckamColor;
+use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
+
 use clap::Args;
-use miette::miette;
+use colorful::Colorful;
 use ockam_api::nodes::models;
-use ockam_api::route_to_multiaddr;
+
 use ockam_core::api::Request;
-use ockam_core::Route;
+
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
@@ -31,26 +35,36 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node.at_node);
     let node_name = extract_address_value(&node_name)?;
+
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(Request::get("/node/inlet")).await?;
-    let response = rpc.parse_response::<models::portal::InletList>()?;
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    if response.list.is_empty() {
-        return Err(crate::Error::new(
-            exitcode::IOERR,
-            miette!("No Inlets found on this system!"),
-        ));
-    }
+    let send_req = async {
+        rpc.request(Request::get("/node/inlet")).await?;
 
-    for inlet_infor in response.list.iter() {
-        println!("Inlet:");
-        println!("  Alias: {}", inlet_infor.alias);
-        println!("  TCP Address: {}", inlet_infor.bind_addr);
-        if let Some(r) = Route::parse(inlet_infor.outlet_route.as_ref()) {
-            if let Some(ma) = route_to_multiaddr(&r) {
-                println!("  To Outlet Address: {ma}");
-            }
-        }
-    }
+        *is_finished.lock().await = true;
+        rpc.parse_response::<models::portal::InletList>()
+    };
+
+    let output_messages = vec![format!(
+        "Listing TCP Inlets on {}...\n",
+        node_name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    )];
+
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (inlets, _) = try_join!(send_req, progress_output)?;
+
+    let list = opts.terminal.build_list(
+        &inlets.list,
+        "Inlets",
+        &format!("No TCP Inlets found on {node_name}"),
+    )?;
+    opts.terminal.stdout().plain(list).write_line()?;
+
     Ok(())
 }

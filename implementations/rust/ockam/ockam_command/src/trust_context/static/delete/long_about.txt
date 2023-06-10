@@ -1,0 +1,1 @@
+This command will delete the specified trust context.

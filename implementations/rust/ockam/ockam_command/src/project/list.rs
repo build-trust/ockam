@@ -3,6 +3,8 @@ use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 
 use ockam_api::cloud::project::Project;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use crate::node::util::delete_embedded_node;
 use crate::util::api::CloudOpts;
@@ -39,14 +41,41 @@ async fn run_impl(
     cmd: ListCommand,
 ) -> crate::Result<()> {
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
-    rpc.request(api::project::list(&cmd.cloud_opts.route()))
-        .await?;
-    let projects = rpc.parse_and_print_response::<Vec<Project>>()?;
-    for project in projects {
+    let is_finished: Mutex<bool> = Mutex::new(false);
+
+    let send_req = async {
+        rpc.request(api::project::list(&cmd.cloud_opts.route()))
+            .await?;
+        let r = rpc.parse_response::<Vec<Project>>()?;
+
+        *is_finished.lock().await = true;
+        Ok(r)
+    };
+
+    let output_messages = vec![format!("Listing projects...\n",)];
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (projects, _) = try_join!(send_req, progress_output)?;
+
+    let plain =
+        &opts
+            .terminal
+            .build_list(&projects, "Projects", "No projects found on this system.")?;
+    let json = serde_json::to_string_pretty(&projects)?;
+
+    for project in &projects {
         opts.state
             .projects
             .overwrite(&project.name, project.clone())?;
     }
     delete_embedded_node(&opts, rpc.node_name()).await;
+
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
     Ok(())
 }

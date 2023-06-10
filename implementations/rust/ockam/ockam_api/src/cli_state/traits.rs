@@ -82,13 +82,16 @@ pub trait StateDirTrait: Sized + Send + Sync {
         name: impl AsRef<str>,
         config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
     ) -> Result<Self::Item> {
+        debug!(name = %name.as_ref(), "Creating new item");
         if self.exists(&name) {
             return Err(CliStateError::AlreadyExists);
         }
+        trace!(name = %name.as_ref(), "Creating item instance");
         let state = Self::Item::new(self.path(&name), config)?;
         if !self.default_path()?.exists() {
             self.set_default(&name)?;
         }
+        info!(name = %name.as_ref(), "Created new item");
         Ok(state)
     }
 
@@ -102,7 +105,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn list(&self) -> Result<Vec<Self::Item>> {
         let mut items = Vec::default();
         for name in self.list_items_names()? {
-            if let Ok(item) = self.get(&name) {
+            if let Ok(item) = self.get(name) {
                 items.push(item);
             }
         }
@@ -137,7 +140,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn list_items_paths(&self) -> Result<Vec<PathBuf>> {
         let mut items = Vec::default();
         for name in self.list_items_names()? {
-            let path = self.path(&name);
+            let path = self.path(name);
             items.push(path);
         }
         Ok(items)
@@ -172,6 +175,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     }
 
     fn set_default(&self, name: impl AsRef<str>) -> Result<()> {
+        debug!(name = %name.as_ref(), "Setting default item");
         if !self.exists(&name) {
             return Err(CliStateError::NotFound);
         }
@@ -181,6 +185,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
         let _ = std::fs::remove_file(&link);
         // Create link to the identity
         std::os::unix::fs::symlink(original, link)?;
+        info!(name = %name.as_ref(), "Set default item");
         Ok(())
     }
 
@@ -198,7 +203,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn is_empty(&self) -> Result<bool> {
         for entry in std::fs::read_dir(self.dir())? {
             let name = file_stem(&entry?.path())?;
-            if self.get(&name).is_ok() {
+            if self.get(name).is_ok() {
                 return Ok(false);
             }
         }

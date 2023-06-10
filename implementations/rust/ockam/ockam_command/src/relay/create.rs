@@ -163,15 +163,32 @@ impl Output for ForwarderInfo<'_> {
         let output = format!(
             r#"
 Relay {}:
-    Forwarding Address: {} => {},
-    Remote Address: {},
+    Route: {}
+    Remote Address: {}
     Worker Address: {}
+    Flow Control Id: {}"
 "#,
             self.remote_address(),
+            self.forwarding_route(),
+            self.remote_address_ma()?,
             self.worker_address_ma()?,
-            self.remote_address_ma()?,
-            self.remote_address_ma()?,
-            self.worker_address_ma()?
+            self.flow_control_id()
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("<none>".into())
+        );
+
+        Ok(output)
+    }
+
+    fn list_output(&self) -> Result<String> {
+        let output = format!(
+            r#"Relay {}
+Route {}"#,
+            self.remote_address()
+                .color(OckamColor::PrimaryResource.color()),
+            self.forwarding_route()
+                .color(OckamColor::PrimaryResource.color()),
         );
 
         Ok(output)
