@@ -11,6 +11,7 @@ use crate::error::ApiError;
 pub mod addon;
 pub mod enroll;
 pub mod lease_manager;
+pub mod operation;
 pub mod project;
 pub mod space;
 pub mod subscription;
@@ -24,6 +25,9 @@ pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY
 
 /// A default timeout in seconds
 pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
+
+/// Total time in milliseconds to wait for Orchestrator long-running operations to complete
+pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
 
 pub type ProjectAddress = CowStr<'static>;
 
@@ -73,11 +77,7 @@ impl<'a> BareCloudRequestWrapper<'a> {
 }
 
 mod node {
-    use std::time::Duration;
-
     use minicbor::Encode;
-    use rust_embed::EmbeddedFile;
-
     use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_core::api::RequestBuilder;
     use ockam_core::compat::str::FromStr;
@@ -86,11 +86,11 @@ mod node {
     use ockam_multiaddr::MultiAddr;
     use ockam_node::api::request_with_options;
     use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
+    use std::time::Duration;
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
     use crate::nodes::{NodeManager, NodeManagerWorker};
-    use crate::StaticFiles;
 
     impl NodeManager {
         /// Load controller identity id from file.
@@ -102,18 +102,7 @@ mod node {
                 trace!(idt = %idt, "Read controller identity id from env");
                 return Ok(idt);
             }
-            match StaticFiles::get("controller.id") {
-                Some(EmbeddedFile { data, .. }) => {
-                    let s = core::str::from_utf8(data.as_ref()).map_err(|err| {
-                        ApiError::generic(&format!("Failed to parse controller identity id: {err}"))
-                    })?;
-                    trace!(idt = %s, "Read controller identity id from file");
-                    Ok(IdentityIdentifier::from_str(s)?)
-                }
-                None => Err(ApiError::generic(
-                    "Failed to import controller identity id from file",
-                )),
-            }
+            IdentityIdentifier::from_str(include_str!("../../static/controller.id"))
         }
 
         /// Return controller identity's identifier.

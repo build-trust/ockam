@@ -107,6 +107,8 @@ defmodule Ockam.TypedCBOR do
 
   alias Ockam.TypedCBOR.Exception
 
+  require Logger
+
   def from_cbor_term(:integer, val) when is_integer(val), do: val
 
   def from_cbor_term(:boolean, val) when is_boolean(val), do: val
@@ -150,8 +152,8 @@ defmodule Ockam.TypedCBOR do
 
   def from_cbor_term(:term, any), do: any
 
-  def from_cbor_term(schema, _) do
-    raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
+  def from_cbor_term(schema, data) do
+    raise(Exception, "type mismatch, expected schema #{inspect(schema)}, data: #{inspect(data)}")
   end
 
   def from_cbor_fields([], _), do: []
@@ -238,7 +240,8 @@ defmodule Ockam.TypedCBOR do
   def to_cbor_term(:term, any), do: any
 
   def to_cbor_term(schema, val) do
-    raise(Exception, "type mismatch, expected schema #{inspect(schema)}, value: #{inspect(val)}")
+    Logger.warn("type mismatch, expected schema #{inspect(schema)}, value: #{inspect(val)}")
+    raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
   end
 
   def to_cbor_fields([], _), do: []

@@ -168,9 +168,33 @@ impl DefaultAddress {
     pub const ENROLLMENT_TOKEN_ACCEPTOR: &'static str = "enrollment_token_acceptor";
     pub const VERIFIER: &'static str = "verifier";
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
+    pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
     pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
     pub const RPC_PROXY: &'static str = "rpc_proxy_service";
+
+    pub fn is_valid(name: &str) -> bool {
+        matches!(
+            name,
+            Self::IDENTITY_SERVICE
+                | Self::AUTHENTICATED_SERVICE
+                | Self::FORWARDING_SERVICE
+                | Self::UPPERCASE_SERVICE
+                | Self::ECHO_SERVICE
+                | Self::HOP_SERVICE
+                | Self::CREDENTIALS_SERVICE
+                | Self::SECURE_CHANNEL_LISTENER
+                | Self::DIRECT_AUTHENTICATOR
+                | Self::CREDENTIAL_ISSUER
+                | Self::ENROLLMENT_TOKEN_ISSUER
+                | Self::ENROLLMENT_TOKEN_ACCEPTOR
+                | Self::VERIFIER
+                | Self::OKTA_IDENTITY_PROVIDER
+                | Self::KAFKA_CONSUMER
+                | Self::KAFKA_PRODUCER
+                | Self::RPC_PROXY
+        )
+    }
 }
 
 pub mod actions {
@@ -189,10 +213,6 @@ pub mod resources {
 use core::fmt;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-#[derive(rust_embed::RustEmbed)]
-#[folder = "./static"]
-pub(crate) struct StaticFiles;
 
 /// Newtype around [`Vec<u8>`] that provides base-16 string encoding using serde.
 #[derive(Debug, Clone, Default, Encode, Decode)]
@@ -242,5 +262,46 @@ impl<'de> Deserialize<'de> for HexByteVec {
 impl fmt::Display for HexByteVec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.serialize(f)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::DefaultAddress;
+
+    #[test]
+    fn test_default_address_is_valid() {
+        assert!(!DefaultAddress::is_valid("foo"));
+        assert!(DefaultAddress::is_valid(DefaultAddress::IDENTITY_SERVICE));
+        assert!(DefaultAddress::is_valid(
+            DefaultAddress::AUTHENTICATED_SERVICE
+        ));
+        assert!(DefaultAddress::is_valid(DefaultAddress::FORWARDING_SERVICE));
+        assert!(DefaultAddress::is_valid(DefaultAddress::UPPERCASE_SERVICE));
+        assert!(DefaultAddress::is_valid(DefaultAddress::ECHO_SERVICE));
+        assert!(DefaultAddress::is_valid(DefaultAddress::HOP_SERVICE));
+        assert!(DefaultAddress::is_valid(
+            DefaultAddress::CREDENTIALS_SERVICE
+        ));
+        assert!(DefaultAddress::is_valid(
+            DefaultAddress::SECURE_CHANNEL_LISTENER
+        ));
+        assert!(DefaultAddress::is_valid(
+            DefaultAddress::DIRECT_AUTHENTICATOR
+        ));
+        assert!(DefaultAddress::is_valid(DefaultAddress::CREDENTIAL_ISSUER));
+        assert!(DefaultAddress::is_valid(
+            DefaultAddress::ENROLLMENT_TOKEN_ISSUER
+        ));
+        assert!(DefaultAddress::is_valid(
+            DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR
+        ));
+        assert!(DefaultAddress::is_valid(DefaultAddress::VERIFIER));
+        assert!(DefaultAddress::is_valid(
+            DefaultAddress::OKTA_IDENTITY_PROVIDER
+        ));
+        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_CONSUMER));
+        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_PRODUCER));
+        assert!(DefaultAddress::is_valid(DefaultAddress::RPC_PROXY));
     }
 }

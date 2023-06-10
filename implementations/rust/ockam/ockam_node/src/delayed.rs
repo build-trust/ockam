@@ -96,7 +96,7 @@ mod tests {
     use core::sync::atomic::Ordering;
     use core::time::Duration;
     use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc};
-    use ockam_core::{async_trait, AllowAll, Any};
+    use ockam_core::{async_trait, Any};
     use ockam_core::{Result, Routed, Worker};
     use std::sync::atomic::AtomicI8;
     use tokio::time::sleep;
@@ -134,8 +134,7 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker, AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker("counting_worker", worker).await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;
@@ -159,8 +158,7 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker, AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker("counting_worker", worker).await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         heartbeat.schedule(Duration::from_millis(100)).await?;
@@ -182,8 +180,7 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker, AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker("counting_worker", worker).await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;
@@ -207,8 +204,7 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker, AllowAll, AllowAll)
-            .await?;
+        ctx.start_worker("counting_worker", worker).await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;

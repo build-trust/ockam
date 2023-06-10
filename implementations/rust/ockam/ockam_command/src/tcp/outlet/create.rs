@@ -58,7 +58,7 @@ pub async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     opts.terminal.write_line(&fmt_log!(
-        "Creating TCP Outlet to {}\n",
+        "Creating TCP Outlet to {}...\n",
         &cmd.to
             .to_string()
             .color(OckamColor::PrimaryResource.color())
@@ -122,9 +122,10 @@ pub async fn run_impl(
     opts.terminal
         .stdout()
         .plain(fmt_ok!(
-            "Created a new TCP Outlet on node {} from address /service/{} to {}",
+            "Created a new TCP Outlet on node {} from address {} to {}",
             &node.to_string().color(OckamColor::PrimaryResource.color()),
-            extract_address_value(&cmd.from)?.color(OckamColor::PrimaryResource.color()),
+            format!("/service/{}", extract_address_value(&cmd.from)?)
+                .color(OckamColor::PrimaryResource.color()),
             &cmd.to
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
@@ -141,7 +142,7 @@ fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, 
     let tcp_addr = cmd.to.to_string();
     let worker_addr = cmd.from;
     let alias = cmd.alias.map(|a| a.into());
-    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias);
+    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, true);
     let request = Request::post("/node/outlet").body(payload);
     Ok(request)
 }

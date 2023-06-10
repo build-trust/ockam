@@ -137,7 +137,8 @@ defmodule Ockam.SecureChannel.Channel do
     }
   end
 
-  @spec start_link_channel([initiator_opt()], non_neg_integer) :: {:ok, pid} | {:error, term()}
+  @spec start_link_channel([initiator_opt()], non_neg_integer) ::
+          {:ok, pid, any} | {:error, term()}
   def start_link_channel(opts, handshake_timeout \\ @handshake_timeout) do
     ref = make_ref()
 
@@ -152,7 +153,7 @@ defmodule Ockam.SecureChannel.Channel do
     {:ok, pid, addr} = start_link(opts)
 
     receive do
-      {:connected, ^ref} -> {:ok, pid}
+      {:connected, ^ref} -> {:ok, pid, addr}
     after
       handshake_timeout ->
         Ockam.Node.stop(addr)
@@ -185,10 +186,18 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
+  @spec get_remote_identity_with_id(Ockam.Address.t()) ::
+          {:ok, Ockam.Identity.t(), String.t()} | {:error, any()}
+  def get_remote_identity_with_id(worker) do
+    Ockam.Worker.call(worker, :get_remote_identity_with_id)
+  end
+
+  @spec get_remote_identity(Ockam.Address.t()) :: {:ok, Ockam.Identity.t()} | {:error, any()}
   def get_remote_identity(worker) do
     Ockam.Worker.call(worker, :get_remote_identity)
   end
 
+  @spec get_remote_identity(Ockam.Address.t()) :: {:ok, String.t()} | {:error, any()}
   def get_remote_identity_id(worker) do
     Ockam.Worker.call(worker, :get_remote_identity_id)
   end
@@ -239,27 +248,47 @@ defmodule Ockam.SecureChannel.Channel do
   @impl true
   def handle_call(
         :get_remote_identity,
-        _form,
+        _from,
         %{state: %Channel{channel_state: %Established{peer_identity: remote_identity}}} = state
       ) do
-    {:reply, remote_identity, state}
+    {:reply, {:ok, remote_identity}, state}
   end
 
-  def handle_call(:get_remote_identity, _form, state) do
+  def handle_call(:get_remote_identity, _from, state) do
     {:reply, {:error, :handshake_not_finished}, state}
   end
 
   @impl true
   def handle_call(
         :get_remote_identity_id,
-        _form,
+        _from,
         %{state: %Channel{channel_state: %Established{peer_identity_id: remote_identity_id}}} =
           state
       ) do
-    {:reply, remote_identity_id, state}
+    {:reply, {:ok, remote_identity_id}, state}
   end
 
-  def handle_call(:get_remote_identity_id, _form, state) do
+  def handle_call(:get_remote_identity_id, _from, state) do
+    {:reply, {:error, :handshake_not_finished}, state}
+  end
+
+  @impl true
+  def handle_call(
+        :get_remote_identity_with_id,
+        _from,
+        %{
+          state: %Channel{
+            channel_state: %Established{
+              peer_identity: remote_identity,
+              peer_identity_id: remote_identity_id
+            }
+          }
+        } = state
+      ) do
+    {:reply, {:ok, remote_identity, remote_identity_id}, state}
+  end
+
+  def handle_call(:get_remote_identity_with_id, _from, state) do
     {:reply, {:error, :handshake_not_finished}, state}
   end
 

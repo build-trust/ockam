@@ -1,9 +1,10 @@
 use crate::docs;
 use crate::util::embedded_node;
 use crate::Result;
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
+use miette::{miette, IntoDiagnostic};
 use ockam::compat::collections::HashMap;
 use ockam::identity::{AttributesEntry, IdentityIdentifier};
 use ockam::{Context, TcpTransport};
@@ -124,7 +125,9 @@ fn print_entries(entries: &[(IdentityIdentifier, AttributesEntry)]) {
 async fn client(ctx: &Context, tcp: &TcpTransport, addr: &MultiAddr) -> Result<auth::Client> {
     let route = ockam_api::multiaddr_to_route(addr, tcp)
         .await
-        .ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
-    let cl = auth::Client::new(route.route, ctx).await?;
+        .ok_or_else(|| miette!("failed to parse address: {}", addr))?;
+    let cl = auth::Client::new(route.route, ctx)
+        .await
+        .into_diagnostic()?;
     Ok(cl)
 }

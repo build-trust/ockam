@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
@@ -58,7 +58,7 @@ impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
             identity: p.identity_id,
             access_route: p
                 .node_route
-                .map_or(Err(anyhow!("Project access route is missing")), Ok)?
+                .map_or(Err(miette!("Project access route is missing")), Ok)?
                 .to_string()
                 .into(),
             authority_access_route: p.authority.as_ref().map(|a| a.address().to_string().into()),

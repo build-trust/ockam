@@ -1,7 +1,6 @@
 // examples/receiver.rs
 
 use file_transfer::FileData;
-use ockam::access_control::AllowAll;
 use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
@@ -122,8 +121,7 @@ async fn main(ctx: Context) -> Result<()> {
     println!("{}", forwarder.remote_address());
 
     // Start a worker, of type FileReception, at address "receiver".
-    node.start_worker("receiver", FileReception::default(), AllowAll, AllowAll)
-        .await?;
+    node.start_worker("receiver", FileReception::default()).await?;
 
     // We won't call ctx.stop() here, this program will quit when the file will be entirely received
     Ok(())

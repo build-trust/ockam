@@ -5,7 +5,7 @@ use crate::{
     Context,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, AllowAll, Result, Route, Routed, Worker};
+use ockam_core::{Address, Result, Route, Routed, Worker};
 
 pub struct ChannelListener {
     tx_hooks: PipeBehavior,
@@ -19,13 +19,7 @@ impl ChannelListener {
         tx_hooks: PipeBehavior,
         rx_hooks: PipeBehavior,
     ) -> Result<()> {
-        ctx.start_worker(
-            addr,
-            Self { tx_hooks, rx_hooks },
-            AllowAll, // FIXME: @ac
-            AllowAll, // FIXME: @ac
-        )
-        .await
+        ctx.start_worker(addr, Self { tx_hooks, rx_hooks }).await
     }
 }
 

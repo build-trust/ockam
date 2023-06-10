@@ -1,7 +1,4 @@
-use std::time::Duration;
-
 use clap::Args;
-use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use rand::prelude::random;
 
 use ockam::Context;
@@ -9,6 +6,7 @@ use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
@@ -34,10 +32,6 @@ pub struct CreateCommand {
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
-
-    /// Services enabled for this project.
-    #[arg(display_order = 1100, last = true)]
-    pub services: Vec<String>,
     //TODO:  list of admins
 }
 
@@ -62,18 +56,23 @@ async fn run_impl(
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request_with_timeout(
-        api::project::create(&cmd.project_name, &space_id, &cmd.cloud_opts.route()),
-        Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
-    )
+    rpc.request(api::project::create(
+        &cmd.project_name,
+        &space_id,
+        &cmd.cloud_opts.route(),
+    ))
     .await?;
     let project = rpc.parse_response::<Project>()?;
+    let operation_id = project.operation_id.clone().unwrap();
+    check_for_completion(ctx, &opts, &cmd.cloud_opts, rpc.node_name(), &operation_id).await?;
     let project =
         check_project_readiness(ctx, &opts, &cmd.cloud_opts, &node_name, None, project).await?;
-    opts.state.projects.create(&project.name, project.clone())?;
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
     opts.state
         .trust_contexts
-        .create(&project.name, project.clone().try_into()?)?;
+        .overwrite(&project.name, project.clone().try_into()?)?;
     rpc.print_response(project)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

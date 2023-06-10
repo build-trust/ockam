@@ -178,27 +178,29 @@ defmodule Ockam.Worker do
   def start_link(module, options) when is_list(options) do
     address_prefix = Keyword.get(options, :address_prefix, module.address_prefix(options))
 
-    ## Make sure there is no `nil` address in there
-    ## TODO: validate address format
-    ## TODO: better way to set address than `put_new_lazy`
-    options =
+    address =
       case Keyword.fetch(options, :address) do
-        {:ok, nil} -> Keyword.delete(options, :address)
-        {:ok, _address} -> options
-        :error -> options
+        {:ok, address} ->
+          ## Make sure there is no `nil` address in there
+          ## TODO: validate address format
+          case address do
+            nil -> Node.get_random_unregistered_address(address_prefix)
+            _value -> address
+          end
+
+        :error ->
+          Node.get_random_unregistered_address(address_prefix)
       end
 
-    options =
-      Keyword.put_new_lazy(options, :address, fn ->
-        Node.get_random_unregistered_address(address_prefix)
-      end)
+    ## Make sure address is in the options list
+    options = Keyword.put(options, :address, address)
 
-    with {:ok, address} <- Keyword.fetch(options, :address),
-         {:ok, pid} <- start_link(module, address, options) do
-      {:ok, pid, address}
-    else
-      :error ->
-        {:error, {:option_is_nil, :address}}
+    case start_link(module, address, options) do
+      {:ok, pid} ->
+        {:ok, pid, address}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

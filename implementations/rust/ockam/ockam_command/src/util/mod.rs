@@ -6,7 +6,8 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
+use miette::{miette, ErrReport as Report};
 use minicbor::{data::Type, Decode, Decoder, Encode};
 use tracing::{debug, error, trace};
 
@@ -65,7 +66,7 @@ impl<'a> RpcBuilder<'a> {
 
     pub fn to(mut self, to: &MultiAddr) -> Result<Self> {
         self.to = ockam_api::local_multiaddr_to_route(to)
-            .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
+            .ok_or_else(|| miette!("failed to convert {} to route", to))?;
         Ok(self)
     }
 
@@ -146,7 +147,7 @@ impl<'a> Rpc<'a> {
             .await
             .map_err(|_err| {
                 // Overwrite error to swallow inner cause and hide it from end-user
-                anyhow!("The request timed out, please make sure the command's arguments are correct or try again")
+                miette!("The request timed out, please make sure the command's arguments are correct or try again")
             })?;
         Ok(())
     }
@@ -167,7 +168,7 @@ impl<'a> Rpc<'a> {
             .await
             .map_err(|_err| {
                 // Overwrite error to swallow inner cause and hide it from end-user
-                anyhow!("The request timed out, please make sure the command's arguments are correct or try again")
+                miette!("The request timed out, please make sure the command's arguments are correct or try again")
             })?.body();
         Ok(())
     }
@@ -219,7 +220,7 @@ impl<'a> Rpc<'a> {
             Ok(t) => Ok(t),
             Err(e) => {
                 error!(%e, dec = %minicbor::display(&self.buf), hex = %hex::encode(&self.buf), "Failed to decode response");
-                Err(anyhow!("Failed to decode response body: {}", e).into())
+                Err(miette!("Failed to decode response body: {}", e).into())
             }
         }
     }
@@ -248,7 +249,7 @@ impl<'a> Rpc<'a> {
             Ok(dec)
         } else {
             let msg = self.parse_err_msg(hdr, dec);
-            Err(anyhow!(msg).into())
+            Err(miette!(msg).into())
         }
     }
 
@@ -361,9 +362,13 @@ where
         |ctx, a| async {
             let res = f(ctx, a).await;
             if let Err(e) = res {
+                let code = e.code();
                 error!(%e);
-                eprint!("{e}");
-                std::process::exit(e.code());
+
+                let r: Report = e.into();
+                eprintln!("{:?}", r);
+
+                std::process::exit(code);
             }
             Ok(())
         },
@@ -447,7 +452,7 @@ pub fn extract_address_value(input: &str) -> Result<String> {
     let mut addr = input.to_string();
     // if input has "/", we process it as a MultiAddr
     if input.contains('/') {
-        let err = anyhow!("invalid address protocol");
+        let err = miette!("invalid address protocol");
         let maddr = MultiAddr::from_str(input)?;
         if let Some(p) = maddr.iter().next() {
             match p.code() {
@@ -469,14 +474,14 @@ pub fn extract_address_value(input: &str) -> Result<String> {
                         .context("Failed to parse `project` protocol")?
                         .to_string();
                 }
-                code => return Err(anyhow!("Protocol {code} not supported").into()),
+                code => return Err(miette!("Protocol {} not supported", code).into()),
             }
         } else {
             return Err(err.into());
         }
     }
     if addr.is_empty() {
-        return Err(anyhow!("Empty address in input: {input}").into());
+        return Err(miette!("Empty address in input: {}", input).into());
     }
     Ok(addr)
 }
@@ -497,7 +502,7 @@ pub fn parse_node_name(input: &str) -> Result<String> {
             Err(e) => {
                 // Tested with input strings with large tcp numbers. e.g: `node create /node/n1/tcp/28273829`
                 err_message.push_str(&format!("\n{e}"));
-                return Err(anyhow!(err_message).into());
+                return Err(miette!(err_message).into());
             }
         };
         if let Some(p) = maddr.iter().next() {
@@ -506,11 +511,11 @@ pub fn parse_node_name(input: &str) -> Result<String> {
                 return Ok(node_name);
             }
         } else {
-            return Err(anyhow!(err_message).into());
+            return Err(miette!(err_message).into());
         }
     }
     if addr.is_empty() {
-        return Err(anyhow!("Empty address in node name input: {input}").into());
+        return Err(miette!("Empty address in node name input: {}", input).into());
     }
     Ok(addr)
 }
@@ -520,17 +525,14 @@ pub fn parse_node_name(input: &str) -> Result<String> {
 /// Example:
 ///     if n1 has address of 127.0.0.1:1234
 ///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub fn process_nodes_multiaddr(
-    addr: &MultiAddr,
-    cli_state: &CliState,
-) -> anyhow::Result<MultiAddr> {
+pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate::Result<MultiAddr> {
     let mut processed_addr = MultiAddr::default();
     for proto in addr.iter() {
         match proto.code() {
             Node::CODE => {
                 let alias = proto
                     .cast::<Node>()
-                    .ok_or_else(|| anyhow!("invalid node address protocol"))?;
+                    .ok_or_else(|| miette!("invalid node address protocol"))?;
                 let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
                 let addr = node_setup.default_tcp_listener()?.maddr()?;
@@ -658,7 +660,7 @@ mod tests {
         let idt_config = IdentityConfig::new(&idt.identifier()).await;
         cli_state
             .identities
-            .create(&cli_state::random_name(), idt_config)?;
+            .create(cli_state::random_name(), idt_config)?;
 
         let n_state = cli_state
             .nodes
@@ -707,7 +709,7 @@ mod tests {
         assert!(result.is_err());
 
         async fn function_returning_an_error(_ctx: Context, _parameter: u8) -> crate::Result<()> {
-            Err(crate::Error::new(exitcode::CONFIG, anyhow!("boom")))
+            Err(crate::Error::new(exitcode::CONFIG, miette!("boom")))
         }
     }
 
@@ -724,7 +726,7 @@ mod tests {
             _parameter: u8,
         ) -> crate::Result<()> {
             ctx.stop().await?;
-            Err(crate::Error::new(exitcode::CONFIG, anyhow!("boom")))
+            Err(crate::Error::new(exitcode::CONFIG, miette!("boom")))
         }
     }
 }

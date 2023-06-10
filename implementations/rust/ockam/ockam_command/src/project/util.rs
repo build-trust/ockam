@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
+use miette::miette;
 
 use ockam_core::api::Request;
 use tokio_retry::strategy::FixedInterval;
@@ -9,6 +10,7 @@ use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
+use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
@@ -32,10 +34,10 @@ pub fn clean_projects_multiaddr(
             ockam_multiaddr::proto::Project::CODE => {
                 let alias = p
                     .cast::<ockam_multiaddr::proto::Project>()
-                    .ok_or_else(|| anyhow!("Invalid project value"))?;
+                    .ok_or_else(|| miette!("Invalid project value"))?;
                 let sc = sc_iter
                     .next()
-                    .ok_or_else(|| anyhow!("Missing secure channel for project {}", &*alias))?;
+                    .ok_or_else(|| miette!("Missing secure channel for project {}", &*alias))?;
                 for v in sc.iter().peekable() {
                     new_ma.push_back_value(&v)?;
                 }
@@ -173,13 +175,14 @@ pub async fn check_project_readiness(
     mut project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
-    let total_sleep_time_ms = 10 * 60 * 1000;
-    let retry_strategy = FixedInterval::from_millis(5000).take(total_sleep_time_ms / 5000);
+    let retry_strategy =
+        FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
 
     // Persist project config prior to checking readiness which might take a while
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;
+
     let spinner_option = opts.terminal.progress_spinner();
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Waiting for project to be ready...");
@@ -204,7 +207,7 @@ pub async fn check_project_readiness(
                     return Ok(p.to_owned());
                 }
             }
-            Err(anyhow!("Project creation timed out. Plaese try again."))
+            Err(miette!("Project creation timed out. Plaese try again."))
         })
         .await?;
     }
@@ -222,7 +225,7 @@ pub async fn check_project_readiness(
                 }
             }
 
-            Err(anyhow!("Timed out while trying to establish a connection to the project. Please try again."))
+            Err(miette!("Timed out while trying to establish a connection to the project. Please try again."))
         }).await?;
     }
 
@@ -256,7 +259,7 @@ pub async fn check_project_readiness(
                 return Ok(());
             }
 
-            Err(anyhow!("Timed out while trying to establish a secure channel to the project. Please try again."))
+            Err(miette!("Timed out while trying to establish a secure channel to the project. Please try again."))
         })
         .await?;
     }
@@ -289,7 +292,7 @@ pub async fn check_project_readiness(
                 return Ok(());
             }
 
-            Err(anyhow!("Time out while trying to establish a secure channel to the project authority. Please try again."))
+            Err(miette!("Timed out while trying to establish a secure channel to the project authority. Please try again."))
         })
         .await?;
     }

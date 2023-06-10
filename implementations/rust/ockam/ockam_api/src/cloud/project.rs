@@ -31,9 +31,6 @@ pub struct Project {
     #[cbor(n(3))]
     pub space_name: String,
 
-    #[cbor(n(4))]
-    pub services: Vec<String>,
-
     #[cbor(n(5))]
     pub access_route: String,
 
@@ -65,6 +62,9 @@ pub struct Project {
 
     #[cbor(n(14))]
     pub running: Option<bool>,
+
+    #[cbor(n(15))]
+    pub operation_id: Option<String>,
 }
 
 impl Project {
@@ -237,29 +237,21 @@ pub struct CreateProject<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8669570>,
     #[b(1)] pub name: CowStr<'a>,
-    #[b(2)] pub services: Vec<CowStr<'a>>,
     #[b(3)] pub users: Vec<CowStr<'a>>,
 }
 
 impl<'a> CreateProject<'a> {
-    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(
-        name: S,
-        users: &'a [T],
-        services: &'a [T],
-    ) -> Self {
+    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(name: S, users: &'a [T]) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
-            services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
             users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
         }
     }
 }
 
 mod node {
-    use std::time::Duration;
-
     use minicbor::Decoder;
     use tracing::trace;
 
@@ -267,9 +259,7 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::{
-        BareCloudRequestWrapper, CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT,
-    };
+    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManagerWorker;
 
     use super::*;
@@ -290,9 +280,10 @@ mod node {
             let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
-            let req_builder = Request::post(format!("/v0/{space_id}")).body(&req_body);
+            let req_builder =
+                Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
 
-            self.request_controller_with_timeout(
+            self.request_controller(
                 ctx,
                 label,
                 "create_project",
@@ -300,7 +291,6 @@ mod node {
                 "projects",
                 req_builder,
                 req_wrapper.identity_name,
-                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
         }
@@ -402,7 +392,6 @@ mod tests {
                 id: String::arbitrary(g),
                 name: String::arbitrary(g),
                 space_name: String::arbitrary(g),
-                services: vec![String::arbitrary(g), String::arbitrary(g)],
                 access_route: String::arbitrary(g),
                 users: vec![String::arbitrary(g), String::arbitrary(g)],
                 space_id: String::arbitrary(g),
@@ -415,6 +404,7 @@ mod tests {
                 confluent_config: None,
                 version: None,
                 running: None,
+                operation_id: None,
             })
         }
     }
@@ -428,7 +418,6 @@ mod tests {
                 #[cfg(feature = "tag")]
                 tag: Default::default(),
                 name: String::arbitrary(g).into(),
-                services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
             })
         }

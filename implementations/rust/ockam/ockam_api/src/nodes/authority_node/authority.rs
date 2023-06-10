@@ -3,15 +3,15 @@ use std::path::Path;
 use tracing::info;
 
 use ockam::identity::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, IdentityAttributesWriter,
-    SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, IdentityAttributesReader,
+    IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
 };
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
-use ockam_core::{AllowAll, Error, Message, Result, Worker};
+use ockam_core::{Error, Result, Worker};
 use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
@@ -118,6 +118,7 @@ impl Authority {
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             configuration.clone().trust_context_identifier(),
             self.attributes_writer(),
+            self.attributes_reader(),
         )
         .await?;
 
@@ -180,14 +181,7 @@ impl Authority {
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        WorkerBuilder::with_access_control(
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-            acceptor_address.clone(),
-            acceptor,
-        )
-        .start(ctx)
-        .await?;
+        ctx.start_worker(acceptor_address.clone(), acceptor).await?;
 
         info!("started an enrollment token issuer at '{issuer_address}'");
         info!("started an enrollment token acceptor at '{acceptor_address}'");
@@ -246,13 +240,7 @@ impl Authority {
                 FlowControlPolicy::SpawnerAllowMultipleMessages,
             );
 
-            ctx.start_worker(
-                okta.address,
-                okta_worker,
-                AllowAll, // FIXME: @ac
-                AllowAll,
-            )
-            .await?;
+            ctx.start_worker(okta.address, okta_worker).await?;
         }
         Ok(())
     }
@@ -271,7 +259,7 @@ impl Authority {
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        ctx.start_worker(address, Echoer, AllowAll, AllowAll).await
+        ctx.start_worker(address, Echoer).await
     }
 }
 
@@ -287,9 +275,14 @@ impl Authority {
         self.identities().repository().clone()
     }
 
-    /// Return the identities repository used by the authority
+    /// Return the identities repository as writer used by the authority
     fn attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
         self.identities_repository().as_attributes_writer().clone()
+    }
+
+    /// Return the identities repository as reader used by the authority
+    fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
+        self.identities_repository().as_attributes_reader().clone()
     }
 
     /// Create an identity vault backed by a FileStorage
@@ -339,7 +332,7 @@ impl Authority {
     /// Start a worker at a given address
     /// The configuration is used to create an Abac incoming policy checking that
     /// the sender can indeed call the authority services
-    async fn start<M, W>(
+    async fn start<W>(
         &self,
         ctx: &Context,
         configuration: &Configuration,
@@ -348,14 +341,14 @@ impl Authority {
         worker: W,
     ) -> Result<()>
     where
-        M: Message + Send + 'static,
-        W: Worker<Context = Context, Message = M>,
+        W: Worker<Context = Context>,
     {
         let abac = self.create_abac_policy(configuration, address.clone(), enroller_check);
-        WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), address.clone(), worker)
+        WorkerBuilder::new(worker)
+            .with_address(address)
+            .with_incoming_access_control_arc(abac)
             .start(ctx)
             .await
-            .map(|_| ())
     }
 
     /// Return an Abac incoming policy checking that for the authority services

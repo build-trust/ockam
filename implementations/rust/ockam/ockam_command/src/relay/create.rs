@@ -1,8 +1,9 @@
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam::identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Project;
 
@@ -94,7 +95,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
             let body = if cmd.at.matches(0, &[Project::CODE.into()]) {
                 if cmd.authorized.is_some() {
                     return Err(
-                        anyhow!("--authorized can not be used with project addresses").into(),
+                        miette!("--authorized can not be used with project addresses").into(),
                     );
                 }
                 CreateForwarder::at_project(ma, Some(alias.clone()))
@@ -162,15 +163,32 @@ impl Output for ForwarderInfo<'_> {
         let output = format!(
             r#"
 Relay {}:
-    Forwarding Address: {} => {},
-    Remote Address: {},
+    Route: {}
+    Remote Address: {}
     Worker Address: {}
+    Flow Control Id: {}"
 "#,
             self.remote_address(),
+            self.forwarding_route(),
+            self.remote_address_ma()?,
             self.worker_address_ma()?,
-            self.remote_address_ma()?,
-            self.remote_address_ma()?,
-            self.worker_address_ma()?
+            self.flow_control_id()
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("<none>".into())
+        );
+
+        Ok(output)
+    }
+
+    fn list_output(&self) -> Result<String> {
+        let output = format!(
+            r#"Relay {}
+Route {}"#,
+            self.remote_address()
+                .color(OckamColor::PrimaryResource.color()),
+            self.forwarding_route()
+                .color(OckamColor::PrimaryResource.color()),
         );
 
         Ok(output)

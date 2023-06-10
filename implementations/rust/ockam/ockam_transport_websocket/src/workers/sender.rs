@@ -70,7 +70,8 @@ impl WorkerPair {
                 Arc::new(AllowAll), // FIXME: @ac
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, sender)
+        WorkerBuilder::new(sender)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
@@ -113,7 +114,8 @@ impl WorkerPair {
                 Arc::new(AllowAll), // FIXME: @ac
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, sender)
+        WorkerBuilder::new(sender)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
@@ -151,7 +153,7 @@ where
         if let Some(ws_stream) = self.ws_stream.take() {
             let rx_addr = Address::random_tagged("WebSocketSendWorker.rx_addr");
             let receiver = WebSocketRecvProcessor::new(ws_stream, self.peer);
-            ctx.start_processor(
+            ctx.start_processor_with_access_control(
                 rx_addr.clone(),
                 receiver,
                 AllowAll, // FIXME: @ac

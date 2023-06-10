@@ -1,7 +1,6 @@
 use crate::portal::addresses::{Addresses, PortalType};
 use crate::{PortalMessage, TcpOutletOptions, TcpPortalWorker, TcpRegistry};
-use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, Address, DenyAll, Mailboxes, Result, Routed, Worker};
+use ockam_core::{async_trait, Address, DenyAll, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
@@ -40,12 +39,12 @@ impl TcpOutletListenWorker {
         options.setup_flow_control_for_outlet_listener(ctx.flow_controls(), &address);
 
         let worker = Self::new(registry, peer, options);
-        WorkerBuilder::with_mailboxes(
-            Mailboxes::main(address, access_control, Arc::new(DenyAll)),
-            worker,
-        )
-        .start(ctx)
-        .await?;
+        WorkerBuilder::new(worker)
+            .with_address(address)
+            .with_incoming_access_control_arc(access_control)
+            .with_outgoing_access_control(DenyAll)
+            .start(ctx)
+            .await?;
 
         Ok(())
     }

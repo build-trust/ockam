@@ -214,6 +214,11 @@ impl ConnectionInstanceBuilder {
         if self.current_multiaddr.len() > length {
             while start < self.current_multiaddr.len() - length {
                 if self.current_multiaddr.matches(start, &codes) {
+                    // the transport route should include only the pieces before the match
+                    self.transport_route = self.recalculate_transport_route(
+                        self.current_multiaddr.split(start).0,
+                        false,
+                    )?;
                     let mut changes = instantiator.instantiate(&self, start).await?;
 
                     self.current_multiaddr = changes.current_multiaddr;
@@ -234,13 +239,13 @@ impl ConnectionInstanceBuilder {
                     if changes.flow_control_id.is_some() {
                         self.flow_control_id = changes.flow_control_id;
                     }
-                    self.transport_route = self.recalculate_transport_route()?;
                 }
                 start += 1;
             }
-        } else {
-            self.transport_route = self.recalculate_transport_route()?;
         }
+
+        self.transport_route =
+            self.recalculate_transport_route(self.current_multiaddr.clone(), true)?;
 
         Ok(Self {
             original_multiaddr: self.original_multiaddr,
@@ -253,10 +258,15 @@ impl ConnectionInstanceBuilder {
     }
 
     /// Calculate a 'transport route' from the [`MultiAddr`]
-    fn recalculate_transport_route(&self) -> Result<Route, ockam_core::Error> {
-        // assuming every plain service of the MultiAddr is transport except last
+    fn recalculate_transport_route(
+        &self,
+        current_before: MultiAddr,
+        last_pass: bool,
+    ) -> Result<Route, ockam_core::Error> {
+        // only when performing the last pass we assume every plain service of the MultiAddr
+        // is transport except last
         let mut route = Route::new();
-        let mut peekable = self.current_multiaddr.iter().peekable();
+        let mut peekable = current_before.iter().peekable();
         while let Some(protocol) = peekable.next() {
             if protocol.code() == Service::CODE {
                 if let Some(service) = protocol.cast::<Service>() {
@@ -266,7 +276,7 @@ impl ConnectionInstanceBuilder {
                     // but when a suffix route is appended (like in the inlet) is used
                     // the last piece could actually be a transport, in this case we allow
                     // last piece only if it's a just created secure channel
-                    if is_last && !self.secure_channel_encryptors.contains(&address) {
+                    if last_pass && is_last && !self.secure_channel_encryptors.contains(&address) {
                         break;
                     }
                     route = route.append(address);

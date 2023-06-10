@@ -69,6 +69,7 @@ impl IdentityAttributesWriter for BootstrapedIdentityStore {
         }
         match self.bootstrapped.get_attributes(sender).await? {
             None => self.repository.put_attributes(sender, entry).await,
+            // FIXME: allow overwriting the attributes?
             Some(_) => Ok(()),
             /*
                  * TODO: previous client automatically adds the project admin as a member.

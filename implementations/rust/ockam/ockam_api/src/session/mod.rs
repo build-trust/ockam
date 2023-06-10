@@ -7,11 +7,11 @@ use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
 use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
-use ockam_node::tokio;
 use ockam_node::tokio::sync::mpsc;
 use ockam_node::tokio::task::JoinSet;
 use ockam_node::tokio::time::{sleep, timeout, Duration};
 use ockam_node::Context;
+use ockam_node::{tokio, WorkerBuilder};
 use tracing as log;
 
 const MAX_FAILURES: usize = 3;
@@ -54,7 +54,10 @@ impl Medic {
             .new_detached(Address::random_tagged("Medic.ctx"), DenyAll, AllowAll)
             .await?;
         let (tx, rx) = mpsc::channel(32);
-        ctx.start_worker(Collector::address(), Collector(tx), AllowAll, DenyAll)
+        WorkerBuilder::new(Collector(tx))
+            .with_address(Collector::address())
+            .with_outgoing_access_control(DenyAll)
+            .start(&ctx)
             .await?;
         self.go(ctx, rx).await
     }

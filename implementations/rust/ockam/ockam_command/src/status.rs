@@ -1,8 +1,8 @@
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 use crate::Result;
-use anyhow::anyhow;
 use clap::Args;
+use miette::miette;
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -38,7 +38,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StatusCommand)) -> R
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) -> Result<()> {
     let node_states = opts.state.nodes.list()?;
     if node_states.is_empty() {
-        return Err(anyhow!("No nodes registered on this system!").into());
+        return Err(miette!("No nodes registered on this system!").into());
     }
 
     let mut node_details: Vec<NodeDetails> = vec![];
@@ -97,7 +97,7 @@ async fn print_status(
     mut node_details: Vec<NodeDetails>,
 ) -> Result<()> {
     if identities.is_empty() {
-        return Err(anyhow!(
+        return Err(miette!(
             "No enrolled identities found! Try passing the `--all` argument to see all identities."
         )
         .into());

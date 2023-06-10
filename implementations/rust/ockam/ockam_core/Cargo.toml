@@ -1,6 +1,6 @@
 [package]
 name = "ockam_core"
-version = "0.81.0"
+version = "0.82.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -69,7 +69,7 @@ cddl-cat = { version = "0.6.1", optional = true }
 cfg-if = "1.0"
 core2 = { version = "0.4.0", default-features = false, optional = true }
 futures-util = { version = "0.3.17", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
-hashbrown = { version = "0.13", default-features = false, features = ["ahash", "serde"] }
+hashbrown = { version = "0.14", default-features = false, features = ["ahash", "serde"] }
 heapless = { version = "0.7.1", optional = true }
 hex = { version = "0.4", default-features = false, optional = true }
 minicbor = { version = "0.19.0", features = ["derive"] }

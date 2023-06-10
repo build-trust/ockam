@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.89.0 - 2023-06-09
+
+### Changed
+
+- Make `AccessControl` optional while starting a `Worker`
+- Improve `ProcessorBuilder`. make `AccessControl` optional while starting a `Processor`
+- Updated dependencies
+
+### Fixed
+
+- Fix clippy warning
+
 ## 0.88.0 - 2023-05-26
 
 ### Changed

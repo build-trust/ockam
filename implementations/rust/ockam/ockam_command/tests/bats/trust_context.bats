@@ -15,6 +15,38 @@ teardown() {
 
 # ===== TESTS
 
+@test "trust_context - CRUD" {
+  skip_if_orchestrator_tests_not_enabled
+  copy_local_orchestrator_data
+
+  # Create with random name
+  run "$OCKAM" trust-context create
+  assert_success
+
+  # Create with specific name
+  t=$(random_str)
+  run "$OCKAM" trust-context create "${t}"
+  assert_success
+
+  # List
+  run "$OCKAM" trust-context list
+  assert_success
+  assert_output --partial "${t}"
+
+  # Change the default
+  run "$OCKAM" trust-context default "${t}"
+  assert_success
+  run "$OCKAM" trust-context show
+  assert_success
+  assert_output --partial "${t}"
+
+  # Delete and verify
+  run "$OCKAM" trust-context delete "${t}"
+  assert_success
+  run "$OCKAM" trust-context show "${t}"
+  assert_failure
+}
+
 @test "trust context - no trust context; everything is accepted" {
   run "$OCKAM" identity create m1
   run "$OCKAM" node create n1 --identity m1

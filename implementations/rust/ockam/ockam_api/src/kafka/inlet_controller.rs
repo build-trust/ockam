@@ -20,8 +20,8 @@ use crate::port_range::PortRange;
 
 type BrokerId = i32;
 
-/// Shared structure for every kafka worker to keep track of which brokers are being proxied
-/// with the relative inlet listener socket address.
+/// Shared structure for every kafka worker (consumer or producer services)
+/// to keep track of which brokers are being proxied with the relative inlet listener socket address.
 /// Also takes care of creating inlets dynamically when they are not present yet.
 #[derive(Debug, Clone)]
 pub(crate) struct KafkaInletController {
@@ -34,14 +34,14 @@ struct KafkaInletMapInner {
     port_range: PortRange,
     current_port: u16,
     bind_ip: IpAddr,
-    project_multiaddr: MultiAddr,
+    outlet_node_multiaddr: MultiAddr,
     local_interceptor_route: Route,
     remote_interceptor_route: Route,
 }
 
 impl KafkaInletController {
     pub(crate) fn new(
-        project_multiaddr: MultiAddr,
+        outlet_node_multiaddr: MultiAddr,
         local_interceptor_route: Route,
         remote_interceptor_route: Route,
         bind_ip: IpAddr,
@@ -49,7 +49,7 @@ impl KafkaInletController {
     ) -> KafkaInletController {
         Self {
             inner: Arc::new(Mutex::new(KafkaInletMapInner {
-                project_multiaddr,
+                outlet_node_multiaddr,
                 broker_map: HashMap::new(),
                 current_port: port_range.start(),
                 port_range,
@@ -91,7 +91,7 @@ impl KafkaInletController {
             Self::request_inlet_creation(
                 context,
                 socket_address,
-                inner.project_multiaddr.clone(),
+                inner.outlet_node_multiaddr.clone(),
                 inner.local_interceptor_route.clone(),
                 route![
                     inner.remote_interceptor_route.clone(),

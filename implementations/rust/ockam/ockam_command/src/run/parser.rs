@@ -50,7 +50,7 @@ impl ConfigRunner {
                 // If the dependency has been visited already but not
                 // parsed, we have a circular dependency.
                 if visited.contains(depends_on) {
-                    return Err(anyhow::anyhow!(
+                    return Err(miette::miette!(
                         "Circular dependency detected: {} -> {}",
                         depends_on,
                         name
@@ -143,8 +143,10 @@ impl NodeConfig {
             let cmd = duct::cmd(binary_path(), args);
             let id = format!("{subject}/{name}");
             if cmds.commands_index.contains_key(&id) {
-                return Err(anyhow::anyhow!(
-                    "There can't be {subject}s with the same name: {name}"
+                return Err(miette::miette!(
+                    "There can't be {}s with the same name: {}",
+                    subject,
+                    name
                 ));
             }
             cmds.commands_index

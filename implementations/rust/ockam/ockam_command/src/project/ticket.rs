@@ -5,7 +5,8 @@ use ockam_api::identity::EnrollmentTicket;
 use std::collections::HashMap;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
+use miette::miette;
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::{DirectAuthenticatorClient, TokenIssuerClient};
@@ -100,7 +101,7 @@ impl Runner {
                         &c.multiaddr
                     }
                     _ => {
-                        return Err(anyhow!(
+                        return Err(miette!(
                             "Trust context must be configured with a credential issuer"
                         )
                         .into());
@@ -212,10 +213,10 @@ async fn get_project(
                     let p = ProjectLookup::from_project(c).await?;
                     Ok((Some(p), a))
                 } else {
-                    Err(anyhow!("missing authority in project {:?}", &*proj).into())
+                    Err(miette!("missing authority in project {:?}", &*proj).into())
                 }
             } else {
-                Err(anyhow!("unknown project {}", &*proj).into())
+                Err(miette!("unknown project {}", &*proj).into())
             };
         }
     }

@@ -2,7 +2,6 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::access_control::AllowAll;
 use ockam::{node, Context, Result};
 use ockam_transport_udp::UdpTransportExtension;
 
@@ -18,7 +17,7 @@ async fn main(ctx: Context) -> Result<()> {
     udp.listen("127.0.0.1:4000").await?;
 
     // Create an echoer worker
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())

@@ -1,5 +1,5 @@
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, Address, AllowAll, Any, Routed, Worker};
+use ockam_core::{route, Address, Any, Routed, Worker};
 use ockam_node::Context;
 use tracing::trace;
 
@@ -43,7 +43,7 @@ impl Worker for KafkaPortalListener {
 
         let inlet_responder_address = message.transport().return_route.next()?.clone();
 
-        let worker_address = KafkaPortalWorker::start_kafka_portal(
+        let worker_address = KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
             self.secure_channel_controller.clone(),
             self.uuid_to_name.clone(),
@@ -88,8 +88,6 @@ impl KafkaPortalListener {
                     secure_channel_controller,
                     uuid_to_name: Default::default(),
                 },
-                AllowAll,
-                AllowAll,
             )
             .await
     }

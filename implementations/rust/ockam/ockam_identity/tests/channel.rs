@@ -847,14 +847,12 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
     let bob = identities_creation.create_identity().await?;
 
     let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier());
-    WorkerBuilder::with_access_control(
-        Arc::new(access_control),
-        Arc::new(DenyAll),
-        "receiver",
-        receiver,
-    )
-    .start(ctx)
-    .await?;
+    WorkerBuilder::new(receiver)
+        .with_address("receiver")
+        .with_incoming_access_control(access_control)
+        .with_outgoing_access_control(DenyAll)
+        .start(ctx)
+        .await?;
 
     let bob_listener = secure_channels
         .create_secure_channel_listener(
@@ -907,14 +905,12 @@ async fn access_control__unknown_participant__should_not_pass_messages(
     let bob = identities_creation.create_identity().await?;
 
     let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier());
-    WorkerBuilder::with_access_control(
-        Arc::new(access_control),
-        Arc::new(DenyAll),
-        "receiver",
-        receiver,
-    )
-    .start(ctx)
-    .await?;
+    WorkerBuilder::new(receiver)
+        .with_address("receiver")
+        .with_incoming_access_control(access_control)
+        .with_outgoing_access_control(DenyAll)
+        .start(ctx)
+        .await?;
 
     let bob_listener = secure_channels
         .create_secure_channel_listener(
@@ -963,14 +959,12 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
     let access_control = IdentityAccessControlBuilder::new_with_id(
         "P79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
     );
-    WorkerBuilder::with_access_control(
-        Arc::new(access_control),
-        Arc::new(DenyAll),
-        "receiver",
-        receiver,
-    )
-    .start(ctx)
-    .await?;
+    WorkerBuilder::new(receiver)
+        .with_address("receiver")
+        .with_incoming_access_control(access_control)
+        .with_outgoing_access_control(DenyAll)
+        .start(ctx)
+        .await?;
 
     ctx.send(route!["receiver"], "Hello, Bob!".to_string())
         .await?;

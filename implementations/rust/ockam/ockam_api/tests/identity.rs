@@ -9,7 +9,7 @@ use ockam_api::nodes::service::NodeIdentities;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::rand::random;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, AsyncTryClone, Error, LocalOnwardOnly, LocalSourceOnly, Result};
+use ockam_core::{route, AsyncTryClone, Error, Result};
 use ockam_node::Context;
 
 async fn create_identity(ctx: &mut Context, service_address: &str) -> Result<(Vec<u8>, String)> {
@@ -164,15 +164,11 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     ctx.start_worker(
         "1",
         IdentityService::new(NodeIdentities::new(node1.identities(), cli_state.clone())).await?,
-        LocalSourceOnly,
-        LocalOnwardOnly,
     )
     .await?;
     ctx.start_worker(
         "2",
         IdentityService::new(NodeIdentities::new(node2.identities(), cli_state)).await?,
-        LocalSourceOnly,
-        LocalOnwardOnly,
     )
     .await?;
 

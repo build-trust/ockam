@@ -1,12 +1,17 @@
 use anyhow::Context;
 use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
+use miette::IntoDiagnostic;
+use ockam_api::cli_state::{StateItemTrait, VaultState};
+
 use ockam::identity::credential::Credential;
+
 use ockam_api::cloud::project::Project;
 
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
 
 use crate::project::ProjectInfo;
+use crate::terminal::OckamColor;
 use crate::util::comma_separated;
 use crate::Result;
 use colorful::Colorful;
@@ -15,7 +20,7 @@ use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelResponse, ShowSecureChannelResponse,
 };
 use ockam_api::route_to_multiaddr;
-use ockam_core::route;
+use ockam_core::{route, Route};
 
 /// Trait to control how a given type will be printed as a CLI output.
 ///
@@ -43,6 +48,10 @@ use ockam_core::route;
 /// ```
 pub trait Output {
     fn output(&self) -> Result<String>;
+
+    fn list_output(&self) -> Result<String> {
+        self.output()
+    }
 }
 
 impl<O: Output> Output for &O {
@@ -54,11 +63,32 @@ impl<O: Output> Output for &O {
 impl Output for Space<'_> {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
-        write!(w, "Space")?;
+        write!(w, "Space").into_diagnostic()?;
         write!(w, "\n  Id: {}", self.id)?;
         write!(w, "\n  Name: {}", self.name)?;
         write!(w, "\n  Users: {}", comma_separated(&self.users))?;
         Ok(w)
+    }
+
+    fn list_output(&self) -> Result<String> {
+        let mut output = String::new();
+        writeln!(
+            output,
+            "Space {}",
+            self.name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+        writeln!(
+            output,
+            "Id {}",
+            self.id
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+        write!(output, "{}", comma_separated(&self.users))?;
+
+        Ok(output)
     }
 }
 
@@ -109,6 +139,21 @@ impl Output for Project {
         )?;
         write!(w, "\n  Running: {}", self.running.unwrap_or(false))?;
         Ok(w)
+    }
+
+    fn list_output(&self) -> Result<String> {
+        let output = format!(
+            r#"Project {}
+Space {}"#,
+            self.name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.space_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+        );
+
+        Ok(output)
     }
 }
 
@@ -219,7 +264,26 @@ Outlet {}:
 
         Ok(output)
     }
+
+    fn list_output(&self) -> Result<String> {
+        let output = format!(
+            r#"Outlet {}
+From {} to {}"#,
+            self.alias
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.worker_address()?
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.tcp_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+        );
+
+        Ok(output)
+    }
 }
+
 impl Output for Credential {
     fn output(&self) -> Result<String> {
         Ok(self.to_string())
@@ -229,5 +293,90 @@ impl Output for Credential {
 impl Output for Vec<u8> {
     fn output(&self) -> Result<String> {
         Ok(hex::encode(self))
+    }
+}
+
+impl Output for InletStatus<'_> {
+    fn output(&self) -> Result<String> {
+        let outlet = if let Some(r) = Route::parse(self.outlet_route.as_ref()) {
+            if let Some(ma) = route_to_multiaddr(&r) {
+                ma.to_string()
+            } else {
+                self.outlet_route.to_string()
+            }
+        } else {
+            self.outlet_route.to_string()
+        };
+
+        let output = format!(
+            r#"
+Inlet {}
+    TCP Address: {}
+    Outlet Address: {}
+            "#,
+            self.alias
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.bind_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            outlet.color(OckamColor::PrimaryResource.color())
+        );
+
+        Ok(output)
+    }
+
+    fn list_output(&self) -> Result<String> {
+        let output = format!(
+            r#"Inlet {}
+From {} to {}"#,
+            self.alias
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.bind_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.outlet_route
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+        );
+
+        Ok(output)
+    }
+}
+
+impl Output for VaultState {
+    fn output(&self) -> Result<String> {
+        let mut output = String::new();
+        writeln!(output, "Name: {}", self.name())?;
+        writeln!(
+            output,
+            "Type: {}",
+            match self.config().is_aws() {
+                true => "AWS KMS",
+                false => "OCKAM",
+            }
+        )?;
+        Ok(output)
+    }
+
+    fn list_output(&self) -> Result<String> {
+        let mut output = String::new();
+        writeln!(
+            output,
+            "Vault {}",
+            self.name().color(OckamColor::PrimaryResource.color())
+        )?;
+        write!(
+            output,
+            "Type {}",
+            match self.config().is_aws() {
+                true => "AWS KMS",
+                false => "OCKAM",
+            }
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+        )?;
+        Ok(output)
     }
 }

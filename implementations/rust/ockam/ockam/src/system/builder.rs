@@ -178,7 +178,7 @@ where
         }
 
         // Fix the entry point
-        if let Some(entry) = core::mem::replace(&mut self.entry, None) {
+        if let Some(entry) = self.entry.take() {
             self.entry = addrs.get(&entry).cloned();
         }
 
@@ -278,10 +278,10 @@ where
     M: Message,
 {
     fn drop(&mut self) {
-        let inner = core::mem::replace(&mut self.inner, None).unwrap();
-        let routes = core::mem::replace(&mut self.routes, None).unwrap();
-        let addr = core::mem::replace(&mut self.addr, None).unwrap();
-        let id = core::mem::replace(&mut self.id, None).unwrap();
+        let inner = self.inner.take().unwrap();
+        let routes = self.routes.take().unwrap();
+        let addr = self.addr.take().unwrap();
+        let id = self.id.take().unwrap();
 
         assert_ne!(routes.len(), 0);
         self.parent.inner.insert(

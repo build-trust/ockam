@@ -5,12 +5,14 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use colorful::Colorful;
 use reqwest::Url;
 use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
+use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::{OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
@@ -18,12 +20,13 @@ use ockam_core::CowStr;
 
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::delete_embedded_node;
-use crate::project::addon::base_endpoint;
+use crate::operation::util::check_for_completion;
+use crate::project::addon::configure_addon_endpoint;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_long_help.txt");
@@ -125,28 +128,28 @@ async fn run_impl(
     let addon_id = "okta";
     let endpoint = format!(
         "{}/{}",
-        base_endpoint(&opts.state, &project_name)?,
+        configure_addon_endpoint(&opts.state, &project_name)?,
         addon_id
     );
-    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(
         body,
         controller_route,
         None::<CowStr>,
     ));
     rpc.request(req).await?;
-    rpc.is_ok()?;
-    println!("Okta addon enabled");
+    let res = rpc.parse_response::<CreateOperationResponse>()?;
+    let operation_id = res.operation_id;
 
-    // Wait until project is ready again
-    println!("Reconfiguring project (this can take a few minutes) ...");
-    tokio::time::sleep(std::time::Duration::from_secs(45)).await;
+    check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
+
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     rpc.request(api::project::show(&project_id, controller_route))
         .await?;
     let project: Project = rpc.parse_response()?;
     check_project_readiness(&ctx, &opts, &cloud_opts, rpc.node_name(), None, project).await?;
 
-    println!("Okta addon configured successfully");
+    opts.terminal
+        .write_line(&fmt_ok!("Okta addon configured successfully"))?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

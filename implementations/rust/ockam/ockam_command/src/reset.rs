@@ -1,8 +1,8 @@
 use crate::terminal::ConfirmResult;
 use crate::{fmt_ok, CommandGlobalOpts};
-use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 
 /// Removes the local Ockam configuration including all Identities and Nodes
 #[derive(Clone, Debug, Args)]
@@ -32,7 +32,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> crate::Result<()> {
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(anyhow!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm").into());
             }
         }
     }

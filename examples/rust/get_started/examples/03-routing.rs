@@ -1,7 +1,6 @@
 // This node routes a message.
 
 use hello_ockam::{Echoer, Hop};
-use ockam::access_control::AllowAll;
 use ockam::{node, route, Context, Result};
 
 #[ockam::node]
@@ -10,10 +9,10 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx);
 
     // Start a worker, of type Echoer, at address "echoer"
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     // Start a worker, of type Hop, at address "h1"
-    node.start_worker("h1", Hop, AllowAll, AllowAll).await?;
+    node.start_worker("h1", Hop).await?;
 
     // Send a message to the worker at address "echoer",
     // via the worker at address "h1"

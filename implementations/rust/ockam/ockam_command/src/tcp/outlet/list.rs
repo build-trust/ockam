@@ -1,12 +1,16 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
+use crate::terminal::OckamColor;
+
+use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
-use anyhow::anyhow;
+
 use clap::Args;
+use colorful::Colorful;
 use ockam_api::nodes::models::portal::OutletList;
-use ockam_api::{error::ApiError, route_to_multiaddr};
+
 use ockam_core::api::Request;
-use ockam_core::route;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
@@ -31,24 +35,36 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
+
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(Request::get("/node/outlet")).await?;
-    let response = rpc.parse_response::<OutletList>()?;
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    if response.list.is_empty() {
-        return Err(crate::Error::new(
-            exitcode::IOERR,
-            anyhow!("No Outlets found on this system!"),
-        ));
-    }
+    let send_req = async {
+        rpc.request(Request::get("/node/outlet")).await?;
 
-    for outlet in &response.list {
-        println!("Outlet:");
-        println!("  Alias: {}", outlet.alias);
-        let addr = route_to_multiaddr(&route![outlet.worker_addr.to_string()])
-            .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;
-        println!("  From Outlet: {addr}");
-        println!("  To TCP: {}", outlet.tcp_addr);
-    }
+        *is_finished.lock().await = true;
+        rpc.parse_response::<OutletList>()
+    };
+
+    let output_messages = vec![format!(
+        "Listing TCP Outlets on node {}...\n",
+        node_name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    )];
+
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (outlets, _) = try_join!(send_req, progress_output)?;
+
+    let list = opts.terminal.build_list(
+        &outlets.list,
+        &format!("Outlets on Node {node_name}"),
+        &format!("No TCP Outlets found on node {node_name}."),
+    )?;
+    opts.terminal.stdout().plain(list).write_line()?;
+
     Ok(())
 }

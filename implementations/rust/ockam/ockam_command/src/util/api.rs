@@ -2,8 +2,9 @@
 
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Context};
+use anyhow::Context as _;
 use clap::Args;
+use miette::miette;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
 use regex::Regex;
@@ -302,8 +303,8 @@ pub(crate) mod project {
         space_id: &'a str,
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, CloudRequestWrapper<'a, CreateProject<'a>>> {
-        let b = CreateProject::new::<&str, &str>(project_name, &[], &[]);
-        Request::post(format!("v0/projects/{space_id}")).body(CloudRequestWrapper::new(
+        let b = CreateProject::new::<&str, &str>(project_name, &[]);
+        Request::post(format!("v1/spaces/{space_id}/projects")).body(CloudRequestWrapper::new(
             b,
             cloud_route,
             None::<CowStr>,
@@ -328,6 +329,18 @@ pub(crate) mod project {
     ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
         Request::delete(format!("v0/projects/{space_id}/{project_id}"))
             .body(CloudRequestWrapper::bare(cloud_route))
+    }
+}
+
+/// Helpers to create operations API requests
+pub(crate) mod operation {
+    use super::*;
+
+    pub(crate) fn show<'a>(
+        id: &str,
+        cloud_route: &'a MultiAddr,
+    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        Request::get(format!("v1/operations/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 }
 
@@ -521,7 +534,7 @@ pub(crate) fn validate_cloud_resource_name(s: &str) -> Result<()> {
     let project_name_regex = Regex::new(r"^[a-zA-Z0-9]+([a-zA-Z0-9-_\.]?[a-zA-Z0-9])*$").unwrap();
     let is_project_name_valid = project_name_regex.is_match(s);
     if !is_project_name_valid {
-        Err(anyhow!("Invalid name").into())
+        Err(miette!("Invalid name").into())
     } else {
         Ok(())
     }

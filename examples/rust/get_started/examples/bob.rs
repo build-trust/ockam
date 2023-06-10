@@ -1,4 +1,3 @@
-use ockam::access_control::AllowAll;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, Routed, TcpConnectionOptions, Worker};
@@ -33,7 +32,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
     let sc_options = SecureChannelListenerOptions::new();
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
     node.flow_controls().add_consumer(
         "echoer",
         &sc_options.spawner_flow_control_id(),

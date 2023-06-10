@@ -1,5 +1,5 @@
 use crate::tcp_interceptor::{Role, TcpMitmProcessor, TcpMitmRegistry, TcpMitmTransport, CLUSTER_NAME};
-use ockam_core::{async_trait, compat::net::SocketAddr, DenyAll};
+use ockam_core::{async_trait, compat::net::SocketAddr};
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -34,8 +34,7 @@ impl TcpMitmListenProcessor {
             target_addr,
         };
 
-        ctx.start_processor(address.clone(), processor, DenyAll, DenyAll)
-            .await?;
+        ctx.start_processor(address.clone(), processor).await?;
 
         Ok((saddr, address))
     }

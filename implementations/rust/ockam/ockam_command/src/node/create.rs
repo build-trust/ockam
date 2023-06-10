@@ -1,9 +1,11 @@
 use clap::Args;
 use colorful::Colorful;
 use rand::prelude::random;
+use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
+use miette::miette;
 use minicbor::{Decoder, Encode};
 use std::io::{self, Read};
 use std::{
@@ -11,19 +13,19 @@ use std::{
     path::PathBuf,
     str::FromStr,
 };
+use tokio::try_join;
 use tracing::error;
 
 use crate::node::util::{add_project_info_to_node_state, init_node_state, spawn_node};
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
+use crate::terminal::OckamColor;
 use crate::util::api::{parse_trust_context, TrustContextConfigBuilder, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::util::{api, parse_node_name, RpcBuilder};
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
-use crate::{
-    docs, identity, node::show::print_query_status, util::find_available_port, CommandGlobalOpts,
-    Result,
-};
+use crate::{docs, identity, util::find_available_port, CommandGlobalOpts, Result};
+use crate::{fmt_log, fmt_ok};
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -43,10 +45,9 @@ use ockam_api::{
 };
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::flow_control::FlowControlPolicy;
-use ockam_core::{route, AllowAll, LOCAL};
+use ockam_core::{route, LOCAL};
 
 use super::show::is_node_up;
-use super::util::check_default;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -170,7 +171,7 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
     match serde_json::from_str::<Config>(config_or_path) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let path = PathBuf::from_str(config_or_path).context(anyhow!("Not a valid path"))?;
+            let path = PathBuf::from_str(config_or_path).context(miette!("Not a valid path"))?;
             Config::read(path)
         }
     }
@@ -179,40 +180,70 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
 pub(crate) async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> Result<()> {
     let node_name = &parse_node_name(&cmd.node_name)?;
+    opts.terminal.write_line(&fmt_log!(
+        "Creating Node {}...\n",
+        node_name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    ))?;
 
     if cmd.child_process {
         return Err(crate::Error::new(
             exitcode::CONFIG,
-            anyhow!("Cannot create a background node from background node"),
+            miette!("Cannot create a background node from background node"),
         ));
     }
-
-    // Spawn node in another, new process
-    let cmd = cmd.overwrite_addr()?;
-    let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
-
-    spawn_background_node(&opts, &cmd, addr).await?;
-
     // Print node status
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-    let is_default = check_default(&opts, node_name);
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    // TODO: This is a temporary workaround until we have proper
-    // support for controling the output of commands
-    if opts.global_args.quiet {
-        let _ = is_node_up(&mut rpc, true).await?;
-        return Ok(());
-    }
+    let send_req = async {
+        // Spawn node in another, new process
+        let cmd = cmd.overwrite_addr()?;
+        let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
 
-    print_query_status(&mut rpc, node_name, true, is_default).await?;
+        spawn_background_node(&opts, &cmd, addr).await?;
 
+        let is_node_up = is_node_up(&mut rpc, true).await?;
+
+        *is_finished.lock().await = true;
+        Ok(is_node_up)
+    };
+
+    let output_messages = vec![
+        format!("Creating node..."),
+        format!("Starting services..."),
+        format!("Loading any pre-trusted identities..."),
+    ];
+
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (_response, _) = try_join!(send_req, progress_output)?;
+
+    opts.terminal
+        .stdout()
+        .plain(
+            fmt_ok!(
+                "Node {} created successfully\n\n",
+                node_name
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ) + &fmt_log!("To see more details on this node, run:\n")
+                + &fmt_log!(
+                    "{}",
+                    "ockam node show".color(OckamColor::PrimaryResource.color())
+                ),
+        )
+        .write_line()?;
     Ok(())
 }
 
-fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crate::Result<()> {
+fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> Result<()> {
     let cmd = cmd.overwrite_addr()?;
     embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd))?;
     Ok(())
@@ -221,7 +252,7 @@ fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crat
 async fn run_foreground_node(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> Result<()> {
     let node_name = parse_node_name(&cmd.node_name)?;
 
     // TODO: remove this special case once the Orchestrator has migrated to the
@@ -302,7 +333,7 @@ async fn run_foreground_node(
         listener.flow_control_id(),
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker, AllowAll, AllowAll)
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;
 
     if let Some(config) = &cmd.launch_config {
@@ -317,7 +348,7 @@ async fn run_foreground_node(
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
             ctx.stop().await?;
-            return Err(anyhow!("Failed to start services".to_string()).into());
+            return Err(miette!("Failed to start services").into());
         }
     }
 
@@ -439,7 +470,7 @@ where
     let mut dec = Decoder::new(&buf);
     let hdr = dec.decode::<Response>()?;
     if hdr.status() != Some(Status::Ok) {
-        return Err(anyhow!("Request failed with status: {:?}", hdr.status()).into());
+        return Err(miette!("Request failed with status: {:?}", hdr.status()).into());
     }
     Ok(())
 }
@@ -448,12 +479,12 @@ async fn spawn_background_node(
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
     addr: SocketAddr,
-) -> crate::Result<()> {
+) -> Result<()> {
     // Check if the port is used by some other services or process
     if !bind_to_port_check(&addr) {
         return Err(crate::Error::new(
             exitcode::IOERR,
-            anyhow!("Another process is listening on the provided port!"),
+            miette!("Another process is listening on the provided port!"),
         ));
     }
 
@@ -502,7 +533,7 @@ async fn spawn_background_node(
 async fn start_authority_node(
     ctx: Context,
     opts: (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> Result<()> {
     let (opts, cmd) = opts;
     let launch_config = cmd
         .launch_config
@@ -511,11 +542,11 @@ async fn start_authority_node(
     if let Some(services) = launch_config.startup_services {
         let authenticator_config = services.authenticator.ok_or(crate::Error::new(
             exitcode::CONFIG,
-            anyhow!("The authenticator service must be specified for an authority node"),
+            miette!("The authenticator service must be specified for an authority node"),
         ))?;
         let secure_channel_config = services.secure_channel_listener.ok_or(crate::Error::new(
             exitcode::CONFIG,
-            anyhow!("The secure channel listener service must be specified for an authority node"),
+            miette!("The secure channel listener service must be specified for an authority node"),
         ))?;
 
         // retrieve the authority identity if it has been created before
@@ -530,7 +561,7 @@ async fn start_authority_node(
 
         let trusted_identities = load_pre_trusted_identities(&cmd)
             .map(|ts| ts.unwrap_or(PreTrustedIdentities::Fixed(Default::default())))
-            .map_err(|e| crate::Error::new(exitcode::CONFIG, anyhow!("{e}")))?;
+            .map_err(|e| crate::Error::new(exitcode::CONFIG, miette!("{}", e)))?;
 
         let configuration = authority_node::Configuration {
             identifier,

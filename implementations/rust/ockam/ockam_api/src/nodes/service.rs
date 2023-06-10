@@ -48,6 +48,7 @@ use crate::nodes::connection::{
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
+use crate::nodes::registry::KafkaServiceKind;
 use crate::session::sessions::Sessions;
 use crate::session::Medic;
 use crate::DefaultAddress;
@@ -661,15 +662,26 @@ impl NodeManagerWorker {
                 .start_okta_identity_provider_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
+            (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
+                self.start_kafka_outlet_service(ctx, req, dec).await?
+            }
             (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
                 self.start_kafka_consumer_service(ctx, req, dec).await?
             }
+            (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => self
+                .delete_kafka_service(ctx, req, dec, KafkaServiceKind::Consumer)
+                .await?
+                .to_vec()?,
             (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
                 self.start_kafka_producer_service(ctx, req, dec).await?
             }
-            (Get, ["node", "services"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.list_services(req, &node_manager.registry).to_vec()?
+            (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => self
+                .delete_kafka_service(ctx, req, dec, KafkaServiceKind::Producer)
+                .await?
+                .to_vec()?,
+            (Get, ["node", "services"]) => self.list_services(req).await?,
+            (Get, ["node", "services", service_type]) => {
+                self.list_services_of_type(req, service_type).await?
             }
 
             // ==*== Forwarder commands ==*==
@@ -771,7 +783,9 @@ impl NodeManagerWorker {
             (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, dec, id).await?,
 
             // ==*== Projects ==*==
-            (Post, ["v0", "projects", space_id]) => self.create_project(ctx, dec, space_id).await?,
+            (Post, ["v1", "spaces", space_id, "projects"]) => {
+                self.create_project(ctx, dec, space_id).await?
+            }
             (Get, ["v0", "projects"]) => self.list_projects(ctx, dec).await?,
             (Get, ["v0", "projects", project_id]) => self.get_project(ctx, dec, project_id).await?,
             (Delete, ["v0", "projects", space_id, project_id]) => {
@@ -799,11 +813,16 @@ impl NodeManagerWorker {
 
             // ==*== Addons ==*==
             (Get, [project_id, "addons"]) => self.list_addons(ctx, dec, project_id).await?,
-            (Put, [project_id, "addons", addon_id]) => {
+            (Post, ["v1", "projects", project_id, "configure_addon", addon_id]) => {
                 self.configure_addon(ctx, dec, project_id, addon_id).await?
             }
-            (Delete, [project_id, "addons", addon_id]) => {
-                self.disable_addon(ctx, dec, project_id, addon_id).await?
+            (Post, ["v1", "projects", project_id, "disable_addon"]) => {
+                self.disable_addon(ctx, dec, project_id).await?
+            }
+
+            // ==*== Operations ==*==
+            (Get, ["v1", "operations", operation_id]) => {
+                self.get_operation(ctx, dec, operation_id).await?
             }
 
             // ==*== Messages ==*==
@@ -852,13 +871,8 @@ impl Worker for NodeManagerWorker {
             &api_flow_control_id,
             FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
-        ctx.start_worker(
-            DefaultAddress::RPC_PROXY,
-            RpcProxyService::new(),
-            AllowAll,
-            AllowAll,
-        )
-        .await?;
+        ctx.start_worker(DefaultAddress::RPC_PROXY, RpcProxyService::new())
+            .await?;
 
         Ok(())
     }

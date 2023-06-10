@@ -3,8 +3,9 @@ use crate::node::util::run_ockam;
 use crate::util::node_rpc;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::{docs, identity, CommandGlobalOpts, Result};
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use clap::{ArgGroup, Args};
+use miette::miette;
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -210,7 +211,7 @@ impl CreateCommand {
             ))),
             _ => Err(crate::Error::new(
                 exitcode::CONFIG,
-                anyhow!("Exactly one of 'reload-from-trusted-identities-file' or 'trusted-identities' must be defined"),
+                miette!("Exactly one of 'reload-from-trusted-identities-file' or 'trusted-identities' must be defined"),
             )),
         }
     }
@@ -327,7 +328,7 @@ fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
     serde_json::from_str::<TrustedIdentities>(values).map_err(|e| {
         crate::Error::new(
             exitcode::CONFIG,
-            anyhow!("Cannot parse the trusted identities: {e}"),
+            miette!("Cannot parse the trusted identities: {}", e),
         )
     })
 }

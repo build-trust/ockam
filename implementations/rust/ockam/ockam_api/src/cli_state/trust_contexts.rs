@@ -1,5 +1,6 @@
 use super::Result;
 use crate::config::cli::TrustContextConfig;
+use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -17,6 +18,13 @@ pub struct TrustContextState {
 impl TrustContextState {
     pub fn name(&self) -> &str {
         &self.name
+    }
+}
+
+impl Display for TrustContextState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Name: {}", self.name)?;
+        Ok(())
     }
 }
 

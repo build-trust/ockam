@@ -57,7 +57,7 @@ use ockam::{
     errcode::{Kind, Origin},
     workers::Echoer,
 };
-use ockam_core::{route, AllowAll, Error, Result};
+use ockam_core::{route, Error, Result};
 use ockam_node::Context;
 use ockam_transport_udp::{UdpHolePuncher, UdpTransport, UDP};
 use rand::Rng;
@@ -101,7 +101,7 @@ async fn do_main(ctx: &mut Context) -> Result<()> {
 
     // Create transport, echoer service and puncher
     UdpTransport::create(ctx).await?;
-    ctx.start_worker(ECHOER, Echoer, AllowAll, AllowAll).await?;
+    ctx.start_worker(ECHOER, Echoer).await?;
     let rendezvous_route = route![(UDP, rendezvous_addr), RENDEZVOUS];
     let mut puncher = UdpHolePuncher::create(ctx, &this_name, &that_name, rendezvous_route).await?;
     info!("Puncher address = {:?}", puncher.address());

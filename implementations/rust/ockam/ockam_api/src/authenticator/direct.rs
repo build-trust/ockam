@@ -3,7 +3,7 @@ pub mod types;
 use core::str;
 use lru::LruCache;
 use minicbor::Decoder;
-use ockam::identity::{AttributesEntry, IdentityAttributesWriter};
+use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityAttributesWriter};
 use ockam::identity::{IdentityIdentifier, IdentitySecureChannelLocalInfo};
 use ockam::identity::{OneTimeCode, Timestamp};
 use ockam_core::api::{self, Method, Request, Response, Status};
@@ -149,16 +149,19 @@ impl Worker for LegacyApiConverter {
 pub struct DirectAuthenticator {
     trust_context: String,
     attributes_writer: Arc<dyn IdentityAttributesWriter>,
+    attributes_reader: Arc<dyn IdentityAttributesReader>,
 }
 
 impl DirectAuthenticator {
     pub async fn new(
         trust_context: String,
         attributes_writer: Arc<dyn IdentityAttributesWriter>,
+        attributes_reader: Arc<dyn IdentityAttributesReader>,
     ) -> Result<Self> {
         Ok(Self {
             trust_context,
             attributes_writer,
+            attributes_reader,
         })
     }
 
@@ -190,6 +193,21 @@ impl DirectAuthenticator {
         );
         self.attributes_writer.put_attributes(id, entry).await
     }
+
+    async fn list_members(
+        &self,
+        enroller: &IdentityIdentifier,
+    ) -> Result<HashMap<IdentityIdentifier, AttributesEntry>> {
+        // TODO: move filter to `list` function
+        let all_attributes = self.attributes_reader.list().await?;
+        let attested_by_me = all_attributes
+            .into_iter()
+            .filter(|(_identifier, attribute_entry)| {
+                attribute_entry.attested_by() == Some(enroller.clone())
+            })
+            .collect();
+        Ok(attested_by_me)
+    }
 }
 
 #[ockam_core::worker]
@@ -211,13 +229,40 @@ impl Worker for DirectAuthenticator {
                 body   = %req.has_body(),
                 "request"
             }
-            let res = match (req.method(), req.path()) {
-                (Some(Method::Post), "/") | (Some(Method::Post), "/members") => {
+            let path_segments = req.path_segments::<5>();
+            let res = match (req.method(), path_segments.as_slice()) {
+                (Some(Method::Post), [""]) | (Some(Method::Post), ["members"]) => {
                     let add: AddMember = dec.decode()?;
                     self.add_member(&from, add.member(), add.attributes())
                         .await?;
                     Response::ok(req.id()).to_vec()?
                 }
+                (Some(Method::Get), ["member_ids"]) => {
+                    let entries = self.list_members(&from).await?;
+                    let ids: Vec<IdentityIdentifier> = entries.into_keys().collect();
+                    Response::ok(req.id()).body(ids).to_vec()?
+                }
+                // List members attested by our identity (enroller)
+                (Some(Method::Get), [""]) | (Some(Method::Get), ["members"]) => {
+                    let entries = self.list_members(&from).await?;
+
+                    Response::ok(req.id()).body(entries).to_vec()?
+                }
+                // Delete member if they were attested by our identity (enroller)
+                (Some(Method::Delete), [id]) | (Some(Method::Delete), ["members", id]) => {
+                    let identifier = IdentityIdentifier::try_from(id.to_string())?;
+                    if let Some(entry) = self.attributes_reader.get_attributes(&identifier).await? {
+                        if entry.attested_by() == Some(from) {
+                            self.attributes_writer.delete(&identifier).await?;
+                            Response::ok(req.id()).to_vec()?
+                        } else {
+                            api::forbidden(&req, "not attested by current enroller").to_vec()?
+                        }
+                    } else {
+                        Response::ok(req.id()).to_vec()?
+                    }
+                }
+
                 _ => api::unknown_path(&req).to_vec()?,
             };
             c.send(m.return_route(), res).await
@@ -422,6 +467,20 @@ impl DirectAuthenticatorClient {
             .request_no_resp_body(
                 &Request::post("/").body(AddMember::new(id).with_attributes(attributes)),
             )
+            .await
+    }
+
+    pub async fn list_member_ids(&self) -> Result<Vec<IdentityIdentifier>> {
+        self.0.request(&Request::get("/member_ids")).await
+    }
+
+    pub async fn list_members(&self) -> Result<HashMap<IdentityIdentifier, AttributesEntry>> {
+        self.0.request(&Request::get("/")).await
+    }
+
+    pub async fn delete_member(&self, id: IdentityIdentifier) -> Result<()> {
+        self.0
+            .request_no_resp_body(&Request::delete(format!("/{id}")))
             .await
     }
 }

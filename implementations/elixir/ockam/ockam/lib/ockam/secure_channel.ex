@@ -19,6 +19,7 @@ defmodule Ockam.SecureChannel do
   defdelegate start_link_channel(options, handshake_timeout \\ 30_000), to: Channel
   defdelegate get_remote_identity(worker), to: Channel
   defdelegate get_remote_identity_id(worker), to: Channel
+  defdelegate get_remote_identity_with_id(worker), to: Channel
   defdelegate listener_child_spec(args), to: Channel
   defdelegate established?(worker), to: Channel
   defdelegate disconnect(worker), to: Channel

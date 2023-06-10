@@ -31,7 +31,6 @@ impl From<ProjectLookup> for Project {
             id: lookup.id,
             name: lookup.name,
             space_name: "".to_string(),
-            services: vec![],
             access_route: lookup
                 .node_route
                 .map(|r| r.to_string())
@@ -45,6 +44,7 @@ impl From<ProjectLookup> for Project {
             confluent_config: None,
             version: None,
             running: None,
+            operation_id: None,
         }
     }
 }

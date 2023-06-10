@@ -1,7 +1,6 @@
 use clap::Args;
 
-use anyhow::anyhow;
-use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
+use miette::miette;
 use ockam_identity::IdentityIdentifier;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -23,7 +22,9 @@ use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
 use ockam_core::api::Status;
 
+use crate::error::Error;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 
 use crate::terminal::OckamColor;
@@ -62,28 +63,64 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> R
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
     opts.terminal.write_line(&fmt_log!(
-        "Enrolling your default Ockam identity with Ockam Orchestrator ...\n"
+        "Enrolling your default Ockam identity with Ockam Orchestrator...\n"
     ))?;
 
     display_parse_logs(&opts);
 
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
+    let node_name = start_embedded_node(ctx, &opts, None).await.map_err(|e| {
+        Error::new_internal_error("Failed to start an embedded node:", &e.to_string())
+    })?;
 
-    enroll(ctx, &opts, &cmd, &node_name).await?;
+    enroll(ctx, &opts, &cmd, &node_name).await.map_err(|e| {
+        Error::new_internal_error(
+            "Failed to enroll your local identity with Ockam Orchestrator:",
+            &e.to_string(),
+        )
+    })?;
 
     let cloud_opts = cmd.cloud_opts.clone();
-    let space = default_space(ctx, &opts, &cloud_opts, &node_name).await?;
-    default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
-    let identifier = update_enrolled_identity(&opts, &node_name).await?;
+    let space = default_space(ctx, &opts, &cloud_opts, &node_name)
+        .await
+        .map_err(|e| {
+            Error::new_internal_error(
+                "Unable to retrieve and set a space as default:",
+                &e.to_string(),
+            )
+        })?;
+    let project = default_project(ctx, &opts, &cloud_opts, &node_name, &space)
+        .await
+        .map_err(|e| {
+            Error::new_internal_error(
+                &format!(
+                    "Unable to retrieve and set a project as default with space: {}:",
+                    space
+                        .name
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ),
+                &e.to_string(),
+            )
+        })?;
+    let identifier = update_enrolled_identity(&opts, &node_name)
+        .await
+        .map_err(|e| {
+            Error::new_internal_error(
+                &format!(
+                    "Unable to set the local identity as enrolled with project {}:",
+                    project
+                        .name
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ),
+                &e.to_string(),
+            )
+        })?;
     delete_embedded_node(&opts, &node_name).await;
 
     opts.terminal.write_line(&fmt_ok!(
-        "Enrolled {} as one of the Ockam identities within the Orchestrator space {}",
+        "Enrolled {} as one of the Ockam identities of your Orchestrator account.",
         identifier
-            .to_string()
-            .color(OckamColor::PrimaryResource.color()),
-        space
-            .name
             .to_string()
             .color(OckamColor::PrimaryResource.color())
     ))?;
@@ -108,8 +145,7 @@ async fn enroll(
         info!("Already enrolled");
         Ok(())
     } else {
-        eprintln!("{}", rpc.parse_err_msg(res, dec));
-        Err(anyhow!("Failed to enroll").into())
+        Err(miette!("{}", rpc.parse_err_msg(res, dec)).into())
     }
 }
 
@@ -197,7 +233,9 @@ async fn default_space<'a>(
         ))?;
         space
     };
-
+    opts.state
+        .spaces
+        .overwrite(&default_space.name, SpaceConfig::from(&default_space))?;
     opts.terminal.write_line(&fmt_ok!(
         "Marked this space as your default space, on this machine.\n"
     ))?;
@@ -249,11 +287,8 @@ async fn default_project(
         let name = "default";
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
         let send_req = async {
-            rpc.request_with_timeout(
-                api::project::create(name, &space.id, &cloud_opts.route()),
-                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
-            )
-            .await?;
+            rpc.request(api::project::create(name, &space.id, &cloud_opts.route()))
+                .await?;
             *is_finished.lock().await = true;
             rpc.parse_response::<Project>()
         };
@@ -272,6 +307,10 @@ async fn default_project(
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
+
+        let operation_id = project.operation_id.clone().unwrap();
+        check_for_completion(ctx, opts, cloud_opts, rpc.node_name(), &operation_id).await?;
+
         project.to_owned()
     }
     // If it has, return the "default" project or first one on the list
@@ -350,12 +389,12 @@ impl Auth0Provider {
             Self::Auth0 => reqwest::Client::new(),
             Self::Okta(d) => {
                 let certificate = reqwest::Certificate::from_pem(d.certificate.as_bytes())
-                    .map_err(|e| anyhow!("Error parsing certificate: {e}"))?;
+                    .map_err(|e| miette!("Error parsing certificate: {}", e))?;
                 reqwest::ClientBuilder::new()
                     .tls_built_in_root_certs(false)
                     .add_root_certificate(certificate)
                     .build()
-                    .map_err(|e| anyhow!("Error building http client: {e}"))?
+                    .map_err(|e| miette!("Error building http client: {}", e))?
             }
         };
         Ok(client)
@@ -382,16 +421,18 @@ impl Auth0Service {
 
         opts.terminal
             .write_line(&fmt_log!(
-                "To enroll we need to associate your Ockam identifier with an Orchestrator account\n"
+                "To enroll we need to associate your Ockam identity with an Orchestrator account:\n"
             ))?
             .write_line(&fmt_para!(
                 "First copy this one-time code: {}",
                 format!(" {} ", dc.user_code).bg_white().black()
             ))?
-            .write(&fmt_para!(
+            .write(fmt_para!(
                 "Then press {} to open {} in your browser.",
                 " ENTER ↵ ".bg_white().black().blink(),
-                dc.verification_uri.to_string().color(OckamColor::PrimaryResource.color())
+                dc.verification_uri
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
             ))?;
 
         let mut input = String::new();
@@ -407,7 +448,7 @@ impl Auth0Service {
                     ))?;
             }
             Err(_e) => {
-                return Err(anyhow!("couldn't read enter from stdin").into());
+                return Err(miette!("couldn't read enter from stdin").into());
             }
         }
 
@@ -444,21 +485,21 @@ impl Auth0Service {
         let retry_strategy = ExponentialBackoff::from_millis(10).take(3);
         let res = Retry::spawn(retry_strategy, move || req().send())
             .await
-            .map_err(|e| anyhow!(e.to_string()))?;
+            .map_err(|e| miette!(e.to_string()))?;
         match res.status() {
             StatusCode::OK => {
                 let res = res
                     .json::<DeviceCode>()
                     .await
-                    .map_err(|e| anyhow!(e.to_string()))?;
+                    .map_err(|e| miette!(e.to_string()))?;
                 debug!(?res, "device code received: {res:#?}");
                 Ok(res)
             }
             _ => {
-                let res = res.text().await.map_err(|e| anyhow!(e.to_string()))?;
+                let res = res.text().await.map_err(|e| miette!(e.to_string()))?;
                 let err_msg = "couldn't get device code";
                 debug!(?res, err_msg);
-                Err(anyhow!(err_msg).into())
+                Err(miette!(err_msg).into())
             }
         }
     }
@@ -486,13 +527,13 @@ impl Auth0Service {
                 ])
                 .send()
                 .await
-                .map_err(|e| anyhow!(e.to_string()))?;
+                .map_err(|e| miette!(e.to_string()))?;
             match res.status() {
                 StatusCode::OK => {
                     token = res
                         .json::<Auth0Token>()
                         .await
-                        .map_err(|e| anyhow!(e.to_string()))?;
+                        .map_err(|e| miette!(e.to_string()))?;
                     debug!(?token, "token response received");
                     if let Some(spinner) = spinner_option.as_ref() {
                         spinner.finish_and_clear();
@@ -504,7 +545,7 @@ impl Auth0Service {
                     let err = res
                         .json::<TokensError>()
                         .await
-                        .map_err(|e| anyhow!(e.to_string()))?;
+                        .map_err(|e| miette!(e.to_string()))?;
                     match err.error.borrow() {
                         "authorization_pending" | "invalid_request" | "slow_down" => {
                             debug!(?err, "tokens not yet received");
@@ -514,7 +555,7 @@ impl Auth0Service {
                         _ => {
                             let err_msg = "failed to receive tokens";
                             debug!(?err, "{err_msg}");
-                            return Err(anyhow!(err_msg).into());
+                            return Err(miette!(err_msg).into());
                         }
                     }
                 }
@@ -524,7 +565,7 @@ impl Auth0Service {
 
     pub(crate) async fn validate_provider_config(&self) -> Result<()> {
         if let Err(e) = self.device_code().await {
-            return Err(anyhow!("Invalid OIDC configuration: {e}").into());
+            return Err(miette!("Invalid OIDC configuration: {}", e).into());
         }
         Ok(())
     }
