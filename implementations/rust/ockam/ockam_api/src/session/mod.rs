@@ -230,42 +230,97 @@ impl Worker for Collector {
     }
 }
 
-use ockam_core::{ AsyncTryClone, Result};
+use crate::echoer::Echoer;
+use core::sync::atomic::{AtomicBool, Ordering};
+use crate::hop::Hop;
+use ockam_core::{AsyncTryClone, Result};
+use crate::session::sessions::Session;
 
 #[ockam::test]
 async fn test_session_monitoring(ctx: &mut Context) -> Result<()> {
     // Create a new Medic instance
     let medic = Medic::new();
-    
-    let sessions_guard: Arc<Mutex<Sessions>> = medic.sessions();
+
+    let sessions: Arc<Mutex<Sessions>> = medic.sessions();
     // Start the Medic in a separate task
     let new_ctx = ctx.async_try_clone().await?;
-    ctx.stop().await?;
 
-    let medic_task: tokio::task::JoinHandle<std::result::Result<(), Error>> = tokio::spawn(medic.start(new_ctx));    
+    let medic_task: tokio::task::JoinHandle<std::result::Result<(), Error>> =
+        tokio::spawn(medic.start(new_ctx));
 
-    let mut sessions: std::sync::MutexGuard<Sessions> = sessions_guard.lock().unwrap();
+    // Medic relies on echo to verify if a session is alive
+    ctx.start_worker(Address::from_string("echo"), Echoer, AllowAll, AllowAll)
+        .await?;
 
-    for (&_key, session) in sessions.iter_mut() {
+    // Hop serves as simple neutral address we can use
+    ctx.start_worker(Address::from_string("hop"), Hop, AllowAll, AllowAll).await?;
+
+    let replacer_called = Arc::new(AtomicBool::new(false));
+    let replacer_can_return = Arc::new(AtomicBool::new(false));
+
+    {
+        let mut session = Session::new(route!["broken_route"]);
+        let replacer_called = replacer_called.clone();
+        let replacer_can_return = replacer_can_return.clone();
+        session.set_replacer(Box::new(move |_| {
+            let replacer_called = replacer_called.clone();
+            let replacer_can_return = replacer_can_return.clone();
+            Box::pin(async move {
+                log::info!("replacer called");
+                replacer_called.store(true, Ordering::Release);
+                while !replacer_can_return.load(Ordering::Acquire) {
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                }
+                // en empty route would do the trick, but a hop is more realistic
+                Ok(route!["hop"])
+            })
+        }));
+
+        sessions.lock().unwrap().add(session);
+    }
+
+    {
+        // Initially it's up
+        let mut guard = sessions.lock().unwrap();
+        let (_, session) = guard.iter_mut().next().unwrap();
         assert_eq!(session.status(), Status::Up);
-        assert_eq!(session.ping_route(), &route!["relay", "ping"]);
+        assert_eq!(session.ping_route(), &route!["broken_route"]);
     }
 
-    // Replace the ping route
-    let new_route: Route = route!["relay", "new"];
-    for (&_key, session) in sessions.iter_mut() {
-        session.set_status(Status::Down);
-        session.set_ping_address(new_route.clone());
-    
+    // Since the route is broken eventually it will be degraded and will call the replacer
+    while !replacer_called.load(Ordering::Acquire) {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
 
-    // Wait for the Medic to replace the ping route
-    for (&_key, session) in sessions.iter_mut() {
+    {
+        // Check the session is now marked as degraded
+        let guard = sessions.lock().unwrap();
+        let (_, session) = guard.iter().next().unwrap();
         assert_eq!(session.status(), Status::Degraded);
-        assert_eq!(session.ping_route(), &new_route);
+        assert_eq!(session.ping_route(), &route!["broken_route"]);
+    }
+
+    // Now we allow the replacer to return and replace the route
+    replacer_can_return.store(true, Ordering::Release);
+
+    loop {
+        {
+            // Check that the session is now up, since we don't have any
+            // synchronization we keep to keep checking until it's up
+            let guard = sessions.lock().unwrap();
+            let (_, session) = guard.iter().next().unwrap();
+            if session.status() == Status::Up {
+                assert_eq!(session.ping_route(), &route!["hop"]);
+                break;
+            }
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        continue;
     }
 
     // Shut down the test
     medic_task.abort();
+    ctx.stop().await?;
     Ok(())
 }
