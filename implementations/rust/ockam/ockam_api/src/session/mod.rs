@@ -252,11 +252,10 @@ async fn test_session_monitoring(ctx: &mut Context) -> Result<()> {
         tokio::spawn(medic.start(new_ctx));
 
     // Medic relies on echo to verify if a session is alive
-    ctx.start_worker(Address::from_string("echo"), Echoer, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker(Address::from_string("echo"), Echoer).await?;
 
     // Hop serves as simple neutral address we can use
-    ctx.start_worker(Address::from_string("hop"), Hop, AllowAll, AllowAll).await?;
+    ctx.start_worker(Address::from_string("hop"), Hop).await?;
 
     let replacer_called = Arc::new(AtomicBool::new(false));
     let replacer_can_return = Arc::new(AtomicBool::new(false));
