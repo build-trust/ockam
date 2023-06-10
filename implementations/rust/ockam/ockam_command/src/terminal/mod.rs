@@ -200,6 +200,10 @@ impl<W: TerminalWriter> Terminal<W> {
         }
     }
 
+    pub fn default() -> Self {
+        Self::new(false, false, false, OutputFormat::Plain)
+    }
+
     /// Prompt the user for a confirmation.
     pub fn confirm(&self, msg: &str) -> Result<ConfirmResult> {
         if !self.can_ask_for_user_input() {
