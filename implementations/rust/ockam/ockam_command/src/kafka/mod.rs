@@ -6,6 +6,7 @@ use ockam_multiaddr::MultiAddr;
 pub(crate) mod consumer;
 pub(crate) mod outlet;
 pub(crate) mod producer;
+pub(crate) mod util;
 
 const KAFKA_DEFAULT_BOOTSTRAP_ADDRESS: &str = "localhost:9092";
 const KAFKA_DEFAULT_PROJECT_ROUTE: &str = "/project/default";

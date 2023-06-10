@@ -1,14 +1,13 @@
-mod create;
-mod delete;
-mod list;
-
 use clap::{command, Args, Subcommand};
 
+use crate::kafka::producer::create::CreateCommand;
 use crate::kafka::producer::delete::DeleteCommand;
 use crate::kafka::producer::list::ListCommand;
 use crate::CommandGlobalOpts;
 
-use self::create::CreateCommand;
+mod create;
+mod delete;
+mod list;
 
 /// Manage Kafka Producers
 #[derive(Clone, Debug, Args)]
