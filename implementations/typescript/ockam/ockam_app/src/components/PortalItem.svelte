@@ -166,6 +166,8 @@
   }
   .item {
     margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
     border-radius: 4px;
   }
   .item:hover {

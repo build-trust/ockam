@@ -17,5 +17,6 @@
         padding: 0;
 
         width: 100%;
+        font-size: 12px
     }
 </style>

@@ -14,18 +14,12 @@
     await new Promise(r => setTimeout(r, 600))
   }
   async function enroll(e) {
-    console.log(e);
-    e.target.disabled = true;
     waiting = true;
-    setTimeout(async () => {
-      waiting = false;
-      await hide()
-      enrolled = true;
-    }, 1200);
-    // invoke('enroll').then((message) => {
-    //   waiting = false
-    //   enrolled = true
-    // })
+    e.target.disabled = true;
+    await invoke('enroll')
+    waiting = false
+    await hide()
+    enrolled = true
   }
 
   $: show()

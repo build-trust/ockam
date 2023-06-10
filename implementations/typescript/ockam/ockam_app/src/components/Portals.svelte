@@ -5,7 +5,7 @@
 </script>
 
 <div class="container">
-    <h1 class="h1">Portals</h1>
+    <h1 class="h3">Portals</h1>
     <PortalList />
 </div>
 
