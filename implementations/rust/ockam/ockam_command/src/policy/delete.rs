@@ -1,7 +1,9 @@
 use crate::policy::policy_path;
+use crate::terminal::ConfirmResult;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use clap::Args;
+use miette::miette;
 use ockam::Context;
 use ockam_abac::{Action, Resource};
 use ockam_core::api::Request;
@@ -16,6 +18,10 @@ pub struct DeleteCommand {
 
     #[arg(short, long)]
     action: Action,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -37,9 +43,28 @@ async fn run_impl(
     cmd: DeleteCommand,
 ) -> miette::Result<()> {
     let node = extract_address_value(&cmd.at)?;
-    let req = Request::delete(policy_path(&cmd.resource, &cmd.action));
-    let mut rpc = Rpc::background(ctx, &opts, &node)?;
-    rpc.request(req).await?;
-    rpc.is_ok()?;
+    if !cmd.yes {
+        match opts
+            .terminal
+            .confirm("This will delete the selected Identity. Are you sure?")?
+        {
+            ConfirmResult::Yes => {}
+            ConfirmResult::No => {
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
+                return Err(miette!("Use --yes to confirm").into());
+            }
+        }
+        let req = Request::delete(policy_path(&cmd.resource, &cmd.action));
+        let mut rpc = Rpc::background(ctx, &opts, &node)?;
+        rpc.request(req).await?;
+        rpc.is_ok()?;
+    } else {
+        let req = Request::delete(policy_path(&cmd.resource, &cmd.action));
+        let mut rpc = Rpc::background(ctx, &opts, &node)?;
+        rpc.request(req).await?;
+        rpc.is_ok()?;
+    }
     Ok(())
 }

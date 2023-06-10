@@ -1,7 +1,11 @@
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, node::NodeOpts, CommandGlobalOpts};
 use clap::Args;
+
+use crate::terminal::ConfirmResult;
+use colorful::Colorful;
+use miette::miette;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
@@ -16,6 +20,10 @@ pub struct DeleteCommand {
 
     /// Tcp Connection ID
     pub address: String,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -30,14 +38,47 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = extract_address_value(&node_name)?;
-
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    let req = Request::delete("/node/tcp/connection")
-        .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-    rpc.request(req).await?;
-    rpc.is_ok()?;
 
-    println!("Tcp connection `{}` successfully deleted", cmd.address);
+    if cmd.yes {
+        let req = Request::delete("/node/tcp/connection")
+            .body(models::transport::DeleteTransport::new(cmd.address.clone()));
+        rpc.request(req).await?;
+        rpc.is_ok()?;
+    } else {
+        // If yes is not provided make sure using TTY
+        match opts
+            .terminal
+            .confirm("This will delete the selected TCP-Connection. Are you sure?")?
+        {
+            ConfirmResult::Yes => {}
+            ConfirmResult::No => {
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
+                return Err(miette!("Use --yes to confirm").into());
+            }
+        }
+        let req = Request::delete("/node/tcp/connection")
+            .body(models::transport::DeleteTransport::new(cmd.address.clone()));
+        rpc.request(req).await?;
+        rpc.is_ok()?;
+    }
+
+    // Print message
+    print_req_resp(cmd.address.clone(), opts).await;
     Ok(())
+}
+
+/// Print the appropriate message after deletion.
+async fn print_req_resp(node: String, opts: CommandGlobalOpts) {
+    opts.terminal
+        .stdout()
+        .plain(format!(
+            "{} TCP connection {node} has been successfully deleted.",
+            "✔︎".light_green(),
+        ))
+        .json(serde_json::json!({ "tcp-connection": {"node": node } }))
+        .write_line()
+        .unwrap();
 }

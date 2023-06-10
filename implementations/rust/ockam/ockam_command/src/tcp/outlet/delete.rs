@@ -1,10 +1,12 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
+use crate::terminal::ConfirmResult;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::Result;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam::Context;
 use ockam_core::api::{Request, RequestBuilder};
 
@@ -21,6 +23,10 @@ pub struct DeleteCommand {
     /// Node on which to stop the tcp outlet. If none are provided, the default node will be used
     #[command(flatten)]
     node_opts: NodeOpts,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -37,20 +43,37 @@ pub async fn run_impl(
     let alias = cmd.alias.clone();
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = extract_address_value(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node)?;
-    rpc.request(make_api_request(cmd)?).await?;
 
-    rpc.is_ok()?;
+    if cmd.yes {
+        let alias = cmd.alias.clone();
+        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+        let node = extract_address_value(&node_name)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
 
-    opts.terminal
-        .stdout()
-        .plain(format!(
-            "{} TCP Outlet with alias {alias} on Node {node} has been deleted.",
-            "✔︎".light_green(),
-        ))
-        .machine(&alias)
-        .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node } }))
-        .write_line()?;
+        rpc.request(make_api_request(cmd)?).await?;
+
+        rpc.is_ok()?;
+    } else {
+        match opts
+            .terminal
+            .confirm("This will delete the selected Tcp-outlet. Are you sure?")?
+        {
+            ConfirmResult::Yes => {}
+            ConfirmResult::No => {
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
+                return Err(miette!("Use --yes to confirm").into());
+            }
+        }
+        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+        rpc.request(make_api_request(cmd)?).await?;
+
+        rpc.is_ok()?;
+    }
+
+    // Print message
+    print_req_resp(alias, node_name, opts).await;
     Ok(())
 }
 
@@ -59,4 +82,18 @@ fn make_api_request<'a>(cmd: DeleteCommand) -> Result<RequestBuilder<'a>> {
     let alias = cmd.alias;
     let request = Request::delete(format!("/node/outlet/{alias}"));
     Ok(request)
+}
+
+/// Print the appropriate message after deletion.
+async fn print_req_resp(alias: String, node: String, opts: CommandGlobalOpts) {
+    opts.terminal
+        .stdout()
+        .plain(format!(
+            "{} TCP Outlet with alias {alias} on Node {node} has been deleted.",
+            "✔︎".light_green(),
+        ))
+        .machine(&alias)
+        .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node } }))
+        .write_line()
+        .unwrap();
 }
