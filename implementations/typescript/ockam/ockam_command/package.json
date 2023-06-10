@@ -10,7 +10,6 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf lib tsconfig.tsbuildinfo install",
-    "postinstall": "bin/install",
     "test": "jest"
   },
   "devDependencies": {

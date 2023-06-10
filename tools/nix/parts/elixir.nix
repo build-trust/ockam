@@ -17,7 +17,7 @@ in {
       shadowAsdf = mkEnableOption "override ASDF to use Nix-provided binaries" // {default = true;};
       version = mkOption {
         type = types.nullOr types.string;
-        default = "1.14.4";
+        default = "1.14.5";
       };
     };
   };

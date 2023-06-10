@@ -12,12 +12,17 @@ _: {
         commitlint
         curl
         git
-        gradle_7
         graphviz
         jq
       ];
 
       BATS_LIB = "${config.packages.bats}/share/bats";
+
+      shellHook = ''
+        export LANG=en_US.UTF-8
+        export HOME=$PWD/.home
+        export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
+      '';
     };
 
     # Responsible only for formatting this flake itself

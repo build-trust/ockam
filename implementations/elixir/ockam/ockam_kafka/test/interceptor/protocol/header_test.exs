@@ -35,7 +35,7 @@ defmodule Ockam.Kafka.Interceptor.Protocol.HeaderTest do
     {:ok, v1_formatted} = Formatter.format_request_header(v1)
 
     <<3::signed-big-integer-size(16), 1::signed-big-integer-size(16),
-      10::signed-big-integer-size(32), _client_id::binary()>> = v1_formatted
+      10::signed-big-integer-size(32), _client_id::binary>> = v1_formatted
 
     {:ok, ^v1, <<>>} = Parser.parse_request_header(1, v1_formatted)
 
@@ -51,7 +51,7 @@ defmodule Ockam.Kafka.Interceptor.Protocol.HeaderTest do
     {:ok, v2_formatted} = Formatter.format_request_header(v2)
 
     <<3::signed-big-integer-size(16), 1::signed-big-integer-size(16),
-      10::signed-big-integer-size(32), _rest::binary()>> = v2_formatted
+      10::signed-big-integer-size(32), _rest::binary>> = v2_formatted
 
     {:ok, ^v2, <<>>} = Parser.parse_request_header(2, v2_formatted)
   end
@@ -69,7 +69,7 @@ defmodule Ockam.Kafka.Interceptor.Protocol.HeaderTest do
     v1 = %ResponseHeader{header_version: 1, correlation_id: 10, tagged_fields: %{1 => "foo"}}
 
     {:ok, v1_formatted} = Formatter.format_response_header(v1)
-    <<10::signed-big-integer-size(32), _fields::binary()>> = v1_formatted
+    <<10::signed-big-integer-size(32), _fields::binary>> = v1_formatted
 
     {:ok, ^v1, <<>>} = Parser.parse_response_header(1, request_header, v1_formatted)
   end

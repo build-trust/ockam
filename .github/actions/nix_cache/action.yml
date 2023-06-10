@@ -1,0 +1,13 @@
+name: Nix Cache
+description: Nix Cache
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      with:
+        path: |
+          /nix/store
+          ~/.cache/nix
+        key: ${{ runner.os }}-nix-${{ hashFiles('**/flake.lock') }}
+        restore-keys: ${{ runner.os }}-nix-

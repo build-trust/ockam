@@ -6,10 +6,11 @@ runs:
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
         path: |
-          /usr/rust/cargo/bin
-          /usr/rust/cargo/registry/index
-          /usr/rust/cargo/registry/cache
-          /usr/rust/cargo/git/db
-        key: cache-cargo-home-${{ github.workflow }}-${{ github.job }}-ghcr.io/build-trust/ockam-builder@sha256:cecb1860acd571278b2e7f8ecb3ffe405447ee844615134f93ddd11b1f3e2ca8
+          .home/cargo/bin
+          .home/rust/cargo/registry/index
+          .home/rust/cargo/registry/cache
+          .home/rust/cargo/git/db
+        key: cache-cargo-home-${{ github.workflow }}-${{ github.job }}
+        restore-keys: cache-cargo-home-${{ github.workflow }}-${{ github.job }}-
 
 # https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci

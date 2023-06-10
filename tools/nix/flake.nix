@@ -15,13 +15,10 @@
       imports = [inputs.beam-flakes.flakeModule ./parts/all.nix];
       systems = ["aarch64-darwin" "x86_64-darwin" "x86_64-linux"];
 
-      # see /tools/docker/builder/Dockerfile
-      # 24.1.7 stipulated by Dockerfile does not build successfully with current nixpkgs input
-      ockam.elixir.erlangVersion = "24.3.4.10";
-      ockam.elixir.version = "1.13.0";
+      ockam.elixir.erlangVersion = "25.3.2";
+      ockam.elixir.version = "1.14.5";
 
       ockam.rust.suggestedCargoPlugins = true;
-      # see /tools/docker/builder/Dockerfile
       ockam.rust.version = "1.69.0";
     };
 }
