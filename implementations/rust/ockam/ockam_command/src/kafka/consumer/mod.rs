@@ -1,14 +1,13 @@
-mod create;
-mod delete;
-mod list;
-
 use clap::{command, Args, Subcommand};
 
+use crate::kafka::consumer::create::CreateCommand;
 use crate::kafka::consumer::delete::DeleteCommand;
 use crate::kafka::consumer::list::ListCommand;
 use crate::CommandGlobalOpts;
 
-use self::create::CreateCommand;
+mod create;
+mod delete;
+mod list;
 
 /// Manage Kafka Consumers
 #[derive(Clone, Debug, Args)]

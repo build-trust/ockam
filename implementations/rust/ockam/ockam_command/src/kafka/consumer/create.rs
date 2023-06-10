@@ -1,29 +1,20 @@
 use std::net::SocketAddr;
 
 use clap::{command, Args};
-use colorful::Colorful;
-use ockam::{Context, TcpTransport};
-use ockam_api::{
-    nodes::models::services::{StartKafkaConsumerRequest, StartServiceRequest},
-    port_range::PortRange,
-};
-use ockam_core::api::Request;
-use ockam_multiaddr::MultiAddr;
-use tokio::{sync::Mutex, try_join};
 
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::process_nodes_multiaddr;
+use ockam_api::port_range::PortRange;
+use ockam_multiaddr::MultiAddr;
+
+use crate::kafka::util::{rpc, ArgOpts};
+use crate::node::initialize_node_if_default;
 use crate::{
-    display_parse_logs, fmt_log, fmt_ok,
     kafka::{
         kafka_consumer_default_addr, kafka_default_consumer_port_range,
         kafka_default_consumer_server, kafka_default_project_route,
     },
     node::NodeOpts,
-    service::start::start_service_impl,
-    terminal::OckamColor,
     util::{node_rpc, parsers::socket_addr_parser},
-    CommandGlobalOpts, Result,
+    CommandGlobalOpts,
 };
 
 /// Create a new Kafka Consumer
@@ -51,78 +42,15 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         initialize_node_if_default(&opts, &self.node_opts.at_node);
-        node_rpc(rpc, (opts, self));
+        let arg_opts = ArgOpts {
+            endpoint: "/node/services/kafka_consumer".to_string(),
+            kafka_entity: "KafkaConsumer".to_string(),
+            node_opts: self.node_opts,
+            addr: self.addr,
+            bootstrap_server: self.bootstrap_server,
+            brokers_port_range: self.brokers_port_range,
+            project_route: self.project_route,
+        };
+        node_rpc(rpc, (opts, arg_opts));
     }
-}
-
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
-    opts.terminal
-        .write_line(&fmt_log!("Creating KafkaConsumer service...\n"))?;
-    display_parse_logs(&opts);
-
-    let CreateCommand {
-        node_opts,
-        addr,
-        bootstrap_server,
-        brokers_port_range,
-        project_route,
-    } = cmd;
-
-    let project_route = process_nodes_multiaddr(&project_route, &opts.state)?;
-
-    let is_finished = Mutex::new(false);
-    let send_req = async {
-        let tcp = TcpTransport::create(&ctx).await?;
-
-        let payload =
-            StartKafkaConsumerRequest::new(bootstrap_server, brokers_port_range, project_route);
-        let payload = StartServiceRequest::new(payload, &addr);
-        let req = Request::post("/node/services/kafka_consumer").body(payload);
-        let node_name = get_node_name(&opts.state, &node_opts.at_node);
-        start_service_impl(&ctx, &opts, &node_name, "KafkaConsumer", req, Some(&tcp)).await?;
-
-        *is_finished.lock().await = true;
-
-        Ok::<_, crate::Error>(())
-    };
-
-    let msgs = vec![
-        format!(
-            "Building KafkaConsumer service {}",
-            &addr.to_string().color(OckamColor::PrimaryResource.color())
-        ),
-        format!(
-            "Starting KafkaConsumer service at {}",
-            &bootstrap_server
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ),
-        format!(
-            "Setting brokers port range to {}",
-            &brokers_port_range
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ),
-    ];
-    let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
-    let (_, _) = try_join!(send_req, progress_output)?;
-
-    opts.terminal
-        .stdout()
-        .plain(
-            fmt_ok!(
-                "KafkaConsumer service started at {}\n",
-                &bootstrap_server
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ) + &fmt_log!(
-                "Brokers port range set to {}",
-                &brokers_port_range
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ),
-        )
-        .write_line()?;
-
-    Ok(())
 }
