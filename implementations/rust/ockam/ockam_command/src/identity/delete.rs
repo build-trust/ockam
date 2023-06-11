@@ -36,7 +36,7 @@ impl DeleteCommand {
 
 async fn run_impl(_ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> crate::Result<()> {
     let state = opts.state;
-    // Check if --yes is provides
+    // Check if --yes flag is provides
     if cmd.yes {
         // check if exists
         match state.identities.get(&cmd.name) {
@@ -52,14 +52,13 @@ async fn run_impl(_ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)
             },
         }
     } else {
-        // Is yes is not provided provide it using TTY
+        // If yes is not provided make sure using TTY
         match state.identities.get(&cmd.name) {
             // If it exists, proceed
             Ok(identity_state) => {
                 match opts.terminal.confirm("This will delete the selected Identity. Are you sure?")? {
                     ConfirmResult::Yes => {}
                     ConfirmResult::No => {
-                        println!("Use --yes to confirm");
                         return Ok(());
                     }
                     ConfirmResult::NonTTY => {

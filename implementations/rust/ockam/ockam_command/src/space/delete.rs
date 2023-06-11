@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
 
@@ -8,6 +9,7 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::terminal::ConfirmResult;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -26,6 +28,10 @@ pub struct DeleteCommand {
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool
 }
 
 impl DeleteCommand {
@@ -53,16 +59,40 @@ async fn run_impl(
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request(api::space::delete(&id, controller_route))
-        .await?;
-    rpc.is_ok()?;
+    if cmd.yes {
+        rpc.request(api::space::delete(&id, controller_route))
+            .await?;
+        rpc.is_ok()?;
 
-    // Remove from state
-    let _ = opts.state.spaces.delete(&cmd.name);
-    // TODO: remove projects associated to the space.
-    //  Currently we are not storing that association in the project config file.
+        // Remove from state
+        let _ = opts.state.spaces.delete(&cmd.name);
+        // TODO: remove projects associated to the space.
+        //  Currently we are not storing that association in the project config file.
 
-    delete_embedded_node(&opts, rpc.node_name()).await;
+        delete_embedded_node(&opts, rpc.node_name()).await;
+    } else  {
+        // If yes is not provided make sure using TTY
+        match opts.terminal.confirm("This will delete the selected Space. Are you sure?")? {
+            ConfirmResult::Yes => {
+                rpc.request(api::space::delete(&id, controller_route))
+                .await?;
+                rpc.is_ok()?;
+
+                // Remove from state
+                let _ = opts.state.spaces.delete(&cmd.name);
+                // TODO: remove projects associated to the space.
+                //  Currently we are not storing that association in the project config file.
+
+                delete_embedded_node(&opts, rpc.node_name()).await;}
+            ConfirmResult::No => {
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
+                return Err(anyhow!("Use --yes to confirm").into());
+            }
+        }
+    }
+
 
     // log the deletion
     opts.terminal

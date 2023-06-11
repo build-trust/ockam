@@ -2,12 +2,11 @@ use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
 use miette::ErrReport as Report;
-
 use ockam_api::cli_state::{CliStateError, StateDirTrait};
-
 use crate::{CommandGlobalOpts, docs};
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::node::util::{delete_all_nodes, delete_node};
+use crate::terminal::ConfirmResult;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -60,6 +59,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
             match state.get(&node_name) {
                 // If it exists, proceed
                 Ok(_) => {
+                    //call helper method for deleting single node By name
                     delete_node(&opts, &node_name, cmd.force)?;
                     opts.terminal
                         .stdout()
@@ -75,32 +75,47 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                 // Else, return the appropriate error
                 Err(err) => match err {
                     CliStateError::NotFound => {
-                        return Err(anyhow!("Node '{}' not found", &node_name).into())
+                        return Err(anyhow!("Node '{}' not found", &node_name).into());
                     }
                     _ => return Err(err.into()),
                 },
             }
         } else {
-
+            match state.get(&node_name) {
+                // If it exists, proceed
+                Ok(_) => {
+                    // If yes is not provided make sure using TTY
+                    match opts.terminal.confirm("This will delete the selected Node. Are you sure?")? {
+                        ConfirmResult::Yes => {}
+                        ConfirmResult::No => {
+                            return Ok(());
+                        }
+                        ConfirmResult::NonTTY => {
+                            return Err(anyhow!("Use --yes to confirm").into());
+                        }
+                    }
+                    //call helper method for deleting single node by name
+                    delete_node(&opts, &node_name, cmd.force)?;
+                    opts.terminal
+                        .stdout()
+                        .plain(format!(
+                            "{} Node with name '{}' has been deleted.",
+                            "✔︎".light_green(),
+                            &node_name
+                        ))
+                        .machine(&node_name)
+                        .json(serde_json::json!({ "node": { "name": &node_name } }))
+                        .write_line()?;
+                }
+                // Else, return the appropriate error
+                Err(err) => match err {
+                    CliStateError::NotFound => {
+                        return Err(anyhow!("Node '{}' not found", &node_name).into());
+                    }
+                    _ => return Err(err.into()),
+                },
+            }
         }
     }
     Ok(())
 }
-
-//helper method to return appropriate error-msg
-/*fn return_appropriate_error(err: CliStateError, node_name: String) {
-    match err {
-        CliStateError::NotFound => {
-            Err(crate::Error::NotFound {
-                resource: "Node".to_string(),
-                resource_name: node_name,
-            });
-        }
-        e => {
-            Err(crate::Error::new_internal_error(
-                "Unable to delete node:",
-                &e.to_string(),
-            ));
-        }
-    }
-}*/

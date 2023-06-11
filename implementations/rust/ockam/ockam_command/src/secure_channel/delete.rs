@@ -3,16 +3,16 @@ use crate::{
     CommandGlobalOpts, OutputFormat, Result,
 };
 use std::str::FromStr;
-
+use anyhow::anyhow;
 use colorful::Colorful;
 use serde_json::json;
-
 use crate::docs;
 use crate::util::is_tty;
 use clap::Parser;
 use ockam::{route, Context};
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
+use crate::terminal::ConfirmResult;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -32,6 +32,10 @@ pub struct DeleteCommand {
     /// Address at which the channel to be deleted is running (required)
     #[arg(value_parser(parse_address), display_order = 800)]
     address: Address,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -148,13 +152,27 @@ fn parse_address(input: &str) -> core::result::Result<Address, AddressParseError
 async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, DeleteCommand)) -> Result<()> {
     let at = &command.parse_at_node();
     let address = &command.address;
-
     let mut rpc = Rpc::background(&ctx, &options, at)?;
-    let request = api::delete_secure_channel(address);
-    rpc.request(request).await?;
-    let response = rpc.parse_response::<DeleteSecureChannelResponse>()?;
-
-    command.print_output(at, address, &options, response);
+    if command.yes {
+        let request = api::delete_secure_channel(address);
+        rpc.request(request).await?;
+        let response = rpc.parse_response::<DeleteSecureChannelResponse>()?;
+        command.print_output(at, address, &options, response);
+    } else {
+        match options.terminal.confirm("This will delete the selected Secure-Channel. Are you sure?")? {
+            ConfirmResult::Yes => {}
+            ConfirmResult::No => {
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
+                return Err(anyhow!("Use --yes to confirm").into());
+            }
+        }
+        let request = api::delete_secure_channel(address);
+        rpc.request(request).await?;
+        let response = rpc.parse_response::<DeleteSecureChannelResponse>()?;
+        command.print_output(at, address, &options, response);
+    }
 
     Ok(())
 }

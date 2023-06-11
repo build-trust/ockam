@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use crate::node::get_node_name;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::Result;
@@ -6,14 +7,15 @@ use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
 use ockam_core::api::{Request, RequestBuilder};
+use crate::terminal::ConfirmResult;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
 /// Delete a Relay
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = false,
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+arg_required_else_help = false,
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct DeleteCommand {
     /// Name assigned to Relay that will be deleted
@@ -23,6 +25,11 @@ pub struct DeleteCommand {
     /// Node on which to delete the Relay. If not provided, the default node will be used
     #[arg(global = true, long, value_name = "NODE")]
     pub at: Option<String>,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
+
 }
 
 impl DeleteCommand {
@@ -39,22 +46,50 @@ pub async fn run_impl(
     let at = get_node_name(&options.state, &cmd.at);
     let node = extract_address_value(&at)?;
     let mut rpc = Rpc::background(&ctx, &options, &node)?;
-    rpc.request(make_api_request(cmd)?).await?;
+    if cmd.yes {
+        rpc.request(make_api_request(cmd)?).await?;
+        rpc.is_ok()?;
 
-    rpc.is_ok()?;
-
-    options
-        .terminal
-        .stdout()
-        .plain(fmt_ok!(
+        options
+            .terminal
+            .stdout()
+            .plain(fmt_ok!(
             "Relay with name {} on Node {} has been deleted.",
             relay_name,
             node
         ))
-        .machine(&relay_name)
-        .json(serde_json::json!({ "forwarder": { "name": relay_name, "node": node } }))
-        .write_line()?;
-    Ok(())
+            .machine(&relay_name)
+            .json(serde_json::json!({ "forwarder": { "name": relay_name,
+                "node": node } }))
+            .write_line()?;
+        Ok(())
+    } else {
+        match options.terminal.confirm("This will delete the selected Identity. Are you sure?")? {
+            ConfirmResult::Yes => {}
+            ConfirmResult::No => {
+                println!("Use --yes to confirm");
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
+                return Err(anyhow!("Use --yes to confirm").into());
+            }
+        }
+        rpc.request(make_api_request(cmd)?).await?;
+        rpc.is_ok()?;
+        options
+            .terminal
+            .stdout()
+            .plain(fmt_ok!(
+            "Relay with name {} on Node {} has been deleted.",
+            relay_name,
+            node
+        ))
+            .machine(&relay_name)
+            .json(serde_json::json!({ "forwarder": { "name": relay_name,
+                "node": node } }))
+            .write_line()?;
+        Ok(())
+    }
 }
 
 /// Construct a request to delete a relay
