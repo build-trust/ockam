@@ -150,18 +150,26 @@ defmodule Ockam.Healthcheck do
     end
   end
 
-  defp log_healthcheck(message, duration, target) do
-    Logger.debug(
-      message <>
-        " for target #{inspect(target)} " <>
-        "duration: #{inspect(duration)}"
-    )
+  defp log_healthcheck_ok(duration, target) do
+    log_message = log_message("Healthcheck OK", duration, target)
+    Logger.debug(log_message)
+  end
+
+  defp log_healthcheck_error(reason, duration, target) do
+    log_message = log_message("Healthcheck ERROR: #{inspect(reason)}", duration, target)
+    Logger.warn(log_message)
+  end
+
+  defp log_message(message, duration, target) do
+    message <>
+      " for target #{inspect(target)} " <>
+      "duration: #{inspect(duration)}"
   end
 
   def report_check_ok(target, start_time) do
     duration = System.monotonic_time(:millisecond) - start_time
 
-    log_healthcheck("Healthcheck OK", duration, target)
+    log_healthcheck_ok(duration, target)
 
     Telemetry.emit_event([:healthcheck, :result],
       measurements: %{status: 1},
@@ -181,11 +189,7 @@ defmodule Ockam.Healthcheck do
   def report_check_failed(target, reason, start_time) do
     duration = System.monotonic_time(:millisecond) - start_time
 
-    log_healthcheck(
-      "Healthcheck ERROR: #{inspect(reason)}",
-      duration,
-      target
-    )
+    log_healthcheck_error(reason, duration, target)
 
     Telemetry.emit_event([:healthcheck, :result],
       measurements: %{status: 0},
