@@ -107,7 +107,7 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   lint_cargo_deny:
-    name: Rust - lint_cargo_clippy
+    name: Rust - lint_cargo_deny
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/build-trust/ockam-builder@sha256:cecb1860acd571278b2e7f8ecb3ffe405447ee844615134f93ddd11b1f3e2ca8
