@@ -2,7 +2,6 @@ use crate::channel_types::SmallReceiver;
 use crate::relay::CtrlSignal;
 use crate::tokio::runtime::Handle;
 use crate::{parser, Context};
-use core::marker::PhantomData;
 use ockam_core::{Message, RelayMessage, Result, Routed, Worker};
 
 /// Worker relay machinery
@@ -10,29 +9,22 @@ use ockam_core::{Message, RelayMessage, Result, Routed, Worker};
 /// Every worker in the Ockam runtime needs a certain amount of logic
 /// and state attached to the lifecycle of the user's worker code.
 /// The relay manages this state and runtime behaviour.
-pub struct WorkerRelay<W, M>
-where
-    W: Worker<Context = Context>,
-    M: Message,
-{
+pub struct WorkerRelay<W> {
     worker: W,
     ctx: Context,
-    _phantom: PhantomData<M>,
 }
 
-impl<W, M> WorkerRelay<W, M>
+impl<W: Worker> WorkerRelay<W> {
+    pub fn new(worker: W, ctx: Context) -> Self {
+        Self { worker, ctx }
+    }
+}
+
+impl<W, M> WorkerRelay<W>
 where
     W: Worker<Context = Context, Message = M>,
     M: Message + Send + 'static,
 {
-    pub fn new(worker: W, ctx: Context) -> Self {
-        Self {
-            worker,
-            ctx,
-            _phantom: PhantomData,
-        }
-    }
-
     /// Convenience function to parse an incoming direct message and
     /// wrap it in a [`Routed`]
     ///
@@ -173,7 +165,7 @@ where
 
     /// Build and spawn a new worker relay, returning a send handle to it
     pub(crate) fn init(rt: &Handle, worker: W, ctx: Context, ctrl_rx: SmallReceiver<CtrlSignal>) {
-        let relay = WorkerRelay::<W, M>::new(worker, ctx);
+        let relay = WorkerRelay::new(worker, ctx);
         rt.spawn(relay.run(ctrl_rx));
     }
 }

@@ -1,7 +1,6 @@
 // This node creates a worker, sends it a message, and receives a reply.
 
 use hello_ockam::Echoer;
-use ockam::access_control::AllowAll;
 use ockam::{node, Context, Result};
 
 #[ockam::node]
@@ -10,7 +9,7 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx);
 
     // Start a worker, of type Echoer, at address "echoer"
-    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     // Send a message to the worker at address "echoer".
     node.send("echoer", "Hello Ockam!".to_string()).await?;

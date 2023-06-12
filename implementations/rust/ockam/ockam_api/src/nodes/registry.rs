@@ -4,6 +4,7 @@ use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
 use ockam_identity::{SecureChannel, SecureChannelListener};
+use std::fmt::Display;
 
 #[derive(Default)]
 pub(crate) struct SecureChannelRegistry {
@@ -112,9 +113,19 @@ pub(crate) struct CredentialsServiceInfo {}
 #[derive(Default)]
 pub(crate) struct AuthenticatorServiceInfo {}
 
+#[derive(Eq, PartialEq)]
 pub(crate) enum KafkaServiceKind {
     Consumer,
     Producer,
+}
+
+impl Display for KafkaServiceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KafkaServiceKind::Consumer => write!(f, "consumer"),
+            KafkaServiceKind::Producer => write!(f, "producer"),
+        }
+    }
 }
 
 pub(crate) struct KafkaServiceInfo {

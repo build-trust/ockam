@@ -1,5 +1,5 @@
 use clap::Args;
-use miette::miette;
+
 use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::{docs, CommandGlobalOpts};
@@ -25,15 +25,10 @@ impl ListCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts) -> crate::Result<()> {
-    let states = opts.state.vaults.list()?;
-    if states.is_empty() {
-        return Err(miette!("No vaults registered on this system!").into());
-    }
-    for (idx, vault) in states.iter().enumerate() {
-        println!("Vault[{idx}]:");
-        for line in vault.to_string().lines() {
-            println!("{:2}{}", "", line)
-        }
-    }
+    let vaults = opts.state.vaults.list()?;
+    let list = opts
+        .terminal
+        .build_list(&vaults, "Vaults", "No vaults found on this system.")?;
+    opts.terminal.stdout().plain(list).write_line()?;
     Ok(())
 }

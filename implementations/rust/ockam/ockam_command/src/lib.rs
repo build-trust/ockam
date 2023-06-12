@@ -24,6 +24,7 @@ mod markdown;
 mod message;
 mod node;
 mod operation;
+mod pager;
 mod policy;
 mod project;
 mod relay;
@@ -54,6 +55,7 @@ use crate::terminal::{Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 
+use crate::kafka::outlet::KafkaOutletCommand;
 use colorful::Colorful;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
@@ -65,13 +67,13 @@ use error::{Error, ErrorReportHandler, Result};
 use identity::IdentityCommand;
 use kafka::consumer::KafkaConsumerCommand;
 use kafka::producer::KafkaProducerCommand;
-use lazy_static::lazy_static;
 use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use ockam_api::cli_state::{CliState, StateDirTrait};
+use once_cell::sync::Lazy;
 use policy::PolicyCommand;
 use project::ProjectCommand;
 use relay::RelayCommand;
@@ -80,8 +82,7 @@ use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelComman
 use service::ServiceCommand;
 use space::SpaceCommand;
 use status::StatusCommand;
-use std::path::PathBuf;
-use std::sync::Mutex;
+use std::{path::PathBuf, sync::Mutex};
 use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
@@ -98,9 +99,7 @@ const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
-lazy_static! {
-    static ref PARSER_LOGS: Mutex<Vec<String>> = Mutex::new(vec![]);
-}
+static PARSER_LOGS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(vec![]));
 
 #[derive(Debug, Parser)]
 #[command(
@@ -112,7 +111,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP),
 version,
 long_version = Version::long(),
 next_help_heading = "Global Options",
-disable_help_flag = true
+disable_help_flag = true,
 )]
 pub struct OckamCommand {
     #[command(subcommand)]
@@ -275,6 +274,7 @@ pub enum OckamSubcommand {
     TcpOutlet(TcpOutletCommand),
     TcpInlet(TcpInletCommand),
 
+    KafkaOutlet(KafkaOutletCommand),
     KafkaConsumer(KafkaConsumerCommand),
     KafkaProducer(KafkaProducerCommand),
 
@@ -315,13 +315,16 @@ pub fn run() {
         .map(replace_hyphen_with_stdin)
         .collect::<Vec<_>>();
 
-    let command = OckamCommand::parse_from(input);
+    match OckamCommand::try_parse_from(input) {
+        Ok(command) => {
+            if !command.global_args.test_argument_parser {
+                check_if_an_upgrade_is_available();
+            }
 
-    if !command.global_args.test_argument_parser {
-        check_if_an_upgrade_is_available();
-    }
-
-    command.run();
+            command.run();
+        }
+        Err(help) => pager::render_help(help),
+    };
 }
 
 impl OckamCommand {
@@ -380,6 +383,7 @@ impl OckamCommand {
             OckamSubcommand::Message(c) => c.run(options),
             OckamSubcommand::Relay(c) => c.run(options),
 
+            OckamSubcommand::KafkaOutlet(c) => c.run(options),
             OckamSubcommand::TcpListener(c) => c.run(options),
             OckamSubcommand::TcpConnection(c) => c.run(options),
             OckamSubcommand::TcpOutlet(c) => c.run(options),

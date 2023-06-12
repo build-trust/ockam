@@ -308,10 +308,13 @@ impl PipeBuilder {
                 Mailbox::new(addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
                 additional_mailboxes,
             );
-            WorkerBuilder::with_mailboxes(
-                mailboxes,
-                PipeSender::new(tx_sys, PeerRoute::Peer(peer), addr, self.tx_fin.clone()),
-            )
+            WorkerBuilder::new(PipeSender::new(
+                tx_sys,
+                PeerRoute::Peer(peer),
+                addr,
+                self.tx_fin.clone(),
+            ))
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
         };
@@ -338,12 +341,10 @@ impl PipeBuilder {
                 Mailbox::new(addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
                 additional_mailboxes,
             );
-            WorkerBuilder::with_mailboxes(
-                mailboxes,
-                PipeReceiver::new(rx_sys, self.rx_fin.clone(), None),
-            )
-            .start(ctx)
-            .await?;
+            WorkerBuilder::new(PipeReceiver::new(rx_sys, self.rx_fin.clone(), None))
+                .with_mailboxes(mailboxes)
+                .start(ctx)
+                .await?;
         }
 
         Ok(BuilderResult {
@@ -383,28 +384,20 @@ impl PipeBuilder {
                 Mailbox::new(addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
                 additional_mailboxes,
             );
-            WorkerBuilder::with_mailboxes(
-                mailboxes,
-                PipeSender::new(
-                    tx_sys,
-                    PeerRoute::Listener(peer, init_addr),
-                    addr,
-                    self.tx_fin.clone(),
-                ),
-            )
+            WorkerBuilder::new(PipeSender::new(
+                tx_sys,
+                PeerRoute::Listener(peer, init_addr),
+                addr,
+                self.tx_fin.clone(),
+            ))
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
         }
 
         if let Some(addr) = self.recv {
             let listener = PipeListener::new(rx_sys);
-            ctx.start_worker(
-                addr.clone(),
-                listener,
-                AllowAll, // FIXME: @ac,
-                AllowAll, // FIXME: @ac
-            )
-            .await?;
+            ctx.start_worker(addr.clone(), listener).await?;
             rx_addr = Some(addr);
         }
 

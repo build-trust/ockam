@@ -176,12 +176,13 @@ impl ResponderWorker {
             secure_channels,
         };
 
-        WorkerBuilder::with_mailboxes(
-            InitiatorWorker::create_mailboxes(&addresses, decryptor_outgoing_access_control),
-            worker,
-        )
-        .start(context)
-        .await?;
+        WorkerBuilder::new(worker)
+            .with_mailboxes(InitiatorWorker::create_mailboxes(
+                &addresses,
+                decryptor_outgoing_access_control,
+            ))
+            .start(context)
+            .await?;
 
         debug!(
             "Starting SecureChannel Responder at remote: {}",

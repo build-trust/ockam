@@ -57,7 +57,7 @@ impl OckamMessage {
 
     /// Create a new `OckamMessage` by nesting a previous one
     pub fn wrap(mut prev: Self) -> Result<Self> {
-        let generic = core::mem::replace(&mut prev.generic, None);
+        let generic = prev.generic.take();
         Ok(Self {
             data: prev.encode()?,
             scope: vec![],
@@ -101,7 +101,7 @@ impl OckamMessage {
     /// Will throw a deserialisation error if the inner data is NOT an
     /// OckamMessage!
     pub fn peel(mut self) -> Result<Self> {
-        let generic = core::mem::replace(&mut self.generic, None);
+        let generic = self.generic.take();
         let mut peeled = Self::decode(&self.data)?;
         peeled.generic = generic;
         Ok(peeled)

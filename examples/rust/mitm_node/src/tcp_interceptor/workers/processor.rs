@@ -47,7 +47,8 @@ impl TcpMitmProcessor {
 
         let receiver = Self::new(address_of_other_processor, role, read_half, write_half, registry);
 
-        ctx.start_processor(address, receiver, AllowAll, AllowAll).await?;
+        ctx.start_processor_with_access_control(address, receiver, AllowAll, AllowAll)
+            .await?;
 
         Ok(())
     }

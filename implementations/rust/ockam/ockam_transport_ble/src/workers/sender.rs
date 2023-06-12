@@ -64,13 +64,7 @@ where
         let sender = BleSendWorker::new(stream, peer.clone());
 
         debug!("start send worker({:?})", tx_addr.clone());
-        ctx.start_worker(
-            tx_addr.clone(),
-            sender,
-            AllowAll, // FIXME: @ac
-            AllowAll, // FIXME: @ac
-        )
-        .await?;
+        ctx.start_worker(tx_addr.clone(), sender).await?;
 
         Ok(WorkerPair {
             servicenames,
@@ -97,7 +91,7 @@ where
             let rx_addr = Address::random_local();
             let receiver =
                 BleRecvProcessor::new(rx_stream, format!("{}#{}", crate::BLE, self.peer).into());
-            ctx.start_processor(
+            ctx.start_processor_with_access_control(
                 rx_addr.clone(),
                 receiver,
                 AllowAll, // FIXME: @ac

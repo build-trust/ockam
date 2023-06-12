@@ -1,32 +1,33 @@
-use crate::kafka::{KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS, ORCHESTRATOR_KAFKA_CONSUMERS};
+use crate::kafka::KAFKA_OUTLET_CONSUMERS;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse, CredentialExchangeMode,
+    DeleteSecureChannelRequest, DeleteSecureChannelResponse,
 };
 use crate::nodes::NODEMANAGER_ADDR;
 use crate::DefaultAddress;
 use minicbor::Decoder;
+use ockam_abac::AbacAccessControl;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Message;
-use ockam_core::{async_trait, route, Address, AllowAll, Error, Result, Routed, Worker};
+use ockam_core::{async_trait, route, Address, Error, Result};
 use ockam_identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-    SecureChannelRegistryEntry, SecureChannels,
+    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID,
 };
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::tokio::sync::Mutex;
+use ockam_node::compat::tokio::sync::MutexGuard;
 use ockam_node::Context;
-use serde::{Deserialize, Serialize};
 
 pub(crate) struct KafkaEncryptedContent {
     /// The encrypted content
     pub(crate) content: Vec<u8>,
-    /// The secure channel id used to encrypt the content
-    pub(crate) secure_channel_id: UniqueSecureChannelId,
+    /// The secure channel identifier used to encrypt the content
+    pub(crate) consumer_decryptor_address: Address,
 }
 
 /// Offer simple APIs to encrypt and decrypt kafka messages.
@@ -52,12 +53,12 @@ pub(crate) trait KafkaSecureChannelController: Send + Sync {
         content: Vec<u8>,
     ) -> Result<KafkaEncryptedContent>;
 
-    /// Decrypts the content based on the unique secure channel identifier
+    /// Decrypts the content based on the consumer decryptor address
     /// the secure channel is expected to be already initialized.
     async fn decrypt_content_for(
         &self,
         context: &mut Context,
-        secure_channel_id: UniqueSecureChannelId,
+        consumer_decryptor_address: &Address,
         encrypted_content: Vec<u8>,
     ) -> Result<Vec<u8>>;
 
@@ -87,11 +88,21 @@ impl NodeManagerForwarderCreator {
         forwarder_service: MultiAddr,
         alias: String,
     ) -> Result<()> {
+        let is_rust = forwarder_service
+            .first()
+            .map(|value| value.cast::<ockam_multiaddr::proto::Project>().is_none())
+            .unwrap_or(true);
+
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
                 Request::post("/node/forwarder")
-                    .body(CreateForwarder::at_project(forwarder_service, Some(alias)))
+                    .body(CreateForwarder::at_node(
+                        forwarder_service,
+                        Some(alias),
+                        is_rust,
+                        None,
+                    ))
                     .to_vec()?,
             )
             .await?;
@@ -131,14 +142,6 @@ impl ForwarderCreator for NodeManagerForwarderCreator {
     }
 }
 
-///Unique identifier for a specific secure_channel.
-/// Used in order to distinguish between secure channels created between
-/// the same identities.
-#[derive(Debug, Clone, Serialize, Deserialize, Message)]
-struct SecureChannelIdentifierMessage {
-    secure_channel_identifier: UniqueSecureChannelId,
-}
-
 pub(crate) struct KafkaSecureChannelControllerImpl<F: ForwarderCreator> {
     inner: Arc<Mutex<InnerSecureChannelControllerImpl<F>>>,
 }
@@ -152,35 +155,35 @@ impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     }
 }
 
-/// An identifier of the secure channel **instance**
-pub(crate) type UniqueSecureChannelId = u64;
 type TopicPartition = (String, i32);
 struct InnerSecureChannelControllerImpl<F: ForwarderCreator> {
-    //we are using encryptor api address as unique _local_ identifier
-    //of the secure channel
-    id_encryptor_map: HashMap<UniqueSecureChannelId, Address>,
-    topic_encryptor_map: HashMap<TopicPartition, (UniqueSecureChannelId, Address)>,
-    project_multiaddr: MultiAddr,
+    // we identity the secure channel instance by using the decryptor of the consumer
+    // which is known to both parties
+    topic_encryptor_map: HashMap<TopicPartition, Address>,
+    outlet_node_multiaddr: MultiAddr,
     topic_forwarder_set: HashSet<TopicPartition>,
     forwarder_creator: F,
     secure_channels: Arc<SecureChannels>,
+    access_control: AbacAccessControl,
 }
 
 impl KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
     pub(crate) fn new(
         secure_channels: Arc<SecureChannels>,
-        project_multiaddr: MultiAddr,
+        outlet_node_multiaddr: MultiAddr,
+        trust_context_id: String,
     ) -> KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
-        let mut orchestrator_multiaddr = project_multiaddr.clone();
+        let mut orchestrator_multiaddr = outlet_node_multiaddr.clone();
         orchestrator_multiaddr
-            .push_back(Service::new(ORCHESTRATOR_KAFKA_CONSUMERS))
+            .push_back(Service::new(KAFKA_OUTLET_CONSUMERS))
             .unwrap();
         Self::new_extended(
             secure_channels,
-            project_multiaddr,
+            outlet_node_multiaddr,
             NodeManagerForwarderCreator {
                 orchestrator_multiaddr,
             },
+            trust_context_id,
         )
     }
 }
@@ -189,70 +192,30 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     /// to manually specify `ForwarderCreator`, for testing purposes
     pub(crate) fn new_extended(
         secure_channels: Arc<SecureChannels>,
-        project_multiaddr: MultiAddr,
+        outlet_node_multiaddr: MultiAddr,
         forwarder_creator: F,
+        trust_context_id: String,
     ) -> KafkaSecureChannelControllerImpl<F> {
+        let access_control = AbacAccessControl::create(
+            secure_channels.identities().repository(),
+            TRUST_CONTEXT_ID,
+            &trust_context_id,
+        );
+
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
-                id_encryptor_map: Default::default(),
                 topic_encryptor_map: Default::default(),
                 topic_forwarder_set: Default::default(),
                 secure_channels,
                 forwarder_creator,
-                project_multiaddr,
+                outlet_node_multiaddr,
+                access_control,
             })),
         }
     }
 
-    pub(crate) async fn create_consumer_listener(&self, context: &Context) -> Result<()> {
-        context
-            .start_worker(
-                Address::from_string(KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS),
-                SecureChannelControllerListener::<F> {
-                    controller: self.clone(),
-                },
-                AllowAll,
-                AllowAll,
-            )
-            .await
-    }
-
     pub(crate) fn into_trait(self) -> Arc<dyn KafkaSecureChannelController> {
         Arc::new(self)
-    }
-
-    //add a mapping from remote producer
-    async fn add_mapping(&self, id: UniqueSecureChannelId, encryptor_address: Address) {
-        self.inner
-            .lock()
-            .await
-            .id_encryptor_map
-            .insert(id, encryptor_address);
-    }
-}
-
-struct SecureChannelControllerListener<F: ForwarderCreator> {
-    controller: KafkaSecureChannelControllerImpl<F>,
-}
-
-#[ockam::worker]
-impl<F: ForwarderCreator> Worker for SecureChannelControllerListener<F> {
-    type Message = SecureChannelIdentifierMessage;
-    type Context = Context;
-
-    async fn handle_message(
-        &mut self,
-        context: &mut Self::Context,
-        message: Routed<Self::Message>,
-    ) -> Result<()> {
-        //todo: is there a better way to extract it from the context?
-        let encryptor_address = message.return_route().next().cloned()?;
-
-        self.controller
-            .add_mapping(message.secure_channel_identifier, encryptor_address.clone())
-            .await;
-
-        context.send(message.return_route(), ()).await
     }
 }
 
@@ -268,7 +231,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                     .body(CreateSecureChannelRequest::new(
                         &destination,
                         None,
-                        CredentialExchangeMode::None,
+                        CredentialExchangeMode::Mutual,
                         None,
                         None,
                     ))
@@ -299,15 +262,51 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         }
     }
 
+    async fn request_secure_channel_deletion(
+        context: &Context,
+        encryptor_address: &Address,
+    ) -> Result<()> {
+        let buffer: Vec<u8> = context
+            .send_and_receive(
+                route![NODEMANAGER_ADDR],
+                Request::delete("/node/secure_channel")
+                    .body(DeleteSecureChannelRequest::new(encryptor_address))
+                    .to_vec()?,
+            )
+            .await?;
+
+        let mut decoder = Decoder::new(&buffer);
+        let response: Response = decoder.decode()?;
+
+        let status = response.status().unwrap_or(Status::InternalServerError);
+        if status != Status::Ok {
+            return Err(Error::new(
+                Origin::Transport,
+                Kind::Invalid,
+                format!("cannot delete secure channel: {}", status),
+            ));
+        }
+        if !response.has_body() {
+            Err(Error::new(
+                Origin::Transport,
+                Kind::Unknown,
+                "invalid delete secure channel response",
+            ))
+        } else {
+            let _secure_channel_response: DeleteSecureChannelResponse = decoder.decode()?;
+            Ok(())
+        }
+    }
+
     ///returns encryptor api address
     async fn get_or_create_secure_channel_for(
         &self,
         context: &mut Context,
         topic_name: &str,
         partition: i32,
-    ) -> Result<(UniqueSecureChannelId, SecureChannelRegistryEntry)> {
-        //here we should have the orchestrator address and expect forwarders to be
-        // present in the orchestrator with the format "consumer_{topic_name}_{partition}"
+    ) -> Result<SecureChannelRegistryEntry> {
+        // here we should have the orchestrator address and expect forwarders to be
+        // present in the orchestrator with the format "consumer__{topic_name}_{partition}"
 
         let topic_partition_key = (topic_name.to_string(), partition);
         //consumer__ prefix is added by the orchestrator
@@ -315,46 +314,35 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
 
         let mut inner = self.inner.lock().await;
 
-        let (random_unique_id, encryptor_address) = {
+        let encryptor_address = {
             if let Some(encryptor_address) = inner.topic_encryptor_map.get(&topic_partition_key) {
                 encryptor_address.clone()
             } else {
-                trace!("creating new secure channel to {topic_partition_address}");
+                debug!("creating new secure channel to {topic_partition_address}");
 
-                let mut destination = inner.project_multiaddr.clone();
+                let mut destination = inner.outlet_node_multiaddr.clone();
                 destination.push_back(Service::new(topic_partition_address.clone()))?;
                 destination.push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
 
-                let encryptor_address =
+                let producer_encryptor_address =
                     Self::request_secure_channel_creation(context, destination).await?;
 
-                trace!("created secure channel to {topic_partition_address}");
-
-                let random_unique_id: UniqueSecureChannelId = rand::random();
-                inner.topic_encryptor_map.insert(
-                    topic_partition_key,
-                    (random_unique_id, encryptor_address.clone()),
-                );
-
-                let message = SecureChannelIdentifierMessage {
-                    secure_channel_identifier: random_unique_id,
+                match Self::validate_consumer_credentials(&inner, &producer_encryptor_address).await
+                {
+                    Ok(producer_encryptor_address) => producer_encryptor_address,
+                    Err(error) => {
+                        Self::request_secure_channel_deletion(context, &producer_encryptor_address)
+                            .await?;
+                        return Err(error);
+                    }
                 };
 
-                //communicate to the other end the random id associated with this
-                //secure channel, and wait to an empty reply to avoid race conditions
-                //on the order of encryption/decryption of messages
-                context
-                    .send_and_receive(
-                        route![
-                            encryptor_address.clone(),
-                            KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS
-                        ],
-                        message,
-                    )
-                    .await?;
+                inner
+                    .topic_encryptor_map
+                    .insert(topic_partition_key, producer_encryptor_address.clone());
 
-                trace!("assigned id {random_unique_id} to {topic_partition_address}");
-                (random_unique_id, encryptor_address)
+                debug!("created secure channel to {topic_partition_address}");
+                producer_encryptor_address
             }
         };
 
@@ -362,7 +350,6 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
             .secure_channels
             .secure_channel_registry()
             .get_channel_by_encryptor_address(&encryptor_address)
-            .map(|entry| (random_unique_id, entry))
             .ok_or_else(|| {
                 Error::new(
                     Origin::Channel,
@@ -372,35 +359,72 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
             })
     }
 
+    async fn validate_consumer_credentials(
+        inner: &MutexGuard<'_, InnerSecureChannelControllerImpl<F>>,
+        producer_encryptor_address: &Address,
+    ) -> Result<Address> {
+        let record = inner
+            .secure_channels
+            .secure_channel_registry()
+            .get_channel_by_encryptor_address(producer_encryptor_address);
+
+        if let Some(entry) = record {
+            let authorized = inner
+                .access_control
+                .is_identity_authorized(entry.their_id())
+                .await?;
+
+            if authorized {
+                Ok(producer_encryptor_address.clone())
+            } else {
+                Err(Error::new(
+                    Origin::Transport,
+                    Kind::Invalid,
+                    "unauthorized secure channel for consumer",
+                ))
+            }
+        } else {
+            Err(Error::new(
+                Origin::Transport,
+                Kind::Unknown,
+                "cannot find secure channel entry",
+            ))
+        }
+    }
+
     ///return decryptor api address
     async fn get_secure_channel_for(
         &self,
-        secure_channel_id: UniqueSecureChannelId,
+        consumer_decryptor_address: &Address,
     ) -> Result<SecureChannelRegistryEntry> {
         let inner = self.inner.lock().await;
-        if let Some(encryptor_address) = inner.id_encryptor_map.get(&secure_channel_id) {
-            inner
-                .secure_channels
-                .secure_channel_registry()
-                .get_channel_list()
-                .iter()
-                .find(|entry| {
-                    entry.encryptor_messaging_address() == encryptor_address
-                        && !entry.is_initiator()
-                })
-                .cloned()
-                .ok_or_else(|| {
-                    Error::new(
-                        Origin::Channel,
-                        Kind::Unknown,
-                        format!("secure channel no longer exists: {encryptor_address}"),
-                    )
-                })
+        let entry = inner
+            .secure_channels
+            .secure_channel_registry()
+            .get_channel_by_decryptor_address(consumer_decryptor_address)
+            .ok_or_else(|| {
+                Error::new(
+                    Origin::Channel,
+                    Kind::Unknown,
+                    format!(
+                        "secure channel decrypt doesn't exists: {}",
+                        consumer_decryptor_address.address()
+                    ),
+                )
+            })?;
+
+        let authorized = inner
+            .access_control
+            .is_identity_authorized(entry.their_id())
+            .await?;
+
+        if authorized {
+            Ok(entry)
         } else {
             Err(Error::new(
-                Origin::Channel,
-                Kind::Unknown,
-                "missing secure channel",
+                Origin::Transport,
+                Kind::Invalid,
+                "unauthorized secure channel",
             ))
         }
     }
@@ -415,11 +439,13 @@ impl<F: ForwarderCreator> KafkaSecureChannelController for KafkaSecureChannelCon
         partition_id: i32,
         content: Vec<u8>,
     ) -> Result<KafkaEncryptedContent> {
-        let (unique_id, secure_channel_entry) = self
+        let secure_channel_entry = self
             .get_or_create_secure_channel_for(context, topic_name, partition_id)
             .await?;
 
-        trace!("encrypting content with {unique_id}");
+        let consumer_decryptor_address = secure_channel_entry.their_decryptor_address();
+
+        trace!("encrypting content with {consumer_decryptor_address}");
         let encryption_response: EncryptionResponse = context
             .send_and_receive(
                 route![secure_channel_entry.encryptor_api_address().clone()],
@@ -435,20 +461,22 @@ impl<F: ForwarderCreator> KafkaSecureChannelController for KafkaSecureChannelCon
             }
         };
 
-        trace!("encrypted content with {unique_id}");
+        trace!("encrypted content with {consumer_decryptor_address}");
         Ok(KafkaEncryptedContent {
             content: encrypted_content,
-            secure_channel_id: unique_id,
+            consumer_decryptor_address,
         })
     }
 
     async fn decrypt_content_for(
         &self,
         context: &mut Context,
-        secure_channel_id: UniqueSecureChannelId,
+        consumer_decryptor_address: &Address,
         encrypted_content: Vec<u8>,
     ) -> Result<Vec<u8>> {
-        let secure_channel_entry = self.get_secure_channel_for(secure_channel_id).await?;
+        let secure_channel_entry = self
+            .get_secure_channel_for(consumer_decryptor_address)
+            .await?;
 
         let decrypt_response = context
             .send_and_receive(

@@ -338,18 +338,22 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 }
 
 #[cfg(test)]
-pub mod test {
+pub mod test_utils {
     use ockam::identity::SecureChannels;
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
-    use ockam_identity::IdentityIdentifier;
+    use ockam_identity::{
+        CredentialData, Credentials, Identity, IdentityIdentifier, InMemoryStorage, KeyAttributes,
+    };
     use ockam_node::compat::asynchronous::RwLock;
-    use ockam_node::Context;
+    use ockam_node::{Context, InMemoryKeyValueStorage};
     use ockam_transport_tcp::TcpTransport;
+    use ockam_vault::{Secret, SecretAttributes};
 
     use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
+    use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
         ApiTransport, NodeManagerGeneralOptions, NodeManagerProjectsOptions,
         NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -395,19 +399,34 @@ pub mod test {
             .await?;
 
         let identity_name = hex::encode(rand::random::<[u8; 4]>());
+
+        // Premise: we need an identity and a credential before the node manager starts.
+        // Since the LMDB can trigger some race conditions, we first use the memory storage
+        // export the identity and credentials,then import in the LMDB after secure-channel
+        // has been re-created
         let secure_channels = SecureChannels::builder()
             .with_identities_vault(vault)
             .with_identities_repository(cli_state.identities.identities_repository().await?)
+            .with_identities_storage(InMemoryStorage::create())
+            .with_vault_storage(InMemoryKeyValueStorage::create())
             .build();
 
-        let identity = secure_channels
+        let identity = create_identity_zero(&secure_channels).await?;
+
+        let credential = secure_channels
             .identities()
-            .identities_creation()
-            .create_identity()
+            .issue_credential(
+                &identity.identifier(),
+                CredentialData::builder(identity.identifier(), identity.identifier())
+                    .with_attribute("trust_context_id", b"test_trust_context_id")
+                    .build()
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
         drop(secure_channels);
+
         let config = IdentityConfig::new(&identity.identifier()).await;
         cli_state.identities.create(&identity_name, config).unwrap();
 
@@ -417,7 +436,7 @@ pub mod test {
 
         let node_manager = NodeManager::create(
             context,
-            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
             NodeManagerProjectsOptions::new(Default::default()),
             NodeManagerTransportOptions::new(
                 ApiTransport {
@@ -430,20 +449,25 @@ pub mod test {
                 },
                 tcp.async_try_clone().await?,
             ),
-            NodeManagerTrustOptions::new(None),
+            NodeManagerTrustOptions::new(Some(TrustContextConfig::new(
+                "test_trust_context".to_string(),
+                Some(TrustAuthorityConfig::new(
+                    identity.export_hex().unwrap(),
+                    Some(CredentialRetrieverConfig::FromMemory(credential)),
+                )),
+            ))),
         )
         .await?;
 
         let mut node_manager_worker = NodeManagerWorker::new(node_manager);
         let node_manager = node_manager_worker.get().clone();
         let secure_channels = node_manager.read().await.secure_channels.clone();
+
+        // since we re-created secure-channels, we rewrite the identity in the LMDB storage
+        create_identity_zero(&secure_channels).await?;
+
         context
-            .start_worker(
-                NODEMANAGER_ADDR,
-                node_manager_worker,
-                ockam_core::AllowAll,
-                ockam_core::AllowAll,
-            )
+            .start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .await?;
 
         Ok(NodeManagerHandle {
@@ -453,5 +477,23 @@ pub mod test {
             secure_channels: secure_channels.clone(),
             identifier: identity.identifier(),
         })
+    }
+
+    async fn create_identity_zero(secure_channels: &Arc<SecureChannels>) -> Result<Identity> {
+        let identity_key_id = secure_channels
+            .vault()
+            .import_ephemeral_secret(Secret::new([0u8; 32].to_vec()), SecretAttributes::Ed25519)
+            .await?;
+
+        let identity = secure_channels
+            .identities()
+            .identities_creation()
+            .create_identity_with_existing_key(
+                &identity_key_id,
+                KeyAttributes::new("OCKAM_RK".to_string(), SecretAttributes::Ed25519),
+            )
+            .await
+            .unwrap();
+        Ok(identity)
     }
 }

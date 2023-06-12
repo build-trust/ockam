@@ -104,12 +104,10 @@ impl TcpSendWorker {
             Arc::new(DenyAll),
         );
 
-        WorkerBuilder::with_mailboxes(
-            Mailboxes::new(main_mailbox, vec![internal_mailbox]),
-            sender_worker,
-        )
-        .start(ctx)
-        .await?;
+        WorkerBuilder::new(sender_worker)
+            .with_mailboxes(Mailboxes::new(main_mailbox, vec![internal_mailbox]))
+            .start(ctx)
+            .await?;
 
         Ok(())
     }

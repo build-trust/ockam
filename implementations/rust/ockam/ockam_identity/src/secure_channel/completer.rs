@@ -9,10 +9,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{
-    AllowAll, AllowOnwardAddress, CompletedKeyExchange, LocalOnwardOnly, LocalSourceOnly, Mailbox,
-    Mailboxes, Route,
-};
+use ockam_core::{AllowAll, AllowOnwardAddress, CompletedKeyExchange, Mailbox, Mailboxes, Route};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::Signature;
 use tracing::info;
@@ -131,16 +128,14 @@ impl ExchangeCompleter {
             );
             let api_mailbox = Mailbox::new(
                 self.addresses.encryptor_api.clone(),
-                Arc::new(LocalSourceOnly),
-                Arc::new(LocalOnwardOnly),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
             );
 
-            WorkerBuilder::with_mailboxes(
-                Mailboxes::new(main_mailbox, vec![api_mailbox]),
-                encryptor,
-            )
-            .start(context)
-            .await?;
+            WorkerBuilder::new(encryptor)
+                .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
+                .start(context)
+                .await?;
         }
 
         info!(
@@ -150,6 +145,8 @@ impl ExchangeCompleter {
             &self.addresses.decryptor_remote
         );
 
+        let their_decryptor_address = self.remote_route.iter().last();
+
         let info = SecureChannelRegistryEntry::new(
             self.addresses.encryptor.clone(),
             self.addresses.encryptor_api.clone(),
@@ -158,6 +155,7 @@ impl ExchangeCompleter {
             self.role.is_initiator(),
             self.identity_identifier,
             self.their_identity.identifier(),
+            their_decryptor_address.unwrap().clone(),
         );
 
         secure_channels

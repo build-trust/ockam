@@ -207,8 +207,6 @@ impl Stream {
                     self.stream_service.clone(),
                     self.index_service.clone(),
                 ),
-                AllowAll, // FIXME: @ac
-                AllowAll, // FIXME: @ac
             )
             .await?;
 
@@ -217,8 +215,6 @@ impl Stream {
             .start_worker(
                 sender_address.clone(),
                 StreamProducer::new(sender_name.clone(), route, self.stream_service.clone()),
-                AllowAll, // FIXME: @ac
-                AllowAll, // FIXME: @ac
             )
             .await?;
 

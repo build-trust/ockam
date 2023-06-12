@@ -265,14 +265,12 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
-    WorkerBuilder::with_access_control(
-        Arc::new(access_control),
-        Arc::new(DenyAll),
-        "counter",
-        worker,
-    )
-    .start(ctx)
-    .await?;
+    WorkerBuilder::new(worker)
+        .with_address("counter")
+        .with_incoming_access_control(access_control)
+        .with_outgoing_access_control(DenyAll)
+        .start(ctx)
+        .await?;
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 

@@ -233,7 +233,9 @@ async fn default_space<'a>(
         ))?;
         space
     };
-
+    opts.state
+        .spaces
+        .overwrite(&default_space.name, SpaceConfig::from(&default_space))?;
     opts.terminal.write_line(&fmt_ok!(
         "Marked this space as your default space, on this machine.\n"
     ))?;
@@ -425,7 +427,7 @@ impl Auth0Service {
                 "First copy this one-time code: {}",
                 format!(" {} ", dc.user_code).bg_white().black()
             ))?
-            .write(&fmt_para!(
+            .write(fmt_para!(
                 "Then press {} to open {} in your browser.",
                 " ENTER ↵ ".bg_white().black().blink(),
                 dc.verification_uri

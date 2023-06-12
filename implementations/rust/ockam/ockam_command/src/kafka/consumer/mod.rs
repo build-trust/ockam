@@ -1,7 +1,11 @@
 mod create;
+mod delete;
+mod list;
 
 use clap::{command, Args, Subcommand};
 
+use crate::kafka::consumer::delete::DeleteCommand;
+use crate::kafka::consumer::list::ListCommand;
 use crate::CommandGlobalOpts;
 
 use self::create::CreateCommand;
@@ -17,12 +21,16 @@ pub struct KafkaConsumerCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum KafkaConsumerSubcommand {
     Create(CreateCommand),
+    Delete(DeleteCommand),
+    List(ListCommand),
 }
 
 impl KafkaConsumerCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
             KafkaConsumerSubcommand::Create(c) => c.run(options),
+            KafkaConsumerSubcommand::Delete(c) => c.run(options),
+            KafkaConsumerSubcommand::List(c) => c.run(options),
         }
     }
 }

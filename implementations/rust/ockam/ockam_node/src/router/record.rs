@@ -12,31 +12,102 @@ use ockam_core::{
         sync::Arc,
         vec::Vec,
     },
+    flow_control::FlowControls,
     Address, RelayMessage, Result,
 };
 
 /// Address states and associated logic
-#[derive(Default)]
 pub struct InternalMap {
     /// Registry of primary address to worker address record state
-    pub(super) internal: BTreeMap<Address, AddressRecord>,
+    address_records_map: BTreeMap<Address, AddressRecord>,
     /// Alias-registry to map arbitrary address to primary addresses
-    pub(super) addr_map: BTreeMap<Address, Address>,
+    alias_map: BTreeMap<Address, Address>,
     /// The order in which clusters are allocated and de-allocated
     cluster_order: Vec<String>,
     /// Cluster data records
     clusters: BTreeMap<String, BTreeSet<Address>>,
-    /// Track stop information
+    /// Track stop information for Clusters
     stopping: BTreeSet<Address>,
+    /// Access to [`FlowControls`] to clean resources
+    flow_controls: FlowControls,
     /// Metrics collection and sharing
     #[cfg(feature = "metrics")]
     metrics: (Arc<AtomicUsize>, Arc<AtomicUsize>),
 }
 
 impl InternalMap {
+    pub(super) fn new(flow_controls: &FlowControls) -> Self {
+        Self {
+            address_records_map: Default::default(),
+            alias_map: Default::default(),
+            cluster_order: Default::default(),
+            clusters: Default::default(),
+            stopping: Default::default(),
+            flow_controls: flow_controls.clone(),
+            #[cfg(feature = "metrics")]
+            metrics: Default::default(),
+        }
+    }
+}
+
+impl InternalMap {
+    pub(super) fn clear_address_records_map(&mut self) {
+        self.address_records_map.clear()
+    }
+
+    pub(super) fn get_address_record(&self, primary_address: &Address) -> Option<&AddressRecord> {
+        self.address_records_map.get(primary_address)
+    }
+
+    pub(super) fn get_address_record_mut(
+        &mut self,
+        primary_address: &Address,
+    ) -> Option<&mut AddressRecord> {
+        self.address_records_map.get_mut(primary_address)
+    }
+
+    pub(super) fn address_records_map(&self) -> &BTreeMap<Address, AddressRecord> {
+        &self.address_records_map
+    }
+
+    pub(super) fn remove_address_record(
+        &mut self,
+        primary_address: &Address,
+    ) -> Option<AddressRecord> {
+        self.flow_controls.cleanup_address(primary_address);
+        self.address_records_map.remove(primary_address)
+    }
+
+    pub(super) fn insert_address_record(
+        &mut self,
+        primary_address: Address,
+        record: AddressRecord,
+    ) -> Option<AddressRecord> {
+        self.address_records_map.insert(primary_address, record)
+    }
+
+    pub(super) fn remove_alias(&mut self, alias_address: &Address) -> Option<Address> {
+        self.flow_controls.cleanup_address(alias_address);
+        self.alias_map.remove(alias_address)
+    }
+
+    pub(super) fn insert_alias(&mut self, alias_address: &Address, primary_address: &Address) {
+        _ = self
+            .alias_map
+            .insert(alias_address.clone(), primary_address.clone())
+    }
+
+    pub(super) fn get_primary_address(&self, alias_address: &Address) -> Option<&Address> {
+        self.alias_map.get(alias_address)
+    }
+}
+
+impl InternalMap {
     #[cfg(feature = "metrics")]
     pub(super) fn update_metrics(&self) {
-        self.metrics.0.store(self.internal.len(), Ordering::Release);
+        self.metrics
+            .0
+            .store(self.address_records_map.len(), Ordering::Release);
         self.metrics.1.store(self.clusters.len(), Ordering::Release);
     }
 
@@ -53,7 +124,7 @@ impl InternalMap {
     /// Add an address to a particular cluster
     pub(super) fn set_cluster(&mut self, label: String, primary: Address) -> NodeReplyResult {
         let rec = self
-            .internal
+            .address_records_map
             .get(&primary)
             .ok_or_else(|| NodeError::Address(primary).not_found())?;
 
@@ -77,7 +148,7 @@ impl InternalMap {
     /// Set an address as ready and return the list of waiting pollers
     pub(super) fn set_ready(&mut self, addr: Address) -> Result<Vec<SmallSender<NodeReplyResult>>> {
         let addr_record = self
-            .internal
+            .address_records_map
             .get_mut(&addr)
             .ok_or_else(|| NodeError::Address(addr).not_found())?;
         Ok(addr_record.set_ready())
@@ -85,7 +156,7 @@ impl InternalMap {
 
     /// Get the ready state of an address
     pub(super) fn get_ready(&mut self, addr: Address, reply: SmallSender<NodeReplyResult>) -> bool {
-        self.internal
+        self.address_records_map
             .get_mut(&addr)
             .map_or(false, |rec| rec.ready(reply))
     }
@@ -95,7 +166,7 @@ impl InternalMap {
         let name = self.cluster_order.pop()?;
         let addrs = self.clusters.remove(&name)?;
         Some(
-            self.internal
+            self.address_records_map
                 .iter_mut()
                 .filter_map(|(primary, rec)| {
                     if addrs.contains(primary) {
@@ -128,7 +199,7 @@ impl InternalMap {
                 acc
             });
 
-        self.internal
+        self.address_records_map
             .iter_mut()
             .filter_map(|(addr, rec)| {
                 if clustered.contains(addr) {
@@ -145,9 +216,9 @@ impl InternalMap {
     /// Permanently free all remaining resources associated to a particular address
     pub(super) fn free_address(&mut self, primary: Address) {
         self.stopping.remove(&primary);
-        if let Some(record) = self.internal.remove(&primary) {
+        if let Some(record) = self.remove_address_record(&primary) {
             for addr in record.address_set {
-                self.addr_map.remove(&addr);
+                self.alias_map.remove(&addr);
             }
         }
     }
@@ -180,12 +251,8 @@ impl AddressRecord {
         self.sender.clone().expect("No such sender!")
     }
 
-    pub fn sender_drop(&mut self) {
+    pub fn drop_sender(&mut self) {
         self.sender = None;
-    }
-
-    pub fn keep_only_primary_address(&mut self) {
-        self.address_set = vec![self.address_set[0].clone()];
     }
 
     pub fn new(
@@ -226,7 +293,7 @@ impl AddressRecord {
 
     /// Check the integrity of this record
     pub fn check(&self) -> bool {
-        self.state == AddressState::Running
+        self.state == AddressState::Running && self.sender.is_some()
     }
 
     /// Check whether this address has been marked as ready yet and if

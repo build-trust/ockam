@@ -68,7 +68,6 @@ mod all;
 mod allow_all;
 mod any;
 mod deny_all;
-mod local;
 mod onward;
 mod source;
 
@@ -76,6 +75,5 @@ pub use all::*;
 pub use allow_all::*;
 pub use any::*;
 pub use deny_all::*;
-pub use local::*;
 pub use onward::*;
 pub use source::*;

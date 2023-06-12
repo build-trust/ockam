@@ -1,25 +1,9 @@
-use crate::compat::collections::BTreeMap;
 use crate::compat::rand::random;
-use crate::compat::sync::{Arc, RwLock};
 use crate::compat::vec::Vec;
-use crate::flow_control::{FlowControlId, FlowControlPolicy};
+use crate::flow_control::{
+    ConsumersInfo, FlowControlId, FlowControlPolicy, FlowControls, ProducerInfo,
+};
 use crate::Address;
-
-// TODO: Consider integrating this into Routing for better UX + to allow removing
-// entries from that storage
-/// Storage for all Flow Control-related data
-#[derive(Clone, Debug)]
-pub struct FlowControls {
-    // All known consumers
-    consumers: Arc<RwLock<BTreeMap<FlowControlId, ConsumersInfo>>>,
-    // All known producers
-    producers: Arc<RwLock<BTreeMap<Address, ProducerInfo>>>,
-    // Allows to find producer by having its additional Address,
-    // e.g. Decryptor by its Encryptor Address or TCP Receiver by its TCP Sender Address
-    producers_additional_addresses: Arc<RwLock<BTreeMap<Address, Address>>>,
-    // All known spawners
-    spawners: Arc<RwLock<BTreeMap<Address, FlowControlId>>>,
-}
 
 impl FlowControls {
     /// Constructor
@@ -48,6 +32,10 @@ impl FlowControls {
         policy: FlowControlPolicy,
     ) {
         let address = address.into();
+        debug!(
+            "Add Consumer {address} to {flow_control_id} with {:?}",
+            policy
+        );
         let mut consumers = self.consumers.write().unwrap();
         if !consumers.contains_key(flow_control_id) {
             consumers.insert(flow_control_id.clone(), Default::default());
@@ -69,6 +57,9 @@ impl FlowControls {
         additional_addresses: Vec<Address>,
     ) {
         let address = address.into();
+        debug!(
+            "Add Producer {address} with additional_addresses {:?} to {flow_control_id} with spawner {:?}", additional_addresses, spawner_flow_control_id
+        );
         let mut producers = self.producers.write().unwrap();
         producers.insert(
             address.clone(),
@@ -90,6 +81,7 @@ impl FlowControls {
     /// Mark that given [`Address`] is a Spawner for to the given [`FlowControlId`]
     pub fn add_spawner(&self, address: impl Into<Address>, flow_control_id: &FlowControlId) {
         let address = address.into();
+        debug!("Add Spawner {address} with {flow_control_id}");
         let mut spawners = self.spawners.write().unwrap();
 
         spawners.insert(address, flow_control_id.clone());
@@ -137,57 +129,5 @@ impl FlowControls {
             .filter(|&x| x.1 .0.contains_key(address))
             .map(|x| x.0.clone())
             .collect()
-    }
-
-    /// Prints debug information regarding Flow Control for the provided address
-    #[allow(dead_code)]
-    pub fn debug_address(&self, address: &Address) {
-        debug!("Address: {}", address.address());
-        let consumers = self.get_flow_controls_with_consumer(address);
-        if consumers.is_empty() {
-            debug!("    No consumers found");
-        }
-        for consumer in consumers {
-            debug!("    Consumer: {:?}", consumer);
-        }
-
-        let producers = self.get_flow_control_with_producer(address);
-        if producers.is_none() {
-            debug!("    No producer found");
-        }
-        if let Some(producer) = producers {
-            debug!("    Producer: {:?}", producer);
-        }
-
-        let producers = self.find_flow_control_with_producer_address(address);
-        if producers.is_none() {
-            debug!("    No producer alias found");
-        }
-        if let Some(producer) = producers {
-            debug!("    Alias Producer: {:?}", producer);
-        }
-    }
-}
-
-/// Known Consumers for the given [`FlowControlId`]
-#[derive(Default, Clone, Debug)]
-pub struct ConsumersInfo(pub(super) BTreeMap<Address, FlowControlPolicy>);
-
-/// Producer information
-#[derive(Clone, Debug)]
-pub struct ProducerInfo {
-    flow_control_id: FlowControlId,
-    spawner_flow_control_id: Option<FlowControlId>,
-}
-
-impl ProducerInfo {
-    /// [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &FlowControlId {
-        &self.flow_control_id
-    }
-
-    /// Spawner's [`FlowControlId`]
-    pub fn spawner_flow_control_id(&self) -> &Option<FlowControlId> {
-        &self.spawner_flow_control_id
     }
 }

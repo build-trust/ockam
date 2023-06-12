@@ -30,7 +30,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
     let name = cmd
         .name
         .unwrap_or(opts.state.vaults.default()?.name().to_string());
-    let state = opts.state.vaults.get(&name)?;
+    let state = opts.state.vaults.get(name)?;
     println!("Vault:");
     for line in state.to_string().lines() {
         println!("{:2}{}", "", line)

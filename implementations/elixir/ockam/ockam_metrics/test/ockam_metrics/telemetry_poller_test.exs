@@ -35,8 +35,8 @@ defmodule Ockam.Metrics.TelemetryPoller.Tests do
     channel_pid = Ockam.Node.whereis(channel)
     ref1 = Process.monitor(channel_pid)
 
-    assert alice == SecureChannel.get_remote_identity(channel)
-    assert alice_id == SecureChannel.get_remote_identity_id(channel)
+    assert {:ok, alice} == SecureChannel.get_remote_identity(channel)
+    assert {:ok, alice_id} == SecureChannel.get_remote_identity_id(channel)
 
     {:ok, channel2} =
       SecureChannel.create_channel(

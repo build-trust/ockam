@@ -4,96 +4,173 @@ use crate::{relay::WorkerRelay, Context, NodeMessage};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, Error, IncomingAccessControl, Mailboxes, Message, OutgoingAccessControl, Result,
+    Address, AllowAll, Error, IncomingAccessControl, Mailboxes, OutgoingAccessControl, Result,
     Worker,
 };
 
-/// Start a [`Worker`] with a custom [`IncomingAccessControl`] and [`OutgoingAccessControl`] configuration
-///
-/// Any incoming messages for the worker will first be subject to the
-/// configured `AccessControl` before it is passed on to
-/// [`Worker::handle_message`].
-///
-/// The [`Context::start_worker()`] function wraps this type and
-/// simply calls `WorkerBuilder::with_inherited_access_control()`.
+/// Start a [`Worker`] with a custom configuration
 ///
 /// Varying use-cases should use the builder API to customise the
 /// underlying worker that is created.
-pub struct WorkerBuilder<W> {
+pub struct WorkerBuilder<W>
+where
+    W: Worker<Context = Context>,
+{
+    worker: W,
+}
+
+impl<W> WorkerBuilder<W>
+where
+    W: Worker<Context = Context>,
+{
+    /// Create a new builder for a given Worker. Default AccessControl is AllowAll
+    pub fn new(worker: W) -> Self {
+        Self { worker }
+    }
+}
+
+impl<W> WorkerBuilder<W>
+where
+    W: Worker<Context = Context>,
+{
+    /// Worker with only one [`Address`]
+    pub fn with_address(self, address: impl Into<Address>) -> WorkerBuilderOneAddress<W> {
+        WorkerBuilderOneAddress {
+            incoming_ac: Arc::new(AllowAll),
+            outgoing_ac: Arc::new(AllowAll),
+            worker: self.worker,
+            address: address.into(),
+        }
+    }
+
+    /// Worker with multiple [`Address`]es
+    pub fn with_mailboxes(self, mailboxes: Mailboxes) -> WorkerBuilderMultipleAddresses<W> {
+        WorkerBuilderMultipleAddresses {
+            mailboxes,
+            worker: self.worker,
+        }
+    }
+}
+
+pub struct WorkerBuilderMultipleAddresses<W>
+where
+    W: Worker<Context = Context>,
+{
     mailboxes: Mailboxes,
     worker: W,
 }
 
-impl<W> WorkerBuilder<W> {
-    /// Getter
-    pub fn worker(&self) -> &W {
-        &self.worker
+impl<W> WorkerBuilderMultipleAddresses<W>
+where
+    W: Worker<Context = Context>,
+{
+    /// Consume this builder and start a new Ockam [`Worker`] from the given context
+    pub async fn start(self, context: &Context) -> Result<()> {
+        start(context, self.mailboxes, self.worker).await
     }
 }
 
-impl<M, W> WorkerBuilder<W>
+pub struct WorkerBuilderOneAddress<W>
 where
-    M: Message + Send + 'static,
-    W: Worker<Context = Context, Message = M>,
+    W: Worker<Context = Context>,
 {
-    /// Create a worker which uses the given access control
-    pub fn with_access_control(
-        incoming_access_control: Arc<dyn IncomingAccessControl>,
-        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        address: impl Into<Address>,
-        worker: W,
-    ) -> Self {
-        let mailboxes = Mailboxes::main(
-            address.into(),
-            incoming_access_control,
-            outgoing_access_control,
-        );
+    incoming_ac: Arc<dyn IncomingAccessControl>,
+    outgoing_ac: Arc<dyn OutgoingAccessControl>,
+    address: Address,
+    worker: W,
+}
 
-        Self { mailboxes, worker }
-    }
-
-    /// Create a worker which uses the access control from the given
-    /// [`Mailboxes`]
-    pub fn with_mailboxes(mailboxes: Mailboxes, worker: W) -> Self {
-        Self { mailboxes, worker }
-    }
-
+impl<W> WorkerBuilderOneAddress<W>
+where
+    W: Worker<Context = Context>,
+{
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
-    #[inline]
-    pub async fn start(self, context: &Context) -> Result<Address> {
-        info!(
-            "Initializing ockam worker '{}' with access control in:{:?} out:{:?}",
-            self.mailboxes.main_address(),
-            self.mailboxes.main_mailbox().incoming_access_control(),
-            self.mailboxes.main_mailbox().outgoing_access_control(),
-        );
-
-        let mailboxes = self.mailboxes;
-        let addresses = mailboxes.addresses();
-        let main_address = mailboxes.main_address().clone();
-
-        // Pass it to the context
-        let (ctx, sender, ctrl_rx) = context.copy_with_mailboxes(mailboxes);
-
-        debugger::log_inherit_context("WORKER", context, &ctx);
-
-        // Then initialise the worker message relay
-        WorkerRelay::<W, M>::init(context.runtime(), self.worker, ctx, ctrl_rx);
-
-        // Send start request to router
-        let (msg, mut rx) =
-            NodeMessage::start_worker(addresses, sender, false, context.mailbox_count());
-        context
-            .sender()
-            .send(msg)
-            .await
-            .map_err(|e| Error::new(Origin::Node, Kind::Invalid, e))?;
-
-        // Wait for the actual return code
-        rx.recv()
-            .await
-            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
-
-        Ok(main_address)
+    pub async fn start(self, context: &Context) -> Result<()> {
+        start(
+            context,
+            Mailboxes::main(self.address, self.incoming_ac, self.outgoing_ac),
+            self.worker,
+        )
+        .await
     }
+}
+
+impl<W> WorkerBuilderOneAddress<W>
+where
+    W: Worker<Context = Context>,
+{
+    /// Set [`IncomingAccessControl`]
+    pub fn with_incoming_access_control(
+        mut self,
+        incoming_access_control: impl IncomingAccessControl,
+    ) -> Self {
+        self.incoming_ac = Arc::new(incoming_access_control);
+        self
+    }
+
+    /// Set [`IncomingAccessControl`]
+    pub fn with_incoming_access_control_arc(
+        mut self,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+    ) -> Self {
+        self.incoming_ac = incoming_access_control.clone();
+        self
+    }
+
+    /// Set [`OutgoingAccessControl`]
+    pub fn with_outgoing_access_control(
+        mut self,
+        outgoing_access_control: impl OutgoingAccessControl,
+    ) -> Self {
+        self.outgoing_ac = Arc::new(outgoing_access_control);
+        self
+    }
+
+    /// Set [`OutgoingAccessControl`]
+    pub fn with_outgoing_access_control_arc(
+        mut self,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Self {
+        self.outgoing_ac = outgoing_access_control.clone();
+        self
+    }
+}
+
+/// Consume this builder and start a new Ockam [`Worker`] from the given context
+async fn start<W>(context: &Context, mailboxes: Mailboxes, worker: W) -> Result<()>
+where
+    W: Worker<Context = Context>,
+{
+    info!(
+        "Initializing ockam worker '{}' with access control in:{:?} out:{:?}",
+        mailboxes.main_address(),
+        mailboxes.main_mailbox().incoming_access_control(),
+        mailboxes.main_mailbox().outgoing_access_control(),
+    );
+
+    let addresses = mailboxes.addresses();
+
+    // Pass it to the context
+    let (ctx, sender, ctrl_rx) = context.copy_with_mailboxes(mailboxes);
+
+    debugger::log_inherit_context("WORKER", context, &ctx);
+
+    // Then initialise the worker message relay
+    WorkerRelay::init(context.runtime(), worker, ctx, ctrl_rx);
+
+    // Send start request to router
+    let (msg, mut rx) =
+        NodeMessage::start_worker(addresses, sender, false, context.mailbox_count());
+    context
+        .sender()
+        .send(msg)
+        .await
+        .map_err(|e| Error::new(Origin::Node, Kind::Invalid, e))?;
+
+    // Wait for the actual return code
+    rx.recv()
+        .await
+        .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
+
+    Ok(())
 }

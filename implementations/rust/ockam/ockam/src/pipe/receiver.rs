@@ -48,7 +48,8 @@ impl PipeReceiver {
                 Arc::new(AllowAll),
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, PipeReceiver { hooks, int_addr })
+        WorkerBuilder::new(PipeReceiver { hooks, int_addr })
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 

@@ -13,8 +13,7 @@ use std::time::Duration;
 async fn test1(ctx: &mut Context) -> Result<()> {
     ForwardingService::create(ctx, "forwarding_service", ForwardingServiceOptions::new()).await?;
 
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer).await?;
 
     let remote_info = RemoteForwarder::create(ctx, route![], RemoteForwarderOptions::new()).await?;
 
@@ -54,8 +53,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let tcp_options = TcpConnectionOptions::new();
 
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer).await?;
     ctx.flow_controls().add_consumer(
         "echoer",
         &tcp_options.producer_flow_control_id(),
@@ -219,8 +217,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         FlowControlPolicy::ProducerAllowMultiple,
     );
 
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
-        .await?;
+    ctx.start_worker("echoer", Echoer).await?;
     ctx.flow_controls().add_consumer(
         "echoer",
         &server_secure_channel_listener_options.spawner_flow_control_id(),

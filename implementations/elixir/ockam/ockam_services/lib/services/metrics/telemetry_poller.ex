@@ -55,7 +55,7 @@ defmodule Ockam.Services.Metrics.TelemetryPoller do
 
     channels_with_credentials =
       Enum.filter(responders, fn responder ->
-        remote_identity = Ockam.SecureChannel.get_remote_identity_id(responder)
+        {:ok, remote_identity} = Ockam.SecureChannel.get_remote_identity_id(responder)
 
         case AttributeStorage.get_attribute_set(remote_identity) do
           {:ok, _set} -> true

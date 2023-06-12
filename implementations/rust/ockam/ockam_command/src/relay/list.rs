@@ -1,12 +1,15 @@
 use clap::Args;
-use miette::miette;
 
+use colorful::Colorful;
 use ockam::Context;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use crate::node::get_node_name;
-use crate::util::{exitcode, extract_address_value, node_rpc, Rpc};
+use crate::terminal::OckamColor;
+use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
@@ -33,31 +36,39 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(Request::get("/node/forwarder")).await?;
-    let response = rpc.parse_response::<Vec<ForwarderInfo>>()?;
+    let is_finished: Mutex<bool> = Mutex::new(false);
 
-    if response.is_empty() {
-        return Err(crate::Error::new(
-            exitcode::IOERR,
-            miette!("No relays found on node {}", node_name),
-        ));
-    }
+    let send_req = async {
+        rpc.request(Request::get("/node/forwarder")).await?;
 
-    // TODO: Switch to the table?
-    for relay_info in response.iter() {
-        println!("Relay:");
-        println!("  Relay Route: {}", relay_info.forwarding_route());
-        println!("  Remote Address: {}", relay_info.remote_address_ma()?);
-        println!("  Worker Address: {}", relay_info.worker_address_ma()?);
-        println!(
-            "  Flow Control Id: {}",
-            relay_info
-                .flow_control_id()
-                .as_ref()
-                .map(|x| x.to_string())
-                .unwrap_or("<none>".into())
-        );
-    }
+        *is_finished.lock().await = true;
+        rpc.parse_response::<Vec<ForwarderInfo>>()
+    };
 
+    let output_messages = vec![format!(
+        "Listing Relays on {}...\n",
+        node_name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    )];
+
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (relays, _) = try_join!(send_req, progress_output)?;
+
+    let plain = opts.terminal.build_list(
+        &relays,
+        &format!("Relays on Node {node_name}"),
+        &format!("No Relays found on node {node_name}."),
+    )?;
+    let json = serde_json::to_string_pretty(&relays)?;
+
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
     Ok(())
 }

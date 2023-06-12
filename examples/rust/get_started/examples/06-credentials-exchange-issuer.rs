@@ -1,10 +1,10 @@
 use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
+use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::CredentialsIssuer;
 use ockam::identity::SecureChannelListenerOptions;
+use ockam::TcpTransportExtension;
 use ockam::{node, Context, Result, TcpListenerOptions};
-use ockam_core::flow_control::FlowControlPolicy;
-use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -63,7 +63,7 @@ async fn main(ctx: Context) -> Result<()> {
         &sc_listener_flow_control_id,
         FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
-    node.start_worker("issuer", credential_issuer, allow_known, AllowAll)
+    node.start_worker_with_access_control("issuer", credential_issuer, allow_known, AllowAll)
         .await?;
 
     // Initialize TCP Transport, create a TCP listener, and wait for connections.

@@ -32,10 +32,6 @@ pub struct CreateCommand {
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
-
-    /// Services enabled for this project.
-    #[arg(display_order = 1100, last = true)]
-    pub services: Vec<String>,
     //TODO:  list of admins
 }
 
@@ -71,10 +67,12 @@ async fn run_impl(
     check_for_completion(ctx, &opts, &cmd.cloud_opts, rpc.node_name(), &operation_id).await?;
     let project =
         check_project_readiness(ctx, &opts, &cmd.cloud_opts, &node_name, None, project).await?;
-    opts.state.projects.create(&project.name, project.clone())?;
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
     opts.state
         .trust_contexts
-        .create(&project.name, project.clone().try_into()?)?;
+        .overwrite(&project.name, project.clone().try_into()?)?;
     rpc.print_response(project)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

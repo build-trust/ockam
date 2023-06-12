@@ -18,7 +18,7 @@ pub(super) async fn resolve(
 ) -> Result<()> {
     let base = format!("Resolving worker address '{}'...", addr);
 
-    let primary_address = if let Some(p) = router.map.addr_map.get(addr) {
+    let primary_address = if let Some(p) = router.map.get_primary_address(addr) {
         p.clone()
     } else {
         trace!("{} FAILED; no such worker", base);
@@ -30,7 +30,7 @@ pub(super) async fn resolve(
         return Ok(());
     };
 
-    match router.map.internal.get(&primary_address) {
+    match router.map.get_address_record(&primary_address) {
         Some(record) if record.check() => {
             trace!("{} OK", base);
             record.increment_msg_count();

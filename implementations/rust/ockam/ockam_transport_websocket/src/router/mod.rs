@@ -90,7 +90,8 @@ impl WebSocketRouter {
                 Arc::new(AllowAll), // FIXME: @ac
             )],
         );
-        WorkerBuilder::with_mailboxes(mailboxes, router)
+        WorkerBuilder::new(router)
+            .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
         trace!("Registering WS router for type = {}", WS);

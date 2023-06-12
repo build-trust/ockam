@@ -6,7 +6,7 @@ use crate::secure_channels::secure_channels::SecureChannels;
 use crate::IdentityIdentifier;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, AllowAll, Any, LocalOnwardOnly, Result, Routed, Worker};
+use ockam_core::{Address, Any, Result, Routed, Worker};
 use ockam_node::Context;
 
 pub(crate) struct IdentityChannelListener {
@@ -39,13 +39,7 @@ impl IdentityChannelListener {
 
         let listener = Self::new(secure_channels.clone(), identifier.clone(), options);
 
-        ctx.start_worker(
-            address,
-            listener,
-            AllowAll, // TODO: @ac allow to customize
-            LocalOnwardOnly,
-        )
-        .await?;
+        ctx.start_worker(address, listener).await?;
 
         Ok(())
     }

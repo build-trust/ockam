@@ -1,8 +1,8 @@
 ```sh
-# To create a trust context with a random name
+# To create a trust context with a random name, using the default project information
 $ ockam trust-context create
 
-# To create a trust context with a specific name
+# To create a trust context with a specific name, using the default project information
 $ ockam trust-context create t
 
 # To create a trust context with a specific credential

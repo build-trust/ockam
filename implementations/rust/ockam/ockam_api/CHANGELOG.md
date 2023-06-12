@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.32.0 - 2023-06-09
+
+### Added
+
+- Add more information about which processes use which files
+- Add delete and list subcommands for kafka consumer/producer commands
+
+### Changed
+
+- Document the layout of files for a node
+- Extend direct authenticator service to list and delete members
+- Make `AccessControl` optional while starting a `Worker`
+- Full local kafka implementation which credential validation and flow control
+- Updated dependencies
+
+### Removed
+
+- Remove old config.json file and add migration
+
 ## 0.31.0 - 2023-05-26
 
 ### Added

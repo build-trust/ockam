@@ -92,7 +92,8 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
     );
 
     // Start the worker with three publicly mapped addresses
-    WorkerBuilder::with_mailboxes(mailboxes, w)
+    WorkerBuilder::new(w)
+        .with_mailboxes(mailboxes)
         .start(ctx)
         .await?;
 
@@ -171,7 +172,8 @@ async fn attach_metadata(ctx: &mut Context) -> Result<()> {
     );
 
     // Start the worker with three publicly mapped addresses
-    WorkerBuilder::with_mailboxes(mailboxes, w)
+    WorkerBuilder::new(w)
+        .with_mailboxes(mailboxes)
         .start(ctx)
         .await?;
 
