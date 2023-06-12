@@ -1,9 +1,11 @@
+use anyhow::anyhow;
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{docs, node::NodeOpts, CommandGlobalOpts};
 use clap::Args;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
+use crate::terminal::ConfirmResult;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -16,6 +18,10 @@ pub struct DeleteCommand {
 
     /// Tcp Connection ID
     pub address: String,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -33,10 +39,28 @@ async fn run_impl(
     let node_name = extract_address_value(&node_name)?;
 
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    let req = Request::delete("/node/tcp/connection")
-        .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-    rpc.request(req).await?;
-    rpc.is_ok()?;
+    if cmd.yes {
+        let req = Request::delete("/node/tcp/connection")
+            .body(models::transport::DeleteTransport::new(cmd.address.clone()));
+        rpc.request(req).await?;
+        rpc.is_ok()?;
+    } else {
+        // If yes is not provided make sure using TTY
+        match opts.terminal.confirm("This will delete the selected TCP-Connection. Are you sure?")? {
+            ConfirmResult::Yes => {
+                let req = Request::delete("/node/tcp/connection")
+                    .body(models::transport::DeleteTransport::new(cmd.address.clone()));
+                rpc.request(req).await?;
+                rpc.is_ok()?;
+            }
+            ConfirmResult::No => {
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
+                return Err(anyhow!("Use --yes to confirm").into());
+            }
+        }
+    }
 
     println!("Tcp connection `{}` successfully deleted", cmd.address);
     Ok(())
