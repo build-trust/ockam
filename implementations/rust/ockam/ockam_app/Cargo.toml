@@ -29,6 +29,7 @@ description = "End-to-end encryption and mutual authentication for distributed a
 [lib]
 name = "ockam_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+path = "src/lib.rs"
 
 [build-dependencies]
 tauri-build = { version = "2.0.0-alpha.5", features = [] }
