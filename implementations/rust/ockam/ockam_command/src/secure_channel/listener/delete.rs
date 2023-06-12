@@ -3,8 +3,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_core::Address;
 
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::secure_channel::listener::utils::SecureChannelListenerNodeOpts;
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{api, extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
@@ -23,12 +22,12 @@ pub struct DeleteCommand {
     address: Address,
 
     #[command(flatten)]
-    node_opts: SecureChannelListenerNodeOpts,
+    node_opts: NodeOpts,
 }
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at);
+        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -41,7 +40,7 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.node_opts.at);
+    let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = extract_address_value(&at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
     let req = api::delete_secure_channel_listener(&cmd.address);
