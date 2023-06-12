@@ -4,6 +4,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   alias Ockam.Vault
 
   @type message :: :message1 | :message2 | :message3
+  @type t :: %__MODULE__{}
 
   defstruct [
     # handle to a vault

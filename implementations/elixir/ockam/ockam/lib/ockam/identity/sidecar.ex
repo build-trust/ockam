@@ -25,7 +25,7 @@ defmodule Ockam.Identity.Sidecar do
   end
 
   def get(identity_name) do
-    with {:ok, body} <- api_request(:get, api_path({:get, identity_name}), nil),
+    with {:ok, body} <- api_request(:get, api_path({:get, identity_name}), ""),
          {:ok, identity_response} <- IdentityResponse.create(body) do
       {:ok, Map.fetch!(identity_response, :identity), Map.fetch!(identity_response, :identity_id)}
     end

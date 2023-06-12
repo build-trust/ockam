@@ -8,7 +8,7 @@ defmodule Ockam.Identity.TrustPolicy do
   @type identity_info() :: %{id: binary(), identity: Identity.t()}
   @type trust_rule() ::
           (function :: atom())
-          | (function :: fun(2))
+          | (function :: (term, term -> term))
           | {function :: atom(), extra_args :: list()}
           | {function :: function(), extra_args :: list()}
           | {module :: atom(), function :: atom(), extra_args :: list()}

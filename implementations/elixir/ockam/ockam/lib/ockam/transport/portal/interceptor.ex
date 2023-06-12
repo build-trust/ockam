@@ -266,9 +266,6 @@ defmodule Ockam.Transport.Portal.Interceptor do
 
       :pong ->
         {:ok, [payload], Map.put(state, :pong_route, Message.return_route(message))}
-
-      _other ->
-        {:ok, [payload], state}
     end
   end
 end
