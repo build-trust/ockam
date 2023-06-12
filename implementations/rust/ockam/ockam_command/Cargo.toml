@@ -70,7 +70,7 @@ hex = "0.4"
 home = "0.5"
 indicatif = "0.17.5"
 indoc = "2.0"
-io-lifetimes = "1"
+io-lifetimes = "2"
 is-terminal = "0.4"
 itertools = "0.10"
 miette = { version = "5.8.0", features = ["fancy-no-backtrace"] }
