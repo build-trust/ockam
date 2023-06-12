@@ -37,6 +37,8 @@ std = [
 
 lmdb = ["tokio-retry", "lmdb-rkv"]
 
+debugger = ["ockam_core/debugger"]
+
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = [
