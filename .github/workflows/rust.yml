@@ -71,6 +71,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
+      - working-directory: implementations/typescript/ockam/ockam_app
+        run: |
+          pnpm install
+          pnpm run build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_fmt_check
@@ -101,13 +105,17 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
+      - working-directory: implementations/typescript/ockam/ockam_app
+        run: |
+          pnpm install
+          pnpm run build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_clippy
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   lint_cargo_deny:
-    name: Rust - lint_cargo_clippy
+    name: Rust - lint_cargo_deny
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68
@@ -116,6 +124,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
+      - working-directory: implementations/typescript/ockam/ockam_app
+        run: |
+          pnpm install
+          pnpm run build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_deny
@@ -132,6 +144,10 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
+      - working-directory: implementations/typescript/ockam/ockam_app
+        run: |
+          pnpm install
+          pnpm run build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build_docs
