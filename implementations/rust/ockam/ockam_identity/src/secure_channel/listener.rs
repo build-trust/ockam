@@ -6,7 +6,7 @@ use crate::secure_channels::secure_channels::SecureChannels;
 use crate::{Credential, IdentityIdentifier};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, Address, Any, Result, Routed, Worker};
+use ockam_core::{Address, Any, Result, Routed, Worker};
 use ockam_node::Context;
 
 pub(crate) struct IdentityChannelListener {
@@ -96,7 +96,7 @@ impl Worker for IdentityChannelListener {
             access_control.decryptor_outgoing_access_control,
             credentials,
             self.options.trust_context.clone(),
-            route![],
+            None,
             None,
             Role::Responder,
         )
