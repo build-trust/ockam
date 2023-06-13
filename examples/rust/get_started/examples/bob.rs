@@ -2,7 +2,6 @@ use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, Routed, TcpConnectionOptions, Worker};
 use ockam::{Context, Result};
-use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_transport_tcp::TcpTransportExtension;
 
 struct Echoer;
@@ -33,11 +32,8 @@ async fn main(ctx: Context) -> Result<()> {
     // This worker will echo back every message it receives, along its return route.
     let sc_options = SecureChannelListenerOptions::new();
     node.start_worker("echoer", Echoer).await?;
-    node.flow_controls().add_consumer_for_spawner(
-        "echoer",
-        &sc_options.spawner_flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    node.flow_controls()
+        .add_consumer("echoer", &sc_options.spawner_flow_control_id());
 
     // Create an Identity to represent Bob.
     let bob = node.create_identity().await?;

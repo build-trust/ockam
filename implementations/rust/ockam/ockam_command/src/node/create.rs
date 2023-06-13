@@ -44,7 +44,6 @@ use ockam_api::{
     },
 };
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_core::{route, LOCAL};
 
 use super::show::is_node_up;
@@ -321,11 +320,8 @@ async fn run_foreground_node(
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.flow_controls().add_consumer_for_spawner(
-        NODEMANAGER_ADDR,
-        listener.flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;
 

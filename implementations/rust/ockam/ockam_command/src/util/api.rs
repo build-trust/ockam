@@ -15,7 +15,7 @@ use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
 use ockam_api::config::cli::TrustContextConfig;
-use ockam_api::nodes::models::flow_controls::{AddConsumerForProducer, AddConsumerForSpawner};
+use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
     StartHopServiceRequest, StartIdentityServiceRequest, StartOktaIdentityProviderRequest,
@@ -26,9 +26,7 @@ use ockam_api::DefaultAddress;
 use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
 use ockam_core::env::{get_env_with_default, FromString};
-use ockam_core::flow_control::{
-    ProducerFlowControlId, SpawnerFlowControlId, SpawnerFlowControlPolicy,
-};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
@@ -184,21 +182,12 @@ pub(crate) fn start_authenticator_service<'a>(
     Request::post(node_service(DefaultAddress::DIRECT_AUTHENTICATOR)).body(payload)
 }
 
-pub(crate) fn add_consumer_for_spawner(
-    id: SpawnerFlowControlId,
+pub(crate) fn add_consumer(
+    id: FlowControlId,
     address: MultiAddr,
-    policy: SpawnerFlowControlPolicy,
-) -> RequestBuilder<'static, AddConsumerForSpawner> {
-    let payload = AddConsumerForSpawner::new(id, address, policy);
-    Request::post("/node/flow_controls/add_consumer_for_spawner").body(payload)
-}
-
-pub(crate) fn add_consumer_for_producer(
-    id: ProducerFlowControlId,
-    address: MultiAddr,
-) -> RequestBuilder<'static, AddConsumerForProducer> {
-    let payload = AddConsumerForProducer::new(id, address);
-    Request::post("/node/flow_controls/add_consumer_for_producer").body(payload)
+) -> RequestBuilder<'static, AddConsumer> {
+    let payload = AddConsumer::new(id, address);
+    Request::post("/node/flow_controls/add_consumer").body(payload)
 }
 
 pub(crate) fn start_okta_service(

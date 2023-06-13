@@ -3,7 +3,7 @@ use std::net::{SocketAddrV4, SocketAddrV6};
 use anyhow::anyhow;
 
 use ockam::TcpTransport;
-use ockam_core::flow_control::ProducerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
 use ockam_multiaddr::proto::{
     DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
@@ -48,7 +48,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
 }
 
 pub struct MultiAddrToRouteResult {
-    pub flow_control_id: Option<ProducerFlowControlId>,
+    pub flow_control_id: Option<FlowControlId>,
     pub route: Route,
     pub tcp_worker: Option<Address>,
 }
@@ -439,7 +439,7 @@ pub mod test_utils {
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
             NodeManagerProjectsOptions::new(Default::default()),
             NodeManagerTransportOptions::new(
-                FlowControls::generate_spawner_flow_control_id(), // FIXME
+                FlowControls::generate_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,
             ),
             NodeManagerTrustOptions::new(Some(TrustContextConfig::new(

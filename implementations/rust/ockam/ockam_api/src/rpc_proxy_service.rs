@@ -53,7 +53,7 @@ impl RpcProxyService {
         {
             child_ctx
                 .flow_controls()
-                .add_consumer_for_producer(child_ctx.address(), &flow_control_id);
+                .add_consumer(child_ctx.address(), &flow_control_id);
         }
 
         // Send the request to the intended destination

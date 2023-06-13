@@ -1,6 +1,5 @@
 use core::time::Duration;
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
@@ -21,11 +20,8 @@ impl Worker for Echoer {
 #[ockam_macros::test]
 async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> Result<()> {
     let options = TcpListenerOptions::new();
-    ctx.flow_controls().add_consumer_for_spawner(
-        "echoer",
-        &options.spawner_flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("echoer", &options.spawner_flow_control_id());
     ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
@@ -70,11 +66,8 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
 #[ockam_macros::test]
 async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Result<()> {
     let options = TcpListenerOptions::new();
-    ctx.flow_controls().add_consumer_for_spawner(
-        "echoer",
-        &options.spawner_flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("echoer", &options.spawner_flow_control_id());
     ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
@@ -143,11 +136,8 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
     ctx: &mut Context,
 ) -> Result<()> {
     let options = TcpListenerOptions::new();
-    ctx.flow_controls().add_consumer_for_spawner(
-        "echoer",
-        &options.spawner_flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("echoer", &options.spawner_flow_control_id());
 
     ctx.start_worker("echoer", Echoer).await?;
 

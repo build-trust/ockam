@@ -4,7 +4,6 @@
 // It then runs forever waiting to route messages.
 
 use hello_ockam::Forwarder;
-use ockam::flow_control::SpawnerFlowControlPolicy;
 use ockam::{node, Context, Result, TcpConnectionOptions, TcpListenerOptions, TcpTransportExtension};
 
 #[ockam::node]
@@ -26,11 +25,8 @@ async fn main(ctx: Context) -> Result<()> {
     let listener = tcp.listen("127.0.0.1:3000", TcpListenerOptions::new()).await?;
 
     // Allow access to the Forwarder via TCP connections from the TCP listener
-    node.flow_controls().add_consumer_for_spawner(
-        "forward_to_responder",
-        listener.flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    node.flow_controls()
+        .add_consumer("forward_to_responder", listener.flow_control_id());
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())

@@ -2,7 +2,6 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::flow_control::SpawnerFlowControlPolicy;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, Context, Result, TcpListenerOptions, TcpTransportExtension};
 
@@ -27,19 +26,13 @@ async fn main(ctx: Context) -> Result<()> {
         .create_secure_channel_listener(
             &bob,
             "bob_listener",
-            SecureChannelListenerOptions::new().as_consumer_for_spawner(
-                listener.flow_control_id(),
-                SpawnerFlowControlPolicy::AllowOnlyOneMessage,
-            ),
+            SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id()),
         )
         .await?;
 
     // Allow access to the Echoer via Secure Channels
-    node.flow_controls().add_consumer_for_spawner(
-        "echoer",
-        secure_channel_listener.flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    node.flow_controls()
+        .add_consumer("echoer", secure_channel_listener.flow_control_id());
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())

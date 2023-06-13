@@ -3,10 +3,7 @@ use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 use ockam_abac::AbacAccessControl;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{
-    FlowControlOutgoingAccessControl, FlowControls, ProducerFlowControlId, SpawnerFlowControlId,
-    SpawnerFlowControlPolicy,
-};
+use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowSourceAddress, AnyIncomingAccessControl, Encodable, Error, LocalInfo,
@@ -315,9 +312,9 @@ impl KafkaPortalWorker {
         fixed_outlet_route: Route,
         message_interceptor: Arc<dyn KafkaMessageInterceptor>,
         flow_controls: &FlowControls,
-        secure_channel_flow_control_id: Option<ProducerFlowControlId>,
-        flow_control_id: Option<ProducerFlowControlId>,
-        spawner_flow_control_id: Option<SpawnerFlowControlId>,
+        secure_channel_flow_control_id: Option<FlowControlId>,
+        flow_control_id: Option<FlowControlId>,
+        spawner_flow_control_id: Option<FlowControlId>,
         incoming_access_control: Arc<AbacAccessControl>,
         outgoing_access_control: Arc<FlowControlOutgoingAccessControl>,
     ) -> ockam_core::Result<Address> {
@@ -365,16 +362,13 @@ impl KafkaPortalWorker {
 
             // we need to receive the first message from the listener
             if let Some(spawner_flow_control_id) = spawner_flow_control_id.as_ref() {
-                flow_controls.add_consumer_for_spawner(
-                    requests_worker_address.clone(),
-                    spawner_flow_control_id,
-                    SpawnerFlowControlPolicy::AllowMultipleMessages,
-                );
+                flow_controls
+                    .add_consumer(requests_worker_address.clone(), spawner_flow_control_id);
             }
         }
 
         if let Some(secure_channel_flow_control_id) = secure_channel_flow_control_id.as_ref() {
-            flow_controls.add_consumer_for_producer(
+            flow_controls.add_consumer(
                 requests_worker_address.clone(),
                 secure_channel_flow_control_id,
             );
@@ -397,7 +391,7 @@ impl KafkaPortalWorker {
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletController,
         max_kafka_message_size: Option<u32>,
-        flow_control_id: Option<ProducerFlowControlId>,
+        flow_control_id: Option<FlowControlId>,
         inlet_responder_route: Route,
     ) -> ockam_core::Result<Address> {
         let shared_protocol_state = Arc::new(InletInterceptorImpl::new(
@@ -436,7 +430,7 @@ impl KafkaPortalWorker {
         if let Some(flow_control_id) = flow_control_id {
             context
                 .flow_controls()
-                .add_consumer_for_producer(responses_worker_address.clone(), &flow_control_id);
+                .add_consumer(responses_worker_address.clone(), &flow_control_id);
         }
         context
             .start_worker(responses_worker_address, response_worker)

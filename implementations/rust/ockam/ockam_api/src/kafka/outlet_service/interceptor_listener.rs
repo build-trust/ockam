@@ -4,10 +4,7 @@ use crate::kafka::protocol_aware::OutletInterceptorImpl;
 use crate::kafka::{KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS};
 use ockam::{Any, Context, Result, Routed, Worker};
 use ockam_abac::AbacAccessControl;
-use ockam_core::flow_control::{
-    FlowControlOutgoingAccessControl, FlowControls, ProducerFlowControlId, SpawnerFlowControlId,
-    SpawnerFlowControlPolicy,
-};
+use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::Address;
 use ockam_identity::{SecureChannels, TRUST_CONTEXT_ID};
 use ockam_node::WorkerBuilder;
@@ -20,8 +17,8 @@ use std::sync::Arc;
 pub(crate) struct OutletManagerService {
     outlet_controller: KafkaOutletController,
     incoming_access_control: Arc<AbacAccessControl>,
-    flow_control_id: ProducerFlowControlId,
-    spawner_flow_control_id: SpawnerFlowControlId,
+    flow_control_id: FlowControlId,
+    spawner_flow_control_id: FlowControlId,
     outgoing_access_control: Arc<FlowControlOutgoingAccessControl>,
 }
 
@@ -30,24 +27,23 @@ impl OutletManagerService {
         context: &Context,
         secure_channels: Arc<SecureChannels>,
         trust_context_id: &str,
-        default_secure_channel_listener_flow_control_id: SpawnerFlowControlId,
+        default_secure_channel_listener_flow_control_id: FlowControlId,
     ) -> Result<()> {
         let flow_controls = context.flow_controls();
 
         let worker_address = Address::from_string(KAFKA_OUTLET_INTERCEPTOR_ADDRESS);
-        flow_controls.add_consumer_for_spawner(
+        flow_controls.add_consumer(
             worker_address.clone(),
             &default_secure_channel_listener_flow_control_id,
-            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
-        let flow_control_id = FlowControls::generate_producer_flow_control_id();
-        let spawner_flow_control_id = FlowControls::generate_spawner_flow_control_id();
+        let flow_control_id = FlowControls::generate_flow_control_id();
+        let spawner_flow_control_id = FlowControls::generate_flow_control_id();
 
         flow_controls.add_spawner(worker_address.clone(), &spawner_flow_control_id);
 
         // add the default outlet as consumer for the interceptor
-        flow_controls.add_consumer_for_producer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
+        flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
 
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(),

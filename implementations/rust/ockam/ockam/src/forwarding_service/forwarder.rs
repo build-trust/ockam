@@ -96,7 +96,7 @@ impl Worker for Forwarder {
             .find_flow_control_with_producer_address(&next_hop)
         {
             ctx.flow_controls()
-                .add_consumer_for_producer(prev_hop.clone(), info.flow_control_id());
+                .add_consumer(prev_hop.clone(), info.flow_control_id());
         }
 
         if let Some(info) = ctx
@@ -104,7 +104,7 @@ impl Worker for Forwarder {
             .find_flow_control_with_producer_address(&prev_hop)
         {
             ctx.flow_controls()
-                .add_consumer_for_producer(next_hop, info.flow_control_id());
+                .add_consumer(next_hop, info.flow_control_id());
         }
 
         ctx.forward(message).await

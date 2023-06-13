@@ -1,6 +1,6 @@
 use crate::Message;
 use ockam_core::compat::string::String;
-use ockam_core::flow_control::ProducerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Route};
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +10,7 @@ pub struct RemoteForwarderInfo {
     forwarding_route: Route,
     remote_address: String,
     worker_address: Address,
-    flow_control_id: Option<ProducerFlowControlId>,
+    flow_control_id: Option<FlowControlId>,
 }
 
 impl RemoteForwarderInfo {
@@ -19,7 +19,7 @@ impl RemoteForwarderInfo {
         forwarding_route: Route,
         remote_address: String,
         worker_address: Address,
-        flow_control_id: Option<ProducerFlowControlId>,
+        flow_control_id: Option<FlowControlId>,
     ) -> Self {
         Self {
             forwarding_route,
@@ -41,7 +41,7 @@ impl RemoteForwarderInfo {
         &self.worker_address
     }
     /// Corresponding [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &Option<ProducerFlowControlId> {
+    pub fn flow_control_id(&self) -> &Option<FlowControlId> {
         &self.flow_control_id
     }
 }

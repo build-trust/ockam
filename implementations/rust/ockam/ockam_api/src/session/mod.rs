@@ -101,10 +101,8 @@ impl Medic {
                                 .find_flow_control_with_producer_address(next)
                                 .map(|x| x.flow_control_id().clone())
                             {
-                                ctx.flow_controls().add_consumer_for_producer(
-                                    Collector::address(),
-                                    &flow_control_id,
-                                );
+                                ctx.flow_controls()
+                                    .add_consumer(Collector::address(), &flow_control_id);
                             }
                             let t = TransportMessage::v1(echo_route, Collector::address(), v);
                             LocalMessage::new(t, Vec::new())

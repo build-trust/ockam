@@ -101,8 +101,7 @@ impl Context {
             .map(|x| x.flow_control_id().clone())
         {
             // To be able to receive the response
-            self.flow_controls
-                .add_consumer_for_producer(address, &flow_control_id);
+            self.flow_controls.add_consumer(address, &flow_control_id);
         }
 
         let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;

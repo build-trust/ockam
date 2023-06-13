@@ -2,7 +2,7 @@ use crate::TcpConnectionMode;
 use core::fmt;
 use core::fmt::Formatter;
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
-use ockam_core::flow_control::{ProducerFlowControlId, SpawnerFlowControlId};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Result};
 use ockam_transport_core::TransportError;
 
@@ -13,7 +13,7 @@ pub struct TcpConnection {
     receiver_address: Address,
     socket_address: SocketAddr,
     mode: TcpConnectionMode,
-    flow_control_id: ProducerFlowControlId,
+    flow_control_id: FlowControlId,
 }
 
 impl fmt::Display for TcpConnection {
@@ -39,7 +39,7 @@ impl TcpConnection {
         receiver_address: Address,
         socket_address: SocketAddr,
         mode: TcpConnectionMode,
-        flow_control_id: ProducerFlowControlId,
+        flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             sender_address,
@@ -63,7 +63,7 @@ impl TcpConnection {
         &self.socket_address
     }
     /// Generated fresh random [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &ProducerFlowControlId {
+    pub fn flow_control_id(&self) -> &FlowControlId {
         &self.flow_control_id
     }
     /// Corresponding [`TcpConnectionMode`]
@@ -77,7 +77,7 @@ impl TcpConnection {
 pub struct TcpListener {
     processor_address: Address,
     socket_address: SocketAddr,
-    flow_control_id: SpawnerFlowControlId,
+    flow_control_id: FlowControlId,
 }
 
 impl fmt::Display for TcpListener {
@@ -95,7 +95,7 @@ impl TcpListener {
     pub fn new(
         processor_address: Address,
         socket_address: SocketAddr,
-        flow_control_id: SpawnerFlowControlId,
+        flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             processor_address,
@@ -116,7 +116,7 @@ impl TcpListener {
         self.socket_address.to_string()
     }
     /// Generated fresh random [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &SpawnerFlowControlId {
+    pub fn flow_control_id(&self) -> &FlowControlId {
         &self.flow_control_id
     }
 }
