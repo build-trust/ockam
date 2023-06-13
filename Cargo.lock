@@ -2585,6 +2585,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "io-lifetimes"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d45cdeff9f146d37336161718e4ae84d7771c159270ac78f7aacc042461eb71"
+
+[[package]]
 name = "iovec"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2615,7 +2621,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adcf93614601c8129ddf72e2d5633df827ba6551541c6d8c59520a371475be1f"
 dependencies = [
  "hermit-abi 0.3.1",
- "io-lifetimes",
+ "io-lifetimes 1.0.11",
  "rustix",
  "windows-sys 0.48.0",
 ]
@@ -3385,7 +3391,7 @@ dependencies = [
  "home",
  "indicatif",
  "indoc",
- "io-lifetimes",
+ "io-lifetimes 2.0.0",
  "is-terminal",
  "itertools",
  "miette",
@@ -4426,7 +4432,7 @@ checksum = "acf8729d8542766f1b2cf77eb034d52f40d375bb8b615d0b147089946e16613d"
 dependencies = [
  "bitflags 1.3.2",
  "errno",
- "io-lifetimes",
+ "io-lifetimes 1.0.11",
  "libc",
  "linux-raw-sys",
  "windows-sys 0.48.0",
