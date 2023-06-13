@@ -1,6 +1,6 @@
 use crate::compat::boxed::Box;
 use crate::flow_control::{FlowControlId, FlowControls};
-use crate::{async_trait, Result};
+use crate::{async_trait, Address, Result};
 use crate::{OutgoingAccessControl, RelayMessage};
 use core::fmt::{Debug, Formatter};
 
@@ -38,6 +38,14 @@ impl FlowControlOutgoingAccessControl {
     }
 }
 
+impl FlowControlOutgoingAccessControl {
+    fn is_consumer(&self, next: &Address, flow_control_id: &FlowControlId) -> bool {
+        let consumers_info = self.flow_controls.get_consumers_info(flow_control_id);
+
+        consumers_info.contains(next)
+    }
+}
+
 #[async_trait]
 impl OutgoingAccessControl for FlowControlOutgoingAccessControl {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
@@ -45,27 +53,23 @@ impl OutgoingAccessControl for FlowControlOutgoingAccessControl {
 
         let next = onward_route.next()?;
 
-        let consumers_info = self.flow_controls.get_consumers_info(&self.flow_control_id);
-
-        if consumers_info.contains(next) {
+        if self.is_consumer(next, &self.flow_control_id) {
             return crate::allow();
         }
 
         if let Some(spawner_flow_control_id) = &self.spawner_flow_control_id {
-            let consumers_info = self
-                .flow_controls
-                .get_consumers_info(spawner_flow_control_id);
-
-            if consumers_info.contains(next) {
+            if self.is_consumer(next, spawner_flow_control_id) {
                 return crate::allow();
             }
         }
 
-        #[cfg(feature = "debugger")]
-        {
-            self.flow_controls.debug_address(relay_msg.source());
-            self.flow_controls.debug_address(next);
-        }
+        self.flow_controls.debug_denied_message(
+            relay_msg.source(),
+            &self.flow_control_id,
+            &self.spawner_flow_control_id,
+            next,
+        );
+
         crate::deny()
     }
 }

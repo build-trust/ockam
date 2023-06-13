@@ -4,12 +4,12 @@ use crate::compat::string::{String, ToString};
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 use core::fmt;
-use core::fmt::{Debug, Formatter};
+use core::fmt::Formatter;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// Unique random identifier of a Flow Control
-#[derive(Clone, Eq, PartialEq, Debug, Ord, PartialOrd, Serialize, Deserialize, Decode, Encode)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct FlowControlId {
@@ -27,6 +27,12 @@ impl FlowControlId {
             tag: TypeTag,
             id: str.to_string(),
         }
+    }
+}
+
+impl fmt::Debug for FlowControlId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
