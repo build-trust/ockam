@@ -226,19 +226,9 @@ impl Handshake {
 
         // 2. initialize the handshake
         // We currently don't use any payload for message 1
-        Self::new_with_keys(vault, static_key, ephemeral_key, vec![]).await
-    }
-
-    /// Initialize the handshake
-    async fn new_with_keys(
-        vault: Arc<dyn XXVault>,
-        static_key: KeyId,
-        ephemeral_key: KeyId,
-        message1_payload: Vec<u8>,
-    ) -> Result<Handshake> {
         Ok(Handshake {
             vault,
-            state: HandshakeState::new(static_key, ephemeral_key, message1_payload),
+            state: HandshakeState::new(static_key, ephemeral_key, vec![]),
         })
     }
 
@@ -687,5 +677,20 @@ mod tests {
         assert!(result.is_ok());
 
         Ok(())
+    }
+
+    impl Handshake {
+        /// Initialize the handshake
+        async fn new_with_keys(
+            vault: Arc<dyn XXVault>,
+            static_key: KeyId,
+            ephemeral_key: KeyId,
+            message1_payload: Vec<u8>,
+        ) -> Result<Handshake> {
+            Ok(Handshake {
+                vault,
+                state: HandshakeState::new(static_key, ephemeral_key, message1_payload),
+            })
+        }
     }
 }
