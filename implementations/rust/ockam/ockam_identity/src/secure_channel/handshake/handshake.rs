@@ -4,8 +4,9 @@ use crate::secure_channel::Role;
 use crate::XXVault;
 use arrayref::array_ref;
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::{string::ToString, vec::Vec};
-use ockam_core::Result;
+use ockam_core::compat::vec::Vec;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result};
 use ockam_vault::constants::{AES256_SECRET_LENGTH_USIZE, CURVE25519_PUBLIC_LENGTH_USIZE};
 use ockam_vault::SecretType::X25519;
 use ockam_vault::{KeyId, PublicKey, Secret, SecretAttributes};
@@ -36,12 +37,14 @@ impl Handshake {
     pub(super) async fn initialize(&mut self) -> Result<()> {
         let mut state = self.state.clone();
         state.h = *Self::protocol_name();
-        state.k = self
-            .import_k_secret(vec![0u8; AES256_SECRET_LENGTH_USIZE])
-            .await?;
-        state.ck = self
-            .import_ck_secret(Self::protocol_name().to_vec())
-            .await?;
+        state.k = Some(
+            self.import_k_secret(vec![0u8; AES256_SECRET_LENGTH_USIZE])
+                .await?,
+        );
+        state.ck = Some(
+            self.import_ck_secret(Self::protocol_name().to_vec())
+                .await?,
+        );
 
         state.h = HandshakeState::sha256(&state.h);
         self.state = state;
@@ -71,7 +74,7 @@ impl Handshake {
         let key = Self::read_key(&message)?;
         state.mix_hash(key);
 
-        state.re = PublicKey::new(key.to_vec(), X25519);
+        state.re = Some(PublicKey::new(key.to_vec(), X25519));
 
         // decode payload
         let payload = Self::read_message1_payload(&message)?;
@@ -92,7 +95,7 @@ impl Handshake {
         let mut message2 = e_pub_key.data().to_vec();
 
         // ck, k = HKDF(ck, DH(e, re), 2)
-        let dh = self.dh(&state.e, &state.re).await?;
+        let dh = self.dh(&state.e, &state.re()?).await?;
         self.hkdf(&mut state, &dh).await?;
 
         // encrypt and output s.pubKey
@@ -101,7 +104,7 @@ impl Handshake {
         message2.extend_from_slice(c.as_slice());
 
         // ck, k = HKDF(ck, DH(s, re), 2)
-        let dh = self.dh(&state.s, &state.re).await?;
+        let dh = self.dh(&state.s, &state.re()?).await?;
         self.hkdf(&mut state, &dh).await?;
 
         // encrypt and output payload
@@ -118,19 +121,22 @@ impl Handshake {
         let mut state = self.state.clone();
         // decode re.pubKey
         let re_pub_key = Self::read_key(&message)?;
-        state.re = PublicKey::new(re_pub_key.to_vec(), X25519);
+        state.re = Some(PublicKey::new(re_pub_key.to_vec(), X25519));
         state.mix_hash(re_pub_key);
 
         // ck, k = HKDF(ck, DH(e, re), 2)
-        let dh = self.dh(&state.e, &state.re).await?;
+        let dh = self.dh(&state.e, &state.re()?).await?;
         self.hkdf(&mut state, &dh).await?;
 
         // decrypt rs.pubKey
         let rs_pub_key = Self::read_message2_encrypted_key(&message)?;
-        state.rs = PublicKey::new(self.hash_and_decrypt(&mut state, rs_pub_key).await?, X25519);
+        state.rs = Some(PublicKey::new(
+            self.hash_and_decrypt(&mut state, rs_pub_key).await?,
+            X25519,
+        ));
 
         // ck, k = HKDF(ck, DH(e, rs), 2)
-        let dh = self.dh(&state.e, &state.rs).await?;
+        let dh = self.dh(&state.e, &state.rs()?).await?;
         self.hkdf(&mut state, &dh).await?;
 
         // decrypt payload
@@ -152,7 +158,7 @@ impl Handshake {
         let mut message3 = c.to_vec();
 
         // ck, k = HKDF(ck, DH(s, re), 2)
-        let dh = self.dh(&state.s, &state.re).await?;
+        let dh = self.dh(&state.s, &state.re()?).await?;
         self.hkdf(&mut state, &dh).await?;
 
         // encrypt payload
@@ -170,10 +176,13 @@ impl Handshake {
         let mut state = self.state.clone();
         // decrypt rs key
         let rs_pub_key = Self::read_message3_encrypted_key(&message)?;
-        state.rs = PublicKey::new(self.hash_and_decrypt(&mut state, rs_pub_key).await?, X25519);
+        state.rs = Some(PublicKey::new(
+            self.hash_and_decrypt(&mut state, rs_pub_key).await?,
+            X25519,
+        ));
 
         // ck, k = HKDF(ck, DH(e, rs), 2), n = 0
-        let dh = self.dh(&state.e, &state.rs).await?;
+        let dh = self.dh(&state.e, &state.rs()?).await?;
         self.hkdf(&mut state, &dh).await?;
 
         // decrypt payload
@@ -263,7 +272,7 @@ impl Handshake {
         let hkdf_output = self
             .vault
             .hkdf_sha256(
-                &state.ck,
+                &state.ck()?,
                 b"",
                 Some(dh),
                 vec![Self::ck_attributes(), Self::k_attributes()],
@@ -272,11 +281,11 @@ impl Handshake {
 
         match hkdf_output.as_slice() {
             [new_ck, new_k] => {
-                self.vault.delete_ephemeral_secret(state.ck.clone()).await?;
-                self.vault.delete_ephemeral_secret(state.k.clone()).await?;
+                self.vault.delete_ephemeral_secret(state.ck()?).await?;
+                self.vault.delete_ephemeral_secret(state.k()?).await?;
                 state.n = 0;
-                state.ck = new_ck.into();
-                state.k = new_k.into();
+                state.ck = Some(new_ck.into());
+                state.k = Some(new_k.into());
                 Ok(())
             }
             _ => Err(XXError::InternalVaultError.into()),
@@ -288,7 +297,7 @@ impl Handshake {
         let hkdf_output = self
             .vault
             .hkdf_sha256(
-                &state.ck,
+                &state.ck()?,
                 b"",
                 None,
                 vec![Self::k_attributes(), Self::k_attributes()],
@@ -297,8 +306,8 @@ impl Handshake {
 
         match hkdf_output.as_slice() {
             [k1, k2] => {
-                self.vault.delete_ephemeral_secret(state.ck.clone()).await?;
-                self.vault.delete_ephemeral_secret(state.k.clone()).await?;
+                self.vault.delete_ephemeral_secret(state.ck()?).await?;
+                self.vault.delete_ephemeral_secret(state.k()?).await?;
                 Ok((k1.into(), k2.into()))
             }
             _ => Err(XXError::InternalVaultError.into()),
@@ -311,7 +320,7 @@ impl Handshake {
         nonce[4..].copy_from_slice(&state.n.to_be_bytes());
         let result = self
             .vault
-            .aead_aes_gcm_decrypt(&state.k, c, nonce.as_ref(), &state.h)
+            .aead_aes_gcm_decrypt(&state.k()?, c, nonce.as_ref(), &state.h)
             .await
             .map(|b| b.to_vec())?;
         state.mix_hash(c);
@@ -326,7 +335,7 @@ impl Handshake {
 
         let result = self
             .vault
-            .aead_aes_gcm_encrypt(&state.k, p, nonce.as_ref(), &state.h)
+            .aead_aes_gcm_encrypt(&state.k()?, p, nonce.as_ref(), &state.h)
             .await?
             .to_vec();
         state.mix_hash(result.as_slice());
@@ -429,12 +438,12 @@ impl Handshake {
 pub(super) struct HandshakeState {
     pub(super) s: KeyId,
     e: KeyId,
-    k: KeyId,
-    re: PublicKey,
-    pub(super) rs: PublicKey,
+    k: Option<KeyId>,
+    re: Option<PublicKey>,
+    pub(super) rs: Option<PublicKey>,
     n: u64,
     h: [u8; SHA256_SIZE_USIZE],
-    ck: KeyId,
+    ck: Option<KeyId>,
     message1_payload: Vec<u8>,
     pub(super) status: Status,
 }
@@ -448,12 +457,12 @@ impl HandshakeState {
         HandshakeState {
             s,
             e,
-            k: "".to_string(),
-            re: PublicKey::new(vec![], X25519),
-            rs: PublicKey::new(vec![], X25519),
+            k: None,
+            re: None,
+            rs: None,
             n: 0,
             h: [0u8; SHA256_SIZE_USIZE],
-            ck: "".to_string(),
+            ck: None,
             message1_payload,
             status: Initial,
         }
@@ -470,6 +479,46 @@ impl HandshakeState {
     pub(super) fn sha256(data: &[u8]) -> [u8; 32] {
         let digest = Sha256::digest(data);
         *array_ref![digest, 0, 32]
+    }
+
+    pub(super) fn k(&self) -> Result<KeyId> {
+        self.k.clone().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "key id k should have been set",
+            )
+        })
+    }
+
+    pub(super) fn ck(&self) -> Result<KeyId> {
+        self.ck.clone().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "key id ck should have been set",
+            )
+        })
+    }
+
+    pub(super) fn re(&self) -> Result<PublicKey> {
+        self.re.clone().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "public key id re should have been set",
+            )
+        })
+    }
+
+    pub(super) fn rs(&self) -> Result<PublicKey> {
+        self.rs.clone().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "public key id rs should have been set",
+            )
+        })
     }
 }
 
@@ -499,7 +548,7 @@ mod tests {
         assert_eq!(handshake.state.h, exp_h);
 
         let ck = vault
-            .get_ephemeral_secret(&handshake.state.ck, "ck")
+            .get_ephemeral_secret(&handshake.state.ck()?, "ck")
             .await?;
 
         assert_eq!(

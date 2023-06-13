@@ -20,8 +20,10 @@ use crate::{
 use alloc::sync::Arc;
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, vec::Vec};
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    AllowAll, Any, Decodable, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl, Route, Routed,
+    AllowAll, Any, Decodable, DenyAll, Error, Mailbox, Mailboxes, OutgoingAccessControl, Route,
+    Routed,
 };
 use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
@@ -37,7 +39,7 @@ pub(crate) struct HandshakeWorker {
     identifier: IdentityIdentifier,
     addresses: Addresses,
     role: Role,
-    remote_route: Route,
+    remote_route: Option<Route>,
     decryptor: Option<DecryptorWorker>,
 }
 
@@ -58,7 +60,7 @@ impl Worker for HandshakeWorker {
                 );
                 context
                     .send_from_address(
-                        self.remote_route(),
+                        self.remote_route()?,
                         message,
                         self.addresses.decryptor_remote.clone(),
                     )
@@ -83,7 +85,7 @@ impl Worker for HandshakeWorker {
             return decryptor.handle_message(context, message).await;
         };
 
-        self.remote_route = message.return_route();
+        self.remote_route = Some(message.return_route());
         if let SendMessage(message) = self
             .state_machine
             .on_event(ReceivedMessage(Vec::<u8>::decode(
@@ -93,7 +95,7 @@ impl Worker for HandshakeWorker {
         {
             context
                 .send_from_address(
-                    self.remote_route(),
+                    self.remote_route()?,
                     message,
                     self.addresses.decryptor_remote.clone(),
                 )
@@ -123,7 +125,7 @@ impl HandshakeWorker {
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         credentials: Vec<Credential>,
         trust_context: Option<TrustContext>,
-        remote_route: Route,
+        remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
     ) -> Result<()> {
@@ -200,8 +202,14 @@ impl HandshakeWorker {
     }
 
     /// Return the route for the other party's handshake worker
-    fn remote_route(&self) -> Route {
-        self.remote_route.clone()
+    fn remote_route(&self) -> Result<Route> {
+        self.remote_route.clone().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "a remote route should have been already set",
+            )
+        })
     }
 
     /// Create mailboxes and access rights for the workers involved in the secure channel creation
@@ -256,7 +264,7 @@ impl HandshakeWorker {
             let encryptor = EncryptorWorker::new(
                 self.role.str(),
                 self.addresses.clone(),
-                self.remote_route(),
+                self.remote_route()?,
                 Encryptor::new(
                     handshake_results.handshake_keys.encryption_key,
                     0,
@@ -264,7 +272,7 @@ impl HandshakeWorker {
                 ),
             );
 
-            let next_hop = self.remote_route().next()?.clone();
+            let next_hop = self.remote_route()?.next()?.clone();
             let main_mailbox = Mailbox::new(
                 self.addresses.encryptor.clone(),
                 Arc::new(AllowAll),
@@ -290,10 +298,11 @@ impl HandshakeWorker {
         );
 
         let their_decryptor_address = self
-            .remote_route
+            .remote_route()?
             .iter()
             .last()
-            .expect("the remote decryptor address should be set");
+            .expect("the remote route should not be empty")
+            .clone();
 
         let info = SecureChannelRegistryEntry::new(
             self.addresses.encryptor.clone(),
@@ -303,7 +312,7 @@ impl HandshakeWorker {
             self.role.is_initiator(),
             self.identifier.clone(),
             handshake_results.their_identifier,
-            their_decryptor_address.clone(),
+            their_decryptor_address,
         );
 
         self.secure_channels
