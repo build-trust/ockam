@@ -305,3 +305,24 @@ jobs:
         run: |
           mv tools/semgrep/.semgrepignore . & \
           semgrep --verbose --config="r2c" --config="tools/semgrep/rules/example.yaml"
+
+  # Check notice file for update
+  notice_update:
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:cecb1860acd571278b2e7f8ecb3ffe405447ee844615134f93ddd11b1f3e2ca8
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - run: cargo deny --all-features  list --config=tools/cargo-deny/deny.toml --layout crate --format json | ./tools/scripts/release/parseCrates.sh > update.txt
+      - run: |
+          test=`cat update.txt`
+          printf "%s\n" "$test"
+      - name: Fail if notice update needed
+        shell: bash
+        run: |
+          test=`cat update.txt`
+          compare="NOTICE file update required."
+          if [[ $test == $compare ]]; then
+            exit 1
+          fi

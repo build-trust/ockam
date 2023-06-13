@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Example Usage: 
-# cargo deny --all-features list --config=tools/cargo-deny/deny.toml --layout=crate --format json | ./parseCrates.sh > NOTICE
+# Example Usage:
+# cargo deny --all-features list --config=tools/cargo-deny/deny.toml --layout=crate --format json | ./tools/scripts/release/parseCrates.sh > NOTICE
 
 OPEN_BRACKET=$(expr 0)      # count open brackets, diff between a license name and library name
                             # set to 1 as we remove the 1st instance before counting
@@ -13,8 +13,9 @@ URL=""
 
 OLD_CKSUM=$(cat NOTICE | cksum)         # cksum old file, compare value to new below
 
-FILEOUT=$(printf "%25s %40s" "Crate Name" "License" )
-FILEOUT+=$(printf "\n------------------------------------------------------------------")
+FILEOUT=$(printf "This file contains attributions for any 3rd-party open source code used in this project.\n")
+FILEOUT+=$(printf "\n\n\n\n%1s %-32s %1s %-55s %1s %-80s %1s" "|" "Name " "|" "License " "|" "URL" "|" )
+FILEOUT+=$(printf "\n|----------------------------------|---------------------------------------------------------|----------------------------------------------------------------------------------|")
 
 # Derive input
 INPUT=$(jq "." $1 | tr -d '{},()":')
@@ -23,11 +24,11 @@ INPUT=$(jq "." $1 | tr -d '{},()":')
 IFS=$'\n'
 
 for line in $INPUT
-do 
+do
 
     # We have the closing bracket, set OPEN_BRACKET to 0, remove any leading commas from
     # licensing, and build output for this library & licensing
-    # NOTE: Important this check is before check for '[', otherwise crates w/o license 
+    # NOTE: Important this check is before check for '[', otherwise crates w/o license
     # are presented incorrectly
     if [[ $line == *"]"* ]]; then
         IFS=$' '
@@ -35,7 +36,7 @@ do
         LICENSE_STRING="${LICENSE_STRING#,}"    # remove any leading comma
         LICENSE_STRING=$(echo $LICENSE_STRING | sed 's/ //g')       # remove leading spaces from LICENSES
         LICENSE_STRING=$(echo $LICENSE_STRING | sed 's/,/, /g')     # add space after commas in LICENSES
-        FILEOUT+=$(printf "\n%25s %40s" "$PROJECT" "$LICENSE_STRING")
+        FILEOUT+=$(printf "\n%1s %-32s %1s %-55s %1s %-80s %1s" "|" "$PROJECT" "|" "$LICENSE_STRING" "|" "$URL" "|" )
         LICENSE_STRING=""           # reset LICENSE_STRING
         IFS=$'\n'
         continue        # skip to next iteration/line
@@ -52,7 +53,7 @@ do
         LICENSE_STRING+=", $line"
         continue        # skip to next iteration/line
     fi
-    
+
     # This line contains our library, version, and URL
     if [[ $OPEN_BRACKET -eq 0 ]] && [[ ${#line} -gt 3 ]]; then
         IFS=$' '
@@ -70,11 +71,14 @@ done
 NEW_CKSUM=$(printf "%s\n" $FILEOUT | cksum)     # cksum new results, compare to old
 
 if [[ $OLD_CKSUM != $NEW_CKSUM ]]; then
+    #TO-DO Add automated PR to update NOTICE file
+
     # Save new notice file
-    printf "%s\n" "$FILEOUT"        # Note: could not get echo to parse line breaks
+    printf "%s\n" "$FILEOUT" > NOTICE      # Note: could not get echo to parse line breaks
+    echo "NOTICE file update required."
+    else
+    echo "Notice file is up to date."
 fi
 
 # NOTE: Uncomment to save output w/o checking cksum values
-# printf "%s\n" "$FILEOUT"        # Note: could not get echo to parse line breaks
-
-
+#printf "%s\n" "$FILEOUT"        # Note: could not get echo to parse line breaks
