@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use rand::random;
 
-use ockam_core::flow_control::{
-    ProducerFlowControlId, SpawnerFlowControlId, SpawnerFlowControlPolicy,
-};
+use ockam_core::flow_control::SpawnerFlowControlId;
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::{
     secure_channels, IdentityIdentifier, SecureChannelListenerOptions, SecureChannelOptions,
@@ -111,28 +109,14 @@ impl SecureChannelListenerInfo {
 }
 
 #[allow(dead_code)]
-pub enum FId {
-    Spawner(SpawnerFlowControlId),
-    Producer(ProducerFlowControlId),
-}
-
-#[allow(dead_code)]
 pub async fn create_secure_channel_listener(
     ctx: &Context,
-    flow_control_id: FId,
+    options: SecureChannelListenerOptions,
 ) -> Result<SecureChannelListenerInfo> {
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
 
     let identity = identities_creation.create_identity().await?;
-
-    let options = SecureChannelListenerOptions::new();
-    let options = match flow_control_id {
-        FId::Spawner(id) => {
-            options.as_consumer_for_spawner(&id, SpawnerFlowControlPolicy::AllowOnlyOneMessage)
-        }
-        FId::Producer(id) => options.as_consumer_for_producer(&id),
-    };
 
     let identifier = identity.identifier();
     let listener = secure_channels
