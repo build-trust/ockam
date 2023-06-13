@@ -51,6 +51,7 @@ impl SecureChannelRegistryEntry {
     pub fn encryptor_api_address(&self) -> &Address {
         &self.encryptor_api_address
     }
+
     /// Decryptor messaging address
     pub fn decryptor_messaging_address(&self) -> &Address {
         &self.decryptor_messaging_address
