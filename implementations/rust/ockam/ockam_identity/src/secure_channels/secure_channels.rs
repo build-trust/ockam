@@ -106,7 +106,7 @@ impl SecureChannels {
             access_control.decryptor_outgoing_access_control,
             options.credentials,
             options.trust_context,
-            Some(route),
+            route,
             Some(options.timeout),
             Role::Initiator,
         )

@@ -37,7 +37,7 @@ pub(crate) struct HandshakeWorker {
     identifier: IdentityIdentifier,
     addresses: Addresses,
     role: Role,
-    remote_route: Option<Route>,
+    remote_route: Route,
     decryptor: Option<DecryptorWorker>,
 }
 
@@ -83,8 +83,7 @@ impl Worker for HandshakeWorker {
             return decryptor.handle_message(context, message).await;
         };
 
-        // we only set it once to avoid redirects attack
-        self.remote_route = Some(message.return_route());
+        self.remote_route = message.return_route();
         if let SendMessage(message) = self
             .state_machine
             .on_event(ReceivedMessage(Vec::<u8>::decode(
@@ -124,7 +123,7 @@ impl HandshakeWorker {
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         credentials: Vec<Credential>,
         trust_context: Option<TrustContext>,
-        remote_route: Option<Route>,
+        remote_route: Route,
         timeout: Option<Duration>,
         role: Role,
     ) -> Result<()> {
@@ -201,11 +200,8 @@ impl HandshakeWorker {
     }
 
     /// Return the route for the other party's handshake worker
-    /// That route is set once and for all once we receive a message coming from that worker
     fn remote_route(&self) -> Route {
-        self.remote_route
-            .clone()
-            .expect("a remote route must have been already set for sending a message")
+        self.remote_route.clone()
     }
 
     /// Create mailboxes and access rights for the workers involved in the secure channel creation
@@ -293,6 +289,12 @@ impl HandshakeWorker {
             &self.addresses.decryptor_remote
         );
 
+        let their_decryptor_address = self
+            .remote_route
+            .iter()
+            .last()
+            .expect("the remote decryptor address should be set");
+
         let info = SecureChannelRegistryEntry::new(
             self.addresses.encryptor.clone(),
             self.addresses.encryptor_api.clone(),
@@ -301,6 +303,7 @@ impl HandshakeWorker {
             self.role.is_initiator(),
             self.identifier.clone(),
             handshake_results.their_identifier,
+            their_decryptor_address.clone(),
         );
 
         self.secure_channels
