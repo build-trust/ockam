@@ -347,8 +347,6 @@ impl Context {
 
         debugger::log_outgoing_message(self, &relay_msg);
 
-        // TODO check if this context is allowed to forward the message
-        //      to the next hop in the route
         if !self.mailboxes.is_outgoing_authorized(&relay_msg).await? {
             warn!(
                 "Message forwarded from {} to {} did not pass outgoing access control",
