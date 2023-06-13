@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use rand::random;
 
-use ockam_core::flow_control::SpawnerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::{
     secure_channels, IdentityIdentifier, SecureChannelListenerOptions, SecureChannelOptions,
@@ -92,7 +92,7 @@ async fn check_message_flow_with_ctx(
 pub struct SecureChannelListenerInfo {
     pub identifier: IdentityIdentifier,
     pub secure_channels: Arc<SecureChannels>,
-    pub flow_control_id: SpawnerFlowControlId,
+    pub flow_control_id: FlowControlId,
 }
 
 impl SecureChannelListenerInfo {
@@ -111,7 +111,7 @@ impl SecureChannelListenerInfo {
 #[allow(dead_code)]
 pub async fn create_secure_channel_listener(
     ctx: &Context,
-    options: SecureChannelListenerOptions,
+    flow_control_id: &FlowControlId,
 ) -> Result<SecureChannelListenerInfo> {
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
@@ -119,6 +119,7 @@ pub async fn create_secure_channel_listener(
     let identity = identities_creation.create_identity().await?;
 
     let identifier = identity.identifier();
+    let options = SecureChannelListenerOptions::new().as_consumer(flow_control_id);
     let listener = secure_channels
         .create_secure_channel_listener(ctx, &identifier, "listener", options)
         .await?;

@@ -15,7 +15,7 @@ use ockam_api::config::lookup::{LookupMeta, ProjectAuthority};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
 use ockam_core::compat::str::FromStr;
-use ockam_core::flow_control::ProducerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
 
@@ -109,7 +109,7 @@ pub async fn create_secure_channel_to_project(
     project_identity: &str,
     credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
-) -> crate::Result<(MultiAddr, ProducerFlowControlId)> {
+) -> crate::Result<(MultiAddr, FlowControlId)> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
 
@@ -134,7 +134,7 @@ pub async fn create_secure_channel_to_authority(
     authority: IdentityIdentifier,
     addr: &MultiAddr,
     identity: Option<String>,
-) -> crate::Result<(MultiAddr, ProducerFlowControlId)> {
+) -> crate::Result<(MultiAddr, FlowControlId)> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
     let allowed = vec![authority];

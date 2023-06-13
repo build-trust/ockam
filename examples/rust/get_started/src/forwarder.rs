@@ -28,12 +28,11 @@ impl Worker for Forwarder {
 
         if let Some(info) = ctx.flow_controls().find_flow_control_with_producer_address(&self.0) {
             ctx.flow_controls()
-                .add_consumer_for_producer(prev_hop.clone(), info.flow_control_id());
+                .add_consumer(prev_hop.clone(), info.flow_control_id());
         }
 
         if let Some(info) = ctx.flow_controls().find_flow_control_with_producer_address(&prev_hop) {
-            ctx.flow_controls()
-                .add_consumer_for_producer(self.0.clone(), info.flow_control_id());
+            ctx.flow_controls().add_consumer(self.0.clone(), info.flow_control_id());
         }
 
         // Send the message on its onward_route

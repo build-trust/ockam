@@ -14,7 +14,7 @@ use ockam_node::Context;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind};
 
-use ockam_core::flow_control::ProducerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use tinyvec::alloc;
 use tracing::warn;
 
@@ -28,13 +28,13 @@ use crate::kafka::protocol_aware::{CorrelationId, KafkaMessageInterceptor, Reque
 pub(crate) struct OutletInterceptorImpl {
     request_map: Arc<Mutex<HashMap<CorrelationId, RequestInfo>>>,
     outlet_controller: KafkaOutletController,
-    flow_control_id: ProducerFlowControlId,
+    flow_control_id: FlowControlId,
 }
 
 impl OutletInterceptorImpl {
     pub(crate) fn new(
         outlet_controller: KafkaOutletController,
-        flow_control_id: ProducerFlowControlId,
+        flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             request_map: Arc::new(Mutex::new(HashMap::new())),
@@ -167,7 +167,7 @@ impl KafkaMessageInterceptor for OutletInterceptorImpl {
                     // allow the interceptor to reach the outlet
                     context
                         .flow_controls()
-                        .add_consumer_for_producer(outlet_address, &self.flow_control_id);
+                        .add_consumer(outlet_address, &self.flow_control_id);
                 }
             }
         } else {

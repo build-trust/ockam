@@ -6,7 +6,7 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::flow_control::ProducerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     route, Address, AllowAll, AllowSourceAddress, DenyAll, Mailbox, Mailboxes,
     OutgoingAccessControl, Result, Route,
@@ -69,7 +69,7 @@ impl RemoteForwarder {
         addresses: Addresses,
         registration_route: Route,
         registration_payload: String,
-        flow_control_id: Option<ProducerFlowControlId>,
+        flow_control_id: Option<FlowControlId>,
         heartbeat: Option<DelayedEvent<Vec<u8>>>,
         heartbeat_interval: Duration,
     ) -> Self {

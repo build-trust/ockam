@@ -2,7 +2,7 @@ use crate::workers::Addresses;
 use crate::{TcpConnectionMode, TcpRegistry, TcpSenderInfo};
 use cfg_if::cfg_if;
 use core::time::Duration;
-use ockam_core::flow_control::ProducerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
@@ -40,7 +40,7 @@ pub(crate) struct TcpSendWorker {
     socket_address: SocketAddr,
     addresses: Addresses,
     mode: TcpConnectionMode,
-    receiver_flow_control_id: ProducerFlowControlId,
+    receiver_flow_control_id: FlowControlId,
     rx_should_be_stopped: bool,
 }
 
@@ -52,7 +52,7 @@ impl TcpSendWorker {
         socket_address: SocketAddr,
         addresses: Addresses,
         mode: TcpConnectionMode,
-        receiver_flow_control_id: ProducerFlowControlId,
+        receiver_flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             registry,
@@ -78,7 +78,7 @@ impl TcpSendWorker {
         socket_address: SocketAddr,
         mode: TcpConnectionMode,
         sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
-        receiver_flow_control_id: &ProducerFlowControlId,
+        receiver_flow_control_id: &FlowControlId,
     ) -> Result<()> {
         trace!("Creating new TCP worker pair");
         let sender_worker = Self::new(

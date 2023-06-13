@@ -1,7 +1,6 @@
 use crate::common::{
     message_should_not_pass, message_should_not_pass_with_ctx, message_should_pass_with_ctx,
 };
-use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_core::{route, AllowAll, Result};
 use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::Context;
@@ -57,17 +56,14 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 
     let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
-    ctx.flow_controls().add_consumer_for_spawner(
-        "bob_ctx",
-        bob_listener.flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("bob_ctx", bob_listener.flow_control_id());
     message_should_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
 
     let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
     ctx.flow_controls()
-        .add_consumer_for_producer("alice_ctx", channel_to_bob.flow_control_id());
+        .add_consumer("alice_ctx", channel_to_bob.flow_control_id());
     message_should_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
 
     ctx.stop().await
@@ -111,10 +107,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .create_identity()
         .await?;
 
-    let bob_options = SecureChannelListenerOptions::new().as_consumer_for_spawner(
-        listener.flow_control_id(),
-        SpawnerFlowControlPolicy::AllowOnlyOneMessage,
-    );
+    let bob_options = SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id());
     let bob_listener = bob_secure_channels
         .create_secure_channel_listener(ctx, &bob.identifier(), "listener", bob_options)
         .await?;
@@ -142,17 +135,14 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
-    ctx.flow_controls().add_consumer_for_spawner(
-        "bob_ctx",
-        bob_listener.flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("bob_ctx", bob_listener.flow_control_id());
     message_should_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
 
     let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
     ctx.flow_controls()
-        .add_consumer_for_producer("alice_ctx", channel_to_bob.flow_control_id());
+        .add_consumer("alice_ctx", channel_to_bob.flow_control_id());
     message_should_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
 
     ctx.stop().await

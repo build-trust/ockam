@@ -26,7 +26,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, SpawnerFlowControlId, SpawnerFlowControlPolicy};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_identity::TrustContext;
@@ -91,7 +91,7 @@ pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Err
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
     node_name: String,
-    api_transport_flow_control_id: SpawnerFlowControlId,
+    api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
@@ -268,15 +268,12 @@ pub struct ApiTransport {
 }
 
 pub struct NodeManagerTransportOptions {
-    api_transport_flow_control_id: SpawnerFlowControlId,
+    api_transport_flow_control_id: FlowControlId,
     tcp_transport: TcpTransport,
 }
 
 impl NodeManagerTransportOptions {
-    pub fn new(
-        api_transport_flow_control_id: SpawnerFlowControlId,
-        tcp_transport: TcpTransport,
-    ) -> Self {
+    pub fn new(api_transport_flow_control_id: FlowControlId, tcp_transport: TcpTransport) -> Self {
         Self {
             api_transport_flow_control_id,
             tcp_transport,
@@ -396,14 +393,11 @@ impl NodeManager {
     async fn initialize_defaults(
         &mut self,
         ctx: &Context,
-        api_flow_control_id: &SpawnerFlowControlId,
+        api_flow_control_id: &FlowControlId,
     ) -> Result<()> {
         // Start services
-        ctx.flow_controls().add_consumer_for_spawner(
-            DefaultAddress::UPPERCASE_SERVICE,
-            api_flow_control_id,
-            SpawnerFlowControlPolicy::AllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(DefaultAddress::UPPERCASE_SERVICE, api_flow_control_id);
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
 
@@ -411,14 +405,8 @@ impl NodeManager {
             ctx,
             DefaultAddress::FORWARDING_SERVICE,
             ForwardingServiceOptions::new()
-                .service_as_consumer_for_spawner(
-                    api_flow_control_id,
-                    SpawnerFlowControlPolicy::AllowMultipleMessages,
-                )
-                .forwarder_as_consumer_for_spawner(
-                    api_flow_control_id,
-                    SpawnerFlowControlPolicy::AllowMultipleMessages,
-                ),
+                .service_as_consumer(api_flow_control_id)
+                .forwarder_as_consumer(api_flow_control_id),
         )
         .await?;
 
@@ -732,11 +720,8 @@ impl NodeManagerWorker {
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Flow Controls ==*==
-            (Post, ["node", "flow_controls", "add_consumer_for_spawner"]) => {
-                self.add_consumer_for_spawner(ctx, req, dec)?.to_vec()?
-            }
-            (Post, ["node", "flow_controls", "add_consumer_for_producer"]) => {
-                self.add_consumer_for_producer(ctx, req, dec)?.to_vec()?
+            (Post, ["node", "flow_controls", "add_consumer"]) => {
+                self.add_consumer(ctx, req, dec)?.to_vec()?
             }
 
             // ==*== Workers ==*==
@@ -863,20 +848,14 @@ impl Worker for NodeManagerWorker {
 
         // Always start the echoer service as ockam_api::Medic assumes it will be
         // started unconditionally on every node. It's used for liveness checks.
-        ctx.flow_controls().add_consumer_for_spawner(
-            DefaultAddress::ECHO_SERVICE,
-            &api_flow_control_id,
-            SpawnerFlowControlPolicy::AllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
         node_manager
             .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
 
-        ctx.flow_controls().add_consumer_for_spawner(
-            DefaultAddress::RPC_PROXY,
-            &api_flow_control_id,
-            SpawnerFlowControlPolicy::AllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(DefaultAddress::RPC_PROXY, &api_flow_control_id);
         ctx.start_worker(DefaultAddress::RPC_PROXY, RpcProxyService::new())
             .await?;
 

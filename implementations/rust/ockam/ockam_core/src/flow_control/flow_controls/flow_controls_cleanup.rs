@@ -1,4 +1,4 @@
-use crate::flow_control::{FlowControls, SpawnerFlowControlId};
+use crate::flow_control::{FlowControlId, FlowControls};
 use crate::Address;
 
 impl FlowControls {
@@ -37,13 +37,13 @@ impl FlowControls {
 
         // Spawners don't exist, Producers don't exist as well, which means storing Consumers
         // for that FlowControlId doesn't make sense anymore
-        self.consumers_for_spawners
+        self.consumers
             .write()
             .unwrap()
             .remove(&spawner_flow_control_id);
     }
 
-    fn cleanup_producers_spawner(&self, flow_control_id: &SpawnerFlowControlId) {
+    fn cleanup_producers_spawner(&self, flow_control_id: &FlowControlId) {
         // Check if that Spawner still exists
         let spawner_exists = self
             .spawners
@@ -74,10 +74,7 @@ impl FlowControls {
         }
 
         // We can clean Consumers for that FlowControlId
-        self.consumers_for_spawners
-            .write()
-            .unwrap()
-            .remove(flow_control_id);
+        self.consumers.write().unwrap().remove(flow_control_id);
     }
 
     fn cleanup_producer(&self, address: &Address) {
@@ -111,15 +108,12 @@ impl FlowControls {
         }
 
         // We can clean Consumers for that FlowControlId
-        self.consumers_for_producers
-            .write()
-            .unwrap()
-            .remove(&flow_control_id);
+        self.consumers.write().unwrap().remove(&flow_control_id);
     }
 
     fn cleanup_consumer(&self, address: &Address) {
         // Just remove this Address from Consumers
-        let mut consumers = self.consumers_for_spawners.write().unwrap();
+        let mut consumers = self.consumers.write().unwrap();
 
         consumers
             .iter_mut()
@@ -129,7 +123,7 @@ impl FlowControls {
         consumers.retain(|_, info| !info.0.is_empty());
         drop(consumers);
 
-        let mut consumers = self.consumers_for_producers.write().unwrap();
+        let mut consumers = self.consumers.write().unwrap();
 
         consumers
             .iter_mut()

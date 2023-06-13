@@ -12,7 +12,6 @@ use ockam_api::nodes::service::{
     NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
@@ -81,11 +80,8 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.flow_controls().add_consumer_for_spawner(
-        NODEMANAGER_ADDR,
-        listener.flow_control_id(),
-        SpawnerFlowControlPolicy::AllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
 
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;

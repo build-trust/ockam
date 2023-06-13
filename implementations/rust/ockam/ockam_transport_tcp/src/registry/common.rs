@@ -1,6 +1,6 @@
 use core::fmt;
 use core::fmt::Formatter;
-use ockam_core::flow_control::{ProducerFlowControlId, SpawnerFlowControlId};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::Address;
 use std::net::SocketAddr;
 
@@ -29,7 +29,7 @@ pub struct TcpSenderInfo {
     receiver_address: Address,
     socket_address: SocketAddr,
     mode: TcpConnectionMode,
-    flow_control_id: ProducerFlowControlId,
+    flow_control_id: FlowControlId,
 }
 
 impl TcpSenderInfo {
@@ -39,7 +39,7 @@ impl TcpSenderInfo {
         receiver_address: Address,
         socket_address: SocketAddr,
         mode: TcpConnectionMode,
-        flow_control_id: ProducerFlowControlId,
+        flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             address,
@@ -63,7 +63,7 @@ impl TcpSenderInfo {
         self.socket_address
     }
     /// Corresponding [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &ProducerFlowControlId {
+    pub fn flow_control_id(&self) -> &FlowControlId {
         &self.flow_control_id
     }
     /// [`TcpConnectionMode`] for this connection
@@ -79,7 +79,7 @@ pub struct TcpReceiverInfo {
     sender_address: Address,
     socket_address: SocketAddr,
     mode: TcpConnectionMode,
-    flow_control_id: ProducerFlowControlId,
+    flow_control_id: FlowControlId,
 }
 
 impl TcpReceiverInfo {
@@ -89,7 +89,7 @@ impl TcpReceiverInfo {
         sender_address: Address,
         socket_address: SocketAddr,
         mode: TcpConnectionMode,
-        flow_control_id: ProducerFlowControlId,
+        flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             address,
@@ -113,7 +113,7 @@ impl TcpReceiverInfo {
         self.socket_address
     }
     /// Corresponding [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &ProducerFlowControlId {
+    pub fn flow_control_id(&self) -> &FlowControlId {
         &self.flow_control_id
     }
     /// [`TcpConnectionMode`] for this connection
@@ -127,7 +127,7 @@ impl TcpReceiverInfo {
 pub struct TcpListenerInfo {
     address: Address,
     socket_address: SocketAddr,
-    flow_control_id: SpawnerFlowControlId,
+    flow_control_id: FlowControlId,
 }
 
 impl TcpListenerInfo {
@@ -135,7 +135,7 @@ impl TcpListenerInfo {
     pub fn new(
         address: Address,
         socket_address: SocketAddr,
-        flow_control_id: SpawnerFlowControlId,
+        flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             address,
@@ -153,7 +153,7 @@ impl TcpListenerInfo {
         self.socket_address
     }
     /// Corresponding [`FlowControlId`]
-    pub fn flow_control_id(&self) -> &SpawnerFlowControlId {
+    pub fn flow_control_id(&self) -> &FlowControlId {
         &self.flow_control_id
     }
 }

@@ -19,7 +19,7 @@ use ockam_api::{
     DefaultAddress,
 };
 use ockam_core::api::RequestBuilder;
-use ockam_core::flow_control::ProducerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::route;
 use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
@@ -221,7 +221,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
     async fn secure_channel_to(
         &self,
         endpoint: &OrchestratorEndpoint,
-    ) -> Result<(MultiAddr, ProducerFlowControlId)> {
+    ) -> Result<(MultiAddr, FlowControlId)> {
         let node_name = self.node_name.as_ref().context("Node is required")?;
         let project = self
             .project_lookup

@@ -1,8 +1,7 @@
 use core::time::Duration;
 
-use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_core::{route, Result};
-use ockam_identity::{SecureChannelListenerOptions, SecureChannelOptions};
+use ockam_identity::SecureChannelOptions;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 
@@ -37,11 +36,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     message_should_not_pass(ctx, &connection_to_bob.clone().into()).await?;
     message_should_not_pass(ctx, connection_to_alice.address()).await?;
 
-    let options = SecureChannelListenerOptions::new().as_consumer_for_spawner(
-        listener.flow_control_id(),
-        SpawnerFlowControlPolicy::AllowOnlyOneMessage,
-    );
-    let bob_listener_info = create_secure_channel_listener(ctx, options).await?;
+    let bob_listener_info = create_secure_channel_listener(ctx, listener.flow_control_id()).await?;
 
     let channel_to_bob = create_secure_channel(ctx, &connection_to_bob.clone().into()).await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
@@ -60,8 +55,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         )
         .await;
     assert!(
-        res.is_err(),
-        "We can only create 1 secure channel with that connection"
+        res.is_ok(),
+        "We can create multiple secure channels with that connection"
     );
 
     ctx.stop().await
@@ -94,9 +89,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     message_should_not_pass(ctx, &connection_to_bob.into()).await?;
     message_should_not_pass(ctx, connection_to_alice.address()).await?;
 
-    let options =
-        SecureChannelListenerOptions::new().as_consumer_for_producer(&alice_flow_control_id);
-    let alice_listener_info = create_secure_channel_listener(ctx, options).await?;
+    let alice_listener_info = create_secure_channel_listener(ctx, &alice_flow_control_id).await?;
 
     let channel_to_alice = create_secure_channel(ctx, connection_to_alice.address()).await?;
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry

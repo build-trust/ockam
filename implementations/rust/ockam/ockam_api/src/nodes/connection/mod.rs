@@ -3,7 +3,7 @@ mod project;
 mod secure;
 
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::ProducerFlowControlId;
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{async_trait, route, Address, CowStr, Route, LOCAL};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Service;
@@ -81,7 +81,7 @@ pub struct ConnectionInstance {
     /// A TCP worker address if used when instantiating the connection
     pub tcp_worker: Option<Address>,
     /// If a flow control was created
-    pub flow_control_id: Option<ProducerFlowControlId>,
+    pub flow_control_id: Option<FlowControlId>,
 }
 
 impl ConnectionInstance {
@@ -90,7 +90,7 @@ impl ConnectionInstance {
         if let Some(flow_control_id) = &self.flow_control_id {
             context
                 .flow_controls()
-                .add_consumer_for_producer(address.clone(), flow_control_id);
+                .add_consumer(address.clone(), flow_control_id);
         }
     }
 }
@@ -117,7 +117,7 @@ pub struct ConnectionInstanceBuilder {
     original_multiaddr: MultiAddr,
     pub current_multiaddr: MultiAddr,
     pub transport_route: Route,
-    pub flow_control_id: Option<ProducerFlowControlId>,
+    pub flow_control_id: Option<FlowControlId>,
     pub secure_channel_encryptors: Vec<Address>,
     pub tcp_worker: Option<Address>,
 }
@@ -141,7 +141,7 @@ impl Debug for ConnectionInstanceBuilder {
 /// Represent changes to write to the [`ConnectionInstanceBuilder`]
 pub struct Changes {
     /// If set, will overwrite the existing one on the [`ConnectionInstanceBuilder`] state
-    pub flow_control_id: Option<ProducerFlowControlId>,
+    pub flow_control_id: Option<FlowControlId>,
     /// Mandatory, will update the main [`MultiAddr`] in the [`ConnectionInstanceBuilder`]
     pub current_multiaddr: MultiAddr,
     /// Optional, to keep track of resources used add every time

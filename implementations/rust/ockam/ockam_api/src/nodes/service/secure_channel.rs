@@ -10,7 +10,6 @@ use ockam::identity::{
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::SpawnerFlowControlPolicy;
 use ockam_identity::Credential;
 use ockam_identity::{SecureChannel, SecureChannelListener};
 use ockam_multiaddr::MultiAddr;
@@ -167,10 +166,8 @@ impl NodeManager {
         let secure_channels = self.build_secure_channels(vault_name.clone()).await?;
         let identifier = self.get_identifier(identity_name.clone()).await?;
 
-        let options = SecureChannelListenerOptions::new().as_consumer_for_spawner(
-            &self.api_transport_flow_control_id,
-            SpawnerFlowControlPolicy::AllowOnlyOneMessage,
-        );
+        let options =
+            SecureChannelListenerOptions::new().as_consumer(&self.api_transport_flow_control_id);
 
         let options = match authorized_identifiers {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
@@ -194,22 +191,17 @@ impl NodeManager {
 
         // TODO: Clean
         // Add Echoer, Uppercase and Cred Exch as a consumer by default
-        ctx.flow_controls().add_consumer_for_spawner(
-            DefaultAddress::ECHO_SERVICE,
-            listener.flow_control_id(),
-            SpawnerFlowControlPolicy::AllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(DefaultAddress::ECHO_SERVICE, listener.flow_control_id());
 
-        ctx.flow_controls().add_consumer_for_spawner(
+        ctx.flow_controls().add_consumer(
             DefaultAddress::UPPERCASE_SERVICE,
             listener.flow_control_id(),
-            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
-        ctx.flow_controls().add_consumer_for_spawner(
+        ctx.flow_controls().add_consumer(
             DefaultAddress::CREDENTIALS_SERVICE,
             listener.flow_control_id(),
-            SpawnerFlowControlPolicy::AllowMultipleMessages,
         );
 
         Ok(listener)
