@@ -461,8 +461,9 @@ impl HandshakeState {
 
     /// h = SHA256(h || data)
     pub(super) fn mix_hash(&mut self, data: &[u8]) {
-        let mut input = self.h.to_vec();
-        input.extend(data);
+        let mut input = Vec::with_capacity(SHA256_SIZE_USIZE + data.len());
+        input.extend_from_slice(&self.h);
+        input.extend_from_slice(data);
         self.h = Self::sha256(&input);
     }
 
