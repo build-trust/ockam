@@ -85,7 +85,11 @@ impl Worker for HandshakeWorker {
             return decryptor.handle_message(context, message).await;
         };
 
-        self.remote_route = Some(message.return_route());
+        // set the remote route by taking the first message remote route
+        if self.remote_route.is_none() {
+            self.remote_route = Some(message.return_route())
+        };
+
         if let SendMessage(message) = self
             .state_machine
             .on_event(ReceivedMessage(Vec::<u8>::decode(
