@@ -151,15 +151,14 @@ defmodule Ockam.Healthcheck.Test do
 
     assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 1},
                     %{target: %{name: "target"}}},
-                   5000
+                   1000
 
     assert_receive {:telemetry_event, [:ockam, :healthcheck, :ok], %{duration: _duration},
                     %{target: %{name: "target"}}},
-                   5000
-
-    refute_receive {:telemetry_event, [:ockam, :healthcheck, :error], %{duration: _duration},
-                    %{target: %{name: "target"}}},
                    500
+
+    refute_received {:telemetry_event, [:ockam, :healthcheck, :error], %{duration: _duration},
+                     %{target: %{name: "target"}}}
   end
 
   test "healthcheck API endpoint target Error" do
@@ -197,15 +196,14 @@ defmodule Ockam.Healthcheck.Test do
 
     assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 0},
                     %{target: %{name: "target"}}},
-                   5000
-
-    refute_receive {:telemetry_event, [:ockam, :healthcheck, :ok], %{duration: _duration},
-                    %{target: %{name: "target"}}},
-                   5000
+                   1000
 
     assert_receive {:telemetry_event, [:ockam, :healthcheck, :error], %{duration: _duration},
                     %{target: %{name: "target"}}},
                    500
+
+    refute_received {:telemetry_event, [:ockam, :healthcheck, :ok], %{duration: _duration},
+                     %{target: %{name: "target"}}}
   end
 
   test "healthcheck channel error" do
