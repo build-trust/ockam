@@ -1,6 +1,5 @@
 use crate::credential::Credential;
-use crate::secure_channel::decryptor::Decryptor;
-use crate::secure_channel::decryptor_worker::DecryptorWorker;
+use crate::secure_channel::decryptor::DecryptorHandler;
 use crate::secure_channel::encryptor::Encryptor;
 use crate::secure_channel::encryptor_worker::EncryptorWorker;
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
@@ -14,8 +13,8 @@ use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMac
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    to_xx_initialized, to_xx_vault, IdentityIdentifier, SecureChannelRegistryEntry, SecureChannels,
-    TrustContext, TrustPolicy,
+    to_xx_initialized, to_xx_vault, IdentityError, IdentityIdentifier, SecureChannelRegistryEntry,
+    SecureChannels, TrustContext, TrustPolicy,
 };
 use alloc::sync::Arc;
 use core::time::Duration;
@@ -40,7 +39,7 @@ pub(crate) struct HandshakeWorker {
     addresses: Addresses,
     role: Role,
     remote_route: Option<Route>,
-    decryptor: Option<DecryptorWorker>,
+    decryptor_handler: Option<DecryptorHandler>,
 }
 
 #[ockam_core::worker]
@@ -80,9 +79,21 @@ impl Worker for HandshakeWorker {
         context: &mut Self::Context,
         message: Routed<Self::Message>,
     ) -> Result<()> {
-        if let Some(decryptor) = self.decryptor.as_mut() {
-            // since we cannot replace this worker with the decryptor worker we act as a relay instead
-            return decryptor.handle_message(context, message).await;
+        // Once the decryptor has been initialized, let it handle messages
+        // Some messages can come from other systems using the remote address
+        // and some messages can come from the current node when the decryptor
+        // used to support the decryption of Kafka messages for example
+        if let Some(decryptor_handler) = self.decryptor_handler.as_mut() {
+            let msg_addr = message.msg_addr();
+
+            let result = if msg_addr == self.addresses.decryptor_remote {
+                decryptor_handler.handle_decrypt(context, message).await
+            } else if msg_addr == self.addresses.decryptor_api {
+                decryptor_handler.handle_decrypt_api(context, message).await
+            } else {
+                Err(IdentityError::UnknownChannelMsgDestination.into())
+            };
+            return result;
         };
 
         // set the remote route by taking the first message remote route
@@ -109,7 +120,7 @@ impl Worker for HandshakeWorker {
         // if we reached the final state we can make a pair of encryptor/decryptor
         if let Some(final_state) = self.state_machine.get_handshake_results() {
             // start the encryptor worker and return the decryptor
-            self.decryptor = Some(self.finalize(context, final_state).await?);
+            self.decryptor_handler = Some(self.finalize(context, final_state).await?);
             self.callback_sender.send(()).await?;
         };
 
@@ -171,7 +182,7 @@ impl HandshakeWorker {
             role: role.clone(),
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
-            decryptor: None,
+            decryptor_handler: None,
         };
 
         WorkerBuilder::new(worker)
@@ -244,26 +255,24 @@ impl HandshakeWorker {
         Mailboxes::new(remote_mailbox, vec![internal_mailbox, api_mailbox])
     }
 
-    /// Finalize the handshake by creating a `DecryptorWorker` and an `EncryptorWorker`
+    /// Finalize the handshake by creating a `Decryptor` and an `EncryptorWorker`
     /// Note that `EncryptorWorker` is actually started as an independent worker while
-    /// the `DecryptorWorker` is directly used by this worker to delegate the decryption of messages
+    /// the `Decryptor` is directly used by this worker to delegate the decryption of messages
     async fn finalize(
         &self,
         context: &Context,
         handshake_results: HandshakeResults,
-    ) -> Result<DecryptorWorker> {
-        // decryptor worker
-        let decryptor = DecryptorWorker::new(
+    ) -> Result<DecryptorHandler> {
+        // create a decryptor to delegate the processing of all messages after the handshake
+        let decryptor = DecryptorHandler::new(
             self.role.str(),
             self.addresses.clone(),
-            Decryptor::new(
-                handshake_results.handshake_keys.decryption_key,
-                to_xx_initialized(self.secure_channels.identities.vault()),
-            ),
+            handshake_results.handshake_keys.decryption_key,
+            to_xx_initialized(self.secure_channels.identities.vault()),
             handshake_results.their_identifier.clone(),
         );
 
-        // encryptor worker
+        // create a separate encryptor worker which will be started independently
         {
             let encryptor = EncryptorWorker::new(
                 self.role.str(),
