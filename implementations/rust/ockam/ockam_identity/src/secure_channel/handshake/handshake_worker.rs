@@ -96,10 +96,11 @@ impl Worker for HandshakeWorker {
             return result;
         };
 
-        // set the remote route by taking the first message remote route
-        if self.remote_route.is_none() {
-            self.remote_route = Some(message.return_route())
-        };
+        // set the remote route by taking the most up to date message return route
+        // In the case of the initiator the first return route mentions the secure channel listener
+        // address so we need to wait for the return route corresponding to the remote handshake worker
+        // when it has been spawned
+        self.remote_route = Some(message.return_route());
 
         if let SendMessage(message) = self
             .state_machine
