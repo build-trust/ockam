@@ -125,7 +125,7 @@ async fn do_main(ctx: &mut Context) -> Result<()> {
             .await?;
         info!("Received: {:?}", res);
 
-        // Validate recieved message
+        // Validate received message
         if res != msg {
             return Err(Error::new(
                 Origin::Application,
