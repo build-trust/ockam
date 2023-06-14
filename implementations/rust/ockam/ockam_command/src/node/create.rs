@@ -32,7 +32,7 @@ use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
-use ockam_api::nodes::service::{ApiTransport, NodeManagerTrustOptions};
+use ockam_api::nodes::service::NodeManagerTrustOptions;
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
@@ -44,7 +44,6 @@ use ockam_api::{
     },
 };
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, LOCAL};
 
 use super::show::is_node_up;
@@ -313,14 +312,7 @@ async fn run_foreground_node(
         ),
         NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
-            ApiTransport {
-                tt: TransportType::Tcp,
-                tm: TransportMode::Listen,
-                socket_address: *listener.socket_address(),
-                worker_address: "<none>".into(),
-                processor_address: listener.processor_address().to_string(),
-                flow_control_id: listener.flow_control_id().clone(),
-            },
+            listener.flow_control_id().clone(),
             tcp.async_try_clone().await?,
         ),
         NodeManagerTrustOptions::new(trust_context_config),
@@ -328,11 +320,8 @@ async fn run_foreground_node(
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.flow_controls().add_consumer(
-        NODEMANAGER_ADDR,
-        listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;
 

@@ -26,7 +26,7 @@ impl NodeManagerWorker {
         }
 
         ctx.flow_controls()
-            .add_consumer(addr, request.flow_control_id(), request.policy());
+            .add_consumer(addr, request.flow_control_id());
 
         Ok(Response::ok(req.id()))
     }

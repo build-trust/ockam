@@ -1,7 +1,6 @@
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::workers::Echoer;
 use ockam::{ForwardingService, ForwardingServiceOptions};
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, AllowAll, Result};
 use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::{Context, MessageReceiveOptions};
@@ -36,14 +35,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 async fn test2(ctx: &mut Context) -> Result<()> {
     let tcp_listener_options = TcpListenerOptions::new();
     let options = ForwardingServiceOptions::new()
-        .service_as_consumer(
-            &tcp_listener_options.spawner_flow_control_id(),
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        )
-        .forwarder_as_consumer(
-            &tcp_listener_options.spawner_flow_control_id(),
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        .service_as_consumer(&tcp_listener_options.spawner_flow_control_id())
+        .forwarder_as_consumer(&tcp_listener_options.spawner_flow_control_id());
     ForwardingService::create(ctx, "forwarding_service", options).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
 
@@ -54,11 +47,8 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let tcp_options = TcpConnectionOptions::new();
 
     ctx.start_worker("echoer", Echoer).await?;
-    ctx.flow_controls().add_consumer(
-        "echoer",
-        &tcp_options.producer_flow_control_id(),
-        FlowControlPolicy::ProducerAllowMultiple,
-    );
+    ctx.flow_controls()
+        .add_consumer("echoer", &tcp_options.flow_control_id());
 
     let server_tcp = TcpTransport::create(ctx).await?;
     let cloud_connection = server_tcp
@@ -92,14 +82,8 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 async fn test3(ctx: &mut Context) -> Result<()> {
     let tcp_listener_options = TcpListenerOptions::new();
     let options = ForwardingServiceOptions::new()
-        .service_as_consumer(
-            &tcp_listener_options.spawner_flow_control_id(),
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        )
-        .forwarder_as_consumer(
-            &tcp_listener_options.spawner_flow_control_id(),
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        .service_as_consumer(&tcp_listener_options.spawner_flow_control_id())
+        .forwarder_as_consumer(&tcp_listener_options.spawner_flow_control_id());
     ForwardingService::create(ctx, "forwarding_service", options).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let cloud_listener = cloud_tcp
@@ -107,7 +91,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let tcp_options = TcpConnectionOptions::new();
-    let server_tcp_flow_control_id = tcp_options.producer_flow_control_id();
+    let server_tcp_flow_control_id = tcp_options.flow_control_id();
 
     let server_tcp = TcpTransport::create(ctx).await?;
     let cloud_connection = server_tcp
@@ -133,11 +117,8 @@ async fn test3(ctx: &mut Context) -> Result<()> {
 
     assert!(res.is_err(), "Should not pass outgoing access control");
 
-    ctx.flow_controls().add_consumer(
-        "ctx",
-        &server_tcp_flow_control_id,
-        FlowControlPolicy::ProducerAllowMultiple,
-    );
+    ctx.flow_controls()
+        .add_consumer("ctx", &server_tcp_flow_control_id);
 
     ctx.send(
         route![remote_info.remote_address(), "ctx"],
@@ -177,20 +158,12 @@ async fn test3(ctx: &mut Context) -> Result<()> {
 async fn test4(ctx: &mut Context) -> Result<()> {
     // Cloud
     let cloud_tcp_listener_options = TcpListenerOptions::new();
-    let cloud_secure_channel_listener_options = SecureChannelListenerOptions::new().as_consumer(
-        &cloud_tcp_listener_options.spawner_flow_control_id(),
-        FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-    );
+    let cloud_secure_channel_listener_options = SecureChannelListenerOptions::new()
+        .as_consumer(&cloud_tcp_listener_options.spawner_flow_control_id());
 
     let options = ForwardingServiceOptions::new()
-        .service_as_consumer(
-            &cloud_secure_channel_listener_options.spawner_flow_control_id(),
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        )
-        .forwarder_as_consumer(
-            &cloud_secure_channel_listener_options.spawner_flow_control_id(),
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        .service_as_consumer(&cloud_secure_channel_listener_options.spawner_flow_control_id())
+        .forwarder_as_consumer(&cloud_secure_channel_listener_options.spawner_flow_control_id());
     ForwardingService::create(ctx, "forwarding_service", options).await?;
 
     let secure_channels = secure_channels();
@@ -212,16 +185,13 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     // Server
     let server_secure_channel_options = SecureChannelOptions::new();
-    let server_secure_channel_listener_options = SecureChannelListenerOptions::new().as_consumer(
-        &server_secure_channel_options.producer_flow_control_id(),
-        FlowControlPolicy::ProducerAllowMultiple,
-    );
+    let server_secure_channel_listener_options = SecureChannelListenerOptions::new()
+        .as_consumer(&server_secure_channel_options.producer_flow_control_id());
 
     ctx.start_worker("echoer", Echoer).await?;
     ctx.flow_controls().add_consumer(
         "echoer",
         &server_secure_channel_listener_options.spawner_flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
     );
 
     let server_tcp = TcpTransport::create(ctx).await?;

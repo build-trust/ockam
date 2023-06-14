@@ -9,7 +9,6 @@ use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, IncomingAccessControl};
 use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
 
@@ -59,11 +58,8 @@ impl NodeManager {
 
         let service = IdentityService::new(self.node_identities()).await?;
 
-        ctx.flow_controls().add_consumer(
-            addr.clone(),
-            &self.api_transport.flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(addr.clone(), &self.api_transport_flow_control_id);
 
         ctx.start_worker(addr.clone(), service).await?;
 
@@ -181,11 +177,8 @@ impl NodeManager {
             return Err(ApiError::generic("Hop service exists at this address"));
         }
 
-        ctx.flow_controls().add_consumer(
-            addr.clone(),
-            &self.api_transport.flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(addr.clone(), &self.api_transport_flow_control_id);
 
         ctx.start_worker(addr.clone(), Hop).await?;
 
@@ -522,11 +515,8 @@ impl NodeManagerWorker {
             return Err(ApiError::generic("Verifier service exists at this address"));
         }
 
-        ctx.flow_controls().add_consumer(
-            addr.clone(),
-            &node_manager.api_transport.flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(addr.clone(), &node_manager.api_transport_flow_control_id);
 
         let vs = crate::verifier::Verifier::new(node_manager.identities());
         ctx.start_worker(addr.clone(), vs).await?;

@@ -43,14 +43,14 @@ impl FlowControls {
             .remove(&spawner_flow_control_id);
     }
 
-    fn cleanup_producers_spawner(&self, spawner_flow_control_id: &FlowControlId) {
+    fn cleanup_producers_spawner(&self, flow_control_id: &FlowControlId) {
         // Check if that Spawner still exists
         let spawner_exists = self
             .spawners
             .read()
             .unwrap()
             .iter()
-            .any(|x| x.1 == spawner_flow_control_id);
+            .any(|x| x.1 == flow_control_id);
 
         // Spawner still exists, nothing else we can clean up now
         if spawner_exists {
@@ -65,7 +65,7 @@ impl FlowControls {
                 .iter()
                 .any(|x| match x.1.spawner_flow_control_id() {
                     None => false,
-                    Some(id) => id == spawner_flow_control_id,
+                    Some(id) => id == flow_control_id,
                 });
 
         // No other producer exists as well
@@ -74,10 +74,7 @@ impl FlowControls {
         }
 
         // We can clean Consumers for that FlowControlId
-        self.consumers
-            .write()
-            .unwrap()
-            .remove(spawner_flow_control_id);
+        self.consumers.write().unwrap().remove(flow_control_id);
     }
 
     fn cleanup_producer(&self, address: &Address) {
@@ -116,6 +113,16 @@ impl FlowControls {
 
     fn cleanup_consumer(&self, address: &Address) {
         // Just remove this Address from Consumers
+        let mut consumers = self.consumers.write().unwrap();
+
+        consumers
+            .iter_mut()
+            .for_each(|(_flow_control_id, info)| _ = info.0.remove(address));
+
+        // Remove empty Maps
+        consumers.retain(|_, info| !info.0.is_empty());
+        drop(consumers);
+
         let mut consumers = self.consumers.write().unwrap();
 
         consumers

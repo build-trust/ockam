@@ -1,7 +1,5 @@
 use crate::compat::boxed::Box;
-use crate::compat::collections::BTreeSet;
-use crate::compat::sync::RwLock;
-use crate::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
+use crate::flow_control::{FlowControlId, FlowControls};
 use crate::{async_trait, Address, Result};
 use crate::{OutgoingAccessControl, RelayMessage};
 use core::fmt::{Debug, Formatter};
@@ -14,7 +12,6 @@ pub struct FlowControlOutgoingAccessControl {
     flow_controls: FlowControls,
     flow_control_id: FlowControlId,
     spawner_flow_control_id: Option<FlowControlId>,
-    sent_single_message_to_addresses: RwLock<BTreeSet<Address>>,
 }
 
 impl Debug for FlowControlOutgoingAccessControl {
@@ -37,8 +34,15 @@ impl FlowControlOutgoingAccessControl {
             flow_controls: flow_controls.clone(),
             flow_control_id,
             spawner_flow_control_id,
-            sent_single_message_to_addresses: Default::default(),
         }
+    }
+}
+
+impl FlowControlOutgoingAccessControl {
+    fn is_consumer(&self, next: &Address, flow_control_id: &FlowControlId) -> bool {
+        let consumers_info = self.flow_controls.get_consumers_info(flow_control_id);
+
+        consumers_info.contains(next)
     }
 }
 
@@ -49,54 +53,23 @@ impl OutgoingAccessControl for FlowControlOutgoingAccessControl {
 
         let next = onward_route.next()?;
 
-        let consumers_info = self.flow_controls.get_consumers_info(&self.flow_control_id);
-
-        if let Some(policy) = consumers_info.get_policy(next) {
-            match policy {
-                FlowControlPolicy::ProducerAllowMultiple => {
-                    return crate::allow();
-                }
-                FlowControlPolicy::SpawnerAllowOnlyOneMessage => {}
-                FlowControlPolicy::SpawnerAllowMultipleMessages => {}
-            }
+        if self.is_consumer(next, &self.flow_control_id) {
+            return crate::allow();
         }
 
         if let Some(spawner_flow_control_id) = &self.spawner_flow_control_id {
-            let consumers_info = self
-                .flow_controls
-                .get_consumers_info(spawner_flow_control_id);
-
-            if let Some(policy) = consumers_info.get_policy(next) {
-                match policy {
-                    FlowControlPolicy::SpawnerAllowOnlyOneMessage => {
-                        // We haven't yet sent a message to this address
-                        if !self
-                            .sent_single_message_to_addresses
-                            .read()
-                            .unwrap()
-                            .contains(next)
-                        {
-                            // Prevent further messages to this address
-                            self.sent_single_message_to_addresses
-                                .write()
-                                .unwrap()
-                                .insert(next.clone());
-
-                            // Allow this message
-                            return crate::allow();
-                        }
-                    }
-                    FlowControlPolicy::SpawnerAllowMultipleMessages => return crate::allow(),
-                    FlowControlPolicy::ProducerAllowMultiple => {}
-                }
+            if self.is_consumer(next, spawner_flow_control_id) {
+                return crate::allow();
             }
         }
 
-        #[cfg(feature = "debugger")]
-        {
-            self.flow_controls.debug_address(relay_msg.source());
-            self.flow_controls.debug_address(next);
-        }
+        self.flow_controls.debug_denied_message(
+            relay_msg.source(),
+            &self.flow_control_id,
+            &self.spawner_flow_control_id,
+            next,
+        );
+
         crate::deny()
     }
 }

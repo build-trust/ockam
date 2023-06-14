@@ -26,7 +26,7 @@ use ockam_api::DefaultAddress;
 use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
 use ockam_core::env::{get_env_with_default, FromString};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
@@ -185,9 +185,8 @@ pub(crate) fn start_authenticator_service<'a>(
 pub(crate) fn add_consumer(
     id: FlowControlId,
     address: MultiAddr,
-    policy: FlowControlPolicy,
 ) -> RequestBuilder<'static, AddConsumer> {
-    let payload = AddConsumer::new(id, address, policy);
+    let payload = AddConsumer::new(id, address);
     Request::post("/node/flow_controls/add_consumer").body(payload)
 }
 

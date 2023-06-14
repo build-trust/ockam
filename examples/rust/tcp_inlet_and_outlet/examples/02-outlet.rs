@@ -1,4 +1,3 @@
-use ockam::flow_control::FlowControlPolicy;
 use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions};
 use ockam_transport_tcp::TcpTransportExtension;
 
@@ -30,10 +29,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_outlet(
         "outlet",
         outlet_target,
-        TcpOutletOptions::new().as_consumer(
-            &tcp_listener_options.spawner_flow_control_id(),
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        ),
+        TcpOutletOptions::new().as_consumer(&tcp_listener_options.spawner_flow_control_id()),
     )
     .await?;
 

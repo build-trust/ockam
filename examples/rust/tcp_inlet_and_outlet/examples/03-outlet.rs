@@ -1,4 +1,3 @@
-use ockam::flow_control::FlowControlPolicy;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions};
 use ockam_transport_tcp::TcpTransportExtension;
@@ -17,10 +16,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     let tcp_listener_options = TcpListenerOptions::new();
 
-    let secure_channel_listener_options = SecureChannelListenerOptions::new().as_consumer(
-        &tcp_listener_options.spawner_flow_control_id(),
-        FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-    );
+    let secure_channel_listener_options =
+        SecureChannelListenerOptions::new().as_consumer(&tcp_listener_options.spawner_flow_control_id());
     let secure_channel_flow_control_id = secure_channel_listener_options.spawner_flow_control_id();
     node.create_secure_channel_listener(&e, "secure_channel_listener", secure_channel_listener_options)
         .await?;
@@ -45,10 +42,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_outlet(
         "outlet",
         outlet_target,
-        TcpOutletOptions::new().as_consumer(
-            &secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        ),
+        TcpOutletOptions::new().as_consumer(&secure_channel_flow_control_id),
     )
     .await?;
 

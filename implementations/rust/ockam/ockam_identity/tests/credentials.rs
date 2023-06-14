@@ -2,7 +2,6 @@ use std::sync::atomic::{AtomicI8, Ordering};
 use std::time::Duration;
 
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{async_trait, Any, DenyAll};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::secure_channels::secure_channels;
@@ -44,11 +43,8 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         )),
     );
 
-    ctx.flow_controls().add_consumer(
-        "credential_exchange",
-        listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("credential_exchange", listener.flow_control_id());
     credentials_service
         .start(
             ctx,
@@ -130,11 +126,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             Some(Arc::new(CredentialsMemoryRetriever::new(credential))),
         )),
     );
-    ctx.flow_controls().add_consumer(
-        "credential_exchange",
-        listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("credential_exchange", listener.flow_control_id());
 
     credentials_service
         .start(
@@ -216,11 +209,8 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         )),
     );
 
-    ctx.flow_controls().add_consumer(
-        "credential_exchange",
-        listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("credential_exchange", listener.flow_control_id());
 
     credentials_service
         .start(
@@ -259,11 +249,8 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let access_control =
         CredentialAccessControl::new(&required_attributes, identities_repository.clone());
 
-    ctx.flow_controls().add_consumer(
-        "counter",
-        listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("counter", listener.flow_control_id());
 
     WorkerBuilder::new(worker)
         .with_address("counter")

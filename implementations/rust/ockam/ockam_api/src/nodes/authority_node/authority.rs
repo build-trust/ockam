@@ -10,7 +10,7 @@ use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result, Worker};
 use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
@@ -81,10 +81,7 @@ impl Authority {
 
         let options = SecureChannelListenerOptions::new()
             .with_trust_policy(TrustEveryonePolicy)
-            .as_consumer(
-                &tcp_listener_flow_control_id,
-                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-            );
+            .as_consumer(&tcp_listener_flow_control_id);
         let secure_channel_listener_flow_control_id = options.spawner_flow_control_id().clone();
 
         let listener_name = configuration.secure_channel_listener_name();
@@ -123,11 +120,8 @@ impl Authority {
         .await?;
 
         let name = configuration.clone().authenticator_name();
-        ctx.flow_controls().add_consumer(
-            name.clone(),
-            secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(name.clone(), secure_channel_flow_control_id);
 
         self.start(ctx, configuration, name.clone(), EnrollerOnly, direct)
             .await?;
@@ -155,11 +149,8 @@ impl Authority {
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
-        ctx.flow_controls().add_consumer(
-            issuer_address.clone(),
-            secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(issuer_address.clone(), secure_channel_flow_control_id);
 
         self.start(
             ctx,
@@ -175,11 +166,8 @@ impl Authority {
         // that service is to access a one-time token stating that the sender of the message
         // is a project member
         let acceptor_address: String = DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into();
-        ctx.flow_controls().add_consumer(
-            acceptor_address.clone(),
-            secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(acceptor_address.clone(), secure_channel_flow_control_id);
 
         ctx.start_worker(acceptor_address.clone(), acceptor).await?;
 
@@ -205,11 +193,8 @@ impl Authority {
         .await?;
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
-        ctx.flow_controls().add_consumer(
-            address.clone(),
-            secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(address.clone(), secure_channel_flow_control_id);
 
         self.start(ctx, configuration, address.clone(), AnyMember, issuer)
             .await?;
@@ -234,11 +219,8 @@ impl Authority {
                 okta.attributes().as_slice(),
             )?;
 
-            ctx.flow_controls().add_consumer(
-                okta.address.clone(),
-                secure_channel_flow_control_id,
-                FlowControlPolicy::SpawnerAllowMultipleMessages,
-            );
+            ctx.flow_controls()
+                .add_consumer(okta.address.clone(), secure_channel_flow_control_id);
 
             ctx.start_worker(okta.address, okta_worker).await?;
         }
@@ -253,11 +235,8 @@ impl Authority {
     ) -> Result<()> {
         let address = DefaultAddress::ECHO_SERVICE;
 
-        ctx.flow_controls().add_consumer(
-            address,
-            secure_channel_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        ctx.flow_controls()
+            .add_consumer(address, secure_channel_flow_control_id);
 
         ctx.start_worker(address, Echoer).await
     }

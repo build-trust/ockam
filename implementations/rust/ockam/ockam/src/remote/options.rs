@@ -1,8 +1,6 @@
 use crate::remote::Addresses;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{
-    FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
-};
+use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{Address, AllowAll, OutgoingAccessControl};
 
 /// Trust options for [`RemoteForwarder`](super::RemoteForwarder)
@@ -31,11 +29,7 @@ impl RemoteForwarderOptions {
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(
-                addresses.main_remote.clone(),
-                &flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            flow_controls.add_consumer(addresses.main_remote.clone(), &flow_control_id);
 
             flow_controls.add_producer(
                 addresses.main_internal.clone(),

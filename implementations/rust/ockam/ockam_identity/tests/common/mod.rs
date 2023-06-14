@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use rand::random;
 
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::{
     secure_channels, IdentityIdentifier, SecureChannelListenerOptions, SecureChannelOptions,
@@ -112,22 +112,14 @@ impl SecureChannelListenerInfo {
 pub async fn create_secure_channel_listener(
     ctx: &Context,
     flow_control_id: &FlowControlId,
-    with_tcp_listener: bool,
 ) -> Result<SecureChannelListenerInfo> {
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
 
     let identity = identities_creation.create_identity().await?;
 
-    let options = SecureChannelListenerOptions::new();
-    let policy = if with_tcp_listener {
-        FlowControlPolicy::SpawnerAllowOnlyOneMessage
-    } else {
-        FlowControlPolicy::ProducerAllowMultiple
-    };
-    let options = options.as_consumer(flow_control_id, policy);
-
     let identifier = identity.identifier();
+    let options = SecureChannelListenerOptions::new().as_consumer(flow_control_id);
     let listener = secure_channels
         .create_secure_channel_listener(ctx, &identifier, "listener", options)
         .await?;
