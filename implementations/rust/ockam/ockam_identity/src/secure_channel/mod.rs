@@ -3,7 +3,6 @@ pub mod access_control;
 mod addresses;
 mod api;
 mod decryptor;
-mod decryptor_worker;
 mod encryptor;
 mod encryptor_worker;
 mod handshake;
