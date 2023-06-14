@@ -12,8 +12,8 @@ use tokio::try_join;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
-use crate::util::api;
 use crate::util::output::Output;
+use crate::util::{api, parse_node_name};
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
@@ -49,7 +49,8 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = parse_node_name(&at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 

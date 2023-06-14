@@ -1,10 +1,12 @@
 use crate::{
     docs,
-    util::{api, extract_address_value, node_rpc, Rpc},
+    util::{api, node_rpc, Rpc},
     CommandGlobalOpts, Result,
 };
 use clap::Args;
 
+use crate::node::get_node_name;
+use crate::util::parse_node_name;
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_core::Address;
@@ -22,7 +24,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 pub struct ShowCommand {
     /// Node at which the secure channel was initiated
     #[arg(value_name = "NODE_NAME", long, display_order = 800)]
-    at: String,
+    at: Option<String>,
 
     /// Channel address
     #[arg(display_order = 800)]
@@ -30,21 +32,17 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
-    }
-
-    // Read the `at` argument and return node name
-    fn parse_at_node(&self) -> String {
-        extract_address_value(&self.at).unwrap_or_else(|_| "".to_string())
+    pub fn run(self, opts: CommandGlobalOpts) {
+        node_rpc(rpc, (opts, self));
     }
 }
 
-async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, ShowCommand)) -> Result<()> {
-    let at = &command.parse_at_node();
-    let address = &command.address;
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> Result<()> {
+    let at = get_node_name(&opts.state, &cmd.at);
+    let node_name = parse_node_name(&at)?;
+    let address = &cmd.address;
 
-    let mut rpc = Rpc::background(&ctx, &options, at)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let request = api::show_secure_channel(address);
     rpc.request(request).await?;
     let response = rpc.parse_response::<ShowSecureChannelResponse>()?;

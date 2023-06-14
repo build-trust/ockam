@@ -6,10 +6,9 @@ use crate::{
     CommandGlobalOpts, Result,
 };
 
-use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam_core::api::Request;
 use serde_json::json;
 use tokio::{sync::Mutex, try_join};
@@ -74,7 +73,8 @@ impl CreateCommand {
         tcp: &TcpTransport,
     ) -> Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
-            .context(format!("Could not convert {} into route", &self.to))?;
+            .into_diagnostic()
+            .wrap_err(format!("Could not convert {} into route", &self.to))?;
 
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
@@ -85,7 +85,11 @@ impl CreateCommand {
             CredentialExchangeMode::Oneway,
         )
         .await?;
-        crate::project::util::clean_projects_multiaddr(to, projects_sc)
+        Ok(
+            crate::project::util::clean_projects_multiaddr(to, projects_sc)
+                .into_diagnostic()
+                .wrap_err("Could not parse projects from route")?,
+        )
     }
 
     // Read the `from` argument and return node name
@@ -98,7 +102,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     opts.terminal
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
 
     let from = &cmd.parse_from_node();
     let to = &cmd.parse_to_route(&ctx, &opts, from, &tcp).await?;
@@ -163,8 +167,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         .machine(multi_addr.to_string())
         .json(json!([{ "address": multi_addr.to_string() }]))
         .write_line()?;
-
-    //    cmd.print_output(from, to, &opts, response);
 
     Ok(())
 }
