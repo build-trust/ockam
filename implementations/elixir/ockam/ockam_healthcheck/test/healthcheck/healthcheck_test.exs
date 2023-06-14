@@ -1,6 +1,7 @@
 defmodule Ockam.Healthcheck.Test do
   use ExUnit.Case
 
+  alias Ockam.Healthcheck.APIEndpointTarget
   alias Ockam.Healthcheck.Target
 
   require Logger
@@ -16,32 +17,15 @@ defmodule Ockam.Healthcheck.Test do
       )
 
     {:ok, _pid, _ping} = Ockam.Services.Echo.start_link(address: "healthcheck")
+    {:ok, _api} = Ockam.Healthcheck.TestAPIEndpoint.create(address: "endpoint")
 
     on_exit(fn ->
       Ockam.Node.stop("api")
       Ockam.Node.stop("healthcheck")
+      Ockam.Node.stop("endpoint")
     end)
 
     :ok
-  end
-
-  test "healthcheck targets OK" do
-    target = %Target{
-      name: "target",
-      host: "localhost",
-      port: 4000,
-      api_worker: "api",
-      healthcheck_worker: "healthcheck"
-    }
-
-    old = Application.get_env(:ockam_healthcheck, :targets, [])
-    Application.put_env(:ockam_healthcheck, :targets, [target, target])
-
-    on_exit(fn ->
-      Application.put_env(:ockam_healthcheck, :targets, old)
-    end)
-
-    assert :ok = Ockam.Healthcheck.check_targets()
   end
 
   test "healthcheck target OK" do
@@ -50,7 +34,8 @@ defmodule Ockam.Healthcheck.Test do
       host: "localhost",
       port: 4000,
       api_worker: "api",
-      healthcheck_worker: "healthcheck"
+      healthcheck_worker: "healthcheck",
+      crontab: "* * * * *"
     }
 
     test_proc = self()
@@ -72,7 +57,7 @@ defmodule Ockam.Healthcheck.Test do
       :telemetry.detach("test_handler")
     end)
 
-    assert :ok = Ockam.Healthcheck.check_target(target, :ping_target, 1000)
+    assert :ok = Ockam.Healthcheck.check_target(target, 1000)
 
     assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 1},
                     %{target: %{name: "target"}}},
@@ -93,7 +78,8 @@ defmodule Ockam.Healthcheck.Test do
       host: "localhost",
       port: 4000,
       api_worker: "api",
-      healthcheck_worker: "not_healthcheck"
+      healthcheck_worker: "not_healthcheck",
+      crontab: "* * * * *"
     }
 
     test_proc = self()
@@ -115,7 +101,7 @@ defmodule Ockam.Healthcheck.Test do
       :telemetry.detach("test_handler")
     end)
 
-    assert {:error, :timeout} = Ockam.Healthcheck.check_target(target, :ping_target, 1000)
+    assert {:error, :timeout} = Ockam.Healthcheck.check_target(target, 1000)
 
     assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 0},
                     %{target: %{name: "target"}}},
@@ -130,17 +116,110 @@ defmodule Ockam.Healthcheck.Test do
                    500
   end
 
+  test "healthcheck API endpoint target OK" do
+    target = %APIEndpointTarget{
+      name: "target",
+      host: "localhost",
+      port: 4000,
+      api_worker: "api",
+      healthcheck_worker: "endpoint",
+      path: "/ok",
+      method: :get,
+      crontab: "* * * * *"
+    }
+
+    test_proc = self()
+
+    :telemetry.attach_many(
+      "test_handler",
+      [
+        [:ockam, :healthcheck, :result],
+        [:ockam, :healthcheck, :ok],
+        [:ockam, :healthcheck, :error]
+      ],
+      fn event, measurements, metadata, _config ->
+        send(test_proc, {:telemetry_event, event, measurements, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn ->
+      :telemetry.detach("test_handler")
+    end)
+
+    assert :ok = Ockam.Healthcheck.check_target(target, 1000)
+
+    assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 1},
+                    %{target: %{name: "target"}}},
+                   5000
+
+    assert_receive {:telemetry_event, [:ockam, :healthcheck, :ok], %{duration: _duration},
+                    %{target: %{name: "target"}}},
+                   5000
+
+    refute_receive {:telemetry_event, [:ockam, :healthcheck, :error], %{duration: _duration},
+                    %{target: %{name: "target"}}},
+                   500
+  end
+
+  test "healthcheck API endpoint target Error" do
+    target = %APIEndpointTarget{
+      name: "target",
+      host: "localhost",
+      port: 4000,
+      api_worker: "api",
+      healthcheck_worker: "endpoint",
+      path: "/error",
+      method: :get,
+      crontab: "* * * * *"
+    }
+
+    test_proc = self()
+
+    :telemetry.attach_many(
+      "test_handler",
+      [
+        [:ockam, :healthcheck, :result],
+        [:ockam, :healthcheck, :ok],
+        [:ockam, :healthcheck, :error]
+      ],
+      fn event, measurements, metadata, _config ->
+        send(test_proc, {:telemetry_event, event, measurements, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn ->
+      :telemetry.detach("test_handler")
+    end)
+
+    assert {:error, _reason} = Ockam.Healthcheck.check_target(target, 1000)
+
+    assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 0},
+                    %{target: %{name: "target"}}},
+                   5000
+
+    refute_receive {:telemetry_event, [:ockam, :healthcheck, :ok], %{duration: _duration},
+                    %{target: %{name: "target"}}},
+                   5000
+
+    assert_receive {:telemetry_event, [:ockam, :healthcheck, :error], %{duration: _duration},
+                    %{target: %{name: "target"}}},
+                   500
+  end
+
   test "healthcheck channel error" do
     target = %Target{
       name: "target",
       host: "localhost",
       port: 4000,
       api_worker: "not_api",
-      healthcheck_worker: "healthcheck"
+      healthcheck_worker: "healthcheck",
+      crontab: "* * * * *"
     }
 
     assert {:error, {:secure_channel_error, :key_exchange_timeout}} =
-             Ockam.Healthcheck.check_target(target, :ping_target, 1000)
+             Ockam.Healthcheck.check_target(target, 1000)
   end
 
   test "healthcheck TCP error" do
@@ -149,10 +228,11 @@ defmodule Ockam.Healthcheck.Test do
       host: "localhost",
       port: 1234,
       api_worker: "api",
-      healthcheck_worker: "healthcheck"
+      healthcheck_worker: "healthcheck",
+      crontab: "* * * * *"
     }
 
     assert {:error, {:tcp_connection_error, :econnrefused}} =
-             Ockam.Healthcheck.check_target(target, :ping_target, 1000)
+             Ockam.Healthcheck.check_target(target, 1000)
   end
 end
