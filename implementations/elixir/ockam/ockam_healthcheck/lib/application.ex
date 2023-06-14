@@ -88,21 +88,18 @@ defmodule Ockam.Healthcheck.Application do
   def healthcheck_schedule() do
     targets = Application.get_env(:ockam_healthcheck, :targets, [])
 
-    Enum.reduce(targets, [], fn target, acc ->
-      [
-        %{
-          id: "#{target.name}_healthcheck_schedule",
-          start:
-            {SchedEx, :run_every,
-             [
-               Ockam.Healthcheck,
-               :check_target,
-               [target],
-               target.crontab
-             ]}
-        }
-        | acc
-      ]
+    Enum.map(targets, fn target ->
+      %{
+        id: "#{target.name}_healthcheck_schedule",
+        start:
+          {SchedEx, :run_every,
+           [
+             Ockam.Healthcheck,
+             :check_target,
+             [target],
+             target.crontab
+           ]}
+      }
     end)
   end
 
