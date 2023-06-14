@@ -104,11 +104,14 @@ impl From<anyhow::Error> for Error {
 }
 
 pub struct ErrorReportHandler;
+
+#[allow(dead_code)]
 impl ErrorReportHandler {
     pub fn new() -> Self {
         Self
     }
 }
+
 impl miette::ReportHandler for ErrorReportHandler {
     fn debug(&self, error: &dyn Diagnostic, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {

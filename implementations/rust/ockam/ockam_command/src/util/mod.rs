@@ -9,6 +9,7 @@ use std::{
 use anyhow::Context as _;
 use miette::{miette, ErrReport as Report};
 use minicbor::{data::Type, Decode, Decoder, Encode};
+
 use tracing::{debug, error, trace};
 
 use ockam::{
@@ -486,38 +487,33 @@ pub fn extract_address_value(input: &str) -> Result<String> {
     Ok(addr)
 }
 
-/// Parses a node's input string for its name in case it's a `MultiAddr` string. Wraps around `extract_address_value`
+/// Parses a node's input string for its name in case it's a `MultiAddr` string.
 ///
 /// Ensures that the node's name will be returned if the input string is a `MultiAddr` of the `node` type
-/// Examples:
-///     `node create n1` returns n1, `node create /node/n1` returns n1, `node create /tcp/n2` returns an error message.
+/// Examples: `n1` or `/node/n1` returns `n1`; `/project/p1` or `/tcp/n2` returns an error message.
 pub fn parse_node_name(input: &str) -> Result<String> {
-    let addr = input.to_string();
-    // if input has "/", we process it as a MultiAddr like in `extract_address_value`
-    if input.contains('/') {
-        let mut err_message =
-            String::from("A MultiAddr node must follow the format /node/{{name}}");
-        let maddr = match MultiAddr::from_str(input) {
-            Ok(maddr) => maddr,
-            Err(e) => {
-                // Tested with input strings with large tcp numbers. e.g: `node create /node/n1/tcp/28273829`
-                err_message.push_str(&format!("\n{e}"));
-                return Err(miette!(err_message).into());
-            }
-        };
-        if let Some(p) = maddr.iter().next() {
-            if p.code() == proto::Node::CODE {
-                let node_name = extract_address_value(&addr)?;
+    if input.is_empty() {
+        return Err(miette!("Empty address in node name argument").into());
+    }
+    // Node name was passed as "n1", for example
+    if !input.contains('/') {
+        return Ok(input.to_string());
+    }
+    // Input has "/", so we process it as a MultiAddr
+    let maddr = MultiAddr::from_str(input).context("Invalid format for node name argument")?;
+    let err_message = String::from("A MultiAddr node must follow the format /node/<name>");
+    if let Some(p) = maddr.iter().next() {
+        if p.code() == proto::Node::CODE {
+            let node_name = p
+                .cast::<proto::Node>()
+                .context("Failed to parse `node` protocol")?
+                .to_string();
+            if !node_name.is_empty() {
                 return Ok(node_name);
             }
-        } else {
-            return Err(miette!(err_message).into());
         }
     }
-    if addr.is_empty() {
-        return Err(miette!("Empty address in node name input: {}", input).into());
-    }
-    Ok(addr)
+    Err(miette!(err_message).into())
 }
 
 /// Replace the node's name with its address or leave it if it's another type of address.
@@ -577,7 +573,7 @@ pub fn clean_nodes_multiaddr(
                 // No substitution done here. It will be done later by `clean_projects_multiaddr`.
                 new_ma.push_back_value(&p)?
             }
-            Space::CODE => panic!("/space/ substitutions are not supported yet!"),
+            Space::CODE => return Err(miette!("/space/ substitutions are not supported!").into()),
             _ => new_ma.push_back_value(&p)?,
         }
     }
@@ -615,6 +611,32 @@ mod tests {
     use ockam_api::cli_state::traits::StateDirTrait;
     use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+
+    #[test]
+    fn test_parse_node_name() {
+        let test_cases = vec![
+            ("", Err(())),
+            ("test", Ok("test")),
+            ("/test", Err(())),
+            ("test/", Err(())),
+            ("/node", Err(())),
+            ("/node/", Err(())),
+            ("/node/n1", Ok("n1")),
+            ("/service/s1", Err(())),
+            ("/project/p1", Err(())),
+            ("/randomprotocol/rp1", Err(())),
+            ("/node/n1/tcp", Err(())),
+            ("/node/n1/test", Err(())),
+            ("/node/n1/tcp/22", Ok("n1")),
+        ];
+        for (input, expected) in test_cases {
+            if let Ok(addr) = expected {
+                assert_eq!(parse_node_name(input).unwrap(), addr);
+            } else {
+                assert!(parse_node_name(input).is_err());
+            }
+        }
+    }
 
     #[test]
     fn test_extract_address_value() {

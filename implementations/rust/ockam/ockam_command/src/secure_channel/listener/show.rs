@@ -1,11 +1,10 @@
 use clap::Args;
-use miette::miette;
 
 use ockam::Context;
 use ockam_core::Address;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
+use crate::util::{api, node_rpc, parse_node_name, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -42,21 +41,16 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = extract_address_value(&at)?;
+    let node_name = parse_node_name(&at)?;
     let address = &cmd.address;
 
-    let mut rpc = Rpc::background(ctx, &opts, &node)?;
+    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let req = api::show_secure_channel_listener(address);
     rpc.request(req).await?;
-
-    match rpc.is_ok() {
-        Ok(_) => {
-            println!("/service/{}", cmd.address.address());
-            Ok(())
-        }
-        Err(e) => Err(crate::error::Error::new(
-            exitcode::UNAVAILABLE,
-            miette!("An error occurred while retrieving secure channel listener").context(e),
-        )),
-    }
+    rpc.is_ok()?;
+    opts.terminal
+        .stdout()
+        .plain(format!("/service/{}", cmd.address.address()))
+        .write_line()?;
+    Ok(())
 }

@@ -25,11 +25,11 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct DeleteCommand {
-    /// Node at which the secure channel was initiated (required)
+    /// Node at which the secure channel was initiated
     #[arg(value_name = "NODE", long, display_order = 800)]
     at: String,
 
-    /// Address at which the channel to be deleted is running (required)
+    /// Address at which the channel to be deleted is running
     #[arg(value_parser(parse_address), display_order = 800)]
     address: Address,
 }
