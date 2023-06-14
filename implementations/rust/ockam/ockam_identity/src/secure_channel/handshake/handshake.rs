@@ -206,6 +206,8 @@ impl Handshake {
             encryption_key,
             decryption_key,
         });
+        // now remove the ephemeral keys which are not useful anymore
+        self.delete_handshake_keys().await?;
         Ok(())
     }
 
@@ -331,6 +333,14 @@ impl Handshake {
         state.mix_hash(result.as_slice());
         state.n += 1;
         Ok(result)
+    }
+
+    async fn delete_handshake_keys(&self) -> Result<()> {
+        let key_ids = vec![self.state.e.clone(), self.state.k()?, self.state.ck()?];
+        for key_id in key_ids {
+            self.vault.delete_ephemeral_secret(key_id).await?;
+        }
+        Ok(())
     }
 }
 
