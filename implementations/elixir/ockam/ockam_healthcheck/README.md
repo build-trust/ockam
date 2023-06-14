@@ -3,7 +3,7 @@
 This application runs periodic healthcheck requests to ockam nodes by establishing
 a secure channel and:
 * sending a ping message to the configured worker for default targets
-* sending an Ockam API request with a specified path, method and optionally a body for API endpoint targets, where `200` response is considered a healthy result
+* sending an `Ockam.API.Request` message with a specified path, method and optionally a body for `Ockam.Services.API` endpoint targets, where `200` response is considered a healthy result
 
 Healthcheck results are reported as prometheus metrics using `ockam_metrics` and
 as logs using Logger.
@@ -22,7 +22,7 @@ Format: application environment is a list of maps. For default (ping) targets th
   crontab: ...
 }
 ```
-For API endpoint targets:
+For `Ockam.Services.API` endpoint targets:
 ```elixir
 %{
   name: ...,
@@ -36,11 +36,13 @@ For API endpoint targets:
   crontab: ...
 }
 ```
-An environment variable is a JSON string with the same format. The optional `body` binary for API endpoint targets in the JSON format has to be base64 encoded.
+An environment variable is a JSON string with the same format.
+The `method` field has to be a string representation of one of the methods enumeratated in the `Ockam.API.Request.Header` schema - "get", "post", "put", "delete", or "patch".
+The optional `body` binary for `Ockam.Services.API` endpoint targets in the JSON format has to be base64 encoded, such as with `Base.encode64/2`.
 
-For each target, the application will connect via tcp `host:port` connection, establish secure channel using `api_worker` listener and:
+For each target, the application will connect via TCP `host:port` connection, establish an Ockam secure channel using `api_worker` listener and:
 * for default targets send ping to `healthcheck_worker`
-* for API endpoint targets send an Ockam API request message with the specified `path`, `method` and optionally a `body` to `healthcheck_worker`
+* for `Ockam.Services.API` endpoint targets send an `Ockam.API.Request` message with the specified `path`, `method` and optionally a `body` to `healthcheck_worker`
 
 Frequency for each target is specified in the `crontab` field of that target as a string in the crontab format.
 
