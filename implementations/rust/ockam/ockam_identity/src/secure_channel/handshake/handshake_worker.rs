@@ -205,14 +205,20 @@ impl HandshakeWorker {
             addresses.clone(),
         );
 
+        // before sending messages make sure that the handshake is finished and
+        // the encryptor worker is ready
         if role.is_initiator() {
+            // wait until the handshake is finished
             if let Some(timeout) = timeout {
                 callback_waiter.receive_timeout(timeout).await?;
+            } else {
+                callback_waiter.receive().await?;
             }
-        } else {
-            // wait until the worker is ready to receive messages
-            context.wait_for(addresses.decryptor_remote.clone()).await?;
+
+            // make sure that the encryptor has finished initializing before sending messages
+            context.wait_for(addresses.encryptor.clone()).await?;
         }
+
         Ok(())
     }
 
