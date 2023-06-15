@@ -258,8 +258,7 @@ impl Handshake {
         self.vault.ec_diffie_hellman(key_id, public_key).await
     }
 
-    /// Compute two derived ck, and k keys based on existing ck and k keys + an optional
-    /// Diffie-Hellman key
+    /// Compute two derived ck, and k keys based on existing ck and k keys + a Diffie-Hellman key
     async fn hkdf(&self, state: &mut HandshakeState, dh: &KeyId) -> Result<()> {
         let hkdf_output = self
             .vault
