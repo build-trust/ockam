@@ -445,7 +445,7 @@ dependencies = [
  "once_cell",
  "percent-encoding",
  "regex",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "time",
  "tracing",
 ]
@@ -2758,7 +2758,7 @@ dependencies = [
  "multihash",
  "quick-protobuf",
  "rand",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "thiserror",
 ]
 
@@ -3284,7 +3284,7 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "serde_json",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "tracing",
  "trybuild",
 ]
@@ -3504,7 +3504,7 @@ dependencies = [
  "serde-big-array",
  "serde_bare",
  "serde_json",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "subtle",
  "time",
  "tokio",
@@ -3711,7 +3711,7 @@ dependencies = [
  "serde_bare",
  "serde_cbor",
  "serde_json",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "thiserror",
  "tokio",
  "tracing",
@@ -3734,7 +3734,7 @@ dependencies = [
  "ockam_node",
  "ockam_vault",
  "p256",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "thiserror",
  "tokio",
  "tracing",
@@ -3865,7 +3865,7 @@ dependencies = [
  "ecdsa",
  "elliptic-curve",
  "primeorder",
- "sha2 0.10.6",
+ "sha2 0.10.7",
 ]
 
 [[package]]
@@ -4784,9 +4784,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.10.6"
+version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82e6b795fe2e3b1e845bafcb27aa35405c4d47cdfc92af5fc8d3002f76cebdc0"
+checksum = "479fb9d862239e610720565ca91403019f2f00410f1864c5aa7479b950a76ed8"
 dependencies = [
  "cfg-if",
  "cpufeatures",
