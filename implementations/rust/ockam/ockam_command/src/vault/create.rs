@@ -50,7 +50,7 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let CreateCommand { name, aws_kms, .. } = cmd;
     let config = cli_state::VaultConfig::new(aws_kms)?;
-    if !opts.state.vaults.is_empty()? {
+    if opts.state.vaults.is_empty()? {
         opts.terminal.write_line(&fmt_info!(
             "This is the first vault to be created in this environment. It will be set as the default vault"
         ))?;
