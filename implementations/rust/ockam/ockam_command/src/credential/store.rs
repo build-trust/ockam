@@ -54,7 +54,7 @@ impl StoreCommand {
 async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, StoreCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!(
         "Storing credential {}...\n",
         cmd.credential_name.clone()

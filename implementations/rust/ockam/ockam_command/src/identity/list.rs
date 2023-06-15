@@ -1,7 +1,7 @@
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
 use crate::util::output::Output;
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts};
 
 use clap::Args;
 use colorful::Colorful;
@@ -29,7 +29,10 @@ impl ListCommand {
         node_rpc(Self::run_impl, (options, self))
     }
 
-    async fn run_impl(_ctx: Context, options: (CommandGlobalOpts, ListCommand)) -> Result<()> {
+    async fn run_impl(
+        _ctx: Context,
+        options: (CommandGlobalOpts, ListCommand),
+    ) -> miette::Result<()> {
         let (opts, _cmd) = options;
         let mut identities: Vec<IdentityListOutput> = Vec::new();
 

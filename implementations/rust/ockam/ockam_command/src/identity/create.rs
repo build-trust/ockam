@@ -40,14 +40,14 @@ impl CreateCommand {
     async fn run_impl(
         _ctx: Context,
         (options, cmd): (CommandGlobalOpts, CreateCommand),
-    ) -> crate::Result<()> {
+    ) -> miette::Result<()> {
         cmd.create_identity(options).await.map(|_| ())
     }
 
     pub async fn create_identity(
         &self,
         opts: CommandGlobalOpts,
-    ) -> crate::Result<IdentityIdentifier> {
+    ) -> miette::Result<IdentityIdentifier> {
         opts.terminal.write_line(&fmt_log!(
             "Creating identity {}...\n",
             &self

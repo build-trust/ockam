@@ -1,3 +1,4 @@
+use crate::util::local_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
@@ -22,21 +23,18 @@ pub struct DefaultCommand {
 
 impl DefaultCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e:?}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
     let DefaultCommand { name } = cmd;
     let state = opts.state.trust_contexts;
     match state.get(&name) {
         Ok(v) => {
             // If it exists, warn the user and exit
             if state.is_default(v.name())? {
-                Err(miette!("Trust context '{name}' is already the default").into())
+                Err(miette!("Trust context '{name}' is already the default"))
             }
             // Otherwise, set it as default
             else {
@@ -51,7 +49,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
             }
         }
         Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Trust context '{name}' not found").into()),
+            CliStateError::NotFound => Err(miette!("Trust context '{name}' not found")),
             _ => Err(err.into()),
         },
     }

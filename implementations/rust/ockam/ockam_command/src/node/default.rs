@@ -1,5 +1,6 @@
 use crate::node::util::{check_default, set_default_node};
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::util::local_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 
@@ -21,14 +22,11 @@ pub struct DefaultCommand {
 impl DefaultCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         initialize_node_if_default(&opts, &self.node_name);
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
     if check_default(&opts, &node_name) {
         println!("Already set to default node");

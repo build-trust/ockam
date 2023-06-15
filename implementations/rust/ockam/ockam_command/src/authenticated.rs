@@ -1,9 +1,9 @@
 use crate::docs;
 use crate::util::embedded_node;
 use crate::Result;
-use anyhow::Context as _;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
+use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::compat::collections::HashMap;
 use ockam::identity::{AttributesEntry, IdentityIdentifier};
@@ -61,14 +61,14 @@ impl AuthenticatedCommand {
     }
 }
 
-async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<()> {
+async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> miette::Result<()> {
     // FIXME: add support to target remote nodes.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     match &cmd {
         AuthenticatedSubcommand::Get { addr, id } => {
             is_local_node(addr).context("The address must point to a local node")?;
             let mut c = client(&ctx, &tcp, addr).await?;
-            if let Some(entry) = c.get(id).await? {
+            if let Some(entry) = c.get(id).await.into_diagnostic()? {
                 print_entries(&[(IdentityIdentifier::try_from(id.to_string()).unwrap(), entry)]);
             } else {
                 println!("Not found");
@@ -77,7 +77,7 @@ async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<(
         AuthenticatedSubcommand::List { addr } => {
             is_local_node(addr).context("The address must point to a local node")?;
             let mut c = client(&ctx, &tcp, addr).await?;
-            print_entries(&c.list().await?);
+            print_entries(&c.list().await.into_diagnostic()?);
         }
     }
 

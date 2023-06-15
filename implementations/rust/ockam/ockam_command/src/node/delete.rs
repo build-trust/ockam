@@ -1,9 +1,10 @@
 use crate::node::util::{delete_all_nodes, delete_node};
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::util::local_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
-use miette::ErrReport as Report;
+
 use ockam_api::cli_state::{CliStateError, StateDirTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -32,18 +33,11 @@ pub struct DeleteCommand {
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         initialize_node_if_default(&opts, &self.node_name);
-        if let Err(e) = run_impl(opts, self) {
-            let code = e.code();
-
-            let r: Report = e.into();
-            eprintln!("{:?}", r);
-
-            std::process::exit(code);
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
     if cmd.all {
         delete_all_nodes(opts, cmd.force)?;
     } else {
@@ -70,13 +64,15 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                     return Err(crate::Error::NotFound {
                         resource: "Node".to_string(),
                         resource_name: node_name,
-                    })
+                    }
+                    .into())
                 }
                 e => {
                     return Err(crate::Error::new_internal_error(
                         "Unable to delete node:",
                         &e.to_string(),
-                    ))
+                    )
+                    .into())
                 }
             },
         }

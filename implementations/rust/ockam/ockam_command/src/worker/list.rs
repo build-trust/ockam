@@ -35,7 +35,7 @@ impl ListCommand {
 async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
 

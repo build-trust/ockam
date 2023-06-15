@@ -4,6 +4,7 @@ use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
@@ -45,10 +46,10 @@ impl ShowCommand {
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, &node_name);
     print_query_status(&mut rpc, &node_name, false, is_default).await?;
@@ -164,7 +165,7 @@ pub async fn print_query_status(
     node_name: &str,
     wait_until_ready: bool,
     is_default: bool,
-) -> Result<()> {
+) -> miette::Result<()> {
     let cli_state = rpc.opts.state.clone();
     if !is_node_up(rpc, wait_until_ready).await? {
         let node_state = cli_state.nodes.get(node_name)?;

@@ -1,4 +1,5 @@
 use clap::Args;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
@@ -6,7 +7,7 @@ use ockam_core::api::Request;
 
 use crate::node::get_node_name;
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
@@ -32,7 +33,10 @@ impl ShowCommand {
     }
 }
 
-async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> Result<()> {
+async fn run_impl(
+    ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
+) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
     let remote_address = &cmd.remote_address;
@@ -47,11 +51,11 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -
     println!("  Relay Route: {}", relay_info_response.forwarding_route());
     println!(
         "  Remote Address: {}",
-        relay_info_response.remote_address_ma()?
+        relay_info_response.remote_address_ma().into_diagnostic()?
     );
     println!(
         "  Worker Address: {}",
-        relay_info_response.worker_address_ma()?
+        relay_info_response.worker_address_ma().into_diagnostic()?
     );
 
     Ok(())

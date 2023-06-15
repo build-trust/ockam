@@ -6,6 +6,7 @@ use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
 use crate::terminal::ConfirmResult;
+use crate::util::local_cmd;
 use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -25,14 +26,11 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e:?}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
     let DeleteCommand { name } = cmd;
     let state = opts.state.trust_contexts;
     match state.get(&name) {
@@ -58,7 +56,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
         }
         // Else, return the appropriate error
         Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Trust context '{name}' not found").into()),
+            CliStateError::NotFound => Err(miette!("Trust context '{name}' not found")),
             _ => Err(err.into()),
         },
     }

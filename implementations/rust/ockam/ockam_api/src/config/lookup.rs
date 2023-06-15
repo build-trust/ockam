@@ -1,11 +1,9 @@
 use crate::cli_state::{ProjectState, StateItemTrait};
 use crate::cloud::project::{OktaAuth0, Project};
-use crate::error::ApiError;
-use anyhow::Context as _;
 use bytes::Bytes;
+use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::identity::{identities, IdentityIdentifier};
 use ockam_core::compat::collections::VecDeque;
-use ockam_core::Result;
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -228,16 +226,17 @@ pub struct ProjectLookup {
 }
 
 impl ProjectLookup {
-    pub async fn from_project(project: &Project) -> anyhow::Result<Self> {
+    pub async fn from_project(project: &Project) -> miette::Result<Self> {
         let node_route: MultiAddr = project
             .access_route
             .as_str()
             .try_into()
-            .context("Invalid project node route")?;
+            .into_diagnostic()
+            .wrap_err("Invalid project node route")?;
         let pid = project
             .identity
             .as_ref()
-            .context("Project should have identity set")?;
+            .ok_or_else(|| miette!("Project should have identity set"))?;
         let authority = ProjectAuthority::from_raw(
             &project.authority_access_route,
             &project.authority_identity,
@@ -259,7 +258,7 @@ impl ProjectLookup {
         })
     }
 
-    pub async fn from_state(projects: Vec<ProjectState>) -> anyhow::Result<BTreeMap<String, Self>> {
+    pub async fn from_state(projects: Vec<ProjectState>) -> miette::Result<BTreeMap<String, Self>> {
         let mut lookups = BTreeMap::new();
         for p in projects {
             let l = ProjectLookup::from_project(p.config())
@@ -290,19 +289,19 @@ impl ProjectAuthority {
     pub async fn from_raw<S: ToString>(
         route: &Option<S>,
         identity: &Option<S>,
-    ) -> Result<Option<Self>> {
+    ) -> miette::Result<Option<Self>> {
         if let Some(r) = route {
-            let rte = MultiAddr::try_from(r.to_string().as_str())?;
+            let rte = MultiAddr::try_from(r.to_string().as_str()).into_diagnostic()?;
             let a = identity
                 .as_ref()
-                .ok_or_else(|| ApiError::generic("Identity is not set"))?
+                .ok_or_else(|| miette!("Identity is not set"))?
                 .to_string();
-            let a = hex::decode(a.as_str())
-                .map_err(|_| ApiError::generic("Invalid project authority"))?;
+            let a = hex::decode(a.as_str()).map_err(|_| miette!("Invalid project authority"))?;
             let p = identities()
                 .identities_creation()
                 .decode_identity(&a)
-                .await?;
+                .await
+                .into_diagnostic()?;
             Ok(Some(ProjectAuthority::new(p.identifier(), rte, a)))
         } else {
             Ok(None)

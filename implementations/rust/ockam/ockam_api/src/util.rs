@@ -1,6 +1,5 @@
+use miette::miette;
 use std::net::{SocketAddrV4, SocketAddrV6};
-
-use anyhow::anyhow;
 
 use ockam::TcpTransport;
 use ockam_core::flow_control::FlowControlId;
@@ -276,7 +275,7 @@ pub fn addr_to_multiaddr<T: Into<Address>>(a: T) -> Option<MultiAddr> {
 /// Tells whether the input MultiAddr references a local node or a remote node.
 ///
 /// This should be called before cleaning the MultiAddr.
-pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
+pub fn is_local_node(ma: &MultiAddr) -> miette::Result<bool> {
     let at_rust_node;
     if let Some(p) = ma.iter().next() {
         match p.code() {
@@ -293,30 +292,30 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
                 at_rust_node = p
                     .cast::<DnsAddr>()
                     .map(|dnsaddr| (*dnsaddr).eq("localhost"))
-                    .ok_or_else(|| anyhow!("Invalid \"dnsaddr\" value"))?;
+                    .ok_or_else(|| miette!("Invalid \"dnsaddr\" value"))?;
             }
             // A "/ip4" will be local if it matches the loopback address
             Ip4::CODE => {
                 at_rust_node = p
                     .cast::<Ip4>()
                     .map(|ip4| ip4.is_loopback())
-                    .ok_or_else(|| anyhow!("Invalid \"ip4\" value"))?;
+                    .ok_or_else(|| miette!("Invalid \"ip4\" value"))?;
             }
             // A "/ip6" will be local if it matches the loopback address
             Ip6::CODE => {
                 at_rust_node = p
                     .cast::<Ip6>()
                     .map(|ip6| ip6.is_loopback())
-                    .ok_or_else(|| anyhow!("Invalid \"ip6\" value"))?;
+                    .ok_or_else(|| miette!("Invalid \"ip6\" value"))?;
             }
             // A MultiAddr starting with "/service" could reference both local and remote nodes.
             _ => {
-                return Err(anyhow!("Invalid address, protocol not supported"));
+                return Err(miette!("Invalid address, protocol not supported"));
             }
         }
         Ok(at_rust_node)
     } else {
-        Err(anyhow!("Invalid address"))
+        Err(miette!("Invalid address"))
     }
 }
 

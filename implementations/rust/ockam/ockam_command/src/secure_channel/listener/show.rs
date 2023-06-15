@@ -32,14 +32,14 @@ impl ShowCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> crate::Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
     run_impl(&ctx, (opts, cmd)).await
 }
 
 async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&at)?;
     let address = &cmd.address;

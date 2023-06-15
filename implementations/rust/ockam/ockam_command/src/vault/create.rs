@@ -39,7 +39,7 @@ impl CreateCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -47,7 +47,7 @@ async fn run_impl(
     _ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let CreateCommand { name, aws_kms, .. } = cmd;
     let config = cli_state::VaultConfig::new(aws_kms)?;
     if opts.state.vaults.is_empty()? {

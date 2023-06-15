@@ -5,8 +5,7 @@ use ockam_api::identity::EnrollmentTicket;
 use std::collections::HashMap;
 use std::time::Duration;
 
-use anyhow::Context as _;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::{DirectAuthenticatorClient, TokenIssuerClient};
@@ -65,8 +64,8 @@ impl TicketCommand {
         let mut attributes = HashMap::new();
         for attr in &self.attributes {
             let mut parts = attr.splitn(2, '=');
-            let key = parts.next().context("key expected")?;
-            let value = parts.next().context("value expected)")?;
+            let key = parts.next().ok_or(miette!("key expected"))?;
+            let value = parts.next().ok_or(miette!("value expected)"))?;
             attributes.insert(key, value);
         }
         Ok(attributes)
@@ -84,7 +83,7 @@ impl Runner {
         Self { ctx, opts, cmd }
     }
 
-    async fn run(self) -> Result<()> {
+    async fn run(self) -> miette::Result<()> {
         let node_name =
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
@@ -95,7 +94,11 @@ impl Runner {
             if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
                 let tc = parse_trust_context(&self.opts.state, tc)?;
                 trust_context = Some(tc.clone());
-                let cred_retr = tc.authority()?.own_credential()?;
+                let cred_retr = tc
+                    .authority()
+                    .into_diagnostic()?
+                    .own_credential()
+                    .into_diagnostic()?;
                 let addr = match cred_retr {
                     ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
                         &c.multiaddr
@@ -103,8 +106,7 @@ impl Runner {
                     _ => {
                         return Err(miette!(
                             "Trust context must be configured with a credential issuer"
-                        )
-                        .into());
+                        ));
                     }
                 };
                 let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
@@ -112,7 +114,13 @@ impl Runner {
                     &self.ctx,
                     &self.opts,
                     &node_name,
-                    tc.authority()?.identity().await?.identifier().clone(),
+                    tc.authority()
+                        .into_diagnostic()?
+                        .identity()
+                        .await
+                        .into_diagnostic()?
+                        .identifier()
+                        .clone(),
                     addr,
                     Some(identity),
                 )
@@ -143,49 +151,57 @@ impl Runner {
             let direct_authenticator_route = {
                 let service = MultiAddr::try_from(
                     format!("/service/{}", DefaultAddress::DIRECT_AUTHENTICATOR).as_str(),
-                )?;
+                )
+                .into_diagnostic()?;
                 let mut addr = base_addr.clone();
                 for proto in service.iter() {
-                    addr.push_back_value(&proto)?;
+                    addr.push_back_value(&proto).into_diagnostic()?;
                 }
                 ockam_api::local_multiaddr_to_route(&addr)
-                    .context(format!("Invalid MultiAddr {addr}"))?
+                    .ok_or(miette!("Invalid MultiAddr {addr}"))?
             };
             let client = DirectAuthenticatorClient::new(
                 RpcClient::new(
                     route![DefaultAddress::RPC_PROXY, direct_authenticator_route],
                     &self.ctx,
                 )
-                .await?
+                .await
+                .into_diagnostic()?
                 .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
             );
             client
                 .add_member(id.clone(), self.cmd.attributes()?)
-                .await?
+                .await
+                .into_diagnostic()?
         } else {
             let token_issuer_route = {
                 let service = MultiAddr::try_from(
                     format!("/service/{}", DefaultAddress::ENROLLMENT_TOKEN_ISSUER).as_str(),
-                )?;
+                )
+                .into_diagnostic()?;
                 let mut addr = base_addr.clone();
                 for proto in service.iter() {
-                    addr.push_back_value(&proto)?;
+                    addr.push_back_value(&proto).into_diagnostic()?;
                 }
                 ockam_api::local_multiaddr_to_route(&addr)
-                    .context(format!("Invalid MultiAddr {addr}"))?
+                    .ok_or(miette!("Invalid MultiAddr {addr}"))?
             };
             let client = TokenIssuerClient::new(
                 RpcClient::new(
                     route![DefaultAddress::RPC_PROXY, token_issuer_route],
                     &self.ctx,
                 )
-                .await?
+                .await
+                .into_diagnostic()?
                 .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
             );
-            let token = client.create_token(self.cmd.attributes()?).await?;
+            let token = client
+                .create_token(self.cmd.attributes()?)
+                .await
+                .into_diagnostic()?;
 
             let ticket = EnrollmentTicket::new(token, project, trust_context);
-            let ticket_serialized = hex::encode(serde_json::to_vec(&ticket)?);
+            let ticket_serialized = hex::encode(serde_json::to_vec(&ticket).into_diagnostic()?);
             print!("{}", ticket_serialized)
         }
 

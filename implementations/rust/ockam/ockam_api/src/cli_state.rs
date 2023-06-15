@@ -16,6 +16,7 @@ pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
 pub use crate::cli_state::vaults::*;
 use crate::config::cli::LegacyCliConfig;
+use miette::Diagnostic;
 use ockam::identity::Identities;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
@@ -28,7 +29,7 @@ use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum CliStateError {
     #[error("IO error")]
     Io(#[from] std::io::Error),

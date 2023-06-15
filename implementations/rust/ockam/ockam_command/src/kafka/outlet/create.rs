@@ -1,5 +1,6 @@
 use clap::{command, Args};
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
@@ -15,7 +16,7 @@ use crate::{
     service::start::start_service_impl,
     terminal::OckamColor,
     util::node_rpc,
-    CommandGlobalOpts, Result,
+    CommandGlobalOpts,
 };
 
 /// Create a new Kafka Outlet
@@ -37,7 +38,7 @@ impl CreateCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     opts.terminal
         .write_line(&fmt_log!("Creating KafkaOutlet service"))?;
     let CreateCommand {
@@ -47,7 +48,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     } = cmd;
     let is_finished = Mutex::new(false);
     let send_req = async {
-        let tcp = TcpTransport::create(&ctx).await?;
+        let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
 
         let payload = StartKafkaOutletRequest::new(bootstrap_server.clone());
         let payload = StartServiceRequest::new(payload, &addr);

@@ -2,9 +2,9 @@ use crate::terminal::OckamColor;
 use crate::util::output::Output;
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
-use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
+use miette::Context as _;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
@@ -32,7 +32,7 @@ impl ListCommand {
 async fn run_impl(
     ctx: Context,
     (opts, _cmd): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     // Before printing node states we verify them.
     // We send a QueryStatus request to every node on
     // record. If the response yields a different pid to the

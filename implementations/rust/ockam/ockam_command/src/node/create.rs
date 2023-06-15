@@ -4,8 +4,8 @@ use rand::prelude::random;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 
-use anyhow::Context as _;
-use miette::miette;
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 use minicbor::{Decoder, Encode};
 use std::io::{self, Read};
 use std::{
@@ -14,16 +14,15 @@ use std::{
     str::FromStr,
 };
 use tokio::try_join;
-use tracing::error;
 
 use crate::node::util::{add_project_info_to_node_state, init_node_state, spawn_node};
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::terminal::OckamColor;
 use crate::util::api::{parse_trust_context, TrustContextConfigBuilder, TrustContextOpts};
-use crate::util::node_rpc;
 use crate::util::{api, parse_node_name, RpcBuilder};
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
+use crate::util::{local_cmd, node_rpc};
 use crate::{docs, identity, util::find_available_port, CommandGlobalOpts, Result};
 use crate::{fmt_log, fmt_ok};
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
@@ -140,11 +139,7 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            if let Err(e) = create_foreground_node(&options, &self) {
-                error!(%e);
-                eprintln!("{e:?}");
-                std::process::exit(e.code());
-            }
+            local_cmd(create_foreground_node(&options, &self));
         } else {
             // Create a new node running in the background (i.e. another, new OS process)
             node_rpc(run_impl, (options, self))
@@ -170,7 +165,9 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
     match serde_json::from_str::<Config>(config_or_path) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let path = PathBuf::from_str(config_or_path).context(miette!("Not a valid path"))?;
+            let path = PathBuf::from_str(config_or_path)
+                .into_diagnostic()
+                .wrap_err(miette!("Not a valid path"))?;
             Config::read(path)
         }
     }
@@ -179,7 +176,7 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
 pub(crate) async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     let node_name = &parse_node_name(&cmd.node_name)?;
     opts.terminal.write_line(&fmt_log!(
         "Creating Node {}...\n",
@@ -189,13 +186,12 @@ pub(crate) async fn run_impl(
     ))?;
 
     if cmd.child_process {
-        return Err(crate::Error::new(
-            exitcode::CONFIG,
-            miette!("Cannot create a background node from background node"),
+        return Err(miette!(
+            "Cannot create a background node from background node"
         ));
     }
     // Print node status
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
     let is_finished: Mutex<bool> = Mutex::new(false);
 
@@ -242,7 +238,7 @@ pub(crate) async fn run_impl(
     Ok(())
 }
 
-fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> Result<()> {
+fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> miette::Result<()> {
     let cmd = cmd.overwrite_addr()?;
     embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd))?;
     Ok(())
@@ -251,7 +247,7 @@ fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> Resu
 async fn run_foreground_node(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     let node_name = parse_node_name(&cmd.node_name)?;
 
     // TODO: remove this special case once the Orchestrator has migrated to the
@@ -280,11 +276,11 @@ async fn run_foreground_node(
             .with_credential_name(cmd.credential.as_ref())
             .build();
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let bind = &cmd.tcp_listener_address;
 
     let options = TcpListenerOptions::new();
-    let listener = tcp.listen(&bind, options).await?;
+    let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     node_state.set_setup(
@@ -292,11 +288,10 @@ async fn run_foreground_node(
             .config()
             .setup_mut()
             .set_verbose(opts.global_args.verbose)
-            .add_transport(CreateTransportJson::new(
-                TransportType::Tcp,
-                TransportMode::Listen,
-                bind,
-            )?),
+            .add_transport(
+                CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, bind)
+                    .into_diagnostic()?,
+            ),
     )?;
 
     let projects = ProjectLookup::from_state(opts.state.projects.list()?).await?;
@@ -313,17 +308,19 @@ async fn run_foreground_node(
         NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
             listener.flow_control_id().clone(),
-            tcp.async_try_clone().await?,
+            tcp.async_try_clone().await.into_diagnostic()?,
         ),
         NodeManagerTrustOptions::new(trust_context_config),
     )
-    .await?;
+    .await
+    .into_diagnostic()?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-        .await?;
+        .await
+        .into_diagnostic()?;
 
     if let Some(config) = &cmd.launch_config {
         if start_services(&ctx, config).await.is_err() {
@@ -336,8 +333,8 @@ async fn run_foreground_node(
             //      and the other being terminated, so when restarted it works.  This is
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
-            ctx.stop().await?;
-            return Err(miette!("Failed to start services").into());
+            ctx.stop().await.into_diagnostic()?;
+            return Err(miette!("Failed to start services"));
         }
     }
 
@@ -375,7 +372,7 @@ async fn run_foreground_node(
     // Shutdown on SIGINT, SIGTERM, SIGHUP or EOF
     if rx.recv().await.is_some() {
         opts.state.nodes.get(&node_name)?.kill_process(false)?;
-        ctx.stop().await?;
+        ctx.stop().await.into_diagnostic()?;
         opts.terminal
             .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
             .unwrap();
@@ -399,7 +396,7 @@ pub fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrus
     Ok(pre_trusted_identities)
 }
 
-async fn start_services(ctx: &Context, cfg: &Config) -> Result<()> {
+async fn start_services(ctx: &Context, cfg: &Config) -> miette::Result<()> {
     let config = {
         if let Some(sc) = &cfg.startup_services {
             sc.clone()
@@ -468,12 +465,11 @@ async fn spawn_background_node(
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
     addr: SocketAddr,
-) -> Result<()> {
+) -> miette::Result<()> {
     // Check if the port is used by some other services or process
     if !bind_to_port_check(&addr) {
-        return Err(crate::Error::new(
-            exitcode::IOERR,
-            miette!("Another process is listening on the provided port!"),
+        return Err(miette!(
+            "Another process is listening on the provided port!"
         ));
     }
 
@@ -522,7 +518,7 @@ async fn spawn_background_node(
 async fn start_authority_node(
     ctx: Context,
     opts: (CommandGlobalOpts, CreateCommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     let (opts, cmd) = opts;
     let launch_config = cmd
         .launch_config
@@ -566,7 +562,9 @@ async fn start_authority_node(
             no_token_enrollment: true,
             okta: None,
         };
-        authority_node::start_node(&ctx, &configuration).await?;
+        authority_node::start_node(&ctx, &configuration)
+            .await
+            .into_diagnostic()?;
     }
     Ok(())
 }

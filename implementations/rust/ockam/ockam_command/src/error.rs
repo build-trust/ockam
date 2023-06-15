@@ -1,12 +1,10 @@
-use crate::version::Version;
 use crate::{exitcode, fmt_log, ExitCode};
-use colorful::Colorful;
 
 use miette::miette;
 use miette::Diagnostic;
 use std::fmt::Debug;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = miette::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum Error {
@@ -94,59 +92,6 @@ impl Error {
             Error::InternalError { exit_code, .. } => *exit_code,
             Error::Unavailable { .. } => exitcode::UNAVAILABLE,
         }
-    }
-}
-
-impl From<anyhow::Error> for Error {
-    fn from(e: anyhow::Error) -> Self {
-        Error::new(exitcode::SOFTWARE, miette!(e.to_string()))
-    }
-}
-
-pub struct ErrorReportHandler;
-
-#[allow(dead_code)]
-impl ErrorReportHandler {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl miette::ReportHandler for ErrorReportHandler {
-    fn debug(&self, error: &dyn Diagnostic, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        if f.alternate() {
-            return core::fmt::Debug::fmt(error, f);
-        }
-        let code_as_str = match error.code() {
-            Some(code) => code.to_string(),
-            None => "OCK500".to_string(),
-        };
-
-        writeln!(
-            f,
-            "{} {}\n",
-            code_as_str
-                .color(crate::terminal::OckamColor::FmtERRORBackground.color())
-                .bold(),
-            error
-        )?;
-
-        if let Some(help) = error.help() {
-            writeln!(f, "{}", fmt_log!("{}", help))?;
-        }
-
-        // TODO: wait until we have the dedicated documentation page for errors
-        // if let Some(url) = error.url() {
-        //     writeln!(f, "{}", fmt_log!("{}", url))?;
-        // }
-
-        writeln!(
-            f,
-            "{}",
-            fmt_log!("{}", Version::short().to_string().light_gray())
-        )?;
-
-        Ok(())
     }
 }
 

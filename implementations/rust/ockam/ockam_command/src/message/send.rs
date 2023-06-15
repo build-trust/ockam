@@ -1,5 +1,5 @@
-use anyhow::Context as _;
 use clap::Args;
+use miette::{Context as _, IntoDiagnostic};
 
 use core::time::Duration;
 use ockam::{Context, TcpTransport};
@@ -12,7 +12,7 @@ use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
-use crate::Result;
+
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
@@ -58,12 +58,19 @@ impl SendCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> Result<()> {
-    async fn go(ctx: &mut Context, opts: CommandGlobalOpts, cmd: SendCommand) -> Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, SendCommand),
+) -> miette::Result<()> {
+    async fn go(
+        ctx: &mut Context,
+        opts: CommandGlobalOpts,
+        cmd: SendCommand,
+    ) -> miette::Result<()> {
         // Setup environment depending on whether we are sending the message from an embedded node or a background node
         let (api_node, tcp) = if let Some(node) = &cmd.from {
             let api_node = extract_address_value(node)?;
-            let tcp = TcpTransport::create(ctx).await?;
+            let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
             (api_node, Some(tcp))
         } else {
             let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
@@ -99,7 +106,9 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             .build();
 
         let msg_bytes = if cmd.hex {
-            hex::decode(cmd.message).context("Invalid hex string")?
+            hex::decode(cmd.message)
+                .into_diagnostic()
+                .context("Invalid hex string")?
         } else {
             cmd.message.as_bytes().to_vec()
         };
@@ -114,7 +123,9 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             if cmd.hex {
                 hex::encode(res)
             } else {
-                String::from_utf8(res).context("Received content is not a valid utf8 string")?
+                String::from_utf8(res)
+                    .into_diagnostic()
+                    .context("Received content is not a valid utf8 string")?
             }
         };
 

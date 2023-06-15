@@ -1,5 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use std::fmt::Write;
 use std::str::FromStr;
 
@@ -42,7 +43,7 @@ impl ListCommand {
 async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustContextOpts),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let identity = get_identity_name(&opts.state, &cloud_opts.identity);
     let is_finished: Mutex<bool> = Mutex::new(false);
 
@@ -72,7 +73,7 @@ async fn run_impl(
     let plain =
         opts.terminal
             .build_list(&tokens, "Tokens", "No active tokens found within service.")?;
-    let json = serde_json::to_string_pretty(&tokens)?;
+    let json = serde_json::to_string_pretty(&tokens).into_diagnostic()?;
     opts.terminal
         .stdout()
         .plain(plain)

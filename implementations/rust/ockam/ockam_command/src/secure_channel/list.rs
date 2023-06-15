@@ -1,6 +1,6 @@
-use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
+use miette::{miette, IntoDiagnostic};
 use std::fmt::Write;
 
 use ockam::{Context, TcpTransport};
@@ -51,14 +51,14 @@ impl ListCommand {
         let from = node_name.to_string();
         let at = {
             let channel_route = &route![channel_address];
-            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(anyhow!(
+            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(miette!(
                 "Failed to convert route {channel_route} to multi-address"
             ))?;
             channel_multiaddr.to_string()
         };
 
         let to = {
-            let show_route = show_response.route.ok_or(anyhow!(
+            let show_route = show_response.route.ok_or(miette!(
                 "Failed to retrieve route from show channel response"
             ))?;
             show_route
@@ -66,7 +66,7 @@ impl ListCommand {
                 .map(|p| {
                     let r = route![p];
                     route_to_multiaddr(&r)
-                        .ok_or(anyhow!("Failed to convert route {r} to multi-address"))
+                        .ok_or(miette!("Failed to convert route {r} to multi-address"))
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .iter()
@@ -79,11 +79,11 @@ impl ListCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> crate::Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
     // We need this TCPTransport handle to ensure that we are using the same transport across
     // multiple RPC calls. Creating a RPC instance without explicit transport results in a router
     // instance being registered for the same transport type multiple times which is not allowed
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
 
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&at)?;

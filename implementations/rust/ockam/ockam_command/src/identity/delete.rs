@@ -30,7 +30,7 @@ impl DeleteCommand {
 async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let state = opts.state;
     // Check if exists
     match state.identities.get(&cmd.name) {
@@ -42,7 +42,7 @@ async fn run_impl(
         }
         // Return the appropriate error
         Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Identity '{}' not found", &cmd.name).into()),
+            CliStateError::NotFound => Err(miette!("Identity '{}' not found", &cmd.name)),
             _ => Err(err.into()),
         },
     }

@@ -1,5 +1,5 @@
 use clap::Args;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cli_state;
@@ -33,14 +33,14 @@ impl AttachKeyCommand {
 async fn rpc(
     mut _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AttachKeyCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(opts, cmd).await
 }
 
-async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Result<()> {
+async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Result<()> {
     let v_state = opts.state.vaults.get(&cmd.vault)?;
     if !v_state.config().is_aws() {
-        return Err(miette!("Vault {} is not an AWS KMS vault", cmd.vault).into());
+        return Err(miette!("Vault {} is not an AWS KMS vault", cmd.vault));
     }
     let vault = v_state.get().await?;
     let idt = {
@@ -51,7 +51,8 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Resu
             .await?
             .identities_creation()
             .create_identity_with_existing_key(&cmd.key_id, key_attrs)
-            .await?
+            .await
+            .into_diagnostic()?
     };
     let idt_name = cli_state::random_name();
     let idt_config = IdentityConfig::new(&idt.identifier()).await;

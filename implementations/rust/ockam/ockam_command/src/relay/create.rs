@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 use ockam::identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Project;
 
@@ -70,15 +70,15 @@ pub fn default_forwarder_at() -> MultiAddr {
     MultiAddr::from_str("/project/default").expect("Default relay address is invalid")
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!("Creating Relay...\n"))?;
 
     display_parse_logs(&opts);
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let to = get_node_name(&opts.state, &cmd.to);
     let api_node = extract_address_value(&to)?;
-    let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
+    let at_rust_node = is_local_node(&cmd.at).wrap_err("Argument --at is not valid")?;
 
     let ma = process_nodes_multiaddr(&cmd.at, &opts.state)?;
     let alias = if at_rust_node {
@@ -132,15 +132,19 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 
     let (relay, _) = try_join!(send_req, progress_output)?;
 
-    let machine = relay.remote_address_ma()?;
-    let json = serde_json::to_string_pretty(&relay)?;
+    let machine = relay.remote_address_ma().into_diagnostic()?;
+    let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
 
-    let formatted_from = format!("{}{}", &cmd.at, &relay.worker_address_ma()?.to_string())
-        .color(OckamColor::PrimaryResource.color());
+    let formatted_from = format!(
+        "{}{}",
+        &cmd.at,
+        &relay.worker_address_ma().into_diagnostic()?.to_string()
+    )
+    .color(OckamColor::PrimaryResource.color());
     let formatted_to = format!(
         "/node/{}{}",
         &api_node,
-        &relay.remote_address_ma()?.to_string()
+        &relay.remote_address_ma().into_diagnostic()?.to_string()
     )
     .color(OckamColor::PrimaryResource.color());
 

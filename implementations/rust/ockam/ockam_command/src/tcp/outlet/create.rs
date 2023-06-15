@@ -10,6 +10,7 @@ use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -56,7 +57,7 @@ fn default_from_addr() -> String {
 pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!(
         "Creating TCP Outlet to {}...\n",
         &cmd.to
@@ -116,8 +117,8 @@ pub async fn run_impl(
         .progress_output(&output_messages, &is_finished);
 
     let (outlet_status, _) = try_join!(send_req, progress_output)?;
-    let machine = outlet_status.worker_address()?;
-    let json = serde_json::to_string_pretty(&outlet_status)?;
+    let machine = outlet_status.worker_address().into_diagnostic()?;
+    let json = serde_json::to_string_pretty(&outlet_status).into_diagnostic()?;
 
     opts.terminal
         .stdout()

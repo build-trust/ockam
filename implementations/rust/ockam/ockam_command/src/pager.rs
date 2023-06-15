@@ -1,5 +1,6 @@
 use crate::util::exitcode;
-use crate::Result;
+
+use miette::IntoDiagnostic;
 use ockam_core::env::get_env_with_default;
 use std::io::Write;
 use std::path::PathBuf;
@@ -19,7 +20,7 @@ pub(crate) fn render_help(help: clap::Error) {
     }
 }
 
-fn paginate_with(pager_binary_path: PathBuf, help: clap::Error) -> Result<()> {
+fn paginate_with(pager_binary_path: PathBuf, help: clap::Error) -> miette::Result<()> {
     let pager = pager_binary_path.file_name().unwrap().to_string_lossy();
     let mut pager_cmd = process::Command::new(pager.as_ref());
     if pager.as_ref() == "less" {
@@ -29,13 +30,15 @@ fn paginate_with(pager_binary_path: PathBuf, help: clap::Error) -> Result<()> {
         // - X: prevents clearing the screen on exit
         // - using env var in case a lesser `less` poses as `less`
     }
-    let mut pager_process = pager_cmd.stdin(Stdio::piped()).spawn()?;
+    let mut pager_process = pager_cmd.stdin(Stdio::piped()).spawn().into_diagnostic()?;
     {
         let mut pager_stdin = pager_process
             .stdin
             .take()
             .expect("Failed to get pager's stdin");
-        pager_stdin.write_all(help.render().ansi().to_string().as_bytes())?;
+        pager_stdin
+            .write_all(help.render().ansi().to_string().as_bytes())
+            .into_diagnostic()?;
     }
     let _ = pager_process.wait();
     let code = if help.use_stderr() {

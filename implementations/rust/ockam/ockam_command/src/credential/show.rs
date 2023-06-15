@@ -25,7 +25,7 @@ impl ShowCommand {
 async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let vault_name = cmd
         .vault
         .clone()
@@ -37,7 +37,7 @@ pub(crate) async fn display_credential(
     opts: &CommandGlobalOpts,
     cred_name: &str,
     vault_name: &str,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let cred = opts.state.credentials.get(cred_name)?;
     let cred_config = cred.config();
 

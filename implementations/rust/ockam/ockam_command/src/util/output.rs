@@ -1,6 +1,6 @@
-use anyhow::Context;
 use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
+use miette::miette;
 use miette::IntoDiagnostic;
 use ockam_api::cli_state::{StateItemTrait, VaultState};
 
@@ -213,7 +213,7 @@ impl Output for Vec<Project> {
 impl Output for CreateSecureChannelResponse {
     fn output(&self) -> Result<String> {
         let addr = route_to_multiaddr(&route![self.addr.to_string()])
-            .context("Invalid Secure Channel Address")?
+            .ok_or(miette!("Invalid Secure Channel Address"))?
             .to_string();
         Ok(addr)
     }
@@ -227,7 +227,7 @@ impl Output for ShowSecureChannelResponse<'_> {
                     "\n  Secure Channel:\n{} {}\n{} {}\n{} {}",
                     "  •         At: ".light_magenta(),
                     route_to_multiaddr(&route![addr.to_string()])
-                        .context("Invalid Secure Channel Address")?
+                        .ok_or(miette!("Invalid Secure Channel Address"))?
                         .to_string()
                         .light_yellow(),
                     "  •         To: ".light_magenta(),

@@ -1,8 +1,8 @@
-
+use crate::util::local_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette};
+use miette::miette;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliStateError;
 
@@ -22,21 +22,18 @@ pub struct DefaultCommand {
 
 impl DefaultCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e:?}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
     let DefaultCommand { name } = cmd;
     let state = opts.state.vaults;
     match state.get(&name) {
         Ok(v) => {
             // If it exists, warn the user and exit
             if state.is_default(v.name())? {
-                Err(miette!("Vault '{}' is already the default", name).into())
+                Err(miette!("Vault '{}' is already the default", name))
             }
             // Otherwise, set it as default
             else {
@@ -51,7 +48,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
             }
         }
         Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Vault '{}' not found", name).into()),
+            CliStateError::NotFound => Err(miette!("Vault '{}' not found", name)),
             _ => Err(err.into()),
         },
     }

@@ -3,6 +3,7 @@ use crate::util::Rpc;
 use crate::util::{node_rpc, parse_node_name};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
+use miette::IntoDiagnostic;
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::transport::CreateTcpListener;
 use ockam_core::api::Request;
@@ -33,7 +34,7 @@ impl CreateCommand {
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
@@ -41,11 +42,13 @@ async fn run_impl(
         .await?;
     let response = rpc.parse_response::<models::transport::TransportStatus>()?;
 
-    let socket = response.socket_addr()?;
+    let socket = response.socket_addr().into_diagnostic()?;
     let port = socket.port();
     let mut multiaddr = MultiAddr::default();
-    multiaddr.push_back(DnsAddr::new("localhost"))?;
-    multiaddr.push_back(Tcp::new(port))?;
+    multiaddr
+        .push_back(DnsAddr::new("localhost"))
+        .into_diagnostic()?;
+    multiaddr.push_back(Tcp::new(port)).into_diagnostic()?;
     println!("Tcp listener created! You can send messages to it via this route:\n`{multiaddr}`");
 
     Ok(())

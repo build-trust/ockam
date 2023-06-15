@@ -1,6 +1,6 @@
 use crate::{
     util::{api, exitcode, extract_address_value, node_rpc, Rpc},
-    CommandGlobalOpts, OutputFormat, Result,
+    CommandGlobalOpts, OutputFormat,
 };
 use std::str::FromStr;
 
@@ -145,7 +145,10 @@ fn parse_address(input: &str) -> core::result::Result<Address, AddressParseError
     Address::from_str(&buf)
 }
 
-async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, DeleteCommand)) -> Result<()> {
+async fn rpc(
+    ctx: Context,
+    (options, command): (CommandGlobalOpts, DeleteCommand),
+) -> miette::Result<()> {
     let at = &command.parse_at_node();
     let address = &command.address;
 
