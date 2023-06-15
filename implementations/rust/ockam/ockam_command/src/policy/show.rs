@@ -1,6 +1,6 @@
 use crate::policy::policy_path;
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{CommandGlobalOpts, Result};
+use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
 use ockam_abac::{Action, Resource};
@@ -25,11 +25,18 @@ impl ShowCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> Result<()> {
+async fn run_impl(
+    ctx: &mut Context,
+    opts: CommandGlobalOpts,
+    cmd: ShowCommand,
+) -> miette::Result<()> {
     let node = extract_address_value(&cmd.at)?;
     let req = Request::get(policy_path(&cmd.resource, &cmd.action));
     let mut rpc = Rpc::background(ctx, &opts, &node)?;

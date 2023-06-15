@@ -30,7 +30,7 @@ impl ListCommand {
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;

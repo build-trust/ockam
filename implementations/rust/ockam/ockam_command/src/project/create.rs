@@ -44,7 +44,7 @@ impl CreateCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -52,7 +52,7 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();

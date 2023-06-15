@@ -18,7 +18,7 @@ use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, Rpc};
-use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_confluent/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_confluent/after_long_help.txt");
@@ -63,7 +63,7 @@ async fn run_impl(
         CloudOpts,
         AddonConfigureConfluentSubcommand,
     ),
-) -> Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cloud_opts.route();
     let AddonConfigureConfluentSubcommand {
         project_name,

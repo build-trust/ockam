@@ -3,7 +3,7 @@ use crate::{
     fmt_log, fmt_ok,
     terminal::OckamColor,
     util::{exitcode, extract_address_value, node_rpc},
-    CommandGlobalOpts, Result,
+    CommandGlobalOpts,
 };
 
 use clap::Args;
@@ -71,7 +71,7 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         api_node: &str,
         tcp: &TcpTransport,
-    ) -> Result<MultiAddr> {
+    ) -> miette::Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
@@ -85,11 +85,9 @@ impl CreateCommand {
             CredentialExchangeMode::Oneway,
         )
         .await?;
-        Ok(
-            crate::project::util::clean_projects_multiaddr(to, projects_sc)
-                .into_diagnostic()
-                .wrap_err("Could not parse projects from route")?,
-        )
+        crate::project::util::clean_projects_multiaddr(to, projects_sc)
+            .into_diagnostic()
+            .wrap_err("Could not parse projects from route")
     }
 
     // Read the `from` argument and return node name
@@ -98,7 +96,7 @@ impl CreateCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     opts.terminal
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -20,8 +20,8 @@ use crate::project::addon::configure_addon_endpoint;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 
-use crate::util::{api, exitcode, node_rpc, Rpc};
-use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
+use crate::util::{api, node_rpc, Rpc};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_long_help.txt");
@@ -134,7 +134,7 @@ async fn run_impl(
         CloudOpts,
         AddonConfigureInfluxdbSubcommand,
     ),
-) -> Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cloud_opts.route();
     let AddonConfigureInfluxdbSubcommand {
         project_name,
@@ -150,14 +150,11 @@ async fn run_impl(
 
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     let perms = match (permissions, permissions_path) {
-        (_, Some(p)) => std::fs::read_to_string(p)?,
+        (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
         (Some(perms), _) => perms,
         _ => {
-            return Err(crate::error::Error::new(
-                exitcode::IOERR,
-                miette!(
-                    "Permissions JSON is required, supply --permissions or --permissions-path."
-                ),
+            return Err(miette!(
+                "Permissions JSON is required, supply --permissions or --permissions-path."
             ));
         }
     };

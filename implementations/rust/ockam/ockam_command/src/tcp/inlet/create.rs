@@ -7,10 +7,10 @@ use crate::util::{
     bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
     process_nodes_multiaddr, RpcBuilder,
 };
-use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
+use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
 use ockam_abac::Resource;
@@ -80,7 +80,10 @@ impl CreateCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(
+    ctx: Context,
+    (opts, mut cmd): (CommandGlobalOpts, CreateCommand),
+) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!(
         "Creating TCP Inlet at {}...\n",
         cmd.from
@@ -94,7 +97,7 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node = extract_address_value(&node_name)?;
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
@@ -204,7 +207,7 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
 
     let machine_output = inlet.bind_addr.to_string();
 
-    let json_output = serde_json::to_string_pretty(&inlet)?;
+    let json_output = serde_json::to_string_pretty(&inlet).into_diagnostic()?;
 
     opts.terminal
         .stdout()

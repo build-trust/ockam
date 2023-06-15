@@ -3337,6 +3337,7 @@ dependencies = [
  "indexmap",
  "kafka-protocol",
  "lru",
+ "miette",
  "minicbor",
  "mockall",
  "nix",

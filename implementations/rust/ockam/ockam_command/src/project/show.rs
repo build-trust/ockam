@@ -34,7 +34,10 @@ impl ShowCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> crate::Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -42,7 +45,7 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: ShowCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 

@@ -1,6 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use miette::{miette, IntoDiagnostic, WrapErr};
 
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
@@ -11,7 +11,7 @@ use ockam_core::{Address, Route};
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{api, exitcode, node_rpc, parse_node_name, Rpc};
-use crate::{docs, fmt_log, fmt_ok, terminal::OckamColor, CommandGlobalOpts, Result};
+use crate::{docs, fmt_log, fmt_ok, terminal::OckamColor, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -48,14 +48,14 @@ impl CreateCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     run_impl(&ctx, (opts, cmd)).await
 }
 
 async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = parse_node_name(&at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
@@ -89,10 +89,10 @@ async fn run_impl(
                 .write_line()?;
             Ok(())
         }
-        Err(e) => Err(crate::error::Error::new(
-            exitcode::CANTCREAT,
-            miette!("An error occurred while creating the secure channel listener").context(e),
-        )),
+        Err(e) => Err(miette!(
+            "An error occurred while creating the secure channel listener"
+        ))
+        .context(e),
     }
 }
 
@@ -102,13 +102,14 @@ pub async fn create_listener(
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     identity: Option<String>,
     mut base_route: Route,
-) -> Result<()> {
+) -> miette::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
             api::create_secure_channel_listener(&addr, authorized_identifiers, identity)?,
         )
-        .await?;
+        .await
+        .into_diagnostic()?;
 
     let response = api::parse_create_secure_channel_listener_response(&resp)?;
 

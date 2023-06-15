@@ -27,11 +27,18 @@ impl ListCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ListCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts, cmd: ListCommand) -> Result<()> {
+async fn run_impl(
+    ctx: &mut Context,
+    opts: CommandGlobalOpts,
+    cmd: ListCommand,
+) -> miette::Result<()> {
     let resource = cmd.resource;
     let node = extract_address_value(&cmd.at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node)?;

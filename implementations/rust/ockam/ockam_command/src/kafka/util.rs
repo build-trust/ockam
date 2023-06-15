@@ -25,7 +25,7 @@ pub struct ArgOpts {
     pub project_route: MultiAddr,
 }
 
-pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> crate::Result<()> {
+pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> miette::Result<()> {
     let ArgOpts {
         endpoint,
         kafka_entity,

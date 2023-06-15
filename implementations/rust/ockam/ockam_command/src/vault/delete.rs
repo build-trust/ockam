@@ -33,7 +33,7 @@ impl DeleteCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -41,7 +41,7 @@ async fn run_impl(
     _ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let DeleteCommand { name } = cmd;
     let state = opts.state.vaults;
     match state.get(&name) {
@@ -67,7 +67,7 @@ async fn run_impl(
         }
         // Else, return the appropriate error
         Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Vault '{}' not found", name).into()),
+            CliStateError::NotFound => Err(miette!("Vault '{}' not found", name)),
             _ => Err(err.into()),
         },
     }

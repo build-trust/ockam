@@ -1,4 +1,5 @@
 use clap::Args;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
@@ -31,7 +32,10 @@ impl ListCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> crate::Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ListCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -39,7 +43,7 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: ListCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
@@ -62,7 +66,7 @@ async fn run_impl(
     let plain = opts
         .terminal
         .build_list(&spaces, "Spaces", "No spaces found.")?;
-    let json = serde_json::to_string_pretty(&spaces)?;
+    let json = serde_json::to_string_pretty(&spaces).into_diagnostic()?;
 
     for space in spaces {
         opts.state

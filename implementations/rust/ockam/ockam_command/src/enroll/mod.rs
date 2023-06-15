@@ -57,11 +57,15 @@ impl EnrollCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> miette::Result<()> {
     run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
+async fn run_impl(
+    ctx: &Context,
+    opts: CommandGlobalOpts,
+    cmd: EnrollCommand,
+) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!(
         "Enrolling your default Ockam identity with Ockam Orchestrator...\n"
     ))?;
@@ -132,7 +136,7 @@ async fn enroll(
     opts: &CommandGlobalOpts,
     cmd: &EnrollCommand,
     node_name: &str,
-) -> Result<()> {
+) -> miette::Result<()> {
     let auth0 = Auth0Service::new(Auth0Provider::Auth0);
     let token = auth0.token(&cmd.cloud_opts, opts).await?;
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
@@ -145,7 +149,7 @@ async fn enroll(
         info!("Already enrolled");
         Ok(())
     } else {
-        Err(miette!("{}", rpc.parse_err_msg(res, dec)).into())
+        Err(miette!("{}", rpc.parse_err_msg(res, dec)))
     }
 }
 
@@ -563,9 +567,9 @@ impl Auth0Service {
         }
     }
 
-    pub(crate) async fn validate_provider_config(&self) -> Result<()> {
+    pub(crate) async fn validate_provider_config(&self) -> miette::Result<()> {
         if let Err(e) = self.device_code().await {
-            return Err(miette!("Invalid OIDC configuration: {}", e).into());
+            return Err(miette!("Invalid OIDC configuration: {}", e));
         }
         Ok(())
     }

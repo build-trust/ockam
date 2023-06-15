@@ -4,7 +4,7 @@ use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{fmt_ok, CommandGlobalOpts};
 use crate::{fmt_warn, Result};
 use clap::{Args, Subcommand};
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 
 use colorful::Colorful;
 use minicbor::Encode;
@@ -93,7 +93,7 @@ impl StartCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, StartCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -101,9 +101,9 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: StartCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let tcp = TcpTransport::create(ctx).await?;
+    let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
     let mut is_hop_service = false;
     let addr = match cmd.create_subcommand {
         StartSubCommand::Hop { addr, .. } => {

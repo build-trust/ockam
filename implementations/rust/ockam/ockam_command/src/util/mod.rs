@@ -6,8 +6,8 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::Context as _;
-use miette::{miette, ErrReport as Report};
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 use minicbor::{data::Type, Decode, Decoder, Encode};
 
 use tracing::{debug, error, trace};
@@ -189,7 +189,7 @@ impl<'a> Rpc<'a> {
                 let addr_str = format!("localhost:{port}");
                 let addr = match tcp {
                     None => {
-                        let tcp = TcpTransport::create(ctx).await?;
+                        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
                         tcp.connect(addr_str, TcpConnectionOptions::new())
                             .await?
                             .sender_address()
@@ -236,6 +236,7 @@ impl<'a> Rpc<'a> {
         let mut dec = Decoder::new(&self.buf);
         let hdr = dec
             .decode::<Response>()
+            .into_diagnostic()
             .context("Failed to decode response header")?;
         Ok((hdr, dec))
     }
@@ -245,6 +246,7 @@ impl<'a> Rpc<'a> {
         let mut dec = Decoder::new(&self.buf);
         let hdr = dec
             .decode::<Response>()
+            .into_diagnostic()
             .context("Failed to decode response header")?;
         if hdr.status() == Some(Status::Ok) {
             Ok(dec)
@@ -317,10 +319,13 @@ where
     T: Output + serde::Serialize,
 {
     let output = match output_format {
-        OutputFormat::Plain => b.output().context("Failed to serialize output")?,
-        OutputFormat::Json => {
-            serde_json::to_string_pretty(b).context("Failed to serialize output")?
-        }
+        OutputFormat::Plain => b
+            .output()
+            .into_diagnostic()
+            .context("Failed to serialize output")?,
+        OutputFormat::Json => serde_json::to_string_pretty(b)
+            .into_diagnostic()
+            .context("Failed to serialize output")?,
     };
     Ok(output)
 }
@@ -330,7 +335,7 @@ where
     T: Encode<()> + Output,
 {
     let o = match encode_format {
-        EncodeFormat::Plain => e.output().context("Failed serialize output")?,
+        EncodeFormat::Plain => e.output().wrap_err("Failed serialize output")?,
         EncodeFormat::Hex => {
             let bytes = minicbor::to_vec(e).expect("Unable to encode response");
             hex::encode(bytes)
@@ -346,30 +351,33 @@ where
 /// eprintln logs.
 ///
 /// TODO: We may want to change this behaviour in the future.
-pub async fn stop_node(mut ctx: Context) -> Result<()> {
+pub async fn stop_node(mut ctx: Context) {
     if let Err(e) = ctx.stop().await {
         eprintln!("an error occurred while shutting down local node: {e}");
     }
-    Ok(())
+}
+
+pub fn local_cmd(res: miette::Result<()>) {
+    if let Err(e) = res {
+        error!(%e, "Failed to run command");
+        eprintln!("{:?}", e);
+        std::process::exit(exitcode::SOFTWARE);
+    }
 }
 
 pub fn node_rpc<A, F, Fut>(f: F, a: A)
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = crate::Result<()>> + Send + 'static,
+    Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
     let res = embedded_node(
         |ctx, a| async {
             let res = f(ctx, a).await;
             if let Err(e) = res {
-                let code = e.code();
-                error!(%e);
-
-                let r: Report = e.into();
-                eprintln!("{:?}", r);
-
-                std::process::exit(code);
+                error!(%e, "Failed to run command");
+                eprintln!("{:?}", e);
+                std::process::exit(exitcode::SOFTWARE);
             }
             Ok(())
         },
@@ -381,60 +389,67 @@ where
     }
 }
 
-pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> crate::Result<T>
+pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
+    Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
-    executor.execute(async move {
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("Detached.embedded_node"),
-                DenyAll,
-                DenyAll,
-            )
-            .await
-            .expect("Embedded node child ctx can't be created");
-        let r = f(child_ctx, a).await;
-        stop_node(ctx).await.unwrap();
-        r
-    })?
+    executor
+        .execute(async move {
+            let child_ctx = ctx
+                .new_detached(
+                    Address::random_tagged("Detached.embedded_node"),
+                    DenyAll,
+                    DenyAll,
+                )
+                .await
+                .expect("Embedded node child ctx can't be created");
+            let r = f(child_ctx, a).await;
+            stop_node(ctx).await;
+            r
+        })
+        .into_diagnostic()?
 }
 
-pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> crate::Result<T>
+pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
+    Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
     let (mut ctx, mut executor) = NodeBuilder::new().no_logging().build();
-    executor.execute(async move {
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("Detached.embedded_node.not_stopped"),
-                DenyAll,
-                DenyAll,
-            )
-            .await
-            .expect("Embedded node child ctx can't be created");
-        let result = f(child_ctx, a).await;
-        if result.is_err() {
-            ctx.stop().await?;
-            result
-        } else {
-            result
-        }
-    })?
+    executor
+        .execute(async move {
+            let child_ctx = ctx
+                .new_detached(
+                    Address::random_tagged("Detached.embedded_node.not_stopped"),
+                    DenyAll,
+                    DenyAll,
+                )
+                .await
+                .expect("Embedded node child ctx can't be created");
+            let result = f(child_ctx, a).await;
+            if result.is_err() {
+                ctx.stop().await.into_diagnostic()?;
+                result
+            } else {
+                result
+            }
+        })
+        .into_diagnostic()?
 }
 
 pub fn find_available_port() -> Result<u16> {
-    let listener = TcpListener::bind("127.0.0.1:0").context("Unable to bind to an open port")?;
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .into_diagnostic()
+        .context("Unable to bind to an open port")?;
     let address = listener
         .local_addr()
+        .into_diagnostic()
         .context("Unable to get local address")?;
     Ok(address.port())
 }
@@ -460,19 +475,19 @@ pub fn extract_address_value(input: &str) -> Result<String> {
                 Node::CODE => {
                     addr = p
                         .cast::<proto::Node>()
-                        .context("Failed to parse `node` protocol")?
+                        .ok_or(miette!("Failed to parse `node` protocol"))?
                         .to_string();
                 }
                 Service::CODE => {
                     addr = p
                         .cast::<proto::Service>()
-                        .context("Failed to parse `service` protocol")?
+                        .ok_or(miette!("Failed to parse `service` protocol"))?
                         .to_string();
                 }
                 Project::CODE => {
                     addr = p
                         .cast::<proto::Project>()
-                        .context("Failed to parse `project` protocol")?
+                        .ok_or(miette!("Failed to parse `project` protocol"))?
                         .to_string();
                 }
                 code => return Err(miette!("Protocol {} not supported", code).into()),
@@ -500,13 +515,15 @@ pub fn parse_node_name(input: &str) -> Result<String> {
         return Ok(input.to_string());
     }
     // Input has "/", so we process it as a MultiAddr
-    let maddr = MultiAddr::from_str(input).context("Invalid format for node name argument")?;
+    let maddr = MultiAddr::from_str(input)
+        .into_diagnostic()
+        .wrap_err("Invalid format for node name argument")?;
     let err_message = String::from("A MultiAddr node must follow the format /node/<name>");
     if let Some(p) = maddr.iter().next() {
         if p.code() == proto::Node::CODE {
             let node_name = p
                 .cast::<proto::Node>()
-                .context("Failed to parse `node` protocol")?
+                .ok_or(miette!("Failed to parse `node` protocol"))?
                 .to_string();
             if !node_name.is_empty() {
                 return Ok(node_name);
@@ -730,8 +747,8 @@ mod tests {
         let result = embedded_node_that_is_not_stopped(function_returning_an_error, 1);
         assert!(result.is_err());
 
-        async fn function_returning_an_error(_ctx: Context, _parameter: u8) -> crate::Result<()> {
-            Err(crate::Error::new(exitcode::CONFIG, miette!("boom")))
+        async fn function_returning_an_error(_ctx: Context, _parameter: u8) -> miette::Result<()> {
+            Err(miette!("boom"))
         }
     }
 
@@ -746,9 +763,9 @@ mod tests {
         async fn function_returning_an_error_and_stopping_the_context(
             mut ctx: Context,
             _parameter: u8,
-        ) -> crate::Result<()> {
-            ctx.stop().await?;
-            Err(crate::Error::new(exitcode::CONFIG, miette!("boom")))
+        ) -> miette::Result<()> {
+            ctx.stop().await.into_diagnostic()?;
+            Err(miette!("boom"))
         }
     }
 }

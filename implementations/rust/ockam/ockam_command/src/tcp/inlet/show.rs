@@ -34,7 +34,7 @@ impl ShowCommand {
 pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;

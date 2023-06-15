@@ -11,7 +11,7 @@ async fn refresh_spaces(
     opts: &CommandGlobalOpts,
     api_node: &str,
     controller_route: &MultiAddr,
-) -> Result<()> {
+) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
     rpc.request(api::space::list(controller_route)).await?;
     let spaces = rpc.parse_response::<Vec<Space>>()?;

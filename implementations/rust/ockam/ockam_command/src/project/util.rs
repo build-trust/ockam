@@ -1,5 +1,5 @@
-use anyhow::Context as _;
-use miette::miette;
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 
 use ockam_core::api::Request;
 use tokio_retry::strategy::FixedInterval;
@@ -73,10 +73,11 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 .clone();
             let id = p
                 .identity
-                .context("Project should have identity set")?
+                .ok_or(miette!("Project should have identity set"))?
                 .to_string();
-            let node_route =
-                MultiAddr::from_str(&p.access_route).context("Invalid project node route")?;
+            let node_route = MultiAddr::from_str(&p.access_route)
+                .into_diagnostic()
+                .wrap_err("Invalid project node route")?;
             (node_route, id)
         };
         let (sc_address, _sc_flow_control_id) = create_secure_channel_to_project(
@@ -158,9 +159,9 @@ async fn delete_secure_channel<'a>(
     api_node: &str,
     tcp: Option<&TcpTransport>,
     sc_addr: &MultiAddr,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
-    let addr = multiaddr_to_addr(sc_addr).context("Failed to convert MultiAddr to addr")?;
+    let addr = multiaddr_to_addr(sc_addr).ok_or(miette!("Failed to convert MultiAddr to addr"))?;
     rpc.request(api::delete_secure_channel(&addr)).await?;
     rpc.is_ok()?;
     Ok(())
@@ -238,7 +239,7 @@ pub async fn check_project_readiness(
         let project_identity = project
             .identity
             .as_ref()
-            .context("Project identity is not set.")?
+            .ok_or(miette!("Project identity is not set."))?
             .to_string();
 
         Retry::spawn(retry_strategy.clone(), || async {
@@ -274,7 +275,7 @@ pub async fn check_project_readiness(
             &project.authority_identity,
         )
         .await?
-        .context("Project does not have an authority defined.")?;
+        .ok_or(miette!("Project does not have an authority defined."))?;
 
         Retry::spawn(retry_strategy.clone(), || async {
             if let Ok((sc_addr, _)) = create_secure_channel_to_authority(
@@ -314,7 +315,7 @@ pub async fn refresh_projects(
     api_node: &str,
     controller_route: &MultiAddr,
     tcp: Option<&TcpTransport>,
-) -> Result<()> {
+) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
     rpc.request(api::project::list(controller_route)).await?;
     let projects = rpc.parse_response::<Vec<Project>>()?;

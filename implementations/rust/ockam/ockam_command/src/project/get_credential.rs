@@ -33,13 +33,13 @@ impl GetCredentialCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, GetCredentialCommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     async fn go(
         ctx: &mut Context,
         opts: &CommandGlobalOpts,
         cmd: &GetCredentialCommand,
-    ) -> Result<()> {
-        let tcp = TcpTransport::create(ctx).await?;
+    ) -> miette::Result<()> {
+        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
         let projects_sc = crate::project::util::lookup_projects(
             ctx,

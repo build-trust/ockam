@@ -6,9 +6,9 @@ use crate::{
     vault::default_vault_name,
     CommandGlobalOpts, EncodeFormat, Result,
 };
-use anyhow::Context as _;
 use clap::Args;
-use miette::miette;
+
+use miette::{miette, IntoDiagnostic};
 use ockam::identity::CredentialData;
 use ockam::Context;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -44,8 +44,8 @@ impl IssueCommand {
         let mut attributes = HashMap::new();
         for attr in &self.attributes {
             let mut parts = attr.splitn(2, '=');
-            let key = parts.next().context("key expected")?;
-            let value = parts.next().context("value expected)")?;
+            let key = parts.next().ok_or(miette!("key expected"))?;
+            let value = parts.next().ok_or(miette!("value expected)"))?;
             attributes.insert(key.to_string(), value.to_string());
         }
         Ok(attributes)
@@ -68,7 +68,7 @@ impl IssueCommand {
 async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let identity_name = get_identity_name(&opts.state, &cmd.as_identity);
     let ident_state = opts.state.identities.get(&identity_name)?;
     let auth_identity_identifier = ident_state.config().identifier().clone();
@@ -92,11 +92,13 @@ async fn run_impl(
     let issuer = ident_state.identifier();
 
     let credential_data =
-        CredentialData::from_attributes(cmd.identity().await?.identifier(), issuer.clone(), attrs)?;
+        CredentialData::from_attributes(cmd.identity().await?.identifier(), issuer.clone(), attrs)
+            .into_diagnostic()?;
     let credential = identities
         .credentials()
         .issue_credential(&issuer, credential_data)
-        .await?;
+        .await
+        .into_diagnostic()?;
 
     print_encodable(credential, &cmd.encode_format)?;
 

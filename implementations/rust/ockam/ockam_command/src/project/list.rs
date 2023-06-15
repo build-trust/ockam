@@ -1,4 +1,5 @@
 use clap::Args;
+use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 
@@ -31,7 +32,10 @@ impl ListCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> crate::Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ListCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -39,7 +43,7 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: ListCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
@@ -63,7 +67,7 @@ async fn run_impl(
         &opts
             .terminal
             .build_list(&projects, "Projects", "No projects found on this system.")?;
-    let json = serde_json::to_string_pretty(&projects)?;
+    let json = serde_json::to_string_pretty(&projects).into_diagnostic()?;
 
     for project in &projects {
         opts.state

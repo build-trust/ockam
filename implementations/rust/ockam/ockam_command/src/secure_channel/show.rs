@@ -1,7 +1,7 @@
 use crate::{
     docs,
     util::{api, node_rpc, Rpc},
-    CommandGlobalOpts, Result,
+    CommandGlobalOpts,
 };
 use clap::Args;
 
@@ -37,7 +37,7 @@ impl ShowCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&at)?;
     let address = &cmd.address;
