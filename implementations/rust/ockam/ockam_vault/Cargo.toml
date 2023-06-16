@@ -65,9 +65,6 @@ alloc = [
 
 storage = ["ockam_node/storage", "std", "serde", "serde_cbor"]
 
-# Feature: this gives access to test suites for testing the implementation of the Vault traits
-vault_tests = []
-
 [dependencies]
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
 arrayref = "0.3"

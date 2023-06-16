@@ -3,7 +3,7 @@ use crate::{
     SecretAttributes, SecretsStoreReader, SecurityModule, Signature, StoredSecret, VaultError,
     VaultSecurityModule,
 };
-use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, compat::vec::Vec, Result};
+use ockam_core::{async_trait, compat::boxed::Box, compat::fmt::Vec, compat::sync::Arc, Result};
 use ockam_node::KeyValueStorage;
 
 #[derive(Clone)]
@@ -147,7 +147,6 @@ impl SecurityModule for VaultSecretsStore {
     }
 }
 
-#[cfg(feature = "vault_tests")]
 #[cfg(test)]
 mod tests {
     use crate as ockam_vault;
