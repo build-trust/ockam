@@ -55,7 +55,7 @@ pub trait SecretsStoreReader: Sync + Send {
 }
 
 /// Tests for implementations of the SecretsStore trait
-#[cfg(feature = "vault_tests")]
+#[cfg(test)]
 pub mod tests {
     use super::*;
     use crate::{PublicKey, SecretAttributes, SecretType};

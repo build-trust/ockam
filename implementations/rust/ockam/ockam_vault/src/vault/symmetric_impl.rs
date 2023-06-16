@@ -105,7 +105,6 @@ impl AeadCore for AesGen {
     type CiphertextOverhead = U0;
 }
 
-#[cfg(feature = "vault_tests")]
 #[cfg(test)]
 mod tests {
     use crate as ockam_vault;
