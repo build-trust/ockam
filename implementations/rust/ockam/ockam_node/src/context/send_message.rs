@@ -4,7 +4,6 @@ use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
 use crate::{error::*, NodeMessage};
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
@@ -102,11 +101,7 @@ impl Context {
             .map(|x| x.flow_control_id().clone())
         {
             // To be able to receive the response
-            self.flow_controls.add_consumer(
-                address,
-                &flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            self.flow_controls.add_consumer(address, &flow_control_id);
         }
 
         let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
@@ -352,8 +347,6 @@ impl Context {
 
         debugger::log_outgoing_message(self, &relay_msg);
 
-        // TODO check if this context is allowed to forward the message
-        //      to the next hop in the route
         if !self.mailboxes.is_outgoing_authorized(&relay_msg).await? {
             warn!(
                 "Message forwarded from {} to {} did not pass outgoing access control",

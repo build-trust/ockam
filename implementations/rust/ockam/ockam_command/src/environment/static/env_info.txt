@@ -7,6 +7,7 @@ CLI Behavior
   Otherwise, let the terminal decide.
 - NO_INPUT: a `boolean` that, if set, the CLI won't ask the user for input.
   Otherwise, let the terminal decide based the terminal features (tty).
+- PAGER: a `string` that defines the pager to use for long help/usage messages. Defaults to `less`.
 - OCKAM_DISABLE_UPGRADE_CHECK: a `boolean` that, if set, the CLI won't check for ockam upgrades.
 - OCKAM_HOME: a `string` that sets the home directory. Defaults to `~/.ockam`.
 - OCKAM_LOG: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed.

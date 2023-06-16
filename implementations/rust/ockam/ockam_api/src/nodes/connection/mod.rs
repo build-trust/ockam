@@ -4,7 +4,6 @@ mod secure;
 
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::flow_control::FlowControlPolicy::ProducerAllowMultiple;
 use ockam_core::{async_trait, route, Address, CowStr, Route, LOCAL};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Service;
@@ -89,11 +88,9 @@ impl ConnectionInstance {
     /// Shorthand to add the address as consumer to the flow control
     pub fn add_consumer(&self, context: &Context, address: &Address) {
         if let Some(flow_control_id) = &self.flow_control_id {
-            context.flow_controls().add_consumer(
-                address.clone(),
-                flow_control_id,
-                ProducerAllowMultiple,
-            );
+            context
+                .flow_controls()
+                .add_consumer(address.clone(), flow_control_id);
         }
     }
 }

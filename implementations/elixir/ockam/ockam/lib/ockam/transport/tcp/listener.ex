@@ -33,20 +33,13 @@ if Code.ensure_loaded?(:ranch) do
     end
 
     defp start_listener(ref, transport, transport_options, protocol, protocol_options) do
-      r =
-        :ranch_listener_sup.start_link(
-          ref,
-          transport,
-          transport_options,
-          protocol,
-          protocol_options
-        )
-
-      case r do
-        {:ok, child} -> {:ok, child}
-        {:ok, child, _info} -> {:ok, child}
-        {:error, reason} -> {:error, {:could_not_start_ranch_listener, reason}}
-      end
+      :ranch_listener_sup.start_link(
+        ref,
+        transport,
+        transport_options,
+        protocol,
+        protocol_options
+      )
     end
 
     def default_ip, do: {0, 0, 0, 0}

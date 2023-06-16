@@ -1,8 +1,9 @@
 use crate::CommandGlobalOpts;
-pub use add_consumer::AddConsumerCommand;
 use clap::{Args, Subcommand};
 
 mod add_consumer;
+
+pub use add_consumer::AddConsumerCommand;
 
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]

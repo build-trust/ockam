@@ -24,6 +24,7 @@ mod markdown;
 mod message;
 mod node;
 mod operation;
+mod pager;
 mod policy;
 mod project;
 mod relay;
@@ -66,13 +67,13 @@ use error::{Error, ErrorReportHandler, Result};
 use identity::IdentityCommand;
 use kafka::consumer::KafkaConsumerCommand;
 use kafka::producer::KafkaProducerCommand;
-use lazy_static::lazy_static;
 use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use ockam_api::cli_state::{CliState, StateDirTrait};
+use once_cell::sync::Lazy;
 use policy::PolicyCommand;
 use project::ProjectCommand;
 use relay::RelayCommand;
@@ -81,7 +82,7 @@ use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelComman
 use service::ServiceCommand;
 use space::SpaceCommand;
 use status::StatusCommand;
-use std::{ffi::OsString, path::Path, path::PathBuf, process, process::Stdio, sync::Mutex};
+use std::{path::PathBuf, sync::Mutex};
 use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
@@ -98,9 +99,7 @@ const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
-lazy_static! {
-    static ref PARSER_LOGS: Mutex<Vec<String>> = Mutex::new(vec![]);
-}
+static PARSER_LOGS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(vec![]));
 
 #[derive(Debug, Parser)]
 #[command(
@@ -324,7 +323,7 @@ pub fn run() {
 
             command.run();
         }
-        Err(help) => show_help(help),
+        Err(help) => pager::render_help(help),
     };
 }
 
@@ -473,79 +472,4 @@ pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {
     } else {
         s
     }
-}
-
-const ENV_FORCE_COLOR: &str = "ockam_force_color";
-
-fn show_help(help: clap::Error) {
-    use std::env;
-    let mut try_fallback = false;
-    let preferred_pager = env::var_os("PAGER").unwrap_or_else(|| {
-        try_fallback = true;
-        OsString::from("less")
-    });
-
-    if preferred_pager == "false" {
-        use clap::{ColorChoice::*, CommandFactory};
-        let possibly_forced = if env::var_os(ENV_FORCE_COLOR).is_some() {
-            Always
-        } else {
-            Auto
-        };
-
-        help.with_cmd(&OckamCommand::command().color(possibly_forced))
-            .exit();
-    }
-
-    if let Ok(()) = paginate_with(preferred_pager, &help) {
-        return;
-    }
-    if try_fallback {
-        if let Ok(()) = paginate_with(OsString::from("more"), &help) {
-            return;
-        }
-    }
-    paginate_with(OsString::from("false"), &help)
-        .expect("displaying help without pagination should always work");
-}
-
-fn paginate_with(pager: OsString, help: &clap::Error) -> Result<()> {
-    let mut pager_invocation = process::Command::new(&pager);
-    if Path::new(&pager)
-        .file_name()
-        .map_or("", |s| s.to_str().unwrap_or(""))
-        == "less"
-    {
-        pager_invocation.env("LESS", "FRX");
-        // - F: no pagination if the text fits entirely into the window
-        // - R: allow ANSI escapes output formatting
-        // - X: prevents clearing the screen on exit
-        // - using env var in case a lesser `less` poses as `less`
-    }
-    let mut pager_process = pager_invocation.stdin(Stdio::piped()).spawn()?;
-    let pipe = Stdio::from(pager_process.stdin.take().expect("stdin open?"));
-
-    let exit_status = {
-        let mut my_args = std::env::args_os();
-        let my_exe_name = my_args.next().unwrap_or("ockam".into());
-
-        let mut rerun = process::Command::new(my_exe_name);
-        rerun.args(my_args).env("PAGER", "false");
-        use atty::Stream::*;
-        let output_stream = if help.use_stderr() {
-            rerun.stderr(pipe);
-            Stderr
-        } else {
-            rerun.stdout(pipe);
-            Stdout
-        };
-        if atty::is(output_stream) {
-            rerun.env(ENV_FORCE_COLOR, "_");
-        }
-        rerun.status()?.code().unwrap_or(exitcode::SOFTWARE)
-        // dropping owned pipe hands over pager control to the user
-    };
-
-    pager_process.wait()?;
-    process::exit(exit_status);
 }

@@ -1,8 +1,6 @@
 use crate::compat::rand::random;
 use crate::compat::vec::Vec;
-use crate::flow_control::{
-    ConsumersInfo, FlowControlId, FlowControlPolicy, FlowControls, ProducerInfo,
-};
+use crate::flow_control::{ConsumersInfo, FlowControlId, FlowControls, ProducerInfo};
 use crate::Address;
 
 impl FlowControls {
@@ -20,22 +18,14 @@ impl FlowControls {
 
 impl FlowControls {
     /// Generate a fresh random [`FlowControlId`]
-    pub fn generate_id() -> FlowControlId {
+    pub fn generate_flow_control_id() -> FlowControlId {
         random()
     }
 
-    /// Mark that given [`Address`] is a Consumer for Producer or Spawner with the given [`FlowControlId`]
-    pub fn add_consumer(
-        &self,
-        address: impl Into<Address>,
-        flow_control_id: &FlowControlId,
-        policy: FlowControlPolicy,
-    ) {
+    /// Mark that given [`Address`] is a Consumer for a Producer with the given [`FlowControlId`]
+    pub fn add_consumer(&self, address: impl Into<Address>, flow_control_id: &FlowControlId) {
         let address = address.into();
-        debug!(
-            "Add Consumer {address} to {flow_control_id} with {:?}",
-            policy
-        );
+        debug!("Add Consumer {address} to Producer {flow_control_id}");
         let mut consumers = self.consumers.write().unwrap();
         if !consumers.contains_key(flow_control_id) {
             consumers.insert(flow_control_id.clone(), Default::default());
@@ -43,7 +33,7 @@ impl FlowControls {
 
         let flow_control_consumers = consumers.get_mut(flow_control_id).unwrap();
 
-        flow_control_consumers.0.insert(address, policy);
+        flow_control_consumers.0.insert(address);
     }
 
     /// Mark that given [`Address`] is a Producer for to the given [`FlowControlId`]
@@ -99,13 +89,13 @@ impl FlowControls {
         spawners.get(address).cloned()
     }
 
-    /// Get [`FlowControlId`] for which given [`Address`] is a Producer
+    /// Get [`ProducerInfo`] for which given [`Address`] is a Producer
     pub fn get_flow_control_with_producer(&self, address: &Address) -> Option<ProducerInfo> {
         let producers = self.producers.read().unwrap();
         producers.get(address).cloned()
     }
 
-    /// Get [`FlowControlId`] for which given [`Address`] is a Producer or is an additional [`Address`]
+    /// Get [`ProducerInfo`] for which given [`Address`] is a Producer or is an additional [`Address`]
     /// fot that Producer (e.g. Encryptor address for its Decryptor, or TCP Sender for its TCP Receiver)
     pub fn find_flow_control_with_producer_address(
         &self,
@@ -119,15 +109,5 @@ impl FlowControls {
         drop(producers_additional_addresses);
         let producers = self.producers.read().unwrap();
         producers.get(&producer_address).cloned()
-    }
-
-    /// Get all [`FlowControlId`]s for which given [`Address`] is a Consumer
-    pub fn get_flow_controls_with_consumer(&self, address: &Address) -> Vec<FlowControlId> {
-        let consumers = self.consumers.read().unwrap();
-        consumers
-            .iter()
-            .filter(|&x| x.1 .0.contains_key(address))
-            .map(|x| x.0.clone())
-            .collect()
     }
 }

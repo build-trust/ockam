@@ -6,6 +6,13 @@ defmodule Ockam.Healthcheck.Target do
   and healthcheck ping endpoint
   """
 
-  @enforce_keys [:name, :host, :port]
-  defstruct [:name, :host, :port, api_worker: "api", healthcheck_worker: "healthcheck"]
+  @enforce_keys [:name, :host, :port, :crontab]
+  defstruct [
+    :name,
+    :host,
+    :port,
+    :crontab,
+    api_worker: "api",
+    healthcheck_worker: "healthcheck"
+  ]
 end

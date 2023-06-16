@@ -1,6 +1,5 @@
 use ockam::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use ockam::{node, route, Context, Result};
-use ockam_core::flow_control::FlowControlPolicy;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -29,11 +28,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // This message will automatically get encrypted when it enters the channel
     // and decrypted just before it exits the channel.
-    node.flow_controls().add_consumer(
-        "app",
-        &sc_flow_control_id,
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    node.flow_controls().add_consumer("app", &sc_flow_control_id);
     node.send(route![channel, "app"], "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a message for the "app" worker and print it.

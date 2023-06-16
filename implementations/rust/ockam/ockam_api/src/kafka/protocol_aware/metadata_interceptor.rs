@@ -14,7 +14,7 @@ use ockam_node::Context;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind};
 
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::FlowControlId;
 use tinyvec::alloc;
 use tracing::warn;
 
@@ -165,11 +165,9 @@ impl KafkaMessageInterceptor for OutletInterceptorImpl {
                         .map_err(InterceptError::Ockam)?;
 
                     // allow the interceptor to reach the outlet
-                    context.flow_controls().add_consumer(
-                        outlet_address,
-                        &self.flow_control_id,
-                        FlowControlPolicy::ProducerAllowMultiple,
-                    );
+                    context
+                        .flow_controls()
+                        .add_consumer(outlet_address, &self.flow_control_id);
                 }
             }
         } else {

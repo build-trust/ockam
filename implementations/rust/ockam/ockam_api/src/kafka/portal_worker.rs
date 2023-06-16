@@ -3,10 +3,7 @@ use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 use ockam_abac::AbacAccessControl;
 use ockam_core::compat::sync::Arc;
-
-use ockam_core::flow_control::{
-    FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
-};
+use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowSourceAddress, AnyIncomingAccessControl, Encodable, Error, LocalInfo,
@@ -365,11 +362,8 @@ impl KafkaPortalWorker {
 
             // we need to receive the first message from the listener
             if let Some(spawner_flow_control_id) = spawner_flow_control_id.as_ref() {
-                flow_controls.add_consumer(
-                    requests_worker_address.clone(),
-                    spawner_flow_control_id,
-                    FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-                );
+                flow_controls
+                    .add_consumer(requests_worker_address.clone(), spawner_flow_control_id);
             }
         }
 
@@ -377,7 +371,6 @@ impl KafkaPortalWorker {
             flow_controls.add_consumer(
                 requests_worker_address.clone(),
                 secure_channel_flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
             );
         }
 
@@ -435,11 +428,9 @@ impl KafkaPortalWorker {
             .await?;
 
         if let Some(flow_control_id) = flow_control_id {
-            context.flow_controls().add_consumer(
-                responses_worker_address.clone(),
-                &flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            context
+                .flow_controls()
+                .add_consumer(responses_worker_address.clone(), &flow_control_id);
         }
         context
             .start_worker(responses_worker_address, response_worker)

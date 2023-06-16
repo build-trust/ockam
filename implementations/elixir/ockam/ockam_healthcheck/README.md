@@ -1,28 +1,52 @@
 ## Ockam healthcheck
 
 This application runs periodic healthcheck requests to ockam nodes by establishing
-a secure channel and sending a ping message to the configured worker.
+a secure channel and:
+* sending a ping message to the configured worker for default targets
+* sending an `Ockam.API.Request` message with a specified path, method and optionally a body for `Ockam.Services.API` endpoint targets, where `200` response is considered a healthy result
 
 Healthcheck results are reported as prometheus metrics using `ockam_metrics` and
 as logs using Logger.
 
 ## Configuration
 
-There are two main configurations:
+Healthcheck targets and frequency of calling them are configured as: `:ockam_healthcheck, :targets` application environment or `HEALTHCHECK_TARGETS` environment variable
+Format: application environment is a list of maps. For default (ping) targets the map is formatted as follows:
+```elixir
+%{
+  name: ...,
+  host: ...,
+  port: ...,
+  api_worker: ...,
+  healthcheck_worker: ...,
+  crontab: ...
+}
+```
+For `Ockam.Services.API` endpoint targets:
+```elixir
+%{
+  name: ...,
+  host: ...,
+  port: ...,
+  path: ...,
+  method: ...,
+  body: ...,
+  api_worker: ...,
+  healthcheck_worker: ...,
+  crontab: ...
+}
+```
+An environment variable is a JSON string with the same format.
+The `method` field has to be a string representation of one of the methods enumeratated in the `Ockam.API.Request.Header` schema - "get", "post", "put", "delete", or "patch".
+The optional `body` binary for `Ockam.Services.API` endpoint targets in the JSON format has to be base64 encoded, such as with `Base.encode64/2`.
 
-- frequency
-  Configured as: `:ockam_healthcheck, :crontab` application environment or `HEALTHCHECK_CRONTAB` environment vatiable
-  Format: string in crontab format
-- healthcheck targets
-  Configured as: `:ockam_healthcheck, :targets` application environment or `HEALTHCHECK_TARGETS` environment vatiable
-  Format: application environment is a list of maps `[%{name: ..., host: ..., port: ..., api_worker: ..., healthcheck_worker: ...}, ...]`, environment variable is a JSON string with the same format
+For each target, the application will connect via TCP `host:port` connection, establish an Ockam secure channel using `api_worker` listener and:
+* for default targets send ping to `healthcheck_worker`
+* for `Ockam.Services.API` endpoint targets send an `Ockam.API.Request` message with the specified `path`, `method` and optionally a `body` to `healthcheck_worker`
 
-For each target, the application will connect via tcp `host:port` connection, establish secure channel
-using `api_worker` listener and send ping to `healthcheck_worker`.
+Frequency for each target is specified in the `crontab` field of that target as a string in the crontab format.
 
-Each cycle of crontab frequency the targets configuration will be read from the `:ockam_healthcheck, :targets`, which allows Elixir node to control targets.
-
-There is no way currently to control the frequency other than restarting the application.
+There is no way currently to control the targets or the frequency other than restarting the application.
 
 Identity configuration for healthcheck calls:
 

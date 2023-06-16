@@ -1,6 +1,6 @@
 use crate::portal::addresses::Addresses;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl};
 
 /// Trust Options for an Inlet
@@ -46,11 +46,7 @@ impl TcpInletOptions {
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(
-                addresses.remote.clone(),
-                &flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            flow_controls.add_consumer(addresses.remote.clone(), &flow_control_id);
         }
     }
 }
@@ -61,16 +57,10 @@ impl Default for TcpInletOptions {
     }
 }
 
-#[derive(Debug)]
-pub(super) struct ConsumerFlowControl {
-    pub(super) flow_control_id: FlowControlId,
-    pub(super) flow_control_policy: FlowControlPolicy,
-}
-
 /// Trust Options for an Outlet
 #[derive(Debug)]
 pub struct TcpOutletOptions {
-    pub(super) consumer_flow_control: Vec<ConsumerFlowControl>,
+    pub(super) consumer: Vec<FlowControlId>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
 
@@ -78,7 +68,7 @@ impl TcpOutletOptions {
     /// Default constructor without Incoming Access Control
     pub fn new() -> Self {
         Self {
-            consumer_flow_control: vec![],
+            consumer: vec![],
             incoming_access_control: Arc::new(AllowAll),
         }
     }
@@ -104,15 +94,8 @@ impl TcpOutletOptions {
     /// Mark that this Outlet listener is a Consumer for to the given [`FlowControlId`]
     /// Also, in this case spawned Outlets will be marked as Consumers with [`FlowControlId`]
     /// of the message that was used to create the Outlet
-    pub fn as_consumer(
-        mut self,
-        flow_control_id: &FlowControlId,
-        flow_control_policy: FlowControlPolicy,
-    ) -> Self {
-        self.consumer_flow_control.push(ConsumerFlowControl {
-            flow_control_id: flow_control_id.clone(),
-            flow_control_policy,
-        });
+    pub fn as_consumer(mut self, id: &FlowControlId) -> Self {
+        self.consumer.push(id.clone());
 
         self
     }
@@ -122,12 +105,8 @@ impl TcpOutletOptions {
         flow_controls: &FlowControls,
         address: &Address,
     ) {
-        for consumer_flow_control in &self.consumer_flow_control {
-            flow_controls.add_consumer(
-                address.clone(),
-                &consumer_flow_control.flow_control_id,
-                consumer_flow_control.flow_control_policy,
-            );
+        for id in &self.consumer {
+            flow_controls.add_consumer(address.clone(), id);
         }
     }
 
@@ -144,11 +123,7 @@ impl TcpOutletOptions {
             .get_flow_control_with_producer(src_addr)
             .map(|x| x.flow_control_id().clone())
         {
-            flow_controls.add_consumer(
-                addresses.remote.clone(),
-                &producer_flow_control_id,
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            flow_controls.add_consumer(addresses.remote.clone(), &producer_flow_control_id);
         }
     }
 }

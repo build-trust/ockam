@@ -1,7 +1,6 @@
 use core::sync::atomic::{AtomicU8, Ordering};
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::{
@@ -47,11 +46,8 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
         ))
         .await?;
 
-    ctx.flow_controls().add_consumer(
-        "child",
-        bob_listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("child", bob_listener.flow_control_id());
 
     child_ctx
         .send(
@@ -68,11 +64,8 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.body());
 
-    ctx.flow_controls().add_consumer(
-        "child",
-        alice_channel.flow_control_id(),
-        FlowControlPolicy::ProducerAllowMultiple,
-    );
+    ctx.flow_controls()
+        .add_consumer("child", alice_channel.flow_control_id());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
@@ -308,11 +301,9 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
         .await?;
 
     for n in 0..50 {
-        child_ctx.flow_controls().add_consumer(
-            child_ctx.address(),
-            &sc_listener_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
-        );
+        child_ctx
+            .flow_controls()
+            .add_consumer(child_ctx.address(), &sc_listener_flow_control_id);
         let payload = format!("Hello, Bob! {}", n);
         child_ctx
             .send(
@@ -324,11 +315,9 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
         let message = child_ctx.receive::<String>().await?;
         assert_eq!(&payload, message.as_body());
 
-        child_ctx.flow_controls().add_consumer(
-            child_ctx.address(),
-            &sc_flow_control_id,
-            FlowControlPolicy::ProducerAllowMultiple,
-        );
+        child_ctx
+            .flow_controls()
+            .add_consumer(child_ctx.address(), &sc_flow_control_id);
         let payload = format!("Hello, Alice! {}", n);
         child_ctx
             .send(message.return_route(), payload.clone())
@@ -384,11 +373,8 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
         ))
         .await?;
 
-    ctx.flow_controls().add_consumer(
-        "bob",
-        bob_listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("bob", bob_listener.flow_control_id());
 
     ctx.send(
         route![alice_channel.clone(), "bob"],
@@ -449,11 +435,8 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
         ))
         .await?;
 
-    ctx.flow_controls().add_consumer(
-        "bob",
-        bob_listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("bob", bob_listener.flow_control_id());
 
     ctx.send(
         route![alice_channel.clone(), "bob"],
@@ -555,10 +538,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let bob_options_2 = SecureChannelListenerOptions::new()
-        .as_consumer(
-            bob_listener.flow_control_id(),
-            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-        )
+        .as_consumer(bob_listener.flow_control_id())
         .with_trust_policy(bob_trust_policy);
     let bob_listener2 = secure_channels
         .create_secure_channel_listener(
@@ -587,11 +567,8 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         ))
         .await?;
 
-    ctx.flow_controls().add_consumer(
-        "child",
-        bob_listener2.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("child", bob_listener2.flow_control_id());
 
     child_ctx
         .send(
@@ -603,11 +580,8 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.body());
 
-    ctx.flow_controls().add_consumer(
-        "child",
-        alice_another_channel.flow_control_id(),
-        FlowControlPolicy::ProducerAllowMultiple,
-    );
+    ctx.flow_controls()
+        .add_consumer("child", alice_another_channel.flow_control_id());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
@@ -644,10 +618,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         .await?;
 
     let bob_options2 = SecureChannelListenerOptions::new()
-        .as_consumer(
-            bob_listener.flow_control_id(),
-            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-        )
+        .as_consumer(bob_listener.flow_control_id())
         .with_trust_policy(bob_trust_policy.clone());
     let bob_listener2 = secure_channels
         .create_secure_channel_listener(
@@ -668,10 +639,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         .await?;
 
     let bob_options3 = SecureChannelListenerOptions::new()
-        .as_consumer(
-            bob_listener2.flow_control_id(),
-            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-        )
+        .as_consumer(bob_listener2.flow_control_id())
         .with_trust_policy(bob_trust_policy);
     let bob_listener3 = secure_channels
         .create_secure_channel_listener(
@@ -700,11 +668,8 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         ))
         .await?;
 
-    ctx.flow_controls().add_consumer(
-        "child",
-        bob_listener3.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("child", bob_listener3.flow_control_id());
 
     child_ctx
         .send(
@@ -716,11 +681,8 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.body());
 
-    ctx.flow_controls().add_consumer(
-        "child",
-        alice_yet_another_channel.flow_control_id(),
-        FlowControlPolicy::ProducerAllowMultiple,
-    );
+    ctx.flow_controls()
+        .add_consumer("child", alice_yet_another_channel.flow_control_id());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
@@ -750,10 +712,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         let options =
             SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone());
         let options = match &sc_listener_flow_control_id {
-            Some(flow_control_id) => options.as_consumer(
-                flow_control_id,
-                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-            ),
+            Some(flow_control_id) => options.as_consumer(flow_control_id),
             None => options,
         };
         sc_listener_flow_control_id = Some(options.spawner_flow_control_id());
@@ -782,11 +741,8 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         ))
         .await?;
 
-    ctx.flow_controls().add_consumer(
-        "child",
-        &sc_listener_flow_control_id.unwrap(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("child", &sc_listener_flow_control_id.unwrap());
 
     child_ctx
         .send(
@@ -798,11 +754,8 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.body());
 
-    ctx.flow_controls().add_consumer(
-        "child",
-        &sc_flow_control_id.unwrap(),
-        FlowControlPolicy::ProducerAllowMultiple,
-    );
+    ctx.flow_controls()
+        .add_consumer("child", &sc_flow_control_id.unwrap());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
@@ -872,11 +825,8 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
         )
         .await?;
 
-    ctx.flow_controls().add_consumer(
-        "receiver",
-        bob_listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("receiver", bob_listener.flow_control_id());
 
     ctx.send(route![alice_channel, "receiver"], "Hello, Bob!".to_string())
         .await?;
@@ -930,11 +880,8 @@ async fn access_control__unknown_participant__should_not_pass_messages(
         )
         .await?;
 
-    ctx.flow_controls().add_consumer(
-        "receiver",
-        bob_listener.flow_control_id(),
-        FlowControlPolicy::SpawnerAllowMultipleMessages,
-    );
+    ctx.flow_controls()
+        .add_consumer("receiver", bob_listener.flow_control_id());
 
     ctx.send(route![alice_channel, "receiver"], "Hello, Bob!".to_string())
         .await?;

@@ -4,7 +4,7 @@ use crate::DefaultAddress;
 use core::str::from_utf8;
 use ockam::{Context, Result, Routed, Worker};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, AllowAll, AllowOnwardAddress};
 
 /// This service applies a prefix to the provided static forwarding address.
@@ -24,7 +24,6 @@ impl PrefixForwarderService {
         context.flow_controls().add_consumer(
             worker_address.clone(),
             &secure_channel_listener_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         let worker = Self {
@@ -99,7 +98,6 @@ impl Worker for PrefixForwarderService {
         ctx.flow_controls().add_consumer(
             Address::from_string(new_address),
             &self.secure_channel_listener_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
         Ok(())

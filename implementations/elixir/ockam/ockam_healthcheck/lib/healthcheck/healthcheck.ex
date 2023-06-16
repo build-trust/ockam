@@ -3,6 +3,7 @@ defmodule Ockam.Healthcheck do
   Healthcheck implementation
   """
 
+  alias Ockam.Healthcheck.APIEndpointTarget
   alias Ockam.Healthcheck.Target
   alias Ockam.Message
   alias Ockam.SecureChannel
@@ -12,19 +13,26 @@ defmodule Ockam.Healthcheck do
 
   @key_exchange_timeout 10_000
 
-  def check_targets() do
-    targets = Application.get_env(:ockam_healthcheck, :targets, [])
-    ## TODO: parallel check for multiple targets
-    Enum.each(targets, &Ockam.Healthcheck.check_target/1)
-  end
+  def check_target(target, timeout \\ 5000)
 
-  def check_target(
-        %Target{} = target,
-        timeout \\ 5000
-      ) do
+  def check_target(%Target{} = target, timeout) do
     start_time = System.monotonic_time(:millisecond)
 
     case ping_target(target, timeout) do
+      :ok ->
+        report_check_ok(target, start_time)
+        :ok
+
+      {:error, reason} ->
+        report_check_failed(target, reason, start_time)
+        {:error, reason}
+    end
+  end
+
+  def check_target(%APIEndpointTarget{} = target, timeout) do
+    start_time = System.monotonic_time(:millisecond)
+
+    case check_api_endpoint(target, timeout) do
       :ok ->
         report_check_ok(target, start_time)
         :ok
@@ -63,6 +71,39 @@ defmodule Ockam.Healthcheck do
         Ockam.Node.unregister_address(me)
 
         result
+      end)
+    end)
+  end
+
+  def check_api_endpoint(target, timeout) do
+    %{
+      host: host,
+      path: path,
+      method: method,
+      body: body,
+      port: port,
+      api_worker: api_worker,
+      healthcheck_worker: healthcheck_worker
+    } = target
+
+    with_tcp(host, port, fn conn ->
+      with_channel(conn, api_worker, fn channel ->
+        case Ockam.API.Client.sync_request(
+               method,
+               path,
+               body,
+               [channel, healthcheck_worker],
+               timeout
+             ) do
+          {:ok, %{status: status}} when status < 300 ->
+            :ok
+
+          {:ok, %{status: status, body: body}} ->
+            {:error, {status, body}}
+
+          {:error, _reason} = error ->
+            error
+        end
       end)
     end)
   end
@@ -231,6 +272,8 @@ defmodule Ockam.Healthcheck do
   defp identity_from_file(file) do
     case File.read(file) do
       {:ok, data} ->
+        data = :erlang.binary_to_term(data)
+
         with {:ok, identity} <- Ockam.Identity.make_identity(data) do
           {:ok, identity, nil}
         end

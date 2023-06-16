@@ -21,7 +21,7 @@ defmodule Ockam.MixProject do
       # lint
       dialyzer: [
         flags: [:error_handling],
-        plt_add_apps: [:ranch, :telemetry, :ockam_vault_software]
+        plt_add_apps: [:bare, :ranch, :ssl, :telemetry, :ockam_vault_software]
       ],
 
       # test

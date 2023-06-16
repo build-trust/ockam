@@ -85,7 +85,7 @@ pub fn log_incoming_message(_receiving_ctx: &Context, _relay_msg: &RelayMessage)
     {
         static COUNTER: AtomicU32 = AtomicU32::new(0);
 
-        tracing::debug!(
+        tracing::trace!(
             "log_incoming_message #{:03}: {} -> {} ({})",
             COUNTER.fetch_add(1, Ordering::Relaxed),
             _relay_msg.source(),      // sending address
@@ -134,7 +134,7 @@ pub fn log_outgoing_message(_sending_ctx: &Context, _relay_msg: &RelayMessage) {
     {
         static COUNTER: AtomicU32 = AtomicU32::new(0);
 
-        tracing::debug!(
+        tracing::trace!(
             "log_outgoing_message #{:03}: {} ({}) -> {}",
             COUNTER.fetch_add(1, Ordering::Relaxed),
             _relay_msg.source(),      // sending address
@@ -177,7 +177,7 @@ pub fn log_inherit_context(_tag: &str, _parent: &Context, _child: &Context) {
     {
         static COUNTER: AtomicU32 = AtomicU32::new(0);
 
-        tracing::debug!(
+        tracing::trace!(
             "log_inherit_context #{:03}\n{:?}\nBegat {}\n{:?}\n",
             COUNTER.fetch_add(1, Ordering::Relaxed),
             _parent.mailboxes(),

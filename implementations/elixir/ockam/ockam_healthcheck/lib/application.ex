@@ -4,6 +4,7 @@ defmodule Ockam.Healthcheck.Application do
   """
   use Application
 
+  alias Ockam.Healthcheck.APIEndpointTarget
   alias Ockam.Healthcheck.Target
 
   require Logger
@@ -19,32 +20,58 @@ defmodule Ockam.Healthcheck.Application do
     case Jason.decode(config_json) do
       {:ok, targets} when is_list(targets) ->
         Enum.reduce(targets, {:ok, []}, fn
-          target, {:ok, targets} ->
-            case target do
-              %{
-                "name" => name,
-                "host" => host,
-                "port" => port
-              }
-              when is_integer(port) ->
-                api_worker = Map.get(target, "api_worker", "api")
-                healthcheck_worker = Map.get(target, "healthcheck_worker", "healthcheck")
+          %{
+            "name" => name,
+            "host" => host,
+            "port" => port,
+            "path" => path,
+            "method" => method,
+            "crontab" => crontab,
+            "healthcheck_worker" => healthcheck_worker
+          } = target,
+          {:ok, targets}
+          when is_integer(port) ->
+            api_worker = Map.get(target, "api_worker", "api")
+            body = target |> Map.get("body") |> decode_body()
+            method = String.to_existing_atom(method)
 
-                {:ok,
-                 [
-                   %Target{
-                     name: name,
-                     host: host,
-                     port: port,
-                     api_worker: api_worker,
-                     healthcheck_worker: healthcheck_worker
-                   }
-                   | targets
-                 ]}
+            {:ok,
+             [
+               %APIEndpointTarget{
+                 name: name,
+                 host: host,
+                 port: port,
+                 path: path,
+                 method: method,
+                 body: body,
+                 api_worker: api_worker,
+                 healthcheck_worker: healthcheck_worker,
+                 crontab: crontab
+               }
+               | targets
+             ]}
 
-              other ->
-                {:error, {:invalid_target, other}}
-            end
+          %{"name" => name, "host" => host, "port" => port, "crontab" => crontab} = target,
+          {:ok, targets}
+          when is_integer(port) ->
+            api_worker = Map.get(target, "api_worker", "api")
+            healthcheck_worker = Map.get(target, "healthcheck_worker", "healthcheck")
+
+            {:ok,
+             [
+               %Target{
+                 name: name,
+                 host: host,
+                 port: port,
+                 api_worker: api_worker,
+                 healthcheck_worker: healthcheck_worker,
+                 crontab: crontab
+               }
+               | targets
+             ]}
+
+          other, {:ok, _targets} ->
+            {:error, {:invalid_target, other}}
 
           _target, {:error, reason} ->
             {:error, reason}
@@ -59,26 +86,23 @@ defmodule Ockam.Healthcheck.Application do
   end
 
   def healthcheck_schedule() do
-    tab = Application.get_env(:ockam_healthcheck, :crontab)
+    targets = Application.get_env(:ockam_healthcheck, :targets, [])
 
-    case tab do
-      nil ->
-        []
-
-      _string ->
-        [
-          %{
-            id: "healthcheck_schedule",
-            start:
-              {SchedEx, :run_every,
-               [
-                 Ockam.Healthcheck,
-                 :check_targets,
-                 [],
-                 tab
-               ]}
-          }
-        ]
-    end
+    Enum.map(targets, fn target ->
+      %{
+        id: "#{target.name}_healthcheck_schedule",
+        start:
+          {SchedEx, :run_every,
+           [
+             Ockam.Healthcheck,
+             :check_target,
+             [target],
+             target.crontab
+           ]}
+      }
+    end)
   end
+
+  defp decode_body(nil), do: nil
+  defp decode_body(body), do: Base.decode64!(body)
 end

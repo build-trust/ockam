@@ -26,7 +26,7 @@ use ockam_api::DefaultAddress;
 use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
 use ockam_core::env::{get_env_with_default, FromString};
-use ockam_core::flow_control::{FlowControlId, FlowControlPolicy};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
@@ -185,9 +185,8 @@ pub(crate) fn start_authenticator_service<'a>(
 pub(crate) fn add_consumer(
     id: FlowControlId,
     address: MultiAddr,
-    policy: FlowControlPolicy,
 ) -> RequestBuilder<'static, AddConsumer> {
-    let payload = AddConsumer::new(id, address, policy);
+    let payload = AddConsumer::new(id, address);
     Request::post("/node/flow_controls/add_consumer").body(payload)
 }
 
@@ -358,7 +357,7 @@ pub(crate) const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 
 #[derive(Clone, Debug, Args)]
 pub struct CloudOpts {
-    #[arg(global = true, value_name = "IDENTITY", long)]
+    #[arg(global = true, value_name = "IDENTITY_NAME", long)]
     pub identity: Option<String>,
 }
 
@@ -376,7 +375,7 @@ pub struct TrustContextOpts {
     )]
     pub trust_context: Option<String>,
 
-    #[arg(global = true, long = "project")]
+    #[arg(global = true, long = "project", value_name = "PROJECT_NAME")]
     pub project: Option<String>,
 }
 

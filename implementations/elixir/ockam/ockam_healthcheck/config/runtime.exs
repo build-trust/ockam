@@ -90,8 +90,6 @@ targets =
       exit(:invalid_config)
   end
 
-crontab = System.get_env("HEALTHCHECK_CRONTAB")
-
 identity_source =
   case System.get_env("HEALTHCHECK_IDENTITY_SOURCE", "function") do
     "function" ->
@@ -104,7 +102,6 @@ identity_source =
 identity_file = System.get_env("HEALTHCHECK_IDENTITY_FILE")
 
 config :ockam_healthcheck,
-  crontab: crontab,
   targets: targets,
   identity_source: identity_source,
   identity_file: identity_file,

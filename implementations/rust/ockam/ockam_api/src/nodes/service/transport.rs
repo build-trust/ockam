@@ -6,7 +6,7 @@ use crate::nodes::service::ApiTransport;
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
+use ockam_core::flow_control::FlowControls;
 use ockam_core::Address;
 use ockam_node::Context;
 use ockam_transport_tcp::{
@@ -108,7 +108,7 @@ impl NodeManagerWorker {
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
                     processor_address: "<none>".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
+                    flow_control_id: FlowControls::generate_flow_control_id(), // FIXME
                 }));
             }
             Some(sender) => sender,
@@ -161,7 +161,7 @@ impl NodeManagerWorker {
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
                     processor_address: "<none>".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
+                    flow_control_id: FlowControls::generate_flow_control_id(), // FIXME
                 }));
             }
             Some(listener) => listener,
@@ -196,11 +196,8 @@ impl NodeManagerWorker {
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
         for hop in node_manager.registry.hop_services.keys() {
-            ctx.flow_controls().add_consumer(
-                hop.clone(),
-                &options.producer_flow_control_id(),
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            ctx.flow_controls()
+                .add_consumer(hop.clone(), &options.flow_control_id());
         }
 
         let res = node_manager
@@ -230,7 +227,7 @@ impl NodeManagerWorker {
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
                     processor_address: "<none>".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
+                    flow_control_id: FlowControls::generate_flow_control_id(), // FIXME
                 }))
             }
         };
@@ -273,7 +270,7 @@ impl NodeManagerWorker {
                     socket_address: "0.0.0.0:0000".parse().unwrap(),
                     worker_address: "<none>".into(),
                     processor_address: "<none>".into(),
-                    flow_control_id: FlowControls::generate_id(), // FIXME
+                    flow_control_id: FlowControls::generate_flow_control_id(), // FIXME
                 }))
             }
         };

@@ -1,7 +1,6 @@
 use crate::Context;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::{
     Address, AllowAll, AllowOnwardAddress, Any, IncomingAccessControl, LocalMessage,
     OutgoingAccessControl, Result, Route, Routed, TransportMessage, Worker,
@@ -96,22 +95,16 @@ impl Worker for Forwarder {
             .flow_controls()
             .find_flow_control_with_producer_address(&next_hop)
         {
-            ctx.flow_controls().add_consumer(
-                prev_hop.clone(),
-                info.flow_control_id(),
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            ctx.flow_controls()
+                .add_consumer(prev_hop.clone(), info.flow_control_id());
         }
 
         if let Some(info) = ctx
             .flow_controls()
             .find_flow_control_with_producer_address(&prev_hop)
         {
-            ctx.flow_controls().add_consumer(
-                next_hop,
-                info.flow_control_id(),
-                FlowControlPolicy::ProducerAllowMultiple,
-            );
+            ctx.flow_controls()
+                .add_consumer(next_hop, info.flow_control_id());
         }
 
         ctx.forward(message).await

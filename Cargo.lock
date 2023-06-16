@@ -445,7 +445,7 @@ dependencies = [
  "once_cell",
  "percent-encoding",
  "regex",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "time",
  "tracing",
 ]
@@ -922,9 +922,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.3"
+version = "4.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8f255e4b8027970e78db75e78831229c9815fdbfa67eb1a1b777a62e24b4a0"
+checksum = "80672091db20273a15cf9fdd4e47ed43b5091ec9841bf4c6145c9dfbbcae09ed"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -933,9 +933,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.3"
+version = "4.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acd4f3c17c83b0ba34ffbc4f8bbd74f079413f747f84a6f89292f138057e36ab"
+checksum = "c1458a1df40e1e2afebb7ab60ce55c1fa8f431146205aa5f4887e0b111c27636"
 dependencies = [
  "anstream",
  "anstyle",
@@ -952,7 +952,7 @@ version = "4.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f6b5c519bab3ea61843a7923d074b04245624bb84a64a8c150f5deb014e388b"
 dependencies = [
- "clap 4.3.3",
+ "clap 4.3.4",
 ]
 
 [[package]]
@@ -979,7 +979,7 @@ version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f2e32b579dae093c2424a8b7e2bea09c89da01e1ce5065eb2f0a6f1cc15cc1f"
 dependencies = [
- "clap 4.3.3",
+ "clap 4.3.4",
  "roff",
 ]
 
@@ -1094,12 +1094,6 @@ name = "const-oid"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "520fbf3c07483f94e3e3ca9d0cfd913d7718ef2483d2cfd91c0d9e91474ab913"
-
-[[package]]
-name = "const-str"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b62c6d3ea43cbe0bc5a081f276fd477e4291d168aacc9f9d98073325333c0d4"
 
 [[package]]
 name = "coolor"
@@ -2533,17 +2527,6 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "idna"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "418a0a6fab821475f634efe3ccc45c013f742efe03d853e8d3355d5cb850ecf8"
-dependencies = [
- "matches",
- "unicode-bidi",
- "unicode-normalization",
-]
-
-[[package]]
-name = "idna"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d20d6b07bfbc108882d88ed8e37d39636dcc260e15e30c45e6ba089610b917c"
@@ -2602,6 +2585,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "io-lifetimes"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d45cdeff9f146d37336161718e4ae84d7771c159270ac78f7aacc042461eb71"
+
+[[package]]
 name = "iovec"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2632,7 +2621,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adcf93614601c8129ddf72e2d5633df827ba6551541c6d8c59520a371475be1f"
 dependencies = [
  "hermit-abi 0.3.1",
- "io-lifetimes",
+ "io-lifetimes 1.0.11",
  "rustix",
  "windows-sys 0.48.0",
 ]
@@ -2769,7 +2758,7 @@ dependencies = [
  "multihash",
  "quick-protobuf",
  "rand",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "thiserror",
 ]
 
@@ -2859,12 +2848,6 @@ checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
 dependencies = [
  "regex-automata",
 ]
-
-[[package]]
-name = "matches"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 
 [[package]]
 name = "md-5"
@@ -3301,7 +3284,7 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "serde_json",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "tracing",
  "trybuild",
 ]
@@ -3393,16 +3376,13 @@ dependencies = [
  "assert_cmd",
  "async-recursion",
  "async-trait",
- "atty",
- "clap 4.3.3",
+ "clap 4.3.4",
  "clap_complete",
  "clap_mangen",
  "cli-table",
  "colorful",
  "colors-transform",
  "console",
- "const-str",
- "crossbeam-channel",
  "ctrlc",
  "dialoguer",
  "duct",
@@ -3411,10 +3391,9 @@ dependencies = [
  "home",
  "indicatif",
  "indoc",
- "io-lifetimes",
+ "io-lifetimes 2.0.0",
  "is-terminal",
  "itertools",
- "lazy_static",
  "miette",
  "minicbor",
  "nix",
@@ -3442,7 +3421,6 @@ dependencies = [
  "serde_yaml",
  "strip-ansi-escapes",
  "syntect",
- "sysinfo",
  "tempfile",
  "termcolor",
  "termimad",
@@ -3454,7 +3432,7 @@ dependencies = [
  "tracing-appender",
  "tracing-error",
  "tracing-subscriber",
- "validator",
+ "which",
 ]
 
 [[package]]
@@ -3526,7 +3504,7 @@ dependencies = [
  "serde-big-array",
  "serde_bare",
  "serde_json",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "subtle",
  "time",
  "tokio",
@@ -3733,7 +3711,7 @@ dependencies = [
  "serde_bare",
  "serde_cbor",
  "serde_json",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "thiserror",
  "tokio",
  "tracing",
@@ -3756,7 +3734,7 @@ dependencies = [
  "ockam_node",
  "ockam_vault",
  "p256",
- "sha2 0.10.6",
+ "sha2 0.10.7",
  "thiserror",
  "tokio",
  "tracing",
@@ -3887,7 +3865,7 @@ dependencies = [
  "ecdsa",
  "elliptic-curve",
  "primeorder",
- "sha2 0.10.6",
+ "sha2 0.10.7",
 ]
 
 [[package]]
@@ -4454,7 +4432,7 @@ checksum = "acf8729d8542766f1b2cf77eb034d52f40d375bb8b615d0b147089946e16613d"
 dependencies = [
  "bitflags 1.3.2",
  "errno",
- "io-lifetimes",
+ "io-lifetimes 1.0.11",
  "libc",
  "linux-raw-sys",
  "windows-sys 0.48.0",
@@ -4462,9 +4440,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.21.1"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c911ba11bc8433e811ce56fde130ccf32f5127cab0e0194e9c68c5a5b671791e"
+checksum = "e32ca28af694bc1bbf399c33a516dbdf1c90090b8ab23c2bc24f834aa2247f5f"
 dependencies = [
  "log",
  "ring",
@@ -4806,9 +4784,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.10.6"
+version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82e6b795fe2e3b1e845bafcb27aa35405c4d47cdfc92af5fc8d3002f76cebdc0"
+checksum = "479fb9d862239e610720565ca91403019f2f00410f1864c5aa7479b950a76ed8"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -5742,7 +5720,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50bff7831e19200a85b17131d085c25d7811bc4e186efdaf54bbd132994a88cb"
 dependencies = [
  "form_urlencoded",
- "idna 0.4.0",
+ "idna",
  "percent-encoding",
 ]
 
@@ -5766,29 +5744,14 @@ checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
 name = "uuid"
-version = "1.3.3"
+version = "1.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "345444e32442451b267fc254ae85a209c64be56d2890e601a0c37ff0c3c5ecd2"
+checksum = "0fa2982af2eec27de306107c027578ff7f423d65f7250e40ce0fea8f45248b81"
 dependencies = [
  "atomic",
  "getrandom 0.2.9",
  "md-5",
  "sha1_smol",
-]
-
-[[package]]
-name = "validator"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32ad5bf234c7d3ad1042e5252b7eddb2c4669ee23f32c7dd0e9b7705f07ef591"
-dependencies = [
- "idna 0.2.3",
- "lazy_static",
- "regex",
- "serde",
- "serde_derive",
- "serde_json",
- "url",
 ]
 
 [[package]]
@@ -5993,6 +5956,17 @@ checksum = "3bdd9ef4e984da1187bf8110c5cf5b845fbc87a23602cdf912386a76fcd3a7c2"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "which"
+version = "4.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2441c784c52b289a054b7201fc93253e288f094e2f4be9058343127c4226a269"
+dependencies = [
+ "either",
+ "libc",
+ "once_cell",
 ]
 
 [[package]]

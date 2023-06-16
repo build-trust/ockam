@@ -4,9 +4,7 @@ use crate::kafka::protocol_aware::OutletInterceptorImpl;
 use crate::kafka::{KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS};
 use ockam::{Any, Context, Result, Routed, Worker};
 use ockam_abac::AbacAccessControl;
-use ockam_core::flow_control::{
-    FlowControlId, FlowControlOutgoingAccessControl, FlowControlPolicy, FlowControls,
-};
+use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::Address;
 use ockam_identity::{SecureChannels, TRUST_CONTEXT_ID};
 use ockam_node::WorkerBuilder;
@@ -37,20 +35,15 @@ impl OutletManagerService {
         flow_controls.add_consumer(
             worker_address.clone(),
             &default_secure_channel_listener_flow_control_id,
-            FlowControlPolicy::SpawnerAllowMultipleMessages,
         );
 
-        let flow_control_id = FlowControls::generate_id();
-        let spawner_flow_control_id = FlowControls::generate_id();
+        let flow_control_id = FlowControls::generate_flow_control_id();
+        let spawner_flow_control_id = FlowControls::generate_flow_control_id();
 
         flow_controls.add_spawner(worker_address.clone(), &spawner_flow_control_id);
 
         // add the default outlet as consumer for the interceptor
-        flow_controls.add_consumer(
-            KAFKA_OUTLET_BOOTSTRAP_ADDRESS,
-            &flow_control_id,
-            FlowControlPolicy::ProducerAllowMultiple,
-        );
+        flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
 
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(),
