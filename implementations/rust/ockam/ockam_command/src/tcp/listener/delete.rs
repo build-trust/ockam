@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use miette::miette;
 use clap::Args;
 use colorful::Colorful;
 
@@ -57,7 +57,7 @@ async fn run_impl(
                 &cmd.address
             ))
             .machine(&cmd.address)
-            .json(serde_json::json!({ "tcp-listener": { "address": &cmd.address } }))
+            .json(serde_json::json!({ "TCP listener": { "address": &cmd.address } }))
             .write_line()?;
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-listener. Are you sure?")? {
@@ -76,18 +76,17 @@ async fn run_impl(
                         &cmd.address
                     ))
                     .machine(&cmd.address)
-                    .json(serde_json::json!({ "tcp-listener": { "address": &cmd.address } }))
+                    .json(serde_json::json!({ "TCP listener": { "address": &cmd.address } }))
                     .write_line()?;
             }
             ConfirmResult::No => {
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(anyhow!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm").into());
             }
         }
     }
-
 
     Ok(())
 }

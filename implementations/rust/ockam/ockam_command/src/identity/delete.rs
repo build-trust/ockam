@@ -1,11 +1,10 @@
-use anyhow::anyhow;
 use clap::Args;
-
+use colorful::Colorful;
 use ockam::Context;
 use ockam_api::cli_state::CliStateError;
 use ockam_api::cli_state::traits::StateDirTrait;
-
-use crate::{CommandGlobalOpts, docs};
+use miette::miette;
+use crate::{CommandGlobalOpts, docs, fmt_ok};
 use crate::terminal::ConfirmResult;
 use crate::util::node_rpc;
 
@@ -36,24 +35,30 @@ impl DeleteCommand {
 
 async fn run_impl(_ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> crate::Result<()> {
     let state = opts.state;
-    // Check if --yes flag is provides
+    let name = cmd.name;
+    // Check if --yes flag is provided
     if cmd.yes {
         // check if exists
-        match state.identities.get(&cmd.name) {
+        match state.identities.get(&name) {
             Ok(identity_state) => {
                 state.delete_identity(identity_state)?;
-                println!("Identity '{}' deleted", cmd.name);
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("Identity with name '{name}' has been deleted"))
+                    .machine(&name)
+                    .json(serde_json::json!({ "vault": { "name": &name } }))
+                    .write_line()?;
                 Ok(())
             }
             // Return the appropriate error
             Err(err) => match err {
-                CliStateError::NotFound => Err(anyhow!("Identity '{}' not found", &cmd.name).into()),
+                CliStateError::NotFound => Err(miette!("Identity '{}' not found", &name).into()),
                 _ => Err(err.into()),
             },
         }
     } else {
         // If yes is not provided make sure using TTY
-        match state.identities.get(&cmd.name) {
+        match state.identities.get(&name) {
             // If it exists, proceed
             Ok(identity_state) => {
                 match opts.terminal.confirm("This will delete the selected Identity. Are you sure?")? {
@@ -62,16 +67,21 @@ async fn run_impl(_ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)
                         return Ok(());
                     }
                     ConfirmResult::NonTTY => {
-                        return Err(anyhow!("Use --yes to confirm").into());
+                        return Err(miette!("Use --yes to confirm").into());
                     }
                 }
                 state.delete_identity(identity_state)?;
-                println!("Identity '{}' deleted", cmd.name);
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("Identity with name '{name}' has been deleted"))
+                    .machine(&name)
+                    .json(serde_json::json!({ "vault": { "name": &name } }))
+                    .write_line()?;
                 Ok(())
             }
             // Return the appropriate error
             Err(err) => match err {
-                CliStateError::NotFound => Err(anyhow!("Identity '{}' not found", &cmd.name).into()),
+                CliStateError::NotFound => Err(miette!("Identity '{}' not found", &name).into()),
                 _ => Err(err.into()),
             },
         }

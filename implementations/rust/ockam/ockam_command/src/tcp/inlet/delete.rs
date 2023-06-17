@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use miette::miette;
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
@@ -80,7 +80,7 @@ pub async fn run_impl(
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(anyhow!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm").into());
             }
         }
     }

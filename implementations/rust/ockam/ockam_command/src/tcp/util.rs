@@ -8,3 +8,4 @@ pub fn alias_parser(arg: &str) -> Result<String> {
         Ok(arg.to_string())
     }
 }
+
