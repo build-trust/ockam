@@ -33,7 +33,7 @@ use tracing::{debug, info};
 /// on one side of the secure channel creation as specified with its role: INITIATOR or REPSONDER
 pub(crate) struct HandshakeWorker {
     secure_channels: Arc<SecureChannels>,
-    callback_sender: CallbackSender<()>,
+    callback_sender: Option<CallbackSender<()>>,
     state_machine: Box<dyn StateMachine>,
     identifier: IdentityIdentifier,
     addresses: Addresses,
@@ -123,7 +123,9 @@ impl Worker for HandshakeWorker {
         if let Some(final_state) = self.state_machine.get_handshake_results() {
             // start the encryptor worker and return the decryptor
             self.decryptor_handler = Some(self.finalize(context, final_state).await?);
-            self.callback_sender.send(()).await?;
+            if let Some(callback_sender) = self.callback_sender.take() {
+                callback_sender.send(())?;
+            }
         };
 
         Ok(())
@@ -181,7 +183,12 @@ impl HandshakeWorker {
             )
         };
 
-        let (mut callback_waiter, callback_sender) = ockam_node::callback::new_callback();
+        let (callback_waiter, callback_sender) = if role.is_initiator() {
+            let callback = ockam_node::callback::new_callback();
+            (Some(callback.0), Some(callback.1))
+        } else {
+            (None, None)
+        };
 
         let worker = Self {
             secure_channels,
@@ -212,11 +219,13 @@ impl HandshakeWorker {
         // before sending messages make sure that the handshake is finished and
         // the encryptor worker is ready
         if role.is_initiator() {
-            // wait until the handshake is finished
-            if let Some(timeout) = timeout {
-                callback_waiter.receive_timeout(timeout).await?;
-            } else {
-                callback_waiter.receive().await?;
+            if let Some(callback_waiter) = callback_waiter {
+                // wait until the handshake is finished
+                if let Some(timeout) = timeout {
+                    callback_waiter.receive_timeout(timeout).await?;
+                } else {
+                    callback_waiter.receive().await?;
+                }
             }
         }
 
