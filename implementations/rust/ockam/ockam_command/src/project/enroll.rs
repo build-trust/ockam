@@ -109,7 +109,7 @@ async fn run_impl(
 
     // Create secure channel to the project's authority node
     // RPC is in embedded mode
-    let (secure_channel_addr, _secure_channel_flow_control_id) = {
+    let secure_channel_addr = {
         let authority =
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
