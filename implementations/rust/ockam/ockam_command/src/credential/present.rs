@@ -3,12 +3,19 @@ use clap::Args;
 use ockam::Context;
 use ockam_multiaddr::MultiAddr;
 
+use crate::{CommandGlobalOpts, docs};
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::api::{self};
 use crate::util::{node_rpc, Rpc};
-use crate::CommandGlobalOpts;
+use crate::util::api::{self};
+
+const LONG_ABOUT: &str = include_str!("./static/present/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/present/after_long_help.txt");
 
 #[derive(Clone, Debug, Args)]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct PresentCommand {
     #[command(flatten)]
     pub node_opts: NodeOpts,

@@ -1,16 +1,24 @@
 use clap::{arg, Args};
-
 use colorful::Colorful;
+
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 
 use crate::{
-    fmt_log, terminal::OckamColor, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
+    CommandGlobalOpts, docs, fmt_log, terminal::OckamColor, util::node_rpc,
+    vault::default_vault_name,
 };
 
 use super::CredentialOutput;
 
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
+
 #[derive(Clone, Debug, Args)]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct ListCommand {
     #[arg()]
     pub vault: Option<String>,

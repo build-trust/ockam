@@ -1,19 +1,28 @@
 use std::path::PathBuf;
 
-use crate::{
-    fmt_err, fmt_log, fmt_ok, util::node_rpc, vault::default_vault_name, CommandGlobalOpts, Result,
-};
-use miette::miette;
-
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
+use tokio::{sync::Mutex, try_join};
+
 use ockam::Context;
 use ockam_identity::{identities, Identity};
-use tokio::{sync::Mutex, try_join};
+
+use crate::{
+    CommandGlobalOpts, docs, fmt_err, fmt_log, fmt_ok, Result, util::node_rpc,
+    vault::default_vault_name,
+};
 
 use super::validate_encoded_cred;
 
+const LONG_ABOUT: &str = include_str!("./static/verify/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/verify/after_long_help.txt");
+
 #[derive(Clone, Debug, Args)]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct VerifyCommand {
     #[arg(long = "issuer")]
     pub issuer: String,

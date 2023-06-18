@@ -1,20 +1,29 @@
-use ockam_core::compat::collections::HashMap;
-
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::{
-    util::{node_rpc, print_encodable},
-    vault::default_vault_name,
-    CommandGlobalOpts, EncodeFormat, Result,
-};
 use anyhow::Context as _;
 use clap::Args;
 use miette::miette;
-use ockam::identity::CredentialData;
+
 use ockam::Context;
+use ockam::identity::CredentialData;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_core::compat::collections::HashMap;
 use ockam_identity::{identities, Identity};
 
+use crate::{
+    CommandGlobalOpts,
+    docs,
+    EncodeFormat,
+    Result, util::{node_rpc, print_encodable}, vault::default_vault_name,
+};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
+
+const LONG_ABOUT: &str = include_str!("./static/issue/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/issue/after_long_help.txt");
+
 #[derive(Clone, Debug, Args)]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct IssueCommand {
     #[arg(long = "as")]
     pub as_identity: Option<String>,

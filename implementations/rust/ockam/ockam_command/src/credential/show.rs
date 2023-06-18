@@ -1,13 +1,22 @@
 use clap::{arg, Args};
 use colorful::Colorful;
+
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::{
-    credential::validate_encoded_cred, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
+    CommandGlobalOpts, credential::validate_encoded_cred, docs, util::node_rpc,
+    vault::default_vault_name,
 };
 
+const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
+
 #[derive(Clone, Debug, Args)]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct ShowCommand {
     #[arg()]
     pub credential_name: String,

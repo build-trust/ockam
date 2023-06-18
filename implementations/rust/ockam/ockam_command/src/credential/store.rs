@@ -1,21 +1,29 @@
 use std::path::PathBuf;
 
-use crate::{
-    fmt_log, fmt_ok,
-    terminal::OckamColor,
-    util::{node_rpc, random_name},
-    CommandGlobalOpts, Result,
-};
+use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+use tokio::{sync::Mutex, try_join};
 
-use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::{CredentialConfig, StateDirTrait};
 use ockam_identity::{identities, Identity};
-use tokio::{sync::Mutex, try_join};
+
+use crate::{
+    CommandGlobalOpts, docs, fmt_log,
+    fmt_ok,
+    Result,
+    terminal::OckamColor, util::{node_rpc, random_name},
+};
+
+const LONG_ABOUT: &str = include_str!("./static/store/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/store/after_long_help.txt");
 
 #[derive(Clone, Debug, Args)]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
+)]
 pub struct StoreCommand {
     #[arg(hide_default_value = true, default_value_t = random_name())]
     pub credential_name: String,

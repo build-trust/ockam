@@ -1,3 +1,22 @@
+use clap::{Args, Subcommand};
+use colorful::Colorful;
+use miette::miette;
+
+pub(crate) use get::GetCommand;
+pub(crate) use issue::IssueCommand;
+pub(crate) use list::ListCommand;
+use ockam::identity::credential::{Credential, CredentialData, Unverified};
+use ockam::identity::IdentityIdentifier;
+use ockam_api::cli_state::{CredentialState, StateItemTrait};
+use ockam_api::cli_state::traits::StateDirTrait;
+pub(crate) use present::PresentCommand;
+pub(crate) use show::ShowCommand;
+pub(crate) use store::StoreCommand;
+pub(crate) use verify::VerifyCommand;
+
+use crate::{CommandGlobalOpts, docs, Result};
+use crate::util::output::Output;
+
 pub(crate) mod get;
 pub(crate) mod issue;
 pub(crate) mod list;
@@ -6,27 +25,15 @@ pub(crate) mod show;
 pub(crate) mod store;
 pub(crate) mod verify;
 
-use colorful::Colorful;
-pub(crate) use get::GetCommand;
-pub(crate) use issue::IssueCommand;
-pub(crate) use list::ListCommand;
-use miette::miette;
-use ockam::identity::credential::{Credential, CredentialData, Unverified};
-use ockam::identity::IdentityIdentifier;
-use ockam_api::cli_state::{CredentialState, StateItemTrait};
-pub(crate) use present::PresentCommand;
-pub(crate) use show::ShowCommand;
-pub(crate) use store::StoreCommand;
-pub(crate) use verify::VerifyCommand;
-
-use crate::util::output::Output;
-use crate::{CommandGlobalOpts, Result};
-use clap::{Args, Subcommand};
-use ockam_api::cli_state::traits::StateDirTrait;
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
 /// Manage Credentials
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(
+arg_required_else_help = true,
+subcommand_required = true,
+long_about = docs::about(LONG_ABOUT),
+)]
 pub struct CredentialCommand {
     #[command(subcommand)]
     subcommand: CredentialSubcommand,
