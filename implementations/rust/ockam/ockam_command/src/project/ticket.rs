@@ -90,60 +90,57 @@ impl Runner {
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;
 
-        let (base_addr, _flow_control_id) =
-            if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
-                let tc = parse_trust_context(&self.opts.state, tc)?;
-                trust_context = Some(tc.clone());
-                let cred_retr = tc
-                    .authority()
-                    .into_diagnostic()?
-                    .own_credential()
-                    .into_diagnostic()?;
-                let addr = match cred_retr {
-                    ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
-                        &c.multiaddr
-                    }
-                    _ => {
-                        return Err(miette!(
-                            "Trust context must be configured with a credential issuer"
-                        ));
-                    }
-                };
-                let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-                let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
-                    &self.ctx,
-                    &self.opts,
-                    &node_name,
-                    tc.authority()
-                        .into_diagnostic()?
-                        .identity()
-                        .await
-                        .into_diagnostic()?
-                        .identifier()
-                        .clone(),
-                    addr,
-                    Some(identity),
-                )
-                .await?;
-
-                (sc_addr, Some(sc_flow_control_id))
-            } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
-                let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-                let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
-                    &self.ctx,
-                    &self.opts,
-                    &node_name,
-                    a.identity_id().clone(),
-                    a.address(),
-                    Some(identity),
-                )
-                .await?;
-
-                project = Some(p);
-                (sc_addr, Some(sc_flow_control_id))
-            } else {
-                (self.cmd.to.clone(), None)
+        let base_addr = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
+            let tc = parse_trust_context(&self.opts.state, tc)?;
+            trust_context = Some(tc.clone());
+            let cred_retr = tc
+                .authority()
+                .into_diagnostic()?
+                .own_credential()
+                .into_diagnostic()?;
+            let addr = match cred_retr {
+                ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
+                    &c.multiaddr
+                }
+                _ => {
+                    return Err(miette!(
+                        "Trust context must be configured with a credential issuer"
+                    ));
+                }
             };
+            let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
+            create_secure_channel_to_authority(
+                &self.ctx,
+                &self.opts,
+                &node_name,
+                tc.authority()
+                    .into_diagnostic()?
+                    .identity()
+                    .await
+                    .into_diagnostic()?
+                    .identifier()
+                    .clone(),
+                addr,
+                Some(identity),
+            )
+            .await?
+        } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
+            let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
+            let sc_addr = create_secure_channel_to_authority(
+                &self.ctx,
+                &self.opts,
+                &node_name,
+                a.identity_id().clone(),
+                a.address(),
+                Some(identity),
+            )
+            .await?;
+
+            project = Some(p);
+            sc_addr
+        } else {
+            self.cmd.to.clone()
+        };
         // If an identity identifier is given add it as a member, otherwise
         // request an enrollment token that a future member can use to get a
         // credential.

@@ -19,7 +19,6 @@ use ockam_api::{
     DefaultAddress,
 };
 use ockam_core::api::RequestBuilder;
-use ockam_core::flow_control::FlowControlId;
 use ockam_core::route;
 use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
@@ -145,7 +144,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
     }
 
     pub async fn authenticate(&self) -> Result<Credential> {
-        let (sc_addr, _sc_flow_control_id) = self
+        let sc_addr = self
             .secure_channel_to(&OrchestratorEndpoint::Authenticator)
             .await?;
 
@@ -175,7 +174,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
         let _ = self.authenticate().await?;
 
         //  Establish a secure channel
-        let (sc_addr, _sc_flow_control_id) = self.secure_channel_to(&self.destination).await?;
+        let sc_addr = self.secure_channel_to(&self.destination).await?;
 
         let mut to = sc_addr.concat(service_address)?;
         info!(
@@ -217,17 +216,14 @@ impl<'a> OrchestratorApiBuilder<'a> {
         Ok(())
     }
 
-    async fn secure_channel_to(
-        &self,
-        endpoint: &OrchestratorEndpoint,
-    ) -> Result<(MultiAddr, FlowControlId)> {
+    async fn secure_channel_to(&self, endpoint: &OrchestratorEndpoint) -> Result<MultiAddr> {
         let node_name = self.node_name.as_ref().ok_or(miette!("Node is required"))?;
         let project = self
             .project_lookup
             .as_ref()
             .ok_or(miette!("Project is required"))?;
 
-        let (sc_addr, sc_flow_control_id) = match endpoint {
+        let sc_addr = match endpoint {
             OrchestratorEndpoint::Authenticator => {
                 let authority = project
                     .authority
@@ -269,7 +265,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             }
         };
 
-        Ok((sc_addr, sc_flow_control_id))
+        Ok(sc_addr)
     }
 }
 
