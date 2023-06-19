@@ -66,6 +66,7 @@ impl StateMachine for ResponderStateMachine {
 pub struct ResponderStateMachine {
     common: CommonStateMachine,
     handshake: Handshake,
+    /// this serialized payload contains an identity, its credentials and a signature of its static key
     identity_payload: Vec<u8>,
 }
 

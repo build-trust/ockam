@@ -63,6 +63,7 @@ impl StateMachine for InitiatorStateMachine {
 pub(super) struct InitiatorStateMachine {
     pub(super) common: CommonStateMachine,
     pub(super) handshake: Handshake,
+    /// this serialized payload contains an identity, its credentials and a signature of its static key
     pub(super) identity_payload: Vec<u8>,
 }
 
