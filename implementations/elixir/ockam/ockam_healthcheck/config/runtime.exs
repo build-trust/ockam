@@ -105,4 +105,4 @@ config :ockam_healthcheck,
   targets: targets,
   identity_source: identity_source,
   identity_file: identity_file,
-  identity_function: &Ockam.Healthcheck.generate_identity/0
+  identity_function: &Ockam.Healthcheck.get_identity/0

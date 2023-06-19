@@ -254,8 +254,7 @@ defmodule Ockam.Healthcheck do
   defp get_healthcheck_identity() do
     case Application.get_env(:ockam_healthcheck, :identity_source) do
       :function ->
-        function =
-          Application.get_env(:ockam_healthcheck, :identity_function, &generate_identity/0)
+        function = Application.get_env(:ockam_healthcheck, :identity_function, &get_identity/0)
 
         identity_from_function(function)
 
@@ -287,9 +286,37 @@ defmodule Ockam.Healthcheck do
     end
   end
 
-  def generate_identity() do
+  def get_identity() do
+    case :persistent_term.get(:healthcheck_identity, :none) do
+      :none ->
+        generate_and_cache_identity()
+
+      identity ->
+        ## Validate that identity is still valid
+        case Ockam.Identity.check_local_private_key(identity) do
+          :ok ->
+            {:ok, identity, nil}
+
+          {:error, _reason} ->
+            generate_and_cache_identity()
+        end
+    end
+  end
+
+  defp generate_and_cache_identity() do
+    case generate_identity() do
+      {:ok, identity} ->
+        :persistent_term.put(:healthcheck_identity, identity)
+        {:ok, identity, nil}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp generate_identity() do
     with {:ok, identity, _identity_id} <- Ockam.Identity.create() do
-      {:ok, identity, nil}
+      {:ok, identity}
     end
   end
 end

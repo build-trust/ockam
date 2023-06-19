@@ -8,8 +8,32 @@ defmodule Ockam.Identity do
   Default implementation is `Ockam.Identity.Sidecar`
   """
 
-  @type t() :: {module :: atom, opaque :: binary()}
+  @type identity_data() :: binary()
+  @type identity_id() :: String.t()
+
+  @type t() :: {module :: atom, data :: binary()}
+
   @type proof() :: binary()
+
+  @type compare_result() :: :none | :equal | :conflict | :newer | :older
+
+  @callback create() :: {:ok, identity_data(), identity_id()}
+  @callback get(String.t()) :: {:ok, identity_data(), identity_id()}
+  @callback validate_identity_change_history(identity_data()) ::
+              {:ok, identity_id()} | {:error, any()}
+  @callback create_signature(
+              vault_name :: String.t(),
+              identity_data(),
+              signature_source :: binary()
+            ) :: {:ok, proof()} | {:error, any()}
+  @callback verify_signature(identity_data(), proof(), signature_source :: binary()) ::
+              :ok | {:error, any()}
+  @callback compare_identity_change_history(
+              current_data :: identity_data(),
+              known_data :: identity_data()
+            ) :: {:ok, compare_result()} | {:error, any()}
+  @callback check_local_private_key(vault_name :: String.t(), identity_data()) ::
+              :ok | {:error, any()}
 
   def default_implementation() do
     Application.get_env(:ockam, :identity_module, Ockam.Identity.Stub)
@@ -78,6 +102,13 @@ defmodule Ockam.Identity do
           {:ok, contact_id :: binary()} | {:error, reason :: any()}
   def validate_identity_change_history({module, data}) do
     module.validate_identity_change_history(data)
+  end
+
+  ## Not using a boolean because error reason could be important
+  @spec check_local_private_key(identity :: t(), vault_name :: String.t()) ::
+          :ok | {:error, any()}
+  def check_local_private_key({module, data}, vault_name \\ nil) do
+    module.check_local_private_key(vault_name, data)
   end
 
   @spec create_signature(identity :: t(), auth_hash :: binary()) ::
