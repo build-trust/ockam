@@ -52,7 +52,7 @@ impl Handshake {
     }
 
     /// Encode the first message, sent from the initiator to the responder
-    pub(super) async fn encode_message1(&mut self) -> Result<Vec<u8>> {
+    pub(super) async fn encode_message1(&mut self, payload: Vec<u8>) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // output e.pubKey
         let e_pub_key = self.get_public_key(&state.e).await?;
@@ -60,8 +60,8 @@ impl Handshake {
         let mut message = e_pub_key.data().to_vec();
 
         // output message 1 payload
-        message.extend(state.message1_payload.clone());
-        state.mix_hash(state.message1_payload.clone().as_slice());
+        message.extend(payload.clone());
+        state.mix_hash(payload.clone().as_slice());
 
         self.state = state;
         Ok(message)
@@ -230,7 +230,7 @@ impl Handshake {
         // We currently don't use any payload for message 1
         Ok(Handshake {
             vault,
-            state: HandshakeState::new(static_key, ephemeral_key, vec![]),
+            state: HandshakeState::new(static_key, ephemeral_key),
         })
     }
 
@@ -452,7 +452,6 @@ pub(super) struct HandshakeState {
     n: u64,
     h: [u8; SHA256_SIZE_USIZE],
     ck: Option<KeyId>,
-    message1_payload: Vec<u8>,
     pub(super) status: Status,
 }
 
@@ -461,7 +460,7 @@ impl HandshakeState {
     ///   - a static key
     ///   - an ephemeral key
     ///   - a payload
-    pub(super) fn new(s: KeyId, e: KeyId, message1_payload: Vec<u8>) -> HandshakeState {
+    pub(super) fn new(s: KeyId, e: KeyId) -> HandshakeState {
         HandshakeState {
             s,
             e,
@@ -471,7 +470,6 @@ impl HandshakeState {
             n: 0,
             h: [0u8; SHA256_SIZE_USIZE],
             ck: None,
-            message1_payload,
             status: Initial,
         }
     }
@@ -641,7 +639,6 @@ mod tests {
             vault.clone(),
             initiator_static_key_id,
             initiator_ephemeral_key_id,
-            messages.message1_payload,
         )
         .await?;
 
@@ -661,13 +658,12 @@ mod tests {
             vault.clone(),
             responder_static_key_id,
             responder_ephemeral_key_id,
-            vec![],
         )
         .await?;
         initiator.initialize().await?;
         responder.initialize().await?;
 
-        let result = initiator.encode_message1().await?;
+        let result = initiator.encode_message1(messages.message1_payload).await?;
         assert_eq!(result, messages.message1_ciphertext);
 
         responder.decode_message1(result).await?;
@@ -703,11 +699,10 @@ mod tests {
             vault: Arc<dyn XXVault>,
             static_key: KeyId,
             ephemeral_key: KeyId,
-            message1_payload: Vec<u8>,
         ) -> Result<Handshake> {
             Ok(Handshake {
                 vault,
-                state: HandshakeState::new(static_key, ephemeral_key, message1_payload),
+                state: HandshakeState::new(static_key, ephemeral_key),
             })
         }
     }

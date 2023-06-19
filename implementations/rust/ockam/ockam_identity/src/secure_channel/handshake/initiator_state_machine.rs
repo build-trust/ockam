@@ -25,7 +25,7 @@ impl StateMachine for InitiatorStateMachine {
             // Initialize the handshake and send message 1
             (Initial, Initialize) => {
                 self.initialize_handshake().await?;
-                let message1 = self.encode_message1().await?;
+                let message1 = self.encode_message1(self.message1_payload.clone()).await?;
 
                 // Send message 1 and wait for message 2
                 self.handshake.state.status = WaitingForMessage2;
@@ -63,6 +63,9 @@ impl StateMachine for InitiatorStateMachine {
 pub(super) struct InitiatorStateMachine {
     pub(super) common: CommonStateMachine,
     pub(super) handshake: Handshake,
+    /// this payload could be used to convey (unencrypted) data on the first message of the handshake
+    /// at the moment it doesn't
+    pub(super) message1_payload: Vec<u8>,
     /// this serialized payload contains an identity, its credentials and a signature of its static key
     pub(super) identity_payload: Vec<u8>,
 }
@@ -78,7 +81,7 @@ impl InitiatorStateMachine {
         to self.handshake {
             #[call(initialize)]
             async fn initialize_handshake(&mut self) -> Result<()>;
-            async fn encode_message1(&mut self) -> Result<Vec<u8>>;
+            async fn encode_message1(&mut self, payload: Vec<u8>) -> Result<Vec<u8>>;
             async fn decode_message2(&mut self, message: Vec<u8>) -> Result<Vec<u8>>;
             async fn encode_message3(&mut self, payload: Vec<u8>) -> Result<Vec<u8>>;
             async fn set_final_state(&mut self, role: Role) -> Result<()>;
@@ -110,6 +113,7 @@ impl InitiatorStateMachine {
         Ok(InitiatorStateMachine {
             common,
             handshake: Handshake::new(vault.clone(), static_key).await?,
+            message1_payload: vec![],
             identity_payload,
         })
     }
