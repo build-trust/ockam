@@ -4,6 +4,8 @@ defmodule Ockam.Identity.Sidecar do
   Data structure contains a reference to identity stored
   in the sidecar node.
   """
+  @behaviour Ockam.Identity
+
   alias Ockam.API.Client, as: ApiClient
   alias Ockam.API.Response, as: ApiResponse
 
@@ -90,6 +92,18 @@ defmodule Ockam.Identity.Sidecar do
              IdentityRequest.compare_identity_change_history(current_identity, known_identity)
            ) do
       IdentityResponse.compare_identity_change_history(body)
+    end
+  end
+
+  @spec check_local_private_key(vault_name :: String.t(), identity :: t()) ::
+          :ok | {:error, reason :: any()}
+  def check_local_private_key(vault_name, identity) do
+    case create_signature(vault_name, identity, "") do
+      {:ok, _proof} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

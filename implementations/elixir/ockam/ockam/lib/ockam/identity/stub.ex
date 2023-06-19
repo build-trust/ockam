@@ -3,6 +3,8 @@ defmodule Ockam.Identity.Stub do
   Stub for `Ockam.Identity`
   """
 
+  @behaviour Ockam.Identity
+
   @type t() :: binary()
   @type proof() :: binary()
 
@@ -52,6 +54,10 @@ defmodule Ockam.Identity.Stub do
 
   def compare_identity_change_history(identity, known_identity) do
     {:error, {:history_update_not_supported, identity, known_identity}}
+  end
+
+  def check_local_private_key(_vault_name, _identity) do
+    :ok
   end
 
   def random() do
