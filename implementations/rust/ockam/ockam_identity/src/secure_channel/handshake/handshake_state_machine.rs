@@ -204,7 +204,7 @@ impl CommonStateMachine {
             their_identity.identifier
         );
 
-        if let Some(trust_context) = self.trust_context.clone() {
+        if let Some(trust_context) = &self.trust_context {
             for credential in credentials {
                 let result = self
                     .identities

@@ -60,7 +60,7 @@ impl EphemeralSecretsStore for VaultSecretsStore {
     /// Remove secret from in memory storage
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
         self.ephemeral_secrets
-            .delete(&key_id.clone())
+            .delete(&key_id)
             .await
             .map(|r| r.is_some())
     }
@@ -78,7 +78,7 @@ impl PersistentSecretsStore for VaultSecretsStore {
 
     /// Remove secret from in memory storage
     async fn delete_persistent_secret(&self, key_id: KeyId) -> Result<bool> {
-        self.security_module.delete_secret(key_id.clone()).await
+        self.security_module.delete_secret(key_id).await
     }
 }
 
