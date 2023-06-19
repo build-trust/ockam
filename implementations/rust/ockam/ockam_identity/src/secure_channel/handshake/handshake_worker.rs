@@ -208,11 +208,6 @@ impl HandshakeWorker {
             role.clone(),
             &decryptor_remote
         );
-        trace!(
-            "SecureChannel {} started for addresses: {:?}",
-            role.clone(),
-            addresses.clone(),
-        );
 
         // before sending messages make sure that the handshake is finished and
         // the encryptor worker is ready
@@ -227,6 +222,12 @@ impl HandshakeWorker {
             // make sure that the encryptor has finished initializing before sending messages
             context.wait_for(addresses.encryptor.clone()).await?;
         }
+
+        trace!(
+            "SecureChannel {} started for addresses: {:?}",
+            role.clone(),
+            addresses.clone(),
+        );
 
         Ok(())
     }
