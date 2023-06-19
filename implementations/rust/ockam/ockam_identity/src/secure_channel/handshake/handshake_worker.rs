@@ -218,9 +218,6 @@ impl HandshakeWorker {
             } else {
                 callback_waiter.receive().await?;
             }
-
-            // make sure that the encryptor has finished initializing before sending messages
-            context.wait_for(addresses.encryptor.clone()).await?;
         }
 
         trace!(
