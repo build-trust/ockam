@@ -7,9 +7,13 @@ use std::{
 };
 
 use anyhow::Context as _;
+use colorful::Colorful;
+use colorful::core::StrMarker;
 use miette::{miette, ErrReport as Report};
 use minicbor::{data::Type, Decode, Decoder, Encode};
+use rustls::internal::msgs::enums::HeartbeatMessageType;
 use tracing::{debug, error, trace};
+use ockam_core::api::Request;
 
 use ockam::{
     Address, Context, MessageSendReceiveOptions, NodeBuilder, Route, TcpConnectionOptions,
@@ -17,7 +21,7 @@ use ockam::{
 };
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
-use ockam_api::nodes::NODEMANAGER_ADDR;
+use ockam_api::nodes::{models, NODEMANAGER_ADDR};
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};

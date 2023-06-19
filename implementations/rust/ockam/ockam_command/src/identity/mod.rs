@@ -14,8 +14,13 @@ use crate::identity::default::DefaultCommand;
 use crate::terminal::OckamColor;
 use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, PARSER_LOGS};
 use clap::{Args, Subcommand};
+use colorful::core::StrMarker;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliState;
+use ockam_api::nodes::models;
+use ockam_core::api::Request;
+use ockam_node::Context;
+use crate::util::Rpc;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -103,6 +108,29 @@ fn create_default_identity(opts: &CommandGlobalOpts) {
             "Marked this new identity as your default, on this machine.\n"
         ));
     }
+}
+
+pub async fn print_delete_msg(opts: CommandGlobalOpts,
+                              ctx: Context,
+                              entity: &str,
+                              name: &str,
+                              address: &str) {
+    let mut rpc = Rpc::background(&ctx, &opts, &name)?;
+    let req = Request::delete("/node/tcp/listener")
+        .body(models::transport::DeleteTransport::new(address.clone().to_str()));
+    rpc.request(req).await?;
+    rpc.is_ok()?;
+
+    opts.terminal
+        .stdout()
+        .plain(format!(
+            "{} {} with address '{}' has been deleted.",
+            "✔︎".light_green(),
+            &address, &entity
+        ))
+        .machine(&address)
+        .json(serde_json::json!({ "{entity}": { "address": &address } }))
+        .write_line()?
 }
 
 #[cfg(test)]
