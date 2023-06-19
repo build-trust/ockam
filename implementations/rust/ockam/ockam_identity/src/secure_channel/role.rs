@@ -1,6 +1,6 @@
 use core::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum Role {
     Initiator,
     Responder,
