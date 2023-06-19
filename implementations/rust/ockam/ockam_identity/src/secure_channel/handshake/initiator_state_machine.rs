@@ -25,7 +25,7 @@ impl StateMachine for InitiatorStateMachine {
             // Initialize the handshake and send message 1
             (Initial, Initialize) => {
                 self.initialize_handshake().await?;
-                let message1 = self.encode_message1(self.message1_payload.clone()).await?;
+                let message1 = self.encode_message1(vec![]).await?;
 
                 // Send message 1 and wait for message 2
                 self.handshake.state.status = WaitingForMessage2;
@@ -63,9 +63,6 @@ impl StateMachine for InitiatorStateMachine {
 pub(super) struct InitiatorStateMachine {
     pub(super) common: CommonStateMachine,
     pub(super) handshake: Handshake,
-    /// this payload could be used to convey (unencrypted) data on the first message of the handshake
-    /// at the moment it doesn't
-    pub(super) message1_payload: Vec<u8>,
     /// this serialized payload contains an identity, its credentials and a signature of its static key
     pub(super) identity_payload: Vec<u8>,
 }
@@ -113,7 +110,6 @@ impl InitiatorStateMachine {
         Ok(InitiatorStateMachine {
             common,
             handshake: Handshake::new(vault.clone(), static_key).await?,
-            message1_payload: vec![],
             identity_payload,
         })
     }
