@@ -6,6 +6,7 @@ mod decryptor;
 mod encryptor;
 mod encryptor_worker;
 mod handshake;
+mod key_tracker;
 mod listener;
 mod local_info;
 mod nonce_tracker;
