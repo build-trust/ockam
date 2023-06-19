@@ -127,6 +127,13 @@ impl Worker for HandshakeWorker {
 
         Ok(())
     }
+
+    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+        if let Some(handler) = &self.decryptor_handler {
+            handler.shutdown().await?
+        }
+        Ok(())
+    }
 }
 
 impl HandshakeWorker {

@@ -115,6 +115,11 @@ impl DecryptorHandler {
             }
         }
     }
+
+    /// Remove the channel keys on shutdown
+    pub(crate) async fn shutdown(&self) -> Result<()> {
+        self.decryptor.shutdown().await
+    }
 }
 
 pub(crate) struct Decryptor {
@@ -171,6 +176,17 @@ impl Decryptor {
             }
         }
         result
+    }
+
+    /// Remove the channel keys on shutdown
+    pub(crate) async fn shutdown(&self) -> Result<()> {
+        self.vault
+            .delete_ephemeral_secret(self.key_tracker.current_key.clone())
+            .await?;
+        if let Some(previous_key) = self.key_tracker.previous_key.clone() {
+            self.vault.delete_ephemeral_secret(previous_key).await?;
+        };
+        Ok(())
     }
 }
 

@@ -209,6 +209,11 @@ impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
         };
         self.storage.modify_value(t).await
     }
+
+    /// Return the list of all the keys **in cache**
+    async fn keys(&self) -> Result<Vec<KeyId>> {
+        self.cache.keys().await
+    }
 }
 
 #[cfg(test)]

@@ -120,4 +120,8 @@ impl Worker for EncryptorWorker {
 
         Ok(())
     }
+
+    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+        self.encryptor.shutdown().await
+    }
 }

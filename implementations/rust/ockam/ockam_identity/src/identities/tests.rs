@@ -217,6 +217,10 @@ impl EphemeralSecretsStore for CrazyVault {
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
         self.vault.delete_ephemeral_secret(key_id).await
     }
+
+    async fn list_ephemeral_secrets(&self) -> Result<Vec<KeyId>> {
+        self.vault.list_ephemeral_secrets().await
+    }
 }
 
 #[async_trait]
