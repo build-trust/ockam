@@ -52,95 +52,93 @@ impl Handshake {
     }
 
     /// Encode the first message, sent from the initiator to the responder
-    pub(super) async fn encode_message1(&mut self, payload: Vec<u8>) -> Result<Vec<u8>> {
+    pub(super) async fn encode_message1(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // output e.pubKey
-        let e_pub_key = self.get_public_key(&state.e).await?;
+        let e_pub_key = self.get_public_key(state.e()?).await?;
         state.mix_hash(e_pub_key.data());
         let mut message = e_pub_key.data().to_vec();
 
         // output message 1 payload
-        message.extend(payload.clone());
-        state.mix_hash(payload.clone().as_slice());
+        message.extend_from_slice(payload);
+        state.mix_hash(payload);
 
         self.state = state;
         Ok(message)
     }
 
     /// Decode the first message to get the ephemeral public key sent by the initiator
-    pub(super) async fn decode_message1(&mut self, message: Vec<u8>) -> Result<()> {
+    pub(super) async fn decode_message1(&mut self, message: &[u8]) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // read e.pubKey
-        let key = Self::read_key(&message)?;
+        let key = Self::read_key(message)?;
         state.mix_hash(key);
 
         state.re = Some(PublicKey::new(key.to_vec(), X25519));
 
         // decode payload
-        let payload = Self::read_message1_payload(&message)?;
+        let payload = Self::read_message1_payload(message)?;
         state.mix_hash(payload);
 
         self.state = state;
-        Ok(())
+        Ok(payload.to_vec())
     }
 
     /// Encode the second message from the responder to the initiator
     /// That message contains: the responder ephemeral public key + a Diffie-Hellman key +
     ///   an encrypted payload containing the responder identity / signature / credentials
-    pub(super) async fn encode_message2(&mut self, payload: Vec<u8>) -> Result<Vec<u8>> {
+    pub(super) async fn encode_message2(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // output e.pubKey
-        let e_pub_key = self.get_public_key(&state.e).await?;
+        let e_pub_key = self.get_public_key(state.e()?).await?;
         state.mix_hash(e_pub_key.data());
         let mut message2 = e_pub_key.data().to_vec();
 
         // ck, k = HKDF(ck, DH(e, re), 2)
-        let dh = self.dh(&state.e, &state.re()?).await?;
-        self.hkdf(&mut state, &dh).await?;
+        let dh = self.dh(state.e()?, state.re()?).await?;
+        self.hkdf(&mut state, dh).await?;
 
         // encrypt and output s.pubKey
-        let s_pub_key = self.get_public_key(&state.s).await?;
+        let s_pub_key = self.get_public_key(state.s()?).await?;
         let c = self.encrypt_and_hash(&mut state, s_pub_key.data()).await?;
         message2.extend_from_slice(c.as_slice());
 
         // ck, k = HKDF(ck, DH(s, re), 2)
-        let dh = self.dh(&state.s, &state.re()?).await?;
-        self.hkdf(&mut state, &dh).await?;
+        let dh = self.dh(state.s()?, state.re()?).await?;
+        self.hkdf(&mut state, dh).await?;
 
         // encrypt and output payload
-        let c = self
-            .encrypt_and_hash(&mut state, payload.as_slice())
-            .await?;
+        let c = self.encrypt_and_hash(&mut state, payload).await?;
         message2.extend(c);
         self.state = state;
         Ok(message2)
     }
 
     /// Decode the second message sent by the responder
-    pub(super) async fn decode_message2(&mut self, message: Vec<u8>) -> Result<Vec<u8>> {
+    pub(super) async fn decode_message2(&mut self, message: &[u8]) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // decode re.pubKey
-        let re_pub_key = Self::read_key(&message)?;
+        let re_pub_key = Self::read_key(message)?;
         state.re = Some(PublicKey::new(re_pub_key.to_vec(), X25519));
         state.mix_hash(re_pub_key);
 
         // ck, k = HKDF(ck, DH(e, re), 2)
-        let dh = self.dh(&state.e, &state.re()?).await?;
-        self.hkdf(&mut state, &dh).await?;
+        let dh = self.dh(state.e()?, state.re()?).await?;
+        self.hkdf(&mut state, dh).await?;
 
         // decrypt rs.pubKey
-        let rs_pub_key = Self::read_message2_encrypted_key(&message)?;
+        let rs_pub_key = Self::read_message2_encrypted_key(message)?;
         state.rs = Some(PublicKey::new(
             self.hash_and_decrypt(&mut state, rs_pub_key).await?,
             X25519,
         ));
 
         // ck, k = HKDF(ck, DH(e, rs), 2)
-        let dh = self.dh(&state.e, &state.rs()?).await?;
-        self.hkdf(&mut state, &dh).await?;
+        let dh = self.dh(state.e()?, state.rs()?).await?;
+        self.hkdf(&mut state, dh).await?;
 
         // decrypt payload
-        let c = Self::read_message2_payload(&message)?;
+        let c = Self::read_message2_payload(message)?;
         let payload = self.hash_and_decrypt(&mut state, c).await?;
 
         self.state = state;
@@ -150,21 +148,19 @@ impl Handshake {
     /// Encode the third message from the initiator to the responder
     /// That message contains: the initiator static public key (encrypted) + a Diffie-Hellman key +
     ///   an encrypted payload containing the initiator identity / signature / credentials
-    pub(super) async fn encode_message3(&mut self, payload: Vec<u8>) -> Result<Vec<u8>> {
+    pub(super) async fn encode_message3(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // encrypt s.pubKey
-        let s_pub_key = self.get_public_key(&state.s).await?;
+        let s_pub_key = self.get_public_key(state.s()?).await?;
         let c = self.encrypt_and_hash(&mut state, s_pub_key.data()).await?;
         let mut message3 = c.to_vec();
 
         // ck, k = HKDF(ck, DH(s, re), 2)
-        let dh = self.dh(&state.s, &state.re()?).await?;
-        self.hkdf(&mut state, &dh).await?;
+        let dh = self.dh(state.s()?, state.re()?).await?;
+        self.hkdf(&mut state, dh).await?;
 
         // encrypt payload
-        let c = self
-            .encrypt_and_hash(&mut state, payload.as_slice())
-            .await?;
+        let c = self.encrypt_and_hash(&mut state, payload).await?;
         message3.extend(c);
 
         self.state = state;
@@ -172,21 +168,21 @@ impl Handshake {
     }
 
     /// Decode the third message sent by the initiator
-    pub(super) async fn decode_message3(&mut self, message: Vec<u8>) -> Result<Vec<u8>> {
+    pub(super) async fn decode_message3(&mut self, message: &[u8]) -> Result<Vec<u8>> {
         let mut state = self.state.clone();
         // decrypt rs key
-        let rs_pub_key = Self::read_message3_encrypted_key(&message)?;
+        let rs_pub_key = Self::read_message3_encrypted_key(message)?;
         state.rs = Some(PublicKey::new(
             self.hash_and_decrypt(&mut state, rs_pub_key).await?,
             X25519,
         ));
 
         // ck, k = HKDF(ck, DH(e, rs), 2), n = 0
-        let dh = self.dh(&state.e, &state.rs()?).await?;
-        self.hkdf(&mut state, &dh).await?;
+        let dh = self.dh(state.e()?, state.rs()?).await?;
+        self.hkdf(&mut state, dh).await?;
 
         // decrypt payload
-        let c = Self::read_message3_payload(&message)?;
+        let c = Self::read_message3_payload(message)?;
         let payload = self.hash_and_decrypt(&mut state, c).await?;
         self.state = state;
         Ok(payload)
@@ -196,17 +192,19 @@ impl Handshake {
     /// and return the other party identity
     pub(super) async fn set_final_state(&mut self, role: Role) -> Result<()> {
         // k1, k2 = HKDF(ck, zerolen, 2)
-        let (k1, k2) = self.compute_final_keys(&self.state).await?;
+        let mut state = self.state.clone();
+        let (k1, k2) = self.compute_final_keys(&mut state).await?;
         let (encryption_key, decryption_key) = if role.is_initiator() {
             (k2, k1)
         } else {
             (k1, k2)
         };
-        self.state.status = Ready(HandshakeKeys {
+        state.status = Ready(HandshakeKeys {
             encryption_key,
             decryption_key,
         });
         // now remove the ephemeral keys which are not useful anymore
+        self.state = state;
         self.delete_handshake_keys().await?;
         Ok(())
     }
@@ -259,54 +257,59 @@ impl Handshake {
     }
 
     /// Compute two derived ck, and k keys based on existing ck and k keys + a Diffie-Hellman key
-    async fn hkdf(&self, state: &mut HandshakeState, dh: &KeyId) -> Result<()> {
+    async fn hkdf(&self, state: &mut HandshakeState, dh: KeyId) -> Result<()> {
         let hkdf_output = self
             .vault
             .hkdf_sha256(
-                &state.ck()?,
+                state.ck()?,
                 b"",
-                Some(dh),
+                Some(&dh),
                 vec![Self::ck_attributes(), Self::k_attributes()],
             )
             .await?;
 
         // The Diffie-Hellman secret is not useful anymore
         // we can delete it from memory
-        self.vault.delete_ephemeral_secret(dh.clone()).await?;
+        self.vault.delete_ephemeral_secret(dh).await?;
 
-        match hkdf_output.as_slice() {
-            [new_ck, new_k] => {
-                self.vault.delete_ephemeral_secret(state.ck()?).await?;
-                self.vault.delete_ephemeral_secret(state.k()?).await?;
-                state.n = 0;
-                state.ck = Some(new_ck.into());
-                state.k = Some(new_k.into());
-                Ok(())
-            }
-            _ => Err(XXError::InternalVaultError.into()),
-        }
+        let [new_ck, new_k]: [KeyId; 2] = hkdf_output
+            .try_into()
+            .map_err(|_| XXError::InternalVaultError)?;
+
+        let old_ck = state.take_ck()?;
+        state.ck = Some(new_ck);
+        self.vault.delete_ephemeral_secret(old_ck).await?;
+
+        let old_k = state.take_k()?;
+        state.k = Some(new_k);
+        self.vault.delete_ephemeral_secret(old_k).await?;
+
+        state.n = 0;
+        Ok(())
+
+        //_ => ,
     }
 
     /// Compute the final encryption and decryption keys
-    async fn compute_final_keys(&self, state: &HandshakeState) -> Result<(KeyId, KeyId)> {
+    async fn compute_final_keys(&self, state: &mut HandshakeState) -> Result<(KeyId, KeyId)> {
         let hkdf_output = self
             .vault
             .hkdf_sha256(
-                &state.ck()?,
+                state.ck()?,
                 b"",
                 None,
                 vec![Self::k_attributes(), Self::k_attributes()],
             )
             .await?;
 
-        match hkdf_output.as_slice() {
-            [k1, k2] => {
-                self.vault.delete_ephemeral_secret(state.ck()?).await?;
-                self.vault.delete_ephemeral_secret(state.k()?).await?;
-                Ok((k1.into(), k2.into()))
-            }
-            _ => Err(XXError::InternalVaultError.into()),
-        }
+        let [k1, k2]: [KeyId; 2] = hkdf_output
+            .try_into()
+            .map_err(|_| XXError::InternalVaultError)?;
+
+        self.vault.delete_ephemeral_secret(state.take_ck()?).await?;
+        self.vault.delete_ephemeral_secret(state.take_k()?).await?;
+
+        Ok((k1, k2))
     }
 
     /// Decrypt a ciphertext 'c' using the key 'k' and the additional data 'h'
@@ -315,7 +318,7 @@ impl Handshake {
         nonce[4..].copy_from_slice(&state.n.to_be_bytes());
         let result = self
             .vault
-            .aead_aes_gcm_decrypt(&state.k()?, c, nonce.as_ref(), &state.h)
+            .aead_aes_gcm_decrypt(state.k()?, c, nonce.as_ref(), &state.h)
             .await
             .map(|b| b.to_vec())?;
         state.mix_hash(c);
@@ -330,7 +333,7 @@ impl Handshake {
 
         let result = self
             .vault
-            .aead_aes_gcm_encrypt(&state.k()?, p, nonce.as_ref(), &state.h)
+            .aead_aes_gcm_encrypt(state.k()?, p, nonce.as_ref(), &state.h)
             .await?
             .to_vec();
         state.mix_hash(result.as_slice());
@@ -338,14 +341,8 @@ impl Handshake {
         Ok(result)
     }
 
-    async fn delete_handshake_keys(&self) -> Result<()> {
-        let key_ids = vec![
-            self.state.s.clone(),
-            self.state.e.clone(),
-            self.state.k()?,
-            self.state.ck()?,
-        ];
-        for key_id in key_ids {
+    async fn delete_handshake_keys(&mut self) -> Result<()> {
+        for key_id in vec![self.state.take_s()?, self.state.take_e()?] {
             self.vault.delete_ephemeral_secret(key_id).await?;
         }
         Ok(())
@@ -377,32 +374,32 @@ impl Handshake {
     }
 
     /// Read the message 1 payload which is present after the public key
-    fn read_message1_payload(message: &Vec<u8>) -> Result<&[u8]> {
+    fn read_message1_payload(message: &[u8]) -> Result<&[u8]> {
         Self::read_end(message, Self::key_size())
     }
 
     /// Read the message 2 encrypted key, which is present after the public key
-    fn read_message2_encrypted_key(message: &Vec<u8>) -> Result<&[u8]> {
+    fn read_message2_encrypted_key(message: &[u8]) -> Result<&[u8]> {
         Self::read_middle(message, Self::key_size(), Self::encrypted_key_size())
     }
 
     /// Read the message 2 encrypted payload, which is present after the encrypted key
-    fn read_message2_payload(message: &Vec<u8>) -> Result<&[u8]> {
+    fn read_message2_payload(message: &[u8]) -> Result<&[u8]> {
         Self::read_end(message, Self::key_size() + Self::encrypted_key_size())
     }
 
     /// Read the message 3 encrypted key at the beginning of the message
-    fn read_message3_encrypted_key(message: &Vec<u8>) -> Result<&[u8]> {
+    fn read_message3_encrypted_key(message: &[u8]) -> Result<&[u8]> {
         Self::read_start(message, Self::encrypted_key_size())
     }
 
     /// Read the message 3 payload which is present after the encrypted key
-    fn read_message3_payload(message: &Vec<u8>) -> Result<&[u8]> {
+    fn read_message3_payload(message: &[u8]) -> Result<&[u8]> {
         Self::read_end(message, Self::encrypted_key_size())
     }
 
     /// Read the first 'length' bytes of the message
-    fn read_start(message: &Vec<u8>, length: usize) -> Result<&[u8]> {
+    fn read_start(message: &[u8], length: usize) -> Result<&[u8]> {
         if message.len() < length {
             return Err(XXError::MessageLenMismatch.into());
         }
@@ -410,7 +407,7 @@ impl Handshake {
     }
 
     /// Read the bytes of the message after the first 'drop_length' bytes
-    fn read_end(message: &Vec<u8>, drop_length: usize) -> Result<&[u8]> {
+    fn read_end(message: &[u8], drop_length: usize) -> Result<&[u8]> {
         if message.len() < drop_length {
             return Err(XXError::MessageLenMismatch.into());
         }
@@ -418,7 +415,7 @@ impl Handshake {
     }
 
     /// Read 'length' bytes of the message after the first 'drop_length' bytes
-    fn read_middle(message: &Vec<u8>, drop_length: usize, length: usize) -> Result<&[u8]> {
+    fn read_middle(message: &[u8], drop_length: usize, length: usize) -> Result<&[u8]> {
         if message.len() < drop_length + length {
             return Err(XXError::MessageLenMismatch.into());
         }
@@ -426,7 +423,7 @@ impl Handshake {
     }
 
     /// Read the bytes of a key at the beginning of a message
-    fn read_key(message: &Vec<u8>) -> Result<&[u8]> {
+    fn read_key(message: &[u8]) -> Result<&[u8]> {
         Self::read_start(message, Self::key_size())
     }
 
@@ -444,8 +441,8 @@ impl Handshake {
 /// The `HandshakeState` contains all the variables necessary to follow the Noise protocol
 #[derive(Debug, Clone)]
 pub(super) struct HandshakeState {
-    pub(super) s: KeyId,
-    e: KeyId,
+    pub(super) s: Option<KeyId>,
+    e: Option<KeyId>,
     k: Option<KeyId>,
     re: Option<PublicKey>,
     pub(super) rs: Option<PublicKey>,
@@ -462,8 +459,8 @@ impl HandshakeState {
     ///   - a payload
     pub(super) fn new(s: KeyId, e: KeyId) -> HandshakeState {
         HandshakeState {
-            s,
-            e,
+            s: Some(s),
+            e: Some(e),
             k: None,
             re: None,
             rs: None,
@@ -487,8 +484,28 @@ impl HandshakeState {
         *array_ref![digest, 0, 32]
     }
 
-    pub(super) fn k(&self) -> Result<KeyId> {
-        self.k.clone().ok_or_else(|| {
+    pub(super) fn take_s(&mut self) -> Result<KeyId> {
+        self.s.take().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "key id s should have been set",
+            )
+        })
+    }
+
+    pub(super) fn take_e(&mut self) -> Result<KeyId> {
+        self.e.take().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "key id e should have been set",
+            )
+        })
+    }
+
+    pub(super) fn take_k(&mut self) -> Result<KeyId> {
+        self.k.take().ok_or_else(|| {
             Error::new(
                 Origin::KeyExchange,
                 Kind::Invalid,
@@ -497,8 +514,8 @@ impl HandshakeState {
         })
     }
 
-    pub(super) fn ck(&self) -> Result<KeyId> {
-        self.ck.clone().ok_or_else(|| {
+    pub(super) fn take_ck(&mut self) -> Result<KeyId> {
+        self.ck.take().ok_or_else(|| {
             Error::new(
                 Origin::KeyExchange,
                 Kind::Invalid,
@@ -507,8 +524,48 @@ impl HandshakeState {
         })
     }
 
-    pub(super) fn re(&self) -> Result<PublicKey> {
-        self.re.clone().ok_or_else(|| {
+    pub(super) fn s(&self) -> Result<&KeyId> {
+        self.s.as_ref().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "key id s should have been set",
+            )
+        })
+    }
+
+    pub(super) fn e(&self) -> Result<&KeyId> {
+        self.e.as_ref().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "key id e should have been set",
+            )
+        })
+    }
+
+    pub(super) fn k(&self) -> Result<&KeyId> {
+        self.k.as_ref().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "key id k should have been set",
+            )
+        })
+    }
+
+    pub(super) fn ck(&self) -> Result<&KeyId> {
+        self.ck.as_ref().ok_or_else(|| {
+            Error::new(
+                Origin::KeyExchange,
+                Kind::Invalid,
+                "key id ck should have been set",
+            )
+        })
+    }
+
+    pub(super) fn re(&self) -> Result<&PublicKey> {
+        self.re.as_ref().ok_or_else(|| {
             Error::new(
                 Origin::KeyExchange,
                 Kind::Invalid,
@@ -517,8 +574,8 @@ impl HandshakeState {
         })
     }
 
-    pub(super) fn rs(&self) -> Result<PublicKey> {
-        self.rs.clone().ok_or_else(|| {
+    pub(super) fn rs(&self) -> Result<&PublicKey> {
+        self.rs.as_ref().ok_or_else(|| {
             Error::new(
                 Origin::KeyExchange,
                 Kind::Invalid,
@@ -554,7 +611,7 @@ mod tests {
         assert_eq!(handshake.state.h, exp_h);
 
         let ck = vault
-            .get_ephemeral_secret(&handshake.state.ck()?, "ck")
+            .get_ephemeral_secret(handshake.state.ck()?, "ck")
             .await?;
 
         assert_eq!(
@@ -663,25 +720,28 @@ mod tests {
         initiator.initialize().await?;
         responder.initialize().await?;
 
-        let result = initiator.encode_message1(messages.message1_payload).await?;
+        let result = initiator
+            .encode_message1(&messages.message1_payload)
+            .await?;
         assert_eq!(result, messages.message1_ciphertext);
 
-        responder.decode_message1(result).await?;
+        let decoded = responder.decode_message1(&result).await?;
+        assert_eq!(decoded, messages.message1_payload);
 
         let result = responder
-            .encode_message2(messages.message2_payload.clone())
+            .encode_message2(&messages.message2_payload)
             .await?;
         assert_eq!(result, messages.message2_ciphertext);
 
-        let decoded = initiator.decode_message2(result).await?;
+        let decoded = initiator.decode_message2(&result).await?;
         assert_eq!(decoded, messages.message2_payload);
 
         let result = initiator
-            .encode_message3(messages.message3_payload.clone())
+            .encode_message3(&messages.message3_payload)
             .await?;
         assert_eq!(result, messages.message3_ciphertext);
 
-        let decoded = responder.decode_message3(result).await?;
+        let decoded = responder.decode_message3(&result).await?;
         assert_eq!(decoded, messages.message3_payload);
 
         let result = initiator.set_final_state(Role::Responder).await;
