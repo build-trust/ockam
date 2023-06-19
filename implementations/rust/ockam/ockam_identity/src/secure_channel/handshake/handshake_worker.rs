@@ -96,19 +96,20 @@ impl Worker for HandshakeWorker {
             return result;
         };
 
-        // set the remote route by taking the most up to date message return route
-        // In the case of the initiator the first return route mentions the secure channel listener
-        // address so we need to wait for the return route corresponding to the remote handshake worker
-        // when it has been spawned
-        self.remote_route = Some(message.return_route());
-
+        let transport_message = message.into_transport_message();
         if let SendMessage(message) = self
             .state_machine
             .on_event(ReceivedMessage(Vec::<u8>::decode(
-                &message.into_transport_message().payload,
+                &transport_message.payload,
             )?))
             .await?
         {
+            // set the remote route by taking the most up to date message return route
+            // In the case of the initiator the first return route mentions the secure channel listener
+            // address so we need to wait for the return route corresponding to the remote handshake worker
+            // when it has been spawned
+            self.remote_route = Some(transport_message.return_route);
+
             context
                 .send_from_address(
                     self.remote_route()?,
