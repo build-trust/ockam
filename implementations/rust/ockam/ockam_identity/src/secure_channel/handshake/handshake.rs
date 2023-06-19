@@ -270,6 +270,10 @@ impl Handshake {
             )
             .await?;
 
+        // The Diffie-Hellman secret is not useful anymore
+        // we can delete it from memory
+        self.vault.delete_ephemeral_secret(dh.clone()).await?;
+
         match hkdf_output.as_slice() {
             [new_ck, new_k] => {
                 self.vault.delete_ephemeral_secret(state.ck()?).await?;
@@ -335,7 +339,12 @@ impl Handshake {
     }
 
     async fn delete_handshake_keys(&self) -> Result<()> {
-        let key_ids = vec![self.state.e.clone(), self.state.k()?, self.state.ck()?];
+        let key_ids = vec![
+            self.state.s.clone(),
+            self.state.e.clone(),
+            self.state.k()?,
+            self.state.ck()?,
+        ];
         for key_id in key_ids {
             self.vault.delete_ephemeral_secret(key_id).await?;
         }

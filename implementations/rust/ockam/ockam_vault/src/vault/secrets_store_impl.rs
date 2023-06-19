@@ -3,7 +3,7 @@ use crate::{
     SecretAttributes, SecretsStoreReader, SecurityModule, Signature, StoredSecret, VaultError,
     VaultSecurityModule,
 };
-use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, Result};
+use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, compat::vec::Vec, Result};
 use ockam_node::KeyValueStorage;
 
 #[derive(Clone)]
@@ -63,6 +63,10 @@ impl EphemeralSecretsStore for VaultSecretsStore {
             .delete(&key_id.clone())
             .await
             .map(|r| r.is_some())
+    }
+
+    async fn list_ephemeral_secrets(&self) -> Result<Vec<KeyId>> {
+        self.ephemeral_secrets.keys().await
     }
 }
 

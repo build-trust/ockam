@@ -10,6 +10,7 @@ use ockam_identity::{
     TrustIdentifierPolicy,
 };
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
+use ockam_vault::KeyId;
 use tokio::time::sleep;
 
 #[ockam_macros::test]
@@ -921,4 +922,60 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
     assert_eq!(received_count.load(Ordering::Relaxed), 0);
 
     ctx.stop().await
+}
+
+#[ockam_macros::test]
+async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
+
+    let alice = identities_creation.create_identity().await?;
+    let bob = identities_creation.create_identity().await?;
+
+    let bob_listener = secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &bob.identifier(),
+            "bob_listener",
+            SecureChannelListenerOptions::new(),
+        )
+        .await?;
+
+    let alice_channel = secure_channels
+        .create_secure_channel(
+            ctx,
+            &alice.identifier(),
+            route!["bob_listener"],
+            SecureChannelOptions::new(),
+        )
+        .await?;
+
+    let mut child_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            "child",
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
+
+    ctx.flow_controls()
+        .add_consumer("child", bob_listener.flow_control_id());
+
+    child_ctx
+        .send(
+            route![alice_channel.clone(), child_ctx.address()],
+            "Hello, Bob!".to_string(),
+        )
+        .await?;
+
+    let msg = child_ctx.receive::<String>().await?;
+    assert_eq!("Hello, Bob!", msg.body());
+
+    ctx.stop().await?;
+
+    // when the channel is closed all the ephemeral keys must be have been removed from memory
+    let ephemeral_keys = secure_channels.vault().list_ephemeral_secrets().await?;
+    assert_eq!(ephemeral_keys, vec![] as Vec<KeyId>);
+
+    Ok(())
 }

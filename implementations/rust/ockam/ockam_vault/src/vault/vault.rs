@@ -142,6 +142,10 @@ impl EphemeralSecretsStore for Vault {
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
         self.secrets_store.delete_ephemeral_secret(key_id).await
     }
+
+    async fn list_ephemeral_secrets(&self) -> Result<Vec<KeyId>> {
+        self.secrets_store.list_ephemeral_secrets().await
+    }
 }
 
 #[async_trait]

@@ -1,5 +1,6 @@
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, Result};
 use ockam_vault::{
     AsymmetricVault, EphemeralSecretsStore, Implementation, KeyId, PersistentSecretsStore,
@@ -60,6 +61,10 @@ impl EphemeralSecretsStore for CoercedIdentitiesVault {
 
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
         self.vault.delete_ephemeral_secret(key_id).await
+    }
+
+    async fn list_ephemeral_secrets(&self) -> Result<Vec<KeyId>> {
+        self.vault.list_ephemeral_secrets().await
     }
 }
 
