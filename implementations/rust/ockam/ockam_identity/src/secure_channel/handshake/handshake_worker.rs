@@ -163,9 +163,9 @@ impl HandshakeWorker {
                     vault,
                     identities,
                     identifier.clone(),
-                    credentials.clone(),
-                    trust_policy.clone(),
-                    trust_context.clone(),
+                    credentials,
+                    trust_policy,
+                    trust_context,
                 )
                 .await?,
             )
@@ -175,9 +175,9 @@ impl HandshakeWorker {
                     vault,
                     identities,
                     identifier.clone(),
-                    credentials.clone(),
-                    trust_policy.clone(),
-                    trust_context.clone(),
+                    credentials,
+                    trust_policy,
+                    trust_context,
                 )
                 .await?,
             )
@@ -194,8 +194,8 @@ impl HandshakeWorker {
             secure_channels,
             callback_sender,
             state_machine,
-            identifier: identifier.clone(),
-            role: role.clone(),
+            identifier,
+            role,
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
@@ -212,8 +212,7 @@ impl HandshakeWorker {
         let decryptor_remote = addresses.decryptor_remote.clone();
         debug!(
             "Starting SecureChannel {} at remote: {}",
-            role.clone(),
-            &decryptor_remote
+            role, &decryptor_remote
         );
 
         // before sending messages make sure that the handshake is finished and

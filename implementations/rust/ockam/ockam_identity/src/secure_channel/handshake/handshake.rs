@@ -211,8 +211,8 @@ impl Handshake {
 
     /// Return the final results of the handshake if we reached the final state
     pub(super) fn get_handshake_keys(&self) -> Option<HandshakeKeys> {
-        match self.state.status.clone() {
-            Ready(keys) => Some(keys),
+        match &self.state.status {
+            Ready(keys) => Some(keys.clone()),
             _ => None,
         }
     }
