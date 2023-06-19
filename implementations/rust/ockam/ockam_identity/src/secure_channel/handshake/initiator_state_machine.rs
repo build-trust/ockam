@@ -1,3 +1,4 @@
+use crate::secure_channel::handshake::error::XXError;
 use crate::secure_channel::handshake::handshake::Handshake;
 use crate::secure_channel::handshake::handshake_state_machine::{
     Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
@@ -25,7 +26,7 @@ impl StateMachine for InitiatorStateMachine {
             // Initialize the handshake and send message 1
             (Initial, Initialize) => {
                 self.initialize_handshake().await?;
-                let message1 = self.encode_message1(vec![]).await?;
+                let message1 = self.encode_message1(&[]).await?;
 
                 // Send message 1 and wait for message 2
                 self.handshake.state.status = WaitingForMessage2;
@@ -33,12 +34,16 @@ impl StateMachine for InitiatorStateMachine {
             }
             // Process message 2 and send message 3
             (WaitingForMessage2, ReceivedMessage(message)) => {
-                let message2_payload = self.decode_message2(message).await?;
+                let message2_payload = self.decode_message2(&message).await?;
                 let their_identity_payload =
                     CommonStateMachine::deserialize_payload(message2_payload)?;
-                self.verify_identity(their_identity_payload, &self.handshake.state.rs()?)
+                self.verify_identity(their_identity_payload, &self.handshake.state.rs()?.clone())
                     .await?;
-                let message3 = self.encode_message3(self.identity_payload.clone()).await?;
+                let identity_payload = self
+                    .identity_payload
+                    .take()
+                    .ok_or(XXError::InvalidInternalState)?;
+                let message3 = self.encode_message3(&identity_payload).await?;
                 self.set_final_state(Initiator).await?;
                 Ok(SendMessage(message3))
             }
@@ -64,7 +69,7 @@ pub(super) struct InitiatorStateMachine {
     pub(super) common: CommonStateMachine,
     pub(super) handshake: Handshake,
     /// this serialized payload contains an identity, its credentials and a signature of its static key
-    pub(super) identity_payload: Vec<u8>,
+    pub(super) identity_payload: Option<Vec<u8>>,
 }
 
 impl InitiatorStateMachine {
@@ -78,9 +83,9 @@ impl InitiatorStateMachine {
         to self.handshake {
             #[call(initialize)]
             async fn initialize_handshake(&mut self) -> Result<()>;
-            async fn encode_message1(&mut self, payload: Vec<u8>) -> Result<Vec<u8>>;
-            async fn decode_message2(&mut self, message: Vec<u8>) -> Result<Vec<u8>>;
-            async fn encode_message3(&mut self, payload: Vec<u8>) -> Result<Vec<u8>>;
+            async fn encode_message1(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
+            async fn decode_message2(&mut self, message: &[u8]) -> Result<Vec<u8>>;
+            async fn encode_message3(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
             async fn set_final_state(&mut self, role: Role) -> Result<()>;
             fn get_handshake_keys(&self) -> Option<HandshakeKeys>;
         }
@@ -110,7 +115,7 @@ impl InitiatorStateMachine {
         Ok(InitiatorStateMachine {
             common,
             handshake: Handshake::new(vault.clone(), static_key).await?,
-            identity_payload,
+            identity_payload: Some(identity_payload),
         })
     }
 }

@@ -1,3 +1,4 @@
+use crate::secure_channel::handshake::error::XXError;
 use crate::secure_channel::handshake::handshake::Handshake;
 use crate::secure_channel::handshake::handshake_state_machine::{
     Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
@@ -30,18 +31,22 @@ impl StateMachine for ResponderStateMachine {
             }
             // Process message 1 and send message 2
             (WaitingForMessage1, ReceivedMessage(message)) => {
-                self.decode_message1(message).await?;
-                let message2 = self.encode_message2(self.identity_payload.clone()).await?;
+                self.decode_message1(&message).await?;
+                let identity_payload = self
+                    .identity_payload
+                    .take()
+                    .ok_or(XXError::InvalidInternalState)?;
+                let message2 = self.encode_message2(&identity_payload).await?;
 
                 self.handshake.state.status = WaitingForMessage3;
                 Ok(SendMessage(message2))
             }
             // Process message 3
             (WaitingForMessage3, ReceivedMessage(message)) => {
-                let message3_payload = self.decode_message3(message).await?;
+                let message3_payload = self.decode_message3(&message).await?;
                 let their_identity_payload =
                     CommonStateMachine::deserialize_payload(message3_payload)?;
-                self.verify_identity(their_identity_payload, &self.handshake.state.rs()?)
+                self.verify_identity(their_identity_payload, &self.handshake.state.rs()?.clone())
                     .await?;
                 self.set_final_state(Responder).await?;
                 Ok(NoAction)
@@ -67,7 +72,7 @@ pub struct ResponderStateMachine {
     common: CommonStateMachine,
     handshake: Handshake,
     /// this serialized payload contains an identity, its credentials and a signature of its static key
-    identity_payload: Vec<u8>,
+    identity_payload: Option<Vec<u8>>,
 }
 
 impl ResponderStateMachine {
@@ -81,9 +86,9 @@ impl ResponderStateMachine {
         to self.handshake {
             #[call(initialize)]
             async fn initialize_handshake(&mut self) -> Result<()>;
-            async fn decode_message1(&mut self, message: Vec<u8>) -> Result<()>;
-            async fn encode_message2(&mut self, payload: Vec<u8>) -> Result<Vec<u8>>;
-            async fn decode_message3(&mut self, message: Vec<u8>) -> Result<Vec<u8>>;
+            async fn decode_message1(&mut self, message: &[u8]) -> Result<Vec<u8>>;
+            async fn encode_message2(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
+            async fn decode_message3(&mut self, message: &[u8]) -> Result<Vec<u8>>;
             async fn set_final_state(&mut self, role: Role) -> Result<()>;
             fn get_handshake_keys(&self) -> Option<HandshakeKeys>;
         }
@@ -113,7 +118,7 @@ impl ResponderStateMachine {
         Ok(ResponderStateMachine {
             common,
             handshake: Handshake::new(vault.clone(), static_key).await?,
-            identity_payload,
+            identity_payload: Some(identity_payload),
         })
     }
 }

@@ -12,6 +12,8 @@ pub enum XXError {
     InternalVaultError,
     /// A message had an unexpected length.
     MessageLenMismatch,
+    /// Invalid internal state.
+    InvalidInternalState,
 }
 
 impl StdError for XXError {}
@@ -21,6 +23,7 @@ impl fmt::Display for XXError {
         match self {
             Self::InternalVaultError => write!(f, "internal vault error"),
             Self::MessageLenMismatch => write!(f, "message length mismatch"),
+            Self::InvalidInternalState => write!(f, "invalid internal state"),
         }
     }
 }
@@ -31,6 +34,7 @@ impl From<XXError> for Error {
         let kind = match err {
             XXError::InternalVaultError => Kind::Internal,
             XXError::MessageLenMismatch => Kind::Misuse,
+            XXError::InvalidInternalState => Kind::Internal,
         };
 
         Error::new(Origin::KeyExchange, kind, err)
