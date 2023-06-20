@@ -108,7 +108,7 @@ async fn rpc(
         let msg_bytes = if cmd.hex {
             hex::decode(cmd.message)
                 .into_diagnostic()
-                .context("Invalid hex string")?
+                .context("The message is not a valid hex string")?
         } else {
             cmd.message.as_bytes().to_vec()
         };

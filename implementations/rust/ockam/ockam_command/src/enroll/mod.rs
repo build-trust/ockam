@@ -1,6 +1,6 @@
 use clap::Args;
 
-use miette::miette;
+use miette::{miette, WrapErr};
 use ockam_identity::IdentityIdentifier;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -22,7 +22,6 @@ use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
 use ockam_core::api::Status;
 
-use crate::error::Error;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
@@ -72,54 +71,34 @@ async fn run_impl(
 
     display_parse_logs(&opts);
 
-    let node_name = start_embedded_node(ctx, &opts, None).await.map_err(|e| {
-        Error::new_internal_error("Failed to start an embedded node:", &e.to_string())
-    })?;
+    let node_name = start_embedded_node(ctx, &opts, None).await?;
 
-    enroll(ctx, &opts, &cmd, &node_name).await.map_err(|e| {
-        Error::new_internal_error(
-            "Failed to enroll your local identity with Ockam Orchestrator:",
-            &e.to_string(),
-        )
-    })?;
+    enroll(ctx, &opts, &cmd, &node_name)
+        .await
+        .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
     let cloud_opts = cmd.cloud_opts.clone();
     let space = default_space(ctx, &opts, &cloud_opts, &node_name)
         .await
-        .map_err(|e| {
-            Error::new_internal_error(
-                "Unable to retrieve and set a space as default:",
-                &e.to_string(),
-            )
-        })?;
+        .wrap_err("Unable to retrieve and set a space as default")?;
     let project = default_project(ctx, &opts, &cloud_opts, &node_name, &space)
         .await
-        .map_err(|e| {
-            Error::new_internal_error(
-                &format!(
-                    "Unable to retrieve and set a project as default with space: {}:",
-                    space
-                        .name
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                ),
-                &e.to_string(),
-            )
-        })?;
+        .wrap_err(format!(
+            "Unable to retrieve and set a project as default with space {}",
+            space
+                .name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))?;
     let identifier = update_enrolled_identity(&opts, &node_name)
         .await
-        .map_err(|e| {
-            Error::new_internal_error(
-                &format!(
-                    "Unable to set the local identity as enrolled with project {}:",
-                    project
-                        .name
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                ),
-                &e.to_string(),
-            )
-        })?;
+        .wrap_err(format!(
+            "Unable to set the local identity as enrolled with project {}",
+            project
+                .name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))?;
     delete_embedded_node(&opts, &node_name).await;
 
     opts.terminal.write_line(&fmt_ok!(

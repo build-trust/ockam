@@ -19,7 +19,9 @@ impl CreateTransportJson {
         Ok(Self {
             tt,
             tm,
-            addr: InternetAddress::new(addr).ok_or(CliStateError::Unknown)?,
+            addr: InternetAddress::new(addr).ok_or(CliStateError::InvalidOperation(
+                "Invalid address '{addr}'".to_string(),
+            ))?,
         })
     }
 

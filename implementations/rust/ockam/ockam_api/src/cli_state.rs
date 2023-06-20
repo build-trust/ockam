@@ -31,22 +31,47 @@ type Result<T> = std::result::Result<T, CliStateError>;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum CliStateError {
-    #[error("IO error")]
+    #[error(transparent)]
+    #[diagnostic(code("OCK500"))]
     Io(#[from] std::io::Error),
-    #[error("serde error")]
+
+    #[error(transparent)]
+    #[diagnostic(code("OCK500"))]
     Serde(#[from] serde_json::Error),
-    #[error("ockam error")]
+
+    #[error(transparent)]
+    #[diagnostic(code("OCK500"))]
     Ockam(#[from] ockam_core::Error),
-    #[error("already exists")]
-    AlreadyExists,
-    #[error("not found")]
-    NotFound,
+
+    #[error("A {resource} named {name} already exists")]
+    #[diagnostic(
+        code("OCK409"),
+        help("Please try using a different name or delete the existing {resource}")
+    )]
+    AlreadyExists { resource: String, name: String },
+
+    #[error("Unable to find {resource} named {name}")]
+    #[diagnostic(code("OCK404"))]
+    ResourceNotFound { resource: String, name: String },
+
+    #[error("The path {0} is invalid")]
+    #[diagnostic(code("OCK500"))]
+    InvalidPath(String),
+
+    #[error("The path is empty")]
+    #[diagnostic(code("OCK500"))]
+    EmptyPath,
+
     #[error("{0}")]
-    Invalid(String),
-    #[error("invalid state version {0}")]
+    #[diagnostic(code("OCK500"))]
+    InvalidOperation(String),
+
+    #[error("Invalid configuration version '{0}'")]
+    #[diagnostic(
+        code("OCK500"),
+        help("Please try running 'ockam reset' to reset your local configuration")
+    )]
     InvalidVersion(String),
-    #[error("unknown error")]
-    Unknown,
 }
 
 impl From<CliStateError> for ockam_core::Error {
@@ -168,8 +193,8 @@ impl CliState {
         // Abort if identity is being used by some running node.
         for node in self.nodes.list()? {
             if node.config().identity_config()?.identifier() == identity_state.identifier() {
-                return Err(CliStateError::Invalid(format!(
-                    "Can't delete identity '{}' because is currently in use by node '{}'",
+                return Err(CliStateError::InvalidOperation(format!(
+                    "Can't delete identity '{}' as it's being used by node '{}'",
                     &identity_state.name(),
                     &node.name()
                 )));
@@ -183,7 +208,7 @@ impl CliState {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",
             home::home_dir()
-                .ok_or(CliStateError::NotFound)?
+                .ok_or(CliStateError::InvalidPath("$HOME".to_string()))?
                 .join(".ockam"),
         )?)
     }
@@ -290,7 +315,7 @@ impl CliState {
     /// Return a random root directory
     pub fn test_dir() -> Result<PathBuf> {
         Ok(home::home_dir()
-            .ok_or(CliStateError::NotFound)?
+            .ok_or(CliStateError::InvalidPath("$HOME".to_string()))?
             .join(".ockam")
             .join(".tests")
             .join(random_name()))
@@ -302,11 +327,12 @@ pub fn random_name() -> String {
 }
 
 fn file_stem(path: &Path) -> Result<String> {
+    let path_str = path.to_str().ok_or(CliStateError::EmptyPath)?;
     path.file_stem()
-        .ok_or(CliStateError::NotFound)?
+        .ok_or(CliStateError::InvalidPath(path_str.to_string()))?
         .to_str()
         .map(|name| name.to_string())
-        .ok_or(CliStateError::NotFound)
+        .ok_or(CliStateError::InvalidPath(path_str.to_string()))
 }
 
 #[cfg(test)]

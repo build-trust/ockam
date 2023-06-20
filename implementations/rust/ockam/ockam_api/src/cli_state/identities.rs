@@ -32,16 +32,13 @@ impl IdentitiesState {
     }
 
     pub fn get_by_identifier(&self, identifier: &IdentityIdentifier) -> Result<IdentityState> {
-        let identities = self.list()?;
-
-        let identity_state = identities
+        self.list()?
             .into_iter()
-            .find(|ident_state| &ident_state.config.identifier() == identifier);
-
-        match identity_state {
-            Some(is) => Ok(is),
-            None => Err(CliStateError::NotFound),
-        }
+            .find(|ident_state| &ident_state.config.identifier() == identifier)
+            .ok_or(CliStateError::ResourceNotFound {
+                resource: Self::default_filename().to_string(),
+                name: identifier.to_string(),
+            })
     }
 
     pub async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
@@ -224,7 +221,7 @@ mod traits {
             // Retrieve identity. If doesn't exist do nothing.
             let identity = match self.get(&name) {
                 Ok(i) => i,
-                Err(CliStateError::NotFound) => return Ok(()),
+                Err(CliStateError::ResourceNotFound { .. }) => return Ok(()),
                 Err(e) => return Err(e),
             };
 

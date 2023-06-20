@@ -46,16 +46,14 @@ impl CredentialConfig {
     }
 
     pub fn credential(&self) -> Result<Credential> {
-        let bytes = match hex::decode(&self.encoded_credential) {
-            Ok(b) => b,
-            Err(e) => {
-                return Err(CliStateError::Invalid(format!(
-                    "Unable to hex decode credential. {e}"
-                )));
-            }
-        };
-        minicbor::decode::<Credential>(&bytes)
-            .map_err(|e| CliStateError::Invalid(format!("Unable to decode credential. {e}")))
+        let bytes = hex::decode(&self.encoded_credential).map_err(|e| {
+            error!(%e, "Unable to hex-decode credential");
+            CliStateError::InvalidOperation("Unable to hex-decode credential".to_string())
+        })?;
+        minicbor::decode::<Credential>(&bytes).map_err(|e| {
+            error!(%e, "Unable to decode credential");
+            CliStateError::InvalidOperation("Unable to decode credential".to_string())
+        })
     }
 }
 

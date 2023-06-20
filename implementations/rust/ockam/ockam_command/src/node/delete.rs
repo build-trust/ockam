@@ -1,11 +1,11 @@
 use crate::node::util::{delete_all_nodes, delete_node};
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::local_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_api::cli_state::{CliStateError, StateDirTrait};
+use ockam_api::cli_state::StateDirTrait;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -43,39 +43,14 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
     } else {
         let state = &opts.state.nodes;
         let node_name = get_node_name(&opts.state, &cmd.node_name);
-        match state.get(&node_name) {
-            // If it exists, proceed
-            Ok(_) => {
-                delete_node(&opts, &node_name, cmd.force)?;
-                opts.terminal
-                    .stdout()
-                    .plain(format!(
-                        "{} Node with name '{}' has been deleted.",
-                        "✔︎".light_green(),
-                        &node_name
-                    ))
-                    .machine(&node_name)
-                    .json(serde_json::json!({ "node": { "name": &node_name } }))
-                    .write_line()?;
-            }
-            // Else, return the appropriate error
-            Err(err) => match err {
-                CliStateError::NotFound => {
-                    return Err(crate::Error::NotFound {
-                        resource: "Node".to_string(),
-                        resource_name: node_name,
-                    }
-                    .into())
-                }
-                e => {
-                    return Err(crate::Error::new_internal_error(
-                        "Unable to delete node:",
-                        &e.to_string(),
-                    )
-                    .into())
-                }
-            },
-        }
+        state.get(&node_name)?;
+        delete_node(&opts, &node_name, cmd.force)?;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("The node named '{}' has been deleted.", &node_name))
+            .machine(&node_name)
+            .json(serde_json::json!({ "node": { "name": &node_name } }))
+            .write_line()?;
     }
     Ok(())
 }

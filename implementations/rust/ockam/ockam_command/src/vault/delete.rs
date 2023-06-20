@@ -1,10 +1,8 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
 
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::CliStateError;
 
 use crate::terminal::ConfirmResult;
 use crate::util::node_rpc;
@@ -44,31 +42,19 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let DeleteCommand { name } = cmd;
     let state = opts.state.vaults;
-    match state.get(&name) {
-        // If it exists, proceed
-        Ok(_) => {
-            if let ConfirmResult::No = opts.terminal.confirm(&fmt_warn!(
-                "This will delete the vault with name '{name}'. Do you want to continue?"
-            ))? {
-                // If the user has not confirmed, exit
-                return Ok(());
-            }
-
-            state.delete(&name)?;
-
-            opts.terminal
-                .stdout()
-                .plain(fmt_ok!("Vault with name '{name}' has been deleted"))
-                .machine(&name)
-                .json(serde_json::json!({ "vault": { "name": &name } }))
-                .write_line()?;
-
-            Ok(())
-        }
-        // Else, return the appropriate error
-        Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Vault '{}' not found", name)),
-            _ => Err(err.into()),
-        },
+    state.get(&name)?;
+    if let ConfirmResult::No = opts.terminal.confirm(&fmt_warn!(
+        "This will delete the vault named '{name}'. Do you wish to proceed?"
+    ))? {
+        // If the user has not confirmed, exit
+        return Ok(());
     }
+    state.delete(&name)?;
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!("The vault named '{name}' has been deleted"))
+        .machine(&name)
+        .json(serde_json::json!({ "vault": { "name": &name } }))
+        .write_line()?;
+    Ok(())
 }
