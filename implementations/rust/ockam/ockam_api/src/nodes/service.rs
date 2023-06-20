@@ -5,7 +5,7 @@ use std::error::Error as _;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use minicbor::Decoder;
+use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
 use ockam::identity::{
@@ -85,6 +85,17 @@ pub(crate) fn invalid_multiaddr_error() -> ockam_core::Error {
 // TODO: Move to multiaddr implementation
 pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
     invalid_multiaddr_error()
+}
+
+pub(crate) fn encode_request_result<T: Encode<()>>(
+    res: std::result::Result<ResponseBuilder<T>, ResponseBuilder<ockam_core::api::Error>>,
+) -> Result<Vec<u8>> {
+    let v = match res {
+        Ok(r) => r.to_vec()?,
+        Err(e) => e.to_vec()?,
+    };
+
+    Ok(v)
 }
 
 /// Node manager provides a messaging API to interact with the current node
@@ -550,14 +561,17 @@ impl NodeManagerWorker {
             }
             (Get, ["node", "tcp", "connection", address]) => {
                 let node_manager = self.node_manager.read().await;
-                self.get_tcp_connection(req, &node_manager.tcp_transport, address.to_string())
-                    .to_vec()?
+                encode_request_result(self.get_tcp_connection(
+                    req,
+                    &node_manager.tcp_transport,
+                    address.to_string(),
+                ))?
             }
             (Post, ["node", "tcp", "connection"]) => {
-                self.create_tcp_connection(req, dec, ctx).await?.to_vec()?
+                encode_request_result(self.create_tcp_connection(req, dec, ctx).await)?
             }
             (Delete, ["node", "tcp", "connection"]) => {
-                self.delete_tcp_connection(req, dec).await?.to_vec()?
+                encode_request_result(self.delete_tcp_connection(req, dec).await)?
             }
 
             // ==*== Tcp Listeners ==*==
@@ -568,14 +582,17 @@ impl NodeManagerWorker {
             }
             (Get, ["node", "tcp", "listener", address]) => {
                 let node_manager = self.node_manager.read().await;
-                self.get_tcp_listener(req, &node_manager.tcp_transport, address.to_string())
-                    .to_vec()?
+                encode_request_result(self.get_tcp_listener(
+                    req,
+                    &node_manager.tcp_transport,
+                    address.to_string(),
+                ))?
             }
             (Post, ["node", "tcp", "listener"]) => {
-                self.create_tcp_listener(req, dec).await?.to_vec()?
+                encode_request_result(self.create_tcp_listener(req, dec).await)?
             }
             (Delete, ["node", "tcp", "listener"]) => {
-                self.delete_tcp_listener(req, dec).await?.to_vec()?
+                encode_request_result(self.delete_tcp_listener(req, dec).await)?
             }
 
             // ==*== Credential ==*==
@@ -584,7 +601,7 @@ impl NodeManagerWorker {
                 .await?
                 .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
             (Post, ["node", "credentials", "actions", "present"]) => {
-                self.present_credential(req, dec, ctx).await?.to_vec()?
+                encode_request_result(self.present_credential(req, dec, ctx).await)?
             }
 
             // ==*== Secure channels ==*==
@@ -600,18 +617,17 @@ impl NodeManagerWorker {
                     .to_vec()?
             }
             (Post, ["node", "secure_channel"]) => {
-                self.create_secure_channel(req, dec, ctx).await?.to_vec()?
+                encode_request_result(self.create_secure_channel(req, dec, ctx).await)?
             }
             (Delete, ["node", "secure_channel"]) => {
-                self.delete_secure_channel(req, dec, ctx).await?.to_vec()?
+                encode_request_result(self.delete_secure_channel(req, dec, ctx).await)?
             }
             (Get, ["node", "show_secure_channel"]) => {
-                self.show_secure_channel(req, dec).await?.to_vec()?
+                encode_request_result(self.show_secure_channel(req, dec).await)?
             }
-            (Post, ["node", "secure_channel_listener"]) => self
-                .create_secure_channel_listener(req, dec, ctx)
-                .await?
-                .to_vec()?,
+            (Post, ["node", "secure_channel_listener"]) => {
+                encode_request_result(self.create_secure_channel_listener(req, dec, ctx).await)?
+            }
             (Delete, ["node", "secure_channel_listener"]) => self
                 .delete_secure_channel_listener(req, dec)
                 .await?
@@ -622,54 +638,56 @@ impl NodeManagerWorker {
 
             // ==*== Services ==*==
             (Post, ["node", "services", DefaultAddress::IDENTITY_SERVICE]) => {
-                self.start_identity_service(ctx, req, dec).await?.to_vec()?
+                encode_request_result(self.start_identity_service(ctx, req, dec).await)?
             }
-            (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => self
-                .start_authenticated_service(ctx, req, dec)
-                .await?
-                .to_vec()?,
-            (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => self
-                .start_uppercase_service(ctx, req, dec)
-                .await?
-                .to_vec()?,
+            (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => {
+                encode_request_result(self.start_authenticated_service(ctx, req, dec).await)?
+            }
+            (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => {
+                encode_request_result(self.start_uppercase_service(ctx, req, dec).await)?
+            }
             (Post, ["node", "services", DefaultAddress::ECHO_SERVICE]) => {
-                self.start_echoer_service(ctx, req, dec).await?.to_vec()?
+                encode_request_result(self.start_echoer_service(ctx, req, dec).await)?
             }
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
-                self.start_hop_service(ctx, req, dec).await?.to_vec()?
+                encode_request_result(self.start_hop_service(ctx, req, dec).await)?
             }
-            (Post, ["node", "services", DefaultAddress::DIRECT_AUTHENTICATOR]) => self
-                .start_authenticator_service(ctx, req, dec)
-                .await?
-                .to_vec()?,
+            (Post, ["node", "services", DefaultAddress::DIRECT_AUTHENTICATOR]) => {
+                encode_request_result(self.start_authenticator_service(ctx, req, dec).await)?
+            }
             (Post, ["node", "services", DefaultAddress::VERIFIER]) => {
-                self.start_verifier_service(ctx, req, dec).await?.to_vec()?
+                encode_request_result(self.start_verifier_service(ctx, req, dec).await)?
             }
-            (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => self
-                .start_credentials_service(ctx, req, dec)
-                .await?
-                .to_vec()?,
-            (Post, ["node", "services", DefaultAddress::OKTA_IDENTITY_PROVIDER]) => self
-                .start_okta_identity_provider_service(ctx, req, dec)
-                .await?
-                .to_vec()?,
+            (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => {
+                encode_request_result(self.start_credentials_service(ctx, req, dec).await)?
+            }
+            (Post, ["node", "services", DefaultAddress::OKTA_IDENTITY_PROVIDER]) => {
+                encode_request_result(
+                    self.start_okta_identity_provider_service(ctx, req, dec)
+                        .await,
+                )?
+            }
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
                 self.start_kafka_outlet_service(ctx, req, dec).await?
             }
             (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
                 self.start_kafka_consumer_service(ctx, req, dec).await?
             }
-            (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => self
-                .delete_kafka_service(ctx, req, dec, KafkaServiceKind::Consumer)
-                .await?
-                .to_vec()?,
+            (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
+                encode_request_result(
+                    self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Consumer)
+                        .await,
+                )?
+            }
             (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
                 self.start_kafka_producer_service(ctx, req, dec).await?
             }
-            (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => self
-                .delete_kafka_service(ctx, req, dec, KafkaServiceKind::Producer)
-                .await?
-                .to_vec()?,
+            (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
+                encode_request_result(
+                    self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Producer)
+                        .await,
+                )?
+            }
             (Get, ["node", "services"]) => self.list_services(req).await?,
             (Get, ["node", "services", service_type]) => {
                 self.list_services_of_type(req, service_type).await?
@@ -677,7 +695,7 @@ impl NodeManagerWorker {
 
             // ==*== Forwarder commands ==*==
             (Get, ["node", "forwarder", remote_address]) => {
-                self.show_forwarder(req, remote_address).await?.to_vec()?
+                encode_request_result(self.show_forwarder(req, remote_address).await)?
             }
             (Get, ["node", "forwarder"]) => {
                 let forwarder_registry = {
@@ -688,10 +706,10 @@ impl NodeManagerWorker {
                     .await
                     .to_vec()?
             }
-            (Delete, ["node", "forwarder", remote_address]) => self
-                .delete_forwarder(ctx, req, remote_address)
-                .await?
-                .to_vec()?,
+            (Delete, ["node", "forwarder", remote_address]) => {
+                encode_request_result(self.delete_forwarder(ctx, req, remote_address).await)?
+            }
+
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
 
             // ==*== Inlets & Outlets ==*==
@@ -702,7 +720,9 @@ impl NodeManagerWorker {
                 };
                 self.get_inlets(req, inlet_registry).to_vec()?
             }
-            (Get, ["node", "inlet", alias]) => self.show_inlet(req, alias).await?.to_vec()?,
+            (Get, ["node", "inlet", alias]) => {
+                encode_request_result(self.show_inlet(req, alias).await)?
+            }
             (Get, ["node", "outlet"]) => {
                 let outlet_registry = {
                     let node_manager = self.node_manager.read().await;
@@ -710,18 +730,26 @@ impl NodeManagerWorker {
                 };
                 self.get_outlets(req, outlet_registry).to_vec()?
             }
-            (Get, ["node", "outlet", alias]) => self.show_outlet(req, alias).await?.to_vec()?,
-            (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,
-            (Post, ["node", "outlet"]) => self.create_outlet(ctx, req, dec).await?.to_vec()?,
-            (Delete, ["node", "outlet", alias]) => {
-                self.delete_outlet(req, alias).await?.to_vec()?
+            (Get, ["node", "outlet", alias]) => {
+                encode_request_result(self.show_outlet(req, alias).await)?
             }
-            (Delete, ["node", "inlet", alias]) => self.delete_inlet(req, alias).await?.to_vec()?,
+            (Post, ["node", "inlet"]) => {
+                encode_request_result(self.create_inlet(req, dec, ctx).await)?
+            }
+            (Post, ["node", "outlet"]) => {
+                encode_request_result(self.create_outlet(ctx, req, dec).await)?
+            }
+            (Delete, ["node", "outlet", alias]) => {
+                encode_request_result(self.delete_outlet(req, alias).await)?
+            }
+            (Delete, ["node", "inlet", alias]) => {
+                encode_request_result(self.delete_inlet(req, alias).await)?
+            }
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Flow Controls ==*==
             (Post, ["node", "flow_controls", "add_consumer"]) => {
-                self.add_consumer(ctx, req, dec)?.to_vec()?
+                encode_request_result(self.add_consumer(ctx, req, dec))?
             }
 
             // ==*== Workers ==*==
@@ -738,20 +766,20 @@ impl NodeManagerWorker {
                     .to_vec()?
             }
 
-            (Post, ["policy", resource, action]) => self
-                .node_manager
-                .read()
-                .await
-                .add_policy(resource, action, req, dec)
-                .await?
-                .to_vec()?,
-            (Get, ["policy", resource]) => self
-                .node_manager
-                .read()
-                .await
-                .list_policies(req, resource)
-                .await?
-                .to_vec()?,
+            (Post, ["policy", resource, action]) => encode_request_result(
+                self.node_manager
+                    .read()
+                    .await
+                    .add_policy(resource, action, req, dec)
+                    .await,
+            )?,
+            (Get, ["policy", resource]) => encode_request_result(
+                self.node_manager
+                    .read()
+                    .await
+                    .list_policies(req, resource)
+                    .await,
+            )?,
             (Get, ["policy", resource, action]) => self
                 .node_manager
                 .read()
@@ -759,13 +787,13 @@ impl NodeManagerWorker {
                 .get_policy(req, resource, action)
                 .await?
                 .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
-            (Delete, ["policy", resource, action]) => self
-                .node_manager
-                .read()
-                .await
-                .del_policy(req, resource, action)
-                .await?
-                .to_vec()?,
+            (Delete, ["policy", resource, action]) => encode_request_result(
+                self.node_manager
+                    .read()
+                    .await
+                    .del_policy(req, resource, action)
+                    .await,
+            )?,
 
             // ==*== Spaces ==*==
             (Post, ["v0", "spaces"]) => self.create_space(ctx, dec).await?,
@@ -822,9 +850,9 @@ impl NodeManagerWorker {
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
-                Response::bad_request(req.id())
-                    .body(format!("Invalid endpoint: {path}"))
-                    .to_vec()?
+                let err_body = Error::new(path)
+                    .with_message(format!("Invalid endpoint: {} {}", method, path));
+                Response::bad_request(req.id()).body(err_body).to_vec()?
             }
         };
         Ok(r)

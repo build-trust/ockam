@@ -19,7 +19,7 @@ use ockam::{
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{RequestBuilder, Response, Status};
+use ockam_core::api::{Error, RequestBuilder, Response, Status};
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
 use ockam_multiaddr::{
@@ -150,6 +150,12 @@ impl<'a> Rpc<'a> {
                 // Overwrite error to swallow inner cause and hide it from end-user
                 miette!("The request timed out, please make sure the command's arguments are correct or try again")
             })?;
+
+        if self.is_ok().is_err() {
+            let err: Error = self.parse_response()?;
+            let err_msg = err.message().unwrap_or_default().to_string();
+            return Err(miette!(err_msg).into());
+        }
         Ok(())
     }
 
@@ -171,6 +177,12 @@ impl<'a> Rpc<'a> {
                 // Overwrite error to swallow inner cause and hide it from end-user
                 miette!("The request timed out, please make sure the command's arguments are correct or try again")
             })?.body();
+
+        if self.is_ok().is_err() {
+            let err: Error = self.parse_response()?;
+            let err_msg = err.message().unwrap_or_default().to_string();
+            return Err(miette!(err_msg).into());
+        }
         Ok(())
     }
 

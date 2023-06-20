@@ -1,7 +1,7 @@
 use crate::local_multiaddr_to_route;
 use crate::nodes::models::flow_controls::AddConsumer;
 use minicbor::Decoder;
-use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::Result;
 use ockam_node::Context;
 
@@ -13,16 +13,40 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let request: AddConsumer = dec.decode()?;
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
+        let request: AddConsumer = match dec.decode() {
+            Ok(r) => r,
+            Err(e) => {
+                let err_body = Error::new(req.path())
+                    .with_message(format!("Unable to decode request: {}", e));
+                return Err(Response::bad_request(req.id()).body(err_body));
+            }
+        };
 
         let mut route = match local_multiaddr_to_route(request.address()) {
-            None => return Ok(Response::bad_request(req.id())),
+            None => {
+                let err_body = Error::new(req.path())
+                    .with_message(format!("Invalid address: {}", request.address()));
+                return Err(Response::bad_request(req.id()).body(err_body));
+            }
             Some(r) => r,
         };
-        let addr = route.step()?;
+
+        let addr = match route.step() {
+            Ok(a) => a,
+            Err(e) => {
+                let err_body = Error::new(req.path()).with_message(format!(
+                    "Unable to retrieve address from {}. {}",
+                    request.address(),
+                    e
+                ));
+                return Err(Response::bad_request(req.id()).body(err_body));
+            }
+        };
         if !route.is_empty() {
-            return Ok(Response::bad_request(req.id()));
+            let err_body = Error::new(req.path())
+                .with_message(format!("Invalid address: {}", request.address()));
+            return Err(Response::bad_request(req.id()).body(err_body));
         }
 
         ctx.flow_controls()
