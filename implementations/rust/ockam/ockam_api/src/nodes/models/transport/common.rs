@@ -5,7 +5,7 @@ use std::fmt::{self, Display};
 /// Encode which type of transport is being requested
 // TODO: we have a TransportType in ockam_core.  Do we really want to
 // mirror this kind of type here?
-#[derive(Copy, Clone, Debug, Decode, Encode, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Decode, Encode, serde::Serialize, serde::Deserialize, PartialEq, Eq, Hash)]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum TransportType {
@@ -28,7 +28,7 @@ impl Display for TransportType {
 }
 
 /// Encode which type of transport is being requested
-#[derive(Copy, Clone, Debug, Decode, Encode, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Decode, Encode, serde::Serialize, serde::Deserialize, PartialEq, Eq, Hash)]
 #[rustfmt::skip]
 pub enum TransportMode {
     /// Listen on a set address

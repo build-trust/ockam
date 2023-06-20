@@ -10,6 +10,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_identity::{IdentityIdentifier, LmdbStorage};
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -302,7 +303,7 @@ pub struct NodeSetupConfig {
     /// The field might be missing in previous configuration files, hence it is an Option
     pub authority_node: Option<bool>,
     pub project: Option<ProjectLookup>,
-    transports: Vec<CreateTransportJson>,
+    transports: HashSet<CreateTransportJson>,
     // TODO
     // secure_channels: ?,
     // inlets: ?,
@@ -334,7 +335,7 @@ impl NodeSetupConfig {
     }
 
     pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
-        self.transports.push(transport);
+        self.transports.insert(transport);
         self
     }
 }
@@ -502,7 +503,7 @@ mod tests {
             verbose: 0,
             authority_node: None,
             project: None,
-            transports: Vec::new(),
+            transports: HashSet::new(),
         };
         let transport = CreateTransportJson {
             tt: TransportType::Tcp,
@@ -514,6 +515,22 @@ mod tests {
         assert_eq!(config.transports.iter().next(), Some(&transport));
 
         config = config.add_transport(transport);
+        assert_eq!(config.transports.len(), 1);
+    }
+
+    #[test]
+    fn node_config_setup_transports_parses_a_json_with_duplicate_entries() {
+        // This test is to ensure backwards compatibility, for versions where transports where stored as a Vec<>
+        let config_json = r#"{
+            "verbose": 0,
+            "authority_node": null,
+            "project": null,
+            "transports": [
+                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}},
+                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}}
+            ]
+        }"#;
+        let config = serde_json::from_str::<NodeSetupConfig>(config_json).unwrap();
         assert_eq!(config.transports.len(), 1);
     }
 }

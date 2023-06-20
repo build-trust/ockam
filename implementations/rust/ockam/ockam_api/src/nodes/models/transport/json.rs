@@ -5,7 +5,7 @@ use ockam_core::Result;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
 use ockam_multiaddr::MultiAddr;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, Hash)]
 pub struct CreateTransportJson {
     pub tt: TransportType,
     /// The mode the transport should operate in
