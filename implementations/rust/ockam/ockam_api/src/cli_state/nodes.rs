@@ -490,3 +490,30 @@ mod traits {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::lookup::InternetAddress;
+
+    #[test]
+    fn node_config_setup_transports_no_duplicates() {
+        let mut config = NodeSetupConfig {
+            verbose: 0,
+            authority_node: None,
+            project: None,
+            transports: Vec::new(),
+        };
+        let transport = CreateTransportJson {
+            tt: TransportType::Tcp,
+            tm: TransportMode::Listen,
+            addr: InternetAddress::V4("127.0.0.1:1020".parse().unwrap()),
+        };
+        config = config.add_transport(transport.clone());
+        assert_eq!(config.transports.len(), 1);
+        assert_eq!(config.transports.iter().next(), Some(&transport));
+
+        config = config.add_transport(transport);
+        assert_eq!(config.transports.len(), 1);
+    }
+}
