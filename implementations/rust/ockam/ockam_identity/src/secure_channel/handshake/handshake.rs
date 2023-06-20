@@ -194,14 +194,14 @@ impl Handshake {
         // k1, k2 = HKDF(ck, zerolen, 2)
         let mut state = self.state.clone();
         let (k1, k2) = self.compute_final_keys(&mut state).await?;
-        let (encryption_key, decryption_key) = if role.is_initiator() {
+        let (encryptor_key, decryptor_key) = if role.is_initiator() {
             (k2, k1)
         } else {
             (k1, k2)
         };
         state.status = Ready(HandshakeKeys {
-            encryption_key,
-            decryption_key,
+            encryptor_key,
+            decryptor_key,
         });
         // now remove the ephemeral keys which are not useful anymore
         self.state = state;

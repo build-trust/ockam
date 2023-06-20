@@ -282,7 +282,7 @@ impl HandshakeWorker {
         let decryptor = DecryptorHandler::new(
             self.role.str(),
             self.addresses.clone(),
-            handshake_results.handshake_keys.decryption_key,
+            handshake_results.handshake_keys.decryptor_key,
             to_xx_initialized(self.secure_channels.identities.vault()),
             handshake_results.their_identifier.clone(),
         );
@@ -294,7 +294,7 @@ impl HandshakeWorker {
                 self.addresses.clone(),
                 self.remote_route()?,
                 Encryptor::new(
-                    handshake_results.handshake_keys.encryption_key,
+                    handshake_results.handshake_keys.encryptor_key,
                     0,
                     to_xx_initialized(self.secure_channels.identities.vault()),
                 ),

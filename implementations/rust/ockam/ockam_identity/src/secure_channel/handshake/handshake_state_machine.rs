@@ -42,11 +42,13 @@ pub(super) enum Status {
     Ready(HandshakeKeys),
 }
 
-/// At the end of a successful handshake a pair of encryption/decryption keys is available
+/// At the end of a successful handshake two symmetric encryption keys are available,
+/// one for each direction of the communication, so that one key is use by the Encryptor
+/// and the other key is used by the decryptor
 #[derive(Debug, Clone)]
 pub(super) struct HandshakeKeys {
-    pub(super) encryption_key: KeyId,
-    pub(super) decryption_key: KeyId,
+    pub(super) encryptor_key: KeyId,
+    pub(super) decryptor_key: KeyId,
 }
 
 /// The end result of a handshake with identity/credentials exchange is
