@@ -5,7 +5,9 @@ use crate::util::{api, extract_address_value, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam::Context;
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -38,6 +40,10 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node_name));
+    }
 
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);

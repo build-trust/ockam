@@ -2,9 +2,11 @@ use std::fmt::Write;
 
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use miette::IntoDiagnostic;
 use ockam::{Context, TcpTransport};
 
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::services::{ServiceList, ServiceStatus};
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -43,6 +45,10 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node_name));
+    }
 
     let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).tcp(&tcp)?.build();

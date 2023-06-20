@@ -1,6 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
+use ockam_api::cli_state::StateDirTrait;
 use std::fmt::Write;
 
 use ockam::{Context, TcpTransport};
@@ -87,6 +88,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&at)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node_name));
+    }
 
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
