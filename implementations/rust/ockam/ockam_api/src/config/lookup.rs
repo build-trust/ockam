@@ -126,7 +126,7 @@ pub enum LookupValue {
 }
 
 /// An internet address abstraction (v6/v4/dns)
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum InternetAddress {
     /// DNSaddr and port
     Dns(String, u16),
