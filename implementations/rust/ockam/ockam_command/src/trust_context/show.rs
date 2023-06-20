@@ -28,7 +28,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
     let name = cmd
         .name
         .unwrap_or(opts.state.trust_contexts.default()?.name().to_string());
-    let state = opts.state.trust_contexts.get(&name)?;
+    let state = opts.state.trust_contexts.get(name)?;
     let plain_output = {
         let mut output = "Trust context:".to_string();
         for line in state.to_string().lines() {

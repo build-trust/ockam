@@ -14,7 +14,7 @@ impl ListCommand {
 
 fn run_impl(opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
     for node in opts.state.nodes.list()? {
-        opts.terminal.write(&format!("Node: {}\n", node.name()))?;
+        opts.terminal.write(format!("Node: {}\n", node.name()))?;
     }
     Ok(())
 }

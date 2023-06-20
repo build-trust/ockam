@@ -7,7 +7,7 @@ use ockam::compat::sync::Mutex;
 use ockam::identity::IdentityIdentifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use ockam::Result;
-use ockam_core::api::{Id, Request, Response, ResponseBuilder, Status};
+use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio::time::timeout;
@@ -114,7 +114,7 @@ impl NodeManagerWorker {
         ctx: &mut Context,
         req: &Request<'_>,
         remote_address: &'a str,
-    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>> {
+    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         debug!(%remote_address , "Handling DeleteForwarder request");
@@ -122,23 +122,29 @@ impl NodeManagerWorker {
         if let Some(forwarder_to_delete) = node_manager.registry.forwarders.remove(remote_address) {
             debug!(%remote_address, "Successfully removed forwarder from node registry");
 
-            let was_stopped = ctx
+            match ctx
                 .stop_worker(forwarder_to_delete.worker_address().clone())
                 .await
-                .is_ok();
-
-            if was_stopped {
-                debug!(%remote_address, "Successfully stopped forwarder");
-                Ok(Response::ok(req.id())
-                    .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
-            } else {
-                error!(%remote_address, "Failed to delete forwarder from node registry");
-                Ok(Response::internal_error(req.id())
-                    .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
+            {
+                Ok(_) => {
+                    debug!(%remote_address, "Successfully stopped forwarder");
+                    Ok(Response::ok(req.id())
+                        .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
+                }
+                Err(err) => {
+                    error!(%remote_address, ?err, "Failed to delete forwarder from node registry");
+                    let err_body = Error::new(req.path()).with_message(format!(
+                        "Failed to delete forwarder at {}. {}",
+                        remote_address, err
+                    ));
+                    Err(Response::internal_error(req.id()).body(err_body))
+                }
             }
         } else {
             error!(%remote_address, "Forwarder not found in the node registry");
-            Ok(Response::not_found(req.id()).body(None))
+            let err_body = Error::new(req.path())
+                .with_message(format!("Forwarder, {}, not found.", remote_address));
+            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 
@@ -146,7 +152,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         remote_address: &'a str,
-    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>> {
+    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>, ResponseBuilder<Error>> {
         debug!("Handling ShowForwarder request");
         let node_manager = self.node_manager.read().await;
         if let Some(forwarder_to_show) = node_manager.registry.forwarders.get(remote_address) {
@@ -157,8 +163,9 @@ impl NodeManagerWorker {
             )
         } else {
             error!(%remote_address, "Forwarder not found in the node registry");
-
-            Ok(Response::not_found(req.id()).body(None))
+            let err_body = Error::new(req.path())
+                .with_message(format!("Forwarder, {}, not found.", remote_address));
+            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 

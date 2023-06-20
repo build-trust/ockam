@@ -123,12 +123,12 @@ pub struct Response {
 }
 
 /// Create an error response because the request path was unknown.
-pub fn unknown_path<'a>(r: &'a Request) -> ResponseBuilder<Error<'a>> {
+pub fn unknown_path<'a>(r: &'a Request) -> ResponseBuilder<Error> {
     bad_request(r, "unknown path")
 }
 
 /// Create an error response because the request method was unknown or not allowed.
-pub fn invalid_method<'a>(r: &'a Request) -> ResponseBuilder<Error<'a>> {
+pub fn invalid_method<'a>(r: &'a Request) -> ResponseBuilder<Error> {
     match r.method() {
         Some(m) => {
             let e = Error::new(r.path()).with_method(m);
@@ -142,7 +142,7 @@ pub fn invalid_method<'a>(r: &'a Request) -> ResponseBuilder<Error<'a>> {
 }
 
 /// Create an error response with status forbidden and the given message.
-pub fn forbidden<'a>(r: &'a Request, m: &'a str) -> ResponseBuilder<Error<'a>> {
+pub fn forbidden<'a>(r: &'a Request, m: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(m);
     if let Some(m) = r.method() {
         e = e.with_method(m)
@@ -151,7 +151,7 @@ pub fn forbidden<'a>(r: &'a Request, m: &'a str) -> ResponseBuilder<Error<'a>> {
 }
 
 /// Create a generic bad request response.
-pub fn bad_request<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error<'a>> {
+pub fn bad_request<'a>(r: &'a Request, msg: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(msg);
     if let Some(m) = r.method() {
         e = e.with_method(m)
@@ -160,7 +160,7 @@ pub fn bad_request<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error<'a
 }
 
 /// Create an internal server error response
-pub fn internal_error<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error<'a>> {
+pub fn internal_error<'a>(r: &'a Request, msg: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(msg);
     if let Some(m) = r.method() {
         e = e.with_method(m)
@@ -377,7 +377,7 @@ impl Response {
 #[derive(Debug, Clone, Default, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct Error<'a> {
+pub struct Error {
     /// Nominal type tag.
     ///
     /// If the "tag" feature is enabled, the resulting CBOR will contain a
@@ -387,20 +387,30 @@ pub struct Error<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5359172>,
     /// The resource path of this error.
-    #[b(1)] path: Option<Cow<'a, str>>,
+    #[b(1)] path: Option<String>,
     /// The request method of this error.
     #[n(2)] method: Option<Method>,
     /// The actual error message.
-    #[b(3)] message: Option<Cow<'a, str>>,
+    #[b(3)] message: Option<String>,
 }
 
-impl<'a> Error<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(path: S) -> Self {
+impl Error {
+    pub fn new(path: &str) -> Self {
         Error {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             method: None,
-            path: Some(path.into()),
+            path: Some(path.to_string()),
+            message: None,
+        }
+    }
+
+    pub fn new_without_path() -> Self {
+        Error {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            method: None,
+            path: None,
             message: None,
         }
     }
@@ -414,8 +424,8 @@ impl<'a> Error<'a> {
         self.method = Some(m);
     }
 
-    pub fn with_message<S: Into<Cow<'a, str>>>(mut self, m: S) -> Self {
-        self.message = Some(m.into());
+    pub fn with_message(mut self, m: impl AsRef<str>) -> Self {
+        self.message = Some(m.as_ref().to_string());
         self
     }
 
@@ -429,6 +439,31 @@ impl<'a> Error<'a> {
 
     pub fn message(&self) -> Option<&str> {
         self.message.as_deref()
+    }
+}
+
+impl From<crate::Error> for Error {
+    fn from(e: crate::Error) -> Self {
+        Error {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            method: None,
+            path: None,
+            message: Some(e.to_string()),
+        }
+    }
+}
+
+impl From<crate::Error> for ResponseBuilder<Error> {
+    fn from(e: crate::Error) -> Self {
+        Response::internal_error(Id::default()).body(e.into())
+    }
+}
+
+impl From<minicbor::decode::Error> for ResponseBuilder<Error> {
+    fn from(e: minicbor::decode::Error) -> Self {
+        let err = Error::new_without_path().with_message(e.to_string());
+        Response::bad_request(Id::default()).body(err)
     }
 }
 

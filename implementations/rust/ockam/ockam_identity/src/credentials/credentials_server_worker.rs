@@ -158,7 +158,7 @@ impl CredentialsServerWorker {
     }
 
     /// Create a generic bad request response.
-    pub fn bad_request<'a>(id: Id, path: &'a str, msg: &'a str) -> ResponseBuilder<Error<'a>> {
+    pub fn bad_request<'a>(id: Id, path: &'a str, msg: &'a str) -> ResponseBuilder<Error> {
         let e = Error::new(path).with_message(msg);
         Response::bad_request(id).body(e)
     }
