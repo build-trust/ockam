@@ -81,6 +81,11 @@ impl Mailbox {
     pub fn outgoing_access_control(&self) -> &Arc<dyn OutgoingAccessControl> {
         &self.outgoing
     }
+
+    /// Replaces the outgoing access control with the provided one
+    pub fn replace_outgoing_access_control(&mut self, outgoing: Arc<dyn OutgoingAccessControl>) {
+        self.outgoing = outgoing;
+    }
 }
 
 /// A collection of [`Mailbox`]es for a specific [`Worker`](crate::Worker), [`Processor`](crate::Processor) or `Context`
@@ -157,6 +162,17 @@ impl Mailboxes {
         } else {
             self.additional_mailboxes
                 .iter()
+                .find(|x| &x.address == msg_addr)
+        }
+    }
+
+    /// Returns a mutable reference to the [`Mailbox`] with the given [`Address`]
+    pub fn find_mailbox_mut(&mut self, msg_addr: &Address) -> Option<&mut Mailbox> {
+        if &self.main_mailbox.address == msg_addr {
+            Some(&mut self.main_mailbox)
+        } else {
+            self.additional_mailboxes
+                .iter_mut()
                 .find(|x| &x.address == msg_addr)
         }
     }

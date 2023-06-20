@@ -18,7 +18,9 @@ use ockam::{
     Worker,
 };
 use ockam_abac::expr::{and, eq, ident, str};
-use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
+use ockam_abac::{
+    Action, Env, OutgoingPolicyFactory, PolicyAccessControl, PolicyStorage, Resource,
+};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{
     boxed::Box,
@@ -28,7 +30,7 @@ use ockam_core::compat::{
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
-use ockam_core::{AllowAll, AsyncTryClone};
+use ockam_core::{AllowAll, AsyncTryClone, OutgoingAccessControlFactory};
 use ockam_identity::TrustContext;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
@@ -162,52 +164,85 @@ pub struct IdentityOverride {
 }
 
 impl NodeManager {
-    async fn access_control(
+    async fn incoming_access_control(
         &self,
-        r: &Resource,
-        a: &Action,
+        resource: &Resource,
+        action: &Action,
         trust_context_id: Option<&str>,
-        custom_default: Option<&Expr>,
     ) -> Result<Arc<dyn IncomingAccessControl>> {
-        if let Some(tcid) = trust_context_id {
-            // Populate environment with known attributes:
-            let mut env = Env::new();
-            env.put("resource.id", str(r.as_str()));
-            env.put("action.id", str(a.as_str()));
-            env.put("resource.project_id", str(tcid.to_string()));
-            env.put("resource.trust_context_id", str(tcid));
+        self.add_default_policy_if_missing(resource, action).await?;
 
-            // Check if a policy exists for (resource, action) and if not, then
-            // create or use a default entry:
-            if self.policies.get_policy(r, a).await?.is_none() {
-                let fallback = match custom_default {
-                    Some(e) => e.clone(),
-                    None => and([
-                        eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                                                                                         /*
-                                                                                         * TODO: replace the project_id check for trust_context_id.  For now the
-                                                                                         * existing authority deployed doesn't know about trust_context so this is to
-                                                                                         * be done after updating deployed authorities.
-                                                                                         eq([
-                                                                                             ident("resource.trust_context_id"),
-                                                                                             ident("subject.trust_context_id"),
-                                                                                         ]),
-                                                                                         */
-                    ]),
-                };
-                self.policies.set_policy(r, a, &fallback).await?
-            }
-            let policies = self.policies.clone();
+        if let Some(trust_context_id) = trust_context_id {
             Ok(Arc::new(PolicyAccessControl::new(
-                policies,
+                self.policies.clone(),
                 self.identities_repository(),
-                r.clone(),
-                a.clone(),
-                env,
+                resource.clone(),
+                action.clone(),
+                self.create_env(resource, action, trust_context_id),
             )))
         } else {
             Ok(Arc::new(AllowAll))
         }
+    }
+
+    async fn outgoing_access_control_factory(
+        &self,
+        resource: &Resource,
+        action: &Action,
+        trust_context_id: Option<&str>,
+    ) -> Result<Option<Arc<dyn OutgoingAccessControlFactory>>> {
+        self.add_default_policy_if_missing(resource, action).await?;
+
+        if let Some(trust_context_id) = trust_context_id {
+            Ok(Some(Arc::new(OutgoingPolicyFactory::new(
+                self.policies.clone(),
+                self.identities_repository(),
+                resource.clone(),
+                action.clone(),
+                self.create_env(resource, action, trust_context_id),
+            ))))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn add_default_policy_if_missing(
+        &self,
+        resource: &Resource,
+        action: &Action,
+    ) -> Result<()> {
+        // Check if a policy exists for (resource, action) and if not, then
+        // create or use a default entry:
+        if self.policies.get_policy(resource, action).await?.is_none() {
+            let fallback = and([
+                eq([ident("resource.project_id"), ident("subject.project_id")]),
+                // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
+                /*
+                * TODO: replace the project_id check for trust_context_id.  For now the
+                * existing authority deployed doesn't know about trust_context so this is to
+                * be done after updating deployed authorities.
+                eq([
+                    ident("resource.trust_context_id"),
+                    ident("subject.trust_context_id"),
+                ]),
+                */
+            ]);
+            self.policies
+                .set_policy(resource, action, &fallback)
+                .await?
+        }
+
+        Ok(())
+    }
+
+    fn create_env(&self, r: &Resource, a: &Action, trust_context_id: &str) -> Env {
+        // Populate environment with known attributes:
+        let mut env = Env::new();
+        env.put("resource.id", str(r.as_str()));
+        env.put("action.id", str(a.as_str()));
+        env.put("resource.project_id", str(trust_context_id.to_string()));
+        env.put("resource.trust_context_id", str(trust_context_id));
+        env
     }
 
     pub(crate) fn trust_context(&self) -> Result<&TrustContext> {

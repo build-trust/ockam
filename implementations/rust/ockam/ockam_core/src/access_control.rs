@@ -1,5 +1,6 @@
 use crate::compat::boxed::Box;
-use crate::{async_trait, RelayMessage, Result};
+use crate::{async_trait, LocalInfo, RelayMessage, Result};
+use alloc::sync::Arc;
 use core::fmt::Debug;
 
 /// Defines the interface for incoming message flow authorization.
@@ -62,6 +63,15 @@ pub trait OutgoingAccessControl: Debug + Send + Sync + 'static {
     // TODO: Consider &mut self
     /// Return true if the message is allowed to pass, and false if not.
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool>;
+}
+
+/// Interface for creating outgoing access control instances based on local information
+/// of the first incoming message.
+/// Useful when we don't have all the information on worker bootstrap.
+#[async_trait]
+pub trait OutgoingAccessControlFactory: Debug + Send + Sync + 'static {
+    /// Creates a new outgoing access control given the incoming message
+    async fn create(&self, local_info: &[LocalInfo]) -> Result<Arc<dyn OutgoingAccessControl>>;
 }
 
 mod all;

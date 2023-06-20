@@ -74,6 +74,7 @@ impl Worker for TcpOutletListenWorker {
     ) -> Result<()> {
         let return_route = msg.return_route();
         let src_addr = msg.src_addr();
+        let local_info = msg.local_message().local_info().to_vec();
 
         if let PortalMessage::Ping = msg.body() {
         } else {
@@ -92,6 +93,8 @@ impl Worker for TcpOutletListenWorker {
             return_route.clone(),
             addresses.clone(),
             self.options.incoming_access_control.clone(),
+            self.options.outgoing_access_control_factory.clone(),
+            local_info,
         )
         .await?;
 

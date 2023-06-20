@@ -19,6 +19,7 @@ mod parser;
 pub mod attribute_access_control;
 pub mod expr;
 pub mod mem;
+mod policy_outgoing;
 mod storage;
 
 pub use attribute_access_control::AbacAccessControl;
@@ -27,6 +28,7 @@ pub use error::{EvalError, ParseError};
 pub use eval::eval;
 pub use expr::Expr;
 pub use policy::PolicyAccessControl;
+pub use policy_outgoing::OutgoingPolicyFactory;
 pub use traits::PolicyStorage;
 pub use types::{Action, Resource, Subject};
 

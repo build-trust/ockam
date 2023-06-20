@@ -99,6 +99,7 @@ impl Processor for TcpInletListenProcessor {
             outlet_listener_route,
             addresses,
             self.options.incoming_access_control.clone(),
+            self.options.outgoing_access_control_factory.clone(),
         )
         .await?;
 

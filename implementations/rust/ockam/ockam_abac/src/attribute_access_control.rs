@@ -68,11 +68,11 @@ where {
 
 impl AbacAccessControl {
     /// Returns true if the identity is authorized
-    pub async fn is_identity_authorized(&self, id: IdentityIdentifier) -> Result<bool> {
+    pub async fn is_identity_authorized(&self, id: &IdentityIdentifier) -> Result<bool> {
         let mut environment = self.environment.clone();
 
         // Get identity attributes and populate the environment:
-        if let Some(attrs) = self.repository.get_attributes(&id).await? {
+        if let Some(attrs) = self.repository.get_attributes(id).await? {
             for (key, value) in attrs.attrs() {
                 if key.find(|c: char| c.is_whitespace()).is_some() {
                     log::warn! {
@@ -159,6 +159,6 @@ impl IncomingAccessControl for AbacAccessControl {
             return Ok(false);
         };
 
-        self.is_identity_authorized(id).await
+        self.is_identity_authorized(&id).await
     }
 }

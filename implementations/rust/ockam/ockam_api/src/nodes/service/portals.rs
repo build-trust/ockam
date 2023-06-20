@@ -16,8 +16,7 @@ use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Id, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, IncomingAccessControl, Route};
-use ockam_multiaddr::proto::Project;
+use ockam_core::{route, IncomingAccessControl, OutgoingAccessControlFactory, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
@@ -136,32 +135,31 @@ impl NodeManagerWorker {
         let resource = req.alias().map(Resource::new).unwrap_or(resources::INLET);
 
         let mut node_manager = self.node_manager.write().await;
-        let check_credential = node_manager.enable_credential_checks;
-        let project_id = if check_credential {
-            let pid = req
-                .outlet_addr()
-                .first()
-                .and_then(|p| {
-                    if let Some(p) = p.cast::<Project>() {
-                        node_manager.projects.get(&*p).map(|info| &*info.id)
-                    } else {
-                        None
-                    }
-                })
-                .or_else(|| Some(node_manager.trust_context().ok()?.id()));
-            if pid.is_none() {
-                return Err(ApiError::generic("credential check requires project"));
-            }
-            pid
+        let trust_context_id = if node_manager.enable_credential_checks {
+            node_manager
+                .trust_context()
+                .map(|trust_context| Some(trust_context.id()))
+                .unwrap_or(None)
         } else {
             None
         };
 
-        let access_control = node_manager
-            .access_control(&resource, &actions::HANDLE_MESSAGE, project_id, None)
+        let incoming_access_control = node_manager
+            .incoming_access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id)
             .await?;
 
-        let options = TcpInletOptions::new().with_incoming_access_control(access_control.clone());
+        let options =
+            TcpInletOptions::new().with_incoming_access_control(incoming_access_control.clone());
+
+        let outgoing_access_control_factory = node_manager
+            .outgoing_access_control_factory(&resource, &actions::HANDLE_MESSAGE, trust_context_id)
+            .await?;
+
+        let options = if let Some(factory) = &outgoing_access_control_factory {
+            options.with_outgoing_access_control_factory(factory.clone())
+        } else {
+            options
+        };
 
         let res = node_manager
             .tcp_transport
@@ -192,7 +190,8 @@ impl NodeManagerWorker {
                         req.prefix_route().clone(),
                         req.suffix_route().clone(),
                         req.authorized(),
-                        access_control.clone(),
+                        incoming_access_control.clone(),
+                        outgoing_access_control_factory.clone(),
                         ctx,
                     );
                     session.set_replacer(repl);
@@ -355,11 +354,21 @@ impl NodeManagerWorker {
             None
         };
 
-        let access_control = node_manager
-            .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
+        let incoming_access_control = node_manager
+            .incoming_access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id)
             .await?;
 
-        let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
+        let options = TcpOutletOptions::new().with_incoming_access_control(incoming_access_control);
+
+        let options = if let Some(factory) = node_manager
+            .outgoing_access_control_factory(&resource, &actions::HANDLE_MESSAGE, trust_context_id)
+            .await?
+        {
+            options.with_outgoing_access_control_factory(factory)
+        } else {
+            options
+        };
+
         let options = if !check_credential {
             options.as_consumer(&node_manager.api_transport_flow_control_id)
         } else {
@@ -503,7 +512,8 @@ fn replacer(
     prefix_route: Route,
     suffix_route: Route,
     auth: Option<IdentityIdentifier>,
-    access: Arc<dyn IncomingAccessControl>,
+    incoming_access_control: Arc<dyn IncomingAccessControl>,
+    outgoing_access_control_factory: Option<Arc<dyn OutgoingAccessControlFactory>>,
     ctx: Arc<Context>,
 ) -> Replacer {
     let connection_instance_arc = Arc::new(Mutex::new(connection_instance));
@@ -514,7 +524,8 @@ fn replacer(
         let auth = auth.clone();
         let bind = bind.clone();
         let node_manager_arc = manager.clone();
-        let access = access.clone();
+        let incoming_access_control = incoming_access_control.clone();
+        let outgoing_access_control_factory = outgoing_access_control_factory.clone();
         let ctx = ctx.clone();
         let connection_instance_arc = connection_instance_arc.clone();
         let inlet_address_arc = inlet_address_arc.clone();
@@ -572,7 +583,14 @@ fn replacer(
 
                 let node_manager = node_manager_arc.write().await;
 
-                let options = TcpInletOptions::new().with_incoming_access_control(access);
+                let options =
+                    TcpInletOptions::new().with_incoming_access_control(incoming_access_control);
+
+                let options = if let Some(factory) = &outgoing_access_control_factory {
+                    options.with_outgoing_access_control_factory(factory.clone())
+                } else {
+                    options
+                };
 
                 // Finally attempt to create a new inlet using the new route:
                 let new_inlet_address = node_manager

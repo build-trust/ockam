@@ -147,12 +147,7 @@ impl NodeManager {
         let maybe_trust_context_id = self.trust_context.as_ref().map(|c| c.id());
         let resource = Resource::assert_inline(addr.address());
         let ac = self
-            .access_control(
-                &resource,
-                &actions::HANDLE_MESSAGE,
-                maybe_trust_context_id,
-                None,
-            )
+            .incoming_access_control(&resource, &actions::HANDLE_MESSAGE, maybe_trust_context_id)
             .await?;
 
         WorkerBuilder::new(Echoer)
@@ -258,7 +253,7 @@ impl NodeManager {
         let resource = Resource::new(&addr.to_string());
 
         let abac = self
-            .access_control(&resource, &action, Some(project.as_str()), None)
+            .incoming_access_control(&resource, &action, Some(project.as_str()))
             .await?;
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(

@@ -4,7 +4,7 @@ use core::time::Duration;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddresses, AllowSourceAddress, Decodable, DenyAll,
-    IncomingAccessControl, Mailbox, Mailboxes,
+    IncomingAccessControl, LocalInfo, Mailbox, Mailboxes, OutgoingAccessControlFactory,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
@@ -22,8 +22,14 @@ use tracing::{debug, info, trace, warn};
 /// `Inlet`: `SendPing` -> `ReceivePong` -> `Initialized`
 #[derive(Clone)]
 enum State {
-    SendPing { ping_route: Route },
-    SendPong { pong_route: Route },
+    SendPing {
+        ping_route: Route,
+    },
+    SendPong {
+        pong_route: Route,
+        //local_info from the received ping
+        local_info: Vec<LocalInfo>,
+    },
     ReceivePong,
     Initialized,
 }
@@ -44,10 +50,12 @@ pub(crate) struct TcpPortalWorker {
     remote_route: Option<Route>,
     is_disconnecting: bool,
     portal_type: PortalType,
+    outgoing_access_control_factory: Option<Arc<dyn OutgoingAccessControlFactory>>,
 }
 
 impl TcpPortalWorker {
     /// Start a new `TcpPortalWorker` of type [`TypeName::Inlet`]
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn start_new_inlet(
         ctx: &Context,
         registry: TcpRegistry,
@@ -55,7 +63,8 @@ impl TcpPortalWorker {
         peer: SocketAddr,
         ping_route: Route,
         addresses: Addresses,
-        access_control: Arc<dyn IncomingAccessControl>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        outgoing_access_control_factory: Option<Arc<dyn OutgoingAccessControlFactory>>,
     ) -> Result<()> {
         Self::start(
             ctx,
@@ -65,29 +74,37 @@ impl TcpPortalWorker {
             Some(stream),
             addresses,
             PortalType::Inlet,
-            access_control,
+            incoming_access_control,
+            outgoing_access_control_factory,
         )
         .await
     }
 
     /// Start a new `TcpPortalWorker` of type [`TypeName::Outlet`]
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn start_new_outlet(
         ctx: &Context,
         registry: TcpRegistry,
         peer: SocketAddr,
         pong_route: Route,
         addresses: Addresses,
-        access_control: Arc<dyn IncomingAccessControl>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        outgoing_access_control_factory: Option<Arc<dyn OutgoingAccessControlFactory>>,
+        local_info: Vec<LocalInfo>,
     ) -> Result<()> {
         Self::start(
             ctx,
             registry,
             peer,
-            State::SendPong { pong_route },
+            State::SendPong {
+                pong_route,
+                local_info,
+            },
             None,
             addresses,
             PortalType::Outlet,
-            access_control,
+            incoming_access_control,
+            outgoing_access_control_factory,
         )
         .await
     }
@@ -102,7 +119,8 @@ impl TcpPortalWorker {
         stream: Option<TcpStream>,
         addresses: Addresses,
         portal_type: PortalType,
-        access_control: Arc<dyn IncomingAccessControl>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        outgoing_access_control_factory: Option<Arc<dyn OutgoingAccessControlFactory>>,
     ) -> Result<()> {
         info!(
             "Creating new {:?} at internal: {}, remote: {}",
@@ -129,6 +147,7 @@ impl TcpPortalWorker {
             remote_route: None,
             is_disconnecting: false,
             portal_type,
+            outgoing_access_control_factory,
         };
 
         let internal_mailbox = Mailbox::new(
@@ -139,8 +158,8 @@ impl TcpPortalWorker {
 
         let remote_mailbox = Mailbox::new(
             addresses.remote,
-            access_control,
-            Arc::new(AllowAll), // FIXME: @ac Allow to respond anywhere using return_route
+            incoming_access_control,
+            Arc::new(AllowAll),
         );
 
         // start worker
@@ -286,7 +305,12 @@ impl TcpPortalWorker {
         Ok(State::ReceivePong)
     }
 
-    async fn handle_send_pong(&mut self, ctx: &Context, pong_route: Route) -> Result<State> {
+    async fn handle_send_pong(
+        &mut self,
+        ctx: &mut Context,
+        pong_route: Route,
+        local_info: &[LocalInfo],
+    ) -> Result<State> {
         // Respond to Inlet
         ctx.send_from_address(
             pong_route.clone(),
@@ -302,6 +326,17 @@ impl TcpPortalWorker {
             let (rx, tx) = stream.into_split();
             self.write_half = Some(tx);
             self.read_half = Some(rx);
+
+            if let Some(factory) = &self.outgoing_access_control_factory {
+                debug!(
+                    "Replacing outgoing access control for: {}",
+                    self.addresses.remote
+                );
+                ctx.mailboxes_mut()
+                    .find_mailbox_mut(&self.addresses.remote)
+                    .ok_or(TransportError::PortalInvalidState)?
+                    .replace_outgoing_access_control(factory.create(local_info).await?)
+            }
 
             self.start_receiver(ctx, pong_route.clone()).await?;
 
@@ -330,8 +365,13 @@ impl Worker for TcpPortalWorker {
             State::SendPing { ping_route } => {
                 self.state = self.handle_send_ping(ctx, ping_route.clone()).await?;
             }
-            State::SendPong { pong_route } => {
-                self.state = self.handle_send_pong(ctx, pong_route.clone()).await?;
+            State::SendPong {
+                pong_route,
+                local_info,
+            } => {
+                self.state = self
+                    .handle_send_pong(ctx, pong_route.clone(), local_info.as_slice())
+                    .await?;
             }
             State::ReceivePong | State::Initialized { .. } => {
                 return Err(TransportError::PortalInvalidState.into())
@@ -359,6 +399,7 @@ impl Worker for TcpPortalWorker {
         // Remove our own address from the route so the other end
         // knows what to do with the incoming message
         let mut onward_route = msg.onward_route();
+        let local_info = msg.local_message().local_info();
         let recipient = onward_route.step()?;
 
         let return_route = msg.return_route();
@@ -373,6 +414,17 @@ impl Worker for TcpPortalWorker {
             State::ReceivePong => {
                 if recipient == self.addresses.internal {
                     return Err(TransportError::PortalInvalidState.into());
+                }
+
+                if let Some(factory) = &self.outgoing_access_control_factory {
+                    debug!(
+                        "Replacing outgoing access control for: {}",
+                        self.addresses.remote
+                    );
+                    ctx.mailboxes_mut()
+                        .find_mailbox_mut(&self.addresses.remote)
+                        .ok_or(TransportError::PortalInvalidState)?
+                        .replace_outgoing_access_control(factory.create(local_info).await?);
                 }
 
                 let msg = PortalMessage::decode(msg.payload())?;

@@ -1,12 +1,13 @@
 use crate::portal::addresses::Addresses;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
-use ockam_core::{Address, AllowAll, IncomingAccessControl};
+use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControlFactory};
 
 /// Trust Options for an Inlet
 #[derive(Debug)]
 pub struct TcpInletOptions {
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
+    pub(super) outgoing_access_control_factory: Option<Arc<dyn OutgoingAccessControlFactory>>,
 }
 
 impl TcpInletOptions {
@@ -14,6 +15,7 @@ impl TcpInletOptions {
     pub fn new() -> Self {
         Self {
             incoming_access_control: Arc::new(AllowAll),
+            outgoing_access_control_factory: None,
         }
     }
 
@@ -32,6 +34,15 @@ impl TcpInletOptions {
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Self {
         self.incoming_access_control = access_control;
+        self
+    }
+
+    /// Set outgoing Access Control
+    pub fn with_outgoing_access_control_factory(
+        mut self,
+        outgoing_access_control_factory: Arc<dyn OutgoingAccessControlFactory>,
+    ) -> Self {
+        self.outgoing_access_control_factory = Some(outgoing_access_control_factory);
         self
     }
 
@@ -62,6 +73,7 @@ impl Default for TcpInletOptions {
 pub struct TcpOutletOptions {
     pub(super) consumer: Vec<FlowControlId>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
+    pub(super) outgoing_access_control_factory: Option<Arc<dyn OutgoingAccessControlFactory>>,
 }
 
 impl TcpOutletOptions {
@@ -70,6 +82,7 @@ impl TcpOutletOptions {
         Self {
             consumer: vec![],
             incoming_access_control: Arc::new(AllowAll),
+            outgoing_access_control_factory: None,
         }
     }
 
@@ -88,6 +101,15 @@ impl TcpOutletOptions {
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Self {
         self.incoming_access_control = access_control;
+        self
+    }
+
+    /// Set outgoing Access Control
+    pub fn with_outgoing_access_control_factory(
+        mut self,
+        outgoing_access_control_factory: Arc<dyn OutgoingAccessControlFactory>,
+    ) -> Self {
+        self.outgoing_access_control_factory = Some(outgoing_access_control_factory);
         self
     }
 

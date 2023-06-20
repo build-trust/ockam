@@ -371,7 +371,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         if let Some(entry) = record {
             let authorized = inner
                 .access_control
-                .is_identity_authorized(entry.their_id())
+                .is_identity_authorized(&entry.their_id())
                 .await?;
 
             if authorized {
@@ -415,7 +415,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
 
         let authorized = inner
             .access_control
-            .is_identity_authorized(entry.their_id())
+            .is_identity_authorized(&entry.their_id())
             .await?;
 
         if authorized {

@@ -77,6 +77,11 @@ impl Context {
         &self.mailboxes
     }
 
+    /// Returns a mutable reference to the mailboxes of this context
+    pub fn mailboxes_mut(&mut self) -> &mut Mailboxes {
+        &mut self.mailboxes
+    }
+
     /// Shared [`FlowControls`] instance
     pub fn flow_controls(&self) -> &FlowControls {
         &self.flow_controls
