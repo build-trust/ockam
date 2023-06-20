@@ -467,11 +467,7 @@ async fn spawn_background_node(
     addr: SocketAddr,
 ) -> miette::Result<()> {
     // Check if the port is used by some other services or process
-    if !bind_to_port_check(&addr) {
-        return Err(miette!(
-            "Another process is listening on the provided port!"
-        ));
-    }
+    bind_to_port_check(&addr)?;
 
     let node_name = parse_node_name(&cmd.node_name)?;
 

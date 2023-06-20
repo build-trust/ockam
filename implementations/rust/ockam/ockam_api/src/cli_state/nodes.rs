@@ -330,7 +330,10 @@ impl NodeSetupConfig {
         self.transports
             .iter()
             .find(|t| t.tt == TransportType::Tcp && t.tm == TransportMode::Listen)
-            .ok_or(CliStateError::NotFound)
+            .ok_or(CliStateError::ResourceNotFound {
+                resource: "tcp listener".to_string(),
+                name: "default".to_string(),
+            })
     }
 
     pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
@@ -415,7 +418,10 @@ mod traits {
             config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
         ) -> Result<Self::Item> {
             if self.exists(&name) {
-                return Err(CliStateError::AlreadyExists);
+                return Err(CliStateError::AlreadyExists {
+                    resource: Self::default_filename().to_string(),
+                    name: name.as_ref().to_string(),
+                });
             }
             let state = Self::Item::init(self.path(&name), config)?;
             if !self.default_path()?.exists() {

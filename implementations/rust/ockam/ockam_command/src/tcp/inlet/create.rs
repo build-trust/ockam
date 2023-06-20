@@ -4,8 +4,8 @@ use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{
-    bind_to_port_check, exitcode, extract_address_value, find_available_port, node_rpc,
-    process_nodes_multiaddr, RpcBuilder,
+    bind_to_port_check, find_available_port, node_rpc, parse_node_name, process_nodes_multiaddr,
+    RpcBuilder,
 };
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
 use clap::Args;
@@ -95,7 +95,7 @@ async fn rpc(
     cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state)?;
 
     let node_name = get_node_name(&opts.state, &cmd.at);
-    let node = extract_address_value(&node_name)?;
+    let node = parse_node_name(&node_name)?;
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();
@@ -103,12 +103,7 @@ async fn rpc(
     let progress_bar = opts.terminal.progress_spinner();
     let send_req = async {
         // Check if the port is used by some other services or process
-        if !bind_to_port_check(&cmd.from) {
-            return Err(crate::error::Error::new(
-                exitcode::IOERR,
-                miette!("Another process is listening on the provided port!"),
-            ));
-        }
+        bind_to_port_check(&cmd.from)?;
 
         let project = opts
             .state

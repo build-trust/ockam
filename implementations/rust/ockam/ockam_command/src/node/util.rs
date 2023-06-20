@@ -137,7 +137,8 @@ pub(crate) async fn init_node_state(
         .identities_creation()
         .create_identity()
         .await
-        .into_diagnostic()?;
+        .into_diagnostic()
+        .wrap_err("Failed to create identity")?;
 
     let identity_state = opts
         .state
@@ -178,11 +179,6 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> miette::Result<
             deletion_errors
         ));
     }
-    Ok(())
-}
-
-pub fn set_default_node(opts: &CommandGlobalOpts, name: &str) -> miette::Result<()> {
-    opts.state.nodes.set_default(name)?;
     Ok(())
 }
 
