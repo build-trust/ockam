@@ -1,10 +1,12 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{node_rpc, parse_node_name, Rpc};
 use crate::{docs, fmt_err, CommandGlobalOpts};
+use miette::miette;
 
 use clap::Args;
 use colorful::Colorful;
 
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models;
 
 use ockam_api::DefaultAddress;
@@ -33,6 +35,11 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node_name));
+    }
+
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(Request::get(format!(
         "/node/services/{}",
