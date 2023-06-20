@@ -4,8 +4,10 @@ use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam::Context;
 use ockam_abac::Resource;
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::policy::{Expression, PolicyList};
 use ockam_core::api::Request;
 use std::fmt::Write;
@@ -41,6 +43,11 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let resource = cmd.resource;
     let node = extract_address_value(&cmd.at)?;
+
+    if !opts.state.nodes.get(&node)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node));
+    }
+
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 

@@ -2,6 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 use ockam::Context;
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::{
     SecureChannelListenersList, ShowSecureChannelListenerResponse,
 };
@@ -54,6 +55,11 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&at)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node_name));
+    }
+
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
