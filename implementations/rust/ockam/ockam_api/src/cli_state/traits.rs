@@ -236,7 +236,7 @@ pub trait StateItemTrait: Sized + Send {
 
     /// Persist the item to disk after updating the config.
     fn persist(&self) -> Result<()> {
-        let contents = serde_json::to_string(self.config())?;
+        let contents = serde_json::to_string_pretty(self.config())?;
         std::fs::write(self.path(), contents)?;
         Ok(())
     }

@@ -55,7 +55,7 @@ mod traits {
         type Config = TrustContextConfig;
 
         fn new(path: PathBuf, config: Self::Config) -> Result<Self> {
-            let contents = serde_json::to_string(&config)?;
+            let contents = serde_json::to_string_pretty(&config)?;
             std::fs::write(&path, contents)?;
             let name = file_stem(&path)?;
             Ok(Self { name, path, config })

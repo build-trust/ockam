@@ -109,7 +109,7 @@ impl NodeState {
     }
 
     pub fn set_setup(&self, setup: &NodeSetupConfig) -> Result<()> {
-        let contents = serde_json::to_string(setup)?;
+        let contents = serde_json::to_string_pretty(setup)?;
         std::fs::write(self.paths.setup(), contents)?;
         info!(name = %self.name(), "setup config updated");
         Ok(())
@@ -443,7 +443,7 @@ mod traits {
         fn new(path: PathBuf, mut config: Self::Config) -> Result<Self> {
             let paths = NodePaths::new(&path);
             let name = file_stem(&path)?;
-            std::fs::write(paths.setup(), serde_json::to_string(config.setup())?)?;
+            std::fs::write(paths.setup(), serde_json::to_string_pretty(config.setup())?)?;
             std::fs::write(paths.version(), config.version.to_string())?;
             let _ = std::fs::remove_file(paths.vault());
             std::os::unix::fs::symlink(&config.default_vault, paths.vault())?;
