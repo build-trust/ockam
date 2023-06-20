@@ -14,7 +14,7 @@ use ockam::identity::IdentityIdentifier;
 use ockam::{Address, AsyncTryClone, Result};
 
 use ockam_abac::Resource;
-use ockam_core::api::{Id, Request, Response, ResponseBuilder};
+use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, IncomingAccessControl, Route};
 use ockam_multiaddr::proto::Project;
@@ -70,9 +70,16 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<InletStatus<'a>>> {
+    ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
         let rid = req.id();
-        let req: CreateInlet = dec.decode()?;
+        let req: CreateInlet = match dec.decode() {
+            Ok(rq) => rq,
+            Err(e) => {
+                let err_body = Error::new_without_path()
+                    .with_message(format!("Unable to decode request: {}", e));
+                return Err(Response::bad_request(rid).body(err_body));
+            }
+        };
         self.create_inlet_impl(rid, req, ctx).await
     }
 
@@ -81,7 +88,7 @@ impl NodeManagerWorker {
         rid: ockam_core::api::Id,
         req: CreateInlet<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<InletStatus<'a>>> {
+    ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
         let manager = self.node_manager.clone();
 
         let listen_addr = req.listen_addr().to_string();
@@ -122,8 +129,8 @@ impl NodeManagerWorker {
         let outlet_route = match local_multiaddr_to_route(&connection_instance.normalized_addr) {
             Some(route) => route,
             None => {
-                return Ok(Response::bad_request(rid)
-                    .body(InletStatus::bad_request("invalid outlet route")))
+                let err_body = Error::new_without_path().with_message("Invalid outlet route.");
+                return Err(Response::bad_request(rid).body(err_body));
             }
         };
 
@@ -150,7 +157,9 @@ impl NodeManagerWorker {
                 })
                 .or_else(|| Some(node_manager.trust_context().ok()?.id()));
             if pid.is_none() {
-                return Err(ApiError::generic("credential check requires project"));
+                let err_body = Error::new_without_path()
+                    .with_message("Credential check requires a project or trust context");
+                return Err(Response::bad_request(rid).body(err_body));
             }
             pid
         } else {
@@ -215,13 +224,10 @@ impl NodeManagerWorker {
                     InletInfo::new(&listen_addr, None, &outlet_route),
                 );
 
-                Response::bad_request(rid).body(InletStatus::new(
-                    listen_addr,
-                    "",
-                    alias,
-                    Some(e.to_string().into()),
-                    outlet_route.to_string(),
-                ))
+                let err_body = Error::new_without_path()
+                    .with_message(format!("Failed to create inlet: {}", e));
+
+                return Err(Response::bad_request(rid).body(err_body));
             }
         })
     }
@@ -230,45 +236,41 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<InletStatus<'a>>> {
+    ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         info!(%alias, "Handling request to delete inlet portal");
         if let Some(inlet_to_delete) = node_manager.registry.inlets.remove(alias) {
             debug!(%alias, "Sucessfully removed inlet from node registry");
-            let was_stopped = node_manager
+            match node_manager
                 .tcp_transport
                 .stop_inlet(inlet_to_delete.worker_addr.clone())
                 .await
-                .is_ok();
-            if was_stopped {
-                debug!(%alias, "Successfully stopped inlet");
-                Ok(Response::ok(req.id()).body(InletStatus::new(
-                    inlet_to_delete.bind_addr,
-                    inlet_to_delete.worker_addr.to_string(),
-                    alias,
-                    None,
-                    inlet_to_delete.outlet_route.to_string(),
-                )))
-            } else {
-                error!(%alias, "Failed to remove inlet from node registry");
-                Ok(Response::internal_error(req.id()).body(InletStatus::new(
-                    inlet_to_delete.bind_addr,
-                    inlet_to_delete.worker_addr.to_string(),
-                    alias,
-                    Some(format!("Failed to remove inlet with alias {alias}").into()),
-                    inlet_to_delete.outlet_route.to_string(),
-                )))
+            {
+                Ok(_) => {
+                    debug!(%alias, "Successfully stopped inlet");
+                    Ok(Response::ok(req.id()).body(InletStatus::new(
+                        inlet_to_delete.bind_addr,
+                        inlet_to_delete.worker_addr.to_string(),
+                        alias,
+                        None,
+                        inlet_to_delete.outlet_route.to_string(),
+                    )))
+                }
+                Err(e) => {
+                    error!(%alias, "Failed to remove inlet from node registry");
+                    let err_body = Error::new(req.path()).with_message(format!(
+                        "Failed to remove inlet with alias {alias}. {}",
+                        e
+                    ));
+                    Err(Response::internal_error(req.id()).body(err_body))
+                }
             }
         } else {
             error!(%alias, "Inlet not found in the node registry");
-            Ok(Response::not_found(req.id()).body(InletStatus::new(
-                "".to_string(),
-                "".to_string(),
-                alias,
-                Some(format!("Inlet with alias {alias} not found").into()),
-                "".to_string(),
-            )))
+            let err_body =
+                Error::new(req.path()).with_message(format!("Inlet with alias {alias} not found"));
+            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 
@@ -276,7 +278,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<InletStatus<'a>>> {
+    ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
 
         info!(%alias, "Handling request to show inlet portal");
@@ -291,13 +293,9 @@ impl NodeManagerWorker {
             )))
         } else {
             error!(%alias, "Inlet not found in the node registry");
-            Ok(Response::not_found(req.id()).body(InletStatus::new(
-                "".to_string(),
-                "".to_string(),
-                alias,
-                Some(format!("Inlet with alias {alias} not found").into()),
-                "".to_string(),
-            )))
+            let err_body =
+                Error::new(req.path()).with_message(format!("Inlet with alias {alias} not found"));
+            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 
@@ -306,14 +304,21 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
+    ) -> Result<ResponseBuilder<OutletStatus<'a>>, ResponseBuilder<Error>> {
         let CreateOutlet {
             tcp_addr,
             worker_addr,
             alias,
             reachable_from_default_secure_channel,
             ..
-        } = dec.decode()?;
+        } = match dec.decode() {
+            Ok(it) => it,
+            Err(err) => {
+                let err_body = Error::new_without_path()
+                    .with_message(format!("Unable to decode request: {}", err));
+                return Err(Response::bad_request(req.id()).body(err_body));
+            }
+        };
 
         let tcp_addr = tcp_addr.to_string();
 
@@ -336,7 +341,7 @@ impl NodeManagerWorker {
         worker_addr: String,
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
-    ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
+    ) -> Result<ResponseBuilder<OutletStatus<'a>>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let resource = alias
             .as_deref()
@@ -406,13 +411,9 @@ impl NodeManagerWorker {
                     .registry
                     .outlets
                     .insert(alias.clone(), OutletInfo::new(&tcp_addr, None));
-
-                Response::bad_request(request_id).body(OutletStatus::new(
-                    tcp_addr,
-                    worker_addr.to_string(),
-                    alias,
-                    Some(e.to_string().into()),
-                ))
+                let err_body = Error::new_without_path()
+                    .with_message(format!("Failed to create outlet: {}", e));
+                return Err(Response::bad_request(request_id).body(err_body));
             }
         })
     }
@@ -421,42 +422,40 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
+    ) -> Result<ResponseBuilder<OutletStatus<'a>>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         info!(%alias, "Handling request to delete outlet portal");
         if let Some(outlet_to_delete) = node_manager.registry.outlets.remove(alias) {
             debug!(%alias, "Successfully removed outlet from node registry");
-            let was_stopped = node_manager
+            match node_manager
                 .tcp_transport
                 .stop_outlet(outlet_to_delete.worker_addr.clone())
                 .await
-                .is_ok();
-            if was_stopped {
-                debug!(%alias, "Successfully stopped outlet");
-                Ok(Response::ok(req.id()).body(OutletStatus::new(
-                    outlet_to_delete.tcp_addr,
-                    outlet_to_delete.worker_addr.to_string(),
-                    alias,
-                    None,
-                )))
-            } else {
-                error!(%alias, "Failed to remove outlet from node registry");
-                Ok(Response::internal_error(req.id()).body(OutletStatus::new(
-                    outlet_to_delete.tcp_addr,
-                    outlet_to_delete.worker_addr.to_string(),
-                    alias,
-                    Some(format!("Failed to remove outlet with alias {alias}").into()),
-                )))
+            {
+                Ok(_) => {
+                    debug!(%alias, "Successfully stopped outlet");
+                    Ok(Response::ok(req.id()).body(OutletStatus::new(
+                        outlet_to_delete.tcp_addr,
+                        outlet_to_delete.worker_addr.to_string(),
+                        alias,
+                        None,
+                    )))
+                }
+                Err(e) => {
+                    error!(%alias, "Failed to remove outlet from node registry");
+                    let err_body = Error::new(req.path()).with_message(format!(
+                        "Failed to remove outlet with alias {alias}. {}",
+                        e
+                    ));
+                    Err(Response::internal_error(req.id()).body(err_body))
+                }
             }
         } else {
             error!(%alias, "Outlet not found in the node registry");
-            Ok(Response::not_found(req.id()).body(OutletStatus::new(
-                "".to_string(),
-                "".to_string(),
-                alias,
-                Some(format!("Outlet with alias {alias} not found").into()),
-            )))
+            let err_body =
+                Error::new(req.path()).with_message(format!("Outlet with alias {alias} not found"));
+            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 
@@ -464,7 +463,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
+    ) -> Result<ResponseBuilder<OutletStatus<'a>>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
 
         info!(%alias, "Handling request to show outlet portal");
@@ -478,12 +477,9 @@ impl NodeManagerWorker {
             )))
         } else {
             error!(%alias, "Outlet not found in the node registry");
-            Ok(Response::not_found(req.id()).body(OutletStatus::new(
-                "".to_string(),
-                "".to_string(),
-                alias,
-                Some(format!("Outlet with alias {alias} not found").into()),
-            )))
+            let err_body =
+                Error::new(req.path()).with_message(format!("Outlet with alias {alias} not found"));
+            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 }

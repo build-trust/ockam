@@ -3,7 +3,7 @@ pub mod types;
 use core::fmt;
 use minicbor::Decoder;
 use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityIdentifier};
-use ockam_core::api::decode_option;
+use ockam_core::api::{decode_option, Error};
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
@@ -59,7 +59,9 @@ impl Server {
                     if let Some(a) = self.store.get_attributes(&identifier).await? {
                         Response::ok(req.id()).body(a).to_vec()?
                     } else {
-                        Response::not_found(req.id()).to_vec()?
+                        let err_body = Error::new(req.path())
+                            .with_message(format!("identity {} not found", id));
+                        Response::not_found(req.id()).body(err_body).to_vec()?
                     }
                 }
                 _ => ockam_core::api::unknown_path(&req).to_vec()?,

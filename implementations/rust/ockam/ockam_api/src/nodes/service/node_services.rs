@@ -6,7 +6,7 @@ use ockam::{Address, Context, Result};
 use ockam_abac::expr::{and, eq, ident, str};
 
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
-use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, IncomingAccessControl};
@@ -374,7 +374,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartIdentityServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
@@ -387,7 +387,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartAuthenticatedServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
@@ -402,7 +402,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartUppercaseServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
@@ -415,7 +415,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartEchoerServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
@@ -428,7 +428,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartHopServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
@@ -442,7 +442,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         #[cfg(not(feature = "direct-authenticator"))]
         return Err(ApiError::generic("Direct authenticator not available"));
@@ -482,7 +482,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let body: StartOktaIdentityProviderRequest = dec.decode()?;
         let addr: Address = body.address().into();
@@ -506,13 +506,13 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let body: StartVerifierService = dec.decode()?;
         let addr: Address = body.address().into();
 
         if node_manager.registry.verifier_services.contains_key(&addr) {
-            return Err(ApiError::generic("Verifier service exists at this address"));
+            return Err(ApiError::generic("Verifier service exists at this address").into());
         }
 
         ctx.flow_controls()
@@ -534,7 +534,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let body: StartCredentialsService = dec.decode()?;
         let addr: Address = body.address().into();
@@ -597,15 +597,19 @@ impl NodeManagerWorker {
             .await?;
         }
 
-        self.create_outlet_impl(
-            context,
-            request.id(),
-            body.request().bootstrap_server_addr.clone(),
-            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
-            Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
-            false,
-        )
-        .await?;
+        if let Err(e) = self
+            .create_outlet_impl(
+                context,
+                request.id(),
+                body.request().bootstrap_server_addr.clone(),
+                KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
+                Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
+                false,
+            )
+            .await
+        {
+            return Ok(e.to_vec()?);
+        };
 
         Ok(Response::ok(request.id()).to_vec()?)
     }
@@ -621,17 +625,21 @@ impl NodeManagerWorker {
         let body_req = body.request();
         let outlet_node_multiaddr = body_req.project_route().to_string().parse()?;
 
-        self.start_kafka_service_impl(
-            context,
-            req,
-            listener_address,
-            body_req.bootstrap_server_addr.ip(),
-            body_req.bootstrap_server_addr.port(),
-            body_req.brokers_port_range(),
-            outlet_node_multiaddr,
-            KafkaServiceKind::Consumer,
-        )
-        .await?;
+        if let Err(e) = self
+            .start_kafka_service_impl(
+                context,
+                req,
+                listener_address,
+                body_req.bootstrap_server_addr.ip(),
+                body_req.bootstrap_server_addr.port(),
+                body_req.brokers_port_range(),
+                outlet_node_multiaddr,
+                KafkaServiceKind::Consumer,
+            )
+            .await
+        {
+            return Ok(e.to_vec()?);
+        };
 
         Ok(Response::ok(req.id()).to_vec()?)
     }
@@ -647,17 +655,21 @@ impl NodeManagerWorker {
         let body_req = body.request();
         let outlet_node_multiaddr = body_req.project_route().to_string().parse()?;
 
-        self.start_kafka_service_impl(
-            context,
-            req,
-            listener_address,
-            body_req.bootstrap_server_addr.ip(),
-            body_req.bootstrap_server_addr.port(),
-            body_req.brokers_port_range(),
-            outlet_node_multiaddr,
-            KafkaServiceKind::Producer,
-        )
-        .await?;
+        if let Err(e) = self
+            .start_kafka_service_impl(
+                context,
+                req,
+                listener_address,
+                body_req.bootstrap_server_addr.ip(),
+                body_req.bootstrap_server_addr.port(),
+                body_req.brokers_port_range(),
+                outlet_node_multiaddr,
+                KafkaServiceKind::Producer,
+            )
+            .await
+        {
+            return Ok(e.to_vec()?);
+        };
 
         Ok(Response::ok(req.id()).to_vec()?)
     }
@@ -673,7 +685,7 @@ impl NodeManagerWorker {
         brokers_port_range: (u16, u16),
         outlet_node_multiaddr: MultiAddr,
         kind: KafkaServiceKind,
-    ) -> Result<()> {
+    ) -> Result<(), ResponseBuilder<Error>> {
         debug!(
             "outlet_node_multiaddr: {}",
             outlet_node_multiaddr.to_string()
@@ -763,12 +775,22 @@ impl NodeManagerWorker {
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
         kind: KafkaServiceKind,
-    ) -> Result<ResponseBuilder> {
-        let body: DeleteServiceRequest = dec.decode()?;
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
+        let body: DeleteServiceRequest = match dec.decode() {
+            Ok(it) => it,
+            Err(err) => {
+                let err_body = Error::new(req.path()).with_message(err.to_string());
+                return Err(Response::bad_request(req.id()).body(err_body));
+            }
+        };
         let address = body.address();
         let mut node_manager = self.node_manager.write().await;
         let res = match node_manager.registry.kafka_services.get(&address) {
-            None => Response::not_found(req.id()),
+            None => {
+                let err_body = Error::new(req.path())
+                    .with_message(format!("Service at address '{}' not found", address));
+                return Err(Response::not_found(req.id()).body(err_body));
+            }
             Some(e) => {
                 if kind.eq(e.kind()) {
                     ctx.stop_worker(address.clone()).await?;
@@ -776,7 +798,12 @@ impl NodeManagerWorker {
                     Response::ok(req.id())
                 } else {
                     error!(address = %address, "Service is not a kafka {}", kind.to_string());
-                    Response::internal_error(req.id())
+                    let err_body = Error::new(req.path()).with_message(format!(
+                        "Service at address '{}' is not a kafka {}",
+                        address,
+                        kind
+                    ));
+                    return Err(Response::internal_error(req.id()).body(err_body));
                 }
             }
         };
@@ -789,9 +816,9 @@ impl NodeManagerWorker {
         service_type: &'a str,
     ) -> Result<Vec<u8>> {
         if !DefaultAddress::is_valid(service_type) {
-            return Ok(Response::bad_request(req.id())
-                .body(format!("Service type '{service_type}' doesn't exist"))
-                .to_vec()?);
+            let err_body = Error::new(req.path())
+                .with_message(format!("Service type '{service_type}' doesn't exist"));
+            return Ok(Response::bad_request(req.id()).body(err_body).to_vec()?);
         }
         let n = self.node_manager.read().await;
         let services = Self::list_services_impl(&n.registry);
