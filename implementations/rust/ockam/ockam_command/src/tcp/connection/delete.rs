@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{docs, node::NodeOpts, CommandGlobalOpts};

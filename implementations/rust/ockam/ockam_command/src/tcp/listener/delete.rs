@@ -1,17 +1,16 @@
-use miette::miette;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 
-use crate::util::{parse_node_name, print_delete_msg};
 use ockam::Context;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
+use crate::{CommandGlobalOpts, docs, node::NodeOpts};
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{node_rpc, Rpc};
-use crate::{docs, node::NodeOpts, CommandGlobalOpts};
-use crate::identity::print_delete_msg;
 use crate::terminal::ConfirmResult;
+use crate::util::parse_node_name;
+use crate::util::{node_rpc, Rpc};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -43,9 +42,24 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = parse_node_name(&node_name)?;
-    let entity = "TCP Listener";
     if cmd.yes {
-        print_delete_msg(opts, ctx, entity, node_name.as_str(), cmd.address.as_str());
+        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+        let req = Request::delete("/node/tcp/listener")
+            .body(models::transport::DeleteTransport::new(cmd.address.clone()));
+        rpc.request(req).await?;
+        rpc.is_ok()?;
+
+        opts.terminal
+            .stdout()
+            .plain(format!(
+                "{} TCP listener with address '{}' has been deleted.",
+                "✔︎".light_green(),
+                &cmd.address
+            ))
+            .machine(&cmd.address)
+            .json(serde_json::json!({ "tcp-listener": { "address": &cmd.address } }))
+            .write_line()?;
+
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-listener. Are you sure?")? {
             ConfirmResult::Yes => {
