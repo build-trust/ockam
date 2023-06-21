@@ -75,11 +75,11 @@ function approve_deployment() {
 
 function ockam_bump() {
   set -e
-  gh workflow run create-release-pull-request.yml --ref develop -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE" \
+  gh workflow run release-bump-pull-request.yml --ref develop -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE" \
     -F ockam_bump_release_version="$OCKAM_BUMP_RELEASE_VERSION" -F ockam_bump_bumped_dep_crates_version="$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION" \
     -R $owner/ockam
 
-  workflow_file_name="create-release-pull-request.yml"
+  workflow_file_name="release-bump-pull-request.yml"
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
   # Wait for workflow run
@@ -109,10 +109,10 @@ function ockam_crate_release() {
 
 function release_ockam_binaries() {
   set -e
-  gh workflow run release-binaries.yml --ref develop -F git_tag="$GIT_TAG" -F release_branch="$release_name" -R $owner/ockam
+  gh workflow run release-draft-binaries.yml --ref develop -F git_tag="$GIT_TAG" -F release_branch="$release_name" -R $owner/ockam
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=release-binaries.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=release-draft-binaries.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "ockam" "$run_id" &
   gh run watch "$run_id" --exit-status -R $owner/ockam
@@ -121,7 +121,7 @@ function release_ockam_binaries() {
 function release_ockam_binaries_as_production() {
   set -e
   release_git_tag=$1
-  workflow_name="release-tag.yml"
+  workflow_name="release-production.yml"
 
   gh workflow run $workflow_name --ref develop -F git_tag="$release_git_tag" -R $owner/ockam
 
@@ -138,10 +138,10 @@ function release_ockam_package() {
   file_and_sha="$2"
   is_release="$3"
 
-  gh workflow run ockam-package.yml --ref develop -F tag="$tag" -F binaries_sha="$file_and_sha" -F is_release="$is_release" -R $owner/ockam
+  gh workflow run release-ockam-package.yml --ref develop -F tag="$tag" -F binaries_sha="$file_and_sha" -F is_release="$is_release" -R $owner/ockam
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=ockam-package.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=release-ockam-package.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "ockam" "$run_id" &
   gh run watch "$run_id" --exit-status -R $owner/ockam
@@ -152,10 +152,10 @@ function homebrew_repo_bump() {
   tag=$1
   file_and_sha=$2
 
-  gh workflow run create-release-pull-request.yml --ref main -F binaries="$file_and_sha" -F branch_name="$release_name" -F tag="$tag" -R $owner/homebrew-ockam
+  gh workflow run release-bump-pull-request.yml --ref main -F binaries="$file_and_sha" -F branch_name="$release_name" -F tag="$tag" -R $owner/homebrew-ockam
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $owner/homebrew-ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=release-bump-pull-request.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $owner/homebrew-ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "homebrew-ockam" "$run_id" &
   gh run watch "$run_id" --exit-status -R $owner/homebrew-ockam
@@ -167,10 +167,10 @@ function homebrew_repo_bump() {
 
 function terraform_repo_bump() {
   set -e
-  gh workflow run create-release-pull-request.yml --ref main -R $owner/terraform-provider-ockam -F tag="$1" -F branch_name="$release_name"
+  gh workflow run release-bump-pull-request.yml --ref main -R $owner/terraform-provider-ockam -F tag="$1" -F branch_name="$release_name"
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $owner/terraform-provider-ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=release-bump-pull-request.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $owner/terraform-provider-ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "terraform-provider-ockam" "$run_id" &
   gh run watch "$run_id" --exit-status -R $owner/terraform-provider-ockam
@@ -231,11 +231,11 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
   if [[ -z $SKIP_OCKAM_BUMP || $SKIP_OCKAM_BUMP == false ]]; then
     echo "Starting Ockam crate bump"
     ockam_bump
-    success_info "Crate bump pull request created.... Starting Ockam crates.io publish."
+    success_info "Crate bump pull request created.... Releasing draft binaries."
   fi
 
   if [[ -z $SKIP_OCKAM_BINARY_RELEASE || $SKIP_OCKAM_BINARY_RELEASE == false ]]; then
-    echo "Releasing Ockam draft binaries"
+    success_info "Releasing Ockam draft binaries"
     release_ockam_binaries
     success_info "Draft release has been created.... Starting Homebrew release."
   fi
