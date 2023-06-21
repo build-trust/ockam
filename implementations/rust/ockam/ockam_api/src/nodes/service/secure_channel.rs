@@ -453,8 +453,8 @@ impl NodeManagerWorker {
 
         let addr = Address::from(addr.as_ref());
         if !addr.is_local() {
-            let err_body = Error::new(req.path())
-                .with_message(format!("Invalid address: {}", addr));
+            let err_body =
+                Error::new(req.path()).with_message(format!("Invalid address: {}", addr));
             return Err(Response::bad_request(req.id()).body(err_body));
         }
 

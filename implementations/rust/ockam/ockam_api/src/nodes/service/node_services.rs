@@ -800,8 +800,7 @@ impl NodeManagerWorker {
                     error!(address = %address, "Service is not a kafka {}", kind.to_string());
                     let err_body = Error::new(req.path()).with_message(format!(
                         "Service at address '{}' is not a kafka {}",
-                        address,
-                        kind
+                        address, kind
                     ));
                     return Err(Response::internal_error(req.id()).body(err_body));
                 }
