@@ -5,8 +5,8 @@ use crate::secure_channel::role::Role;
 use crate::secure_channels::secure_channels::SecureChannels;
 use crate::{Credential, IdentityIdentifier};
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::fmt::Vec;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Any, Result, Routed, Worker};
 use ockam_node::Context;
 
