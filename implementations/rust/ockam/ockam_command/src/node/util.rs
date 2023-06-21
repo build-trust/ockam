@@ -1,5 +1,5 @@
-use anyhow::Context as _;
-use miette::miette;
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 
 use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state;
@@ -56,7 +56,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
         None => None,
     };
 
-    let tcp = TcpTransport::create(ctx).await?;
+    let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
     let bind = cmd.tcp_listener_address;
 
     let options = TcpListenerOptions::new();
@@ -124,7 +124,7 @@ pub(crate) async fn init_node_state(
     node_name: &str,
     vault_name: Option<&str>,
     identity_name: Option<&str>,
-) -> Result<()> {
+) -> miette::Result<()> {
     debug!(name=%node_name, "initializing node state");
     // Get vault specified in the argument, or get the default
     let vault_state = opts.state.create_vault_state(vault_name).await?;
@@ -136,7 +136,8 @@ pub(crate) async fn init_node_state(
         .await?
         .identities_creation()
         .create_identity()
-        .await?;
+        .await
+        .into_diagnostic()?;
 
     let identity_state = opts
         .state
@@ -158,12 +159,12 @@ pub async fn delete_embedded_node(opts: &CommandGlobalOpts, name: &str) {
     let _ = delete_node(opts, name, false);
 }
 
-pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> Result<()> {
+pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> miette::Result<()> {
     opts.state.nodes.delete_sigkill(name, force)?;
     Ok(())
 }
 
-pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> Result<()> {
+pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> miette::Result<()> {
     let nodes_states = opts.state.nodes.list()?;
     let mut deletion_errors = Vec::new();
     for s in nodes_states {
@@ -172,12 +173,15 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> Result<()> {
         }
     }
     if !deletion_errors.is_empty() {
-        return Err(miette!("errors while deleting nodes: {:?}", deletion_errors).into());
+        return Err(miette!(
+            "errors while deleting nodes: {:?}",
+            deletion_errors
+        ));
     }
     Ok(())
 }
 
-pub fn set_default_node(opts: &CommandGlobalOpts, name: &str) -> anyhow::Result<()> {
+pub fn set_default_node(opts: &CommandGlobalOpts, name: &str) -> miette::Result<()> {
     opts.state.nodes.set_default(name)?;
     Ok(())
 }
@@ -205,7 +209,7 @@ pub fn spawn_node(
     credential: Option<&String>,
     trust_context: Option<&PathBuf>,
     project_name: Option<&String>,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let mut args = vec![
         match verbose {
             0 => "-vv".to_string(),
@@ -287,7 +291,7 @@ pub fn run_ockam(
     opts: &CommandGlobalOpts,
     node_name: &str,
     args: Vec<String>,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
     // deterministic way of starting a node.
@@ -300,19 +304,22 @@ pub fn run_ockam(
         .create(true)
         .append(true)
         .open(mlog)
+        .into_diagnostic()
         .context("failed to open log path")?;
 
     let stderr_log_file = OpenOptions::new()
         .create(true)
         .append(true)
         .open(elog)
+        .into_diagnostic()
         .context("failed to open stderr log path")?;
 
     let child = Command::new(ockam_exe)
         .args(args)
         .stdout(main_log_file)
         .stderr(stderr_log_file)
-        .spawn()?;
+        .spawn()
+        .into_diagnostic()?;
     node_state.set_pid(child.id() as i32)?;
 
     Ok(())

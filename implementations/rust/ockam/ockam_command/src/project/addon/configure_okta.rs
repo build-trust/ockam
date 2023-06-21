@@ -2,10 +2,10 @@ use std::net::TcpStream;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::Context as _;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
+use miette::{miette, Context as _, IntoDiagnostic};
 use reqwest::Url;
 use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 
@@ -93,7 +93,7 @@ impl AddonConfigureOktaSubcommand {
 async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, AddonConfigureOktaSubcommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cloud_opts.route();
     let AddonConfigureOktaSubcommand {
         project_name,
@@ -106,14 +106,16 @@ async fn run_impl(
 
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
 
-    let base_url = Url::parse(tenant.as_str()).context("could not parse tenant url")?;
+    let base_url = Url::parse(tenant.as_str())
+        .into_diagnostic()
+        .context("could not parse tenant url")?;
     let domain = base_url
         .host_str()
-        .context("could not read domain from tenant url")?;
+        .ok_or(miette!("could not read domain from tenant url"))?;
 
     let certificate = match (certificate, certificate_path) {
         (Some(c), _) => c,
-        (_, Some(p)) => std::fs::read_to_string(p)?,
+        (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
         _ => query_certificate_chain(domain)?,
     };
 
@@ -164,7 +166,8 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
     for c in rustls_native_certs::load_native_certs()? {
         root_certificate_store
             .add(&Certificate(c.0))
-            .context("failed to add certificate to root certificate store")?;
+            .into_diagnostic()
+            .wrap_err("failed to add certificate to root certificate store")?;
     }
 
     // Configure TLS Client
@@ -178,9 +181,11 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
     // Make an HTTP request
     let server_name = domain
         .try_into()
-        .context("failed to convert domain to a ServerName")?;
+        .into_diagnostic()
+        .wrap_err("failed to convert domain to a ServerName")?;
     let mut client_connection = ClientConnection::new(client_configuration, server_name)
-        .context("failed to create a client connection")?;
+        .into_diagnostic()
+        .wrap_err("failed to create a client connection")?;
     let mut tcp_stream = TcpStream::connect(domain_with_port)?;
     let mut stream = Stream::new(&mut client_connection, &mut tcp_stream);
     stream
@@ -190,12 +195,14 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
             )
                 .as_bytes(),
         )
-        .context("failed to write to tcp stream")?;
+        .into_diagnostic().wrap_err("failed to write to tcp stream")?;
 
-    let connection = Connection::try_from(client_connection).context("failed to get connection")?;
+    let connection = Connection::try_from(client_connection)
+        .into_diagnostic()
+        .wrap_err("failed to get connection")?;
     let certificate_chain = connection
         .peer_certificates()
-        .context("could not discover certificate chain")?;
+        .ok_or(miette!("could not discover certificate chain"))?;
 
     // Encode a PEM encoded certificate chain
     let label = "CERTIFICATE";
@@ -203,7 +210,8 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
     for certificate in certificate_chain {
         let bytes = certificate.0.clone();
         let pem = pem_rfc7468::encode_string(label, pem_rfc7468::LineEnding::LF, &bytes)
-            .context("could not encode certificate to PEM")?;
+            .into_diagnostic()
+            .wrap_err("could not encode certificate to PEM")?;
         encoded = encoded + &pem;
     }
 

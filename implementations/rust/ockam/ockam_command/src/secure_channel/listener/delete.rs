@@ -1,11 +1,12 @@
 use clap::Args;
+use colorful::Colorful;
 
 use ockam::Context;
 use ockam_core::Address;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{api, extract_address_value, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts};
+use crate::util::{api, node_rpc, parse_node_name, Rpc};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -32,24 +33,28 @@ impl DeleteCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> crate::Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> miette::Result<()> {
     run_impl(&ctx, (opts, cmd)).await
 }
 
 async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = extract_address_value(&at)?;
-    let mut rpc = Rpc::background(ctx, &opts, &node)?;
+    let node_name = parse_node_name(&at)?;
+    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let req = api::delete_secure_channel_listener(&cmd.address);
     rpc.request(req).await?;
     rpc.is_ok()?;
 
-    println!(
-        "Deleted secure-channel listener with address '/service/{}' on node '{node}'",
-        cmd.address.address()
-    );
+    let addr = format!("/service/{}", cmd.address.address());
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!(
+            "Deleted secure-channel listener with address '{addr}' on node '{node_name}'"
+        ))
+        .machine(addr)
+        .write_line()?;
     Ok(())
 }

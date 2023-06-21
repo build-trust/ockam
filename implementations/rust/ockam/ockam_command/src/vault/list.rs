@@ -2,6 +2,7 @@ use clap::Args;
 
 use ockam_api::cli_state::traits::StateDirTrait;
 
+use crate::util::local_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -17,14 +18,11 @@ pub struct ListCommand;
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts) {
-            eprintln!("{e}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts) -> miette::Result<()> {
     let vaults = opts.state.vaults.list()?;
     let list = opts
         .terminal

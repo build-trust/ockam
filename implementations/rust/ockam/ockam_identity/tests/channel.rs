@@ -6,8 +6,8 @@ use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::{
     AuthorityService, CredentialData, DecryptionResponse, EncryptionRequest, EncryptionResponse,
     IdentityAccessControlBuilder, IdentityIdentifier, IdentitySecureChannelLocalInfo,
-    SecureChannelListenerOptions, SecureChannelOptions, TrustContext, TrustEveryonePolicy,
-    TrustIdentifierPolicy,
+    SecureChannelListenerOptions, SecureChannelOptions, SecureChannels, TrustContext,
+    TrustEveryonePolicy, TrustIdentifierPolicy,
 };
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use tokio::time::sleep;
@@ -921,4 +921,131 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
     assert_eq!(received_count.load(Ordering::Relaxed), 0);
 
     ctx.stop().await
+}
+
+#[ockam_macros::test]
+async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
+    let secure_channels_alice = SecureChannels::builder().build();
+    let secure_channels_bob = SecureChannels::builder().build();
+
+    let identities_creation_alice = secure_channels_alice.identities().identities_creation();
+    let identities_creation_bob = secure_channels_bob.identities().identities_creation();
+
+    assert!(secure_channels_alice
+        .vault()
+        .list_ephemeral_secrets()
+        .await?
+        .is_empty());
+    assert!(secure_channels_bob
+        .vault()
+        .list_ephemeral_secrets()
+        .await?
+        .is_empty());
+
+    let alice = identities_creation_alice.create_identity().await?;
+    let bob = identities_creation_bob.create_identity().await?;
+
+    let bob_listener = secure_channels_bob
+        .create_secure_channel_listener(
+            ctx,
+            &bob.identifier(),
+            "bob_listener",
+            SecureChannelListenerOptions::new(),
+        )
+        .await?;
+
+    assert!(secure_channels_alice
+        .vault()
+        .list_ephemeral_secrets()
+        .await?
+        .is_empty());
+    assert!(secure_channels_bob
+        .vault()
+        .list_ephemeral_secrets()
+        .await?
+        .is_empty());
+
+    let alice_channel = secure_channels_alice
+        .create_secure_channel(
+            ctx,
+            &alice.identifier(),
+            route!["bob_listener"],
+            SecureChannelOptions::new(),
+        )
+        .await?;
+
+    ctx.sleep(Duration::from_secs(1)).await;
+
+    // Only k1 and k2 should exist
+    assert_eq!(
+        secure_channels_alice
+            .vault()
+            .list_ephemeral_secrets()
+            .await?
+            .len(),
+        2
+    );
+    assert_eq!(
+        secure_channels_bob
+            .vault()
+            .list_ephemeral_secrets()
+            .await?
+            .len(),
+        2
+    );
+
+    let mut child_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            "child",
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
+
+    ctx.flow_controls()
+        .add_consumer("child", bob_listener.flow_control_id());
+
+    child_ctx
+        .send(
+            route![alice_channel.clone(), child_ctx.address()],
+            "Hello, Bob!".to_string(),
+        )
+        .await?;
+
+    let msg = child_ctx.receive::<String>().await?;
+    assert_eq!("Hello, Bob!", msg.body());
+
+    // Only k1 and k2 should exist
+    assert_eq!(
+        secure_channels_alice
+            .vault()
+            .list_ephemeral_secrets()
+            .await?
+            .len(),
+        2
+    );
+    assert_eq!(
+        secure_channels_bob
+            .vault()
+            .list_ephemeral_secrets()
+            .await?
+            .len(),
+        2
+    );
+
+    ctx.stop().await?;
+
+    // when the channel is closed all the ephemeral keys must be have been removed from memory
+    assert!(secure_channels_alice
+        .vault()
+        .list_ephemeral_secrets()
+        .await?
+        .is_empty());
+    assert!(secure_channels_bob
+        .vault()
+        .list_ephemeral_secrets()
+        .await?
+        .is_empty());
+
+    Ok(())
 }

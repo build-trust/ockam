@@ -50,7 +50,7 @@ impl CreateCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -58,7 +58,7 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::space::create(&cmd)).await?;
     let space = rpc.parse_and_print_response::<Space>()?;

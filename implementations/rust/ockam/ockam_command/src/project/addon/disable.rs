@@ -17,7 +17,7 @@ use crate::project::addon::disable_addon_endpoint;
 use crate::util::api::CloudOpts;
 
 use crate::util::{node_rpc, Rpc};
-use crate::{fmt_ok, CommandGlobalOpts, Result};
+use crate::{fmt_ok, CommandGlobalOpts};
 
 /// Disable an addon for a project
 #[derive(Clone, Debug, Args)]
@@ -50,7 +50,7 @@ impl AddonDisableSubcommand {
 async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, AddonDisableSubcommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cloud_opts.route();
     let AddonDisableSubcommand {
         project_name,

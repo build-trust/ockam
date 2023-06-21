@@ -25,7 +25,7 @@ impl ListCommand {
 async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     opts.terminal
         .write_line(&fmt_log!("Listing Credentials...\n"))?;
 

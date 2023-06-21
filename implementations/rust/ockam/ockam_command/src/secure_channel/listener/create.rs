@@ -1,5 +1,6 @@
 use clap::Args;
-use miette::miette;
+use colorful::Colorful;
+use miette::{miette, IntoDiagnostic, WrapErr};
 
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
@@ -9,8 +10,8 @@ use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::util::{api, exitcode, node_rpc, parse_node_name, Rpc};
+use crate::{docs, fmt_log, fmt_ok, terminal::OckamColor, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -47,16 +48,16 @@ impl CreateCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     run_impl(&ctx, (opts, cmd)).await
 }
 
 async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = extract_address_value(&at)?;
+    let node = parse_node_name(&at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
     let req = Request::post("/node/secure_channel_listener").body(
         CreateSecureChannelListenerRequest::new(
@@ -69,13 +70,29 @@ async fn run_impl(
     rpc.request(req).await?;
     match rpc.is_ok() {
         Ok(_) => {
-            println!("/service/{}", cmd.address.address());
+            let address = format!("/service/{}", cmd.address.address());
+            opts.terminal
+                .stdout()
+                .plain(
+                    fmt_ok!(
+                        "Secure Channel Listener at {} created successfully\n",
+                        address
+                            .to_string()
+                            .color(OckamColor::PrimaryResource.color())
+                    ) + &fmt_log!(
+                        "At node /node/{}",
+                        node.to_string().color(OckamColor::PrimaryResource.color())
+                    ),
+                )
+                .machine(address.to_string())
+                .json(serde_json::json!([{ "address": address }]))
+                .write_line()?;
             Ok(())
         }
-        Err(e) => Err(crate::error::Error::new(
-            exitcode::CANTCREAT,
-            miette!("An error occurred while creating secure channel listener").context(e),
-        )),
+        Err(e) => Err(miette!(
+            "An error occurred while creating the secure channel listener"
+        ))
+        .context(e),
     }
 }
 
@@ -85,13 +102,14 @@ pub async fn create_listener(
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     identity: Option<String>,
     mut base_route: Route,
-) -> Result<()> {
+) -> miette::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
             api::create_secure_channel_listener(&addr, authorized_identifiers, identity)?,
         )
-        .await?;
+        .await
+        .into_diagnostic()?;
 
     let response = api::parse_create_secure_channel_listener_response(&resp)?;
 
@@ -101,7 +119,7 @@ pub async fn create_listener(
             Ok(())
         }
         _ => {
-            eprintln!("An error occurred while creating secure channel listener",);
+            eprintln!("An error occurred while creating the secure channel listener",);
             std::process::exit(exitcode::CANTCREAT)
         }
     }

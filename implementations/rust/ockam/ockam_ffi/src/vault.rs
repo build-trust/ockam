@@ -6,8 +6,8 @@ use futures::future::join_all;
 use lazy_static::lazy_static;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Error, KeyId, Result};
-use ockam_vault::{AsymmetricVault, PublicKey, Secret, SecretAttributes, SymmetricVault};
+use ockam_core::{Error, Result};
+use ockam_vault::{AsymmetricVault, KeyId, PublicKey, Secret, SecretAttributes, SymmetricVault};
 use ockam_vault::{EphemeralSecretsStore, SecretsStoreReader, Vault};
 use tokio::{runtime::Runtime, sync::RwLock, task};
 

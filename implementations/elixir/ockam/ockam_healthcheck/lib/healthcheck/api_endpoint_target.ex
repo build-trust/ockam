@@ -5,7 +5,7 @@ defmodule Ockam.Healthcheck.APIEndpointTarget do
   healthcheck worker, path, method and optionally a Base64 encoded body for the endpoint
   """
 
-  @enforce_keys [:name, :host, :port, :path, :method, :healthcheck_worker, :crontab]
+  @enforce_keys [:name, :host, :port, :path, :method, :healthcheck_worker]
   defstruct [
     :name,
     :host,

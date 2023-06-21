@@ -1,6 +1,6 @@
-use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::{
     SecureChannelListenersList, ShowSecureChannelListenerResponse,
@@ -12,8 +12,8 @@ use tokio::try_join;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
-use crate::util::api;
 use crate::util::output::Output;
+use crate::util::{api, parse_node_name};
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
@@ -40,7 +40,10 @@ impl ListCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> crate::Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ListCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -48,8 +51,9 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: ListCommand,
-) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+) -> miette::Result<()> {
+    let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = parse_node_name(&at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
@@ -88,7 +92,7 @@ impl Output for ShowSecureChannelListenerResponse {
     fn output(&self) -> crate::Result<String> {
         let addr = {
             let channel_route = &route![self.addr.clone()];
-            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(anyhow!(
+            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(miette!(
                 "Failed to convert route {channel_route} to multi-address"
             ))?;
             channel_multiaddr.to_string()

@@ -64,12 +64,13 @@ pub(crate) async fn add_default_project_policy(
     opts: &CommandGlobalOpts,
     project: ProjectLookup,
     resource: &Resource,
-) -> Result<()> {
+) -> miette::Result<()> {
     let expr = eq([ident("subject.project_id"), str(project.id.to_string())]);
     let bdy = Policy::new(expr);
     let req = Request::post(policy_path(resource, &Action::new("handle_message"))).body(bdy);
 
     let mut rpc = Rpc::background(ctx, opts, node)?;
     rpc.request(req).await?;
-    rpc.is_ok()
+    rpc.is_ok()?;
+    Ok(())
 }

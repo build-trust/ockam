@@ -6,12 +6,13 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::Context as _;
 use colorful::Colorful;
 use colorful::core::StrMarker;
 use miette::{miette, ErrReport as Report};
 use minicbor::{data::Type, Decode, Decoder, Encode};
 use rustls::internal::msgs::enums::HeartbeatMessageType;
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 use tracing::{debug, error, trace};
 use ockam_core::api::Request;
 
@@ -192,7 +193,7 @@ impl<'a> Rpc<'a> {
                 let addr_str = format!("localhost:{port}");
                 let addr = match tcp {
                     None => {
-                        let tcp = TcpTransport::create(ctx).await?;
+                        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
                         tcp.connect(addr_str, TcpConnectionOptions::new())
                             .await?
                             .sender_address()
@@ -239,6 +240,7 @@ impl<'a> Rpc<'a> {
         let mut dec = Decoder::new(&self.buf);
         let hdr = dec
             .decode::<Response>()
+            .into_diagnostic()
             .context("Failed to decode response header")?;
         Ok((hdr, dec))
     }
@@ -248,6 +250,7 @@ impl<'a> Rpc<'a> {
         let mut dec = Decoder::new(&self.buf);
         let hdr = dec
             .decode::<Response>()
+            .into_diagnostic()
             .context("Failed to decode response header")?;
         if hdr.status() == Some(Status::Ok) {
             Ok(dec)
@@ -320,10 +323,13 @@ where
     T: Output + serde::Serialize,
 {
     let output = match output_format {
-        OutputFormat::Plain => b.output().context("Failed to serialize output")?,
-        OutputFormat::Json => {
-            serde_json::to_string_pretty(b).context("Failed to serialize output")?
-        }
+        OutputFormat::Plain => b
+            .output()
+            .into_diagnostic()
+            .context("Failed to serialize output")?,
+        OutputFormat::Json => serde_json::to_string_pretty(b)
+            .into_diagnostic()
+            .context("Failed to serialize output")?,
     };
     Ok(output)
 }
@@ -333,7 +339,7 @@ where
     T: Encode<()> + Output,
 {
     let o = match encode_format {
-        EncodeFormat::Plain => e.output().context("Failed serialize output")?,
+        EncodeFormat::Plain => e.output().wrap_err("Failed serialize output")?,
         EncodeFormat::Hex => {
             let bytes = minicbor::to_vec(e).expect("Unable to encode response");
             hex::encode(bytes)
@@ -349,30 +355,33 @@ where
 /// eprintln logs.
 ///
 /// TODO: We may want to change this behaviour in the future.
-pub async fn stop_node(mut ctx: Context) -> Result<()> {
+pub async fn stop_node(mut ctx: Context) {
     if let Err(e) = ctx.stop().await {
         eprintln!("an error occurred while shutting down local node: {e}");
     }
-    Ok(())
+}
+
+pub fn local_cmd(res: miette::Result<()>) {
+    if let Err(e) = res {
+        error!(%e, "Failed to run command");
+        eprintln!("{:?}", e);
+        std::process::exit(exitcode::SOFTWARE);
+    }
 }
 
 pub fn node_rpc<A, F, Fut>(f: F, a: A)
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = crate::Result<()>> + Send + 'static,
+    Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
     let res = embedded_node(
         |ctx, a| async {
             let res = f(ctx, a).await;
             if let Err(e) = res {
-                let code = e.code();
-                error!(%e);
-
-                let r: Report = e.into();
-                eprintln!("{:?}", r);
-
-                std::process::exit(code);
+                error!(%e, "Failed to run command");
+                eprintln!("{:?}", e);
+                std::process::exit(exitcode::SOFTWARE);
             }
             Ok(())
         },
@@ -384,60 +393,67 @@ where
     }
 }
 
-pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> crate::Result<T>
+pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
+    Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
-    executor.execute(async move {
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("Detached.embedded_node"),
-                DenyAll,
-                DenyAll,
-            )
-            .await
-            .expect("Embedded node child ctx can't be created");
-        let r = f(child_ctx, a).await;
-        stop_node(ctx).await.unwrap();
-        r
-    })?
+    executor
+        .execute(async move {
+            let child_ctx = ctx
+                .new_detached(
+                    Address::random_tagged("Detached.embedded_node"),
+                    DenyAll,
+                    DenyAll,
+                )
+                .await
+                .expect("Embedded node child ctx can't be created");
+            let r = f(child_ctx, a).await;
+            stop_node(ctx).await;
+            r
+        })
+        .into_diagnostic()?
 }
 
-pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> crate::Result<T>
+pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
+    Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
     let (mut ctx, mut executor) = NodeBuilder::new().no_logging().build();
-    executor.execute(async move {
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("Detached.embedded_node.not_stopped"),
-                DenyAll,
-                DenyAll,
-            )
-            .await
-            .expect("Embedded node child ctx can't be created");
-        let result = f(child_ctx, a).await;
-        if result.is_err() {
-            ctx.stop().await?;
-            result
-        } else {
-            result
-        }
-    })?
+    executor
+        .execute(async move {
+            let child_ctx = ctx
+                .new_detached(
+                    Address::random_tagged("Detached.embedded_node.not_stopped"),
+                    DenyAll,
+                    DenyAll,
+                )
+                .await
+                .expect("Embedded node child ctx can't be created");
+            let result = f(child_ctx, a).await;
+            if result.is_err() {
+                ctx.stop().await.into_diagnostic()?;
+                result
+            } else {
+                result
+            }
+        })
+        .into_diagnostic()?
 }
 
 pub fn find_available_port() -> Result<u16> {
-    let listener = TcpListener::bind("127.0.0.1:0").context("Unable to bind to an open port")?;
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .into_diagnostic()
+        .context("Unable to bind to an open port")?;
     let address = listener
         .local_addr()
+        .into_diagnostic()
         .context("Unable to get local address")?;
     Ok(address.port())
 }
@@ -463,19 +479,19 @@ pub fn extract_address_value(input: &str) -> Result<String> {
                 Node::CODE => {
                     addr = p
                         .cast::<proto::Node>()
-                        .context("Failed to parse `node` protocol")?
+                        .ok_or(miette!("Failed to parse `node` protocol"))?
                         .to_string();
                 }
                 Service::CODE => {
                     addr = p
                         .cast::<proto::Service>()
-                        .context("Failed to parse `service` protocol")?
+                        .ok_or(miette!("Failed to parse `service` protocol"))?
                         .to_string();
                 }
                 Project::CODE => {
                     addr = p
                         .cast::<proto::Project>()
-                        .context("Failed to parse `project` protocol")?
+                        .ok_or(miette!("Failed to parse `project` protocol"))?
                         .to_string();
                 }
                 code => return Err(miette!("Protocol {} not supported", code).into()),
@@ -490,38 +506,35 @@ pub fn extract_address_value(input: &str) -> Result<String> {
     Ok(addr)
 }
 
-/// Parses a node's input string for its name in case it's a `MultiAddr` string. Wraps around `extract_address_value`
+/// Parses a node's input string for its name in case it's a `MultiAddr` string.
 ///
 /// Ensures that the node's name will be returned if the input string is a `MultiAddr` of the `node` type
-/// Examples:
-///     `node create n1` returns n1, `node create /node/n1` returns n1, `node create /tcp/n2` returns an error message.
+/// Examples: `n1` or `/node/n1` returns `n1`; `/project/p1` or `/tcp/n2` returns an error message.
 pub fn parse_node_name(input: &str) -> Result<String> {
-    let addr = input.to_string();
-    // if input has "/", we process it as a MultiAddr like in `extract_address_value`
-    if input.contains('/') {
-        let mut err_message =
-            String::from("A MultiAddr node must follow the format /node/{{name}}");
-        let maddr = match MultiAddr::from_str(input) {
-            Ok(maddr) => maddr,
-            Err(e) => {
-                // Tested with input strings with large tcp numbers. e.g: `node create /node/n1/tcp/28273829`
-                err_message.push_str(&format!("\n{e}"));
-                return Err(miette!(err_message).into());
-            }
-        };
-        if let Some(p) = maddr.iter().next() {
-            if p.code() == proto::Node::CODE {
-                let node_name = extract_address_value(&addr)?;
+    if input.is_empty() {
+        return Err(miette!("Empty address in node name argument").into());
+    }
+    // Node name was passed as "n1", for example
+    if !input.contains('/') {
+        return Ok(input.to_string());
+    }
+    // Input has "/", so we process it as a MultiAddr
+    let maddr = MultiAddr::from_str(input)
+        .into_diagnostic()
+        .wrap_err("Invalid format for node name argument")?;
+    let err_message = String::from("A MultiAddr node must follow the format /node/<name>");
+    if let Some(p) = maddr.iter().next() {
+        if p.code() == proto::Node::CODE {
+            let node_name = p
+                .cast::<proto::Node>()
+                .ok_or(miette!("Failed to parse `node` protocol"))?
+                .to_string();
+            if !node_name.is_empty() {
                 return Ok(node_name);
             }
-        } else {
-            return Err(miette!(err_message).into());
         }
     }
-    if addr.is_empty() {
-        return Err(miette!("Empty address in node name input: {}", input).into());
-    }
-    Ok(addr)
+    Err(miette!(err_message).into())
 }
 
 /// Replace the node's name with its address or leave it if it's another type of address.
@@ -581,7 +594,7 @@ pub fn clean_nodes_multiaddr(
                 // No substitution done here. It will be done later by `clean_projects_multiaddr`.
                 new_ma.push_back_value(&p)?
             }
-            Space::CODE => panic!("/space/ substitutions are not supported yet!"),
+            Space::CODE => return Err(miette!("/space/ substitutions are not supported!").into()),
             _ => new_ma.push_back_value(&p)?,
         }
     }
@@ -619,6 +632,32 @@ mod tests {
     use ockam_api::cli_state::traits::StateDirTrait;
     use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+
+    #[test]
+    fn test_parse_node_name() {
+        let test_cases = vec![
+            ("", Err(())),
+            ("test", Ok("test")),
+            ("/test", Err(())),
+            ("test/", Err(())),
+            ("/node", Err(())),
+            ("/node/", Err(())),
+            ("/node/n1", Ok("n1")),
+            ("/service/s1", Err(())),
+            ("/project/p1", Err(())),
+            ("/randomprotocol/rp1", Err(())),
+            ("/node/n1/tcp", Err(())),
+            ("/node/n1/test", Err(())),
+            ("/node/n1/tcp/22", Ok("n1")),
+        ];
+        for (input, expected) in test_cases {
+            if let Ok(addr) = expected {
+                assert_eq!(parse_node_name(input).unwrap(), addr);
+            } else {
+                assert!(parse_node_name(input).is_err());
+            }
+        }
+    }
 
     #[test]
     fn test_extract_address_value() {
@@ -712,8 +751,8 @@ mod tests {
         let result = embedded_node_that_is_not_stopped(function_returning_an_error, 1);
         assert!(result.is_err());
 
-        async fn function_returning_an_error(_ctx: Context, _parameter: u8) -> crate::Result<()> {
-            Err(crate::Error::new(exitcode::CONFIG, miette!("boom")))
+        async fn function_returning_an_error(_ctx: Context, _parameter: u8) -> miette::Result<()> {
+            Err(miette!("boom"))
         }
     }
 
@@ -728,9 +767,9 @@ mod tests {
         async fn function_returning_an_error_and_stopping_the_context(
             mut ctx: Context,
             _parameter: u8,
-        ) -> crate::Result<()> {
-            ctx.stop().await?;
-            Err(crate::Error::new(exitcode::CONFIG, miette!("boom")))
+        ) -> miette::Result<()> {
+            ctx.stop().await.into_diagnostic()?;
+            Err(miette!("boom"))
         }
     }
 }

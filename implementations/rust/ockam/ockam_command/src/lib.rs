@@ -63,7 +63,7 @@ use console::Term;
 use credential::CredentialCommand;
 use enroll::EnrollCommand;
 use environment::EnvironmentCommand;
-use error::{Error, ErrorReportHandler, Result};
+use error::{Error, Result};
 use identity::IdentityCommand;
 use kafka::consumer::KafkaConsumerCommand;
 use kafka::producer::KafkaProducerCommand;
@@ -71,6 +71,7 @@ use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use markdown::MarkdownCommand;
 use message::MessageCommand;
+use miette::GraphicalReportHandler;
 use node::NodeCommand;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use once_cell::sync::Lazy;
@@ -332,8 +333,14 @@ impl OckamCommand {
         // Sets a hook using our own Error Report Handler
         // This allows us to customize how we
         // format the error messages and their content.
-        let _hook_result = miette::set_hook(Box::new(|_| Box::new(ErrorReportHandler::new())));
-
+        let _hook_result = miette::set_hook(Box::new(|_| {
+            Box::new(
+                GraphicalReportHandler::new()
+                    .with_cause_chain()
+                    .with_footer(fmt_log!("{}", Version::short().to_string().light_gray()))
+                    .with_urls(false),
+            )
+        }));
         let options = CommandGlobalOpts::new(self.global_args.clone());
 
         let _tracing_guard = if !options.global_args.quiet {

@@ -1,10 +1,11 @@
 use crate::secure_channel::addresses::Addresses;
-use crate::secure_channel::common::Role;
+use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::options::SecureChannelListenerOptions;
-use crate::secure_channel::responder_worker::ResponderWorker;
+use crate::secure_channel::role::Role;
 use crate::secure_channels::secure_channels::SecureChannels;
-use crate::IdentityIdentifier;
+use crate::{Credential, IdentityIdentifier};
 use ockam_core::compat::boxed::Box;
+use ockam_core::compat::fmt::Vec;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Any, Result, Routed, Worker};
 use ockam_node::Context;
@@ -43,6 +44,26 @@ impl IdentityChannelListener {
 
         Ok(())
     }
+
+    /// If credentials are not provided via list in options
+    /// get them from the trust context
+    async fn get_credentials(&self, ctx: &mut Context) -> Result<Vec<Credential>> {
+        let credentials = if self.options.credentials.is_empty() {
+            if let Some(trust_context) = &self.options.trust_context {
+                vec![
+                    trust_context
+                        .authority()?
+                        .credential(ctx, &self.identifier)
+                        .await?,
+                ]
+            } else {
+                vec![]
+            }
+        } else {
+            self.options.credentials.clone()
+        };
+        Ok(credentials)
+    }
 }
 
 #[ockam_core::worker]
@@ -65,30 +86,20 @@ impl Worker for IdentityChannelListener {
             .options
             .create_access_control(ctx.flow_controls(), flow_control_id);
 
-        let credentials = if self.options.credentials.is_empty() {
-            if let Some(trust_context) = &self.options.trust_context {
-                vec![
-                    trust_context
-                        .authority()?
-                        .credential(ctx, &self.identifier)
-                        .await?,
-                ]
-            } else {
-                vec![]
-            }
-        } else {
-            self.options.credentials.clone()
-        };
+        let credentials = self.get_credentials(ctx).await?;
 
-        let decryptor_remote_address = ResponderWorker::create(
+        HandshakeWorker::create(
             ctx,
             self.secure_channels.clone(),
-            addresses,
+            addresses.clone(),
             self.identifier.clone(),
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             credentials,
             self.options.trust_context.clone(),
+            None,
+            None,
+            Role::Responder,
         )
         .await?;
 
@@ -97,7 +108,7 @@ impl Worker for IdentityChannelListener {
             .transport_mut()
             .onward_route
             .modify()
-            .replace(decryptor_remote_address);
+            .replace(addresses.decryptor_remote);
 
         ctx.forward(local_message).await
     }

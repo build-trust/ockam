@@ -4,6 +4,7 @@ use crate::util::{node_rpc, println_output};
 use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
 use clap::Args;
 use core::fmt::Write;
+use miette::IntoDiagnostic;
 use ockam::identity::identity::IdentityChangeHistory;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
@@ -42,7 +43,7 @@ impl ShowCommand {
     async fn run_impl(
         _ctx: Context,
         options: (CommandGlobalOpts, ShowCommand),
-    ) -> crate::Result<()> {
+    ) -> miette::Result<()> {
         let (opts, cmd) = options;
         let name = get_identity_name(&opts.state, &cmd.name);
         let state = opts.state.identities.get(&name)?;
@@ -54,8 +55,10 @@ impl ShowCommand {
                 .identities_repository()
                 .await?
                 .get_identity(&identifier)
-                .await?
-                .export()?;
+                .await
+                .into_diagnostic()?
+                .export()
+                .into_diagnostic()?;
 
             if Some(EncodeFormat::Hex) == cmd.encoding {
                 println_output(identity, &opts.global_args.output_format)?;

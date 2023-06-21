@@ -3,10 +3,10 @@ use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::time::Duration;
 
-use anyhow::Context as _;
 use colorful::Colorful;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use miette::miette;
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 
 use mode::*;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
@@ -134,7 +134,9 @@ impl<T: Write + Debug + Clone> TerminalStream<T> {
         if self.no_color {
             buffer = strip_ansi_escapes::strip(&buffer)?;
         }
-        Ok(String::from_utf8(buffer).context("Invalid UTF-8")?)
+        Ok(String::from_utf8(buffer)
+            .into_diagnostic()
+            .context("Invalid UTF-8")?)
     }
 }
 
@@ -382,7 +384,9 @@ impl<W: TerminalWriter> Terminal<W, ToStdOut> {
                 }
             }
             // If not set, no fallback is provided and returns an error
-            OutputFormat::Json => json.context("JSON output is not defined for this command")?,
+            OutputFormat::Json => {
+                json.ok_or(miette!("JSON output is not defined for this command"))?
+            }
         };
         self.stdout.write_line(msg)
     }

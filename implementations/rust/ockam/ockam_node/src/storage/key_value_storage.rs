@@ -1,4 +1,4 @@
-use ockam_core::compat::boxed::Box;
+use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{async_trait, Result};
 
 /// This trait defines a key/value storage
@@ -12,4 +12,7 @@ pub trait KeyValueStorage<K, V>: Sync + Send + 'static {
 
     /// Delete a value and return it if found
     async fn delete(&self, key: &K) -> Result<Option<V>>;
+
+    /// Return the list of all the keys
+    async fn keys(&self) -> Result<Vec<K>>;
 }

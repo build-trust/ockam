@@ -1,12 +1,12 @@
 use crate::identities::Identities;
 use crate::identities::IdentitiesVault;
-use crate::identity::IdentityError;
-use crate::secure_channel::initiator_worker::InitiatorWorker;
+use crate::identity::{IdentityError, IdentityIdentifier};
+use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannelRegistry,
 };
-use crate::{IdentityIdentifier, SecureChannel, SecureChannelListener, SecureChannelsBuilder};
+use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
@@ -97,17 +97,18 @@ impl SecureChannels {
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
 
-        InitiatorWorker::create(
+        HandshakeWorker::create(
             ctx,
             Arc::new(self.clone()),
             addresses.clone(),
-            identifier,
+            identifier.clone(),
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
             options.credentials,
             options.trust_context,
-            route,
-            options.timeout,
+            Some(route),
+            Some(options.timeout),
+            Role::Initiator,
         )
         .await?;
 

@@ -1,6 +1,7 @@
 use clap::Args;
 
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
@@ -39,7 +40,7 @@ impl StartCommand {
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, StartCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
 
     let node_state = opts.state.nodes.get(&node_name)?;
@@ -75,10 +76,10 @@ async fn run_impl(
     )?;
 
     // Print node status
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&mut rpc, &node_name, true, is_default).await?;
+    print_query_status(&opts, &mut rpc, &node_name, true, is_default).await?;
 
     Ok(())
 }

@@ -1,10 +1,10 @@
 use crate::identity::IdentityError;
+use crate::XXInitializedVault;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::KeyId;
-use ockam_core::Result;
-use ockam_key_exchange_xx::XXInitializedVault;
-use ockam_vault::Secret;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result};
+use ockam_vault::{KeyId, Secret};
 
 pub(crate) struct Encryptor {
     key: KeyId,
@@ -75,5 +75,20 @@ impl Encryptor {
 
     pub fn new(key: KeyId, nonce: u64, vault: Arc<dyn XXInitializedVault>) -> Self {
         Self { key, nonce, vault }
+    }
+
+    pub(crate) async fn shutdown(&self) -> Result<()> {
+        if !self.vault.delete_ephemeral_secret(self.key.clone()).await? {
+            Err(Error::new(
+                Origin::Ockam,
+                Kind::Internal,
+                format!(
+                    "the key id {} could not be deleted in the Encryptor shutdown",
+                    self.key
+                ),
+            ))
+        } else {
+            Ok(())
+        }
     }
 }

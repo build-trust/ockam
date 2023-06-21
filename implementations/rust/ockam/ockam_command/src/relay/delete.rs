@@ -41,7 +41,7 @@ impl DeleteCommand {
 pub async fn run_impl(
     ctx: Context,
     (options, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let relay_name = cmd.relay_name.clone();
     let at = get_node_name(&options.state, &cmd.at);
     let node = extract_address_value(&at)?;

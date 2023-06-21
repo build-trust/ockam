@@ -75,6 +75,11 @@ impl<
         self.file_storage.modify_value(f).await?;
         self.cache.delete(key).await
     }
+
+    /// Return the list of all the keys **in cache**
+    async fn keys(&self) -> Result<Vec<K>> {
+        self.cache.keys().await
+    }
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 use crate::{
     util::{api, exitcode, extract_address_value, node_rpc, Rpc},
-    CommandGlobalOpts, OutputFormat, Result,
+    CommandGlobalOpts, OutputFormat,
 };
 use std::str::FromStr;
 use anyhow::anyhow;
@@ -25,11 +25,11 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct DeleteCommand {
-    /// Node at which the secure channel was initiated (required)
+    /// Node at which the secure channel was initiated
     #[arg(value_name = "NODE", long, display_order = 800)]
     at: String,
 
-    /// Address at which the channel to be deleted is running (required)
+    /// Address at which the channel to be deleted is running
     #[arg(value_parser(parse_address), display_order = 800)]
     address: Address,
 
@@ -149,7 +149,10 @@ fn parse_address(input: &str) -> core::result::Result<Address, AddressParseError
     Address::from_str(&buf)
 }
 
-async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, DeleteCommand)) -> Result<()> {
+async fn rpc(
+    ctx: Context,
+    (options, command): (CommandGlobalOpts, DeleteCommand),
+) -> miette::Result<()> {
     let at = &command.parse_at_node();
     let address = &command.address;
     let mut rpc = Rpc::background(&ctx, &options, at)?;

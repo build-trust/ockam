@@ -1,9 +1,10 @@
 use crate::node::util::check_default;
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{api, node_rpc, Rpc, RpcBuilder};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, OutputFormat, Result};
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
@@ -45,13 +46,13 @@ impl ShowCommand {
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&mut rpc, &node_name, false, is_default).await?;
+    print_query_status(&opts, &mut rpc, &node_name, false, is_default).await?;
     Ok(())
 }
 
@@ -60,6 +61,7 @@ async fn run_impl(
 // clippy to stop complaining about it.
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(
+    opts: &CommandGlobalOpts,
     node_port: Option<u16>,
     node_name: &str,
     is_default: bool,
@@ -70,6 +72,15 @@ fn print_node_info(
     secure_channel_listeners: Option<&SecureChannelListenersList>,
     inlets_outlets: Option<(&InletList, &OutletList)>,
 ) {
+    if opts.global_args.output_format == OutputFormat::Json {
+        opts.terminal
+            .clone()
+            .stdout()
+            .json(serde_json::json!({ "name": &node_name }))
+            .write_line()
+            .expect("Failed to write to stdout.");
+        return;
+    }
     println!();
     println!("Node:");
     if is_default {
@@ -160,11 +171,12 @@ fn print_node_info(
 }
 
 pub async fn print_query_status(
+    opts: &CommandGlobalOpts,
     rpc: &mut Rpc<'_>,
     node_name: &str,
     wait_until_ready: bool,
     is_default: bool,
-) -> Result<()> {
+) -> miette::Result<()> {
     let cli_state = rpc.opts.state.clone();
     if !is_node_up(rpc, wait_until_ready).await? {
         let node_state = cli_state.nodes.get(node_name)?;
@@ -179,6 +191,7 @@ pub async fn print_query_status(
         // so in that case we display an UP status
         let is_authority_node = node_state.config().setup().authority_node.unwrap_or(false);
         print_node_info(
+            opts,
             node_port,
             node_name,
             is_default,
@@ -231,6 +244,7 @@ pub async fn print_query_status(
             .map(|listener| listener.addr.port());
 
         print_node_info(
+            opts,
             node_port,
             node_name,
             is_default,

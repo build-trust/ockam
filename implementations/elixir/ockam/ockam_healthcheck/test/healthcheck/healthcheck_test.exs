@@ -124,8 +124,7 @@ defmodule Ockam.Healthcheck.Test do
       api_worker: "api",
       healthcheck_worker: "endpoint",
       path: "/ok",
-      method: :get,
-      crontab: "* * * * *"
+      method: :get
     }
 
     test_proc = self()
@@ -169,8 +168,7 @@ defmodule Ockam.Healthcheck.Test do
       api_worker: "api",
       healthcheck_worker: "endpoint",
       path: "/error",
-      method: :get,
-      crontab: "* * * * *"
+      method: :get
     }
 
     test_proc = self()

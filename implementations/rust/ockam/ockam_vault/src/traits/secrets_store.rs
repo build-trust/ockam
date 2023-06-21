@@ -1,5 +1,5 @@
-use crate::{PublicKey, Secret, SecretAttributes, StoredSecret};
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use crate::{KeyId, PublicKey, Secret, SecretAttributes, StoredSecret};
+use ockam_core::{async_trait, compat::boxed::Box, compat::vec::Vec, Result};
 
 /// This traits provides all the functionalities related to the management of secrets
 #[async_trait]
@@ -30,6 +30,8 @@ pub trait EphemeralSecretsStore: SecretsStoreReader + Sync + Send {
         -> Result<StoredSecret>;
     /// Remove an ephemeral secret from the vault.
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool>;
+    /// Return the list of all ephemeral secrets
+    async fn list_ephemeral_secrets(&self) -> Result<Vec<KeyId>>;
 }
 
 /// This traits supports the creation / deletion of persistent secrets

@@ -1,6 +1,6 @@
 use crate::KeyValueStorage;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock};
+use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock, vec::Vec};
 use ockam_core::{async_trait, Result};
 
 /// In memory implementation of a key / value storage
@@ -18,7 +18,7 @@ impl<K, V> Default for InMemoryKeyValueStorage<K, V> {
 }
 
 #[async_trait]
-impl<K: Ord + Send + Sync + 'static, V: Clone + Send + Sync + 'static> KeyValueStorage<K, V>
+impl<K: Ord + Clone + Send + Sync + 'static, V: Clone + Send + Sync + 'static> KeyValueStorage<K, V>
     for InMemoryKeyValueStorage<K, V>
 {
     async fn put(&self, key: K, value: V) -> Result<()> {
@@ -37,9 +37,14 @@ impl<K: Ord + Send + Sync + 'static, V: Clone + Send + Sync + 'static> KeyValueS
         let mut storage = self.storage.write().unwrap();
         Ok(storage.remove(key))
     }
+
+    async fn keys(&self) -> Result<Vec<K>> {
+        let storage = self.storage.read().unwrap();
+        Ok(storage.keys().cloned().collect())
+    }
 }
 
-impl<K: Ord + Sync + Send + 'static, V: Clone + Send + Sync + 'static>
+impl<K: Ord + Clone + Sync + Send + 'static, V: Clone + Send + Sync + 'static>
     InMemoryKeyValueStorage<K, V>
 {
     /// Create a new in-memory key / value storage

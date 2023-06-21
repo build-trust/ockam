@@ -1,6 +1,6 @@
-use crate::{PublicKey, SecretAttributes, Signature};
+use crate::{KeyId, PublicKey, SecretAttributes, Signature};
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, KeyId, Result};
+use ockam_core::{async_trait, Result};
 
 /// A SecurityModule provides several functions related to secrets:
 ///   - create and persist secrets

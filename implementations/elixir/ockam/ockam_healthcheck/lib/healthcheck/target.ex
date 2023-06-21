@@ -5,8 +5,7 @@ defmodule Ockam.Healthcheck.Target do
   secure channel listener API worker
   and healthcheck ping endpoint
   """
-
-  @enforce_keys [:name, :host, :port, :crontab]
+  @enforce_keys [:name, :host, :port]
   defstruct [
     :name,
     :host,

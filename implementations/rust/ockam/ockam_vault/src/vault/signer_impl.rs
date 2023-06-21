@@ -1,5 +1,7 @@
-use crate::{PublicKey, SecretsStore, SecurityModule, Signature, Signer, VaultSecurityModule};
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use crate::{
+    KeyId, PublicKey, SecretsStore, SecurityModule, Signature, Signer, VaultSecurityModule,
+};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[async_trait]
 impl<T: SecretsStore + SecurityModule> Signer for T {

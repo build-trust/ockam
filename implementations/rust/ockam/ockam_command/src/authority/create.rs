@@ -1,11 +1,11 @@
 use crate::node::util::init_node_state;
 use crate::node::util::run_ockam;
-use crate::util::node_rpc;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
+use crate::util::{local_cmd, node_rpc};
 use crate::{docs, identity, CommandGlobalOpts, Result};
-use anyhow::Context as _;
 use clap::{ArgGroup, Args};
-use miette::miette;
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -19,7 +19,7 @@ use ockam_identity::{AttributesEntry, IdentityIdentifier};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
-use tracing::{debug, error};
+use tracing::debug;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -97,7 +97,10 @@ pub struct CreateCommand {
 
 /// Start an authority node by calling the `ockam` executable with the current command-line
 /// arguments
-async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crate::Result<()> {
+async fn spawn_background_node(
+    opts: &CommandGlobalOpts,
+    cmd: &CreateCommand,
+) -> miette::Result<()> {
     // Create node state, including the vault and identity if they don't exist
     init_node_state(
         opts,
@@ -181,12 +184,10 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            if let Err(e) = embedded_node_that_is_not_stopped(start_authority_node, (options, self))
-            {
-                error!(%e);
-                eprintln!("{e:?}");
-                std::process::exit(e.code());
-            }
+            local_cmd(embedded_node_that_is_not_stopped(
+                start_authority_node,
+                (options, self),
+            ))
         } else {
             // Create a new node running in the background (i.e. another, new OS process)
             node_rpc(create_background_node, (options, self))
@@ -221,7 +222,7 @@ impl CreateCommand {
 async fn create_background_node(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     // Spawn node in another, new process
     spawn_background_node(&opts, &cmd).await
 }
@@ -233,7 +234,7 @@ async fn create_background_node(
 async fn start_authority_node(
     ctx: Context,
     args: (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let (opts, cmd) = args;
 
     // Create node state, including the vault and identity if they don't exist
@@ -295,11 +296,14 @@ async fn start_authority_node(
             .setup_mut()
             .set_verbose(opts.global_args.verbose)
             .set_authority_node()
-            .add_transport(CreateTransportJson::new(
-                TransportType::Tcp,
-                TransportMode::Listen,
-                cmd.tcp_listener_address.as_str(),
-            )?),
+            .add_transport(
+                CreateTransportJson::new(
+                    TransportType::Tcp,
+                    TransportMode::Listen,
+                    cmd.tcp_listener_address.as_str(),
+                )
+                .into_diagnostic()?,
+            ),
     )?;
 
     let trusted_identities = cmd.trusted_identities(&identifier)?;
@@ -318,7 +322,9 @@ async fn start_authority_node(
         no_token_enrollment: cmd.no_token_enrollment,
         okta: okta_configuration,
     };
-    authority_node::start_node(&ctx, &configuration).await?;
+    authority_node::start_node(&ctx, &configuration)
+        .await
+        .into_diagnostic()?;
 
     Ok(())
 }

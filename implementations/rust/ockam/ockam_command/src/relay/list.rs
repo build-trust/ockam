@@ -1,6 +1,7 @@
 use clap::Args;
 
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
@@ -10,7 +11,7 @@ use tokio::try_join;
 use crate::node::get_node_name;
 use crate::terminal::OckamColor;
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
@@ -32,7 +33,10 @@ impl ListCommand {
     }
 }
 
-async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> Result<()> {
+async fn run_impl(
+    ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ListCommand),
+) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
@@ -63,7 +67,7 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -
         &format!("Relays on Node {node_name}"),
         &format!("No Relays found on node {node_name}."),
     )?;
-    let json = serde_json::to_string_pretty(&relays)?;
+    let json = serde_json::to_string_pretty(&relays).into_diagnostic()?;
 
     opts.terminal
         .stdout()
