@@ -1049,3 +1049,78 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
 
     Ok(())
 }
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn should_stop_encryptor__and__decryptor__in__secure_channel(
+    ctx: &mut Context,
+) -> Result<()> {
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
+
+    let bob = identities_creation.create_identity().await?;
+    let alice = identities_creation.create_identity().await?;
+
+    let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier());
+    let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier());
+
+    let identity_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
+    let bob_listener = secure_channels
+        .create_secure_channel_listener(ctx, &bob.identifier(), "bob_listener", identity_options)
+        .await?;
+
+    let initial_workers = ctx.list_workers().await?;
+
+    let sc = {
+        let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
+        secure_channels
+            .create_secure_channel(
+                ctx,
+                &alice.identifier(),
+                route!["bob_listener"],
+                alice_options,
+            )
+            .await?
+    };
+
+    let mut child_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            "child",
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
+
+    ctx.flow_controls()
+        .add_consumer("child", bob_listener.flow_control_id());
+
+    child_ctx
+        .send(
+            route![sc.clone(), child_ctx.address()],
+            "Hello, Bob!".to_string(),
+        )
+        .await?;
+
+    let msg = child_ctx.receive::<String>().await?;
+
+    let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
+    assert_eq!(local_info.their_identity_id(), alice.identifier());
+    assert_eq!("Hello, Bob!", msg.body());
+
+    let mut additional_workers = ctx.list_workers().await?;
+
+    additional_workers.retain(|w| !initial_workers.contains(w));
+    let works_count = additional_workers.len();
+
+    secure_channels
+        .stop_secure_channel(ctx, sc.encryptor_address())
+        .await?;
+
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    additional_workers = ctx.list_workers().await?;
+
+    additional_workers.retain(|w| !initial_workers.contains(w));
+    assert_eq!(additional_workers.len(), (works_count - 2));
+    ctx.stop().await
+}
