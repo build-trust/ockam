@@ -4,8 +4,8 @@ use crate::{
     StoredSecret, SymmetricVault, VaultBuilder, VaultSecurityModule,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::fmt::Vec;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, Result};
 use ockam_node::KeyValueStorage;
 #[cfg(feature = "std")]

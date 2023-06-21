@@ -319,11 +319,10 @@ pub mod vec {
 
 /// Provides `core::fmt`
 pub mod fmt {
-    pub use alloc::fmt::*;
     #[cfg(feature = "alloc")]
-    pub use alloc::vec::*;
+    pub use alloc::fmt::*;
     #[cfg(not(feature = "alloc"))]
-    pub type Vec<T> = heapless::Vec<T, 64>;
+    pub use core::fmt::*;
 }
 
 /// Provides `future::poll_once`
