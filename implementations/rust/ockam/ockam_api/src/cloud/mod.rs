@@ -183,7 +183,9 @@ mod node {
             let route = route![sc.clone(), api_service];
             let options = MessageSendReceiveOptions::new().with_timeout(timeout);
             let res = request_with_options(ctx, label, schema, route, req, options).await;
-            ctx.stop_worker(sc.encryptor_address().clone()).await?; // TODO: Stop all workers?
+            secure_channels
+                .stop_secure_channel(ctx, sc.encryptor_address())
+                .await?;
             res
         }
     }
