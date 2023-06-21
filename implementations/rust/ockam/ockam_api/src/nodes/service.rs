@@ -850,8 +850,8 @@ impl NodeManagerWorker {
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
-                let err_body = Error::new(path)
-                    .with_message(format!("Invalid endpoint: {} {}", method, path));
+                let err_body =
+                    Error::new(path).with_message(format!("Invalid endpoint: {} {}", method, path));
                 Response::bad_request(req.id()).body(err_body).to_vec()?
             }
         };

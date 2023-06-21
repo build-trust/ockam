@@ -47,8 +47,7 @@ impl NodeManagerWorker {
             Err(e) => {
                 let err = Error::default().with_message(format!(
                     "Error retrieving credentai from authority for {}. {}",
-                    identifier,
-                    e
+                    identifier, e
                 ));
                 Ok(Either::Left(Response::internal_error(req.id()).body(err)))
             }
