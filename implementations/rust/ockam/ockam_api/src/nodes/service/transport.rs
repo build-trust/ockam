@@ -220,11 +220,8 @@ impl NodeManagerWorker {
             }
             Err(msg) => {
                 error!("{}", msg.to_string());
-                let err_body = Error::new(req.path()).with_message(format!(
-                    "Unable to connect to {}. {}",
-                    addr,
-                    msg
-                ));
+                let err_body = Error::new(req.path())
+                    .with_message(format!("Unable to connect to {}. {}", addr, msg));
                 return Err(Response::bad_request(req.id()).body(err_body));
             }
         };
@@ -268,11 +265,8 @@ impl NodeManagerWorker {
             }
             Err(msg) => {
                 error!("{}", msg.to_string());
-                let err_body = Error::new(req.path()).with_message(format!(
-                    "Unable to listen on {}. {}",
-                    addr,
-                    msg
-                ));
+                let err_body = Error::new(req.path())
+                    .with_message(format!("Unable to listen on {}. {}", addr, msg));
                 return Err(Response::bad_request(req.id()).body(err_body));
             }
         };
@@ -323,8 +317,7 @@ impl NodeManagerWorker {
             Err(err) => {
                 let err_body = Error::new(req.path()).with_message(format!(
                     "Unable to disconnect from {}. {}",
-                    sender_address,
-                    err
+                    sender_address, err
                 ));
                 Err(Response::bad_request(req.id()).body(err_body))
             }
@@ -378,8 +371,7 @@ impl NodeManagerWorker {
             Err(err) => {
                 let err_body = Error::new(req.path()).with_message(format!(
                     "Unable to stop listener {}. {}",
-                    listener_address,
-                    err
+                    listener_address, err
                 ));
                 Err(Response::bad_request(req.id()).body(err_body))
             }

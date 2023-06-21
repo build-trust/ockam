@@ -17,8 +17,8 @@ impl NodeManagerWorker {
         let request: AddConsumer = match dec.decode() {
             Ok(r) => r,
             Err(e) => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to decode request: {}", e));
+                let err_body =
+                    Error::new(req.path()).with_message(format!("Unable to decode request: {}", e));
                 return Err(Response::bad_request(req.id()).body(err_body));
             }
         };

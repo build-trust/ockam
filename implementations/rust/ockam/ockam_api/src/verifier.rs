@@ -67,10 +67,8 @@ impl Verifier {
                                 .to_vec()?
                         }
                         Err(err) => {
-                            let err_body = Error::new(req.path()).with_message(format!(
-                                "Unable to verify credential. {}",
-                                err
-                            ));
+                            let err_body = Error::new(req.path())
+                                .with_message(format!("Unable to verify credential. {}", err));
                             Response::internal_error(req.id()).body(err_body).to_vec()?
                         }
                     }

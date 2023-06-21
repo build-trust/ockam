@@ -1,7 +1,9 @@
 #![allow(missing_docs)]
 
+use crate::alloc::string::ToString;
 use crate::compat::borrow::Cow;
 use crate::compat::rand;
+use crate::compat::string::String;
 use crate::compat::vec::Vec;
 use crate::errcode::{Kind, Origin};
 use crate::Result;
@@ -123,12 +125,12 @@ pub struct Response {
 }
 
 /// Create an error response because the request path was unknown.
-pub fn unknown_path<'a>(r: &'a Request) -> ResponseBuilder<Error> {
+pub fn unknown_path(r: &Request) -> ResponseBuilder<Error> {
     bad_request(r, "unknown path")
 }
 
 /// Create an error response because the request method was unknown or not allowed.
-pub fn invalid_method<'a>(r: &'a Request) -> ResponseBuilder<Error> {
+pub fn invalid_method(r: &Request) -> ResponseBuilder<Error> {
     match r.method() {
         Some(m) => {
             let e = Error::new(r.path()).with_method(m);
@@ -142,7 +144,7 @@ pub fn invalid_method<'a>(r: &'a Request) -> ResponseBuilder<Error> {
 }
 
 /// Create an error response with status forbidden and the given message.
-pub fn forbidden<'a>(r: &'a Request, m: &str) -> ResponseBuilder<Error> {
+pub fn forbidden(r: &Request, m: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(m);
     if let Some(m) = r.method() {
         e = e.with_method(m)
@@ -151,7 +153,7 @@ pub fn forbidden<'a>(r: &'a Request, m: &str) -> ResponseBuilder<Error> {
 }
 
 /// Create a generic bad request response.
-pub fn bad_request<'a>(r: &'a Request, msg: &str) -> ResponseBuilder<Error> {
+pub fn bad_request(r: &Request, msg: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(msg);
     if let Some(m) = r.method() {
         e = e.with_method(m)
@@ -160,7 +162,7 @@ pub fn bad_request<'a>(r: &'a Request, msg: &str) -> ResponseBuilder<Error> {
 }
 
 /// Create an internal server error response
-pub fn internal_error<'a>(r: &'a Request, msg: &str) -> ResponseBuilder<Error> {
+pub fn internal_error(r: &Request, msg: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(msg);
     if let Some(m) = r.method() {
         e = e.with_method(m)

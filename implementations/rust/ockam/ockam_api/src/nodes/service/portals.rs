@@ -259,10 +259,8 @@ impl NodeManagerWorker {
                 }
                 Err(e) => {
                     error!(%alias, "Failed to remove inlet from node registry");
-                    let err_body = Error::new(req.path()).with_message(format!(
-                        "Failed to remove inlet with alias {alias}. {}",
-                        e
-                    ));
+                    let err_body = Error::new(req.path())
+                        .with_message(format!("Failed to remove inlet with alias {alias}. {}", e));
                     Err(Response::internal_error(req.id()).body(err_body))
                 }
             }
@@ -444,10 +442,8 @@ impl NodeManagerWorker {
                 }
                 Err(e) => {
                     error!(%alias, "Failed to remove outlet from node registry");
-                    let err_body = Error::new(req.path()).with_message(format!(
-                        "Failed to remove outlet with alias {alias}. {}",
-                        e
-                    ));
+                    let err_body = Error::new(req.path())
+                        .with_message(format!("Failed to remove outlet with alias {alias}. {}", e));
                     Err(Response::internal_error(req.id()).body(err_body))
                 }
             }
