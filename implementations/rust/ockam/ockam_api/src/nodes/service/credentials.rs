@@ -45,10 +45,12 @@ impl NodeManagerWorker {
         {
             Ok(c) => Ok(Either::Right(Response::ok(req.id()).body(c))),
             Err(e) => {
-                let err = Error::default().with_message(format!(
-                    "Error retrieving credentai from authority for {}. {}",
-                    identifier, e
-                ));
+                let err = Error::new(req.path())
+                    .with_message(format!(
+                        "Error retrieving credentai from authority for {}",
+                        identifier
+                    ))
+                    .with_cause(Error::new(req.path()).with_message(e.to_string()));
                 Ok(Either::Left(Response::internal_error(req.id()).body(err)))
             }
         }

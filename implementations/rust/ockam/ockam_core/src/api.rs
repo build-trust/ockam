@@ -394,6 +394,9 @@ pub struct Error {
     #[n(2)] method: Option<Method>,
     /// The actual error message.
     #[b(3)] message: Option<String>,
+    /// The cause of the error, if any.
+    #[b(4)] cause: Option<Box<Error>>,
+
 }
 
 impl Error {
@@ -404,6 +407,7 @@ impl Error {
             method: None,
             path: Some(path.to_string()),
             message: None,
+            cause: None,
         }
     }
 
@@ -414,6 +418,7 @@ impl Error {
             method: None,
             path: None,
             message: None,
+            cause: None,
         }
     }
 
@@ -428,6 +433,11 @@ impl Error {
 
     pub fn with_message(mut self, m: impl AsRef<str>) -> Self {
         self.message = Some(m.as_ref().to_string());
+        self
+    }
+
+    pub fn with_cause(mut self, e: Error) -> Self {
+        self.cause = Some(Box::new(e));
         self
     }
 
@@ -452,6 +462,7 @@ impl From<crate::Error> for Error {
             method: None,
             path: None,
             message: Some(e.to_string()),
+            cause: None,
         }
     }
 }

@@ -14,14 +14,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
-        let request: AddConsumer = match dec.decode() {
-            Ok(r) => r,
-            Err(e) => {
-                let err_body =
-                    Error::new(req.path()).with_message(format!("Unable to decode request: {}", e));
-                return Err(Response::bad_request(req.id()).body(err_body));
-            }
-        };
+        let request: AddConsumer = dec.decode()?;
 
         let mut route = match local_multiaddr_to_route(request.address()) {
             None => {
@@ -35,11 +28,12 @@ impl NodeManagerWorker {
         let addr = match route.step() {
             Ok(a) => a,
             Err(e) => {
-                let err_body = Error::new(req.path()).with_message(format!(
-                    "Unable to retrieve address from {}. {}",
-                    request.address(),
-                    e
-                ));
+                let err_body = Error::new(req.path())
+                    .with_message(format!(
+                        "Unable to retrieve address from {}.",
+                        request.address(),
+                    ))
+                    .with_cause(Error::new(req.path()).with_message(e.to_string()));
                 return Err(Response::bad_request(req.id()).body(err_body));
             }
         };

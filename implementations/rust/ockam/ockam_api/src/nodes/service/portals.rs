@@ -72,14 +72,7 @@ impl NodeManagerWorker {
         ctx: &Context,
     ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
         let rid = req.id();
-        let req: CreateInlet = match dec.decode() {
-            Ok(rq) => rq,
-            Err(e) => {
-                let err_body = Error::new_without_path()
-                    .with_message(format!("Unable to decode request: {}", e));
-                return Err(Response::bad_request(rid).body(err_body));
-            }
-        };
+        let req: CreateInlet = dec.decode()?;
         self.create_inlet_impl(rid, req, ctx).await
     }
 
@@ -309,14 +302,7 @@ impl NodeManagerWorker {
             alias,
             reachable_from_default_secure_channel,
             ..
-        } = match dec.decode() {
-            Ok(it) => it,
-            Err(err) => {
-                let err_body = Error::new_without_path()
-                    .with_message(format!("Unable to decode request: {}", err));
-                return Err(Response::bad_request(req.id()).body(err_body));
-            }
-        };
+        } = dec.decode()?;
 
         let tcp_addr = tcp_addr.to_string();
 

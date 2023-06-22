@@ -178,14 +178,7 @@ impl NodeManagerWorker {
         ctx: &Context,
     ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
-        let CreateTcpConnection { addr, .. } = match dec.decode() {
-            Ok(it) => it,
-            Err(err) => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to decode request: {}", err));
-                return Err(Response::bad_request(req.id()).body(err_body));
-            }
-        };
+        let CreateTcpConnection { addr, .. } = dec.decode()?;
 
         info!("Handling request to create a new TCP connection: {}", addr);
         let socket_addr = addr.to_string();
@@ -221,7 +214,8 @@ impl NodeManagerWorker {
             Err(msg) => {
                 error!("{}", msg.to_string());
                 let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to connect to {}. {}", addr, msg));
+                    .with_message(format!("Unable to connect to {}.", addr))
+                    .with_cause(Error::new(req.path()).with_message(msg.to_string()));
                 return Err(Response::bad_request(req.id()).body(err_body));
             }
         };
@@ -235,14 +229,7 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
-        let CreateTcpListener { addr, .. } = match dec.decode() {
-            Ok(it) => it,
-            Err(err) => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to decode request: {}", err));
-                return Err(Response::bad_request(req.id()).body(err_body));
-            }
-        };
+        let CreateTcpListener { addr, .. } = dec.decode()?;
 
         use {super::TransportType::*, TransportMode::*};
 
@@ -266,7 +253,8 @@ impl NodeManagerWorker {
             Err(msg) => {
                 error!("{}", msg.to_string());
                 let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to listen on {}. {}", addr, msg));
+                    .with_message(format!("Unable to listen on {}.", addr))
+                    .with_cause(Error::new(req.path()).with_message(msg.to_string()));
                 return Err(Response::bad_request(req.id()).body(err_body));
             }
         };
@@ -280,14 +268,8 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
-        let body: DeleteTransport = match dec.decode() {
-            Ok(it) => it,
-            Err(err) => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to decode request: {}", err));
-                return Err(Response::bad_request(req.id()).body(err_body));
-            }
-        };
+        let body: DeleteTransport = dec.decode()?;
+
         info!("Handling request to stop listener: {}", body.address);
 
         let sender_address = match body.address.parse::<SocketAddr>() {
@@ -315,10 +297,9 @@ impl NodeManagerWorker {
         match node_manager.tcp_transport.disconnect(&sender_address).await {
             Ok(_) => Ok(Response::ok(req.id())),
             Err(err) => {
-                let err_body = Error::new(req.path()).with_message(format!(
-                    "Unable to disconnect from {}. {}",
-                    sender_address, err
-                ));
+                let err_body = Error::new(req.path())
+                    .with_message(format!("Unable to disconnect from {}.", sender_address))
+                    .with_cause(Error::new(req.path()).with_message(err.to_string()));
                 Err(Response::bad_request(req.id()).body(err_body))
             }
         }
@@ -330,14 +311,8 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
-        let body: DeleteTransport = match dec.decode() {
-            Ok(it) => it,
-            Err(err) => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to decode request: {}", err));
-                return Err(Response::bad_request(req.id()).body(err_body));
-            }
-        };
+        let body: DeleteTransport = dec.decode()?;
+
         info!("Handling request to stop listener: {}", body.address);
 
         let listener_address = match body.address.parse::<SocketAddr>() {
@@ -369,10 +344,9 @@ impl NodeManagerWorker {
         {
             Ok(_) => Ok(Response::ok(req.id())),
             Err(err) => {
-                let err_body = Error::new(req.path()).with_message(format!(
-                    "Unable to stop listener {}. {}",
-                    listener_address, err
-                ));
+                let err_body = Error::new(req.path())
+                    .with_message(format!("Unable to stop listener {}.", listener_address))
+                    .with_cause(Error::new(req.path()).with_message(err.to_string()));
                 Err(Response::bad_request(req.id()).body(err_body))
             }
         }

@@ -133,17 +133,18 @@ impl NodeManagerWorker {
                 }
                 Err(err) => {
                     error!(%remote_address, ?err, "Failed to delete forwarder from node registry");
-                    let err_body = Error::new(req.path()).with_message(format!(
-                        "Failed to delete forwarder at {}. {}",
-                        remote_address, err
-                    ));
+                    let err_body = Error::new(req.path())
+                        .with_message(format!("Failed to delete forwarder at {}.", remote_address))
+                        .with_cause(Error::new(req.path()).with_message(err.to_string()));
                     Err(Response::internal_error(req.id()).body(err_body))
                 }
             }
         } else {
             error!(%remote_address, "Forwarder not found in the node registry");
-            let err_body = Error::new(req.path())
-                .with_message(format!("Forwarder, {}, not found.", remote_address));
+            let err_body = Error::new(req.path()).with_message(format!(
+                "Forwarder with address {} not found.",
+                remote_address
+            ));
             Err(Response::not_found(req.id()).body(err_body))
         }
     }
@@ -163,8 +164,10 @@ impl NodeManagerWorker {
             )
         } else {
             error!(%remote_address, "Forwarder not found in the node registry");
-            let err_body = Error::new(req.path())
-                .with_message(format!("Forwarder, {}, not found.", remote_address));
+            let err_body = Error::new(req.path()).with_message(format!(
+                "Forwarder with address {} not found.",
+                remote_address
+            ));
             Err(Response::not_found(req.id()).body(err_body))
         }
     }
