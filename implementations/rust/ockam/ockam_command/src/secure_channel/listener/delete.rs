@@ -19,7 +19,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct DeleteCommand {
-    /// Address at which the channel listener to be deleted is running (required)
+    /// Address at which the channel listener to be deleted is running
     address: Address,
 
     #[command(flatten)]
