@@ -52,9 +52,6 @@ async fn run_impl(
             // If it exists, proceed
             Ok(_) => {
                 state.delete(&name)?;
-
-                // Print message
-                // Print message
                 opts.terminal
                     .stdout()
                     .plain(fmt_ok!("Vault with name '{name}' has been deleted"))
@@ -84,7 +81,6 @@ async fn run_impl(
                     }
                 }
                 state.delete(&name)?;
-
                 // Print message
                 opts.terminal
                     .stdout()
