@@ -28,7 +28,7 @@ pub struct CreateCommand {
     #[command(flatten)]
     node_opts: TcpConnectionNodeOpts,
 
-    /// The address to connect to (required)
+    /// The address to connect to
     #[arg(id = "to", short, long, value_name = "ADDRESS")]
     pub address: String,
 }
