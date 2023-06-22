@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use miette::miette;
 use crate::node::get_node_name;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::Result;
@@ -49,20 +49,6 @@ pub async fn run_impl(
     if cmd.yes {
         rpc.request(make_api_request(cmd)?).await?;
         rpc.is_ok()?;
-
-        options
-            .terminal
-            .stdout()
-            .plain(fmt_ok!(
-            "Relay with name {} on Node {} has been deleted.",
-            relay_name,
-            node
-        ))
-            .machine(&relay_name)
-            .json(serde_json::json!({ "forwarder": { "name": relay_name,
-                "node": node } }))
-            .write_line()?;
-        Ok(())
     } else {
         match options.terminal.confirm("This will delete the selected Identity. Are you sure?")? {
             ConfirmResult::Yes => {}
@@ -71,29 +57,35 @@ pub async fn run_impl(
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(anyhow!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm").into());
             }
         }
         rpc.request(make_api_request(cmd)?).await?;
         rpc.is_ok()?;
-        options
-            .terminal
-            .stdout()
-            .plain(fmt_ok!(
-            "Relay with name {} on Node {} has been deleted.",
-            relay_name,
-            node
-        ))
-            .machine(&relay_name)
-            .json(serde_json::json!({ "forwarder": { "name": relay_name,
-                "node": node } }))
-            .write_line()?;
-        Ok(())
     }
+
+    // Print message
+    print_req_resp(node, relay_name, options).await;
+    Ok(())
 }
 
 /// Construct a request to delete a relay
 fn make_api_request<'a>(cmd: DeleteCommand) -> Result<RequestBuilder<'a>> {
     let request = Request::delete(format!("/node/forwarder/{}", cmd.relay_name));
     Ok(request)
+}
+
+/// Print the appropriate message after deletion.
+async fn print_req_resp(node: String, relay_name: String, opts: CommandGlobalOpts) {
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!(
+            "Relay with name {} on Node {} has been deleted.",
+            relay_name,
+            node
+        ))
+        .machine(&relay_name)
+        .json(serde_json::json!({ "forwarder": { "name": relay_name,
+                "node": node } }))
+        .write_line().unwrap();
 }

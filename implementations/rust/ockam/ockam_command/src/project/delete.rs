@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use miette::miette;
 use clap::Args;
 use colorful::Colorful;
 
@@ -104,7 +104,7 @@ async fn run_impl(
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(anyhow!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm").into());
             }
         }
         // Try to remove from config, in case the project was removed from the cloud but not from the config file.

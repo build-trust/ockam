@@ -1,5 +1,6 @@
 use clap::Args;
 use miette::miette;
+
 use colorful::Colorful;
 use ockam::Context;
 use ockam_api::cli_state::CliStateError;

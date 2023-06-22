@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use miette::miette;
 use clap::Args;
 use colorful::Colorful;
 
@@ -88,11 +88,10 @@ async fn run_impl(
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(anyhow!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm").into());
             }
         }
     }
-
 
     // log the deletion
     opts.terminal

@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use miette::miette;
 use crate::policy::policy_path;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
@@ -50,7 +50,7 @@ async fn run_impl(
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(anyhow!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm").into());
             }
         }
         let req = Request::delete(policy_path(&cmd.resource, &cmd.action));

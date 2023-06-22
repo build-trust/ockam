@@ -3,7 +3,7 @@ use crate::{
     CommandGlobalOpts, OutputFormat,
 };
 use std::str::FromStr;
-use anyhow::anyhow;
+use miette::miette;
 use colorful::Colorful;
 use serde_json::json;
 use crate::docs;
@@ -168,7 +168,7 @@ async fn rpc(
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(anyhow!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm").into());
             }
         }
         let request = api::delete_secure_channel(address);

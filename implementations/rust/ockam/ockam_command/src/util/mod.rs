@@ -6,21 +6,9 @@ use std::{
     str::FromStr,
 };
 
-<<<<<<< HEAD
-use colorful::Colorful;
-use colorful::core::StrMarker;
-use miette::{miette, ErrReport as Report};
+use miette::{IntoDiagnostic, miette, WrapErr};
 use minicbor::{data::Type, Decode, Decoder, Encode};
-use rustls::internal::msgs::enums::HeartbeatMessageType;
-use miette::Context as _;
-use miette::{miette, IntoDiagnostic};
-=======
-use anyhow::Context as _;
-use miette::{miette, ErrReport as Report, IntoDiagnostic};
-use minicbor::{data::Type, Decode, Decoder, Encode};
->>>>>>> 06da8fa58 (fixed some commits)
 use tracing::{debug, error, trace};
-use ockam_core::api::Request;
 
 use ockam::{
     Address, Context, MessageSendReceiveOptions, NodeBuilder, Route, TcpConnectionOptions,
@@ -28,18 +16,18 @@ use ockam::{
 };
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
-use ockam_api::nodes::{models, NODEMANAGER_ADDR};
+use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::DenyAll;
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
 use ockam_multiaddr::{
-    proto::{self, Node},
-    MultiAddr, Protocol,
+    MultiAddr,
+    proto::{self, Node}, Protocol,
 };
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
 
-use crate::util::output::Output;
-use crate::{node::util::start_embedded_node, EncodeFormat};
+use crate::{EncodeFormat, node::util::start_embedded_node};
 use crate::{CommandGlobalOpts, OutputFormat, Result};
+use crate::util::output::Output;
 
 pub mod api;
 pub mod exitcode;
@@ -635,12 +623,13 @@ pub fn random_name() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ockam_api::cli_state;
+    use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::cli_state::identities::IdentityConfig;
     use ockam_api::cli_state::traits::StateDirTrait;
-    use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+
+    use super::*;
 
     #[test]
     fn test_parse_node_name() {
