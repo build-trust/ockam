@@ -72,7 +72,7 @@ indicatif = "0.17.5"
 indoc = "2.0"
 io-lifetimes = "2"
 is-terminal = "0.4"
-itertools = "0.10"
+itertools = "0.11"
 miette = { version = "5.8.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.19.0", features = ["derive", "alloc", "half"] }
 nix = "0.26"
