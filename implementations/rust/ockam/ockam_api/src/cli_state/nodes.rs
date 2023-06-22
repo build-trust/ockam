@@ -10,6 +10,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_identity::{IdentityIdentifier, LmdbStorage};
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -302,7 +303,7 @@ pub struct NodeSetupConfig {
     /// The field might be missing in previous configuration files, hence it is an Option
     pub authority_node: Option<bool>,
     pub project: Option<ProjectLookup>,
-    transports: Vec<CreateTransportJson>,
+    transports: HashSet<CreateTransportJson>,
     // TODO
     // secure_channels: ?,
     // inlets: ?,
@@ -330,11 +331,14 @@ impl NodeSetupConfig {
         self.transports
             .iter()
             .find(|t| t.tt == TransportType::Tcp && t.tm == TransportMode::Listen)
-            .ok_or(CliStateError::NotFound)
+            .ok_or(CliStateError::ResourceNotFound {
+                resource: "tcp listener".to_string(),
+                name: "default".to_string(),
+            })
     }
 
     pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
-        self.transports.push(transport);
+        self.transports.insert(transport);
         self
     }
 }
@@ -415,7 +419,10 @@ mod traits {
             config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
         ) -> Result<Self::Item> {
             if self.exists(&name) {
-                return Err(CliStateError::AlreadyExists);
+                return Err(CliStateError::AlreadyExists {
+                    resource: Self::default_filename().to_string(),
+                    name: name.as_ref().to_string(),
+                });
             }
             let state = Self::Item::init(self.path(&name), config)?;
             if !self.default_path()?.exists() {
@@ -488,5 +495,48 @@ mod traits {
         fn config(&self) -> &Self::Config {
             &self.config
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::lookup::InternetAddress;
+
+    #[test]
+    fn node_config_setup_transports_no_duplicates() {
+        let mut config = NodeSetupConfig {
+            verbose: 0,
+            authority_node: None,
+            project: None,
+            transports: HashSet::new(),
+        };
+        let transport = CreateTransportJson {
+            tt: TransportType::Tcp,
+            tm: TransportMode::Listen,
+            addr: InternetAddress::V4("127.0.0.1:1020".parse().unwrap()),
+        };
+        config = config.add_transport(transport.clone());
+        assert_eq!(config.transports.len(), 1);
+        assert_eq!(config.transports.iter().next(), Some(&transport));
+
+        config = config.add_transport(transport);
+        assert_eq!(config.transports.len(), 1);
+    }
+
+    #[test]
+    fn node_config_setup_transports_parses_a_json_with_duplicate_entries() {
+        // This test is to ensure backwards compatibility, for versions where transports where stored as a Vec<>
+        let config_json = r#"{
+            "verbose": 0,
+            "authority_node": null,
+            "project": null,
+            "transports": [
+                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}},
+                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}}
+            ]
+        }"#;
+        let config = serde_json::from_str::<NodeSetupConfig>(config_json).unwrap();
+        assert_eq!(config.transports.len(), 1);
     }
 }

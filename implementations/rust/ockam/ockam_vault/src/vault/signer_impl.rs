@@ -25,7 +25,6 @@ impl<T: SecretsStore + SecurityModule> Signer for T {
     }
 }
 
-#[cfg(feature = "vault_tests")]
 #[cfg(test)]
 mod tests {
     use crate as ockam_vault;

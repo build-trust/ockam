@@ -1,11 +1,12 @@
-use anyhow::anyhow;
+use crate::node::util::{delete_all_nodes, delete_node};
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::util::local_cmd;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
-use miette::ErrReport as Report;
+use miette::miette;
+
 use ockam_api::cli_state::{CliStateError, StateDirTrait};
-use crate::{CommandGlobalOpts, docs};
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::node::util::{delete_all_nodes, delete_node};
 use crate::terminal::ConfirmResult;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -38,18 +39,11 @@ pub struct DeleteCommand {
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         initialize_node_if_default(&opts, &self.node_name);
-        if let Err(e) = run_impl(opts, self) {
-            let code = e.code();
-
-            let r: Report = e.into();
-            eprintln!("{:?}", r);
-
-            std::process::exit(code);
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
     let state = &opts.state.nodes;
     let node_name = get_node_name(&opts.state, &cmd.node_name);
     if cmd.all {
@@ -75,9 +69,19 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                 // Else, return the appropriate error
                 Err(err) => match err {
                     CliStateError::NotFound => {
-                        return Err(anyhow!("Node '{}' not found", &node_name).into());
+                        return Err(crate::Error::NotFound {
+                            resource: "Node".to_string(),
+                            resource_name: node_name,
+                        }
+                            .into())
                     }
-                    _ => return Err(err.into()),
+                    e => {
+                        return Err(crate::Error::new_internal_error(
+                            "Unable to delete node:",
+                            &e.to_string(),
+                        )
+                            .into())
+                    }
                 },
             }
         } else {
@@ -91,7 +95,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                             return Ok(());
                         }
                         ConfirmResult::NonTTY => {
-                            return Err(anyhow!("Use --yes to confirm").into());
+                            return Err(miette!("Use --yes to confirm").into());
                         }
                     }
                     //call helper method for deleting single node by name
@@ -110,12 +114,13 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                 // Else, return the appropriate error
                 Err(err) => match err {
                     CliStateError::NotFound => {
-                        return Err(anyhow!("Node '{}' not found", &node_name).into());
+                        return Err(miette!("Node '{}' not found", &node_name).into());
                     }
                     _ => return Err(err.into()),
                 },
             }
         }
     }
+
     Ok(())
 }

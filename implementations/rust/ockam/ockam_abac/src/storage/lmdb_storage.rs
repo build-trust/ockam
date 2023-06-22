@@ -5,7 +5,7 @@ use lmdb::{Cursor, Transaction};
 use minicbor::{Decode, Encode};
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::fmt::Vec;
+use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_identity::LmdbStorage;

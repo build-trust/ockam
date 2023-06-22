@@ -17,11 +17,10 @@ pub trait Signer: Send + Sync {
 }
 
 /// Tests for implementations of the Signer trait
-#[cfg(feature = "vault_tests")]
+#[cfg(test)]
 pub mod tests {
     use super::*;
     use crate::{SecretAttributes, SecretsStore};
-    use ockam_core::KeyId;
 
     /// This test checks that an ephemeral secret can be used to sign data and that we can verify the signature
     pub async fn test_sign_and_verify_ephemeral_secret(vault: &mut (impl Signer + SecretsStore)) {

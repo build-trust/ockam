@@ -1,9 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
 
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::CliStateError;
 
 use crate::terminal::ConfirmResult;
 use crate::util::local_cmd;
@@ -33,31 +31,19 @@ impl DeleteCommand {
 fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
     let DeleteCommand { name } = cmd;
     let state = opts.state.trust_contexts;
-    match state.get(&name) {
-        // If it exists, proceed
-        Ok(_) => {
-            if let ConfirmResult::No = opts.terminal.confirm(&fmt_warn!(
-                "This will delete the trust context with name '{name}'. Do you want to continue?"
-            ))? {
-                // If the user has not confirmed, exit
-                return Ok(());
-            }
-
-            state.delete(&name)?;
-
-            opts.terminal
-                .stdout()
-                .plain(fmt_ok!("Trust context with name '{name}' has been deleted"))
-                .machine(&name)
-                .json(serde_json::json!({ "trust-context": { "name": &name } }))
-                .write_line()?;
-
-            Ok(())
-        }
-        // Else, return the appropriate error
-        Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Trust context '{name}' not found")),
-            _ => Err(err.into()),
-        },
+    state.get(&name)?;
+    if let ConfirmResult::No = opts.terminal.confirm(&fmt_warn!(
+        "This will delete the trust context named '{name}'. Do you wish to proceed?"
+    ))? {
+        // If the user has not confirmed, exit
+        return Ok(());
     }
+    state.delete(&name)?;
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!("The trust context named '{name}' has been deleted"))
+        .machine(&name)
+        .json(serde_json::json!({ "trust-context": { "name": &name } }))
+        .write_line()?;
+    Ok(())
 }

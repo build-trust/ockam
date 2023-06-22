@@ -36,7 +36,7 @@ impl DeleteCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -44,7 +44,7 @@ async fn run_impl(
     _ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let state = opts.state.vaults;
     let name = cmd.name;
     if cmd.yes {
@@ -52,6 +52,9 @@ async fn run_impl(
             // If it exists, proceed
             Ok(_) => {
                 state.delete(&name)?;
+
+                // Print message
+                // Print message
                 opts.terminal
                     .stdout()
                     .plain(fmt_ok!("Vault with name '{name}' has been deleted"))
@@ -81,6 +84,14 @@ async fn run_impl(
                     }
                 }
                 state.delete(&name)?;
+
+                // Print message
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("Vault with name '{name}' has been deleted"))
+                    .machine(&name)
+                    .json(serde_json::json!({ "vault": { "name": &name } }))
+                    .write_line()?;
                 Ok(())
             }
             // Else, return the appropriate error

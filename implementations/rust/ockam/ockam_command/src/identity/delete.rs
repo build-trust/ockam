@@ -1,9 +1,10 @@
 use clap::Args;
+use miette::miette;
+
 use colorful::Colorful;
 use ockam::Context;
 use ockam_api::cli_state::CliStateError;
 use ockam_api::cli_state::traits::StateDirTrait;
-use miette::miette;
 use crate::{CommandGlobalOpts, docs, fmt_ok};
 use crate::terminal::ConfirmResult;
 use crate::util::node_rpc;
@@ -33,7 +34,10 @@ impl DeleteCommand {
     }
 }
 
-async fn run_impl(_ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> crate::Result<()> {
+async fn run_impl(
+    _ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
+) -> miette::Result<()> {
     let state = opts.state;
     let name = cmd.name;
     // Check if --yes flag is provided

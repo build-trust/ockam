@@ -337,7 +337,7 @@ impl OckamCommand {
             Box::new(
                 GraphicalReportHandler::new()
                     .with_cause_chain()
-                    .with_footer(fmt_log!("{}", Version::short().to_string().light_gray()))
+                    .with_footer(Version::short().light_gray().to_string())
                     .with_urls(false),
             )
         }));

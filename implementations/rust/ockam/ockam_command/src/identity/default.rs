@@ -1,9 +1,9 @@
 use crate::util::local_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
+use colorful::Colorful;
 use miette::miette;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::CliStateError;
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
@@ -28,23 +28,22 @@ impl DefaultCommand {
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
     let state = opts.state.identities;
-    // Check if exists
-    match state.get(&cmd.name) {
-        Ok(idt) => {
-            // If it exists, warn the user and exit
-            if state.is_default(idt.name())? {
-                Err(miette!("Identity '{}' is already the default", &cmd.name))
-            }
-            // Otherwise, set it as default
-            else {
-                state.set_default(idt.name())?;
-                println!("Identity '{}' is now the default", &cmd.name,);
-                Ok(())
-            }
-        }
-        Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Identity '{}' not found", &cmd.name)),
-            _ => Err(err.into()),
-        },
+    let idt = state.get(&cmd.name)?;
+    // If it exists, warn the user and exit
+    if state.is_default(idt.name())? {
+        Err(miette!(
+            "The identity '{}' is already the default",
+            &cmd.name
+        ))
+    }
+    // Otherwise, set it as default
+    else {
+        state.set_default(idt.name())?;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("The identity '{}' is now the default", &cmd.name))
+            .machine(&cmd.name)
+            .write_line()?;
+        Ok(())
     }
 }

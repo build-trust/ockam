@@ -522,12 +522,12 @@ pub fn parse_node_name(input: &str) -> Result<String> {
     let maddr = MultiAddr::from_str(input)
         .into_diagnostic()
         .wrap_err("Invalid format for node name argument")?;
-    let err_message = String::from("A MultiAddr node must follow the format /node/<name>");
+    let err_message = String::from("A node MultiAddr must follow the format /node/<name>");
     if let Some(p) = maddr.iter().next() {
         if p.code() == proto::Node::CODE {
             let node_name = p
                 .cast::<proto::Node>()
-                .ok_or(miette!("Failed to parse `node` protocol"))?
+                .ok_or(miette!("Failed to parse the 'node' protocol"))?
                 .to_string();
             if !node_name.is_empty() {
                 return Ok(node_name);
@@ -549,7 +549,7 @@ pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate:
             Node::CODE => {
                 let alias = proto
                     .cast::<Node>()
-                    .ok_or_else(|| miette!("invalid node address protocol"))?;
+                    .ok_or_else(|| miette!("Invalid node address protocol"))?;
                 let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
                 let addr = node_setup.default_tcp_listener()?.maddr()?;
@@ -609,10 +609,13 @@ pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
     data.iter().map(AsRef::as_ref).intersperse(", ").collect()
 }
 
-pub fn bind_to_port_check(address: &SocketAddr) -> bool {
+pub fn bind_to_port_check(address: &SocketAddr) -> Result<()> {
     let port = address.port();
     let ip = address.ip();
-    TcpListener::bind((ip, port)).is_ok()
+    if TcpListener::bind((ip, port)).is_err() {
+        return Err(miette!("Another process is already listening on port {port}!").into());
+    }
+    Ok(())
 }
 
 pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {

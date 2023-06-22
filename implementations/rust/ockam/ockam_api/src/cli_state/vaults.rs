@@ -17,7 +17,10 @@ pub struct VaultsState {
 impl VaultsState {
     pub async fn create_async(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
         if self.exists(name) {
-            return Err(CliStateError::AlreadyExists);
+            return Err(CliStateError::AlreadyExists {
+                resource: Self::default_filename().to_string(),
+                name: name.to_string(),
+            });
         }
         let state = VaultState::new(self.path(name), config)?;
         state.get().await?;

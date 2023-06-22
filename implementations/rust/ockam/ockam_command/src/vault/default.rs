@@ -4,7 +4,6 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::CliStateError;
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
@@ -29,27 +28,20 @@ impl DefaultCommand {
 fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
     let DefaultCommand { name } = cmd;
     let state = opts.state.vaults;
-    match state.get(&name) {
-        Ok(v) => {
-            // If it exists, warn the user and exit
-            if state.is_default(v.name())? {
-                Err(miette!("Vault '{}' is already the default", name))
-            }
-            // Otherwise, set it as default
-            else {
-                state.set_default(v.name())?;
-                opts.terminal
-                    .stdout()
-                    .plain(fmt_ok!("Vault '{name}' is now the default"))
-                    .machine(&name)
-                    .json(serde_json::json!({ "vault": {"name": name} }))
-                    .write_line()?;
-                Ok(())
-            }
-        }
-        Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Vault '{}' not found", name)),
-            _ => Err(err.into()),
-        },
+    let v = state.get(&name)?;
+    // If it exists, warn the user and exit
+    if state.is_default(v.name())? {
+        Err(miette!("The vault '{}' is already the default", name))
+    }
+    // Otherwise, set it as default
+    else {
+        state.set_default(v.name())?;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("The vault '{name}' is now the default"))
+            .machine(&name)
+            .json(serde_json::json!({ "vault": {"name": name} }))
+            .write_line()?;
+        Ok(())
     }
 }

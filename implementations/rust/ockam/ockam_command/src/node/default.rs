@@ -1,8 +1,10 @@
-use crate::node::util::{check_default, set_default_node};
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::local_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
+use colorful::Colorful;
+use miette::miette;
+use ockam_api::cli_state::StateDirTrait;
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
@@ -27,12 +29,16 @@ impl DefaultCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_name);
-    if check_default(&opts, &node_name) {
-        println!("Already set to default node");
+    let name = get_node_name(&opts.state, &cmd.node_name);
+    if opts.state.nodes.is_default(&name)? {
+        Err(miette!("The node '{name}' is already the default"))
     } else {
-        set_default_node(&opts, &node_name)?;
-        println!("Set node '{}' as default", &node_name);
+        opts.state.nodes.set_default(&name)?;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("The node '{name}' is now the default"))
+            .machine(&name)
+            .write_line()?;
+        Ok(())
     }
-    Ok(())
 }

@@ -1,7 +1,7 @@
 use crate::alloc::borrow::ToOwned;
 use crate::alloc::string::ToString;
-use crate::compat::fmt::Vec;
 use crate::compat::string::String;
+use crate::compat::vec::Vec;
 use crate::errcode::{Kind, Origin};
 use crate::{Error, Result};
 #[cfg(feature = "std")]
