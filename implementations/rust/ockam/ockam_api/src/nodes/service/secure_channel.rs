@@ -430,14 +430,7 @@ impl NodeManagerWorker {
             vault,
             identity,
             ..
-        } = match dec.decode() {
-            Ok(it) => it,
-            Err(err) => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to decode request: {}", err));
-                return Err(Response::bad_request(req.id()).body(err_body));
-            }
-        };
+        } = dec.decode()?;
 
         let authorized_identifiers = match authorized_identifiers {
             Some(ids) => {
