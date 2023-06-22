@@ -1,7 +1,6 @@
 use miette::miette;
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
 
 use ockam::Context;
 use ockam_api::nodes::models;
@@ -12,11 +11,6 @@ use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::ConfirmResult;
 use crate::util::parse_node_name;
 use crate::util::{node_rpc, Rpc};
-<<<<<<< HEAD
-=======
-use crate::{docs, node::NodeOpts, CommandGlobalOpts};
-use crate::terminal::ConfirmResult;
->>>>>>> 2efd60a2f (fixed some commits)
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -54,18 +48,6 @@ async fn run_impl(
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
         rpc.request(req).await?;
         rpc.is_ok()?;
-<<<<<<< HEAD
-
-        opts.terminal
-            .stdout()
-            .plain(format!(
-                "{} TCP listener with address '{}' has been deleted.",
-                "✔︎".light_green(),
-                &cmd.address
-            ))
-            .machine(&cmd.address)
-            .json(serde_json::json!({ "tcp-listener": { "address": &cmd.address } }))
-            .write_line()?;
 
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-listener. Are you sure?")? {
@@ -75,17 +57,6 @@ async fn run_impl(
                     .body(models::transport::DeleteTransport::new(cmd.address.clone()));
                 rpc.request(req).await?;
                 rpc.is_ok()?;
-
-                opts.terminal
-                    .stdout()
-                    .plain(format!(
-                        "{} TCP listener with address '{}' has been deleted.",
-                        "✔︎".light_green(),
-                        &cmd.address
-                    ))
-                    .machine(&cmd.address)
-                    .json(serde_json::json!({ "TCP listener": { "address": &cmd.address } }))
-                    .write_line()?;
             }
             ConfirmResult::No => {
                 return Ok(());
@@ -95,51 +66,19 @@ async fn run_impl(
             }
         }
     }
-=======
-
-        opts.terminal
-            .stdout()
-            .plain(format!(
-                "{} TCP listener with address '{}' has been deleted.",
-                "✔︎".light_green(),
-                &cmd.address
-            ))
-            .machine(&cmd.address)
-            .json(serde_json::json!({ "TCP listener": { "address": &cmd.address } }))
-            .write_line()?;
-    } else {
-        match opts.terminal.confirm("This will delete the selected Tcp-listener. Are you sure?")? {
-            ConfirmResult::Yes => {
-                let mut rpc = Rpc::background(&ctx, &opts, &node)?;
-                let req = Request::delete("/node/tcp/listener")
-                    .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-                rpc.request(req).await?;
-                rpc.is_ok()?;
-
-                opts.terminal
-                    .stdout()
-                    .plain(format!(
-                        "{} TCP listener with address '{}' has been deleted.",
-                        "✔︎".light_green(),
-                        &cmd.address
-                    ))
-                    .machine(&cmd.address)
-                    .json(serde_json::json!({ "TCP listener": { "address": &cmd.address } }))
-                    .write_line()?;
-            }
-            ConfirmResult::No => {
-                return Ok(());
-            }
-            ConfirmResult::NonTTY => {
-                return Err(miette!("Use --yes to confirm").into());
-            }
-        }
-    }
-
-<<<<<<< HEAD
->>>>>>> 2efd60a2f (fixed some commits)
-
-=======
->>>>>>> a991e7191 (fixed some commits)
+    // Print message
+    print_req_resp(cmd.address, opts).await;
     Ok(())
+}
+
+/// Print the appropriate message after deletion.
+async fn print_req_resp(node: String, opts: CommandGlobalOpts) {
+    opts.terminal
+        .stdout()
+        .plain(format!(
+            "{} TCP listener {node} has been successfully deleted.",
+            "✔︎".light_green(),
+        ))
+        .json(serde_json::json!({ "tcp-listener": {"node": node } }))
+        .write_line().unwrap();
 }

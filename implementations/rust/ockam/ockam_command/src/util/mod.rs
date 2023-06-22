@@ -142,8 +142,8 @@ impl<'a> Rpc<'a> {
     }
 
     pub async fn request<T>(&mut self, req: RequestBuilder<'_, T>) -> Result<()>
-    where
-        T: Encode<()>,
+        where
+            T: Encode<()>,
     {
         let route = self.route_impl(self.ctx).await?;
         self.buf = self
@@ -162,8 +162,8 @@ impl<'a> Rpc<'a> {
         req: RequestBuilder<'_, T>,
         timeout: Duration,
     ) -> Result<()>
-    where
-        T: Encode<()>,
+        where
+            T: Encode<()>,
     {
         let route = self.route_impl(self.ctx).await?;
         let options = MessageSendReceiveOptions::new().with_timeout(timeout);
@@ -217,8 +217,8 @@ impl<'a> Rpc<'a> {
 
     /// Parse the response body and return it.
     pub fn parse_response<T>(&'a self) -> Result<T>
-    where
-        T: Decode<'a, ()>,
+        where
+            T: Decode<'a, ()>,
     {
         let mut dec = self.parse_response_impl()?;
         match dec.decode() {
@@ -294,24 +294,24 @@ impl<'a> Rpc<'a> {
 
     /// Parse the response body and print it.
     pub fn parse_and_print_response<T>(&'a self) -> Result<T>
-    where
-        T: Decode<'a, ()> + Output + serde::Serialize,
+        where
+            T: Decode<'a, ()> + Output + serde::Serialize,
     {
         let b: T = self.parse_response()?;
         self.print_response(b)
     }
 
     pub fn print_response<T>(&self, b: T) -> Result<T>
-    where
-        T: Output + serde::Serialize,
+        where
+            T: Output + serde::Serialize,
     {
         println_output(b, &self.opts.global_args.output_format)
     }
 }
 
 pub fn println_output<T>(b: T, output_format: &OutputFormat) -> Result<T>
-where
-    T: Output + serde::Serialize,
+    where
+        T: Output + serde::Serialize,
 {
     let o = get_output(&b, output_format)?;
     println!("{o}");
@@ -319,8 +319,8 @@ where
 }
 
 fn get_output<T>(b: &T, output_format: &OutputFormat) -> Result<String>
-where
-    T: Output + serde::Serialize,
+    where
+        T: Output + serde::Serialize,
 {
     let output = match output_format {
         OutputFormat::Plain => b
@@ -335,8 +335,8 @@ where
 }
 
 pub fn print_encodable<T>(e: T, encode_format: &EncodeFormat) -> Result<()>
-where
-    T: Encode<()> + Output,
+    where
+        T: Encode<()> + Output,
 {
     let o = match encode_format {
         EncodeFormat::Plain => e.output().wrap_err("Failed serialize output")?,
@@ -370,10 +370,10 @@ pub fn local_cmd(res: miette::Result<()>) {
 }
 
 pub fn node_rpc<A, F, Fut>(f: F, a: A)
-where
-    A: Send + Sync + 'static,
-    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
+    where
+        A: Send + Sync + 'static,
+        F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
+        Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
     let res = embedded_node(
         |ctx, a| async {
@@ -394,11 +394,11 @@ where
 }
 
 pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
-where
-    A: Send + Sync + 'static,
-    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
-    T: Send + 'static,
+    where
+        A: Send + Sync + 'static,
+        F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
+        Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
+        T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor
@@ -419,11 +419,11 @@ where
 }
 
 pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
-where
-    A: Send + Sync + 'static,
-    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
-    T: Send + 'static,
+    where
+        A: Send + Sync + 'static,
+        F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
+        Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
+        T: Send + 'static,
 {
     let (mut ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor
