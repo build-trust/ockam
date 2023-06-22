@@ -1,10 +1,11 @@
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, node::NodeOpts, CommandGlobalOpts};
 use clap::Args;
+use colorful::Colorful;
 use miette::miette;
 use ockam_api::nodes::models;
-use ockam_core::api::Request;
+use ockam_core::api::{Request};
 use crate::terminal::ConfirmResult;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -36,9 +37,8 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = extract_address_value(&node_name)?;
-
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+
     if cmd.yes {
         let req = Request::delete("/node/tcp/connection")
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
@@ -62,6 +62,19 @@ async fn run_impl(
         }
     }
 
-    println!("Tcp connection `{}` successfully deleted", cmd.address);
+    // Print message
+    print_req_resp(cmd.address, opts).await;
     Ok(())
+}
+
+/// Print the appropriate message after deletion.
+async fn print_req_resp(node: String, opts: CommandGlobalOpts) {
+    opts.terminal
+        .stdout()
+        .plain(format!(
+            "{} TCP connection {node} has been successfully deleted.",
+            "✔︎".light_green(),
+        ))
+        .json(serde_json::json!({ "tcp-connection": {"node": node } }))
+        .write_line().unwrap();
 }

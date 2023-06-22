@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
@@ -11,6 +12,11 @@ use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::ConfirmResult;
 use crate::util::parse_node_name;
 use crate::util::{node_rpc, Rpc};
+<<<<<<< HEAD
+=======
+use crate::{docs, node::NodeOpts, CommandGlobalOpts};
+use crate::terminal::ConfirmResult;
+>>>>>>> 2efd60a2f (fixed some commits)
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -48,6 +54,7 @@ async fn run_impl(
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
         rpc.request(req).await?;
         rpc.is_ok()?;
+<<<<<<< HEAD
 
         opts.terminal
             .stdout()
@@ -88,6 +95,48 @@ async fn run_impl(
             }
         }
     }
+=======
+
+        opts.terminal
+            .stdout()
+            .plain(format!(
+                "{} TCP listener with address '{}' has been deleted.",
+                "✔︎".light_green(),
+                &cmd.address
+            ))
+            .machine(&cmd.address)
+            .json(serde_json::json!({ "tcp-listener": { "address": &cmd.address } }))
+            .write_line()?;
+    } else {
+        match opts.terminal.confirm("This will delete the selected Tcp-listener. Are you sure?")? {
+            ConfirmResult::Yes => {
+                let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+                let req = Request::delete("/node/tcp/listener")
+                    .body(models::transport::DeleteTransport::new(cmd.address.clone()));
+                rpc.request(req).await?;
+                rpc.is_ok()?;
+
+                opts.terminal
+                    .stdout()
+                    .plain(format!(
+                        "{} TCP listener with address '{}' has been deleted.",
+                        "✔︎".light_green(),
+                        &cmd.address
+                    ))
+                    .machine(&cmd.address)
+                    .json(serde_json::json!({ "tcp-listener": { "address": &cmd.address } }))
+                    .write_line()?;
+            }
+            ConfirmResult::No => {
+                return Ok(());
+            }
+            ConfirmResult::NonTTY => {
+                return Err(anyhow!("Use --yes to confirm").into());
+            }
+        }
+    }
+
+>>>>>>> 2efd60a2f (fixed some commits)
 
     Ok(())
 }
