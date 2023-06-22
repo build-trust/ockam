@@ -70,15 +70,15 @@ pub struct CreateCommand {
     #[arg(group = "trusted", long, value_name = "PATH")]
     reload_from_trusted_identities_file: Option<PathBuf>,
 
-    /// Okta: URL used for accessing the Okta API (optional)
+    /// Okta: URL used for accessing the Okta API
     #[arg(long, value_name = "URL", default_value = None)]
     tenant_base_url: Option<String>,
 
-    /// Okta: pem certificate used to access the Okta server (optional)
+    /// Okta: pem certificate used to access the Okta server
     #[arg(long, value_name = "STRING", default_value = None)]
     certificate: Option<String>,
 
-    /// Okta: name of the attributes which can be retrieved from Okta (optional)
+    /// Okta: name of the attributes which can be retrieved from Okta
     #[arg(long, value_name = "ATTRIBUTE_NAMES", default_value = None)]
     attributes: Option<Vec<String>>,
 

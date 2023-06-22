@@ -57,7 +57,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the node (Optional).
+    /// Name of the node.
     #[arg(hide_default_value = true, default_value_t = hex::encode(& random::< [u8; 4] > ()))]
     pub node_name: String,
 
