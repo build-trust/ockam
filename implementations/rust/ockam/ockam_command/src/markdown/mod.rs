@@ -251,33 +251,38 @@ fn generate_arg_markdown(buffer: &mut Vec<u8>, arg: &clap::Arg) -> io::Result<()
         Some([]) => unreachable!(),
         None => arg.get_id().to_string().to_ascii_uppercase(),
     };
+    let (formatted_value_name, optional) = match arg.is_required_set() {
+        true => (format!("<{value_name}>"), ""),
+        false => (format!("[{value_name}]"), " (optional)"),
+    };
 
     match (arg.get_short(), arg.get_long()) {
         (Some(short), Some(long)) => {
             if arg.get_action().takes_values() {
-                write!(buffer, "`-{short}`, `--{long} <{value_name}>`")?
+                write!(buffer, "`-{short}`, `--{long} {formatted_value_name}`")?
             } else {
                 write!(buffer, "`-{short}`, `--{long}`")?
             }
         }
         (Some(short), None) => {
             if arg.get_action().takes_values() {
-                write!(buffer, "`-{short} <{value_name}>`")?
+                write!(buffer, "`-{short} {formatted_value_name}`")?
             } else {
                 write!(buffer, "`-{short}`")?
             }
         }
         (None, Some(long)) => {
             if arg.get_action().takes_values() {
-                write!(buffer, "`--{} <{value_name}>`", long)?
+                write!(buffer, "`--{} {formatted_value_name}`", long)?
             } else {
                 write!(buffer, "`--{}`", long)?
             }
         }
         (None, None) => {
-            write!(buffer, "`<{value_name}>`",)?;
+            write!(buffer, "`{formatted_value_name}`")?;
         }
     }
+    write!(buffer, "{optional}")?;
 
     if let Some(help) = arg.get_help() {
         writeln!(buffer, "<br/>")?;
