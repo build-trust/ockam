@@ -2,6 +2,7 @@
 
 use crate::alloc::string::ToString;
 use crate::compat::borrow::Cow;
+use crate::compat::boxed::Box;
 use crate::compat::rand;
 use crate::compat::string::String;
 use crate::compat::vec::Vec;
