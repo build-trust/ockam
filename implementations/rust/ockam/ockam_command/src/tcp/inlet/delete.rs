@@ -50,15 +50,8 @@ pub async fn run_impl(
 
         rpc.is_ok()?;
 
-        opts.terminal
-            .stdout()
-            .plain(format!(
-                "{} TCP Inlet with alias {alias} on Node {node} has been deleted.",
-                "✔︎".light_green(),
-            ))
-            .machine(&alias)
-            .json(serde_json::json!({ "tcp-inlet": { "alias": alias, "node": node } }))
-            .write_line()?;
+        // print message
+        print_req_resp(alias, node, opts).await;
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-inet. Are you sure?")? {
             ConfirmResult::Yes => {
@@ -93,4 +86,16 @@ fn make_api_request<'a>(cmd: DeleteCommand) -> Result<RequestBuilder<'a>> {
     let alias = cmd.alias;
     let request = Request::delete(format!("/node/inlet/{alias}"));
     Ok(request)
+}
+
+async fn print_req_resp(alias: String, node: String, opts: CommandGlobalOpts) {
+    opts.terminal
+        .stdout()
+        .plain(format!(
+            "{} TCP Inet with alias {alias} on Node {node} has been deleted.",
+            "✔︎".light_green(),
+        ))
+        .machine(&alias)
+        .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node } }))
+        .write_line().unwrap();
 }

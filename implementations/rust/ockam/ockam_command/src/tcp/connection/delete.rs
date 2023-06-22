@@ -71,8 +71,7 @@ async fn run_impl(
 async fn print_req_resp(node: String, opts: CommandGlobalOpts) {
     opts.terminal
         .stdout()
-        .plain(format!(
-            "{} TCP connection {node} has been successfully deleted.",
+        .plain(format!("{} TCP connection {node} has been successfully deleted.",
             "✔︎".light_green(),
         ))
         .json(serde_json::json!({ "tcp-connection": {"node": node } }))
