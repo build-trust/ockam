@@ -1,13 +1,11 @@
+use crate::util::node_rpc;
+use crate::{docs, CommandGlobalOpts, fmt_ok};
 use clap::Args;
 use miette::miette;
-
-use colorful::Colorful;
 use ockam::Context;
-use ockam_api::cli_state::CliStateError;
+use ockam_api::cli_state::{CliStateError};
 use ockam_api::cli_state::traits::StateDirTrait;
-use crate::{CommandGlobalOpts, docs, fmt_ok};
 use crate::terminal::ConfirmResult;
-use crate::util::node_rpc;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -79,7 +77,7 @@ async fn run_impl(
                     .stdout()
                     .plain(fmt_ok!("Identity with name '{name}' has been deleted"))
                     .machine(&name)
-                    .json(serde_json::json!({ "vault": { "name": &name } }))
+                    .json(serde_json::json!({ "Identity": { "name": &name } }))
                     .write_line()?;
                 Ok(())
             }

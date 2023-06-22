@@ -1,13 +1,14 @@
 use clap::Args;
-use miette::miette;
 use colorful::Colorful;
-use ockam::Context;
-use ockam_api::cli_state::CliStateError;
-use ockam_api::cli_state::traits::StateDirTrait;
+use miette::miette;
 
-use crate::{CommandGlobalOpts, docs, fmt_ok};
+use ockam::Context;
+use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_api::cli_state::CliStateError;
+
 use crate::terminal::ConfirmResult;
 use crate::util::node_rpc;
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");

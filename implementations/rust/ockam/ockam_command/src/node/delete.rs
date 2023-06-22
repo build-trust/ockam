@@ -6,7 +6,8 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 
-use ockam_api::cli_state::{CliStateError, StateDirTrait};
+use ockam_api::cli_state::{CliStateError};
+use ockam_api::cli_state::traits::StateDirTrait;
 use crate::terminal::ConfirmResult;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
