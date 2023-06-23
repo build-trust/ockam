@@ -44,7 +44,6 @@ miette = "5.9.0"
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 nix = "0.26"
 once_cell = { version = "1", optional = true, default-features = false }
-openssl = "0.10.55"
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 serde = { version = "1.0.164", features = ["derive"] }
