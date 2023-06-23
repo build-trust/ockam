@@ -93,7 +93,7 @@ impl Instantiator for ProjectInstantiator {
             flow_control_id: Some(sc.flow_control_id().clone()),
             current_multiaddr,
             secure_channel_encryptors: vec![sc.encryptor_address().clone()],
-            tcp_worker: tcp.tcp_worker,
+            tcp_connection: tcp.tcp_connection,
         })
     }
 }

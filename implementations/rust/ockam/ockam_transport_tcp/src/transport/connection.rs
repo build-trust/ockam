@@ -66,8 +66,8 @@ impl TcpTransport {
         ))
     }
 
-    /// Interrupt an active TCP connection given its `Address`
-    pub async fn disconnect(&self, address: &Address) -> Result<()> {
-        self.ctx.stop_worker(address.clone()).await
+    /// Interrupt an active TCP connection given its Sender `Address`
+    pub async fn disconnect(&self, address: impl Into<Address>) -> Result<()> {
+        self.ctx.stop_worker(address.into()).await
     }
 }
