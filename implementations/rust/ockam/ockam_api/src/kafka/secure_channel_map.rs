@@ -348,7 +348,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
 
         inner
             .secure_channels
-            .secure_channel_registry()
+            .registry()
             .get_channel_by_encryptor_address(&encryptor_address)
             .ok_or_else(|| {
                 Error::new(
@@ -365,7 +365,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     ) -> Result<Address> {
         let record = inner
             .secure_channels
-            .secure_channel_registry()
+            .registry()
             .get_channel_by_encryptor_address(producer_encryptor_address);
 
         if let Some(entry) = record {
@@ -400,7 +400,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         let inner = self.inner.lock().await;
         let entry = inner
             .secure_channels
-            .secure_channel_registry()
+            .registry()
             .get_channel_by_decryptor_address(consumer_decryptor_address)
             .ok_or_else(|| {
                 Error::new(

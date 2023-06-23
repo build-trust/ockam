@@ -505,10 +505,13 @@ fn replacer(
             debug!(%previous_addr, %addr, "creating new tcp inlet");
             // The future that recreates the inlet:
             let f = async {
-                let mut node_manager = node_manager_arc.write().await;
+                let node_manager = node_manager_arc.read().await;
                 //stop/delete previous secure channels
                 for encryptor in &previous_connection_instance.secure_channel_encryptors {
-                    let result = node_manager.delete_secure_channel(&ctx, encryptor).await;
+                    let result = node_manager
+                        .secure_channels
+                        .stop_secure_channel(&ctx, encryptor)
+                        .await;
                     if let Err(error) = result {
                         //we can't do much more
                         debug!("cannot delete secure channel `{encryptor}`: {error}");

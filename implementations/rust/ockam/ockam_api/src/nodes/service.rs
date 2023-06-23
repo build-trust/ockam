@@ -606,30 +606,23 @@ impl NodeManagerWorker {
 
             // ==*== Secure channels ==*==
             // TODO: Change to RequestBuilder format
-            (Get, ["node", "secure_channel"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.list_secure_channels(req, &node_manager.registry)
-                    .to_vec()?
-            }
+            (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).await.to_vec()?,
             (Get, ["node", "secure_channel_listener"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.list_secure_channel_listener(req, &node_manager.registry)
-                    .to_vec()?
+                self.list_secure_channel_listener(req).await.to_vec()?
             }
+
             (Post, ["node", "secure_channel"]) => {
                 encode_request_result(self.create_secure_channel(req, dec, ctx).await)?
             }
             (Delete, ["node", "secure_channel"]) => {
                 encode_request_result(self.delete_secure_channel(req, dec, ctx).await)?
             }
-            (Get, ["node", "show_secure_channel"]) => {
-                encode_request_result(self.show_secure_channel(req, dec).await)?
-            }
+            (Get, ["node", "show_secure_channel"]) => self.show_secure_channel(req, dec).await?,
             (Post, ["node", "secure_channel_listener"]) => {
                 encode_request_result(self.create_secure_channel_listener(req, dec, ctx).await)?
             }
             (Delete, ["node", "secure_channel_listener"]) => self
-                .delete_secure_channel_listener(req, dec)
+                .delete_secure_channel_listener(req, dec, ctx)
                 .await?
                 .to_vec()?,
             (Get, ["node", "show_secure_channel_listener"]) => {

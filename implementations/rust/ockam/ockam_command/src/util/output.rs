@@ -219,31 +219,26 @@ impl Output for CreateSecureChannelResponse {
     }
 }
 
-impl Output for ShowSecureChannelResponse<'_> {
+impl Output for ShowSecureChannelResponse {
     fn output(&self) -> Result<String> {
-        let s = match &self.channel {
-            Some(addr) => {
-                format!(
-                    "\n  Secure Channel:\n{} {}\n{} {}\n{} {}",
-                    "  •         At: ".light_magenta(),
-                    route_to_multiaddr(&route![addr.to_string()])
-                        .ok_or(miette!("Invalid Secure Channel Address"))?
-                        .to_string()
-                        .light_yellow(),
-                    "  •         To: ".light_magenta(),
-                    self.route.as_ref().unwrap().light_yellow(),
-                    "  • Authorized: ".light_magenta(),
-                    self.authorized_identifiers
-                        .as_ref()
-                        .unwrap_or(&Vec::<ockam_core::CowStr>::from(["none".into()]))
-                        .iter()
-                        .map(|id| id.light_yellow().to_string())
-                        .collect::<Vec<String>>()
-                        .join("\n\t")
-                )
-            }
-            None => format!("{}", "Channel not found".red()),
-        };
+        let s = format!(
+            "\n  Secure Channel:\n{} {}\n{} {}\n{} {}",
+            "  •         At: ".light_magenta(),
+            route_to_multiaddr(&route![self.channel.to_string()])
+                .ok_or(miette!("Invalid Secure Channel Address"))?
+                .to_string()
+                .light_yellow(),
+            "  •         To: ".light_magenta(),
+            self.route.clone().light_yellow(),
+            "  • Authorized: ".light_magenta(),
+            self.authorized_identifiers
+                .clone()
+                .unwrap_or(vec!["none".to_string()])
+                .into_iter()
+                .map(|id| id.light_yellow().to_string())
+                .collect::<Vec<String>>()
+                .join("\n\t")
+        );
 
         Ok(s)
     }

@@ -1,90 +1,8 @@
 use crate::nodes::service::Alias;
-use ockam::identity::IdentityIdentifier;
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
-use ockam_identity::{SecureChannel, SecureChannelListener};
 use std::fmt::Display;
-
-#[derive(Default)]
-pub(crate) struct SecureChannelRegistry {
-    channels: Vec<SecureChannelInfo>,
-}
-
-impl SecureChannelRegistry {
-    pub fn get_by_addr(&self, addr: &Address) -> Option<&SecureChannelInfo> {
-        self.channels
-            .iter()
-            .find(|&x| x.sc.encryptor_address() == addr)
-    }
-
-    pub fn insert(
-        &mut self,
-        route: Route,
-        sc: SecureChannel,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-    ) {
-        self.channels
-            .push(SecureChannelInfo::new(route, sc, authorized_identifiers))
-    }
-
-    pub fn remove_by_addr(&mut self, addr: &Address) {
-        self.channels.retain(|x| x.sc().encryptor_address() != addr)
-    }
-
-    pub fn list(&self) -> &[SecureChannelInfo] {
-        &self.channels
-    }
-}
-
-#[derive(Clone)]
-pub struct SecureChannelInfo {
-    // Target route of the channel
-    route: Route,
-    sc: SecureChannel,
-    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-}
-
-impl SecureChannelInfo {
-    pub fn new(
-        route: Route,
-        sc: SecureChannel,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-    ) -> Self {
-        Self {
-            route,
-            sc,
-            authorized_identifiers,
-        }
-    }
-
-    pub fn route(&self) -> &Route {
-        &self.route
-    }
-
-    pub fn sc(&self) -> &SecureChannel {
-        &self.sc
-    }
-
-    pub fn authorized_identifiers(&self) -> Option<&Vec<IdentityIdentifier>> {
-        self.authorized_identifiers.as_ref()
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct SecureChannelListenerInfo {
-    listener: SecureChannelListener,
-}
-
-impl SecureChannelListenerInfo {
-    pub fn new(listener: SecureChannelListener) -> Self {
-        Self { listener }
-    }
-
-    pub fn listener(&self) -> &SecureChannelListener {
-        &self.listener
-    }
-}
 
 #[derive(Default)]
 pub(crate) struct IdentityServiceInfo {}
@@ -188,8 +106,6 @@ impl OutletInfo {
 
 #[derive(Default)]
 pub(crate) struct Registry {
-    pub(crate) secure_channels: SecureChannelRegistry,
-    pub(crate) secure_channel_listeners: BTreeMap<Address, SecureChannelListenerInfo>,
     pub(crate) identity_services: BTreeMap<Address, IdentityServiceInfo>,
     pub(crate) authenticated_services: BTreeMap<Address, AuthenticatedServiceInfo>,
     pub(crate) okta_identity_provider_services: BTreeMap<Address, OktaIdentityProviderServiceInfo>,

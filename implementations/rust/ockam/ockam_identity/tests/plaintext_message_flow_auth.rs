@@ -47,7 +47,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
     let channel_to_alice = bob_secure_channels
-        .secure_channel_registry()
+        .registry()
         .get_channel_list()
         .first()
         .unwrap()
@@ -123,9 +123,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
 
-    let channels = bob_secure_channels
-        .secure_channel_registry()
-        .get_channel_list();
+    let channels = bob_secure_channels.registry().get_channel_list();
     assert_eq!(channels.len(), 1);
     let channel_to_alice = channels
         .first()

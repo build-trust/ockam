@@ -38,6 +38,8 @@ pub enum IdentityError {
     CredentialVerificationFailed,
     /// SecureChannel with this address already exists
     DuplicateSecureChannel,
+    /// SecureChannelListener with this address already exists
+    DuplicateSecureChannelListener,
     /// Invalid nonce format
     InvalidNonce,
     /// Nonce overflow

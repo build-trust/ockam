@@ -214,9 +214,13 @@ fn replacer(
             debug!(%prev_route, %addr, "creating new remote forwarder");
 
             let f = async {
-                let mut node_manager = node_manager_arc.write().await;
+                let node_manager = node_manager_arc.read().await;
                 for encryptor in &previous_connection_instance.secure_channel_encryptors {
-                    if let Err(error) = node_manager.delete_secure_channel(&ctx, encryptor).await {
+                    if let Err(error) = node_manager
+                        .secure_channels
+                        .stop_secure_channel(&ctx, encryptor)
+                        .await
+                    {
                         //not much we can do about it
                         debug!("cannot delete secure channel `{encryptor}`: {error}");
                     }

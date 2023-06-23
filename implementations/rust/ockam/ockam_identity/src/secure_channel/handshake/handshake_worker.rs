@@ -20,6 +20,7 @@ use alloc::sync::Arc;
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     AllowAll, Any, Decodable, DenyAll, Error, Mailbox, Mailboxes, OutgoingAccessControl, Route,
     Routed,
@@ -40,6 +41,7 @@ pub(crate) struct HandshakeWorker {
     role: Role,
     remote_route: Option<Route>,
     decryptor_handler: Option<DecryptorHandler>,
+    flow_control_id: FlowControlId,
 }
 
 #[ockam_core::worker]
@@ -154,6 +156,7 @@ impl HandshakeWorker {
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
+        flow_control_id: FlowControlId,
     ) -> Result<()> {
         let vault = to_xx_vault(secure_channels.vault());
         let identities = secure_channels.identities();
@@ -199,6 +202,7 @@ impl HandshakeWorker {
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
+            flow_control_id,
         };
 
         WorkerBuilder::new(worker)
@@ -325,11 +329,18 @@ impl HandshakeWorker {
             &self.addresses.decryptor_remote
         );
 
-        let their_decryptor_address = self
-            .remote_route()?
+        let remote_route = self.remote_route()?;
+
+        let their_decryptor_address = remote_route
             .iter()
             .last()
-            .expect("the remote route should not be empty")
+            .ok_or_else(|| {
+                Error::new(
+                    Origin::KeyExchange,
+                    Kind::Invalid,
+                    "a remote route should not be empty",
+                )
+            })?
             .clone();
 
         let info = SecureChannelRegistryEntry::new(
@@ -341,11 +352,12 @@ impl HandshakeWorker {
             self.identifier.clone(),
             handshake_results.their_identifier,
             their_decryptor_address,
+            remote_route,
+            None, // FIXME
+            self.flow_control_id.clone(),
         );
 
-        self.secure_channels
-            .secure_channel_registry()
-            .register_channel(info)?;
+        self.secure_channels.registry().register_channel(info)?;
 
         Ok(decryptor)
     }

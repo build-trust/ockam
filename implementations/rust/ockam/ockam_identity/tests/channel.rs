@@ -357,7 +357,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let alice_channel_data = secure_channels
-        .secure_channel_registry()
+        .registry()
         .get_channel_by_encryptor_address(alice_channel.encryptor_address())
         .unwrap();
 
@@ -390,7 +390,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     let bob_channel = return_route.next().unwrap().clone();
 
     let bob_channel_data = secure_channels
-        .secure_channel_registry()
+        .registry()
         .get_channel_by_encryptor_address(&bob_channel)
         .unwrap();
 
@@ -452,12 +452,12 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let bob_channel = return_route.next().unwrap().clone();
 
     let alice_channel_data = secure_channels
-        .secure_channel_registry()
+        .registry()
         .get_channel_by_encryptor_address(alice_channel.encryptor_address())
         .unwrap();
 
     let bob_channel_data = secure_channels
-        .secure_channel_registry()
+        .registry()
         .get_channel_by_encryptor_address(&bob_channel)
         .unwrap();
 

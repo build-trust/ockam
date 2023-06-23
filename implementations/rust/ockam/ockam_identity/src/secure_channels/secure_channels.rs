@@ -16,18 +16,15 @@ use ockam_node::Context;
 #[derive(Clone)]
 pub struct SecureChannels {
     pub(crate) identities: Arc<Identities>,
-    pub(crate) secure_channel_registry: SecureChannelRegistry,
+    pub(crate) registry: SecureChannelRegistry,
 }
 
 impl SecureChannels {
     /// Constructor
-    pub(crate) fn new(
-        identities: Arc<Identities>,
-        secure_channel_registry: SecureChannelRegistry,
-    ) -> Self {
+    pub(crate) fn new(identities: Arc<Identities>, registry: SecureChannelRegistry) -> Self {
         Self {
             identities,
-            secure_channel_registry,
+            registry,
         }
     }
 
@@ -42,8 +39,8 @@ impl SecureChannels {
     }
 
     /// Return the secure channel registry
-    pub fn secure_channel_registry(&self) -> SecureChannelRegistry {
-        self.secure_channel_registry.clone()
+    pub fn registry(&self) -> SecureChannelRegistry {
+        self.registry.clone()
     }
 
     /// Create a builder for secure channels
@@ -109,6 +106,7 @@ impl SecureChannels {
             Some(route),
             Some(options.timeout),
             Role::Initiator,
+            options.flow_control_id,
         )
         .await?;
 
@@ -121,7 +119,7 @@ impl SecureChannels {
 
     /// Stop a SecureChannel given an encryptor address
     pub async fn stop_secure_channel(&self, ctx: &Context, channel: &Address) -> Result<()> {
-        if let Some(entry) = self.secure_channel_registry.unregister_channel(channel) {
+        if let Some(entry) = self.registry.unregister_channel(channel) {
             let err1 = ctx
                 .stop_worker(entry.encryptor_messaging_address().clone())
                 .await
@@ -142,5 +140,18 @@ impl SecureChannels {
         }
 
         Ok(())
+    }
+
+    /// Stop a SecureChannelListener given an address
+    pub async fn stop_secure_channel_listener(
+        &self,
+        ctx: &Context,
+        listener: &Address,
+    ) -> Result<()> {
+        if let Some(entry) = self.registry.unregister_listener(listener) {
+            ctx.stop_worker(entry.address().clone()).await
+        } else {
+            Err(IdentityError::SecureChannelNotFound.into())
+        }
     }
 }

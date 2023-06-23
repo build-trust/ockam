@@ -99,7 +99,7 @@ impl SecureChannelListenerInfo {
     #[allow(dead_code)]
     pub fn get_channel(&self) -> Address {
         self.secure_channels
-            .secure_channel_registry()
+            .registry()
             .get_channel_list()
             .first()
             .unwrap()

@@ -2,13 +2,13 @@ use std::time::Duration;
 
 use minicbor::{Decode, Encode};
 
-use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
 use ockam::identity::IdentityIdentifier;
 use ockam_core::compat::borrow::Cow;
 use ockam_core::flow_control::FlowControlId;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{route, Address, CowStr, Result};
+use ockam_identity::{SecureChannelListenerRegistryEntry, SecureChannelRegistryEntry};
 use ockam_multiaddr::MultiAddr;
 use serde::Serialize;
 
@@ -196,12 +196,12 @@ pub struct ShowSecureChannelListenerResponse {
 }
 
 impl ShowSecureChannelListenerResponse {
-    pub(crate) fn new(info: &SecureChannelListenerInfo) -> Self {
+    pub(crate) fn new(info: SecureChannelListenerRegistryEntry) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: info.listener().address().to_string().into(),
-            flow_control_id: info.listener().flow_control_id().clone(),
+            addr: info.address().to_string().into(),
+            flow_control_id: info.flow_control_id().clone(),
         }
     }
 }
@@ -266,30 +266,28 @@ impl<'a> ShowSecureChannelRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ShowSecureChannelResponse<'a> {
+pub struct ShowSecureChannelResponse {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)] tag: TypeTag<4566220>,
-    #[b(1)] pub channel: Option<Cow<'a, str>>,
-    #[b(2)] pub route: Option<Cow<'a, str>>,
-    #[b(3)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
+    #[b(1)] pub channel: String,
+    #[b(2)] pub route: String,
+    #[b(3)] pub authorized_identifiers: Option<Vec<String>>,
     #[n(4)] pub flow_control_id: Option<FlowControlId>,
 }
 
-impl<'a> ShowSecureChannelResponse<'a> {
-    pub fn new(info: Option<&SecureChannelInfo>) -> Self {
+impl ShowSecureChannelResponse {
+    pub fn new(info: SecureChannelRegistryEntry) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            channel: info.map(|info| info.sc().encryptor_address().to_string().into()),
-            route: info.map(|info| info.route().to_string().into()),
+            channel: info.encryptor_messaging_address().to_string(),
+            route: info.route().to_string(),
             authorized_identifiers: info
-                .map(|info| {
-                    info.authorized_identifiers()
-                        .map(|ids| ids.iter().map(|iid| iid.to_string().into()).collect())
-                })
-                .unwrap_or(None),
-            flow_control_id: info.map(|info| info.sc().flow_control_id().clone()),
+                .authorized_identifiers()
+                .clone()
+                .map(|ids| ids.iter().map(|iid| iid.to_string()).collect()),
+            flow_control_id: Some(info.flow_control_id().clone()),
         }
     }
 }

@@ -61,9 +61,7 @@ impl ListCommand {
         };
 
         let to = {
-            let show_route = show_response.route.ok_or(miette!(
-                "Failed to retrieve route from show channel response"
-            ))?;
+            let show_route = show_response.route;
             show_route
                 .split(" => ")
                 .map(|p| {

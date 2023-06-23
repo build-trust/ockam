@@ -3,7 +3,7 @@ use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::options::SecureChannelListenerOptions;
 use crate::secure_channel::role::Role;
 use crate::secure_channels::secure_channels::SecureChannels;
-use crate::{Credential, IdentityIdentifier};
+use crate::{Credential, IdentityIdentifier, SecureChannelListenerRegistryEntry};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -38,9 +38,19 @@ impl IdentityChannelListener {
     ) -> Result<()> {
         options.setup_flow_control_for_listener(ctx.flow_controls(), &address);
 
+        let flow_control_id = options.flow_control_id.clone();
+
         let listener = Self::new(secure_channels.clone(), identifier.clone(), options);
 
-        ctx.start_worker(address, listener).await?;
+        ctx.start_worker(address.clone(), listener).await?;
+
+        let entry = SecureChannelListenerRegistryEntry::new(
+            address.clone(),
+            identifier.clone(),
+            flow_control_id,
+        );
+
+        secure_channels.registry().register_listener(entry)?;
 
         Ok(())
     }
@@ -100,6 +110,7 @@ impl Worker for IdentityChannelListener {
             None,
             None,
             Role::Responder,
+            self.options.flow_control_id.clone(),
         )
         .await?;
 
