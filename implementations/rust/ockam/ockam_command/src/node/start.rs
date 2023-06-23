@@ -75,6 +75,7 @@ async fn run_impl(
         None,               // Credential
         None,               // Trust Context
         None,               // Project Name
+        node_setup.disable_file_logging,
     )?;
 
     // Print node status

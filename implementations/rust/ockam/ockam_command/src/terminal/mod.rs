@@ -202,6 +202,10 @@ impl<W: TerminalWriter> Terminal<W> {
         }
     }
 
+    pub fn is_tty(&self) -> bool {
+        self.stderr.is_tty()
+    }
+
     pub fn default() -> Self {
         Self::new(false, false, false, OutputFormat::Plain)
     }
@@ -331,6 +335,10 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
 
 // Finished mode
 impl<W: TerminalWriter> Terminal<W, ToStdOut> {
+    pub fn is_tty(&self) -> bool {
+        self.stdout.is_tty()
+    }
+
     pub fn plain<T: Display>(mut self, msg: T) -> Self {
         self.mode.output.plain = Some(msg.to_string());
         self
