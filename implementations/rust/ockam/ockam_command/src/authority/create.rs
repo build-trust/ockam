@@ -93,6 +93,9 @@ pub struct CreateCommand {
     /// Authority Identity
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
+
+    #[arg(long)]
+    disable_file_logging: bool,
 }
 
 /// Start an authority node by calling the `ockam` executable with the current command-line
@@ -124,8 +127,17 @@ async fn spawn_background_node(
             0 => "-vv".to_string(),
             v => format!("-{}", "v".repeat(v as usize)),
         },
-        "--no-color".to_string(),
     ];
+
+    if cmd.disable_file_logging {
+        args.push("--disable-file-logging".to_string());
+        if !opts.terminal.is_tty() {
+            args.push("--no-color".to_string());
+        }
+    } else {
+        // We want to disable colors when logging to file
+        args.push("--no-color".to_string());
+    }
 
     if cmd.no_direct_authentication {
         args.push("--no-direct-authentication".to_string());
@@ -177,7 +189,7 @@ async fn spawn_background_node(
     }
     args.push(cmd.node_name.to_string());
 
-    run_ockam(opts, &cmd.node_name, args)
+    run_ockam(opts, &cmd.node_name, args, cmd.disable_file_logging)
 }
 
 impl CreateCommand {
@@ -295,6 +307,7 @@ async fn start_authority_node(
             .config()
             .setup_mut()
             .set_verbose(opts.global_args.verbose)
+            .set_disable_file_logging(cmd.disable_file_logging)
             .set_authority_node()
             .add_transport(
                 CreateTransportJson::new(
