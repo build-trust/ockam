@@ -8,7 +8,7 @@ use ockam_multiaddr::proto::{
     DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
 };
 use ockam_multiaddr::{Code, MultiAddr, Protocol};
-use ockam_transport_tcp::{TcpConnectionOptions, TCP};
+use ockam_transport_tcp::{TcpConnection, TcpConnectionOptions, TCP};
 
 use crate::error::ApiError;
 
@@ -49,7 +49,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
 pub struct MultiAddrToRouteResult {
     pub flow_control_id: Option<FlowControlId>,
     pub route: Route,
-    pub tcp_worker: Option<Address>,
+    pub tcp_connection: Option<TcpConnection>,
 }
 
 pub async fn multiaddr_to_route(
@@ -61,7 +61,7 @@ pub async fn multiaddr_to_route(
 
     let mut flow_control_id = None;
     let mut number_of_tcp_hops = 0;
-    let mut tcp_worker = None;
+    let mut tcp_connection = None;
 
     while let Some(p) = it.next() {
         match p.code() {
@@ -77,16 +77,12 @@ pub async fn multiaddr_to_route(
                 let options = TcpConnectionOptions::new();
                 flow_control_id = Some(options.flow_control_id().clone());
 
-                let addr = tcp
-                    .connect(socket_addr.to_string(), options)
-                    .await
-                    .ok()?
-                    .sender_address()
-                    .clone();
-                tcp_worker = Some(addr.clone());
+                let connection = tcp.connect(socket_addr.to_string(), options).await.ok()?;
 
                 number_of_tcp_hops += 1;
-                rb = rb.append(addr)
+                rb = rb.append(connection.sender_address().clone());
+
+                tcp_connection = Some(connection);
             }
             Ip6::CODE => {
                 if number_of_tcp_hops >= 1 {
@@ -100,16 +96,12 @@ pub async fn multiaddr_to_route(
                 let options = TcpConnectionOptions::new();
                 flow_control_id = Some(options.flow_control_id().clone());
 
-                let addr = tcp
-                    .connect(socket_addr.to_string(), options)
-                    .await
-                    .ok()?
-                    .sender_address()
-                    .clone();
-                tcp_worker = Some(addr.clone());
+                let connection = tcp.connect(socket_addr.to_string(), options).await.ok()?;
 
                 number_of_tcp_hops += 1;
-                rb = rb.append(addr)
+                rb = rb.append(connection.sender_address().clone());
+
+                tcp_connection = Some(connection);
             }
             DnsAddr::CODE => {
                 if number_of_tcp_hops >= 1 {
@@ -124,17 +116,18 @@ pub async fn multiaddr_to_route(
                         let options = TcpConnectionOptions::new();
                         flow_control_id = Some(options.flow_control_id().clone());
 
-                        let addr = tcp
+                        let connection = tcp
                             .connect(format!("{}:{}", &*host, *port), options)
                             .await
-                            .ok()?
-                            .sender_address()
-                            .clone();
-                        tcp_worker = Some(addr.clone());
+                            .ok()?;
 
                         number_of_tcp_hops += 1;
-                        rb = rb.append(addr);
+                        rb = rb.append(connection.sender_address().clone());
+
+                        tcp_connection = Some(connection);
+
                         let _ = it.next();
+
                         continue;
                     }
                 }
@@ -160,7 +153,7 @@ pub async fn multiaddr_to_route(
 
     Some(MultiAddrToRouteResult {
         flow_control_id,
-        tcp_worker,
+        tcp_connection,
         route: rb.into(),
     })
 }

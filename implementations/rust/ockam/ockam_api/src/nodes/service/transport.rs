@@ -294,7 +294,11 @@ impl NodeManagerWorker {
             Err(_err) => body.address.into(),
         };
 
-        match node_manager.tcp_transport.disconnect(&sender_address).await {
+        match node_manager
+            .tcp_transport
+            .disconnect(sender_address.clone())
+            .await
+        {
             Ok(_) => Ok(Response::ok(req.id())),
             Err(err) => {
                 let err_body = Error::new(req.path())

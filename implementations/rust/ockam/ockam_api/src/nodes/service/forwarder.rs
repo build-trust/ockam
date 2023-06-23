@@ -65,17 +65,18 @@ impl NodeManagerWorker {
                 RemoteForwarder::create(ctx, route, options).await
             };
             if result.is_ok() && !connection_instance.transport_route.is_empty() {
+                let ping_route = connection_instance.transport_route.clone();
                 let ctx = Arc::new(ctx.async_try_clone().await?);
                 let repl = replacer(
                     manager,
                     ctx,
-                    connection_instance.clone(),
+                    connection_instance,
                     req.address().clone(),
                     req.alias().map(|a| a.to_string()),
                     req.authorized(),
                 );
                 let node_manager = self.node_manager.write().await;
-                let mut session = Session::new(connection_instance.transport_route);
+                let mut session = Session::new(ping_route);
                 session.set_replacer(repl);
                 node_manager.sessions.lock().unwrap().add(session);
             }
@@ -221,9 +222,13 @@ fn replacer(
                         debug!("cannot delete secure channel `{encryptor}`: {error}");
                     }
                 }
-                if let Some(tcp_worker) = previous_connection_instance.tcp_worker.as_ref() {
-                    if let Err(error) = node_manager.tcp_transport.disconnect(tcp_worker).await {
-                        debug!("cannot stop tcp worker `{tcp_worker}`: {error}");
+                if let Some(tcp_connection) = previous_connection_instance.tcp_connection.as_ref() {
+                    if let Err(error) = node_manager
+                        .tcp_transport
+                        .disconnect(tcp_connection.sender_address().clone())
+                        .await
+                    {
+                        debug!("cannot stop tcp worker `{tcp_connection}`: {error}");
                     }
                 }
                 drop(node_manager);
