@@ -878,7 +878,7 @@ mod schema_test {
     struct Res(Response);
 
     #[derive(Debug, Clone)]
-    struct Er(Error<'static>);
+    struct Er(Error);
 
     impl Arbitrary for Req {
         fn arbitrary(g: &mut Gen) -> Self {
@@ -902,7 +902,7 @@ mod schema_test {
 
     impl Arbitrary for Er {
         fn arbitrary(g: &mut Gen) -> Self {
-            let mut e = Error::new(String::arbitrary(g));
+            let mut e = Error::new(&String::arbitrary(g));
             if bool::arbitrary(g) {
                 e = e.with_method(*g.choose(METHODS).unwrap())
             }
