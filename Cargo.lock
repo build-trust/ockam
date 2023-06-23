@@ -3361,7 +3361,6 @@ dependencies = [
  "ockam_vault",
  "ockam_vault_aws",
  "once_cell",
- "openssl",
  "quickcheck",
  "rand",
  "reqwest",
