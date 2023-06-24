@@ -39,5 +39,5 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> miette::Result<()> {
         .stdout()
         .plain(fmt_ok!("Local Ockam configuration deleted"))
         .write_line()?;
-    Ok(())
+    Ok(())  
 }

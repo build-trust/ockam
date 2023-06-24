@@ -174,6 +174,7 @@ download() {
   local _download_base_url="https://github.com/build-trust/ockam/releases/download"
   local _api='https://api.github.com/repos/build-trust/ockam/releases'
   local _binary_file_name="$1"
+  local _script_base_url="https://raw.githubusercontent.com/build-trust/ockam/develop"
 
   if [ "$2" ]; then
     _version="$2"
@@ -190,8 +191,12 @@ download() {
   curl --proto '=https' --tlsv1.2 --location --silent --fail --show-error --output "$install_path/bin/ockam" "$_url"
   info "Downloaded ockam binary at the specified directory: $install_path/bin/ockam"
 
-  info "Granting permission to execute: chmod u+x $install_path/bin/ockam"
+  info "Downloading scripts"
+  curl --proto '=https' --tlsv1.2 --location --silent --show-error --output "$install_path/install.sh" "$_script_base_url/install.sh"
+
+  info "Granting permission to execute: chmod u+x $install_path/bin/ockam, $install_path/install.sh"
   chmod u+x "$install_path/bin/ockam"
+  chmod u+x "$install_path/install.sh"
 }
 
 create_bin() {
@@ -250,7 +255,7 @@ add_to_path() {
   local _ockam_env="$install_path/env"
 
   sub_path_home "$_ockam_env"
-  local _ockam_env_sub_home="$return_value"
+  local _ockam_env_sub_home="\$OCKAM_HOME/env"
   local _source_cmd=". \"$_ockam_env_sub_home\""
 
   local _rcfiles=('.profile' '.bash_profile' '.bash_login' '.bashrc' '.zshenv')
@@ -276,6 +281,7 @@ add_to_path() {
 
     info "Adding source command to $_rcpath"
     echo >>"$_rcpath"
+    echo "export OCKAM_HOME=\"$install_path\"" >>"$_rcpath"
     echo "$_source_cmd" >>"$_rcpath"
   done
 }
