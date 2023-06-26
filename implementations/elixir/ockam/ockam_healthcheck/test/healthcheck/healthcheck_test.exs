@@ -57,7 +57,7 @@ defmodule Ockam.Healthcheck.Test do
       :telemetry.detach("test_handler")
     end)
 
-    assert :ok = Ockam.Healthcheck.check_target(target, :ping_target, 1000)
+    assert :ok = Ockam.Healthcheck.check_target(target, 1000)
 
     assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 1},
                     %{target: %{name: "target"}}},
@@ -101,7 +101,7 @@ defmodule Ockam.Healthcheck.Test do
       :telemetry.detach("test_handler")
     end)
 
-    assert {:error, :timeout} = Ockam.Healthcheck.check_target(target, :ping_target, 1000)
+    assert {:error, :timeout} = Ockam.Healthcheck.check_target(target, 1000)
 
     assert_receive {:telemetry_event, [:ockam, :healthcheck, :result], %{status: 0},
                     %{target: %{name: "target"}}},
@@ -215,7 +215,7 @@ defmodule Ockam.Healthcheck.Test do
     }
 
     assert {:error, {:secure_channel_error, :key_exchange_timeout}} =
-             Ockam.Healthcheck.check_target(target, :ping_target, 1000)
+             Ockam.Healthcheck.check_target(target, 1000)
   end
 
   test "healthcheck TCP error" do
@@ -229,6 +229,6 @@ defmodule Ockam.Healthcheck.Test do
     }
 
     assert {:error, {:tcp_connection_error, :econnrefused}} =
-             Ockam.Healthcheck.check_target(target, :ping_target, 1000)
+             Ockam.Healthcheck.check_target(target, 1000)
   end
 end
