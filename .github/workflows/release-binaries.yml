@@ -194,31 +194,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [linux_86, linux_armv7, macos, macos_86]
+        build: [linux_arm64, linux_86, linux_armv7, macos_silicon, macos_86]
         include:
-        - build: linux
+        - build: linux_arm64
           os: ubuntu-20.04
-          rust: stable
+          toolchain: stable
           target: aarch64-unknown-linux-musl
           use-cross-build: true
         - build: linux_armv7
           os: ubuntu-20.04
-          rust: stable
+          toolchain: stable
           target: armv7-unknown-linux-musleabihf
           use-cross-build: true
         - build: linux_86
           os: ubuntu-20.04
-          rust: stable
+          toolchain: stable
           target: x86_64-unknown-linux-musl
           use-cross-build: true
-        - build: macos
+        - build: macos_silicon
           os: macos-latest
-          rust: stable
+          toolchain: stable
           target: aarch64-apple-darwin
           use-cross-build: false
         - build: macos_86
           os: macos-latest
-          rust: stable
+          toolchain: stable
           target: x86_64-apple-darwin
           use-cross-build: false
     runs-on: ${{ matrix.os }}
@@ -231,42 +231,12 @@ jobs:
     - name: Echo Link
       run: echo "${{ needs.create_release.outputs.upload_url }}"
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
+    - uses: ./.github/actions/build_binaries
       with:
-        toolchain: ${{ matrix.rust }}
-        profile: minimal
-        override: true
+        use_cross_build: ${{ matrix.use-cross-build }}
+        toolchain: ${{ matrix.toolchain }}
         target: ${{ matrix.target }}
-
-    - name: Install packages (Ubuntu)
-      if: matrix.os == 'ubuntu-20.04'
-      run: |
-        set -x
-        use_cross_build=${{ matrix.use-cross-build }}
-        if [[ $use_cross_build == true ]]; then
-          cargo install --version 0.1.16 cross
-        else
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool musl-tools
-        fi
-
-    ## TODO Cache for faster build for different targets
-
-    - name: Build Binary
-      run: |
-        set -x
-        use_cross_build="${{ matrix.use-cross-build }}"
-
-        if [[ "${{ matrix.target }}" =~ .+-musl(.+)?  ]]; then
-          export RUSTFLAGS='-C target-feature=+crt-static'
-        fi
-
-        if [[ $use_cross_build == "true" ]]; then
-          cross build --bin ockam --target ${{ matrix.target }} --verbose --release
-        else
-          cargo build --bin ockam --target ${{ matrix.target }} --verbose --release
-        fi
+        platform_operating_system: ${{ matrix.os }}
 
     - name: Build archive
       run: |
