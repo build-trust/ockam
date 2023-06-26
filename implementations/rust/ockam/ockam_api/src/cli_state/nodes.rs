@@ -64,14 +64,6 @@ pub struct NodeState {
 }
 
 impl NodeState {
-    fn init(path: PathBuf, config: NodeConfig) -> Result<Self> {
-        std::fs::create_dir_all(&path)?;
-        let state = Self::new(path, config)?;
-        std::fs::File::create(state.stdout_log())?;
-        std::fs::File::create(state.stderr_log())?;
-        Ok(state)
-    }
-
     fn _delete(&self, sikgill: bool) -> Result<()> {
         self.kill_process(sikgill)?;
         std::fs::remove_dir_all(&self.path)?;
@@ -403,8 +395,8 @@ impl NodePaths {
 
 mod traits {
     use super::*;
+    use crate::cli_state::file_stem;
     use crate::cli_state::traits::*;
-    use crate::cli_state::{file_stem, CliStateError};
     use ockam_core::async_trait;
 
     #[async_trait]
@@ -429,30 +421,8 @@ mod traits {
         /// A node contains several files, and the existence of the main directory is not not enough
         /// to determine if a node exists as it could be created but empty.
         fn exists(&self, name: impl AsRef<str>) -> bool {
-            let dir = self.path(&name);
-            if !dir.exists() {
-                return false;
-            }
-            let paths = NodePaths::new(&dir);
+            let paths = NodePaths::new(&self.path(&name));
             paths.setup().exists()
-        }
-
-        fn create(
-            &self,
-            name: impl AsRef<str>,
-            config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
-        ) -> Result<Self::Item> {
-            if self.exists(&name) {
-                return Err(CliStateError::AlreadyExists {
-                    resource: Self::default_filename().to_string(),
-                    name: name.as_ref().to_string(),
-                });
-            }
-            let state = Self::Item::init(self.path(&name), config)?;
-            if !self.default_path()?.exists() {
-                self.set_default(&name)?;
-            }
-            Ok(state)
         }
 
         fn delete(&self, name: impl AsRef<str>) -> Result<()> {
@@ -465,6 +435,7 @@ mod traits {
         type Config = NodeConfig;
 
         fn new(path: PathBuf, mut config: Self::Config) -> Result<Self> {
+            std::fs::create_dir_all(&path)?;
             let paths = NodePaths::new(&path);
             let name = file_stem(&path)?;
             std::fs::write(paths.setup(), serde_json::to_string(config.setup())?)?;

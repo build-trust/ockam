@@ -11,6 +11,7 @@ use std::io::{self, Read};
 use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
+    process,
     str::FromStr,
 };
 use tokio::try_join;
@@ -141,6 +142,17 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
+        if !self.child_process {
+            if let Ok(state) = opts.state.nodes.get(&self.node_name) {
+                if state.is_running() {
+                    eprintln!(
+                        "{:?}",
+                        miette!("Node {} is already running", self.node_name)
+                    );
+                    std::process::exit(exitcode::SOFTWARE);
+                }
+            }
+        }
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
             local_cmd(create_foreground_node(&opts, &self));
@@ -287,6 +299,7 @@ async fn run_foreground_node(
     let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
+    node_state.set_pid(process::id() as i32)?;
     node_state.set_setup(
         &node_state
             .config()
