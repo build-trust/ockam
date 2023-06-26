@@ -361,3 +361,34 @@ jobs:
 
       - name: Prep cache cargo_target before persisting
         uses: ./.github/actions/cargo_target_dir_pre_cache
+
+  ockam_command_cross_build:
+    name: Rust - ockam_command_cross_build
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [linux_armv7, macos_silicon]
+        include:
+        - build: linux_armv7
+          os: ubuntu-20.04
+          toolchain: stable
+          target: armv7-unknown-linux-musleabihf
+          use-cross-build: true
+        - build: macos_silicon
+          os: macos-latest
+          toolchain: stable
+          target: aarch64-apple-darwin
+          use-cross-build: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ github.event.inputs.release_branch }}
+
+      - uses: ./.github/actions/build_binaries
+        with:
+          use_cross_build: ${{ matrix.use-cross-build }}
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.target }}
+          platform_operating_system: ${{ matrix.os }}
