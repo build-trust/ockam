@@ -3,6 +3,8 @@ use clap::crate_version;
 use miette::miette;
 use miette::Context;
 use miette::IntoDiagnostic;
+use std::fs::File;
+use std::io::Write;
 use std::process::Stdio;
 use std::{path::PathBuf, process::Command};
 
@@ -84,14 +86,27 @@ fn delete_binary() -> miette::Result<()> {
         .context("Failed to delete binary")
 }
 
-fn upgrade_binary(version: &str) -> miette::Result<()> {
+async fn upgrade_binary(version: &str) -> miette::Result<()> {
     let ockam_home = get_ockam_home()?;
     let ockam_home = ockam_home.to_str().expect("Invalid ockam home");
-    delete_binary()?;
+
+    let install_script_path = download_install_file().await?;
+    let install_script_path_str = install_script_path
+        .to_str()
+        .expect("Invalid install script path");
+
+    let binary_path = std::env::current_exe().into_diagnostic()?;
+
+    let mut backup_path = PathBuf::from("/tmp");
+    backup_path.push("ockam.bak");
+
+    std::fs::rename(&binary_path, &backup_path)
+        .into_diagnostic()
+        .context("Failed to backup binary")?;
 
     let result = Command::new("sh")
         .args([
-            &format!("{}/install.sh", ockam_home),
+            install_script_path_str,
             "-p",
             ockam_home,
             "-v",
@@ -99,37 +114,59 @@ fn upgrade_binary(version: &str) -> miette::Result<()> {
         ])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .output()
-        .into_diagnostic()
-        .context("Failed to upgrade ockam")?;
+        .output();
 
-    if result.status.success() {
-        Ok(())
-    } else {
-        Err(miette!("Failed to upgrade ockam"))
+    let _ = std::fs::remove_file(&install_script_path);
+
+    match result {
+        Ok(output) => {
+            if output.status.success() {
+                std::fs::remove_file(&backup_path)
+                    .into_diagnostic()
+                    .context("Failed to delete backup binary")
+            } else {
+                std::fs::rename(&backup_path, &binary_path)
+                    .into_diagnostic()
+                    .context("Failed to restore binary")?;
+                Err(miette!("Failed to upgrade ockam"))
+            }
+        }
+        Err(_) => {
+            std::fs::rename(&backup_path, &binary_path)
+                .into_diagnostic()
+                .context("Failed to restore binary")?;
+            Err(miette!("Failed to upgrade ockam"))
+        }
     }
 }
 
-fn upgrade_check() -> miette::Result<()> {
-    // Check to see if everything is okay for us to update the binary.
-    let mut ockam_home = get_ockam_home()?;
-    ockam_home.push("install.sh");
-    if ockam_home.exists() && ockam_home.is_file() {
-        return Ok(());
-    }
-    Err(miette!("Failed to find install.sh, unable to run upgrade"))
+async fn download_install_file() -> Result<PathBuf> {
+    let install_script_url =
+        "https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh";
+    let mut install_path = PathBuf::from("/tmp");
+    install_path.push("install.sh");
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(install_script_url)
+        .send()
+        .await
+        .into_diagnostic()?;
+    let mut file = File::create(&install_path)?;
+    file.write_all(&response.bytes().await.into_diagnostic()?)?;
+
+    Ok(install_path)
 }
 
 /// Upgrade ockam to the specified version.
 /// If ockam was installed with brew, then upgrade with brew.
 /// Otherwise, upgrade with the install script.
-pub fn upgrade(version: &str) -> miette::Result<()> {
+pub async fn upgrade(version: &str) -> miette::Result<()> {
     let current_version = crate_version!();
     if check_installed_with_brew(current_version) {
         return upgrade_with_brew();
     }
-    upgrade_check()?;
-    upgrade_binary(version)
+    upgrade_binary(version).await
 }
 
 fn remove_lines_from_env_files() -> miette::Result<()> {
@@ -148,7 +185,7 @@ fn remove_lines_from_env_files() -> miette::Result<()> {
             let lines = contents.lines();
             let mut new_contents = String::new();
             for line in lines {
-                if !line.contains("OCKAM_HOME") {
+                if !line.contains("OCKAM_HOME") || !line.contains(".ockam") {
                     new_contents.push_str(line);
                     new_contents.push('\n');
                 }
