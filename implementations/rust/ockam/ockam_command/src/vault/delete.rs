@@ -3,7 +3,6 @@ use colorful::Colorful;
 use miette::miette;
 
 use ockam::Context;
-use ockam_api::cli_state::CliStateError;
 use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::{CommandGlobalOpts, docs, fmt_ok};
