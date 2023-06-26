@@ -150,7 +150,7 @@ pub(crate) async fn init_node_state(
         .vault(vault_state.path().clone())
         .identity(identity_state.path().clone())
         .build(&opts.state)?;
-    opts.state.nodes.create(node_name, node_config)?;
+    opts.state.nodes.overwrite(node_name, node_config)?;
 
     info!(name=%node_name, "node state initialized");
     Ok(())
