@@ -87,7 +87,7 @@ pub fn setup_logging(
             .expect("Failed to create rolling file appender");
             let (n, guard) = tracing_appender::non_blocking(r);
             let fmt = tracing_subscriber::fmt::Layer::default()
-                .with_ansi(!no_color)
+                .with_ansi(false)
                 .with_writer(n);
             (subscriber.with(fmt).try_init(), Some(guard))
         }

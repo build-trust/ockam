@@ -73,7 +73,7 @@ use markdown::MarkdownCommand;
 use message::MessageCommand;
 use miette::GraphicalReportHandler;
 use node::NodeCommand;
-use ockam_api::cli_state::{CliState, StateDirTrait};
+use ockam_api::cli_state::CliState;
 use once_cell::sync::Lazy;
 use policy::PolicyCommand;
 use project::ProjectCommand;
@@ -433,9 +433,16 @@ impl OckamCommand {
                 if c.disable_file_logging {
                     return None;
                 }
-                if let Ok(s) = opts.state.nodes.get(&c.node_name) {
-                    return Some(s.stdout_log());
-                }
+                // In the case where a node is explicitly created in foreground mode, we need
+                // to initialize the node directories before we can get the log path.
+                let path = opts
+                    .state
+                    .nodes
+                    .stdout_logs(&c.node_name)
+                    .unwrap_or_else(|_| {
+                        panic!("Failed to initialize logs file for node {}", c.node_name)
+                    });
+                return Some(path);
             }
         }
         None
