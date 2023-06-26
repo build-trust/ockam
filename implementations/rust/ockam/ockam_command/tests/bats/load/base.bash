@@ -93,7 +93,7 @@ to_uppercase() {
 
 # Returns a random name
 random_str() {
-  echo "$(openssl rand -hex 8)"
+  echo "$(openssl rand -hex 4)"
 }
 
 # Returns a random port in the range 49152-65535
