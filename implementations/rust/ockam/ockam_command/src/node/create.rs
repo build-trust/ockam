@@ -140,13 +140,13 @@ impl Default for CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            local_cmd(create_foreground_node(&options, &self));
+            local_cmd(create_foreground_node(&opts, &self));
         } else {
             // Create a new node running in the background (i.e. another, new OS process)
-            node_rpc(run_impl, (options, self))
+            node_rpc(run_impl, (opts, self))
         }
     }
 
@@ -262,7 +262,7 @@ async fn run_foreground_node(
 
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
-    if !cmd.child_process && opts.state.nodes.get(&node_name).is_err() {
+    if !cmd.child_process && !opts.state.nodes.exists(&node_name) {
         init_node_state(
             &opts,
             &node_name,

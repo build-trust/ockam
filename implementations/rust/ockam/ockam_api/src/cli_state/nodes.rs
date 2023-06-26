@@ -22,6 +22,12 @@ pub struct NodesState {
 }
 
 impl NodesState {
+    pub fn stdout_logs(&self, name: &str) -> Result<PathBuf> {
+        let dir = self.path(name);
+        std::fs::create_dir_all(&dir)?;
+        Ok(NodePaths::new(&dir).stdout())
+    }
+
     pub fn delete_sigkill(&self, name: &str, sigkill: bool) -> Result<()> {
         self._delete(name, sigkill)
     }
@@ -418,6 +424,17 @@ mod traits {
 
         fn path(&self, name: impl AsRef<str>) -> PathBuf {
             self.dir().join(name.as_ref())
+        }
+
+        /// A node contains several files, and the existence of the main directory is not not enough
+        /// to determine if a node exists as it could be created but empty.
+        fn exists(&self, name: impl AsRef<str>) -> bool {
+            let dir = self.path(&name);
+            if !dir.exists() {
+                return false;
+            }
+            let paths = NodePaths::new(&dir);
+            paths.setup().exists()
         }
 
         fn create(
