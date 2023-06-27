@@ -23,7 +23,7 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 const IS_NODE_UP_TIME_BETWEEN_CHECKS_MS: usize = 50;
-const IS_NODE_UP_MAX_ATTEMPTS: usize = 20; // 1 second
+const IS_NODE_UP_MAX_ATTEMPTS: usize = 60; // 3 seconds
 
 /// Show the details of a node
 #[derive(Clone, Debug, Args)]
@@ -185,7 +185,7 @@ pub async fn print_query_status(
         let node_port = node_state
             .config()
             .setup()
-            .default_tcp_listener()
+            .api_transport()
             .ok()
             .map(|listener| listener.addr.port());
 
@@ -241,7 +241,7 @@ pub async fn print_query_status(
         let node_port = node_state
             .config()
             .setup()
-            .default_tcp_listener()
+            .api_transport()
             .ok()
             .map(|listener| listener.addr.port());
 
@@ -275,18 +275,18 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
         false => 1,
     };
 
-    let timeout =
+    let retries =
         FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
 
     let cli_state = rpc.opts.state.clone();
     let node_name = rpc.node_name().to_owned();
     let now = std::time::Instant::now();
-    for t in timeout {
+    for timeout_duration in retries {
         let node_state = cli_state.nodes.get(&node_name)?;
         // The node is down if it has not stored its default tcp listener in its state file.
-        if node_state.config().setup().default_tcp_listener().is_err() {
+        if node_state.config().setup().api_transport().is_err() {
             trace!(%node_name, "node has not been initialized");
-            tokio::time::sleep(t).await;
+            tokio::time::sleep(timeout_duration).await;
             continue;
         }
 
@@ -294,7 +294,7 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
         // If node is down, we expect it won't reply and the timeout
         // will trigger the next loop (i.e. no need to sleep here).
         if rpc
-            .request_with_timeout(api::query_status(), t)
+            .request_with_timeout(api::query_status(), timeout_duration)
             .await
             .is_ok()
             && rpc.is_ok().is_ok()
@@ -304,7 +304,7 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
             return Ok(true);
         } else {
             trace!(%node_name, "node is initializing");
-            tokio::time::sleep(t).await;
+            tokio::time::sleep(timeout_duration).await;
         }
     }
     warn!(%node_name, "node didn't respond in time");

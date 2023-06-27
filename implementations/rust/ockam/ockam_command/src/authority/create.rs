@@ -311,7 +311,7 @@ async fn start_authority_node(
             .set_verbose(opts.global_args.verbose)
             .set_disable_file_logging(cmd.disable_file_logging)
             .set_authority_node()
-            .add_transport(
+            .set_api_transport(
                 CreateTransportJson::new(
                     TransportType::Tcp,
                     TransportMode::Listen,

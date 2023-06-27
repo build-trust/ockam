@@ -306,7 +306,7 @@ async fn run_foreground_node(
             .setup_mut()
             .set_verbose(opts.global_args.verbose)
             .set_disable_file_logging(cmd.disable_file_logging)
-            .add_transport(
+            .set_api_transport(
                 CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, bind)
                     .into_diagnostic()?,
             ),
