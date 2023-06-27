@@ -8,7 +8,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error, Message, Result};
 use ockam_vault::{KeyId, PublicKey, SecretAttributes, Signature};
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{info, warn};
 
 /// Interface for a state machine in a key exchange protocol
 #[async_trait]
@@ -192,6 +192,13 @@ impl CommonStateMachine {
         their_identity: &Identity,
         credentials: Vec<Credential>,
     ) -> Result<()> {
+        // store identity for future validation, in case a conflict is found while comparing
+        // to the stored version - we won't proceed any further
+        self.identities
+            .repository()
+            .update_identity(their_identity)
+            .await?;
+
         // check our TrustPolicy
         let trust_info = SecureChannelTrustInfo::new(their_identity.identifier.clone());
         let trusted = self.trust_policy.check(&trust_info).await?;
@@ -216,6 +223,10 @@ impl CommonStateMachine {
                     .await;
 
                 if let Some(_err) = result.err() {
+                    warn!(
+                        "Credential validation failed for {}",
+                        their_identity.identifier
+                    );
                     // TODO: consider the possibility of keep going when a credential validation fails
                     return Err(IdentityError::SecureChannelVerificationFailed.into());
                 }
@@ -224,12 +235,6 @@ impl CommonStateMachine {
             // we cannot validate credentials without a trust context
             return Err(IdentityError::SecureChannelVerificationFailed.into());
         };
-
-        // store identity for future validation
-        self.identities
-            .repository()
-            .update_identity(their_identity)
-            .await?;
 
         Ok(())
     }
