@@ -12,6 +12,8 @@ pub enum XXError {
     InternalVaultError,
     /// A message had an unexpected length.
     MessageLenMismatch,
+    /// Exceeded maximum allowed message length for noise
+    ExceededMaxMessageLen,
     /// Invalid internal state.
     InvalidInternalState,
 }
@@ -23,6 +25,9 @@ impl fmt::Display for XXError {
         match self {
             Self::InternalVaultError => write!(f, "internal vault error"),
             Self::MessageLenMismatch => write!(f, "message length mismatch"),
+            Self::ExceededMaxMessageLen => {
+                write!(f, "exceeded maximum allowed message length for noise")
+            }
             Self::InvalidInternalState => write!(f, "invalid internal state"),
         }
     }
@@ -34,6 +39,7 @@ impl From<XXError> for Error {
         let kind = match err {
             XXError::InternalVaultError => Kind::Internal,
             XXError::MessageLenMismatch => Kind::Misuse,
+            XXError::ExceededMaxMessageLen => Kind::Invalid,
             XXError::InvalidInternalState => Kind::Internal,
         };
 
