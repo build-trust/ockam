@@ -17,7 +17,7 @@ impl GetCommand {
 
 fn run_impl(opts: CommandGlobalOpts, cmd: GetCommand) -> miette::Result<()> {
     let node_state = opts.state.nodes.get(cmd.alias)?;
-    let addr = &node_state.config().setup().default_tcp_listener()?.addr;
+    let addr = &node_state.config().setup().api_transport()?.addr;
     println!("Address: {addr}");
     Ok(())
 }
