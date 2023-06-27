@@ -1,95 +1,27 @@
-use crate::util::installer::upgrade;
+use crate::util::{
+    github::{check_upgrade_sync, get_latest_release_version_sync},
+    installer::get_installer,
+    local_cmd,
+};
 use clap::{crate_version, Args};
 use colorful::Colorful;
 use miette::miette;
-use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_core::env::get_env_with_default;
-use serde::Deserialize;
 use std::env;
-use tokio::runtime::Builder;
 
 use crate::{
-    fmt_info, fmt_ok, node::util::spawn_node, terminal::ConfirmResult, util::node_rpc,
-    CommandGlobalOpts, Result,
+    fmt_info, fmt_ok, node::util::spawn_node, terminal::ConfirmResult, CommandGlobalOpts, Result,
 };
-
-#[derive(Deserialize, Debug)]
-struct UpgradeFile {
-    upgrade_message: Option<String>,
-    upgrade_message_macos: Option<String>,
-}
 
 pub fn check_if_an_upgrade_is_available() {
     if !upgrade_check_is_disabled() {
-        // check if a new version has been released
-        Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(check());
-    }
-}
-
-async fn check() {
-    let url = format!(
-        "https://github.com/build-trust/ockam/releases/download/ockam_v{}/upgrade.json",
-        crate_version!()
-    );
-    let resp = reqwest::get(url).await;
-
-    if let Ok(r) = resp {
-        if let Ok(upgrade) = r.json::<UpgradeFile>().await {
-            if let Some(message) = upgrade.upgrade_message {
-                eprintln!("\n{}", message.yellow());
-
-                if cfg!(target_os = "macos") {
-                    if let Some(message) = upgrade.upgrade_message_macos {
-                        eprintln!("\n{}", message.yellow());
-                    }
-                }
-
-                eprintln!();
-            }
-        }
+        check_upgrade_sync(); // check if a new version has been released
     }
 }
 
 fn upgrade_check_is_disabled() -> bool {
     get_env_with_default("OCKAM_DISABLE_UPGRADE_CHECK", false).unwrap_or(false)
-}
-
-#[derive(Deserialize, Debug)]
-struct LatestRelease {
-    name: String,
-}
-
-impl LatestRelease {
-    fn version(&self) -> Result<&str> {
-        let result = self.name.split_once('v');
-        match result {
-            Some((_, version)) => Ok(version),
-            None => Err(miette!("Failed to get latest release version").into()),
-        }
-    }
-}
-
-async fn get_latest_release_version() -> Result<LatestRelease> {
-    let url = "https://api.github.com/repos/build-trust/ockam/releases/latest";
-    let client = reqwest::Client::new();
-    let resp = client
-        .get(url)
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .header("User-Agent", "Ockam Command")
-        .send()
-        .await;
-    if let Ok(r) = resp {
-        if let Ok(release) = r.json::<LatestRelease>().await {
-            return Ok(release);
-        }
-    }
-    Err(miette!("Failed to get latest release").into())
 }
 
 #[derive(Clone, Debug, Args)]
@@ -107,15 +39,12 @@ pub struct UpgradeCommand {
 
 impl UpgradeCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self));
+        local_cmd(run_impl(opts, self));
     }
 }
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, UpgradeCommand),
-) -> miette::Result<()> {
-    let latest_release = get_latest_release_version().await?;
+fn run_impl(opts: CommandGlobalOpts, cmd: UpgradeCommand) -> miette::Result<()> {
+    let latest_release = get_latest_release_version_sync()?;
     let latest_version = latest_release.version()?;
     let current_version = crate_version!();
 
@@ -165,7 +94,7 @@ async fn run_impl(
         latest_version
     ))?;
 
-    upgrade_ockam(latest_version, &opts).await?;
+    upgrade_ockam(latest_version, &opts)?;
     opts.terminal
         .stdout()
         .plain(fmt_ok!("Ockam upgraded to version {}", latest_version))
@@ -211,6 +140,7 @@ fn start_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> miet
             None,
             None,
             None,
+            false,
         )?;
         opts.terminal
             .write_line(fmt_ok!("Restarted node {}", node_state.name()))?;
@@ -218,9 +148,10 @@ fn start_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> miet
     Ok(())
 }
 
-async fn upgrade_ockam(latest_version: &str, opts: &CommandGlobalOpts) -> miette::Result<()> {
+fn upgrade_ockam(latest_version: &str, opts: &CommandGlobalOpts) -> miette::Result<()> {
     let stopped_nodes_names = stop_all_running_nodes(opts)?;
-    let result = upgrade(latest_version).await;
+    let installer = get_installer();
+    let result = installer.upgrade(latest_version);
     // Try to restart nodes even if upgrade failed
     start_nodes(&stopped_nodes_names, opts)?;
     result

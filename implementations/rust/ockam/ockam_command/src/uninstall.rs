@@ -1,4 +1,5 @@
-use crate::util::installer::uninstall;
+use crate::util::installer::Installer;
+use crate::util::installer::ScriptInstaller;
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
@@ -39,7 +40,8 @@ fn run_impl(opts: CommandGlobalOpts, cmd: UninstallCommand) -> miette::Result<()
     }
     opts.terminal
         .write_line(fmt_info!("Uninstalling ockam..."))?;
-    uninstall()?;
+    let installer = ScriptInstaller::default();
+    installer.uninstall()?;
     opts.terminal
         .stdout()
         .plain(fmt_info!("Uninstalled ockam"))
