@@ -19,6 +19,8 @@ pub const SHA256_SIZE_U32: u32 = 32;
 pub const SHA256_SIZE_USIZE: usize = 32;
 /// The number of bytes in AES-GCM tag
 pub const AES_GCM_TAGSIZE_USIZE: usize = 16;
+/// Maximum allowed noise message size
+pub const NOISE_MAX_MESSAGE_SIZE: usize = 65535;
 
 /// Implementation of a Handshake for the noise protocol
 /// The first members are used in the implementation of some of the protocol steps, for example to
@@ -57,18 +59,26 @@ impl Handshake {
         // output e.pubKey
         let e_pub_key = self.get_public_key(state.e()?).await?;
         state.mix_hash(e_pub_key.data());
-        let mut message = e_pub_key.data().to_vec();
+        let mut message1 = e_pub_key.data().to_vec();
 
         // output message 1 payload
-        message.extend_from_slice(payload);
+        message1.extend_from_slice(payload);
         state.mix_hash(payload);
 
+        if message1.len() > NOISE_MAX_MESSAGE_SIZE {
+            return Err(XXError::ExceededMaxMessageLen.into());
+        }
+
         self.state = state;
-        Ok(message)
+        Ok(message1)
     }
 
     /// Decode the first message to get the ephemeral public key sent by the initiator
     pub(super) async fn decode_message1(&mut self, message: &[u8]) -> Result<Vec<u8>> {
+        if message.len() > NOISE_MAX_MESSAGE_SIZE {
+            return Err(XXError::ExceededMaxMessageLen.into());
+        }
+
         let mut state = self.state.clone();
         // read e.pubKey
         let key = Self::read_key(message)?;
@@ -110,12 +120,21 @@ impl Handshake {
         // encrypt and output payload
         let c = self.encrypt_and_hash(&mut state, payload).await?;
         message2.extend(c);
+
+        if message2.len() > NOISE_MAX_MESSAGE_SIZE {
+            return Err(XXError::ExceededMaxMessageLen.into());
+        }
+
         self.state = state;
         Ok(message2)
     }
 
     /// Decode the second message sent by the responder
     pub(super) async fn decode_message2(&mut self, message: &[u8]) -> Result<Vec<u8>> {
+        if message.len() > NOISE_MAX_MESSAGE_SIZE {
+            return Err(XXError::ExceededMaxMessageLen.into());
+        }
+
         let mut state = self.state.clone();
         // decode re.pubKey
         let re_pub_key = Self::read_key(message)?;
@@ -163,12 +182,20 @@ impl Handshake {
         let c = self.encrypt_and_hash(&mut state, payload).await?;
         message3.extend(c);
 
+        if message3.len() > NOISE_MAX_MESSAGE_SIZE {
+            return Err(XXError::ExceededMaxMessageLen.into());
+        }
+
         self.state = state;
         Ok(message3)
     }
 
     /// Decode the third message sent by the initiator
     pub(super) async fn decode_message3(&mut self, message: &[u8]) -> Result<Vec<u8>> {
+        if message.len() > NOISE_MAX_MESSAGE_SIZE {
+            return Err(XXError::ExceededMaxMessageLen.into());
+        }
+
         let mut state = self.state.clone();
         // decrypt rs key
         let rs_pub_key = Self::read_message3_encrypted_key(message)?;
@@ -286,8 +313,6 @@ impl Handshake {
 
         state.n = 0;
         Ok(())
-
-        //_ => ,
     }
 
     /// Compute the final encryption and decryption keys
@@ -316,6 +341,7 @@ impl Handshake {
     async fn hash_and_decrypt(&self, state: &mut HandshakeState, c: &[u8]) -> Result<Vec<u8>> {
         let mut nonce = [0u8; 12];
         nonce[4..].copy_from_slice(&state.n.to_be_bytes());
+
         let result = self
             .vault
             .aead_aes_gcm_decrypt(state.k()?, c, nonce.as_ref(), &state.h)
