@@ -7,7 +7,6 @@ use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
 use crate::{CommandGlobalOpts, docs, node::NodeOpts};
-use crate::identity::print_delete_msg;
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::ConfirmResult;
 use crate::util::parse_node_name;
@@ -43,13 +42,13 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = parse_node_name(&node_name)?;
-    let entity = "TCP Listener";
     if cmd.yes {
         let mut rpc = Rpc::background(&ctx, &opts, &node)?;
         let req = Request::delete("/node/tcp/listener")
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
         rpc.request(req).await?;
         rpc.is_ok()?;
+
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-listener. Are you sure?")? {
             ConfirmResult::Yes => {
