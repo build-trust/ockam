@@ -4,7 +4,7 @@ use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{
-    bind_to_port_check, find_available_port, node_rpc, parse_node_name, process_nodes_multiaddr,
+    find_available_port, node_rpc, parse_node_name, port_is_free_guard, process_nodes_multiaddr,
     RpcBuilder,
 };
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
@@ -102,8 +102,7 @@ async fn rpc(
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
     let send_req = async {
-        // Check if the port is used by some other services or process
-        bind_to_port_check(&cmd.from)?;
+        port_is_free_guard(&cmd.from)?;
 
         let project = opts
             .state

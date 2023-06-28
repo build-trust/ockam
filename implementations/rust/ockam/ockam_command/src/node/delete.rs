@@ -1,5 +1,5 @@
+use crate::node::get_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
-use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::local_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
@@ -17,7 +17,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct DeleteCommand {
-    /// Name of the node.
+    /// Name of the node to be deleted
     #[arg(group = "nodes")]
     node_name: Option<String>,
 
@@ -32,7 +32,6 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_name);
         local_cmd(run_impl(opts, self));
     }
 }

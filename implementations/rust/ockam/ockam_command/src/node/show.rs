@@ -1,5 +1,5 @@
+use crate::node::get_node_name;
 use crate::node::util::check_default;
-use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 use crate::{docs, CommandGlobalOpts, OutputFormat, Result};
 use clap::Args;
@@ -33,14 +33,13 @@ const IS_NODE_UP_MAX_ATTEMPTS: usize = 60; // 3 seconds
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
-    /// Name of the node.
+    /// Name of the node to retrieve the details from
     #[arg()]
     node_name: Option<String>,
 }
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_name);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -50,7 +49,6 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
-
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, &node_name);

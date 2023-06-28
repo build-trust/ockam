@@ -612,7 +612,7 @@ pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
     data.iter().map(AsRef::as_ref).intersperse(", ").collect()
 }
 
-pub fn bind_to_port_check(address: &SocketAddr) -> Result<()> {
+pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     let port = address.port();
     let ip = address.ip();
     if TcpListener::bind((ip, port)).is_err() {
