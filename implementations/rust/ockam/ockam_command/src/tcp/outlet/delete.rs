@@ -54,8 +54,6 @@ pub async fn run_impl(
 
         rpc.is_ok()?;
 
-        // print message
-        print_req_resp(alias, node, opts).await;
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-outlet. Are you sure?")? {
             ConfirmResult::Yes => {

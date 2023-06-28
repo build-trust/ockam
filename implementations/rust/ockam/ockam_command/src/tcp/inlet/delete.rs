@@ -49,9 +49,6 @@ pub async fn run_impl(
         rpc.request(make_api_request(cmd)?).await?;
 
         rpc.is_ok()?;
-
-        // print message
-        print_req_resp(alias, node, opts).await;
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-inet. Are you sure?")? {
             ConfirmResult::Yes => {

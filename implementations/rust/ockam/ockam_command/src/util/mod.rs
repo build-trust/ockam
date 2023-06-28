@@ -192,7 +192,12 @@ impl<'a> Rpc<'a> {
             RpcMode::Embedded => to,
             RpcMode::Background { ref tcp } => {
                 let node_state = self.opts.state.nodes.get(&self.node_name)?;
-                let port = node_state.config().setup().api_transport()?.addr.port();
+                let port = node_state
+                    .config()
+                    .setup()
+                    .default_tcp_listener()?
+                    .addr
+                    .port();
                 let addr_str = format!("localhost:{port}");
                 let addr = match tcp {
                     None => {
@@ -555,7 +560,7 @@ pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate:
                     .ok_or_else(|| miette!("Invalid node address protocol"))?;
                 let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
-                let addr = node_setup.api_transport()?.maddr()?;
+                let addr = node_setup.default_tcp_listener()?.maddr()?;
                 processed_addr.try_extend(&addr)?
             }
             _ => processed_addr.push_back_value(&proto)?,
@@ -580,7 +585,7 @@ pub fn clean_nodes_multiaddr(
                 let alias = p.cast::<Node>().expect("Failed to parse node name");
                 let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
-                let addr = &node_setup.api_transport()?.addr;
+                let addr = &node_setup.default_tcp_listener()?.addr;
                 match addr {
                     InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
                     InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip()))?,
@@ -714,7 +719,7 @@ mod tests {
         let n_state = cli_state
             .nodes
             .create("n1", NodeConfig::try_from(&cli_state)?)?;
-        n_state.set_setup(&n_state.config().setup_mut().set_api_transport(
+        n_state.set_setup(&n_state.config().setup_mut().add_transport(
             CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, "127.0.0.0:4000")?,
         ))?;
 
