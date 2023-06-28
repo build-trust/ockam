@@ -66,6 +66,7 @@ async fn run_impl(
             }
         }
     }
+
     // Print message
     print_req_resp(cmd.address, opts).await;
     Ok(())
