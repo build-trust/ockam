@@ -6,8 +6,10 @@ use std::{
     str::FromStr,
 };
 
-use miette::{IntoDiagnostic, miette, WrapErr};
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 use minicbor::{data::Type, Decode, Decoder, Encode};
+
 use tracing::{debug, error, trace};
 
 use ockam::{
@@ -19,15 +21,15 @@ use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Error, RequestBuilder, Response, Status};
 use ockam_core::DenyAll;
-use ockam_multiaddr::{
-    MultiAddr,
-    proto::{self, Node}, Protocol,
-};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
+use ockam_multiaddr::{
+    proto::{self, Node},
+    MultiAddr, Protocol,
+};
 
-use crate::{EncodeFormat, node::util::start_embedded_node};
-use crate::{CommandGlobalOpts, OutputFormat, Result};
 use crate::util::output::Output;
+use crate::{node::util::start_embedded_node, EncodeFormat};
+use crate::{CommandGlobalOpts, OutputFormat, Result};
 
 pub mod api;
 pub mod exitcode;
@@ -190,12 +192,7 @@ impl<'a> Rpc<'a> {
             RpcMode::Embedded => to,
             RpcMode::Background { ref tcp } => {
                 let node_state = self.opts.state.nodes.get(&self.node_name)?;
-                let port = node_state
-                    .config()
-                    .setup()
-                    .default_tcp_listener()?
-                    .addr
-                    .port();
+                let port = node_state.config().setup().api_transport()?.addr.port();
                 let addr_str = format!("localhost:{port}");
                 let addr = match tcp {
                     None => {
@@ -558,7 +555,7 @@ pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate:
                     .ok_or_else(|| miette!("Invalid node address protocol"))?;
                 let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
-                let addr = node_setup.default_tcp_listener()?.maddr()?;
+                let addr = node_setup.api_transport()?.maddr()?;
                 processed_addr.try_extend(&addr)?
             }
             _ => processed_addr.push_back_value(&proto)?,
@@ -583,7 +580,7 @@ pub fn clean_nodes_multiaddr(
                 let alias = p.cast::<Node>().expect("Failed to parse node name");
                 let node_state = cli_state.nodes.get(alias.to_string())?;
                 let node_setup = node_state.config().setup();
-                let addr = &node_setup.default_tcp_listener()?.addr;
+                let addr = &node_setup.api_transport()?.addr;
                 match addr {
                     InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
                     InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip()))?,
@@ -635,13 +632,12 @@ pub fn random_name() -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use ockam_api::cli_state;
-    use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::cli_state::identities::IdentityConfig;
     use ockam_api::cli_state::traits::StateDirTrait;
+    use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
-
-    use super::*;
 
     #[test]
     fn test_parse_node_name() {
@@ -718,7 +714,7 @@ mod tests {
         let n_state = cli_state
             .nodes
             .create("n1", NodeConfig::try_from(&cli_state)?)?;
-        n_state.set_setup(&n_state.config().setup_mut().add_transport(
+        n_state.set_setup(&n_state.config().setup_mut().set_api_transport(
             CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, "127.0.0.0:4000")?,
         ))?;
 
