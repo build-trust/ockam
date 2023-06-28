@@ -1,6 +1,5 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
 
 use ockam::Context;
 use ockam_api::nodes::models;
