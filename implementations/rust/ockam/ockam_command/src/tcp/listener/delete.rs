@@ -48,7 +48,6 @@ async fn run_impl(
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
         rpc.request(req).await?;
         rpc.is_ok()?;
-
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-listener. Are you sure?")? {
             ConfirmResult::Yes => {
