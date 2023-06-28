@@ -28,6 +28,7 @@ use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// This struct implements a Worker receiving and sending messages
 /// on one side of the secure channel creation as specified with its role: INITIATOR or REPSONDER
@@ -40,6 +41,7 @@ pub(crate) struct HandshakeWorker {
     role: Role,
     remote_route: Option<Route>,
     decryptor_handler: Option<DecryptorHandler>,
+    flag: Arc<AtomicBool>,
 }
 
 #[ockam_core::worker]
@@ -93,6 +95,7 @@ impl Worker for HandshakeWorker {
             } else {
                 Err(IdentityError::UnknownChannelMsgDestination.into())
             };
+            self.flag.store(true, Ordering::Relaxed);
             return result;
         };
 
@@ -153,6 +156,7 @@ impl HandshakeWorker {
         trust_context: Option<TrustContext>,
         remote_route: Option<Route>,
         timeout: Option<Duration>,
+        flag: Arc<AtomicBool>,
         role: Role,
     ) -> Result<()> {
         let vault = to_xx_vault(secure_channels.vault());
@@ -199,6 +203,7 @@ impl HandshakeWorker {
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
+            flag,
         };
 
         WorkerBuilder::new(worker)

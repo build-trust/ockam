@@ -17,6 +17,7 @@ pub struct SecureChannelOptions {
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) credentials: Vec<Credential>,
     pub(crate) timeout: Duration,
+    pub(crate) maximum_idle_time: Duration
 }
 
 impl fmt::Debug for SecureChannelOptions {
@@ -39,6 +40,7 @@ impl SecureChannelOptions {
             trust_context: None,
             credentials: vec![],
             timeout: DEFAULT_TIMEOUT,
+            maximum_idle_time: Duration::from_secs(60),
         }
     }
 
@@ -75,6 +77,12 @@ impl SecureChannelOptions {
     /// Freshly generated [`FlowControlId`]
     pub fn producer_flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
+    }
+
+    /// Sets a maximum_idle_time different from the default 60 secs
+    pub fn with_maximum_idle_time(mut self, maximum_idle_time: Duration) -> Self {
+        self.maximum_idle_time = maximum_idle_time;
+        self
     }
 }
 

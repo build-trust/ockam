@@ -9,6 +9,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Any, Result, Routed, Worker};
 use ockam_node::Context;
+use core::sync::atomic::AtomicBool;
 
 pub(crate) struct IdentityChannelListener {
     secure_channels: Arc<SecureChannels>,
@@ -87,7 +88,7 @@ impl Worker for IdentityChannelListener {
             .create_access_control(ctx.flow_controls(), flow_control_id);
 
         let credentials = self.get_credentials(ctx).await?;
-
+        let flag  = Arc::new(AtomicBool::new(false));
         HandshakeWorker::create(
             ctx,
             self.secure_channels.clone(),
@@ -99,6 +100,7 @@ impl Worker for IdentityChannelListener {
             self.options.trust_context.clone(),
             None,
             None,
+            flag,
             Role::Responder,
         )
         .await?;
