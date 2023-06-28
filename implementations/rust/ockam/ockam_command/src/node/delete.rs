@@ -1,14 +1,12 @@
-use crate::node::util::{delete_all_nodes, delete_node};
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::local_cmd;
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 
-use ockam_api::cli_state::{CliStateError};
-use ockam_api::cli_state::traits::StateDirTrait;
+use crate::{CommandGlobalOpts, docs};
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::node::util::{delete_all_nodes, delete_node};
 use crate::terminal::ConfirmResult;
+use crate::util::local_cmd;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -45,83 +43,50 @@ impl DeleteCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
-    let state = &opts.state.nodes;
     let node_name = get_node_name(&opts.state, &cmd.node_name);
     if cmd.all {
         delete_all_nodes(opts, cmd.force)?;
     } else {
         if cmd.yes {
-            match state.get(&node_name) {
-                // If it exists, proceed
-                Ok(_) => {
-                    //call helper method for deleting single node By name
-                    delete_node(&opts, &node_name, cmd.force)?;
-                    opts.terminal
-                        .stdout()
-                        .plain(format!(
-                            "{} Node with name '{}' has been deleted.",
-                            "✔︎".light_green(),
-                            &node_name
-                        ))
-                        .machine(&node_name)
-                        .json(serde_json::json!({ "node": { "name": &node_name } }))
-                        .write_line()?;
-                }
-                // Else, return the appropriate error
-                Err(err) => match err {
-                    CliStateError::NotFound => {
-                        return Err(crate::Error::NotFound {
-                            resource: "Node".to_string(),
-                            resource_name: node_name,
-                        }
-                            .into())
-                    }
-                    e => {
-                        return Err(crate::Error::new_internal_error(
-                            "Unable to delete node:",
-                            &e.to_string(),
-                        )
-                            .into())
-                    }
-                },
-            }
+            //call helper method for deleting single node By name
+            delete_node(&opts, &node_name, cmd.force)?;
+            // print message
+            opts.terminal
+                .stdout()
+                .plain(format!(
+                    "{} Node with name '{}' has been deleted.",
+                    "✔︎".light_green(),
+                    &node_name
+                ))
+                .machine(&node_name)
+                .json(serde_json::json!({ "node": { "name": &node_name } }))
+                .write_line()?;
         } else {
-            match state.get(&node_name) {
-                // If it exists, proceed
-                Ok(_) => {
-                    // If yes is not provided make sure using TTY
-                    match opts.terminal.confirm("This will delete the selected Node. Are you sure?")? {
-                        ConfirmResult::Yes => {}
-                        ConfirmResult::No => {
-                            return Ok(());
-                        }
-                        ConfirmResult::NonTTY => {
-                            return Err(miette!("Use --yes to confirm").into());
-                        }
-                    }
-                    //call helper method for deleting single node by name
-                    delete_node(&opts, &node_name, cmd.force)?;
-                    opts.terminal
-                        .stdout()
-                        .plain(format!(
-                            "{} Node with name '{}' has been deleted.",
-                            "✔︎".light_green(),
-                            &node_name
-                        ))
-                        .machine(&node_name)
-                        .json(serde_json::json!({ "node": { "name": &node_name } }))
-                        .write_line()?;
+            // If it exists, proceed
+            // If yes is not provided make sure using TTY
+            match opts.terminal.confirm("This will delete the selected Node. Are you sure?")? {
+                ConfirmResult::Yes => {}
+                ConfirmResult::No => {
+                    return Ok(());
                 }
-                // Else, return the appropriate error
-                Err(err) => match err {
-                    CliStateError::NotFound => {
-                        return Err(miette!("Node '{}' not found", &node_name).into());
-                    }
-                    _ => return Err(err.into()),
-                },
+                ConfirmResult::NonTTY => {
+                    return Err(miette!("Use --yes to confirm").into());
+                }
             }
+            //call helper method for deleting single node by name
+            delete_node(&opts, &node_name, cmd.force)?;
+            // print message
+            opts.terminal
+                .stdout()
+                .plain(format!(
+                    "{} Node with name '{}' has been deleted.",
+                    "✔︎".light_green(),
+                    &node_name
+                ))
+                .machine(&node_name)
+                .json(serde_json::json!({ "node": { "name": &node_name } }))
+                .write_line()?;
         }
     }
-
     Ok(())
 }

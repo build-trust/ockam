@@ -4,11 +4,10 @@ use miette::miette;
 
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::CliStateError;
 
+use crate::{CommandGlobalOpts, docs, fmt_ok};
 use crate::terminal::ConfirmResult;
 use crate::util::node_rpc;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -46,59 +45,33 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> miette::Result<()> {
+    let DeleteCommand { name, yes } = cmd;
     let state = opts.state.vaults;
-    let name = cmd.name;
+    state.get(&name)?;
     if cmd.yes {
-        match state.get(&name) {
-            // If it exists, proceed
-            Ok(_) => {
-                state.delete(&name)?;
-
-                // Print message
-                opts.terminal
-                    .stdout()
-                    .plain(fmt_ok!("Vault with name '{name}' has been deleted"))
-                    .machine(&name)
-                    .json(serde_json::json!({ "vault": { "name": &name } }))
-                    .write_line()?;
-                Ok(())
-            }
-            // Else, return the appropriate error
-            Err(err) => match err {
-                CliStateError::NotFound => Err(miette!("Vault '{}' not found", &name).into()),
-                _ => Err(err.into()),
-            },
-        }
+        // If it exists, proceed
+        state.delete(&name)?;
     } else {
         // If yes is not provided make sure using TTY
-        match state.get(&name) {
-            // If it exists, proceed
-            Ok(_) => {
-                match opts.terminal.confirm("This will delete the selected Vault. Are you sure?")? {
-                    ConfirmResult::Yes => {}
-                    ConfirmResult::No => {
-                        return Ok(());
-                    }
-                    ConfirmResult::NonTTY => {
-                        return Err(miette!("Use --yes to confirm").into());
-                    }
-                }
-                state.delete(&name)?;
-
-                // Print message
-                opts.terminal
-                    .stdout()
-                    .plain(fmt_ok!("Vault with name '{name}' has been deleted"))
-                    .machine(&name)
-                    .json(serde_json::json!({ "vault": { "name": &name } }))
-                    .write_line()?;
-                Ok(())
+        match opts.terminal.confirm("This will delete the Vault named '{name}'. Are you sure?")? {
+            ConfirmResult::Yes => {}
+            ConfirmResult::No => {
+                return Ok(());
             }
-            // Else, return the appropriate error
-            Err(err) => match err {
-                CliStateError::NotFound => Err(miette!("Vault '{}' not found", &name).into()),
-                _ => Err(err.into()),
-            },
+            ConfirmResult::NonTTY => {
+                return Err(miette!("Use --yes to confirm").into());
+            }
         }
+        state.delete(&name)?;
     }
+
+    // Print message
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!("Vault with name '{name}' has been deleted"))
+        .machine(&name)
+        .json(serde_json::json!({ "vault": { "name": &name } }))
+        .write_line()?;
+    Ok(())
 }
+
