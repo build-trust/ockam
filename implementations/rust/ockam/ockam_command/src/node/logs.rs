@@ -1,8 +1,8 @@
-use crate::node::{get_node_name, initialize_node_if_default};
+use crate::node::get_node_name;
+use crate::util::local_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use ockam_api::cli_state::StateDirTrait;
-use std::path::PathBuf;
 
 const LONG_ABOUT: &str = include_str!("./static/logs/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -16,8 +16,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/logs/after_long_help.txt");
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct LogCommand {
-    /// Name of the node.
-    #[arg()]
+    /// Name of the node to retrieve the logs from.
     node_name: Option<String>,
 
     /// Show the standard error log file.
@@ -27,23 +26,21 @@ pub struct LogCommand {
 
 impl LogCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_name);
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: LogCommand) -> crate::Result<PathBuf> {
+fn run_impl(opts: CommandGlobalOpts, cmd: LogCommand) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
     let node_state = opts.state.nodes.get(node_name)?;
-
     let log_file_path = if cmd.show_err {
         node_state.stderr_log()
     } else {
         node_state.stdout_log()
     };
-    println!("{}", log_file_path.display());
-    Ok(log_file_path)
+    opts.terminal
+        .stdout()
+        .machine(log_file_path.display().to_string())
+        .write_line()?;
+    Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, initialize_node_if_default};
+use crate::node::get_node_name;
 use crate::util::local_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
@@ -16,20 +16,18 @@ const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct DefaultCommand {
-    /// Name of the node.
-    #[arg()]
-    node_name: Option<String>,
+    /// Name of the node to set as default
+    node_name: String,
 }
 
 impl DefaultCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_name);
         local_cmd(run_impl(opts, self));
     }
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
-    let name = get_node_name(&opts.state, &cmd.node_name);
+    let name = get_node_name(&opts.state, &Some(cmd.node_name));
     if opts.state.nodes.is_default(&name)? {
         Err(miette!("The node '{name}' is already the default"))
     } else {

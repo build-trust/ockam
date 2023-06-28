@@ -193,7 +193,6 @@ pub fn check_default(opts: &CommandGlobalOpts, name: &str) -> bool {
 #[allow(clippy::too_many_arguments)]
 pub fn spawn_node(
     opts: &CommandGlobalOpts,
-    verbose: u8,
     name: &str,
     address: &str,
     project: Option<&PathBuf>,
@@ -208,7 +207,7 @@ pub fn spawn_node(
     disable_file_logging: bool,
 ) -> miette::Result<()> {
     let mut args = vec![
-        match verbose {
+        match opts.global_args.verbose {
             0 => "-vv".to_string(),
             v => format!("-{}", "v".repeat(v as usize)),
         },

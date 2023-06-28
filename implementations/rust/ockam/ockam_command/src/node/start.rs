@@ -24,8 +24,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt")
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct StartCommand {
-    /// Name of the node.
-    #[arg()]
+    /// Name of the node to be started
     node_name: Option<String>,
 
     #[arg(long, default_value = "false")]
@@ -41,7 +40,7 @@ impl StartCommand {
 
 async fn run_impl(
     ctx: ockam::Context,
-    (opts, cmd): (CommandGlobalOpts, StartCommand),
+    (mut opts, cmd): (CommandGlobalOpts, StartCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
 
@@ -59,22 +58,22 @@ async fn run_impl(
     }
     node_state.kill_process(false)?;
     let node_setup = node_state.config().setup();
+    opts.global_args.verbose = node_setup.verbose;
 
     // Restart node
     spawn_node(
         &opts,
-        node_setup.verbose, // Previously user-chosen verbosity level
-        &node_name,         // The selected node name
+        &node_name,                                    // The selected node name
         &node_setup.api_transport()?.addr.to_string(), // The selected node api address
-        None,               // No project information available
-        None,               // No trusted identities
-        None,               // "
-        None,               // "
-        None,               // Launch config
-        None,               // Authority Identity
-        None,               // Credential
-        None,               // Trust Context
-        None,               // Project Name
+        None,                                          // No project information available
+        None,                                          // No trusted identities
+        None,                                          // "
+        None,                                          // "
+        None,                                          // Launch config
+        None,                                          // Authority Identity
+        None,                                          // Credential
+        None,                                          // Trust Context
+        None,                                          // Project Name
         node_setup.disable_file_logging,
     )?;
 
