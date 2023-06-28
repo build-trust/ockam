@@ -51,11 +51,7 @@ pub async fn run_impl(
         rpc.is_ok()?;
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-inet. Are you sure?")? {
-            ConfirmResult::Yes => {
-                rpc.request(make_api_request(cmd)?).await?;
-
-                rpc.is_ok()?;
-            }
+            ConfirmResult::Yes => { }
             ConfirmResult::No => {
                 return Ok(());
             }
@@ -63,6 +59,9 @@ pub async fn run_impl(
                 return Err(miette!("Use --yes to confirm").into());
             }
         }
+        rpc.request(make_api_request(cmd)?).await?;
+
+        rpc.is_ok()?;
     }
 
     // Print message

@@ -56,12 +56,7 @@ pub async fn run_impl(
 
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-outlet. Are you sure?")? {
-            ConfirmResult::Yes => {
-                let mut rpc = Rpc::background(&ctx, &opts, &node)?;
-                rpc.request(make_api_request(cmd)?).await?;
-
-                rpc.is_ok()?;
-            }
+            ConfirmResult::Yes => {}
             ConfirmResult::No => {
                 return Ok(());
             }
@@ -69,6 +64,10 @@ pub async fn run_impl(
                 return Err(miette!("Use --yes to confirm").into());
             }
         }
+        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+        rpc.request(make_api_request(cmd)?).await?;
+
+        rpc.is_ok()?;
     }
 
     // Print message

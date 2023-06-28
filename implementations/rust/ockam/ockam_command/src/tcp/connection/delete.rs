@@ -48,12 +48,7 @@ async fn run_impl(
     } else {
         // If yes is not provided make sure using TTY
         match opts.terminal.confirm("This will delete the selected TCP-Connection. Are you sure?")? {
-            ConfirmResult::Yes => {
-                let req = Request::delete("/node/tcp/connection")
-                    .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-                rpc.request(req).await?;
-                rpc.is_ok()?;
-            }
+            ConfirmResult::Yes => {}
             ConfirmResult::No => {
                 return Ok(());
             }
@@ -61,29 +56,10 @@ async fn run_impl(
                 return Err(miette!("Use --yes to confirm").into());
             }
         }
-    }
-
-    if cmd.yes {
         let req = Request::delete("/node/tcp/connection")
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
         rpc.request(req).await?;
         rpc.is_ok()?;
-    } else {
-        // If yes is not provided make sure using TTY
-        match opts.terminal.confirm("This will delete the selected TCP-Connection. Are you sure?")? {
-            ConfirmResult::Yes => {
-                let req = Request::delete("/node/tcp/connection")
-                    .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-                rpc.request(req).await?;
-                rpc.is_ok()?;
-            }
-            ConfirmResult::No => {
-                return Ok(());
-            }
-            ConfirmResult::NonTTY => {
-                return Err(miette!("Use --yes to confirm").into());
-            }
-        }
     }
 
     // Print message

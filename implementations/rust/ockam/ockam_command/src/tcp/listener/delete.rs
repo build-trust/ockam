@@ -51,13 +51,7 @@ async fn run_impl(
 
     } else {
         match opts.terminal.confirm("This will delete the selected Tcp-listener. Are you sure?")? {
-            ConfirmResult::Yes => {
-                let mut rpc = Rpc::background(&ctx, &opts, &node)?;
-                let req = Request::delete("/node/tcp/listener")
-                    .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-                rpc.request(req).await?;
-                rpc.is_ok()?;
-            }
+            ConfirmResult::Yes => {}
             ConfirmResult::No => {
                 return Ok(());
             }
@@ -65,6 +59,11 @@ async fn run_impl(
                 return Err(miette!("Use --yes to confirm").into());
             }
         }
+        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+        let req = Request::delete("/node/tcp/listener")
+            .body(models::transport::DeleteTransport::new(cmd.address.clone()));
+        rpc.request(req).await?;
+        rpc.is_ok()?;
     }
 
     // Print message
