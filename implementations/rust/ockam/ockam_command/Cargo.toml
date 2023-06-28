@@ -103,7 +103,7 @@ termcolor = "1.2.0"
 termimad = "0.23"
 thiserror = "1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
-tokio = { version = "1.28.2", features = ["full"] }
+tokio = { version = "1.29.0", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-appender = "0.2.2"
