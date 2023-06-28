@@ -1,6 +1,6 @@
-use miette::miette;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
