@@ -8,12 +8,7 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decoder, Encode};
 use std::io::{self, Read};
-use std::{
-    net::{IpAddr, SocketAddr},
-    path::PathBuf,
-    process,
-    str::FromStr,
-};
+use std::{path::PathBuf, process, str::FromStr};
 use tokio::try_join;
 
 use crate::node::util::{add_project_info_to_node_state, init_node_state, spawn_node};
@@ -22,9 +17,9 @@ use crate::service::config::Config;
 use crate::terminal::OckamColor;
 use crate::util::api::{parse_trust_context, TrustContextConfigBuilder, TrustContextOpts};
 use crate::util::{api, parse_node_name, RpcBuilder};
-use crate::util::{embedded_node_that_is_not_stopped, exitcode, port_is_free_guard};
+use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
-use crate::{docs, identity, util::find_available_port, CommandGlobalOpts, Result};
+use crate::{docs, identity, CommandGlobalOpts, Result};
 use crate::{fmt_log, fmt_ok};
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
@@ -141,7 +136,7 @@ impl Default for CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(mut self, opts: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) {
         if !self.child_process {
             if let Ok(state) = opts.state.nodes.get(&self.node_name) {
                 if state.is_running() {
@@ -153,26 +148,11 @@ impl CreateCommand {
                 }
             }
         }
-        self.overwrite_addr()
-            .into_diagnostic()
-            .wrap_err("TCP Listener address is invalid")
-            .unwrap();
         if self.foreground {
             local_cmd(foreground_mode(opts, self));
         } else {
             node_rpc(background_mode, (opts, self))
         }
-    }
-
-    fn overwrite_addr(&mut self) -> Result<()> {
-        let addr: SocketAddr = if &self.tcp_listener_address == "127.0.0.1:0" {
-            let port = find_available_port().context("failed to acquire available port")?;
-            SocketAddr::new(IpAddr::from_str("127.0.0.1")?, port)
-        } else {
-            self.tcp_listener_address.parse()?
-        };
-        self.tcp_listener_address = addr.to_string();
-        Ok(())
     }
 }
 
@@ -287,10 +267,11 @@ async fn run_foreground_node(
             .build();
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-    let bind = &cmd.tcp_listener_address;
-
     let options = TcpListenerOptions::new();
-    let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
+    let listener = tcp
+        .listen(&cmd.tcp_listener_address, options)
+        .await
+        .into_diagnostic()?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     node_state.set_pid(process::id() as i32)?;
@@ -301,8 +282,12 @@ async fn run_foreground_node(
             .set_verbose(opts.global_args.verbose)
             .set_disable_file_logging(cmd.disable_file_logging)
             .set_api_transport(
-                CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, bind)
-                    .into_diagnostic()?,
+                CreateTransportJson::new(
+                    TransportType::Tcp,
+                    TransportMode::Listen,
+                    &listener.socket_address().to_string(),
+                )
+                .into_diagnostic()?,
             ),
     )?;
 
@@ -477,8 +462,6 @@ where
 }
 
 async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
-    port_is_free_guard(&cmd.tcp_listener_address.parse().into_diagnostic()?)?;
-
     let node_name = parse_node_name(&cmd.node_name)?;
     // Create node state, including the vault and identity if don't exist
     init_node_state(
