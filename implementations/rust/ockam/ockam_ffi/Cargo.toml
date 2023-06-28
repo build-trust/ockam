@@ -32,4 +32,4 @@ futures = { version = "0.3.28" }
 lazy_static = "1.4"
 ockam_core = { path = "../ockam_core", version = "^0.83.0" }
 ockam_vault = { path = "../ockam_vault", version = "^0.79.0" }
-tokio = { version = "1.28", features = ["full"] }
+tokio = { version = "1.29", features = ["full"] }
