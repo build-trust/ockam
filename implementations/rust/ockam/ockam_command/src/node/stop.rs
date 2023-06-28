@@ -1,4 +1,4 @@
-use crate::node::{get_node_name, initialize_node_if_default};
+use crate::node::get_node_name;
 use crate::util::local_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
@@ -19,7 +19,6 @@ const AFTER_LONG_HELP: &str = include_str!("./static/stop/after_long_help.txt");
 )]
 pub struct StopCommand {
     /// Name of the node.
-    #[arg()]
     node_name: Option<String>,
     /// Whether to use the SIGTERM or SIGKILL signal to stop the node
     #[arg(short, long)]
@@ -28,7 +27,6 @@ pub struct StopCommand {
 
 impl StopCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_name);
         local_cmd(run_impl(opts, self));
     }
 }

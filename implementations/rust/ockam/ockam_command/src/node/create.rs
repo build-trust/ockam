@@ -22,7 +22,7 @@ use crate::service::config::Config;
 use crate::terminal::OckamColor;
 use crate::util::api::{parse_trust_context, TrustContextConfigBuilder, TrustContextOpts};
 use crate::util::{api, parse_node_name, RpcBuilder};
-use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
+use crate::util::{embedded_node_that_is_not_stopped, exitcode, port_is_free_guard};
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, identity, util::find_available_port, CommandGlobalOpts, Result};
 use crate::{fmt_log, fmt_ok};
@@ -141,7 +141,7 @@ impl Default for CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
+    pub fn run(mut self, opts: CommandGlobalOpts) {
         if !self.child_process {
             if let Ok(state) = opts.state.nodes.get(&self.node_name) {
                 if state.is_running() {
@@ -153,27 +153,26 @@ impl CreateCommand {
                 }
             }
         }
+        self.overwrite_addr()
+            .into_diagnostic()
+            .wrap_err("TCP Listener address is invalid")
+            .unwrap();
         if self.foreground {
-            // Create a new node in the foreground (i.e. in this OS process)
-            local_cmd(create_foreground_node(&opts, &self));
+            local_cmd(foreground_mode(opts, self));
         } else {
-            // Create a new node running in the background (i.e. another, new OS process)
-            node_rpc(run_impl, (opts, self))
+            node_rpc(background_mode, (opts, self))
         }
     }
 
-    fn overwrite_addr(&self) -> Result<Self> {
-        let cmd = self.clone();
-        let addr: SocketAddr = if &cmd.tcp_listener_address == "127.0.0.1:0" {
+    fn overwrite_addr(&mut self) -> Result<()> {
+        let addr: SocketAddr = if &self.tcp_listener_address == "127.0.0.1:0" {
             let port = find_available_port().context("failed to acquire available port")?;
             SocketAddr::new(IpAddr::from_str("127.0.0.1")?, port)
         } else {
-            cmd.tcp_listener_address.parse()?
+            self.tcp_listener_address.parse()?
         };
-        Ok(Self {
-            tcp_listener_address: addr.to_string(),
-            ..cmd
-        })
+        self.tcp_listener_address = addr.to_string();
+        Ok(())
     }
 }
 
@@ -189,7 +188,8 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
     }
 }
 
-pub(crate) async fn run_impl(
+// Create a new node running in the background (i.e. another, new OS process)
+pub(crate) async fn background_mode(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
@@ -206,20 +206,14 @@ pub(crate) async fn run_impl(
             "Cannot create a background node from background node"
         ));
     }
-    // Print node status
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-    let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
+
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        // Spawn node in another, new process
-        let cmd = cmd.overwrite_addr()?;
-        let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
-
-        spawn_background_node(&opts, &cmd, addr).await?;
-
+        let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
+        let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
+        spawn_background_node(&opts, cmd).await?;
         let is_node_up = is_node_up(&mut rpc, true).await?;
-
         *is_finished.lock().await = true;
         Ok(is_node_up)
     };
@@ -254,9 +248,9 @@ pub(crate) async fn run_impl(
     Ok(())
 }
 
-fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> miette::Result<()> {
-    let cmd = cmd.overwrite_addr()?;
-    embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd))?;
+// Create a new node in the foreground (i.e. in this OS process)
+fn foreground_mode(opts: CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
+    embedded_node_that_is_not_stopped(run_foreground_node, (opts, cmd))?;
     Ok(())
 }
 
@@ -482,16 +476,10 @@ where
     Ok(())
 }
 
-async fn spawn_background_node(
-    opts: &CommandGlobalOpts,
-    cmd: &CreateCommand,
-    addr: SocketAddr,
-) -> miette::Result<()> {
-    // Check if the port is used by some other services or process
-    bind_to_port_check(&addr)?;
+async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
+    port_is_free_guard(&cmd.tcp_listener_address.parse().into_diagnostic()?)?;
 
     let node_name = parse_node_name(&cmd.node_name)?;
-
     // Create node state, including the vault and identity if don't exist
     init_node_state(
         opts,
@@ -513,7 +501,6 @@ async fn spawn_background_node(
     // CLI in foreground mode to start the newly created node
     spawn_node(
         opts,
-        opts.global_args.verbose,
         &node_name,
         &cmd.tcp_listener_address,
         cmd.trust_context_opts.project_path.as_ref(),
