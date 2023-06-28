@@ -71,11 +71,11 @@ pub struct CreateCommand {
 
     /// TCP listener address
     #[arg(
-        display_order = 900,
-        long,
-        short,
-        id = "SOCKET_ADDRESS",
-        default_value = "127.0.0.1:0"
+    display_order = 900,
+    long,
+    short,
+    id = "SOCKET_ADDRESS",
+    default_value = "127.0.0.1:0"
     )]
     pub tcp_listener_address: String,
 
@@ -265,7 +265,7 @@ async fn run_foreground_node(
             cmd.vault.as_deref(),
             cmd.identity.as_deref(),
         )
-        .await?;
+            .await?;
     }
 
     add_project_info_to_node_state(&node_name, &opts, &cmd.trust_context_opts).await?;
@@ -312,8 +312,8 @@ async fn run_foreground_node(
         ),
         NodeManagerTrustOptions::new(trust_context_config),
     )
-    .await
-    .into_diagnostic()?;
+        .await
+        .into_diagnostic()?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
     ctx.flow_controls()
@@ -350,7 +350,7 @@ async fn run_foreground_node(
             .terminal
             .write_line(format!("{} Ctrl+C signal received", "!".light_yellow()).as_str());
     })
-    .expect("Error setting Ctrl+C handler");
+        .expect("Error setting Ctrl+C handler");
 
     // Spawn a thread to monitor STDIN for EOF
     if cmd.exit_on_eof {
@@ -447,8 +447,8 @@ async fn start_services(ctx: &Context, cfg: &Config) -> miette::Result<()> {
 }
 
 async fn send_req_to_node_manager<T>(ctx: &Context, req: RequestBuilder<'_, T>) -> Result<()>
-where
-    T: Encode<()>,
+    where
+        T: Encode<()>,
 {
     let buf: Vec<u8> = ctx
         .send_and_receive(NODEMANAGER_ADDR, req.to_vec()?)
@@ -478,7 +478,7 @@ async fn spawn_background_node(
         cmd.vault.as_deref(),
         cmd.identity.as_deref(),
     )
-    .await?;
+        .await?;
 
     let trust_context_path = match cmd.trust_context_opts.trust_context.clone() {
         Some(tc) => {

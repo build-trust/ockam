@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 
-use crate::{CommandGlobalOpts, docs};
+use crate::{CommandGlobalOpts, docs, fmt_ok};
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::node::util::{delete_all_nodes, delete_node};
 use crate::terminal::ConfirmResult;
