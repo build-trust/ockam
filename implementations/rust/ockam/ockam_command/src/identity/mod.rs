@@ -16,6 +16,7 @@ use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, PARSER_LOGS};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliState;
+
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
 /// Manage identities
