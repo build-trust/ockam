@@ -59,7 +59,7 @@ jobs:
     name: Gradle - list_gradle_tasks
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-10.15, windows-2019]
+        os: [ubuntu-20.04, macos-12, windows-2019]
         java: [8, 11, 16, 17]
     runs-on: ${{ matrix.os }}
     steps:
