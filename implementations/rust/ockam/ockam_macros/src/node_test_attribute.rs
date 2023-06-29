@@ -12,7 +12,7 @@ use crate::internals::{ast, ast::FnVariable, check, ctx::Context, symbol::*};
 ///
 /// The following code:
 /// ```ignore
-/// #[ockam::test)]
+/// #[ockam::test]
 /// async fn my_test(ctx: &mut ockam::Context) -> ockam::Result<()> {
 ///     ctx.stop().await
 /// }
