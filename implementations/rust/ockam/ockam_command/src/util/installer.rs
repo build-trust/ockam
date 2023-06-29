@@ -1,19 +1,19 @@
 use crate::error::Result;
-use clap::crate_version;
 use miette::miette;
 use miette::Context;
 use miette::IntoDiagnostic;
+use std::fs;
 use std::process::Stdio;
 use std::{path::PathBuf, process::Command};
 
 use crate::util::github::download_install_file_sync;
 
 /// Get the appropriate installer to upgrade and uninstall ockam.
-pub fn get_installer() -> Box<dyn Installer> {
-    if installed_with_brew() {
-        return Box::new(BrewInstaller::default());
+pub fn get_installer() -> Result<Box<dyn Installer>> {
+    if installed_with_brew()? {
+        return Ok(Box::<BrewInstaller>::default());
     }
-    Box::new(ScriptInstaller::default())
+    Ok(Box::<ScriptInstaller>::default())
 }
 
 pub trait Installer {
@@ -49,24 +49,30 @@ pub trait Installer {
     }
 }
 
-fn installed_with_brew() -> bool {
-    // if brew finds ockam and it is the same version as the current version, then
-    // ockam has been installed with brew and so we upgrade with brew
-    let current_version = crate_version!();
-    let brew_result = Command::new("brew")
-        .args(["ls", "--versions", "ockam"])
-        .output();
-    if let Ok(output) = brew_result {
-        if !output.stdout.is_empty() {
-            let brew_version_result = String::from_utf8(output.stdout);
-            if let Ok(brew_version) = brew_version_result {
-                if brew_version.trim().contains(current_version) {
-                    return true;
+fn installed_with_brew() -> Result<bool> {
+    // First we check to see if the ockam binary matches the brew list path
+    // We check the canonical file paths to ensure that all paths are absoulte
+    // and the simlinks are resolved.
+    // Any unexpected errors here should cancel the upgrade/uninstallation process
+    // as we don't want to accidentally delete the wrong files.
+    let brew_prefix = Command::new("brew").args(["--prefix", "ockam"]).output();
+    match brew_prefix {
+        Ok(output) => {
+            if output.status.success() {
+                let brew_prefix_str = String::from_utf8(output.stdout).into_diagnostic()?;
+                let brew_ockam_path = PathBuf::from(brew_prefix_str.trim()).join("bin/ockam");
+                let canonical_brew_ockam_path =
+                    fs::canonicalize(brew_ockam_path).into_diagnostic()?;
+                let current_exe = std::env::current_exe().into_diagnostic()?;
+                let canonical_current_exe = fs::canonicalize(current_exe).into_diagnostic()?;
+                if canonical_brew_ockam_path == canonical_current_exe {
+                    return Ok(true);
                 }
             }
+            Ok(false)
         }
+        Err(_) => Ok(false),
     }
-    false
 }
 
 #[derive(Debug, Default)]
@@ -234,9 +240,9 @@ impl ScriptInstaller {
         }
 
         // for the binary, just move it into the backup folder
-        let backup_path = self.backup_folder.join(&self.binary_name()?);
+        let backup_path = self.backup_folder.join(self.binary_name()?);
 
-        std::fs::rename(&self.binary_path()?, &backup_path)
+        std::fs::rename(self.binary_path()?, backup_path)
             .into_diagnostic()
             .context("Failed to backup binary")?;
 
@@ -254,9 +260,9 @@ impl ScriptInstaller {
                     .context("Failed to restore file")?;
             }
         }
-        let backup_binary_path = self.backup_folder.join(&self.binary_name()?);
+        let backup_binary_path = self.backup_folder.join(self.binary_name()?);
         if backup_binary_path.exists() {
-            std::fs::rename(&backup_binary_path, &self.binary_path()?)
+            std::fs::rename(&backup_binary_path, self.binary_path()?)
                 .into_diagnostic()
                 .context("Failed to restore binary")?;
         }

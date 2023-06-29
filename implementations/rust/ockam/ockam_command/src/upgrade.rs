@@ -125,22 +125,21 @@ fn start_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> miet
         let node_state = opts.state.nodes.get(node_name)?;
         node_state.kill_process(false)?;
         let node_setup = node_state.config().setup();
-        let x = &node_setup.default_tcp_listener()?.addr.to_string();
         spawn_node(
             opts,
-            node_setup.verbose,
-            node_state.name(),
-            x,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
+            node_setup.verbose, // Previously user-chosen verbosity level
+            node_name,          // The selected node name
+            &node_setup.api_transport()?.addr.to_string(), // The selected node api address
+            None,               // No project information available
+            None,               // No trusted identities
+            None,               // "
+            None,               // "
+            None,               // Launch config
+            None,               // Authority Identity
+            None,               // Credential
+            None,               // Trust Context
+            None,               // Project Name
+            node_setup.disable_file_logging,
         )?;
         opts.terminal
             .write_line(fmt_ok!("Restarted node {}", node_state.name()))?;
@@ -150,7 +149,7 @@ fn start_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> miet
 
 fn upgrade_ockam(latest_version: &str, opts: &CommandGlobalOpts) -> miette::Result<()> {
     let stopped_nodes_names = stop_all_running_nodes(opts)?;
-    let installer = get_installer();
+    let installer = get_installer()?;
     let result = installer.upgrade(latest_version);
     // Try to restart nodes even if upgrade failed
     start_nodes(&stopped_nodes_names, opts)?;
