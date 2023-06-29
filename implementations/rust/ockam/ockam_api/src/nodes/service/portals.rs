@@ -514,9 +514,13 @@ fn replacer(
                         debug!("cannot delete secure channel `{encryptor}`: {error}");
                     }
                 }
-                if let Some(tcp_worker) = previous_connection_instance.tcp_worker.as_ref() {
-                    if let Err(error) = node_manager.tcp_transport.disconnect(tcp_worker).await {
-                        debug!("cannot stop tcp worker `{tcp_worker}`: {error}");
+                if let Some(tcp_connection) = previous_connection_instance.tcp_connection.as_ref() {
+                    if let Err(error) = node_manager
+                        .tcp_transport
+                        .disconnect(tcp_connection.sender_address().clone())
+                        .await
+                    {
+                        debug!("cannot stop tcp worker `{tcp_connection}`: {error}");
                     }
                 }
 

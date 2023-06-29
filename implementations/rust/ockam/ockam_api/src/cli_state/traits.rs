@@ -41,7 +41,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     }
 
     /// Do not run any migration by default
-    async fn migrate(&self, _item_path: &Path) -> Result<()> {
+    async fn migrate(&self, _path: &Path) -> Result<()> {
         Ok(())
     }
 

@@ -65,7 +65,7 @@ async fn run_impl(
         &opts,
         node_setup.verbose, // Previously user-chosen verbosity level
         &node_name,         // The selected node name
-        &node_setup.default_tcp_listener()?.addr.to_string(), // The selected node api address
+        &node_setup.api_transport()?.addr.to_string(), // The selected node api address
         None,               // No project information available
         None,               // No trusted identities
         None,               // "
@@ -75,6 +75,7 @@ async fn run_impl(
         None,               // Credential
         None,               // Trust Context
         None,               // Project Name
+        node_setup.disable_file_logging,
     )?;
 
     // Print node status

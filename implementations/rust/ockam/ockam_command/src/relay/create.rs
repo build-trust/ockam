@@ -31,7 +31,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the relay (optional)
+    /// Name of the relay
     #[arg(hide_default_value = true, default_value = "default")]
     relay_name: String,
 
@@ -39,11 +39,11 @@ pub struct CreateCommand {
     #[arg(long, id = "NODE", display_order = 900)]
     to: Option<String>,
 
-    /// Route to the node at which to create the relay (optional)
+    /// Route to the node at which to create the relay
     #[arg(long, id = "ROUTE", display_order = 900, value_parser = parse_at, default_value_t = default_forwarder_at())]
     at: MultiAddr,
 
-    /// Authorized identity for secure channel connection (optional)
+    /// Authorized identity for secure channel connection
     #[arg(long, id = "AUTHORIZED", display_order = 900)]
     authorized: Option<IdentityIdentifier>,
 }

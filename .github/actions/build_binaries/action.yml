@@ -1,0 +1,55 @@
+name: Build Ockam Binaries For Different Architechtures
+description: Build Ockam Binaries For Different Architechtures
+
+inputs:
+  use_cross_build:
+    description: Indicate If Cross Should Be Used To Build Binary Instead Of Cargo
+    required: true
+  toolchain:
+    description: Indicate Toolchain To Use, Nightly or Stable
+    default: stable
+  target:
+    description: Indicate Binary Target, e.g. x86_64-apple-darwin
+    required: true
+  platform_operating_system:
+    description: Operating System Which We Are Building Binaries On
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        profile: minimal
+        override: true
+        target: ${{ inputs.target }}
+
+    - shell: bash
+      if: inputs.platform_operating_system == 'ubuntu-20.04'
+      run: |
+        set -x
+        use_cross_build=${{ inputs.use_cross_build }}
+        if [[ $use_cross_build == true ]]; then
+          cargo install --version 0.1.16 cross
+        else
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool musl-tools
+        fi
+
+    ## TODO Cache for faster build for different targets
+
+    - shell: bash
+      run: |
+        set -x
+        use_cross_build="${{ inputs.use_cross_build }}"
+
+        if [[ "${{ inputs.target }}" =~ .+-musl(.+)?  ]]; then
+          export RUSTFLAGS='-C target-feature=+crt-static'
+        fi
+
+        if [[ $use_cross_build == "true" ]]; then
+          cross build --bin ockam --target ${{ inputs.target }} --verbose --release
+        else
+          cargo build --bin ockam --target ${{ inputs.target }} --verbose --release
+        fi

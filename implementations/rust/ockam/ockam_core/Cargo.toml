@@ -1,6 +1,6 @@
 [package]
 name = "ockam_core"
-version = "0.82.0"
+version = "0.83.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -89,4 +89,4 @@ zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 quickcheck = "1.0.1"
-tokio = { version = "1.28.2", features = ["full"] }
+tokio = { version = "1.29.0", features = ["full"] }

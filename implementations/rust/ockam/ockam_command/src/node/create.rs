@@ -11,6 +11,7 @@ use std::io::{self, Read};
 use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
+    process,
     str::FromStr,
 };
 use tokio::try_join;
@@ -57,7 +58,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the node (Optional).
+    /// Name of the node.
     #[arg(hide_default_value = true, default_value_t = hex::encode(& random::< [u8; 4] > ()))]
     pub node_name: String,
 
@@ -110,6 +111,9 @@ pub struct CreateCommand {
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
 
+    #[arg(long)]
+    pub disable_file_logging: bool,
+
     #[command(flatten)]
     pub trust_context_opts: TrustContextOpts,
 }
@@ -130,19 +134,31 @@ impl Default for CreateCommand {
             reload_from_trusted_identities_file: None,
             authority_identity: None,
             credential: None,
+            disable_file_logging: false,
             trust_context_opts: TrustContextOpts::default(),
         }
     }
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) {
+        if !self.child_process {
+            if let Ok(state) = opts.state.nodes.get(&self.node_name) {
+                if state.is_running() {
+                    eprintln!(
+                        "{:?}",
+                        miette!("Node {} is already running", self.node_name)
+                    );
+                    std::process::exit(exitcode::SOFTWARE);
+                }
+            }
+        }
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            local_cmd(create_foreground_node(&options, &self));
+            local_cmd(create_foreground_node(&opts, &self));
         } else {
             // Create a new node running in the background (i.e. another, new OS process)
-            node_rpc(run_impl, (options, self))
+            node_rpc(run_impl, (opts, self))
         }
     }
 
@@ -258,7 +274,7 @@ async fn run_foreground_node(
 
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
-    if !cmd.child_process && opts.state.nodes.get(&node_name).is_err() {
+    if !cmd.child_process && !opts.state.nodes.exists(&node_name) {
         init_node_state(
             &opts,
             &node_name,
@@ -283,12 +299,14 @@ async fn run_foreground_node(
     let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
+    node_state.set_pid(process::id() as i32)?;
     node_state.set_setup(
         &node_state
             .config()
             .setup_mut()
             .set_verbose(opts.global_args.verbose)
-            .add_transport(
+            .set_disable_file_logging(cmd.disable_file_logging)
+            .set_api_transport(
                 CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, bind)
                     .into_diagnostic()?,
             ),
@@ -371,7 +389,10 @@ async fn run_foreground_node(
 
     // Shutdown on SIGINT, SIGTERM, SIGHUP or EOF
     if rx.recv().await.is_some() {
-        opts.state.nodes.get(&node_name)?.kill_process(false)?;
+        // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
+        if let Ok(state) = opts.state.nodes.get(&node_name) {
+            let _ = state.kill_process(false);
+        }
         ctx.stop().await.into_diagnostic()?;
         opts.terminal
             .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
@@ -506,6 +527,7 @@ async fn spawn_background_node(
         cmd.credential.as_ref(),
         trust_context_path.as_ref(),
         cmd.trust_context_opts.project.as_ref(),
+        cmd.disable_file_logging,
     )?;
 
     Ok(())

@@ -82,7 +82,7 @@ impl Instantiator for SecureChannelInstantiator {
             current_multiaddr,
             flow_control_id: Some(sc.flow_control_id().clone()),
             secure_channel_encryptors: vec![sc.encryptor_address().clone()],
-            tcp_worker: None,
+            tcp_connection: None,
         })
     }
 }

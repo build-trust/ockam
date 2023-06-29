@@ -4,6 +4,8 @@ mod lifecycle;
 mod listener;
 mod portals;
 
+pub use common::*;
+
 pub use crate::portal::options::*;
 
 use crate::TcpRegistry;

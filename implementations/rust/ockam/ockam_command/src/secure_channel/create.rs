@@ -36,11 +36,11 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct CreateCommand {
-    /// Node from which to initiate the secure channel (required)
+    /// Node from which to initiate the secure channel
     #[arg(value_name = "NODE", long, display_order = 800)]
     pub from: String,
 
-    /// Route to a secure channel listener (required)
+    /// Route to a secure channel listener
     #[arg(value_name = "ROUTE", long, display_order = 800)]
     pub to: MultiAddr,
 

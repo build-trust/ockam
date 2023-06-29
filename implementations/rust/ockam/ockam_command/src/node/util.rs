@@ -150,7 +150,7 @@ pub(crate) async fn init_node_state(
         .vault(vault_state.path().clone())
         .identity(identity_state.path().clone())
         .build(&opts.state)?;
-    opts.state.nodes.create(node_name, node_config)?;
+    opts.state.nodes.overwrite(node_name, node_config)?;
 
     info!(name=%node_name, "node state initialized");
     Ok(())
@@ -205,13 +205,13 @@ pub fn spawn_node(
     credential: Option<&String>,
     trust_context: Option<&PathBuf>,
     project_name: Option<&String>,
+    disable_file_logging: bool,
 ) -> miette::Result<()> {
     let mut args = vec![
         match verbose {
             0 => "-vv".to_string(),
             v => format!("-{}", "v".repeat(v as usize)),
         },
-        "--no-color".to_string(),
         "node".to_string(),
         "create".to_string(),
         "--tcp-listener-address".to_string(),
@@ -219,6 +219,16 @@ pub fn spawn_node(
         "--foreground".to_string(),
         "--child-process".to_string(),
     ];
+
+    if disable_file_logging {
+        args.push("--disable-file-logging".to_string());
+        if !opts.terminal.is_tty() {
+            args.push("--no-color".to_string());
+        }
+    } else {
+        // We want to disable colors when logging to file
+        args.push("--no-color".to_string());
+    }
 
     if let Some(path) = project {
         args.push("--project-path".to_string());
@@ -279,7 +289,7 @@ pub fn spawn_node(
 
     args.push(name.to_owned());
 
-    run_ockam(opts, name, args)
+    run_ockam(opts, name, args, disable_file_logging)
 }
 
 /// Run the ockam command line with specific arguments
@@ -287,6 +297,7 @@ pub fn run_ockam(
     opts: &CommandGlobalOpts,
     node_name: &str,
     args: Vec<String>,
+    disable_file_logging: bool,
 ) -> miette::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
@@ -294,28 +305,31 @@ pub fn run_ockam(
     let ockam_exe = current_exe().unwrap_or_else(|_| "ockam".into());
     let node_state = opts.state.nodes.get(node_name)?;
 
-    let (mlog, elog) = { (node_state.stdout_log(), node_state.stderr_log()) };
+    let mut cmd = Command::new(ockam_exe);
 
-    let main_log_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(mlog)
-        .into_diagnostic()
-        .context("failed to open log path")?;
+    if !disable_file_logging {
+        let (mlog, elog) = { (node_state.stdout_log(), node_state.stderr_log()) };
+        let main_log_file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(mlog)
+            .into_diagnostic()
+            .context("failed to open log path")?;
+        let stderr_log_file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(elog)
+            .into_diagnostic()
+            .context("failed to open stderr log path")?;
+        cmd.stdout(main_log_file).stderr(stderr_log_file);
+    }
 
-    let stderr_log_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(elog)
-        .into_diagnostic()
-        .context("failed to open stderr log path")?;
-
-    let child = Command::new(ockam_exe)
+    let child = cmd
         .args(args)
-        .stdout(main_log_file)
-        .stderr(stderr_log_file)
         .spawn()
-        .into_diagnostic()?;
+        .into_diagnostic()
+        .context("failed to spawn node")?;
+
     node_state.set_pid(child.id() as i32)?;
 
     Ok(())
