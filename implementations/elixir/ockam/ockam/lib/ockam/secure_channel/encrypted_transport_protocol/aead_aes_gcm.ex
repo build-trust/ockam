@@ -153,12 +153,22 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
           <<nonce::unsigned-big-integer-size(64), ciphertext::binary>>,
           state
         ) do
-      # We can do this since nonce could never be below 0 (unsigned integer)
-      window_offset =
-        div(nonce, state.rekey_each) -
-          div(max(0, state.expected_nonce - 1), state.rekey_each)
+      # If we received till nonce 10,  state.expected_nonce is 11, the intervals around expected nonce are
+      # defined to match the ones on rust implementation.
+      if nonce >= state.expected_nonce - state.rekey_each and
+           nonce < state.expected_nonce + state.rekey_each do
+        # Calculate the key to use to attempt to decrypt the message,
+        # based on the rekey window that the received nonce falls into.
+        # -1 = previous key,  0 = current key, 1 = next key
+        # We can do this since nonce could never be below 0 (unsigned integer)
+        window_offset =
+          div(nonce, state.rekey_each) -
+            div(max(0, state.expected_nonce - 1), state.rekey_each)
 
-      decrypt_from(window_offset, nonce, ad, ciphertext, state)
+        decrypt_from(window_offset, nonce, ad, ciphertext, state)
+      else
+        {:error, :out_of_window}
+      end
     end
   end
 
