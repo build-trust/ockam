@@ -15,7 +15,7 @@ use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use tracing::{debug, info};
 
 use crate::node::CreateCommand;
@@ -321,7 +321,9 @@ pub fn run_ockam(
             .open(elog)
             .into_diagnostic()
             .context("failed to open stderr log path")?;
-        cmd.stdout(main_log_file).stderr(stderr_log_file);
+        cmd.stdout(main_log_file)
+            .stderr(stderr_log_file)
+            .stdin(Stdio::null());
     }
 
     let child = cmd

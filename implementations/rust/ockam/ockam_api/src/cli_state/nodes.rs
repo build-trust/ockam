@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use sysinfo::{Pid, System, SystemExt};
+use sysinfo::{Pid, ProcessExt, ProcessStatus, System, SystemExt};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NodesState {
@@ -135,7 +135,14 @@ impl NodeState {
         if let Ok(Some(pid)) = self.pid() {
             let mut sys = System::new();
             sys.refresh_processes();
-            sys.process(Pid::from(pid as usize)).is_some()
+            if let Some(p) = sys.process(Pid::from(pid as usize)) {
+                // Under certain circumstances the process can be in a state where it's not running
+                // and we are unable to kill it. For example, `kill -9` a process created by
+                // `node create` in a Docker environment will result in a zombie process.
+                !matches!(p.status(), ProcessStatus::Dead | ProcessStatus::Zombie)
+            } else {
+                false
+            }
         } else {
             false
         }
