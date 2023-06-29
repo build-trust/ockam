@@ -3,7 +3,7 @@ description: CARGO_HOME Cache
 runs:
   using: composite
   steps:
-    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+    - uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
       with:
         path: |
           /usr/rust/cargo/bin
