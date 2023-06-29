@@ -1,5 +1,8 @@
-use crate::{PublicKey, SecretsStore, SecurityModule, Signature, Signer, VaultSecurityModule};
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
+
+use crate::{
+    KeyId, PublicKey, SecretsStore, SecurityModule, Signature, Signer, VaultSecurityModule,
+};
 
 #[async_trait]
 impl<T: SecretsStore + SecurityModule> Signer for T {
@@ -23,7 +26,6 @@ impl<T: SecretsStore + SecurityModule> Signer for T {
     }
 }
 
-#[cfg(feature = "vault_tests")]
 #[cfg(test)]
 mod tests {
     use crate as ockam_vault;

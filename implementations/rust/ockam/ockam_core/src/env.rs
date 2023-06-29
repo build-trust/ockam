@@ -1,15 +1,16 @@
-use crate::alloc::borrow::ToOwned;
-use crate::alloc::string::ToString;
-use crate::compat::fmt::Vec;
-use crate::compat::string::String;
-use crate::errcode::{Kind, Origin};
-use crate::{Error, Result};
 #[cfg(feature = "std")]
 use std::env;
 #[cfg(feature = "std")]
 use std::env::VarError;
 #[cfg(feature = "std")]
 use std::path::PathBuf;
+
+use crate::{Error, Result};
+use crate::alloc::borrow::ToOwned;
+use crate::alloc::string::ToString;
+use crate::compat::string::String;
+use crate::compat::vec::Vec;
+use crate::errcode::{Kind, Origin};
 
 /// Get environmental value `var_name`. If value is not found returns Ok(None)
 #[cfg(feature = "std")]

@@ -1,14 +1,14 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{KeyId, Result};
-use ockam_vault::{Secret, SecretAttributes};
+use ockam_core::Result;
+use ockam_vault::{KeyId, Secret, SecretAttributes};
 
-use crate::alloc::string::ToString;
-use crate::identity::IdentityError;
 use crate::{
     IdentitiesKeys, IdentitiesRepository, IdentitiesVault, Identity, IdentityChangeConstants,
     IdentityChangeHistory, IdentityIdentifier, KeyAttributes,
 };
+use crate::alloc::string::ToString;
+use crate::identity::IdentityError;
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
@@ -120,8 +120,9 @@ impl IdentitiesCreation {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::identities;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_identity_creation() -> Result<()> {

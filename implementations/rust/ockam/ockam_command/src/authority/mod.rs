@@ -1,7 +1,9 @@
-use crate::authority::create::CreateCommand;
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use clap::Subcommand;
+
+use crate::{CommandGlobalOpts, docs};
+use crate::authority::create::CreateCommand;
+
 mod create;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -11,7 +13,7 @@ const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 #[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    long_about = docs::after_help(LONG_ABOUT),
+    long_about = docs::about(LONG_ABOUT),
 )]
 pub struct AuthorityCommand {
     #[command(subcommand)]

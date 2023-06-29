@@ -1,17 +1,19 @@
-use crate::docs;
-use crate::util::embedded_node;
-use crate::Result;
-use anyhow::Context as _;
-use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
-use miette::{miette, IntoDiagnostic};
+use clap::builder::NonEmptyStringValueParser;
+use miette::{IntoDiagnostic, miette};
+use miette::Context as _;
+use termimad::{MadSkin, minimad::TextTemplate};
+
+use ockam::{Context, TcpTransport};
 use ockam::compat::collections::HashMap;
 use ockam::identity::{AttributesEntry, IdentityIdentifier};
-use ockam::{Context, TcpTransport};
 use ockam_api::auth;
 use ockam_api::is_local_node;
 use ockam_multiaddr::MultiAddr;
-use termimad::{minimad::TextTemplate, MadSkin};
+
+use crate::docs;
+use crate::Result;
+use crate::util::embedded_node;
 
 const HELP_DETAIL: &str = "";
 
@@ -61,14 +63,14 @@ impl AuthenticatedCommand {
     }
 }
 
-async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<()> {
+async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> miette::Result<()> {
     // FIXME: add support to target remote nodes.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     match &cmd {
         AuthenticatedSubcommand::Get { addr, id } => {
             is_local_node(addr).context("The address must point to a local node")?;
             let mut c = client(&ctx, &tcp, addr).await?;
-            if let Some(entry) = c.get(id).await? {
+            if let Some(entry) = c.get(id).await.into_diagnostic()? {
                 print_entries(&[(IdentityIdentifier::try_from(id.to_string()).unwrap(), entry)]);
             } else {
                 println!("Not found");
@@ -77,7 +79,7 @@ async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<(
         AuthenticatedSubcommand::List { addr } => {
             is_local_node(addr).context("The address must point to a local node")?;
             let mut c = client(&ctx, &tcp, addr).await?;
-            print_entries(&c.list().await?);
+            print_entries(&c.list().await.into_diagnostic()?);
         }
     }
 

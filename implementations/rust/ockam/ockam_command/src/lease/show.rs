@@ -1,23 +1,24 @@
 use std::str::FromStr;
 
 use clap::Args;
+use miette::IntoDiagnostic;
+use termimad::{MadSkin, minimad::TextTemplate};
 
 use ockam::Context;
 use ockam_api::cloud::lease_manager::models::influxdb::Token;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
-use termimad::{minimad::TextTemplate, MadSkin};
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::{
+    CommandGlobalOpts,
     docs,
     util::{
         api::{CloudOpts, TrustContextOpts},
         node_rpc,
         orchestrator_api::OrchestratorApiBuilder,
     },
-    CommandGlobalOpts,
 };
+use crate::identity::{get_identity_name, initialize_identity_if_default};
 
 use super::TOKEN_VIEW;
 
@@ -47,13 +48,13 @@ async fn run_impl(
         ShowCommand,
         TrustContextOpts,
     ),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let identity = get_identity_name(&opts.state, &cloud_opts.identity);
     let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
         .as_identity(identity)
         .with_new_embbeded_node()
         .await?
-        .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
+        .build(&MultiAddr::from_str("/service/influxdb_token_lease").into_diagnostic()?)
         .await?;
 
     let req = Request::get(format!("/{}", cmd.token_id));

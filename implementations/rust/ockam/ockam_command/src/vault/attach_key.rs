@@ -1,16 +1,15 @@
 use clap::Args;
-use miette::miette;
+use miette::{IntoDiagnostic, miette};
 
 use ockam::Context;
 use ockam_api::cli_state;
 use ockam_api::cli_state::identities::IdentityConfig;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-
 use ockam_identity::{IdentityChangeConstants, KeyAttributes};
 use ockam_vault::SecretAttributes;
 
-use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
+use crate::util::node_rpc;
 
 /// Attach a key to a vault
 #[derive(Clone, Debug, Args)]
@@ -33,14 +32,14 @@ impl AttachKeyCommand {
 async fn rpc(
     mut _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AttachKeyCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(opts, cmd).await
 }
 
-async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Result<()> {
+async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Result<()> {
     let v_state = opts.state.vaults.get(&cmd.vault)?;
     if !v_state.config().is_aws() {
-        return Err(miette!("Vault {} is not an AWS KMS vault", cmd.vault).into());
+        return Err(miette!("Vault {} is not an AWS KMS vault", cmd.vault));
     }
     let vault = v_state.get().await?;
     let idt = {
@@ -51,7 +50,8 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Resu
             .await?
             .identities_creation()
             .create_identity_with_existing_key(&cmd.key_id, key_attrs)
-            .await?
+            .await
+            .into_diagnostic()?
     };
     let idt_name = cli_state::random_name();
     let idt_config = IdentityConfig::new(&idt.identifier()).await;
@@ -62,12 +62,14 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> crate::Resu
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::sync::Arc;
+
     use ockam_core::Result;
     use ockam_identity::Identities;
     use ockam_vault::{PersistentSecretsStore, Vault};
     use ockam_vault_aws::AwsSecurityModule;
-    use std::sync::Arc;
+
+    use super::*;
 
     /// This test needs to be executed with the following environment variables
     /// AWS_REGION

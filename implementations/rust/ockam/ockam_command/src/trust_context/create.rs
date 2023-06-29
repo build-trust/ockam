@@ -1,15 +1,18 @@
+use clap::Args;
+use indoc::formatdoc;
+use miette::{IntoDiagnostic, miette};
+
+use ockam_api::cli_state::StateDirTrait;
+
 use crate::{
+    CommandGlobalOpts,
     docs,
     util::{
         api::{TrustContextConfigBuilder, TrustContextOpts},
         random_name,
     },
-    CommandGlobalOpts,
 };
-use clap::Args;
-use indoc::formatdoc;
-use miette::miette;
-use ockam_api::cli_state::StateDirTrait;
+use crate::util::local_cmd;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -36,14 +39,11 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e:?}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: CreateCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
     let config = TrustContextConfigBuilder::new(&opts.state, &cmd.trust_context_opts)?
         .with_credential_name(cmd.credential.as_ref())
         .use_default_trust_context(false)
@@ -73,10 +73,10 @@ fn run_impl(opts: CommandGlobalOpts, cmd: CreateCommand) -> crate::Result<()> {
         opts.terminal
             .stdout()
             .plain(output)
-            .json(serde_json::to_string_pretty(&c)?)
+            .json(serde_json::to_string_pretty(&c).into_diagnostic()?)
             .write_line()?;
     } else {
-        return Err(miette!("Unable to create trust context").into());
+        return Err(miette!("Unable to create trust context"));
     }
 
     Ok(())

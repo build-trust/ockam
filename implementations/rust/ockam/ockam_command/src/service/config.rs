@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::Context as _;
+use miette::{Context as _, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
 
 use ockam::identity::IdentityIdentifier;
@@ -86,8 +86,11 @@ pub struct Config {
 impl Config {
     pub(crate) fn read<P: AsRef<Path>>(path: P) -> Result<Self> {
         let s = std::fs::read_to_string(path.as_ref())
+            .into_diagnostic()
             .context(format!("failed to read {:?}", path.as_ref()))?;
-        let c = serde_json::from_str(&s).context(format!("invalid config {:?}", path.as_ref()))?;
+        let c = serde_json::from_str(&s)
+            .into_diagnostic()
+            .context(format!("invalid config {:?}", path.as_ref()))?;
         Ok(c)
     }
 }

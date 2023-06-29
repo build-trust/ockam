@@ -6,8 +6,8 @@ use ockam::Context;
 use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
 
+use crate::{CommandGlobalOpts, docs, fmt_info, fmt_ok};
 use crate::util::node_rpc;
-use crate::{docs, fmt_info, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -39,7 +39,7 @@ impl CreateCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -47,7 +47,7 @@ async fn run_impl(
     _ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let CreateCommand { name, aws_kms, .. } = cmd;
     let config = cli_state::VaultConfig::new(aws_kms)?;
     if opts.state.vaults.is_empty()? {

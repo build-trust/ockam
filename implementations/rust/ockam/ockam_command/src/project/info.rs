@@ -1,22 +1,21 @@
 use clap::Args;
 use miette::miette;
+use serde::{Deserialize, Serialize};
 
-use ockam::identity::IdentityIdentifier;
 use ockam::Context;
+use ockam::identity::IdentityIdentifier;
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::project::Project;
-
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_core::CowStr;
 
+use crate::CommandGlobalOpts;
 use crate::error::Error;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::refresh_projects;
-use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::CommandGlobalOpts;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use serde::{Deserialize, Serialize};
+use crate::util::api::{self, CloudOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct InfoCommand {
@@ -106,7 +105,10 @@ impl InfoCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, InfoCommand)) -> crate::Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, InfoCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -114,7 +116,7 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: InfoCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 

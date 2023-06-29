@@ -750,7 +750,7 @@ dependencies = [
  "dbus",
  "dbus-tokio",
  "futures 0.3.28",
- "itertools",
+ "itertools 0.10.5",
  "log",
  "serde",
  "serde-xml-rs",
@@ -922,9 +922,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.4"
+version = "4.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80672091db20273a15cf9fdd4e47ed43b5091ec9841bf4c6145c9dfbbcae09ed"
+checksum = "6320c6d1c98b6981da7bb2dcecbd0be9dc98d42165fa8326b21000f7dbfde6d0"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -933,9 +933,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.4"
+version = "4.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1458a1df40e1e2afebb7ab60ce55c1fa8f431146205aa5f4887e0b111c27636"
+checksum = "2e53afce1efce6ed1f633cf0e57612fe51db54a1ee4fd8f8503d078fe02d69ae"
 dependencies = [
  "anstream",
  "anstyle",
@@ -952,7 +952,7 @@ version = "4.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f6b5c519bab3ea61843a7923d074b04245624bb84a64a8c150f5deb014e388b"
 dependencies = [
- "clap 4.3.4",
+ "clap 4.3.6",
 ]
 
 [[package]]
@@ -979,7 +979,7 @@ version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f2e32b579dae093c2424a8b7e2bea09c89da01e1ce5065eb2f0a6f1cc15cc1f"
 dependencies = [
- "clap 4.3.4",
+ "clap 4.3.6",
  "roff",
 ]
 
@@ -1632,27 +1632,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dirs-next"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b98cf8ebf19c3d1b223e151f99a4f9f0690dca41414773390fc824184ac833e1"
-dependencies = [
- "cfg-if",
- "dirs-sys-next",
-]
-
-[[package]]
-name = "dirs-sys-next"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ebda144c4fe02d1f7ea1a7d9641b6fc6b580adcfa024ae48797ecdeb6825b4d"
-dependencies = [
- "libc",
- "redox_users",
- "winapi",
-]
-
-[[package]]
 name = "dissimilar"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1854,6 +1833,12 @@ dependencies = [
  "regex",
  "termcolor",
 ]
+
+[[package]]
+name = "equivalent"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88bffebc5d80432c9b140ee17875ff173a8ab62faad5b257da912bd2f6c1c0a1"
 
 [[package]]
 name = "errno"
@@ -2265,7 +2250,7 @@ dependencies = [
  "futures-sink",
  "futures-util",
  "http",
- "indexmap",
+ "indexmap 1.9.3",
  "slab",
  "tokio",
  "tokio-util",
@@ -2546,6 +2531,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexmap"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
+dependencies = [
+ "equivalent",
+ "hashbrown 0.14.0",
+]
+
+[[package]]
 name = "indicatif"
 version = "0.17.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2652,6 +2647,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2712,7 +2716,7 @@ dependencies = [
  "derive_builder",
  "env_logger",
  "flate2",
- "indexmap",
+ "indexmap 1.9.3",
  "log",
  "paste",
  "snap",
@@ -3266,7 +3270,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.89.0"
+version = "0.90.0"
 dependencies = [
  "arrayref",
  "dyn-clone",
@@ -3275,7 +3279,6 @@ dependencies = [
  "ockam_abac",
  "ockam_core",
  "ockam_identity",
- "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
  "ockam_transport_tcp",
@@ -3291,7 +3294,7 @@ dependencies = [
 
 [[package]]
 name = "ockam-ffi"
-version = "0.75.0"
+version = "0.76.0"
 dependencies = [
  "futures 0.3.28",
  "lazy_static",
@@ -3302,7 +3305,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_abac"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "either",
  "lmdb-rkv",
@@ -3324,7 +3327,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "anyhow",
  "aws-config",
@@ -3334,9 +3337,10 @@ dependencies = [
  "fake",
  "hex",
  "home",
- "indexmap",
+ "indexmap 1.9.3",
  "kafka-protocol",
  "lru",
+ "miette",
  "minicbor",
  "mockall",
  "nix",
@@ -3370,13 +3374,13 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.89.0"
+version = "0.90.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
  "async-recursion",
  "async-trait",
- "clap 4.3.4",
+ "clap 4.3.6",
  "clap_complete",
  "clap_mangen",
  "cli-table",
@@ -3393,7 +3397,7 @@ dependencies = [
  "indoc",
  "io-lifetimes 2.0.0",
  "is-terminal",
- "itertools",
+ "itertools 0.11.0",
  "miette",
  "minicbor",
  "nix",
@@ -3437,7 +3441,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.82.0"
+version = "0.83.0"
 dependencies = [
  "async-trait",
  "backtrace",
@@ -3468,7 +3472,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.50.0"
+version = "0.51.0"
 dependencies = [
  "crossbeam-queue",
  "futures 0.3.28",
@@ -3481,17 +3485,18 @@ dependencies = [
 
 [[package]]
 name = "ockam_identity"
-version = "0.77.0"
+version = "0.78.0"
 dependencies = [
+ "arrayref",
  "async-trait",
  "cfg-if",
+ "delegate",
  "group",
  "heapless",
  "hex",
  "lmdb-rkv",
  "minicbor",
  "ockam_core",
- "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
  "ockam_transport_tcp",
@@ -3523,17 +3528,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_key_exchange_xx"
-version = "0.79.0"
-dependencies = [
- "hex",
- "ockam_core",
- "ockam_macros",
- "ockam_node",
- "ockam_vault",
-]
-
-[[package]]
 name = "ockam_macros"
 version = "0.30.0"
 dependencies = [
@@ -3544,7 +3538,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_multiaddr"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "bincode",
  "minicbor",
@@ -3562,7 +3556,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.85.0"
+version = "0.86.0"
 dependencies = [
  "cddl-cat",
  "cfg-if",
@@ -3587,7 +3581,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_ble"
-version = "0.44.0"
+version = "0.45.0"
 dependencies = [
  "atsame54_xpro",
  "bluenrg",
@@ -3616,7 +3610,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.55.0"
+version = "0.56.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -3624,7 +3618,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.83.0"
+version = "0.84.0"
 dependencies = [
  "cfg-if",
  "hashbrown 0.14.0",
@@ -3642,7 +3636,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_udp"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "bytes 1.4.0",
  "futures-util",
@@ -3661,7 +3655,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_uds"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "ockam_core",
  "ockam_macros",
@@ -3675,7 +3669,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.74.0"
+version = "0.75.0"
 dependencies = [
  "futures-util",
  "ockam_core",
@@ -3690,7 +3684,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.78.0"
+version = "0.79.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -3722,7 +3716,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_aws"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "aws-config",
  "aws-credential-types",
@@ -3776,19 +3770,20 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "open"
-version = "4.1.0"
+version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d16814a067484415fda653868c9be0ac5f2abd2ef5d951082a5f2fe1b3662944"
+checksum = "3a083c0c7e5e4a8ec4176346cf61f67ac674e8bfb059d9226e1c54a96b377c12"
 dependencies = [
  "is-wsl",
+ "libc",
  "pathdiff",
 ]
 
 [[package]]
 name = "openssl"
-version = "0.10.54"
+version = "0.10.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69b3f656a17a6cbc115b5c7a40c616947d213ba182135b014d6051b73ab6f019"
+checksum = "345df152bc43501c5eb9e4654ff05f794effb78d4efe3d53abc158baddc0703d"
 dependencies = [
  "bitflags 1.3.2",
  "cfg-if",
@@ -3818,9 +3813,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.88"
+version = "0.9.90"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2ce0f250f34a308dcfdbb351f511359857d4ed2134ba715a4eadd46e1ffd617"
+checksum = "374533b0e45f3a7ced10fcaeccca020e66656bc03dac384f852e4e5a7a8104a6"
 dependencies = [
  "cc",
  "libc",
@@ -3886,7 +3881,7 @@ checksum = "93f00c865fe7cabf650081affecd3871070f26767e7b2070a3ffae14c654b447"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.3.5",
+ "redox_syscall",
  "smallvec",
  "windows-targets 0.48.0",
 ]
@@ -3999,7 +3994,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9bd9647b268a3d3e14ff09c23201133a62589c658db02bb7388c7246aafe0590"
 dependencies = [
  "base64 0.21.2",
- "indexmap",
+ "indexmap 1.9.3",
  "line-wrap",
  "quick-xml",
  "serde",
@@ -4038,7 +4033,7 @@ checksum = "59230a63c37f3e18569bdb90e4a89cbf5bf8b06fea0b84e65ea10cc4df47addd"
 dependencies = [
  "difflib",
  "float-cmp",
- "itertools",
+ "itertools 0.10.5",
  "normalize-line-endings",
  "predicates-core",
  "regex",
@@ -4052,7 +4047,7 @@ checksum = "09963355b9f467184c04017ced4a2ba2d75cbcb4e7462690d388233253d4b1a9"
 dependencies = [
  "anstyle",
  "difflib",
- "itertools",
+ "itertools 0.10.5",
  "predicates-core",
 ]
 
@@ -4107,9 +4102,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.60"
+version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dec2b086b7a862cf4de201096214fa870344cf922b2b30c167badb3af3195406"
+checksum = "7b368fba921b0dce7e60f5e04ec15e565b3303972b42bcfde1d0713b881959eb"
 dependencies = [
  "unicode-ident",
 ]
@@ -4254,31 +4249,11 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb5a58c1855b4b6819d59012155603f0b22ad30cad752600aadfcb695265519a"
-dependencies = [
- "bitflags 1.3.2",
-]
-
-[[package]]
-name = "redox_syscall"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "567664f262709473930a4bf9e51bf2ebf3348f2e748ccc50dea20646858f8f29"
 dependencies = [
  "bitflags 1.3.2",
-]
-
-[[package]]
-name = "redox_users"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b033d837a7cf162d7993aded9304e30a83213c648b6e389db233191f891e5c2b"
-dependencies = [
- "getrandom 0.2.9",
- "redox_syscall 0.2.16",
- "thiserror",
 ]
 
 [[package]]
@@ -4489,15 +4464,15 @@ checksum = "4f3208ce4d8448b3f3e7d168a73f5e0c43a61e32930de3bceeccedb388b6bf06"
 
 [[package]]
 name = "rustyline"
-version = "11.0.0"
+version = "12.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dfc8644681285d1fb67a467fb3021bfea306b99b4146b166a1fe3ada965eece"
+checksum = "994eca4bca05c87e86e15d90fc7a91d1be64b4482b38cb2d27474568fe7c9db9"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.3.1",
  "cfg-if",
  "clipboard-win",
- "dirs-next",
  "fd-lock",
+ "home",
  "libc",
  "log",
  "memchr",
@@ -4512,13 +4487,13 @@ dependencies = [
 
 [[package]]
 name = "rustyline-derive"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8218eaf5d960e3c478a1b0f129fa888dd3d8d22eb3de097e9af14c1ab4438024"
+checksum = "5a32af5427251d2e4be14fc151eabe18abb4a7aad5efee7044da9f096c906a43"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.18",
 ]
 
 [[package]]
@@ -4716,11 +4691,11 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.9.21"
+version = "0.9.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9d684e3ec7de3bf5466b32bd75303ac16f0736426e5a4e0d6e489559ce1249c"
+checksum = "452e67b9c20c37fa79df53201dc03839651086ed9bbe92b3ca585ca9fdaa7d85"
 dependencies = [
- "indexmap",
+ "indexmap 2.0.0",
  "itoa",
  "ryu",
  "serde",
@@ -4981,9 +4956,9 @@ dependencies = [
 
 [[package]]
 name = "stm32f4xx-hal"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "431cd6045c6644beb39d421a37967e7f0708bce98ed6e38559137e09d5ae6d81"
+checksum = "a8eaaf3fec476e723cd6e1b8033fc9e5c89520b7e907a6fd95726cfec7366376"
 dependencies = [
  "bare-metal 1.0.0",
  "bitflags 2.3.1",
@@ -5219,7 +5194,7 @@ dependencies = [
  "autocfg",
  "cfg-if",
  "fastrand",
- "redox_syscall 0.3.5",
+ "redox_syscall",
  "rustix",
  "windows-sys 0.48.0",
 ]

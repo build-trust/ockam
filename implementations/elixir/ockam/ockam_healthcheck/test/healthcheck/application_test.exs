@@ -2,6 +2,7 @@ defmodule Ockam.Healthcheck.Application.Test do
   use ExUnit.Case, async: true
 
   alias Ockam.Healthcheck.APIEndpointTarget
+  alias Ockam.Healthcheck.ScheduledTarget
   alias Ockam.Healthcheck.Target
 
   require Logger
@@ -28,10 +29,14 @@ defmodule Ockam.Healthcheck.Application.Test do
     {:ok, [target]} = Ockam.Healthcheck.Application.parse_config(simple_target)
 
     ## Set fields
-    assert %Target{name: "mytarget", host: "localhost", port: 4000, crontab: "* * * * *"} = target
+    assert %ScheduledTarget{
+             target: %Target{name: "mytarget", host: "localhost", port: 4000},
+             crontab: "* * * * *"
+           } = target
 
     ## Default fields
-    assert %Target{api_worker: "api", healthcheck_worker: "healthcheck"} = target
+    assert %ScheduledTarget{target: %Target{api_worker: "api", healthcheck_worker: "healthcheck"}} =
+             target
 
     encoded_body = "ZHRlc3Q="
 
@@ -49,15 +54,17 @@ defmodule Ockam.Healthcheck.Application.Test do
 
     {:ok, [target]} = Ockam.Healthcheck.Application.parse_config(api_endpoint_target)
 
-    assert %APIEndpointTarget{
-             name: "mytarget",
-             host: "localhost",
-             port: 4000,
-             method: :post,
-             body: body,
-             api_worker: "api",
-             healthcheck_worker: "healthcheck",
-             path: "/",
+    assert %ScheduledTarget{
+             target: %APIEndpointTarget{
+               name: "mytarget",
+               host: "localhost",
+               port: 4000,
+               method: :post,
+               body: body,
+               api_worker: "api",
+               healthcheck_worker: "healthcheck",
+               path: "/"
+             },
              crontab: "* * * * *"
            } = target
 
@@ -72,5 +79,33 @@ defmodule Ockam.Healthcheck.Application.Test do
 
     assert {:error, {:invalid_config, _error}} =
              Ockam.Healthcheck.Application.parse_config(bad_config)
+  end
+
+  test "schedule target" do
+    target = %Target{name: "mytarget", host: "localhost", port: 4000}
+    crontab = "* * * * *"
+
+    scheduled_target = %ScheduledTarget{
+      target: target,
+      crontab: crontab
+    }
+
+    Application.put_env(:ockam_healthcheck, :targets, [scheduled_target])
+
+    schedule = Ockam.Healthcheck.Application.healthcheck_schedule()
+
+    assert schedule == [
+             %{
+               id: "mytarget_healthcheck_schedule",
+               start:
+                 {SchedEx, :run_every,
+                  [
+                    Ockam.Healthcheck,
+                    :check_target,
+                    [target],
+                    crontab
+                  ]}
+             }
+           ]
   end
 end

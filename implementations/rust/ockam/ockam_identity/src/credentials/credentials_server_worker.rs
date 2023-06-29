@@ -1,11 +1,11 @@
 use minicbor::Decoder;
 use tracing::{debug, error, info, trace, warn};
 
+use ockam_core::{Result, Routed, Worker};
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::async_trait;
-use ockam_core::compat::boxed::Box;
 use ockam_core::compat::{string::ToString, sync::Arc, vec::Vec};
-use ockam_core::{Result, Routed, Worker};
+use ockam_core::compat::boxed::Box;
 use ockam_node::Context;
 
 use crate::credential::Credential;
@@ -158,7 +158,7 @@ impl CredentialsServerWorker {
     }
 
     /// Create a generic bad request response.
-    pub fn bad_request<'a>(id: Id, path: &'a str, msg: &'a str) -> ResponseBuilder<Error<'a>> {
+    pub fn bad_request<'a>(id: Id, path: &'a str, msg: &'a str) -> ResponseBuilder<Error> {
         let e = Error::new(path).with_message(msg);
         Response::bad_request(id).body(e)
     }

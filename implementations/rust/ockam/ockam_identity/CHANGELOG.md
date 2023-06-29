@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.78.0 - 2023-06-26
+
+### Added
+
+- Add stop_secure_channel test
+
+### Changed
+
+- Improve type safety for `FlowControls`
+- Hide `Spawner` vs `Producer` logic under the hood
+- Make sure that ephemeral secrets are removed from memory
+- Updated dependencies
+
+### Fixed
+
+- Extend channel test
+
+### Removed
+
+- Remove `FId`
+
 ## 0.77.0 - 2023-06-09
 
 ### Changed

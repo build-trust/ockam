@@ -1,5 +1,6 @@
-use crate::{PublicKey, Secret, SecretAttributes, StoredSecret};
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use ockam_core::{async_trait, compat::boxed::Box, compat::vec::Vec, Result};
+
+use crate::{KeyId, PublicKey, Secret, SecretAttributes, StoredSecret};
 
 /// This traits provides all the functionalities related to the management of secrets
 #[async_trait]
@@ -30,6 +31,8 @@ pub trait EphemeralSecretsStore: SecretsStoreReader + Sync + Send {
         -> Result<StoredSecret>;
     /// Remove an ephemeral secret from the vault.
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool>;
+    /// Return the list of all ephemeral secrets
+    async fn list_ephemeral_secrets(&self) -> Result<Vec<KeyId>>;
 }
 
 /// This traits supports the creation / deletion of persistent secrets
@@ -53,13 +56,16 @@ pub trait SecretsStoreReader: Sync + Send {
 }
 
 /// Tests for implementations of the SecretsStore trait
-#[cfg(feature = "vault_tests")]
+#[cfg(test)]
 pub mod tests {
-    use super::*;
-    use crate::{PublicKey, SecretAttributes, SecretType};
     use hex::decode;
+
     use ockam_core::compat::vec::Vec;
     use SecretType::*;
+
+    use crate::{PublicKey, SecretAttributes, SecretType};
+
+    use super::*;
 
     /// This test checks the creation of ephemeral keys of different types
     pub async fn test_create_ephemeral_secrets(vault: &mut impl SecretsStore) {

@@ -1,5 +1,6 @@
-use crate::Buffer;
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
+
+use crate::{Buffer, KeyId};
 
 /// Defines the Vault interface for symmetric encryption.
 #[async_trait]
@@ -23,7 +24,7 @@ pub trait SymmetricVault: Send + Sync {
     ) -> Result<Buffer<u8>>;
 }
 
-#[cfg(feature = "vault_tests")]
+#[cfg(test)]
 pub mod tests {
     use crate::{EphemeralSecretsStore, SecretAttributes, SymmetricVault};
 

@@ -1,13 +1,17 @@
-use super::Result;
-use crate::cli_state::traits::StateItemTrait;
-use crate::cli_state::{CliStateError, StateDirTrait, DATA_DIR_NAME};
-use ockam_identity::IdentitiesVault;
-use ockam_vault::Vault;
-use ockam_vault_aws::{AwsKmsConfig, AwsSecurityModule};
-use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+
+use ockam_identity::IdentitiesVault;
+use ockam_vault::Vault;
+use ockam_vault_aws::{AwsKmsConfig, AwsSecurityModule};
+
+use crate::cli_state::{CliStateError, DATA_DIR_NAME, StateDirTrait};
+use crate::cli_state::traits::StateItemTrait;
+
+use super::Result;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultsState {
@@ -17,7 +21,10 @@ pub struct VaultsState {
 impl VaultsState {
     pub async fn create_async(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
         if self.exists(name) {
-            return Err(CliStateError::AlreadyExists);
+            return Err(CliStateError::AlreadyExists {
+                resource: Self::default_filename().to_string(),
+                name: name.to_string(),
+            });
         }
         let state = VaultState::new(self.path(name), config)?;
         state.get().await?;
@@ -110,10 +117,12 @@ impl VaultConfig {
 }
 
 mod traits {
-    use super::*;
+    use ockam_core::async_trait;
+
     use crate::cli_state::file_stem;
     use crate::cli_state::traits::*;
-    use ockam_core::async_trait;
+
+    use super::*;
 
     #[async_trait]
     impl StateDirTrait for VaultsState {

@@ -1,33 +1,31 @@
 use clap::Args;
-
-use anyhow::Context as _;
-use miette::miette;
-
-use ockam::Context;
-use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
-use ockam_api::cloud::project::{OktaAuth0, Project};
-use ockam_api::identity::EnrollmentTicket;
-use ockam_core::api::{Request, Status};
-use ockam_multiaddr::MultiAddr;
+use miette::{IntoDiagnostic, miette};
+use miette::Context as _;
 use tracing::debug;
 
-use crate::enroll::{Auth0Provider, Auth0Service};
-use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::ProjectInfo;
-use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::{node_rpc, RpcBuilder};
-use crate::{docs, CommandGlobalOpts, Result};
-
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::project::util::create_secure_channel_to_authority;
+use ockam::Context;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
+use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::DefaultAddress;
+use ockam_api::identity::EnrollmentTicket;
+use ockam_core::api::{Request, Status};
 use ockam_core::route;
 use ockam_identity::CredentialsIssuerClient;
+use ockam_multiaddr::MultiAddr;
 use ockam_multiaddr::proto::Service;
 use ockam_node::RpcClient;
+
+use crate::{CommandGlobalOpts, docs, Result};
+use crate::enroll::{Auth0Provider, Auth0Service};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::project::ProjectInfo;
+use crate::project::util::create_secure_channel_to_authority;
+use crate::util::{node_rpc, RpcBuilder};
+use crate::util::api::{CloudOpts, TrustContextOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -71,7 +69,7 @@ impl EnrollCommand {
 async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, EnrollCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.trust_opts)).await?;
     let project_as_string: String;
 
@@ -101,15 +99,15 @@ async fn run_impl(
         };
 
         // Read (okta and authority) project parameters from project.json
-        project_as_string = tokio::fs::read_to_string(path).await?;
-        serde_json::from_str(&project_as_string)?
+        project_as_string = tokio::fs::read_to_string(path).await.into_diagnostic()?;
+        serde_json::from_str(&project_as_string).into_diagnostic()?
     };
 
     let project: Project = (&proj).into();
 
     // Create secure channel to the project's authority node
     // RPC is in embedded mode
-    let (secure_channel_addr, _secure_channel_flow_control_id) = {
+    let secure_channel_addr = {
         let authority =
             ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
@@ -131,18 +129,23 @@ async fn run_impl(
         let token_issuer_route = {
             let service = MultiAddr::try_from(
                 format!("/service/{}", DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR).as_str(),
-            )?;
+            )
+            .into_diagnostic()?;
             let mut addr = secure_channel_addr.clone();
             for proto in service.iter() {
-                addr.push_back_value(&proto)?;
+                addr.push_back_value(&proto).into_diagnostic()?;
             }
-            ockam_api::local_multiaddr_to_route(&addr)
-                .context(format!("Invalid MultiAddr {addr}"))?
+            ockam_api::local_multiaddr_to_route(&addr).ok_or(miette!("Invalid MultiAddr {addr}"))?
         };
         let client = TokenAcceptorClient::new(
-            RpcClient::new(route![DefaultAddress::RPC_PROXY, token_issuer_route], &ctx).await?,
+            RpcClient::new(route![DefaultAddress::RPC_PROXY, token_issuer_route], &ctx)
+                .await
+                .into_diagnostic()?,
         );
-        client.present_token(tkn.one_time_code()).await?
+        client
+            .present_token(tkn.one_time_code())
+            .await
+            .into_diagnostic()?
     } else if cmd.okta {
         authenticate_through_okta(
             &ctx,
@@ -156,19 +159,20 @@ async fn run_impl(
     }
 
     let credential_issuer_route = {
-        let service = MultiAddr::try_from("/service/credential_issuer")?;
+        let service = MultiAddr::try_from("/service/credential_issuer").into_diagnostic()?;
         let mut addr = secure_channel_addr.clone();
         for proto in service.iter() {
-            addr.push_back_value(&proto)?;
+            addr.push_back_value(&proto).into_diagnostic()?;
         }
-        ockam_api::local_multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {addr}"))?
+        ockam_api::local_multiaddr_to_route(&addr).ok_or(miette!("Invalid MultiAddr {addr}"))?
     };
 
     let client2 = CredentialsIssuerClient::new(
         route![DefaultAddress::RPC_PROXY, credential_issuer_route],
         &ctx,
     )
-    .await?;
+    .await
+    .into_diagnostic()?;
 
     opts.state
         .projects
@@ -177,7 +181,7 @@ async fn run_impl(
         .trust_contexts
         .overwrite(&project.name, project.clone().try_into()?)?;
 
-    let credential = client2.credential().await?;
+    let credential = client2.credential().await.into_diagnostic()?;
     println!("---");
     println!("{credential}");
     println!("---");
@@ -192,9 +196,12 @@ async fn authenticate_through_okta(
     node_name: &str,
     p: ProjectInfo<'_>,
     secure_channel_addr: MultiAddr,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     // Get auth0 token
-    let okta_config: OktaAuth0 = p.okta_config.context("Okta addon not configured")?.into();
+    let okta_config: OktaAuth0 = p
+        .okta_config
+        .ok_or(miette!("Okta addon not configured"))?
+        .into();
     let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config));
     let token = auth0.token(&cmd.cloud_opts, opts).await?;
 
@@ -202,12 +209,14 @@ async fn authenticate_through_okta(
     let okta_authenticator_addr = {
         let service = MultiAddr::try_from(
             format!("/service/{}", DefaultAddress::OKTA_IDENTITY_PROVIDER).as_str(),
-        )?;
+        )
+        .into_diagnostic()?;
         let mut addr = secure_channel_addr.clone();
         for proto in service.iter() {
-            addr.push_back_value(&proto)?;
+            addr.push_back_value(&proto).into_diagnostic()?;
         }
-        addr.push_front(Service::new(DefaultAddress::RPC_PROXY))?;
+        addr.push_front(Service::new(DefaultAddress::RPC_PROXY))
+            .into_diagnostic()?;
         addr
     };
 
@@ -224,6 +233,6 @@ async fn authenticate_through_okta(
         Ok(())
     } else {
         eprintln!("{}", rpc.parse_err_msg(res, dec));
-        Err(miette!("Failed to enroll").into())
+        Err(miette!("Failed to enroll"))
     }
 }

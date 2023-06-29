@@ -1,17 +1,18 @@
-pub mod types;
-
 use either::Either;
 use minicbor::Decoder;
+use tracing::trace;
+
 use ockam::identity::credential::{Credential, CredentialData, Verified};
 use ockam::identity::Identities;
+use ockam_core::{self, Result, Routed, Worker};
 use ockam_core::api::{self, Id, ResponseBuilder};
 use ockam_core::api::{Error, Method, Request, Response};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{self, Result, Routed, Worker};
 use ockam_node::Context;
-use tracing::trace;
 
 use self::types::{VerifyRequest, VerifyResponse};
+
+pub mod types;
 
 pub struct Verifier {
     identities: Arc<Identities>,
@@ -66,9 +67,11 @@ impl Verifier {
                                 .body(VerifyResponse::new(dat.into_attributes(), exp))
                                 .to_vec()?
                         }
-                        Err(err) => Response::internal_error(req.id())
-                            .body(err.to_string())
-                            .to_vec()?,
+                        Err(err) => {
+                            let err_body = Error::new(req.path())
+                                .with_message(format!("Unable to verify credential. {}", err));
+                            Response::internal_error(req.id()).body(err_body).to_vec()?
+                        }
                     }
                 }
                 _ => api::unknown_path(&req).to_vec()?,
@@ -84,7 +87,7 @@ impl Verifier {
         id: Id,
         req: &'a VerifyRequest<'a>,
         cre: &Credential,
-    ) -> Result<Either<ResponseBuilder<Error<'_>>, CredentialData<Verified>>> {
+    ) -> Result<Either<ResponseBuilder<Error>, CredentialData<Verified>>> {
         let data = CredentialData::try_from(cre.data.as_slice())?;
 
         let authority = if let Some(ident) = req.authority(data.unverified_issuer()) {

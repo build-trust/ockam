@@ -1,18 +1,18 @@
+use std::time::Duration;
+
+use ockam::compat::tokio::sync::RwLock;
+use ockam_core::{async_trait, Error, route};
+use ockam_core::compat::sync::Arc;
+use ockam_identity::IdentityIdentifier;
+use ockam_multiaddr::{Match, Protocol};
+use ockam_multiaddr::proto::Secure;
+use ockam_node::Context;
+
+use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 use crate::error::ApiError;
 use crate::nodes::connection::{Changes, ConnectionInstanceBuilder, Instantiator};
 use crate::nodes::models::secure_channel::CredentialExchangeMode;
 use crate::nodes::NodeManager;
-use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
-
-use ockam::compat::tokio::sync::RwLock;
-use ockam_core::{async_trait, route, Error};
-use ockam_identity::IdentityIdentifier;
-use ockam_multiaddr::proto::Secure;
-use ockam_multiaddr::{Match, Protocol};
-use ockam_node::Context;
-
-use ockam_core::compat::sync::Arc;
-use std::time::Duration;
 
 /// Creates secure connection from existing transport
 pub(crate) struct SecureChannelInstantiator {
@@ -82,7 +82,7 @@ impl Instantiator for SecureChannelInstantiator {
             current_multiaddr,
             flow_control_id: Some(sc.flow_control_id().clone()),
             secure_channel_encryptors: vec![sc.encryptor_address().clone()],
-            tcp_worker: None,
+            tcp_connection: None,
         })
     }
 }

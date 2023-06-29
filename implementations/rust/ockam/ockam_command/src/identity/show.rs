@@ -1,22 +1,28 @@
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::util::output::Output;
-use crate::util::{node_rpc, println_output};
-use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
-use clap::Args;
 use core::fmt::Write;
+
+use clap::Args;
+use miette::IntoDiagnostic;
+
 use ockam::identity::identity::IdentityChangeHistory;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_node::Context;
 
+use crate::{CommandGlobalOpts, docs, EncodeFormat, Result};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::util::{node_rpc, println_output};
+use crate::util::output::Output;
+
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 /// Show the details of an identity
 #[derive(Clone, Debug, Args)]
 #[command(
-long_about = docs::about(LONG_ABOUT),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
+    long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
     #[arg()]
@@ -42,7 +48,7 @@ impl ShowCommand {
     async fn run_impl(
         _ctx: Context,
         options: (CommandGlobalOpts, ShowCommand),
-    ) -> crate::Result<()> {
+    ) -> miette::Result<()> {
         let (opts, cmd) = options;
         let name = get_identity_name(&opts.state, &cmd.name);
         let state = opts.state.identities.get(&name)?;
@@ -54,8 +60,10 @@ impl ShowCommand {
                 .identities_repository()
                 .await?
                 .get_identity(&identifier)
-                .await?
-                .export()?;
+                .await
+                .into_diagnostic()?
+                .export()
+                .into_diagnostic()?;
 
             if Some(EncodeFormat::Hex) == cmd.encoding {
                 println_output(identity, &opts.global_args.output_format)?;

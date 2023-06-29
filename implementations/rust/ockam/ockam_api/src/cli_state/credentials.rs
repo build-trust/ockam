@@ -1,8 +1,12 @@
-use super::Result;
-use crate::cli_state::CliStateError;
-use ockam_identity::{Credential, Identity, IdentityHistoryComparison};
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+use ockam_identity::{Credential, Identity, IdentityHistoryComparison};
+
+use crate::cli_state::CliStateError;
+
+use super::Result;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CredentialsState {
@@ -46,24 +50,24 @@ impl CredentialConfig {
     }
 
     pub fn credential(&self) -> Result<Credential> {
-        let bytes = match hex::decode(&self.encoded_credential) {
-            Ok(b) => b,
-            Err(e) => {
-                return Err(CliStateError::Invalid(format!(
-                    "Unable to hex decode credential. {e}"
-                )));
-            }
-        };
-        minicbor::decode::<Credential>(&bytes)
-            .map_err(|e| CliStateError::Invalid(format!("Unable to decode credential. {e}")))
+        let bytes = hex::decode(&self.encoded_credential).map_err(|e| {
+            error!(%e, "Unable to hex-decode credential");
+            CliStateError::InvalidOperation("Unable to hex-decode credential".to_string())
+        })?;
+        minicbor::decode::<Credential>(&bytes).map_err(|e| {
+            error!(%e, "Unable to decode credential");
+            CliStateError::InvalidOperation("Unable to decode credential".to_string())
+        })
     }
 }
 
 mod traits {
-    use super::*;
+    use ockam_core::async_trait;
+
     use crate::cli_state::file_stem;
     use crate::cli_state::traits::*;
-    use ockam_core::async_trait;
+
+    use super::*;
 
     #[async_trait]
     impl StateDirTrait for CredentialsState {

@@ -2,16 +2,17 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use minicbor::Decoder;
+
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::sync::Mutex;
 use ockam::identity::IdentityIdentifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use ockam::Result;
-use ockam_core::api::{Id, Request, Response, ResponseBuilder, Status};
+use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
+use ockam_node::tokio::time::timeout;
 
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
@@ -65,17 +66,18 @@ impl NodeManagerWorker {
                 RemoteForwarder::create(ctx, route, options).await
             };
             if result.is_ok() && !connection_instance.transport_route.is_empty() {
+                let ping_route = connection_instance.transport_route.clone();
                 let ctx = Arc::new(ctx.async_try_clone().await?);
                 let repl = replacer(
                     manager,
                     ctx,
-                    connection_instance.clone(),
+                    connection_instance,
                     req.address().clone(),
                     req.alias().map(|a| a.to_string()),
                     req.authorized(),
                 );
                 let node_manager = self.node_manager.write().await;
-                let mut session = Session::new(connection_instance.transport_route);
+                let mut session = Session::new(ping_route);
                 session.set_replacer(repl);
                 node_manager.sessions.lock().unwrap().add(session);
             }
@@ -114,7 +116,7 @@ impl NodeManagerWorker {
         ctx: &mut Context,
         req: &Request<'_>,
         remote_address: &'a str,
-    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>> {
+    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         debug!(%remote_address , "Handling DeleteForwarder request");
@@ -122,23 +124,30 @@ impl NodeManagerWorker {
         if let Some(forwarder_to_delete) = node_manager.registry.forwarders.remove(remote_address) {
             debug!(%remote_address, "Successfully removed forwarder from node registry");
 
-            let was_stopped = ctx
+            match ctx
                 .stop_worker(forwarder_to_delete.worker_address().clone())
                 .await
-                .is_ok();
-
-            if was_stopped {
-                debug!(%remote_address, "Successfully stopped forwarder");
-                Ok(Response::ok(req.id())
-                    .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
-            } else {
-                error!(%remote_address, "Failed to delete forwarder from node registry");
-                Ok(Response::internal_error(req.id())
-                    .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
+            {
+                Ok(_) => {
+                    debug!(%remote_address, "Successfully stopped forwarder");
+                    Ok(Response::ok(req.id())
+                        .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
+                }
+                Err(err) => {
+                    error!(%remote_address, ?err, "Failed to delete forwarder from node registry");
+                    let err_body = Error::new(req.path())
+                        .with_message(format!("Failed to delete forwarder at {}.", remote_address))
+                        .with_cause(Error::new(req.path()).with_message(err.to_string()));
+                    Err(Response::internal_error(req.id()).body(err_body))
+                }
             }
         } else {
             error!(%remote_address, "Forwarder not found in the node registry");
-            Ok(Response::not_found(req.id()).body(None))
+            let err_body = Error::new(req.path()).with_message(format!(
+                "Forwarder with address {} not found.",
+                remote_address
+            ));
+            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 
@@ -146,7 +155,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         remote_address: &'a str,
-    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>> {
+    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>, ResponseBuilder<Error>> {
         debug!("Handling ShowForwarder request");
         let node_manager = self.node_manager.read().await;
         if let Some(forwarder_to_show) = node_manager.registry.forwarders.get(remote_address) {
@@ -157,8 +166,11 @@ impl NodeManagerWorker {
             )
         } else {
             error!(%remote_address, "Forwarder not found in the node registry");
-
-            Ok(Response::not_found(req.id()).body(None))
+            let err_body = Error::new(req.path()).with_message(format!(
+                "Forwarder with address {} not found.",
+                remote_address
+            ));
+            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 
@@ -211,9 +223,13 @@ fn replacer(
                         debug!("cannot delete secure channel `{encryptor}`: {error}");
                     }
                 }
-                if let Some(tcp_worker) = previous_connection_instance.tcp_worker.as_ref() {
-                    if let Err(error) = node_manager.tcp_transport.disconnect(tcp_worker).await {
-                        debug!("cannot stop tcp worker `{tcp_worker}`: {error}");
+                if let Some(tcp_connection) = previous_connection_instance.tcp_connection.as_ref() {
+                    if let Err(error) = node_manager
+                        .tcp_transport
+                        .disconnect(tcp_connection.sender_address().clone())
+                        .await
+                    {
+                        debug!("cannot stop tcp worker `{tcp_connection}`: {error}");
                     }
                 }
                 drop(node_manager);

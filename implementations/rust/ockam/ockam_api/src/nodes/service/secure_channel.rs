@@ -2,21 +2,22 @@ use std::time::Duration;
 
 use minicbor::Decoder;
 
-use ockam::identity::TrustEveryonePolicy;
+use ockam::{Address, Result, Route};
 use ockam::identity::{
     Identities, IdentitiesVault, IdentityIdentifier, SecureChannelListenerOptions,
     SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
 };
-use ockam::{Address, Result, Route};
-use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam::identity::TrustEveryonePolicy;
+use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_identity::Credential;
 use ockam_identity::{SecureChannel, SecureChannelListener};
+use ockam_identity::Credential;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
-use crate::cli_state::traits::StateDirTrait;
+use crate::{DefaultAddress, multiaddr_to_route};
 use crate::cli_state::StateItemTrait;
+use crate::cli_state::traits::StateDirTrait;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -25,11 +26,10 @@ use crate::nodes::models::secure_channel::{
     SecureChannelListenersList, ShowSecureChannelListenerRequest,
     ShowSecureChannelListenerResponse, ShowSecureChannelRequest, ShowSecureChannelResponse,
 };
+use crate::nodes::NodeManager;
 use crate::nodes::registry::{Registry, SecureChannelListenerInfo};
 use crate::nodes::service::invalid_multiaddr_error;
 use crate::nodes::service::NodeIdentities;
-use crate::nodes::NodeManager;
-use crate::{multiaddr_to_route, DefaultAddress};
 
 use super::{map_multiaddr_err, NodeManagerWorker};
 
@@ -313,7 +313,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<CreateSecureChannelResponse>> {
+    ) -> Result<ResponseBuilder<CreateSecureChannelResponse>, ResponseBuilder<Error>> {
         let CreateSecureChannelRequest {
             addr,
             authorized_identifiers,
@@ -379,7 +379,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<DeleteSecureChannelResponse<'_>>> {
+    ) -> Result<ResponseBuilder<DeleteSecureChannelResponse<'_>>, ResponseBuilder<Error>> {
         let body: DeleteSecureChannelRequest = dec.decode()?;
         let addr = Address::from(body.channel.as_ref());
         info!(%addr, "Handling request to delete secure channel");
@@ -401,7 +401,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<ShowSecureChannelResponse<'_>>> {
+    ) -> Result<ResponseBuilder<ShowSecureChannelResponse<'_>>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
         let body: ShowSecureChannelRequest = dec.decode()?;
 
@@ -422,7 +422,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<()>> {
+    ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelListenerRequest {
             addr,
@@ -446,7 +446,9 @@ impl NodeManagerWorker {
 
         let addr = Address::from(addr.as_ref());
         if !addr.is_local() {
-            return Ok(Response::bad_request(req.id()));
+            let err_body =
+                Error::new(req.path()).with_message(format!("Invalid address: {}", addr));
+            return Err(Response::bad_request(req.id()).body(err_body));
         }
 
         node_manager
@@ -505,7 +507,11 @@ impl NodeManagerWorker {
             Some(info) => Ok(Response::ok(req.id())
                 .body(ShowSecureChannelListenerResponse::new(info))
                 .to_vec()?),
-            None => Ok(Response::not_found(req.id()).to_vec()?),
+            None => {
+                let err_body = Error::new(req.path())
+                    .with_message(format!("Secure Channel Listener, {}, not found.", address));
+                Ok(Response::not_found(req.id()).body(err_body).to_vec()?)
+            }
         }
     }
 }

@@ -1,22 +1,22 @@
-use crate::CommandGlobalOpts;
 use clap::Args;
+
 use ockam_api::cli_state::StateDirTrait;
+
+use crate::CommandGlobalOpts;
+use crate::util::local_cmd;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {}
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        if let Err(e) = run_impl(options, self) {
-            eprintln!("{e}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(options, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, _cmd: ListCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
     for node in opts.state.nodes.list()? {
-        opts.terminal.write(&format!("Node: {}\n", node.name()))?;
+        opts.terminal.write(format!("Node: {}\n", node.name()))?;
     }
     Ok(())
 }

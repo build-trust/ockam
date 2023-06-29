@@ -34,8 +34,7 @@ defmodule Ockam.Healthcheck.Test do
       host: "localhost",
       port: 4000,
       api_worker: "api",
-      healthcheck_worker: "healthcheck",
-      crontab: "* * * * *"
+      healthcheck_worker: "healthcheck"
     }
 
     test_proc = self()
@@ -78,8 +77,7 @@ defmodule Ockam.Healthcheck.Test do
       host: "localhost",
       port: 4000,
       api_worker: "api",
-      healthcheck_worker: "not_healthcheck",
-      crontab: "* * * * *"
+      healthcheck_worker: "not_healthcheck"
     }
 
     test_proc = self()
@@ -124,8 +122,7 @@ defmodule Ockam.Healthcheck.Test do
       api_worker: "api",
       healthcheck_worker: "endpoint",
       path: "/ok",
-      method: :get,
-      crontab: "* * * * *"
+      method: :get
     }
 
     test_proc = self()
@@ -169,8 +166,7 @@ defmodule Ockam.Healthcheck.Test do
       api_worker: "api",
       healthcheck_worker: "endpoint",
       path: "/error",
-      method: :get,
-      crontab: "* * * * *"
+      method: :get
     }
 
     test_proc = self()
@@ -212,8 +208,7 @@ defmodule Ockam.Healthcheck.Test do
       host: "localhost",
       port: 4000,
       api_worker: "not_api",
-      healthcheck_worker: "healthcheck",
-      crontab: "* * * * *"
+      healthcheck_worker: "healthcheck"
     }
 
     assert {:error, {:secure_channel_error, :key_exchange_timeout}} =
@@ -226,8 +221,7 @@ defmodule Ockam.Healthcheck.Test do
       host: "localhost",
       port: 1234,
       api_worker: "api",
-      healthcheck_worker: "healthcheck",
-      crontab: "* * * * *"
+      healthcheck_worker: "healthcheck"
     }
 
     assert {:error, {:tcp_connection_error, :econnrefused}} =

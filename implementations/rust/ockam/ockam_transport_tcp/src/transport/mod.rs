@@ -1,14 +1,15 @@
+pub use common::*;
+use ockam_core::{async_trait, AsyncTryClone, Result};
+use ockam_node::{Context, HasContext};
+
+pub use crate::portal::options::*;
+use crate::TcpRegistry;
+
 mod common;
 mod connection;
 mod lifecycle;
 mod listener;
 mod portals;
-
-pub use crate::portal::options::*;
-
-use crate::TcpRegistry;
-use ockam_core::{async_trait, AsyncTryClone, Result};
-use ockam_node::{Context, HasContext};
 
 /// High level management interface for TCP transports
 ///

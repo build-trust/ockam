@@ -1,5 +1,6 @@
-use crate::{PublicKey, SecretAttributes, SmallBuffer};
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
+
+use crate::{KeyId, PublicKey, SecretAttributes, SmallBuffer};
 
 /// Defines the Vault interface for asymmetric encryption.
 #[async_trait]
@@ -22,11 +23,13 @@ pub trait AsymmetricVault: Send + Sync {
 }
 
 /// Tests for implementations of the AsymmetricVault trait
-#[cfg(feature = "vault_tests")]
+#[cfg(test)]
 pub mod tests {
-    use super::*;
-    use crate::{EphemeralSecretsStore, Secret, SecretAttributes};
     use hex::encode;
+
+    use crate::{EphemeralSecretsStore, Secret, SecretAttributes};
+
+    use super::*;
 
     /// This test checks that we can create a Diffie-Hellman key from 2 public keys
     pub async fn test_ec_diffie_hellman_curve25519(

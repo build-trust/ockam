@@ -1,9 +1,13 @@
-use crate::cli_state::{file_stem, CliState, CliStateError};
-use ockam_core::async_trait;
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
+use ockam_core::async_trait;
+
+use crate::cli_state::{CliState, CliStateError, file_stem};
+
 use super::Result;
+
 pub const DATA_DIR_NAME: &str = "data";
 
 /// Represents the directory of a type of state. This directory contains a list of items, uniquely
@@ -41,7 +45,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     }
 
     /// Do not run any migration by default
-    async fn migrate(&self, _item_path: &Path) -> Result<()> {
+    async fn migrate(&self, _path: &Path) -> Result<()> {
         Ok(())
     }
 
@@ -82,22 +86,28 @@ pub trait StateDirTrait: Sized + Send + Sync {
         name: impl AsRef<str>,
         config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
     ) -> Result<Self::Item> {
-        debug!(name = %name.as_ref(), "Creating new item");
+        debug!(name = %name.as_ref(), "Creating new config resource");
         if self.exists(&name) {
-            return Err(CliStateError::AlreadyExists);
+            return Err(CliStateError::AlreadyExists {
+                resource: Self::default_filename().to_string(),
+                name: name.as_ref().to_string(),
+            });
         }
-        trace!(name = %name.as_ref(), "Creating item instance");
+        trace!(name = %name.as_ref(), "Creating config resource instance");
         let state = Self::Item::new(self.path(&name), config)?;
         if !self.default_path()?.exists() {
             self.set_default(&name)?;
         }
-        info!(name = %name.as_ref(), "Created new item");
+        info!(name = %name.as_ref(), "Created new config resource");
         Ok(state)
     }
 
     fn get(&self, name: impl AsRef<str>) -> Result<Self::Item> {
         if !self.exists(&name) {
-            return Err(CliStateError::NotFound);
+            return Err(CliStateError::ResourceNotFound {
+                resource: Self::default_filename().to_string(),
+                name: name.as_ref().to_string(),
+            });
         }
         Self::Item::load(self.path(&name))
     }
@@ -115,11 +125,9 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn list_items_names(&self) -> Result<Vec<String>> {
         let mut items = Vec::default();
         let iter = std::fs::read_dir(self.dir()).map_err(|e| {
-            CliStateError::Invalid(format!(
-                "Unable to read state directory, {}. {}",
-                self.dir().as_path().to_string_lossy(),
-                e
-            ))
+            let dir = self.dir().as_path().to_string_lossy();
+            error!(%dir, %e, "Unable to read state directory");
+            CliStateError::InvalidOperation(format!("Unable to read state from directory {dir}"))
         })?;
         for entry in iter {
             let entry_path = entry?.path();
@@ -151,7 +159,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
         // Retrieve state. If doesn't exist do nothing.
         let s = match self.get(&name) {
             Ok(project) => project,
-            Err(CliStateError::NotFound) => return Ok(()),
+            Err(CliStateError::ResourceNotFound { .. }) => return Ok(()),
             Err(e) => return Err(e),
         };
         // If it's the default, remove link
@@ -177,7 +185,10 @@ pub trait StateDirTrait: Sized + Send + Sync {
     fn set_default(&self, name: impl AsRef<str>) -> Result<()> {
         debug!(name = %name.as_ref(), "Setting default item");
         if !self.exists(&name) {
-            return Err(CliStateError::NotFound);
+            return Err(CliStateError::ResourceNotFound {
+                resource: Self::default_filename().to_string(),
+                name: name.as_ref().to_string(),
+            });
         }
         let original = self.path(&name);
         let link = self.default_path()?;
@@ -243,8 +254,9 @@ pub trait StateItemTrait: Sized + Send {
 
 #[cfg(test)]
 mod tests {
-    use crate::cli_state::{StateDirTrait, StateItemTrait};
     use std::path::PathBuf;
+
+    use crate::cli_state::{StateDirTrait, StateItemTrait};
 
     #[test]
     fn test_is_item_path() {

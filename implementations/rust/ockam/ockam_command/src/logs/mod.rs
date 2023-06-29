@@ -1,14 +1,17 @@
-use crate::logs::rolling::{RollingConditionBasic, RollingFileAppender};
-
-use ockam_core::env::{get_env, get_env_with_default};
 use std::io::stdout;
 use std::path::PathBuf;
+use std::str::FromStr;
+
 use termimad::crossterm::tty::IsTty;
 use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
+
+use ockam_core::env::{get_env, get_env_with_default};
+
+use crate::logs::rolling::{RollingConditionBasic, RollingFileAppender};
 
 #[allow(unused, clippy::enum_variant_names)]
 mod rolling;
@@ -37,36 +40,36 @@ pub fn setup_logging(
         "ockam_transport_tcp",
         "ockam_vault",
     ];
-    let builder = EnvFilter::builder();
-
-    // Otherwise, use `verbose` to define the log level.
-    let filter = match (stdout().is_tty(), verbose) {
-        // If tty and `verbose` is not set, try to read the log level from the OCKAM_LOG env variable.
-        (true, 0) => match get_env::<String>("OCKAM_LOG") {
-            Ok(Some(s)) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
-            // Default to info if OCKAM_LOG is not set.
-            _ => builder
-                .with_default_directive(LevelFilter::INFO.into())
-                .parse_lossy(ockam_crates.map(|c| format!("{c}=info")).join(",")),
-        },
-        // If not tty, default to `info` level.
-        (false, 0) | (_, 1) => builder
-            .with_default_directive(LevelFilter::INFO.into())
-            .parse_lossy(ockam_crates.map(|c| format!("{c}=info")).join(",")),
-        // In all other cases, default to the level set by `verbose`.
-        (_, 2) => builder
-            .with_default_directive(LevelFilter::DEBUG.into())
-            .parse_lossy(ockam_crates.map(|c| format!("{c}=debug")).join(",")),
-        _ => builder
-            .with_default_directive(LevelFilter::TRACE.into())
-            .parse_lossy(ockam_crates.map(|c| format!("{c}=trace")).join(",")),
+    let level = {
+        // Parse the the raw log level value (e.g. "info" or "-vvv").
+        let level_raw = match get_env::<String>("OCKAM_LOG") {
+            // If OCKAM_LOG is set, give it priority over `verbose` to define the log level.
+            Ok(Some(s)) if !s.is_empty() => s,
+            // Otherwise, use `verbose` to define the log level.
+            Ok(_) | Err(_) => match verbose {
+                0 => "off".to_string(),
+                1 => "info".to_string(),
+                2 => "debug".to_string(),
+                _ => "trace".to_string(),
+            },
+        };
+        // If the parsed log level is not valid, default to info.
+        let level = LevelFilter::from_str(&level_raw).unwrap_or(LevelFilter::INFO);
+        if level == LevelFilter::OFF {
+            return None;
+        }
+        level
     };
+    let builder = EnvFilter::builder();
+    let filter = builder
+        .with_default_directive(level.into())
+        .parse_lossy(ockam_crates.map(|c| format!("{c}={level}")).join(","));
     let subscriber = tracing_subscriber::registry()
         .with(filter)
         .with(tracing_error::ErrorLayer::default());
-    let (subscriber, guard) = match (verbose, log_path) {
-        (0, None) => return None,
-        (_, None) => {
+    let (subscriber, guard) = match log_path {
+        // If a log path is not provided, log to stdout.
+        None => {
             let color = !no_color && stdout().is_tty();
             let (n, guard) = tracing_appender::non_blocking(stdout());
             let fmt = tracing_subscriber::fmt::Layer::default()
@@ -74,7 +77,8 @@ pub fn setup_logging(
                 .with_writer(n);
             (subscriber.with(fmt).try_init(), Some(guard))
         }
-        (_, Some(log_path)) => {
+        // If a log path is provided, log to a rolling file appender.
+        Some(log_path) => {
             let r = RollingFileAppender::new(
                 log_path,
                 RollingConditionBasic::new()
@@ -85,7 +89,7 @@ pub fn setup_logging(
             .expect("Failed to create rolling file appender");
             let (n, guard) = tracing_appender::non_blocking(r);
             let fmt = tracing_subscriber::fmt::Layer::default()
-                .with_ansi(!no_color)
+                .with_ansi(false)
                 .with_writer(n);
             (subscriber.with(fmt).try_init(), Some(guard))
         }

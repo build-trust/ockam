@@ -4,6 +4,60 @@
 //!
 //! For more information please visit the [command guide](https://docs.ockam.io/reference/command)
 
+use std::{path::PathBuf, sync::Mutex};
+
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
+use colorful::Colorful;
+use console::Term;
+use miette::GraphicalReportHandler;
+use once_cell::sync::Lazy;
+
+use authenticated::AuthenticatedCommand;
+use completion::CompletionCommand;
+use configuration::ConfigurationCommand;
+use credential::CredentialCommand;
+use enroll::EnrollCommand;
+use environment::EnvironmentCommand;
+use error::{Error, Result};
+use identity::IdentityCommand;
+use kafka::consumer::KafkaConsumerCommand;
+use kafka::producer::KafkaProducerCommand;
+use lease::LeaseCommand;
+use manpages::ManpagesCommand;
+use markdown::MarkdownCommand;
+use message::MessageCommand;
+use node::NodeCommand;
+use ockam_api::cli_state::CliState;
+use policy::PolicyCommand;
+use project::ProjectCommand;
+use relay::RelayCommand;
+use reset::ResetCommand;
+use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
+use service::ServiceCommand;
+use space::SpaceCommand;
+use status::StatusCommand;
+use tcp::{
+    connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
+    outlet::TcpOutletCommand,
+};
+use terminal::OckamColor;
+use trust_context::TrustContextCommand;
+use upgrade::check_if_an_upgrade_is_available;
+use util::{exitcode, exitcode::ExitCode};
+use vault::VaultCommand;
+use version::Version;
+use worker::WorkerCommand;
+
+use crate::admin::AdminCommand;
+use crate::authority::AuthorityCommand;
+use crate::flow_control::FlowControlCommand;
+use crate::kafka::outlet::KafkaOutletCommand;
+use crate::logs::setup_logging;
+use crate::node::NodeSubcommand;
+use crate::run::RunCommand;
+use crate::subscription::SubscriptionCommand;
+use crate::terminal::{Terminal, TerminalStream};
+
 mod admin;
 mod authenticated;
 mod authority;
@@ -43,57 +97,6 @@ mod util;
 mod vault;
 mod version;
 mod worker;
-
-use crate::admin::AdminCommand;
-use crate::authority::AuthorityCommand;
-use crate::flow_control::FlowControlCommand;
-use crate::logs::setup_logging;
-use crate::node::NodeSubcommand;
-use crate::run::RunCommand;
-use crate::subscription::SubscriptionCommand;
-use crate::terminal::{Terminal, TerminalStream};
-use authenticated::AuthenticatedCommand;
-use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
-
-use crate::kafka::outlet::KafkaOutletCommand;
-use colorful::Colorful;
-use completion::CompletionCommand;
-use configuration::ConfigurationCommand;
-use console::Term;
-use credential::CredentialCommand;
-use enroll::EnrollCommand;
-use environment::EnvironmentCommand;
-use error::{Error, ErrorReportHandler, Result};
-use identity::IdentityCommand;
-use kafka::consumer::KafkaConsumerCommand;
-use kafka::producer::KafkaProducerCommand;
-use lease::LeaseCommand;
-use manpages::ManpagesCommand;
-use markdown::MarkdownCommand;
-use message::MessageCommand;
-use node::NodeCommand;
-use ockam_api::cli_state::{CliState, StateDirTrait};
-use once_cell::sync::Lazy;
-use policy::PolicyCommand;
-use project::ProjectCommand;
-use relay::RelayCommand;
-use reset::ResetCommand;
-use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
-use service::ServiceCommand;
-use space::SpaceCommand;
-use status::StatusCommand;
-use std::{path::PathBuf, sync::Mutex};
-use tcp::{
-    connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
-    outlet::TcpOutletCommand,
-};
-use terminal::OckamColor;
-use trust_context::TrustContextCommand;
-use upgrade::check_if_an_upgrade_is_available;
-use util::{exitcode, exitcode::ExitCode};
-use vault::VaultCommand;
-use version::Version;
-use worker::WorkerCommand;
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -332,8 +335,14 @@ impl OckamCommand {
         // Sets a hook using our own Error Report Handler
         // This allows us to customize how we
         // format the error messages and their content.
-        let _hook_result = miette::set_hook(Box::new(|_| Box::new(ErrorReportHandler::new())));
-
+        let _hook_result = miette::set_hook(Box::new(|_| {
+            Box::new(
+                GraphicalReportHandler::new()
+                    .with_cause_chain()
+                    .with_footer(Version::short().light_gray().to_string())
+                    .with_urls(false),
+            )
+        }));
         let options = CommandGlobalOpts::new(self.global_args.clone());
 
         let _tracing_guard = if !options.global_args.quiet {
@@ -423,9 +432,19 @@ impl OckamCommand {
         // for the node that is being created
         if let OckamSubcommand::Node(c) = &self.subcommand {
             if let NodeSubcommand::Create(c) = &c.subcommand {
-                if let Ok(s) = opts.state.nodes.get(&c.node_name) {
-                    return Some(s.stdout_log());
+                if c.disable_file_logging {
+                    return None;
                 }
+                // In the case where a node is explicitly created in foreground mode, we need
+                // to initialize the node directories before we can get the log path.
+                let path = opts
+                    .state
+                    .nodes
+                    .stdout_logs(&c.node_name)
+                    .unwrap_or_else(|_| {
+                        panic!("Failed to initialize logs file for node {}", c.node_name)
+                    });
+                return Some(path);
             }
         }
         None

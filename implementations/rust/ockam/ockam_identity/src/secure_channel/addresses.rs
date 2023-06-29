@@ -1,5 +1,6 @@
-use crate::secure_channel::common::Role;
 use ockam_core::Address;
+
+use crate::secure_channel::role::Role;
 
 // Previously there were regular ephemeral secure channel encryptor&decryptor
 // and identity secure channel encryptor&decryptor.

@@ -1,8 +1,11 @@
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
+use colorful::Colorful;
 use miette::miette;
+
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::CliStateError;
+
+use crate::{CommandGlobalOpts, docs, fmt_ok};
+use crate::util::local_cmd;
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
@@ -21,32 +24,28 @@ pub struct DefaultCommand {
 
 impl DefaultCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        if let Err(e) = run_impl(options, self) {
-            eprintln!("{e:?}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(options, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
     let state = opts.state.identities;
-    // Check if exists
-    match state.get(&cmd.name) {
-        Ok(idt) => {
-            // If it exists, warn the user and exit
-            if state.is_default(idt.name())? {
-                Err(miette!("Identity '{}' is already the default", &cmd.name).into())
-            }
-            // Otherwise, set it as default
-            else {
-                state.set_default(idt.name())?;
-                println!("Identity '{}' is now the default", &cmd.name,);
-                Ok(())
-            }
-        }
-        Err(err) => match err {
-            CliStateError::NotFound => Err(miette!("Identity '{}' not found", &cmd.name).into()),
-            _ => Err(err.into()),
-        },
+    let idt = state.get(&cmd.name)?;
+    // If it exists, warn the user and exit
+    if state.is_default(idt.name())? {
+        Err(miette!(
+            "The identity '{}' is already the default",
+            &cmd.name
+        ))
+    }
+    // Otherwise, set it as default
+    else {
+        state.set_default(idt.name())?;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("The identity '{}' is now the default", &cmd.name))
+            .machine(&cmd.name)
+            .write_line()?;
+        Ok(())
     }
 }

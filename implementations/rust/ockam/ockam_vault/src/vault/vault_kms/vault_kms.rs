@@ -1,18 +1,19 @@
-use crate::constants::CURVE25519_PUBLIC_LENGTH_USIZE;
-use crate::constants::CURVE25519_SECRET_LENGTH_U32;
-
-use crate::{
-    PublicKey, Secret, SecretAttributes, SecretType, SecurityModule, Signature, StoredSecret,
-    VaultError,
-};
 use arrayref::array_ref;
-use ockam_core::compat::rand::{thread_rng, RngCore};
+use sha2::{Digest, Sha256};
+
+use ockam_core::{async_trait, compat::boxed::Box, Result};
+use ockam_core::compat::rand::{RngCore, thread_rng};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, compat::boxed::Box, Result};
-use ockam_core::{Error, KeyId};
+use ockam_core::Error;
 use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
-use sha2::{Digest, Sha256};
+
+use crate::{
+    KeyId, PublicKey, Secret, SecretAttributes, SecretType, SecurityModule, Signature,
+    StoredSecret, VaultError,
+};
+use crate::constants::CURVE25519_PUBLIC_LENGTH_USIZE;
+use crate::constants::CURVE25519_SECRET_LENGTH_U32;
 
 /// Ockam implementation of a security module
 /// An alternative implementation can be found in the ockam_vault_aws crate
@@ -88,7 +89,7 @@ impl SecurityModule for VaultSecurityModule {
                 Ok(public_key.verify(data.as_ref(), &signature).is_ok())
             }
             SecretType::NistP256 => {
-                use p256::ecdsa::{signature::Verifier as _, Signature, VerifyingKey};
+                use p256::ecdsa::{Signature, signature::Verifier as _, VerifyingKey};
                 use p256::pkcs8::DecodePublicKey;
                 let k = VerifyingKey::from_public_key_der(public_key.data())
                     .map_err(Self::from_pkcs8)?;
@@ -292,8 +293,9 @@ impl VaultSecurityModule {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use hex::encode;
+
+    use super::*;
 
     #[test]
     fn test_sha256() {

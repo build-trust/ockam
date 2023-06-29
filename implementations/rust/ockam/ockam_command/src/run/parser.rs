@@ -1,13 +1,15 @@
-use crate::Result;
-use duct::Expression;
-use ockam_api::cli_state::{CliState, StateDirTrait};
-use ockam_core::compat::collections::HashMap;
-use once_cell::sync::Lazy;
-use serde::Deserialize;
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::Debug;
 use std::path::Path;
+
+use duct::Expression;
+use miette::IntoDiagnostic;
+use once_cell::sync::Lazy;
+use serde::Deserialize;
 use tracing::debug;
+
+use ockam_api::cli_state::{CliState, StateDirTrait};
+use ockam_core::compat::collections::HashMap;
 
 pub struct ConfigRunner {
     commands_sorted: Vec<ParsedCommand>,
@@ -29,16 +31,16 @@ impl ConfigRunner {
         }
     }
 
-    pub fn go(cli_state: &CliState, path: &Path) -> Result<()> {
+    pub fn go(cli_state: &CliState, path: &Path) -> miette::Result<()> {
         let mut cr = Self::new();
         cr.parse(cli_state, path)?;
         cr.run()?;
         Ok(())
     }
 
-    fn parse(&mut self, cli_state: &CliState, path: &Path) -> Result<()> {
-        let config = std::fs::read_to_string(path)?;
-        let config: Config = serde_yaml::from_str(&config)?;
+    fn parse(&mut self, cli_state: &CliState, path: &Path) -> miette::Result<()> {
+        let config = std::fs::read_to_string(path).into_diagnostic()?;
+        let config: Config = serde_yaml::from_str(&config).into_diagnostic()?;
         let mut visited = HashSet::new();
         let mut nodes = VecDeque::new();
         for (name, node) in config.nodes {
@@ -54,8 +56,7 @@ impl ConfigRunner {
                         "Circular dependency detected: {} -> {}",
                         depends_on,
                         name
-                    )
-                    .into());
+                    ));
                 }
                 // If the dependency has been parsed, remove it from the control
                 // vector and proceed with the current node.
@@ -83,7 +84,7 @@ impl ConfigRunner {
         Ok(())
     }
 
-    fn run(self) -> Result<()> {
+    fn run(self) -> miette::Result<()> {
         for c in self.commands_sorted.into_iter() {
             debug!("Running command: {}", c.id);
             // If a command fails it will show the appropriate error in its subshell.
@@ -137,7 +138,12 @@ pub struct NodeConfig {
 }
 
 impl NodeConfig {
-    fn parse(self, cli_state: &CliState, node_name: &str, cmds: &mut ConfigRunner) -> Result<()> {
+    fn parse(
+        self,
+        cli_state: &CliState,
+        node_name: &str,
+        cmds: &mut ConfigRunner,
+    ) -> miette::Result<()> {
         let mut insert_command = |subject: &str, name: &str, depends_on, args: &[&str]| {
             debug!("Parsed command: {} {}", binary_path(), args.join(" "));
             let cmd = duct::cmd(binary_path(), args);

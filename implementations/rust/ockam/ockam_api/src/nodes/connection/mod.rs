@@ -1,20 +1,21 @@
-mod plain_tcp;
-mod project;
-mod secure;
-
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::flow_control::FlowControlId;
-use ockam_core::{async_trait, route, Address, CowStr, Route, LOCAL};
-use ockam_identity::IdentityIdentifier;
-use ockam_multiaddr::proto::Service;
-use ockam_multiaddr::{Match, MultiAddr, Protocol};
-use ockam_node::Context;
 use std::fmt::{Debug, Formatter};
 use std::time::Duration;
 
+use ockam_core::{Address, async_trait, CowStr, LOCAL, route, Route};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::flow_control::FlowControlId;
+use ockam_identity::IdentityIdentifier;
+use ockam_multiaddr::{Match, MultiAddr, Protocol};
+use ockam_multiaddr::proto::Service;
+use ockam_node::Context;
+use ockam_transport_tcp::TcpConnection;
 pub(crate) use plain_tcp::PlainTcpInstantiator;
 pub(crate) use project::ProjectInstantiator;
 pub(crate) use secure::SecureChannelInstantiator;
+
+mod plain_tcp;
+mod project;
+mod secure;
 
 pub struct Connection<'a> {
     pub ctx: &'a Context,
@@ -79,7 +80,7 @@ pub struct ConnectionInstance {
     /// Needed to cleanup the connection resources when it must be closed.
     pub secure_channel_encryptors: Vec<Address>,
     /// A TCP worker address if used when instantiating the connection
-    pub tcp_worker: Option<Address>,
+    pub tcp_connection: Option<TcpConnection>,
     /// If a flow control was created
     pub flow_control_id: Option<FlowControlId>,
 }
@@ -119,7 +120,7 @@ pub struct ConnectionInstanceBuilder {
     pub transport_route: Route,
     pub flow_control_id: Option<FlowControlId>,
     pub secure_channel_encryptors: Vec<Address>,
-    pub tcp_worker: Option<Address>,
+    pub tcp_connection: Option<TcpConnection>,
 }
 
 impl Debug for ConnectionInstanceBuilder {
@@ -148,7 +149,7 @@ pub struct Changes {
     /// a new secure channel encryptor is created
     pub secure_channel_encryptors: Vec<Address>,
     /// Optional, to keep track of tcp worker when created for the connection
-    pub tcp_worker: Option<Address>,
+    pub tcp_connection: Option<TcpConnection>,
 }
 
 /// Takes in a [`MultiAddr`] and instantiate it, can be implemented for any protocol.
@@ -180,7 +181,7 @@ impl ConnectionInstanceBuilder {
             current_multiaddr: multi_addr,
             secure_channel_encryptors: vec![],
             flow_control_id: None,
-            tcp_worker: None,
+            tcp_connection: None,
         }
     }
 
@@ -190,7 +191,7 @@ impl ConnectionInstanceBuilder {
             normalized_addr: self.current_multiaddr,
             original_addr: self.original_multiaddr,
             secure_channel_encryptors: self.secure_channel_encryptors,
-            tcp_worker: self.tcp_worker,
+            tcp_connection: self.tcp_connection,
             flow_control_id: self.flow_control_id,
         }
     }
@@ -222,15 +223,15 @@ impl ConnectionInstanceBuilder {
                     self.secure_channel_encryptors
                         .append(&mut changes.secure_channel_encryptors);
 
-                    if changes.tcp_worker.is_some() {
-                        if self.tcp_worker.is_some() {
+                    if changes.tcp_connection.is_some() {
+                        if self.tcp_connection.is_some() {
                             return Err(ockam_core::Error::new(
                                 Origin::Transport,
                                 Kind::Unsupported,
                                 "multiple tcp connections created in a `MultiAddr`",
                             ));
                         }
-                        self.tcp_worker = changes.tcp_worker;
+                        self.tcp_connection = changes.tcp_connection;
                     }
 
                     if changes.flow_control_id.is_some() {
@@ -250,7 +251,7 @@ impl ConnectionInstanceBuilder {
             secure_channel_encryptors: self.secure_channel_encryptors,
             current_multiaddr: self.current_multiaddr,
             flow_control_id: self.flow_control_id,
-            tcp_worker: self.tcp_worker,
+            tcp_connection: self.tcp_connection,
         })
     }
 

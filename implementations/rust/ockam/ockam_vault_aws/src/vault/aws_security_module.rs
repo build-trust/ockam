@@ -3,11 +3,13 @@ use std::path::Path;
 use p256::pkcs8::DecodePublicKey;
 use tracing::error;
 
+use ockam_core::{async_trait, Error, Result};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Error, KeyId, Result};
 use ockam_node::{FileKeyValueStorage, InMemoryKeyValueStorage, KeyValueStorage};
-use ockam_vault::{PublicKey, SecretAttributes, SecretType, SecurityModule, Signature, VaultError};
+use ockam_vault::{
+    KeyId, PublicKey, SecretAttributes, SecretType, SecurityModule, Signature, VaultError,
+};
 
 use crate::vault::aws_kms_client::{AwsKmsClient, AwsKmsConfig, KmsClient};
 
@@ -132,7 +134,7 @@ impl SecurityModule for AwsSecurityModule {
         message: &[u8],
         signature: &Signature,
     ) -> Result<bool> {
-        use p256::ecdsa::{signature::Verifier as _, Signature, VerifyingKey};
+        use p256::ecdsa::{Signature, signature::Verifier as _, VerifyingKey};
 
         let verifying_key =
             VerifyingKey::from_public_key_der(public_key.data()).map_err(Self::from_pkcs8)?;
@@ -155,14 +157,15 @@ impl AwsSecurityModule {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::cell::RefCell;
     use std::collections::HashMap;
-
-    use ockam_core::compat::rand::{thread_rng, RngCore};
-    use ockam_node::InMemoryKeyValueStorage;
     use std::path::PathBuf;
+
+    use ockam_core::compat::rand::{RngCore, thread_rng};
+    use ockam_node::InMemoryKeyValueStorage;
     use SecretAttributes::*;
+
+    use super::*;
 
     /// This test needs to be executed with the following environment variables
     /// AWS_REGION

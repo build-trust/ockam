@@ -1,11 +1,14 @@
-use crate::{constants, Secret, SecretAttributes, SecretType, StoredSecret};
-use ockam_core::compat::boxed::Box;
-use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, KeyId, Result};
-use ockam_node::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueStorage};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeMap;
 use std::path::Path;
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use ockam_core::{async_trait, Result};
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::sync::Arc;
+use ockam_node::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueStorage};
+
+use crate::{constants, KeyId, Secret, SecretAttributes, SecretType, StoredSecret};
 
 /// Storage for a Vault data backed by a file
 /// The `FileValueStorage` implementation takes care of locking / unlocking the underlying file
@@ -209,17 +212,26 @@ impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
         };
         self.storage.modify_value(t).await
     }
+
+    /// Return the list of all the keys **in cache**
+    async fn keys(&self) -> Result<Vec<KeyId>> {
+        self.cache.keys().await
+    }
 }
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use super::*;
-    use crate::{Secret, SecretType, VaultSecurityModule};
-    use ockam_core::compat::rand::RngCore;
-    use rand::thread_rng;
     use std::fs::File;
     use std::io::Read;
     use std::path::PathBuf;
+
+    use rand::thread_rng;
+
+    use ockam_core::compat::rand::RngCore;
+
+    use crate::{Secret, SecretType, VaultSecurityModule};
+
+    use super::*;
 
     #[tokio::test]
     async fn test_persistent_storage() -> Result<()> {

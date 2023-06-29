@@ -1,16 +1,17 @@
+use ockam_core::{Encodable, Result};
+use ockam_core::compat::string::String;
+use ockam_core::compat::sync::Arc;
+use ockam_vault::{KeyId, SecretAttributes, Vault};
+
 use crate::alloc::string::ToString;
 use crate::identities::IdentitiesVault;
-use crate::identity::IdentityChange::{CreateKey, RotateKey};
-use crate::identity::IdentityError::InvalidInternalState;
 use crate::identity::{
     ChangeIdentifier, CreateKeyChangeData, Identity, IdentityChangeConstants,
     IdentityChangeHistory, IdentityError, IdentitySignedChange, KeyAttributes, RotateKeyChangeData,
     Signature, SignatureType,
 };
-use ockam_core::compat::string::String;
-use ockam_core::compat::sync::Arc;
-use ockam_core::{Encodable, KeyId, Result};
-use ockam_vault::{SecretAttributes, Vault};
+use crate::identity::IdentityChange::{CreateKey, RotateKey};
+use crate::identity::IdentityError::InvalidInternalState;
 
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {
@@ -438,11 +439,13 @@ impl IdentitiesKeys {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::identities;
     use ockam_core::errcode::{Kind, Origin};
     use ockam_core::Error;
     use ockam_node::Context;
+
+    use crate::identities;
+
+    use super::*;
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {
         Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))

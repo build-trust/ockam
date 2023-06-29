@@ -1,28 +1,27 @@
-use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
+use std::fmt::Write as _;
 use std::io::Write;
 use std::time::Duration;
 
-use anyhow::Context as _;
 use colorful::Colorful;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use miette::miette;
-
-use mode::*;
-use ockam_core::env::{get_env, get_env_with_default, FromString};
-use ockam_core::errcode::Kind;
+use miette::{IntoDiagnostic, miette};
+use miette::Context as _;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
-use crate::error::Error;
+pub use colors::*;
+pub use fmt::*;
+use mode::*;
+use ockam_core::env::{FromString, get_env, get_env_with_default};
+use ockam_core::errcode::Kind;
+
 use crate::{fmt_list, fmt_log, fmt_warn, OutputFormat, Result};
+use crate::error::Error;
 
 pub mod colors;
 pub mod fmt;
 pub mod term;
-
-pub use colors::*;
-pub use fmt::*;
 
 /// A terminal abstraction to handle commands' output and messages styling.
 #[derive(Clone)]
@@ -134,7 +133,9 @@ impl<T: Write + Debug + Clone> TerminalStream<T> {
         if self.no_color {
             buffer = strip_ansi_escapes::strip(&buffer)?;
         }
-        Ok(String::from_utf8(buffer).context("Invalid UTF-8")?)
+        Ok(String::from_utf8(buffer)
+            .into_diagnostic()
+            .context("Invalid UTF-8")?)
     }
 }
 
@@ -198,6 +199,10 @@ impl<W: TerminalWriter> Terminal<W> {
             output_format,
             mode: ToStdErr,
         }
+    }
+
+    pub fn is_tty(&self) -> bool {
+        self.stderr.is_tty()
     }
 
     pub fn default() -> Self {
@@ -329,6 +334,10 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
 
 // Finished mode
 impl<W: TerminalWriter> Terminal<W, ToStdOut> {
+    pub fn is_tty(&self) -> bool {
+        self.stdout.is_tty()
+    }
+
     pub fn plain<T: Display>(mut self, msg: T) -> Self {
         self.mode.output.plain = Some(msg.to_string());
         self
@@ -382,7 +391,9 @@ impl<W: TerminalWriter> Terminal<W, ToStdOut> {
                 }
             }
             // If not set, no fallback is provided and returns an error
-            OutputFormat::Json => json.context("JSON output is not defined for this command")?,
+            OutputFormat::Json => {
+                json.ok_or(miette!("JSON output is not defined for this command"))?
+            }
         };
         self.stdout.write_line(msg)
     }

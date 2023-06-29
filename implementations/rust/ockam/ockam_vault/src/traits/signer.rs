@@ -1,5 +1,6 @@
-use crate::{PublicKey, Signature};
-use ockam_core::{async_trait, compat::boxed::Box, KeyId, Result};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
+
+use crate::{KeyId, PublicKey, Signature};
 
 /// Defines the Vault interface for Signing.
 #[async_trait]
@@ -17,11 +18,11 @@ pub trait Signer: Send + Sync {
 }
 
 /// Tests for implementations of the Signer trait
-#[cfg(feature = "vault_tests")]
+#[cfg(test)]
 pub mod tests {
-    use super::*;
     use crate::{SecretAttributes, SecretsStore};
-    use ockam_core::KeyId;
+
+    use super::*;
 
     /// This test checks that an ephemeral secret can be used to sign data and that we can verify the signature
     pub async fn test_sign_and_verify_ephemeral_secret(vault: &mut (impl Signer + SecretsStore)) {

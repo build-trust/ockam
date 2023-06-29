@@ -1,26 +1,25 @@
-use anyhow::Context;
-use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
+
+use cli_table::{Cell, Style, Table};
+use colorful::Colorful;
 use miette::IntoDiagnostic;
-use ockam_api::cli_state::{StateItemTrait, VaultState};
+use miette::miette;
 
 use ockam::identity::credential::Credential;
-
+use ockam_api::cli_state::{StateItemTrait, VaultState};
 use ockam_api::cloud::project::Project;
-
-use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
-
-use crate::project::ProjectInfo;
-use crate::terminal::OckamColor;
-use crate::util::comma_separated;
-use crate::Result;
-use colorful::Colorful;
 use ockam_api::cloud::space::Space;
+use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelResponse, ShowSecureChannelResponse,
 };
 use ockam_api::route_to_multiaddr;
 use ockam_core::{route, Route};
+
+use crate::project::ProjectInfo;
+use crate::Result;
+use crate::terminal::OckamColor;
+use crate::util::comma_separated;
 
 /// Trait to control how a given type will be printed as a CLI output.
 ///
@@ -213,7 +212,7 @@ impl Output for Vec<Project> {
 impl Output for CreateSecureChannelResponse {
     fn output(&self) -> Result<String> {
         let addr = route_to_multiaddr(&route![self.addr.to_string()])
-            .context("Invalid Secure Channel Address")?
+            .ok_or(miette!("Invalid Secure Channel Address"))?
             .to_string();
         Ok(addr)
     }
@@ -227,7 +226,7 @@ impl Output for ShowSecureChannelResponse<'_> {
                     "\n  Secure Channel:\n{} {}\n{} {}\n{} {}",
                     "  •         At: ".light_magenta(),
                     route_to_multiaddr(&route![addr.to_string()])
-                        .context("Invalid Secure Channel Address")?
+                        .ok_or(miette!("Invalid Secure Channel Address"))?
                         .to_string()
                         .light_yellow(),
                     "  •         To: ".light_magenta(),

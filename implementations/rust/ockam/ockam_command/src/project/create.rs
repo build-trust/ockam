@@ -5,12 +5,12 @@ use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 
+use crate::{CommandGlobalOpts, docs};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
-use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{docs, CommandGlobalOpts};
+use crate::util::api::CloudOpts;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -44,7 +44,7 @@ impl CreateCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -52,7 +52,7 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();

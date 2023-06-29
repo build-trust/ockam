@@ -1,26 +1,32 @@
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::terminal::OckamColor;
-use crate::util::output::Output;
-use crate::util::{api, extract_address_value, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
-use ockam::Context;
-use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
+use miette::miette;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+use ockam::Context;
+use ockam_api::cli_state::StateDirTrait;
+use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
+
+use crate::{CommandGlobalOpts, docs};
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::terminal::OckamColor;
+use crate::util::{api, extract_address_value, node_rpc, Rpc};
+use crate::util::output::Output;
+
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List workers on a node
 #[derive(Clone, Debug, Args)]
 #[command(
-long_about = docs::about(LONG_ABOUT),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
+    long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {
-    /// Node at which to lookup workers (required)
+    /// Node at which to lookup workers
     #[arg(value_name = "NODE", long, display_order = 800)]
     at: Option<String>,
 }
@@ -35,9 +41,13 @@ impl ListCommand {
 async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node_name));
+    }
 
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);

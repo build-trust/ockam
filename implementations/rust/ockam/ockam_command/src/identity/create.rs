@@ -1,14 +1,16 @@
-use crate::terminal::OckamColor;
-use crate::util::node_rpc;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
-use ockam::Context;
-use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_identity::IdentityIdentifier;
 use rand::prelude::random;
 use tokio::sync::Mutex;
 use tokio::try_join;
+
+use ockam::Context;
+use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_identity::IdentityIdentifier;
+
+use crate::{CommandGlobalOpts, docs, fmt_log, fmt_ok};
+use crate::terminal::OckamColor;
+use crate::util::node_rpc;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -40,14 +42,14 @@ impl CreateCommand {
     async fn run_impl(
         _ctx: Context,
         (options, cmd): (CommandGlobalOpts, CreateCommand),
-    ) -> crate::Result<()> {
+    ) -> miette::Result<()> {
         cmd.create_identity(options).await.map(|_| ())
     }
 
     pub async fn create_identity(
         &self,
         opts: CommandGlobalOpts,
-    ) -> crate::Result<IdentityIdentifier> {
+    ) -> miette::Result<IdentityIdentifier> {
         opts.terminal.write_line(&fmt_log!(
             "Creating identity {}...\n",
             &self

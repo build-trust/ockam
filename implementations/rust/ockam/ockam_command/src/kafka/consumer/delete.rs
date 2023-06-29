@@ -1,10 +1,12 @@
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{node_rpc, parse_node_name, Rpc};
-use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
+
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
+
+use crate::{CommandGlobalOpts, docs, fmt_ok, node::NodeOpts};
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::util::{node_rpc, parse_node_name, Rpc};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -29,7 +31,7 @@ impl DeleteCommand {
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
 

@@ -1,10 +1,11 @@
+use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, compat::vec::Vec, Result};
+use ockam_node::KeyValueStorage;
+
 use crate::{
-    EphemeralSecretsStore, Implementation, PersistentSecretsStore, PublicKey, Secret,
+    EphemeralSecretsStore, Implementation, KeyId, PersistentSecretsStore, PublicKey, Secret,
     SecretAttributes, SecretsStoreReader, SecurityModule, Signature, StoredSecret, VaultError,
     VaultSecurityModule,
 };
-use ockam_core::{async_trait, compat::boxed::Box, compat::sync::Arc, KeyId, Result};
-use ockam_node::KeyValueStorage;
 
 #[derive(Clone)]
 pub struct VaultSecretsStore {
@@ -60,9 +61,13 @@ impl EphemeralSecretsStore for VaultSecretsStore {
     /// Remove secret from in memory storage
     async fn delete_ephemeral_secret(&self, key_id: KeyId) -> Result<bool> {
         self.ephemeral_secrets
-            .delete(&key_id.clone())
+            .delete(&key_id)
             .await
             .map(|r| r.is_some())
+    }
+
+    async fn list_ephemeral_secrets(&self) -> Result<Vec<KeyId>> {
+        self.ephemeral_secrets.keys().await
     }
 }
 
@@ -74,7 +79,7 @@ impl PersistentSecretsStore for VaultSecretsStore {
 
     /// Remove secret from in memory storage
     async fn delete_persistent_secret(&self, key_id: KeyId) -> Result<bool> {
-        self.security_module.delete_secret(key_id.clone()).await
+        self.security_module.delete_secret(key_id).await
     }
 }
 
@@ -143,7 +148,6 @@ impl SecurityModule for VaultSecretsStore {
     }
 }
 
-#[cfg(feature = "vault_tests")]
 #[cfg(test)]
 mod tests {
     use crate as ockam_vault;

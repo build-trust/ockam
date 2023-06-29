@@ -1,9 +1,9 @@
 use minicbor::{Decode, Encode};
 
+use ockam_core::{CowStr, Result};
 use ockam_core::compat::str::FromStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_core::{CowStr, Result};
 use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
@@ -77,16 +77,18 @@ impl<'a> BareCloudRequestWrapper<'a> {
 }
 
 mod node {
+    use std::time::Duration;
+
     use minicbor::Encode;
+
     use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
+    use ockam_core::{self, CowStr, Result, route};
     use ockam_core::api::RequestBuilder;
     use ockam_core::compat::str::FromStr;
     use ockam_core::env::get_env;
-    use ockam_core::{self, route, CowStr, Result};
     use ockam_multiaddr::MultiAddr;
+    use ockam_node::{Context, DEFAULT_TIMEOUT, MessageSendReceiveOptions};
     use ockam_node::api::request_with_options;
-    use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
-    use std::time::Duration;
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
@@ -183,7 +185,9 @@ mod node {
             let route = route![sc.clone(), api_service];
             let options = MessageSendReceiveOptions::new().with_timeout(timeout);
             let res = request_with_options(ctx, label, schema, route, req, options).await;
-            ctx.stop_worker(sc.encryptor_address().clone()).await?; // TODO: Stop all workers?
+            secure_channels
+                .stop_secure_channel(ctx, sc.encryptor_address())
+                .await?;
             res
         }
     }

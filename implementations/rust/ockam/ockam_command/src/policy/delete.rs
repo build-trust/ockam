@@ -1,10 +1,12 @@
-use crate::policy::policy_path;
-use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{CommandGlobalOpts, Result};
 use clap::Args;
+
 use ockam::Context;
 use ockam_abac::{Action, Resource};
 use ockam_core::api::Request;
+
+use crate::CommandGlobalOpts;
+use crate::policy::policy_path;
+use crate::util::{extract_address_value, node_rpc, Rpc};
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -24,11 +26,18 @@ impl DeleteCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts, cmd: DeleteCommand) -> Result<()> {
+async fn run_impl(
+    ctx: &mut Context,
+    opts: CommandGlobalOpts,
+    cmd: DeleteCommand,
+) -> miette::Result<()> {
     let node = extract_address_value(&cmd.at)?;
     let req = Request::delete(policy_path(&cmd.resource, &cmd.action));
     let mut rpc = Rpc::background(ctx, &opts, &node)?;

@@ -1,17 +1,17 @@
+use std::sync::Arc;
+use std::time::Duration;
+
+use ockam::compat::tokio::sync::RwLock;
+use ockam_core::{async_trait, Error};
+use ockam_multiaddr::{Match, Protocol};
+use ockam_multiaddr::proto::Project;
+use ockam_node::Context;
+
+use crate::{multiaddr_to_route, try_address_to_multiaddr};
 use crate::error::ApiError;
 use crate::nodes::connection::{Changes, ConnectionInstanceBuilder, Instantiator};
 use crate::nodes::models::secure_channel::CredentialExchangeMode;
 use crate::nodes::NodeManager;
-use crate::{multiaddr_to_route, try_address_to_multiaddr};
-
-use ockam::compat::tokio::sync::RwLock;
-use ockam_core::{async_trait, Error};
-use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::{Match, Protocol};
-use ockam_node::Context;
-
-use std::sync::Arc;
-use std::time::Duration;
 
 /// Creates a secure connection to the project using provided credential
 pub(crate) struct ProjectInstantiator {
@@ -93,7 +93,7 @@ impl Instantiator for ProjectInstantiator {
             flow_control_id: Some(sc.flow_control_id().clone()),
             current_multiaddr,
             secure_channel_encryptors: vec![sc.encryptor_address().clone()],
-            tcp_worker: tcp.tcp_worker,
+            tcp_connection: tcp.tcp_connection,
         })
     }
 }

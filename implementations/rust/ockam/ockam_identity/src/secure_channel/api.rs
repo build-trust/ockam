@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use ockam_core::compat::vec::Vec;
 use ockam_core::Error;
 use ockam_core::Message;
-use serde::{Deserialize, Serialize};
 
 /// Request type for `EncryptorWorker` API Address
 #[derive(Serialize, Deserialize, Message)]
@@ -16,11 +17,11 @@ pub enum EncryptionResponse {
     Err(Error),
 }
 
-/// Request type for `DecryptorWorker` API Address
+/// Request type for `Decryptor` API Address (the `Decryptor` is accessible through the `HandshakeWorker`)
 #[derive(Serialize, Deserialize, Message)]
 pub struct DecryptionRequest(pub Vec<u8>);
 
-/// Response type for `DecryptorWorker` API Address
+/// Response type for `Decryptor` API Address (the `Decryptor` is accessible through the `HandshakeWorker`)
 #[derive(Serialize, Deserialize, Message)]
 pub enum DecryptionResponse {
     /// Success

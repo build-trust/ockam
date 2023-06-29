@@ -1,15 +1,18 @@
-use crate::util::{api, node_rpc, RpcBuilder};
-use crate::CommandGlobalOpts;
-use crate::Result;
+use std::time::Duration;
+
 use clap::Args;
-use miette::miette;
+use miette::{IntoDiagnostic, miette};
+
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::NodeState;
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::base::NodeStatus;
 use ockam_identity::IdentityIdentifier;
-use std::time::Duration;
+
+use crate::CommandGlobalOpts;
+use crate::Result;
+use crate::util::{api, node_rpc, RpcBuilder};
 
 /// Display information about the system's Identities and Nodes
 #[derive(Clone, Debug, Args)]
@@ -31,18 +34,22 @@ impl StatusCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StatusCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StatusCommand)) -> miette::Result<()> {
     run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) -> Result<()> {
+async fn run_impl(
+    ctx: &Context,
+    opts: CommandGlobalOpts,
+    cmd: StatusCommand,
+) -> miette::Result<()> {
     let node_states = opts.state.nodes.list()?;
     if node_states.is_empty() {
-        return Err(miette!("No nodes registered on this system!").into());
+        return Err(miette!("No nodes registered on this system!"));
     }
 
     let mut node_details: Vec<NodeDetails> = vec![];
-    let tcp = TcpTransport::create(ctx).await?;
+    let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
     for node_state in &node_states {
         let node_infos = NodeDetails {
             identifier: node_state.config().identifier().await?,
@@ -95,12 +102,11 @@ async fn print_status(
     opts: &CommandGlobalOpts,
     identities: Vec<IdentityState>,
     mut node_details: Vec<NodeDetails>,
-) -> Result<()> {
+) -> miette::Result<()> {
     if identities.is_empty() {
         return Err(miette!(
             "No enrolled identities found! Try passing the `--all` argument to see all identities."
-        )
-        .into());
+        ));
     }
     let default_identity = opts.state.identities.default()?;
 

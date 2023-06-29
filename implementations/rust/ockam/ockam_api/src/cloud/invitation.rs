@@ -1,9 +1,8 @@
 use minicbor::{Decode, Encode};
-use serde::{Deserialize, Serialize};
-
 use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use serde::{Deserialize, Serialize};
 
 #[derive(Encode, Decode, Serialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
@@ -70,15 +69,14 @@ impl<'a> CreateInvitation<'a> {
 
 mod node {
     use minicbor::Decoder;
-    use tracing::trace;
-
     use ockam_core::{self, Result};
     use ockam_node::Context;
+    use tracing::trace;
 
+    use crate::{Request, Response, Status};
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManager;
     use crate::request;
-    use crate::{Request, Response, Status};
 
     use super::*;
 
@@ -223,11 +221,10 @@ mod node {
 #[cfg(test)]
 mod tests {
     use minicbor::Decoder;
-    use quickcheck::{Arbitrary, Gen};
-
-    use ockam_core::compat::collections::HashMap;
     use ockam_core::{Routed, Worker};
+    use ockam_core::compat::collections::HashMap;
     use ockam_node::Context;
+    use quickcheck::{Arbitrary, Gen};
 
     use crate::{Method, Request, Response};
 
@@ -330,10 +327,11 @@ mod tests {
     }
 
     mod node_api {
+        use ockam_core::route;
+
+        use crate::{route_to_multiaddr, Status};
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeManager;
-        use crate::{route_to_multiaddr, Status};
-        use ockam_core::route;
 
         use super::*;
 
@@ -522,8 +520,8 @@ mod tests {
             let mut dec = Decoder::new(data);
             let req: Request = dec.decode()?;
             let r = match req.method() {
-                Some(Method::Post) if req.has_body() => {
-                    if let Ok(invitation) = dec.decode::<CreateInvitation>() {
+                Some(Method::Post) if req.has_body() => match dec.decode::<CreateInvitation>() {
+                    Ok(invitation) => {
                         let obj = Invitation {
                             #[cfg(feature = "tag")]
                             tag: TypeTag,
@@ -538,11 +536,14 @@ mod tests {
                         let id = obj.id.to_string();
                         self.by_id.insert(id, obj.clone());
                         Response::ok(req.id()).body(&obj).to_vec()?
-                    } else {
-                        error!("Invalid request: {req:#?}");
-                        Response::bad_request(req.id()).to_vec()?
                     }
-                }
+                    Err(error) => {
+                        error!("Invalid request: {req:#?} {error:#?}");
+                        let err_body = Error::new(req.path())
+                            .with_message(format!("Failed to decode request body: {}", error));
+                        Response::bad_request(req.id()).body(err_body).to_vec()?
+                    }
+                },
                 Some(Method::Get) => {
                     let invitations = self.by_id.values().collect::<Vec<_>>();
                     Response::ok(req.id()).body(invitations).to_vec()?
@@ -555,16 +556,22 @@ mod tests {
                                 invitation.state = State::Accepted;
                                 Response::ok(req.id()).to_vec()?
                             } else {
-                                Response::bad_request(req.id()).to_vec()?
+                                let err_body = Error::new(req.path())
+                                    .with_message("Invitation is no longer valid.");
+                                Response::bad_request(req.id()).body(err_body).to_vec()?
                             }
                         } else {
                             error!("Invalid request: {req:#?}");
-                            Response::not_found(req.id()).to_vec()?
+                            let err_body = Error::new(req.path())
+                                .with_message(format!("Invitation with id, {id}, not found."));
+                            Response::not_found(req.id()).body(err_body).to_vec()?
                         }
                     }
                     _ => {
                         error!("Invalid request: {req:#?}");
-                        Response::bad_request(req.id()).to_vec()?
+                        let err_body = Error::new(req.path())
+                            .with_message(format!("Invalid request, inviation id not provided."));
+                        Response::bad_request(req.id()).body(err_body).to_vec()?
                     }
                 },
                 Some(Method::Delete) => match req.path_segments::<2>().as_slice() {
@@ -575,21 +582,30 @@ mod tests {
                                 invitation.state = State::Rejected;
                                 Response::ok(req.id()).to_vec()?
                             } else {
-                                Response::bad_request(req.id()).to_vec()?
+                                let err_body = Error::new(req.path())
+                                    .with_message("Invitation is not in a state to be rejected.");
+                                Response::bad_request(req.id()).body(err_body).to_vec()?
                             }
                         } else {
                             error!("Invalid request: {req:#?}");
-                            Response::not_found(req.id()).to_vec()?
+                            let err_body = Error::new(req.path())
+                                .with_message("Invitation with id, {id}, not found.");
+                            Response::not_found(req.id()).body(err_body).to_vec()?
                         }
                     }
                     _ => {
                         error!("Invalid request: {req:#?}");
-                        Response::bad_request(req.id()).to_vec()?
+                        let err_body = Error::new(req.path())
+                            .with_message(format!("Invalid request, inviation id not provided."));
+                        Response::bad_request(req.id()).body(err_body).to_vec()?
                     }
                 },
                 _ => {
                     error!("Invalid request: {req:#?}");
-                    Response::bad_request(req.id()).to_vec()?
+                    let method = req.method();
+                    let err_body = Error::new(req.path())
+                        .with_message(format!("Invalid request method: {:?}", method));
+                    Response::bad_request(req.id()).body(err_body).to_vec()?
                 }
             };
             Ok(r)

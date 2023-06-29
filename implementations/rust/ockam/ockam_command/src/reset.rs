@@ -1,8 +1,10 @@
-use crate::terminal::ConfirmResult;
-use crate::{fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+
+use crate::{CommandGlobalOpts, fmt_ok};
+use crate::terminal::ConfirmResult;
+use crate::util::local_cmd;
 
 /// Removes the local Ockam configuration including all Identities and Nodes
 #[derive(Clone, Debug, Args)]
@@ -14,14 +16,11 @@ pub struct ResetCommand {
 
 impl ResetCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> miette::Result<()> {
     if !cmd.yes {
         match opts
             .terminal
@@ -32,7 +31,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> crate::Result<()> {
                 return Ok(());
             }
             ConfirmResult::NonTTY => {
-                return Err(miette!("Use --yes to confirm").into());
+                return Err(miette!("Use --yes to confirm"));
             }
         }
     }

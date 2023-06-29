@@ -1,19 +1,16 @@
-use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use clap::builder::NonEmptyStringValueParser;
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addon;
-
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 
+use crate::CommandGlobalOpts;
 use crate::node::util::delete_embedded_node;
 use crate::project::addon::base_endpoint;
-
-use crate::util::api::CloudOpts;
-
 use crate::util::{node_rpc, Rpc};
-use crate::{CommandGlobalOpts, Result};
+use crate::util::api::CloudOpts;
 
 /// List available addons for a project
 #[derive(Clone, Debug, Args)]
@@ -37,7 +34,7 @@ impl AddonListSubcommand {
 async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, AddonListSubcommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cloud_opts.route();
     let project_name = cmd.project_name;
 

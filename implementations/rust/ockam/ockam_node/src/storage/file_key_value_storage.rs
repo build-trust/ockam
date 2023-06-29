@@ -1,13 +1,14 @@
-use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-use crate::ToStringKey;
+use serde::{Deserialize, Serialize};
+
+use ockam_core::{async_trait, Result};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::string::String;
-use ockam_core::{async_trait, Result};
 
 use crate::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueStorage};
+use crate::ToStringKey;
 
 /// Key value storage backed by a file
 /// An additional cache in used to access values in memory and avoid re-reading the file too
@@ -75,15 +76,21 @@ impl<
         self.file_storage.modify_value(f).await?;
         self.cache.delete(key).await
     }
+
+    /// Return the list of all the keys **in cache**
+    async fn keys(&self) -> Result<Vec<K>> {
+        self.cache.keys().await
+    }
 }
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use super::*;
-
-    use ockam_core::compat::rand::{thread_rng, RngCore};
-    use ockam_core::Result;
     use std::path::PathBuf;
+
+    use ockam_core::compat::rand::{RngCore, thread_rng};
+    use ockam_core::Result;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_file_key_value_storage() -> Result<()> {

@@ -2,9 +2,9 @@
 
 use std::path::PathBuf;
 
-use anyhow::Context as _;
 use clap::Args;
-use miette::miette;
+use miette::{IntoDiagnostic, miette};
+use miette::Context as _;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
 use regex::Regex;
@@ -12,28 +12,28 @@ use tracing::trace;
 
 use ockam::identity::IdentityIdentifier;
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
+use ockam_api::cloud::project::Project;
 use ockam_api::config::cli::TrustContextConfig;
+use ockam_api::DefaultAddress;
+use ockam_api::nodes::*;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
     StartHopServiceRequest, StartIdentityServiceRequest, StartOktaIdentityProviderRequest,
     StartVerifierService,
 };
-use ockam_api::nodes::*;
-use ockam_api::DefaultAddress;
-use ockam_core::api::RequestBuilder;
-use ockam_core::api::{Request, Response};
-use ockam_core::env::{get_env_with_default, FromString};
-use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, CowStr};
+use ockam_core::api::{Request, Response};
+use ockam_core::api::RequestBuilder;
+use ockam_core::env::{FromString, get_env_with_default};
+use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
 use crate::project::ProjectInfo;
+use crate::Result;
 use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::DEFAULT_CONTROLLER_ADDRESS;
-use crate::Result;
 
 ////////////// !== generators
 
@@ -436,9 +436,11 @@ impl TrustContextConfigBuilder {
 
     fn get_from_project_path(&self, path: &PathBuf) -> Option<TrustContextConfig> {
         let s = std::fs::read_to_string(path)
+            .into_diagnostic()
             .context("Failed to read project file")
             .ok()?;
         let proj_info = serde_json::from_str::<ProjectInfo>(&s)
+            .into_diagnostic()
             .context("Failed to parse project info")
             .ok()?;
         let proj: Project = (&proj_info).into();
@@ -496,13 +498,14 @@ pub fn parse_trust_context(
     let tcc = match std::fs::read_to_string(trust_context_input) {
         Ok(s) => {
             let mut tc = serde_json::from_str::<TrustContextConfig>(&s)
-                .context("Failed to parse trust context")?;
+                .into_diagnostic()
+                .wrap_err("Failed to parse trust context")?;
             tc.set_path(PathBuf::from(trust_context_input));
             tc
         }
         Err(_) => {
             let state = cli_state.trust_contexts.get(trust_context_input).ok();
-            let state = state.context("Invalid Trust Context name or path")?;
+            let state = state.ok_or(miette!("Invalid Trust Context name or path"))?;
             let mut tcc = state.config().clone();
             tcc.set_path(state.path().clone());
             tcc
@@ -515,7 +518,8 @@ pub fn parse_trust_context(
 impl CloudOpts {
     pub fn route(&self) -> MultiAddr {
         let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)
-            .context(format!(
+            .into_diagnostic()
+            .wrap_err(format!(
                 "invalid Controller route: {DEFAULT_CONTROLLER_ADDRESS}"
             ))
             .unwrap();
@@ -529,11 +533,11 @@ impl CloudOpts {
 
 ////////////// !== validators
 
-pub(crate) fn validate_cloud_resource_name(s: &str) -> Result<()> {
+pub(crate) fn validate_cloud_resource_name(s: &str) -> miette::Result<()> {
     let project_name_regex = Regex::new(r"^[a-zA-Z0-9]+([a-zA-Z0-9-_\.]?[a-zA-Z0-9])*$").unwrap();
     let is_project_name_valid = project_name_regex.is_match(s);
     if !is_project_name_valid {
-        Err(miette!("Invalid name").into())
+        Err(miette!("Invalid name"))
     } else {
         Ok(())
     }

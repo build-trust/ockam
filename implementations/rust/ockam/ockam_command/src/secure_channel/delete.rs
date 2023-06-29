@@ -1,18 +1,19 @@
-use crate::{
-    util::{api, exitcode, extract_address_value, node_rpc, Rpc},
-    CommandGlobalOpts, OutputFormat, Result,
-};
 use std::str::FromStr;
 
+use clap::Parser;
 use colorful::Colorful;
 use serde_json::json;
 
-use crate::docs;
-use crate::util::is_tty;
-use clap::Parser;
-use ockam::{route, Context};
+use ockam::{Context, route};
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
+
+use crate::{
+    CommandGlobalOpts,
+    OutputFormat, util::{api, exitcode, extract_address_value, node_rpc, Rpc},
+};
+use crate::docs;
+use crate::util::is_tty;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -25,11 +26,11 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct DeleteCommand {
-    /// Node at which the secure channel was initiated (required)
+    /// Node at which the secure channel was initiated
     #[arg(value_name = "NODE", long, display_order = 800)]
     at: String,
 
-    /// Address at which the channel to be deleted is running (required)
+    /// Address at which the channel to be deleted is running
     #[arg(value_parser(parse_address), display_order = 800)]
     address: Address,
 }
@@ -145,7 +146,10 @@ fn parse_address(input: &str) -> core::result::Result<Address, AddressParseError
     Address::from_str(&buf)
 }
 
-async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, DeleteCommand)) -> Result<()> {
+async fn rpc(
+    ctx: Context,
+    (options, command): (CommandGlobalOpts, DeleteCommand),
+) -> miette::Result<()> {
     let at = &command.parse_at_node();
     let address = &command.address;
 

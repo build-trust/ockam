@@ -1,24 +1,29 @@
 #![allow(missing_docs)]
 
-use crate::compat::borrow::Cow;
-use crate::compat::rand;
-use crate::compat::vec::Vec;
-use crate::errcode::{Kind, Origin};
-use crate::Result;
 use core::fmt::{self, Display, Formatter};
-use minicbor::encode::{self, Encoder, Write};
-use minicbor::{Decode, Decoder, Encode};
-use tinyvec::ArrayVec;
 
-pub const SCHEMA: &str = core::include_str!("schema.cddl");
+use minicbor::{Decode, Decoder, Encode};
+use minicbor::encode::{self, Encoder, Write};
+use tinyvec::ArrayVec;
 
 #[cfg(feature = "tag")]
 use {
-    crate::TypeTag,
     alloc::collections::btree_map::Entry,
     cddl_cat::{context::BasicContext, flatten::flatten, parse_cddl},
+    crate::TypeTag,
     once_cell::race::OnceBox,
 };
+
+use crate::alloc::string::ToString;
+use crate::compat::borrow::Cow;
+use crate::compat::boxed::Box;
+use crate::compat::rand;
+use crate::compat::string::String;
+use crate::compat::vec::Vec;
+use crate::errcode::{Kind, Origin};
+use crate::Result;
+
+pub const SCHEMA: &str = core::include_str!("schema.cddl");
 
 #[cfg(feature = "tag")]
 pub fn merged_cddl(cddl_schemas: &[&str]) -> Result<BasicContext> {
@@ -123,12 +128,12 @@ pub struct Response {
 }
 
 /// Create an error response because the request path was unknown.
-pub fn unknown_path<'a>(r: &'a Request) -> ResponseBuilder<Error<'a>> {
+pub fn unknown_path(r: &Request) -> ResponseBuilder<Error> {
     bad_request(r, "unknown path")
 }
 
 /// Create an error response because the request method was unknown or not allowed.
-pub fn invalid_method<'a>(r: &'a Request) -> ResponseBuilder<Error<'a>> {
+pub fn invalid_method(r: &Request) -> ResponseBuilder<Error> {
     match r.method() {
         Some(m) => {
             let e = Error::new(r.path()).with_method(m);
@@ -142,7 +147,7 @@ pub fn invalid_method<'a>(r: &'a Request) -> ResponseBuilder<Error<'a>> {
 }
 
 /// Create an error response with status forbidden and the given message.
-pub fn forbidden<'a>(r: &'a Request, m: &'a str) -> ResponseBuilder<Error<'a>> {
+pub fn forbidden(r: &Request, m: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(m);
     if let Some(m) = r.method() {
         e = e.with_method(m)
@@ -151,7 +156,7 @@ pub fn forbidden<'a>(r: &'a Request, m: &'a str) -> ResponseBuilder<Error<'a>> {
 }
 
 /// Create a generic bad request response.
-pub fn bad_request<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error<'a>> {
+pub fn bad_request(r: &Request, msg: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(msg);
     if let Some(m) = r.method() {
         e = e.with_method(m)
@@ -160,7 +165,7 @@ pub fn bad_request<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error<'a
 }
 
 /// Create an internal server error response
-pub fn internal_error<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error<'a>> {
+pub fn internal_error(r: &Request, msg: &str) -> ResponseBuilder<Error> {
     let mut e = Error::new(r.path()).with_message(msg);
     if let Some(m) = r.method() {
         e = e.with_method(m)
@@ -377,7 +382,7 @@ impl Response {
 #[derive(Debug, Clone, Default, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct Error<'a> {
+pub struct Error {
     /// Nominal type tag.
     ///
     /// If the "tag" feature is enabled, the resulting CBOR will contain a
@@ -387,21 +392,36 @@ pub struct Error<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5359172>,
     /// The resource path of this error.
-    #[b(1)] path: Option<Cow<'a, str>>,
+    #[b(1)] path: Option<String>,
     /// The request method of this error.
     #[n(2)] method: Option<Method>,
     /// The actual error message.
-    #[b(3)] message: Option<Cow<'a, str>>,
+    #[b(3)] message: Option<String>,
+    /// The cause of the error, if any.
+    #[b(4)] cause: Option<Box<Error>>,
+
 }
 
-impl<'a> Error<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(path: S) -> Self {
+impl Error {
+    pub fn new(path: &str) -> Self {
         Error {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             method: None,
-            path: Some(path.into()),
+            path: Some(path.to_string()),
             message: None,
+            cause: None,
+        }
+    }
+
+    pub fn new_without_path() -> Self {
+        Error {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            method: None,
+            path: None,
+            message: None,
+            cause: None,
         }
     }
 
@@ -414,8 +434,13 @@ impl<'a> Error<'a> {
         self.method = Some(m);
     }
 
-    pub fn with_message<S: Into<Cow<'a, str>>>(mut self, m: S) -> Self {
-        self.message = Some(m.into());
+    pub fn with_message(mut self, m: impl AsRef<str>) -> Self {
+        self.message = Some(m.as_ref().to_string());
+        self
+    }
+
+    pub fn with_cause(mut self, e: Error) -> Self {
+        self.cause = Some(Box::new(e));
         self
     }
 
@@ -429,6 +454,32 @@ impl<'a> Error<'a> {
 
     pub fn message(&self) -> Option<&str> {
         self.message.as_deref()
+    }
+}
+
+impl From<crate::Error> for Error {
+    fn from(e: crate::Error) -> Self {
+        Error {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            method: None,
+            path: None,
+            message: Some(e.to_string()),
+            cause: None,
+        }
+    }
+}
+
+impl From<crate::Error> for ResponseBuilder<Error> {
+    fn from(e: crate::Error) -> Self {
+        Response::internal_error(Id::default()).body(e.into())
+    }
+}
+
+impl From<minicbor::decode::Error> for ResponseBuilder<Error> {
+    fn from(e: minicbor::decode::Error) -> Self {
+        let err = Error::new_without_path().with_message(e.to_string());
+        Response::bad_request(Id::default()).body(err)
     }
 }
 
@@ -801,9 +852,10 @@ mod merged_cddl_test {
 #[cfg(test)]
 #[cfg(feature = "tag")]
 mod schema_test {
-    use super::*;
     use cddl_cat::validate_cbor_bytes;
-    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+    use quickcheck::{Arbitrary, Gen, quickcheck, TestResult};
+
+    use super::*;
 
     const METHODS: &[Method] = &[
         Method::Get,
@@ -829,7 +881,7 @@ mod schema_test {
     struct Res(Response);
 
     #[derive(Debug, Clone)]
-    struct Er(Error<'static>);
+    struct Er(Error);
 
     impl Arbitrary for Req {
         fn arbitrary(g: &mut Gen) -> Self {
@@ -853,7 +905,7 @@ mod schema_test {
 
     impl Arbitrary for Er {
         fn arbitrary(g: &mut Gen) -> Self {
-            let mut e = Error::new(String::arbitrary(g));
+            let mut e = Error::new(&String::arbitrary(g));
             if bool::arbitrary(g) {
                 e = e.with_method(*g.choose(METHODS).unwrap())
             }

@@ -9,11 +9,11 @@ use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use crate::{CommandGlobalOpts, display_parse_logs, fmt_log, fmt_ok};
 use crate::node::{get_node_name, NodeOpts};
 use crate::service::start::start_service_impl;
 use crate::terminal::OckamColor;
 use crate::util::process_nodes_multiaddr;
-use crate::{display_parse_logs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 pub struct ArgOpts {
     pub endpoint: String,
@@ -25,7 +25,7 @@ pub struct ArgOpts {
     pub project_route: MultiAddr,
 }
 
-pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> crate::Result<()> {
+pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> miette::Result<()> {
     let ArgOpts {
         endpoint,
         kafka_entity,

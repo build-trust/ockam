@@ -23,7 +23,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<Either<ResponseBuilder<Error<'_>>, ResponseBuilder<Credential>>> {
+    ) -> Result<Either<ResponseBuilder<Error>, ResponseBuilder<Credential>>> {
         let node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 
@@ -37,16 +37,22 @@ impl NodeManagerWorker {
             node_manager.identifier()
         };
 
-        if let Ok(c) = node_manager
+        match node_manager
             .trust_context()?
             .authority()?
             .credential(ctx, &identifier)
             .await
         {
-            Ok(Either::Right(Response::ok(req.id()).body(c)))
-        } else {
-            let err = Error::default().with_message("error getting credential");
-            Ok(Either::Left(Response::internal_error(req.id()).body(err)))
+            Ok(c) => Ok(Either::Right(Response::ok(req.id()).body(c))),
+            Err(e) => {
+                let err = Error::new(req.path())
+                    .with_message(format!(
+                        "Error retrieving credentai from authority for {}",
+                        identifier
+                    ))
+                    .with_cause(Error::new(req.path()).with_message(e.to_string()));
+                Ok(Either::Left(Response::internal_error(req.id()).body(err)))
+            }
         }
     }
 
@@ -55,7 +61,7 @@ impl NodeManagerWorker {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.write().await;
         let request: PresentCredentialRequest = dec.decode()?;
 
@@ -63,7 +69,7 @@ impl NodeManagerWorker {
         let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
         let route = match local_multiaddr_to_route(&route) {
             Some(route) => route,
-            None => return Err(ApiError::generic("invalid credentials service route")),
+            None => return Err(ApiError::generic("Invalid credentials service route").into()),
         };
 
         let credential = node_manager

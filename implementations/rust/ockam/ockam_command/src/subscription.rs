@@ -1,19 +1,19 @@
 use core::fmt::Write;
 
-use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
+use clap::builder::NonEmptyStringValueParser;
 
 use ockam::Context;
-use ockam_api::cloud::subscription::Subscription;
 use ockam_api::cloud::CloudRequestWrapper;
+use ockam_api::cloud::subscription::Subscription;
 use ockam_core::api::Request;
 use ockam_core::CowStr;
 
+use crate::{CommandGlobalOpts, docs, Result};
 use crate::node::util::delete_embedded_node;
+use crate::util::{node_rpc, Rpc};
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
 #[command(hide = docs::hide())]
@@ -56,7 +56,7 @@ impl SubscriptionCommand {
 async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     match cmd.subcommand {

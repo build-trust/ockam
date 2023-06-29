@@ -1,40 +1,35 @@
-use clap::Args;
-
-use miette::miette;
-use ockam_identity::IdentityIdentifier;
-use tokio::sync::Mutex;
-use tokio::try_join;
-
 use std::borrow::Borrow;
 use std::io::stdin;
 
+use clap::Args;
 use colorful::Colorful;
+use miette::{miette, WrapErr};
 use reqwest::StatusCode;
-use tokio::time::{sleep, Duration};
-use tokio_retry::{strategy::ExponentialBackoff, Retry};
+use tokio::sync::Mutex;
+use tokio::time::{Duration, sleep};
+use tokio::try_join;
+use tokio_retry::{Retry, strategy::ExponentialBackoff};
 use tracing::{debug, info};
 
 use ockam::Context;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::SpaceConfig;
+use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
 use ockam_core::api::Status;
+use ockam_identity::IdentityIdentifier;
 
-use crate::error::Error;
+use crate::{
+    CommandGlobalOpts, display_parse_logs, docs, fmt_err, fmt_log, fmt_ok, fmt_para, Result,
+};
+use crate::identity::initialize_identity_if_default;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
-
 use crate::terminal::OckamColor;
-use crate::util::api::CloudOpts;
-
-use crate::identity::initialize_identity_if_default;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{
-    display_parse_logs, docs, fmt_err, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts, Result,
-};
+use crate::util::api::CloudOpts;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -57,65 +52,49 @@ impl EnrollCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> miette::Result<()> {
     run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
+async fn run_impl(
+    ctx: &Context,
+    opts: CommandGlobalOpts,
+    cmd: EnrollCommand,
+) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!(
         "Enrolling your default Ockam identity with Ockam Orchestrator...\n"
     ))?;
 
     display_parse_logs(&opts);
 
-    let node_name = start_embedded_node(ctx, &opts, None).await.map_err(|e| {
-        Error::new_internal_error("Failed to start an embedded node:", &e.to_string())
-    })?;
+    let node_name = start_embedded_node(ctx, &opts, None).await?;
 
-    enroll(ctx, &opts, &cmd, &node_name).await.map_err(|e| {
-        Error::new_internal_error(
-            "Failed to enroll your local identity with Ockam Orchestrator:",
-            &e.to_string(),
-        )
-    })?;
+    enroll(ctx, &opts, &cmd, &node_name)
+        .await
+        .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
     let cloud_opts = cmd.cloud_opts.clone();
     let space = default_space(ctx, &opts, &cloud_opts, &node_name)
         .await
-        .map_err(|e| {
-            Error::new_internal_error(
-                "Unable to retrieve and set a space as default:",
-                &e.to_string(),
-            )
-        })?;
+        .wrap_err("Unable to retrieve and set a space as default")?;
     let project = default_project(ctx, &opts, &cloud_opts, &node_name, &space)
         .await
-        .map_err(|e| {
-            Error::new_internal_error(
-                &format!(
-                    "Unable to retrieve and set a project as default with space: {}:",
-                    space
-                        .name
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                ),
-                &e.to_string(),
-            )
-        })?;
+        .wrap_err(format!(
+            "Unable to retrieve and set a project as default with space {}",
+            space
+                .name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))?;
     let identifier = update_enrolled_identity(&opts, &node_name)
         .await
-        .map_err(|e| {
-            Error::new_internal_error(
-                &format!(
-                    "Unable to set the local identity as enrolled with project {}:",
-                    project
-                        .name
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                ),
-                &e.to_string(),
-            )
-        })?;
+        .wrap_err(format!(
+            "Unable to set the local identity as enrolled with project {}",
+            project
+                .name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))?;
     delete_embedded_node(&opts, &node_name).await;
 
     opts.terminal.write_line(&fmt_ok!(
@@ -132,7 +111,7 @@ async fn enroll(
     opts: &CommandGlobalOpts,
     cmd: &EnrollCommand,
     node_name: &str,
-) -> Result<()> {
+) -> miette::Result<()> {
     let auth0 = Auth0Service::new(Auth0Provider::Auth0);
     let token = auth0.token(&cmd.cloud_opts, opts).await?;
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
@@ -145,7 +124,7 @@ async fn enroll(
         info!("Already enrolled");
         Ok(())
     } else {
-        Err(miette!("{}", rpc.parse_err_msg(res, dec)).into())
+        Err(miette!("{}", rpc.parse_err_msg(res, dec)))
     }
 }
 
@@ -563,9 +542,9 @@ impl Auth0Service {
         }
     }
 
-    pub(crate) async fn validate_provider_config(&self) -> Result<()> {
+    pub(crate) async fn validate_provider_config(&self) -> miette::Result<()> {
         if let Err(e) = self.device_code().await {
-            return Err(miette!("Invalid OIDC configuration: {}", e).into());
+            return Err(miette!("Invalid OIDC configuration: {}", e));
         }
         Ok(())
     }

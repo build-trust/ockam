@@ -1,29 +1,31 @@
-use clap::Args;
-use colorful::Colorful;
 use std::fmt::Write;
 use std::str::FromStr;
 
-use ockam::Context;
-use ockam_api::cloud::lease_manager::models::influxdb::Token;
-use ockam_core::api::Request;
-use ockam_multiaddr::MultiAddr;
+use clap::Args;
+use colorful::Colorful;
+use miette::IntoDiagnostic;
 use time::format_description::well_known::Iso8601;
 use time::PrimitiveDateTime;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::terminal::OckamColor;
-use crate::util::output::Output;
+use ockam::Context;
+use ockam_api::cloud::lease_manager::models::influxdb::Token;
+use ockam_core::api::Request;
+use ockam_multiaddr::MultiAddr;
+
 use crate::{
+    CommandGlobalOpts,
     docs,
     util::{
         api::{CloudOpts, TrustContextOpts},
         node_rpc,
         orchestrator_api::OrchestratorApiBuilder,
     },
-    CommandGlobalOpts,
 };
+use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::terminal::OckamColor;
+use crate::util::output::Output;
 
 const HELP_DETAIL: &str = "";
 
@@ -42,7 +44,7 @@ impl ListCommand {
 async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustContextOpts),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let identity = get_identity_name(&opts.state, &cloud_opts.identity);
     let is_finished: Mutex<bool> = Mutex::new(false);
 
@@ -72,7 +74,7 @@ async fn run_impl(
     let plain =
         opts.terminal
             .build_list(&tokens, "Tokens", "No active tokens found within service.")?;
-    let json = serde_json::to_string_pretty(&tokens)?;
+    let json = serde_json::to_string_pretty(&tokens).into_diagnostic()?;
     opts.terminal
         .stdout()
         .plain(plain)

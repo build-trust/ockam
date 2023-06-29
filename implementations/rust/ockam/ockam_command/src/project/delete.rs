@@ -4,11 +4,11 @@ use colorful::Colorful;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
+use crate::{CommandGlobalOpts, docs, fmt_ok};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::refresh_projects;
-use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::util::api::{self, CloudOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -41,7 +41,7 @@ impl DeleteCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -49,7 +49,7 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;

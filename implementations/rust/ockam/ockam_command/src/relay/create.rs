@@ -1,26 +1,26 @@
 use std::str::FromStr;
 
-use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
-use ockam::identity::IdentityIdentifier;
-use ockam_multiaddr::proto::Project;
+use miette::{IntoDiagnostic, miette};
+use miette::Context as _;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use ockam::{Context, TcpTransport};
+use ockam::identity::IdentityIdentifier;
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
-use tokio::sync::Mutex;
-use tokio::try_join;
+use ockam_multiaddr::proto::Project;
 
+use crate::{CommandGlobalOpts, display_parse_logs, docs, fmt_ok};
+use crate::{fmt_log, Result};
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
-use crate::{display_parse_logs, docs, fmt_ok, CommandGlobalOpts};
-use crate::{fmt_log, Result};
+use crate::util::output::Output;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -31,7 +31,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the relay (optional)
+    /// Name of the relay
     #[arg(hide_default_value = true, default_value = "default")]
     relay_name: String,
 
@@ -39,11 +39,11 @@ pub struct CreateCommand {
     #[arg(long, id = "NODE", display_order = 900)]
     to: Option<String>,
 
-    /// Route to the node at which to create the relay (optional)
+    /// Route to the node at which to create the relay
     #[arg(long, id = "ROUTE", display_order = 900, value_parser = parse_at, default_value_t = default_forwarder_at())]
     at: MultiAddr,
 
-    /// Authorized identity for secure channel connection (optional)
+    /// Authorized identity for secure channel connection
     #[arg(long, id = "AUTHORIZED", display_order = 900)]
     authorized: Option<IdentityIdentifier>,
 }
@@ -70,15 +70,15 @@ pub fn default_forwarder_at() -> MultiAddr {
     MultiAddr::from_str("/project/default").expect("Default relay address is invalid")
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!("Creating Relay...\n"))?;
 
     display_parse_logs(&opts);
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let to = get_node_name(&opts.state, &cmd.to);
     let api_node = extract_address_value(&to)?;
-    let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
+    let at_rust_node = is_local_node(&cmd.at).wrap_err("Argument --at is not valid")?;
 
     let ma = process_nodes_multiaddr(&cmd.at, &opts.state)?;
     let alias = if at_rust_node {
@@ -132,15 +132,19 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 
     let (relay, _) = try_join!(send_req, progress_output)?;
 
-    let machine = relay.remote_address_ma()?;
-    let json = serde_json::to_string_pretty(&relay)?;
+    let machine = relay.remote_address_ma().into_diagnostic()?;
+    let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
 
-    let formatted_from = format!("{}{}", &cmd.at, &relay.worker_address_ma()?.to_string())
-        .color(OckamColor::PrimaryResource.color());
+    let formatted_from = format!(
+        "{}{}",
+        &cmd.at,
+        &relay.worker_address_ma().into_diagnostic()?.to_string()
+    )
+    .color(OckamColor::PrimaryResource.color());
     let formatted_to = format!(
         "/node/{}{}",
         &api_node,
-        &relay.remote_address_ma()?.to_string()
+        &relay.remote_address_ma().into_diagnostic()?.to_string()
     )
     .color(OckamColor::PrimaryResource.color());
 

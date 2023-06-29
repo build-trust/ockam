@@ -1,22 +1,23 @@
-use clap::{command, Args};
+use clap::{Args, command};
 use colorful::Colorful;
+use miette::IntoDiagnostic;
+use tokio::{sync::Mutex, try_join};
+
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_core::api::Request;
 
-use tokio::{sync::Mutex, try_join};
-
-use crate::node::get_node_name;
 use crate::{
-    fmt_log, fmt_ok,
+    CommandGlobalOpts, fmt_log,
+    fmt_ok,
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
     node::NodeOpts,
     service::start::start_service_impl,
     terminal::OckamColor,
     util::node_rpc,
-    CommandGlobalOpts, Result,
 };
+use crate::node::get_node_name;
 
 /// Create a new Kafka Outlet
 #[derive(Clone, Debug, Args)]
@@ -37,7 +38,7 @@ impl CreateCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     opts.terminal
         .write_line(&fmt_log!("Creating KafkaOutlet service"))?;
     let CreateCommand {
@@ -47,7 +48,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     } = cmd;
     let is_finished = Mutex::new(false);
     let send_req = async {
-        let tcp = TcpTransport::create(&ctx).await?;
+        let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
 
         let payload = StartKafkaOutletRequest::new(bootstrap_server.clone());
         let payload = StartServiceRequest::new(payload, &addr);

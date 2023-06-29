@@ -1,12 +1,14 @@
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::tcp::util::alias_parser;
-use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::Result;
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
+
 use ockam::Context;
 use ockam_core::api::{Request, RequestBuilder};
+
+use crate::{CommandGlobalOpts, docs};
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::Result;
+use crate::tcp::util::alias_parser;
+use crate::util::{extract_address_value, node_rpc, Rpc};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -33,7 +35,7 @@ impl DeleteCommand {
 pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let alias = cmd.alias.clone();
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = extract_address_value(&node_name)?;

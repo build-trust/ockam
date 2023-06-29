@@ -1,13 +1,13 @@
-use anyhow::anyhow;
-use tokio_retry::strategy::FixedInterval;
+use miette::miette;
 use tokio_retry::Retry;
+use tokio_retry::strategy::FixedInterval;
 
 use ockam_api::cloud::operation::Operation;
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 
-use crate::util::api::CloudOpts;
+use crate::CommandGlobalOpts;
 use crate::util::{api, RpcBuilder};
-use crate::{CommandGlobalOpts, Result};
+use crate::util::api::CloudOpts;
 
 pub async fn check_for_completion<'a>(
     ctx: &ockam::Context,
@@ -15,7 +15,7 @@ pub async fn check_for_completion<'a>(
     cloud_opts: &CloudOpts,
     api_node: &str,
     operation_id: &str,
-) -> Result<()> {
+) -> miette::Result<()> {
     let retry_strategy =
         FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
 
@@ -39,7 +39,7 @@ pub async fn check_for_completion<'a>(
                 return Ok(operation.to_owned());
             }
         }
-        Err(anyhow!("Operation timed out. Please try again."))
+        Err(miette!("Operation timed out. Please try again."))
     })
     .await?;
 
@@ -50,6 +50,6 @@ pub async fn check_for_completion<'a>(
     if operation.is_successful() {
         Ok(())
     } else {
-        Err(anyhow!("Operation failed. Please try again.").into())
+        Err(miette!("Operation failed. Please try again."))
     }
 }

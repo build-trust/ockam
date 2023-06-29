@@ -1,26 +1,28 @@
-use crate::terminal::OckamColor;
-use crate::util::node_rpc;
-use crate::util::output::Output;
-use crate::{docs, CommandGlobalOpts, Result};
+use std::fmt::Write;
 
 use clap::Args;
 use colorful::Colorful;
-
-use ockam_api::cli_state::traits::StateDirTrait;
-
-use ockam_node::Context;
-use std::fmt::Write;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_node::Context;
+
+use crate::{CommandGlobalOpts, docs};
+use crate::terminal::OckamColor;
+use crate::util::node_rpc;
+use crate::util::output::Output;
+
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List identities
 #[derive(Clone, Debug, Args)]
 #[command(
-long_about = docs::about(LONG_ABOUT),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
+    long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {}
 
@@ -29,7 +31,10 @@ impl ListCommand {
         node_rpc(Self::run_impl, (options, self))
     }
 
-    async fn run_impl(_ctx: Context, options: (CommandGlobalOpts, ListCommand)) -> Result<()> {
+    async fn run_impl(
+        _ctx: Context,
+        options: (CommandGlobalOpts, ListCommand),
+    ) -> miette::Result<()> {
         let (opts, _cmd) = options;
         let mut identities: Vec<IdentityListOutput> = Vec::new();
 

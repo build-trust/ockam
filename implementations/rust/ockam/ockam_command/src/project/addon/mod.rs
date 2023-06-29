@@ -1,27 +1,25 @@
-mod configure_confluent;
-mod configure_influxdb;
-mod configure_okta;
-mod disable;
-mod list;
-
 use core::fmt::Write;
 
-use anyhow::Context as _;
 use clap::{Args, Subcommand};
+use miette::Context as _;
 
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::Addon;
 
+use crate::{CommandGlobalOpts, Result};
 use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
 use crate::project::addon::configure_influxdb::AddonConfigureInfluxdbSubcommand;
 use crate::project::addon::configure_okta::AddonConfigureOktaSubcommand;
 use crate::project::addon::disable::AddonDisableSubcommand;
 use crate::project::addon::list::AddonListSubcommand;
-
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 
-use crate::{CommandGlobalOpts, Result};
+mod configure_confluent;
+mod configure_influxdb;
+mod configure_okta;
+mod disable;
+mod list;
 
 /// Manage addons for a project
 #[derive(Clone, Debug, Args)]

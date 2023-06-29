@@ -1,24 +1,23 @@
-use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use clap::builder::NonEmptyStringValueParser;
 use colorful::Colorful;
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::ConfluentConfig;
+use ockam_api::cloud::CloudRequestWrapper;
 use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 use ockam_core::CowStr;
 
+use crate::{CommandGlobalOpts, docs, fmt_ok};
 use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::configure_addon_endpoint;
 use crate::project::util::check_project_readiness;
-use crate::util::api::CloudOpts;
-
 use crate::util::{api, node_rpc, Rpc};
-use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
+use crate::util::api::CloudOpts;
 
 const LONG_ABOUT: &str = include_str!("./static/configure_confluent/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_confluent/after_long_help.txt");
@@ -63,7 +62,7 @@ async fn run_impl(
         CloudOpts,
         AddonConfigureConfluentSubcommand,
     ),
-) -> Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cloud_opts.route();
     let AddonConfigureConfluentSubcommand {
         project_name,

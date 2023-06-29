@@ -1,33 +1,38 @@
-use crate::node::util::check_default;
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{api, node_rpc, Rpc, RpcBuilder};
-use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
+use tokio_retry::strategy::FixedInterval;
+use tracing::{info, trace, warn};
+
 use ockam::TcpTransport;
+use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
-use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
 use ockam_core::Route;
-use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
-use tokio_retry::strategy::FixedInterval;
-use tracing::{info, trace, warn};
+use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
+
+use crate::{CommandGlobalOpts, docs, OutputFormat, Result};
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::node::util::check_default;
+use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 const IS_NODE_UP_TIME_BETWEEN_CHECKS_MS: usize = 50;
-const IS_NODE_UP_MAX_ATTEMPTS: usize = 20; // 1 second
+const IS_NODE_UP_MAX_ATTEMPTS: usize = 60; // 3 seconds
 
 /// Show the details of a node
 #[derive(Clone, Debug, Args)]
 #[command(
-long_about = docs::about(LONG_ABOUT),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
+    long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
     /// Name of the node.
@@ -45,13 +50,13 @@ impl ShowCommand {
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&mut rpc, &node_name, false, is_default).await?;
+    print_query_status(&opts, &mut rpc, &node_name, false, is_default).await?;
     Ok(())
 }
 
@@ -60,6 +65,7 @@ async fn run_impl(
 // clippy to stop complaining about it.
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(
+    opts: &CommandGlobalOpts,
     node_port: Option<u16>,
     node_name: &str,
     is_default: bool,
@@ -70,6 +76,15 @@ fn print_node_info(
     secure_channel_listeners: Option<&SecureChannelListenersList>,
     inlets_outlets: Option<(&InletList, &OutletList)>,
 ) {
+    if opts.global_args.output_format == OutputFormat::Json {
+        opts.terminal
+            .clone()
+            .stdout()
+            .json(serde_json::json!({ "name": &node_name }))
+            .write_line()
+            .expect("Failed to write to stdout.");
+        return;
+    }
     println!();
     println!("Node:");
     if is_default {
@@ -160,18 +175,19 @@ fn print_node_info(
 }
 
 pub async fn print_query_status(
+    opts: &CommandGlobalOpts,
     rpc: &mut Rpc<'_>,
     node_name: &str,
     wait_until_ready: bool,
     is_default: bool,
-) -> Result<()> {
+) -> miette::Result<()> {
     let cli_state = rpc.opts.state.clone();
     if !is_node_up(rpc, wait_until_ready).await? {
         let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state
             .config()
             .setup()
-            .default_tcp_listener()
+            .api_transport()
             .ok()
             .map(|listener| listener.addr.port());
 
@@ -179,6 +195,7 @@ pub async fn print_query_status(
         // so in that case we display an UP status
         let is_authority_node = node_state.config().setup().authority_node.unwrap_or(false);
         print_node_info(
+            opts,
             node_port,
             node_name,
             is_default,
@@ -226,11 +243,12 @@ pub async fn print_query_status(
         let node_port = node_state
             .config()
             .setup()
-            .default_tcp_listener()
+            .api_transport()
             .ok()
             .map(|listener| listener.addr.port());
 
         print_node_info(
+            opts,
             node_port,
             node_name,
             is_default,
@@ -259,18 +277,18 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
         false => 1,
     };
 
-    let timeout =
+    let retries =
         FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
 
     let cli_state = rpc.opts.state.clone();
     let node_name = rpc.node_name().to_owned();
     let now = std::time::Instant::now();
-    for t in timeout {
+    for timeout_duration in retries {
         let node_state = cli_state.nodes.get(&node_name)?;
         // The node is down if it has not stored its default tcp listener in its state file.
-        if node_state.config().setup().default_tcp_listener().is_err() {
+        if node_state.config().setup().api_transport().is_err() {
             trace!(%node_name, "node has not been initialized");
-            tokio::time::sleep(t).await;
+            tokio::time::sleep(timeout_duration).await;
             continue;
         }
 
@@ -278,7 +296,7 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
         // If node is down, we expect it won't reply and the timeout
         // will trigger the next loop (i.e. no need to sleep here).
         if rpc
-            .request_with_timeout(api::query_status(), t)
+            .request_with_timeout(api::query_status(), timeout_duration)
             .await
             .is_ok()
             && rpc.is_ok().is_ok()
@@ -288,7 +306,7 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
             return Ok(true);
         } else {
             trace!(%node_name, "node is initializing");
-            tokio::time::sleep(t).await;
+            tokio::time::sleep(timeout_duration).await;
         }
     }
     warn!(%node_name, "node didn't respond in time");

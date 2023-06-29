@@ -1,24 +1,27 @@
-use crate::terminal::OckamColor;
-use crate::util::output::Output;
-use crate::util::{api, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
-use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
+use miette::Context as _;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
 
-use tokio::sync::Mutex;
-use tokio::try_join;
+use crate::{CommandGlobalOpts, docs, Result};
+use crate::terminal::OckamColor;
+use crate::util::{api, node_rpc, Rpc};
+use crate::util::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List nodes
 #[derive(Clone, Debug, Args)]
 #[command(
     long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {}
@@ -32,7 +35,7 @@ impl ListCommand {
 async fn run_impl(
     ctx: Context,
     (opts, _cmd): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     // Before printing node states we verify them.
     // We send a QueryStatus request to every node on
     // record. If the response yields a different pid to the

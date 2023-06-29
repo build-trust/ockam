@@ -12,8 +12,8 @@ use ockam_identity::{
     LmdbStorage,
 };
 
-use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
 use crate::cli_state::{CliStateError, DATA_DIR_NAME};
+use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
 
 use super::Result;
 
@@ -32,16 +32,13 @@ impl IdentitiesState {
     }
 
     pub fn get_by_identifier(&self, identifier: &IdentityIdentifier) -> Result<IdentityState> {
-        let identities = self.list()?;
-
-        let identity_state = identities
+        self.list()?
             .into_iter()
-            .find(|ident_state| &ident_state.config.identifier() == identifier);
-
-        match identity_state {
-            Some(is) => Ok(is),
-            None => Err(CliStateError::NotFound),
-        }
+            .find(|ident_state| &ident_state.config.identifier() == identifier)
+            .ok_or(CliStateError::ResourceNotFound {
+                resource: Self::default_filename().to_string(),
+                name: identifier.to_string(),
+            })
     }
 
     pub async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
@@ -200,8 +197,8 @@ enum IdentityConfigs {
 mod traits {
     use ockam_core::async_trait;
 
+    use crate::cli_state::{CliStateError, file_stem};
     use crate::cli_state::traits::*;
-    use crate::cli_state::{file_stem, CliStateError};
 
     use super::*;
 
@@ -224,7 +221,7 @@ mod traits {
             // Retrieve identity. If doesn't exist do nothing.
             let identity = match self.get(&name) {
                 Ok(i) => i,
-                Err(CliStateError::NotFound) => return Ok(()),
+                Err(CliStateError::ResourceNotFound { .. }) => return Ok(()),
                 Err(e) => return Err(e),
             };
 
@@ -319,8 +316,9 @@ mod traits {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ockam_identity::IdentityChangeHistory;
+
+    use super::*;
 
     #[test]
     fn test_serialize() {

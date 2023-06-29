@@ -1,15 +1,19 @@
 use clap::Args;
+
 use ockam_api::cli_state::traits::StateDirTrait;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{CommandGlobalOpts, docs};
+use crate::util::local_cmd;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 /// Show the details of a vault
 #[derive(Clone, Debug, Args)]
 #[command(
     long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
@@ -19,14 +23,11 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{e}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
     let name = cmd
         .name
         .unwrap_or(opts.state.vaults.default()?.name().to_string());

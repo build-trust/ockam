@@ -58,7 +58,7 @@ impl VerifyCommand {
 async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, VerifyCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     opts.terminal
         .write_line(&fmt_log!("Verifying credential...\n"))?;
 

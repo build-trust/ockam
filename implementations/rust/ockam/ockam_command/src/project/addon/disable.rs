@@ -1,23 +1,20 @@
-use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use clap::builder::NonEmptyStringValueParser;
 use colorful::Colorful;
 
 use ockam::Context;
-
 use ockam_api::cloud::addon::DisableAddon;
-use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::CloudRequestWrapper;
+use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_core::api::Request;
 use ockam_core::CowStr;
 
+use crate::{CommandGlobalOpts, fmt_ok};
 use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::disable_addon_endpoint;
-
-use crate::util::api::CloudOpts;
-
 use crate::util::{node_rpc, Rpc};
-use crate::{fmt_ok, CommandGlobalOpts, Result};
+use crate::util::api::CloudOpts;
 
 /// Disable an addon for a project
 #[derive(Clone, Debug, Args)]
@@ -50,7 +47,7 @@ impl AddonDisableSubcommand {
 async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, AddonDisableSubcommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cloud_opts.route();
     let AddonDisableSubcommand {
         project_name,

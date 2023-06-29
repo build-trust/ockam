@@ -1,16 +1,18 @@
 use clap::Args;
-
 use colorful::Colorful;
+use miette::IntoDiagnostic;
+
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
+use crate::{CommandGlobalOpts, docs, fmt_err};
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::node::show::print_query_status;
 use crate::node::util::{check_default, spawn_node};
-use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{docs, fmt_err, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt");
 
 /// Start a node that was previously stopped
@@ -18,6 +20,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt")
 #[command(
     arg_required_else_help = true,
     long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct StartCommand {
@@ -39,7 +42,7 @@ impl StartCommand {
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, StartCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
 
     let node_state = opts.state.nodes.get(&node_name)?;
@@ -62,7 +65,7 @@ async fn run_impl(
         &opts,
         node_setup.verbose, // Previously user-chosen verbosity level
         &node_name,         // The selected node name
-        &node_setup.default_tcp_listener()?.addr.to_string(), // The selected node api address
+        &node_setup.api_transport()?.addr.to_string(), // The selected node api address
         None,               // No project information available
         None,               // No trusted identities
         None,               // "
@@ -72,13 +75,14 @@ async fn run_impl(
         None,               // Credential
         None,               // Trust Context
         None,               // Project Name
+        node_setup.disable_file_logging,
     )?;
 
     // Print node status
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&mut rpc, &node_name, true, is_default).await?;
+    print_query_status(&opts, &mut rpc, &node_name, true, is_default).await?;
 
     Ok(())
 }

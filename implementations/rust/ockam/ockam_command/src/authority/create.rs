@@ -1,33 +1,38 @@
-use crate::node::util::init_node_state;
-use crate::node::util::run_ockam;
-use crate::util::node_rpc;
-use crate::util::{embedded_node_that_is_not_stopped, exitcode};
-use crate::{docs, identity, CommandGlobalOpts, Result};
-use anyhow::Context as _;
+use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
+
 use clap::{ArgGroup, Args};
-use miette::miette;
+use miette::{IntoDiagnostic, miette};
+use miette::Context as _;
+use serde::{Deserialize, Serialize};
+use tracing::debug;
+
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::DefaultAddress;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
-use ockam_api::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_identity::{AttributesEntry, IdentityIdentifier};
-use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
-use tracing::{debug, error};
+
+use crate::{CommandGlobalOpts, docs, identity, Result};
+use crate::node::util::init_node_state;
+use crate::node::util::run_ockam;
+use crate::util::{embedded_node_that_is_not_stopped, exitcode};
+use crate::util::{local_cmd, node_rpc};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
 /// Create an Authority node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::after_help(LONG_ABOUT),
+    long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 #[clap(group(ArgGroup::new("trusted").required(true).args(& ["trusted_identities", "reload_from_trusted_identities_file"])))]
@@ -70,15 +75,15 @@ pub struct CreateCommand {
     #[arg(group = "trusted", long, value_name = "PATH")]
     reload_from_trusted_identities_file: Option<PathBuf>,
 
-    /// Okta: URL used for accessing the Okta API (optional)
+    /// Okta: URL used for accessing the Okta API
     #[arg(long, value_name = "URL", default_value = None)]
     tenant_base_url: Option<String>,
 
-    /// Okta: pem certificate used to access the Okta server (optional)
+    /// Okta: pem certificate used to access the Okta server
     #[arg(long, value_name = "STRING", default_value = None)]
     certificate: Option<String>,
 
-    /// Okta: name of the attributes which can be retrieved from Okta (optional)
+    /// Okta: name of the attributes which can be retrieved from Okta
     #[arg(long, value_name = "ATTRIBUTE_NAMES", default_value = None)]
     attributes: Option<Vec<String>>,
 
@@ -93,11 +98,17 @@ pub struct CreateCommand {
     /// Authority Identity
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
+
+    #[arg(long)]
+    disable_file_logging: bool,
 }
 
 /// Start an authority node by calling the `ockam` executable with the current command-line
 /// arguments
-async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crate::Result<()> {
+async fn spawn_background_node(
+    opts: &CommandGlobalOpts,
+    cmd: &CreateCommand,
+) -> miette::Result<()> {
     // Create node state, including the vault and identity if they don't exist
     init_node_state(
         opts,
@@ -121,8 +132,17 @@ async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) ->
             0 => "-vv".to_string(),
             v => format!("-{}", "v".repeat(v as usize)),
         },
-        "--no-color".to_string(),
     ];
+
+    if cmd.disable_file_logging {
+        args.push("--disable-file-logging".to_string());
+        if !opts.terminal.is_tty() {
+            args.push("--no-color".to_string());
+        }
+    } else {
+        // We want to disable colors when logging to file
+        args.push("--no-color".to_string());
+    }
 
     if cmd.no_direct_authentication {
         args.push("--no-direct-authentication".to_string());
@@ -174,19 +194,17 @@ async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) ->
     }
     args.push(cmd.node_name.to_string());
 
-    run_ockam(opts, &cmd.node_name, args)
+    run_ockam(opts, &cmd.node_name, args, cmd.disable_file_logging)
 }
 
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            if let Err(e) = embedded_node_that_is_not_stopped(start_authority_node, (options, self))
-            {
-                error!(%e);
-                eprintln!("{e:?}");
-                std::process::exit(e.code());
-            }
+            local_cmd(embedded_node_that_is_not_stopped(
+                start_authority_node,
+                (options, self),
+            ))
         } else {
             // Create a new node running in the background (i.e. another, new OS process)
             node_rpc(create_background_node, (options, self))
@@ -221,7 +239,7 @@ impl CreateCommand {
 async fn create_background_node(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     // Spawn node in another, new process
     spawn_background_node(&opts, &cmd).await
 }
@@ -233,7 +251,7 @@ async fn create_background_node(
 async fn start_authority_node(
     ctx: Context,
     args: (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let (opts, cmd) = args;
 
     // Create node state, including the vault and identity if they don't exist
@@ -294,12 +312,16 @@ async fn start_authority_node(
             .config()
             .setup_mut()
             .set_verbose(opts.global_args.verbose)
+            .set_disable_file_logging(cmd.disable_file_logging)
             .set_authority_node()
-            .add_transport(CreateTransportJson::new(
-                TransportType::Tcp,
-                TransportMode::Listen,
-                cmd.tcp_listener_address.as_str(),
-            )?),
+            .set_api_transport(
+                CreateTransportJson::new(
+                    TransportType::Tcp,
+                    TransportMode::Listen,
+                    cmd.tcp_listener_address.as_str(),
+                )
+                .into_diagnostic()?,
+            ),
     )?;
 
     let trusted_identities = cmd.trusted_identities(&identifier)?;
@@ -318,7 +340,9 @@ async fn start_authority_node(
         no_token_enrollment: cmd.no_token_enrollment,
         okta: okta_configuration,
     };
-    authority_node::start_node(&ctx, &configuration).await?;
+    authority_node::start_node(&ctx, &configuration)
+        .await
+        .into_diagnostic()?;
 
     Ok(())
 }
@@ -335,9 +359,10 @@ fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ockam_core::compat::collections::HashMap;
     use ockam_identity::IdentityIdentifier;
+
+    use super::*;
 
     #[test]
     fn test_parse_trusted_identities() {

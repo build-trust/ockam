@@ -1,23 +1,25 @@
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::policy::{add_default_project_policy, has_policy};
-use crate::tcp::util::alias_parser;
-use crate::terminal::OckamColor;
-
-use crate::util::parsers::socket_addr_parser;
-use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{display_parse_logs, fmt_log};
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use std::net::SocketAddr;
 
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
 use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_core::api::{Request, RequestBuilder};
-use std::net::SocketAddr;
-use tokio::sync::Mutex;
-use tokio::try_join;
+
+use crate::{display_parse_logs, fmt_log};
+use crate::{CommandGlobalOpts, docs, fmt_ok};
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::policy::{add_default_project_policy, has_policy};
+use crate::tcp::util::alias_parser;
+use crate::terminal::OckamColor;
+use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::parsers::socket_addr_parser;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -56,7 +58,7 @@ fn default_from_addr() -> String {
 pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!(
         "Creating TCP Outlet to {}...\n",
         &cmd.to
@@ -116,8 +118,8 @@ pub async fn run_impl(
         .progress_output(&output_messages, &is_finished);
 
     let (outlet_status, _) = try_join!(send_req, progress_output)?;
-    let machine = outlet_status.worker_address()?;
-    let json = serde_json::to_string_pretty(&outlet_status)?;
+    let machine = outlet_status.worker_address().into_diagnostic()?;
+    let json = serde_json::to_string_pretty(&outlet_status).into_diagnostic()?;
 
     opts.terminal
         .stdout()

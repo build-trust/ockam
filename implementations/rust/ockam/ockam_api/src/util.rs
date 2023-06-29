@@ -1,15 +1,15 @@
 use std::net::{SocketAddrV4, SocketAddrV6};
 
-use anyhow::anyhow;
+use miette::miette;
 
 use ockam::TcpTransport;
+use ockam_core::{Address, Error, LOCAL, Result, Route, TransportType};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
+use ockam_multiaddr::{Code, MultiAddr, Protocol};
 use ockam_multiaddr::proto::{
     DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
 };
-use ockam_multiaddr::{Code, MultiAddr, Protocol};
-use ockam_transport_tcp::{TcpConnectionOptions, TCP};
+use ockam_transport_tcp::{TCP, TcpConnection, TcpConnectionOptions};
 
 use crate::error::ApiError;
 
@@ -50,7 +50,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
 pub struct MultiAddrToRouteResult {
     pub flow_control_id: Option<FlowControlId>,
     pub route: Route,
-    pub tcp_worker: Option<Address>,
+    pub tcp_connection: Option<TcpConnection>,
 }
 
 pub async fn multiaddr_to_route(
@@ -62,7 +62,7 @@ pub async fn multiaddr_to_route(
 
     let mut flow_control_id = None;
     let mut number_of_tcp_hops = 0;
-    let mut tcp_worker = None;
+    let mut tcp_connection = None;
 
     while let Some(p) = it.next() {
         match p.code() {
@@ -78,16 +78,12 @@ pub async fn multiaddr_to_route(
                 let options = TcpConnectionOptions::new();
                 flow_control_id = Some(options.flow_control_id().clone());
 
-                let addr = tcp
-                    .connect(socket_addr.to_string(), options)
-                    .await
-                    .ok()?
-                    .sender_address()
-                    .clone();
-                tcp_worker = Some(addr.clone());
+                let connection = tcp.connect(socket_addr.to_string(), options).await.ok()?;
 
                 number_of_tcp_hops += 1;
-                rb = rb.append(addr)
+                rb = rb.append(connection.sender_address().clone());
+
+                tcp_connection = Some(connection);
             }
             Ip6::CODE => {
                 if number_of_tcp_hops >= 1 {
@@ -101,16 +97,12 @@ pub async fn multiaddr_to_route(
                 let options = TcpConnectionOptions::new();
                 flow_control_id = Some(options.flow_control_id().clone());
 
-                let addr = tcp
-                    .connect(socket_addr.to_string(), options)
-                    .await
-                    .ok()?
-                    .sender_address()
-                    .clone();
-                tcp_worker = Some(addr.clone());
+                let connection = tcp.connect(socket_addr.to_string(), options).await.ok()?;
 
                 number_of_tcp_hops += 1;
-                rb = rb.append(addr)
+                rb = rb.append(connection.sender_address().clone());
+
+                tcp_connection = Some(connection);
             }
             DnsAddr::CODE => {
                 if number_of_tcp_hops >= 1 {
@@ -125,17 +117,18 @@ pub async fn multiaddr_to_route(
                         let options = TcpConnectionOptions::new();
                         flow_control_id = Some(options.flow_control_id().clone());
 
-                        let addr = tcp
+                        let connection = tcp
                             .connect(format!("{}:{}", &*host, *port), options)
                             .await
-                            .ok()?
-                            .sender_address()
-                            .clone();
-                        tcp_worker = Some(addr.clone());
+                            .ok()?;
 
                         number_of_tcp_hops += 1;
-                        rb = rb.append(addr);
+                        rb = rb.append(connection.sender_address().clone());
+
+                        tcp_connection = Some(connection);
+
                         let _ = it.next();
+
                         continue;
                     }
                 }
@@ -161,7 +154,7 @@ pub async fn multiaddr_to_route(
 
     Some(MultiAddrToRouteResult {
         flow_control_id,
-        tcp_worker,
+        tcp_connection,
         route: rb.into(),
     })
 }
@@ -276,7 +269,7 @@ pub fn addr_to_multiaddr<T: Into<Address>>(a: T) -> Option<MultiAddr> {
 /// Tells whether the input MultiAddr references a local node or a remote node.
 ///
 /// This should be called before cleaning the MultiAddr.
-pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
+pub fn is_local_node(ma: &MultiAddr) -> miette::Result<bool> {
     let at_rust_node;
     if let Some(p) = ma.iter().next() {
         match p.code() {
@@ -293,30 +286,30 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
                 at_rust_node = p
                     .cast::<DnsAddr>()
                     .map(|dnsaddr| (*dnsaddr).eq("localhost"))
-                    .ok_or_else(|| anyhow!("Invalid \"dnsaddr\" value"))?;
+                    .ok_or_else(|| miette!("Invalid \"dnsaddr\" value"))?;
             }
             // A "/ip4" will be local if it matches the loopback address
             Ip4::CODE => {
                 at_rust_node = p
                     .cast::<Ip4>()
                     .map(|ip4| ip4.is_loopback())
-                    .ok_or_else(|| anyhow!("Invalid \"ip4\" value"))?;
+                    .ok_or_else(|| miette!("Invalid \"ip4\" value"))?;
             }
             // A "/ip6" will be local if it matches the loopback address
             Ip6::CODE => {
                 at_rust_node = p
                     .cast::<Ip6>()
                     .map(|ip6| ip6.is_loopback())
-                    .ok_or_else(|| anyhow!("Invalid \"ip6\" value"))?;
+                    .ok_or_else(|| miette!("Invalid \"ip6\" value"))?;
             }
             // A MultiAddr starting with "/service" could reference both local and remote nodes.
             _ => {
-                return Err(anyhow!("Invalid address, protocol not supported"));
+                return Err(miette!("Invalid address, protocol not supported"));
             }
         }
         Ok(at_rust_node)
     } else {
-        Err(anyhow!("Invalid address"))
+        Err(miette!("Invalid address"))
     }
 }
 
@@ -341,24 +334,24 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 pub mod test_utils {
     use ockam::identity::SecureChannels;
     use ockam::Result;
+    use ockam_core::AsyncTryClone;
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
-    use ockam_core::AsyncTryClone;
     use ockam_identity::{
         CredentialData, Credentials, Identity, IdentityIdentifier, InMemoryStorage, KeyAttributes,
     };
-    use ockam_node::compat::asynchronous::RwLock;
     use ockam_node::{Context, InMemoryKeyValueStorage};
+    use ockam_node::compat::asynchronous::RwLock;
     use ockam_transport_tcp::TcpTransport;
     use ockam_vault::{Secret, SecretAttributes};
 
-    use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
+    use crate::cli_state::{CliState, IdentityConfig, NodeConfig, traits::*, VaultConfig};
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
+    use crate::nodes::{NodeManager, NODEMANAGER_ADDR, NodeManagerWorker};
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
         NodeManagerTrustOptions,
     };
-    use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 
     /// This struct is used by tests, it has two responsibilities:
     /// - guard to delete the cli state at the end of the test, the cli state

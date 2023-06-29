@@ -1,8 +1,9 @@
-use crate::identity::{IdentityError, IdentityIdentifier};
+use ockam_core::{Address, Result};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Address, Result};
+
+use crate::identity::{IdentityError, IdentityIdentifier};
 
 /// Known information about particular SecureChannel
 #[derive(Clone, Debug)]
@@ -51,6 +52,7 @@ impl SecureChannelRegistryEntry {
     pub fn encryptor_api_address(&self) -> &Address {
         &self.encryptor_api_address
     }
+
     /// Decryptor messaging address
     pub fn decryptor_messaging_address(&self) -> &Address {
         &self.decryptor_messaging_address

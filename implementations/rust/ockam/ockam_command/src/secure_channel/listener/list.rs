@@ -1,23 +1,26 @@
-use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
 use ockam::Context;
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::{
     SecureChannelListenersList, ShowSecureChannelListenerResponse,
 };
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
+use crate::{CommandGlobalOpts, docs};
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
-use crate::util::api;
-use crate::util::output::Output;
+use crate::util::{api, parse_node_name};
 use crate::util::{node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts};
+use crate::util::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List Secure Channel Listeners
@@ -25,6 +28,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 #[command(
     arg_required_else_help = true,
     long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct ListCommand {
@@ -40,7 +44,10 @@ impl ListCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> crate::Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ListCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
@@ -48,8 +55,14 @@ async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
     cmd: ListCommand,
-) -> crate::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+) -> miette::Result<()> {
+    let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = parse_node_name(&at)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node_name));
+    }
+
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
@@ -88,7 +101,7 @@ impl Output for ShowSecureChannelListenerResponse {
     fn output(&self) -> crate::Result<String> {
         let addr = {
             let channel_route = &route![self.addr.clone()];
-            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(anyhow!(
+            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(miette!(
                 "Failed to convert route {channel_route} to multi-address"
             ))?;
             channel_multiaddr.to_string()

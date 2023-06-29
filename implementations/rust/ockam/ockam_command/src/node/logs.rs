@@ -1,16 +1,21 @@
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::{docs, CommandGlobalOpts};
-use clap::Args;
-use ockam_api::cli_state::StateDirTrait;
 use std::path::PathBuf;
 
+use clap::Args;
+
+use ockam_api::cli_state::StateDirTrait;
+
+use crate::{CommandGlobalOpts, docs};
+use crate::node::{get_node_name, initialize_node_if_default};
+
 const LONG_ABOUT: &str = include_str!("./static/logs/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/logs/after_long_help.txt");
 
 /// Get the stdout/stderr log file of a node
 #[derive(Clone, Debug, Args)]
 #[command(
     long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct LogCommand {

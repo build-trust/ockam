@@ -32,22 +32,22 @@
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-compile_error!(r#"The "no_std" feature currently requires the "alloc" feature"#);
-
-#[cfg(feature = "std")]
-extern crate core;
-
 #[cfg(feature = "alloc")]
 #[macro_use]
 extern crate alloc;
-
+#[cfg(feature = "std")]
+extern crate core;
+extern crate futures_util;
+extern crate ockam_macros;
 // Allow use of logging macros directly.
 #[macro_use]
 extern crate tracing;
 
-pub use async_trait::async_trait;
+#[cfg(feature = "std")]
+#[doc(hidden)]
+pub use std::println;
 
+pub use async_trait::async_trait;
 /// Mark an Ockam Worker implementation.
 #[doc(inline)]
 pub use async_trait::async_trait as worker;
@@ -55,10 +55,24 @@ pub use async_trait::async_trait as worker;
 #[doc(inline)]
 pub use async_trait::async_trait as processor;
 
-extern crate ockam_macros;
+pub use access_control::*;
+pub use cbor_utils::*;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[doc(hidden)]
+pub use compat::println;
+pub use error::*;
+pub use message::*;
 pub use ockam_macros::{AsyncTryClone, Message};
+pub use processor::*;
+pub use routing::*;
+pub use type_tag::*;
+pub use uint::*;
+pub use worker::*;
 
-extern crate futures_util;
+use crate::compat::boxed::Box;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+compile_error!(r#"The "no_std" feature currently requires the "alloc" feature"#);
 
 /// Access control
 pub mod access_control;
@@ -77,34 +91,12 @@ pub mod env;
 
 mod cbor_utils;
 mod error;
-mod key_exchanger;
 mod message;
 mod processor;
 mod routing;
 mod type_tag;
 mod uint;
 mod worker;
-
-pub use access_control::*;
-pub use cbor_utils::*;
-pub use error::*;
-pub use key_exchanger::*;
-pub use message::*;
-pub use processor::*;
-pub use routing::*;
-pub use type_tag::*;
-pub use uint::*;
-pub use worker::*;
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-#[doc(hidden)]
-pub use compat::println;
-
-#[cfg(feature = "std")]
-#[doc(hidden)]
-pub use std::println;
-
-use crate::compat::boxed::Box;
 
 /// Clone trait for async structs.
 #[async_trait]

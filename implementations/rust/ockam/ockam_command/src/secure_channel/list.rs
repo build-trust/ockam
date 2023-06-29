@@ -1,26 +1,29 @@
-use anyhow::anyhow;
-use clap::Args;
-use colorful::Colorful;
 use std::fmt::Write;
 
-use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
-use ockam_api::route_to_multiaddr;
-use ockam_core::{route, Address};
-
+use clap::Args;
+use colorful::Colorful;
+use miette::{IntoDiagnostic, miette};
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use crate::terminal::OckamColor;
-use crate::util::output::Output;
-use crate::util::{extract_address_value, RpcBuilder};
+use ockam::{Context, TcpTransport};
+use ockam_api::cli_state::StateDirTrait;
+use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
+use ockam_api::route_to_multiaddr;
+use ockam_core::{Address, route};
+
 use crate::{
+    CommandGlobalOpts,
     docs,
     util::{api, node_rpc},
-    CommandGlobalOpts,
 };
+use crate::node::get_node_name;
+use crate::terminal::OckamColor;
+use crate::util::{parse_node_name, RpcBuilder};
+use crate::util::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List Secure Channels
@@ -28,12 +31,13 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 #[command(
     arg_required_else_help = true,
     long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct ListCommand {
-    /// Node at which the returned secure channels were initiated (required)
+    /// Node at which the returned secure channels were initiated
     #[arg(value_name = "NODE_NAME", long, display_order = 800)]
-    at: String,
+    at: Option<String>,
 }
 
 impl ListCommand {
@@ -43,20 +47,21 @@ impl ListCommand {
 
     fn build_output(
         &self,
+        node_name: &str,
         channel_address: &str,
         show_response: ShowSecureChannelResponse,
     ) -> crate::Result<SecureChannelListOutput> {
-        let from = format!("/node/{}", &self.at);
+        let from = node_name.to_string();
         let at = {
             let channel_route = &route![channel_address];
-            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(anyhow!(
+            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(miette!(
                 "Failed to convert route {channel_route} to multi-address"
             ))?;
             channel_multiaddr.to_string()
         };
 
         let to = {
-            let show_route = show_response.route.ok_or(anyhow!(
+            let show_route = show_response.route.ok_or(miette!(
                 "Failed to retrieve route from show channel response"
             ))?;
             show_route
@@ -64,7 +69,7 @@ impl ListCommand {
                 .map(|p| {
                     let r = route![p];
                     route_to_multiaddr(&r)
-                        .ok_or(anyhow!("Failed to convert route {r} to multi-address"))
+                        .ok_or(miette!("Failed to convert route {r} to multi-address"))
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .iter()
@@ -77,20 +82,21 @@ impl ListCommand {
     }
 }
 
-async fn rpc(
-    ctx: Context,
-    (options, command): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
     // We need this TCPTransport handle to ensure that we are using the same transport across
     // multiple RPC calls. Creating a RPC instance without explicit transport results in a router
     // instance being registered for the same transport type multiple times which is not allowed
-    let tcp = TcpTransport::create(&ctx).await?;
-    let node_name = extract_address_value(&command.at)?;
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
+
+    let at = get_node_name(&opts.state, &cmd.at);
+    let node_name = parse_node_name(&at)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node_name));
+    }
 
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = RpcBuilder::new(&ctx, &options, &node_name)
-        .tcp(&tcp)?
-        .build();
+    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
 
     let send_req = async {
         rpc.request(api::list_secure_channels()).await?;
@@ -101,7 +107,7 @@ async fn rpc(
     };
 
     let output_messages = vec!["Retrieving secure channel identifiers...\n".to_string()];
-    let progress_output = options
+    let progress_output = opts
         .terminal
         .progress_output(&output_messages, &is_finished);
 
@@ -110,18 +116,17 @@ async fn rpc(
     let mut responses = Vec::with_capacity(channel_identifiers.len());
     for channel_addr in &channel_identifiers {
         let is_finished: Mutex<bool> = Mutex::new(false);
-        let mut rpc = RpcBuilder::new(&ctx, &options, &command.at)
-            .tcp(&tcp)?
-            .build();
+        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
         let send_req = async {
             let request: ockam_core::api::RequestBuilder<
                 ockam_api::nodes::models::secure_channel::ShowSecureChannelRequest,
             > = api::show_secure_channel(&Address::from(channel_addr));
             rpc.request(request).await?;
             let show_response = rpc.parse_response::<ShowSecureChannelResponse>()?;
-            let secure_channel_output = command.build_output(channel_addr, show_response)?;
+            let secure_channel_output =
+                cmd.build_output(&node_name, channel_addr, show_response)?;
             *is_finished.lock().await = true;
-            crate::Result::Ok(secure_channel_output)
+            Ok(secure_channel_output)
         };
         let output_messages = vec![format!(
             "Retrieving secure channel {}...\n",
@@ -129,7 +134,7 @@ async fn rpc(
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         )];
-        let progress_output = options
+        let progress_output = opts
             .terminal
             .progress_output(&output_messages, &is_finished);
 
@@ -138,12 +143,12 @@ async fn rpc(
         responses.push(secure_channel_output);
     }
 
-    let list = options.terminal.build_list(
+    let list = opts.terminal.build_list(
         &responses,
         &format!("Secure Channels on {}", node_name),
         &format!("No secure channels found on {}", node_name),
     )?;
-    options.terminal.stdout().plain(list).write_line()?;
+    opts.terminal.stdout().plain(list).write_line()?;
 
     Ok(())
 }

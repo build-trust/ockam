@@ -1,11 +1,11 @@
+use ockam_core::{async_trait, Error};
+use ockam_multiaddr::{Match, Protocol};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
+use ockam_transport_tcp::TcpTransport;
+
+use crate::{multiaddr_to_route, route_to_multiaddr};
 use crate::error::ApiError;
 use crate::nodes::connection::{Changes, ConnectionInstanceBuilder, Instantiator};
-use crate::{multiaddr_to_route, route_to_multiaddr};
-
-use ockam_core::{async_trait, Error};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
-use ockam_multiaddr::{Match, Protocol};
-use ockam_transport_tcp::TcpTransport;
 
 /// Creates the tcp connection.
 pub(crate) struct PlainTcpInstantiator {
@@ -36,7 +36,7 @@ impl Instantiator for PlainTcpInstantiator {
         let (before, tcp_piece, after) =
             ConnectionInstanceBuilder::extract(&builder.current_multiaddr, match_start, 2);
 
-        let tcp = multiaddr_to_route(&tcp_piece, &self.tcp_transport)
+        let mut tcp = multiaddr_to_route(&tcp_piece, &self.tcp_transport)
             .await
             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
@@ -45,13 +45,18 @@ impl Instantiator for PlainTcpInstantiator {
 
         let current_multiaddr = ConnectionInstanceBuilder::combine(before, multiaddr, after)?;
 
+        // since we only pass the piece regarding tcp
+        // tcp_connection should exist
+        let tcp_connection = tcp
+            .tcp_connection
+            .take()
+            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+
         Ok(Changes {
             current_multiaddr,
             flow_control_id: tcp.flow_control_id,
             secure_channel_encryptors: vec![],
-            //since we only pass the piece regarding tcp
-            //we can be sure the next step is the tcp worker
-            tcp_worker: Some(tcp.route.next()?.clone()),
+            tcp_connection: Some(tcp_connection),
         })
     }
 }

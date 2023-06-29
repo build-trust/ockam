@@ -1,5 +1,7 @@
-use crate::CommandGlobalOpts;
 use clap::Args;
+
+use crate::CommandGlobalOpts;
+use crate::util::local_cmd;
 
 #[derive(Clone, Debug, Args)]
 pub struct SetDefaultNodeCommand {
@@ -9,14 +11,11 @@ pub struct SetDefaultNodeCommand {
 
 impl SetDefaultNodeCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        if let Err(e) = run_impl(&self.name, &options) {
-            eprintln!("{e}");
-            std::process::exit(e.code());
-        }
+        local_cmd(run_impl(&self.name, &options));
     }
 }
 
-fn run_impl(_name: &str, _options: &CommandGlobalOpts) -> crate::Result<()> {
+fn run_impl(_name: &str, _options: &CommandGlobalOpts) -> miette::Result<()> {
     // TODO: add symlink to options.state.defaults().node
     todo!()
 }

@@ -1,20 +1,20 @@
-use anyhow::Context as _;
 use std::path::PathBuf;
 
-use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
+use clap::builder::NonEmptyStringValueParser;
+use miette::{Context as _, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::subscription::{ActivateSubscription, Subscription};
 use ockam_api::cloud::CloudRequestWrapper;
+use ockam_api::cloud::subscription::{ActivateSubscription, Subscription};
 use ockam_core::api::Request;
 use ockam_core::CowStr;
 
+use crate::{CommandGlobalOpts, docs};
 use crate::node::util::delete_embedded_node;
 use crate::subscription::utils;
-use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts};
+use crate::util::api::CloudOpts;
 
 const HELP_DETAIL: &str = "";
 
@@ -142,7 +142,7 @@ impl SubscriptionCommand {
 async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     match cmd.subcommand {
@@ -150,8 +150,9 @@ async fn run_impl(
             json,
             space_id: space,
         } => {
-            let json =
-                std::fs::read_to_string(&json).context(format!("failed to read {:?}", &json))?;
+            let json = std::fs::read_to_string(&json)
+                .into_diagnostic()
+                .context(format!("failed to read {:?}", &json))?;
             let b = ActivateSubscription::existing(space, json);
             let req = Request::post("subscription").body(CloudRequestWrapper::new(
                 b,
@@ -195,6 +196,7 @@ async fn run_impl(
                     subscription_id,
                 } => {
                     let json = std::fs::read_to_string(&json)
+                        .into_diagnostic()
                         .context(format!("failed to read {:?}", &json))?;
                     let subscription_id = utils::subscription_id_from_cmd_args(
                         &ctx,

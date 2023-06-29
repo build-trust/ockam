@@ -1,30 +1,31 @@
 use std::path::PathBuf;
 
-use crate::{
-    node::util::{delete_node, start_embedded_node_with_vault_and_identity},
-    project::{
-        util::{create_secure_channel_to_authority, create_secure_channel_to_project},
-        ProjectInfo,
-    },
-    util::Rpc,
-    CommandGlobalOpts, Result,
-};
-use anyhow::Context as _;
+use miette::miette;
 use minicbor::{Decode, Encode};
-use ockam::identity::credential::{Credential, OneTimeCode};
+use tracing::info;
+
 use ockam::Context;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam_api::{
-    config::lookup::ProjectLookup, nodes::models::secure_channel::CredentialExchangeMode,
-    DefaultAddress,
+    config::lookup::ProjectLookup, DefaultAddress,
+    nodes::models::secure_channel::CredentialExchangeMode,
 };
+use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_core::api::RequestBuilder;
-use ockam_core::flow_control::FlowControlId;
 use ockam_core::route;
 use ockam_identity::CredentialsIssuerClient;
-use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
-use tracing::info;
+use ockam_multiaddr::proto::Service;
+
+use crate::{
+    CommandGlobalOpts,
+    node::util::{delete_node, start_embedded_node_with_vault_and_identity},
+    project::{
+        ProjectInfo,
+        util::{create_secure_channel_to_authority, create_secure_channel_to_project},
+    },
+    Result, util::Rpc,
+};
 
 use super::{api::TrustContextOpts, RpcBuilder};
 
@@ -145,7 +146,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
     }
 
     pub async fn authenticate(&self) -> Result<Credential> {
-        let (sc_addr, _sc_flow_control_id) = self
+        let sc_addr = self
             .secure_channel_to(&OrchestratorEndpoint::Authenticator)
             .await?;
 
@@ -154,8 +155,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 format!("/service/{}", DefaultAddress::CREDENTIAL_ISSUER).as_str(),
             )?;
             let addr = sc_addr.concat(&service)?;
-            ockam_api::local_multiaddr_to_route(&addr)
-                .context(format!("Invalid MultiAddr {addr}"))?
+            ockam_api::local_multiaddr_to_route(&addr).ok_or(miette!("Invalid MultiAddr {addr}"))?
         };
 
         let client = CredentialsIssuerClient::new(
@@ -176,7 +176,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
         let _ = self.authenticate().await?;
 
         //  Establish a secure channel
-        let (sc_addr, _sc_flow_control_id) = self.secure_channel_to(&self.destination).await?;
+        let sc_addr = self.secure_channel_to(&self.destination).await?;
 
         let mut to = sc_addr.concat(service_address)?;
         info!(
@@ -186,7 +186,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
 
         to.push_front(Service::new(DefaultAddress::RPC_PROXY))?;
 
-        let node_name = self.node_name.as_ref().context("Node is required")?;
+        let node_name = self.node_name.as_ref().ok_or(miette!("Node is required"))?;
         let rpc = RpcBuilder::new(self.ctx, self.opts, node_name)
             .to(&to)?
             .build();
@@ -218,22 +218,19 @@ impl<'a> OrchestratorApiBuilder<'a> {
         Ok(())
     }
 
-    async fn secure_channel_to(
-        &self,
-        endpoint: &OrchestratorEndpoint,
-    ) -> Result<(MultiAddr, FlowControlId)> {
-        let node_name = self.node_name.as_ref().context("Node is required")?;
+    async fn secure_channel_to(&self, endpoint: &OrchestratorEndpoint) -> Result<MultiAddr> {
+        let node_name = self.node_name.as_ref().ok_or(miette!("Node is required"))?;
         let project = self
             .project_lookup
             .as_ref()
-            .context("Project is required")?;
+            .ok_or(miette!("Project is required"))?;
 
-        let (sc_addr, sc_flow_control_id) = match endpoint {
+        let sc_addr = match endpoint {
             OrchestratorEndpoint::Authenticator => {
                 let authority = project
                     .authority
                     .as_ref()
-                    .context("Project Authority is required")?;
+                    .ok_or(miette!("Project Authority is required"))?;
                 // TODO: When we --project-path is fully deprecated
                 // use the trust context authority here
                 create_secure_channel_to_authority(
@@ -250,11 +247,11 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 let project_identity = project
                     .identity_id
                     .as_ref()
-                    .context("Project should have identity set")?;
+                    .ok_or(miette!("Project should have identity set"))?;
                 let project_route = project
                     .node_route
                     .as_ref()
-                    .context("Invalid project node route")?;
+                    .ok_or(miette!("Invalid project node route"))?;
 
                 create_secure_channel_to_project(
                     self.ctx,
@@ -270,7 +267,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             }
         };
 
-        Ok((sc_addr, sc_flow_control_id))
+        Ok(sc_addr)
     }
 }
 

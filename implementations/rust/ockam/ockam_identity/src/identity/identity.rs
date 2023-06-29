@@ -1,15 +1,18 @@
 //! Identity history
-use crate::identity::identity_change::IdentitySignedChange;
-use crate::identity::identity_change_history::IdentityChangeHistory;
-use crate::identity::identity_identifier::IdentityIdentifier;
-use crate::IdentityHistoryComparison;
 use core::fmt::{Display, Formatter};
+
+use serde::{Deserialize, Serialize};
+
 use ockam_core::compat::fmt;
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::PublicKey;
-use serde::{Deserialize, Serialize};
+
+use crate::identity::identity_change::IdentitySignedChange;
+use crate::identity::identity_change_history::IdentityChangeHistory;
+use crate::identity::identity_identifier::IdentityIdentifier;
+use crate::IdentityHistoryComparison;
 
 /// Identity implementation
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -33,6 +36,7 @@ impl Identity {
     }
 
     /// Export an `Identity` to the binary format
+    /// TODO: return a newtype instead of a raw vector
     pub fn export(&self) -> Result<Vec<u8>> {
         self.change_history.export()
     }

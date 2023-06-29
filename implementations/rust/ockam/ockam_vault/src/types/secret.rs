@@ -1,11 +1,14 @@
-use crate::SecretKeyVec;
 use core::fmt;
+
 use minicbor::{Decode, Encode};
-use ockam_core::{hex_encoding, KeyId};
 use p256::elliptic_curve::subtle;
-use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
+use serde::de::Error;
 use zeroize::Zeroize;
+
+use ockam_core::hex_encoding;
+
+use crate::{KeyId, SecretKeyVec};
 
 /// Binary representation of a Secret.
 #[derive(Serialize, Clone, Zeroize, Encode, Decode)]
@@ -81,8 +84,9 @@ impl AsRef<[u8]> for Secret {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::de;
+
+    use super::*;
 
     #[test]
     fn test_serialize_secret() {

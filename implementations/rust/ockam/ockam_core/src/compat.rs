@@ -13,7 +13,21 @@
 /// Provides `std::borrow` for `alloc` targets.
 #[cfg(feature = "alloc")]
 pub use alloc::borrow;
+/// Provides `std::format` for `alloc` targets.
+#[cfg(feature = "alloc")]
+pub use alloc::format;
+#[cfg(feature = "std")]
+pub use std::io;
+/// Provides `std::net`.
+#[cfg(feature = "std")]
+pub use std::net;
+/// Provides `std::task` for `std` targets.
+#[cfg(feature = "std")]
+pub use std::task;
 
+/// Provides `std::io`.
+#[cfg(not(feature = "std"))]
+pub use core2::io;
 #[doc(hidden)]
 pub use futures_util::{join, try_join};
 
@@ -27,13 +41,16 @@ pub mod boxed {
 /// implementations.
 pub mod collections {
     #[cfg(feature = "alloc")]
-    pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
+    pub use alloc::collections::{BinaryHeap, BTreeMap, BTreeSet, LinkedList, VecDeque};
 
     pub use hashbrown::{HashMap, HashSet};
 }
 
 /// Provides a `std::error::Error` trait.
 pub mod error {
+    #[cfg(feature = "std")]
+    pub use std::error::Error;
+
     #[cfg(not(feature = "std"))]
     /// A `no_std` compatible definition of the `std::error::Error` trait.
     pub trait Error: core::fmt::Debug + core::fmt::Display {
@@ -42,23 +59,7 @@ pub mod error {
             None
         }
     }
-    #[cfg(feature = "std")]
-    pub use std::error::Error;
 }
-
-/// Provides `std::format` for `alloc` targets.
-#[cfg(feature = "alloc")]
-pub use alloc::format;
-
-/// Provides `std::io`.
-#[cfg(not(feature = "std"))]
-pub use core2::io;
-#[cfg(feature = "std")]
-pub use std::io;
-
-/// Provides `std::net`.
-#[cfg(feature = "std")]
-pub use std::net;
 
 /// Provides a `println!` wrapper around `tracing::info!` for `no_std` targets
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -74,26 +75,25 @@ pub mod println {
 
 /// Provides `rand`.
 pub mod rand {
-    pub use rand::distributions;
-    pub use rand::prelude;
     pub use rand::CryptoRng;
+    pub use rand::distributions;
     pub use rand::Error;
+    pub use rand::prelude;
+    #[cfg(feature = "std")]
+    pub use rand::random;
     pub use rand::Rng;
     pub use rand::RngCore;
-
-    #[cfg(not(feature = "std"))]
-    pub use not_random::thread_rng;
+    /// rngs
+    #[cfg(feature = "std")]
+    pub use rand::rngs;
     #[cfg(feature = "std")]
     pub use rand::thread_rng;
 
     #[cfg(not(feature = "std"))]
     pub use not_random::random;
-    #[cfg(feature = "std")]
-    pub use rand::random;
+    #[cfg(not(feature = "std"))]
+    pub use not_random::thread_rng;
 
-    /// rngs
-    #[cfg(feature = "std")]
-    pub use rand::rngs;
     #[cfg(not(feature = "std"))]
     /// A placeholder implementation of the `rand::rngs` generators module.
     ///
@@ -207,6 +207,7 @@ pub mod rand {
 pub mod string {
     #[cfg(feature = "alloc")]
     pub use alloc::string::{String, ToString};
+
     #[cfg(not(feature = "alloc"))]
     use heapless::String as ByteString;
 }
@@ -222,9 +223,8 @@ pub mod str {
 /// Provides `std::sync` for `no_std` targets.
 #[cfg(not(feature = "std"))]
 pub mod sync {
-    use core::convert::Infallible;
-
     pub use alloc::sync::Arc;
+    use core::convert::Infallible;
 
     /// Wrap `spin::RwLock` as it does not return LockResult<Guard> like `std::sync::Mutex`.
     #[derive(Debug)]
@@ -289,8 +289,8 @@ pub mod sync {
 /// Provides `std::sync` for `std` targets.
 #[cfg(feature = "std")]
 pub mod sync {
-    pub use std::sync::Arc;
     pub use std::sync::{Mutex, RwLock};
+    pub use std::sync::Arc;
 }
 
 /// Provides `std::task` for `no_std` targets.
@@ -303,36 +303,33 @@ pub mod task {
     pub use core::task::*;
 }
 
-/// Provides `std::task` for `std` targets.
-#[cfg(feature = "std")]
-pub use std::task;
-
 /// Provides `std::vec`.
 pub mod vec {
     #[cfg(feature = "alloc")]
     pub use alloc::vec;
     #[cfg(feature = "alloc")]
     pub use alloc::vec::*;
+
     #[cfg(not(feature = "alloc"))]
     pub type Vec<T> = heapless::Vec<T, 64>;
 }
 
 /// Provides `core::fmt`
 pub mod fmt {
-    pub use alloc::fmt::*;
     #[cfg(feature = "alloc")]
-    pub use alloc::vec::*;
+    pub use alloc::fmt::*;
     #[cfg(not(feature = "alloc"))]
-    pub type Vec<T> = heapless::Vec<T, 64>;
+    pub use core::fmt::*;
 }
 
 /// Provides `future::poll_once`
 pub mod future {
+    use futures_util::future::{Future, FutureExt};
+
     use crate::{
         errcode::{Kind, Origin},
         Error, Result,
-    };
-    use futures_util::future::{Future, FutureExt};
+        };
 
     /// Polls a future just once and returns the Result
     ///

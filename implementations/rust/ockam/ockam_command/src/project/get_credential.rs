@@ -1,15 +1,14 @@
 use clap::Args;
-
-use ockam::identity::credential::Credential;
 use ockam::{Context, TcpTransport};
+use ockam::identity::credential::Credential;
 use ockam_api::clean_multiaddr;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use crate::{CommandGlobalOpts, Result, stop_node};
 use crate::node::NodeOpts;
-use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{stop_node, CommandGlobalOpts, Result};
+use crate::util::api::CloudOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct GetCredentialCommand {
@@ -33,13 +32,13 @@ impl GetCredentialCommand {
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, GetCredentialCommand),
-) -> Result<()> {
+) -> miette::Result<()> {
     async fn go(
         ctx: &mut Context,
         opts: &CommandGlobalOpts,
         cmd: &GetCredentialCommand,
-    ) -> Result<()> {
-        let tcp = TcpTransport::create(ctx).await?;
+    ) -> miette::Result<()> {
+        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
         let projects_sc = crate::project::util::lookup_projects(
             ctx,

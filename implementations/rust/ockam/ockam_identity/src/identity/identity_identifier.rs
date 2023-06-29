@@ -1,14 +1,17 @@
-use crate::identity::IdentityError;
 use core::fmt::{Display, Formatter};
 use core::str::FromStr;
-use minicbor::decode::{self, Decoder};
+
 use minicbor::{Decode, Encode};
+use minicbor::decode::{self, Decoder};
+use serde::{Deserialize, Deserializer, Serialize};
+
+use ockam_core::{Error, Result};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::env::FromString;
-use ockam_core::{Error, KeyId, Result};
-use ockam_vault::{PublicKey, VaultSecurityModule};
-use serde::{Deserialize, Deserializer, Serialize};
+use ockam_vault::{KeyId, PublicKey, VaultSecurityModule};
+
+use crate::identity::IdentityError;
 
 /// An identifier of an Identity.
 #[allow(clippy::derived_hash_with_manual_eq)] // we manually implement a constant time Eq
@@ -118,9 +121,10 @@ impl FromString for IdentityIdentifier {
 
 #[cfg(test)]
 mod test {
+    use quickcheck::{Arbitrary, Gen, quickcheck};
+    use serde::de::{Deserialize, IntoDeserializer, value};
+
     use super::IdentityIdentifier;
-    use quickcheck::{quickcheck, Arbitrary, Gen};
-    use serde::de::{value, Deserialize, IntoDeserializer};
 
     #[derive(Debug, Clone)]
     struct Id(IdentityIdentifier);

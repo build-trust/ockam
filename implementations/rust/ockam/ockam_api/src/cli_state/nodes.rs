@@ -1,19 +1,25 @@
-use super::Result;
+use std::fmt::{Display, Formatter};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
+use nix::errno::Errno;
+use serde::{Deserialize, Serialize};
+use sysinfo::{Pid, System, SystemExt};
+
+use backwards_compatibility::*;
+use ockam_core::compat::collections::HashSet;
+use ockam_core::compat::sync::Arc;
+use ockam_identity::{IdentityIdentifier, LmdbStorage};
+use ockam_vault::Vault;
+
 use crate::cli_state::{
     CliState, CliStateError, IdentityConfig, IdentityState, StateDirTrait, StateItemTrait,
     VaultState,
 };
 use crate::config::lookup::ProjectLookup;
-use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
-use nix::errno::Errno;
-use ockam_core::compat::sync::Arc;
-use ockam_identity::{IdentityIdentifier, LmdbStorage};
-use ockam_vault::Vault;
-use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use sysinfo::{Pid, System, SystemExt};
+use crate::nodes::models::transport::CreateTransportJson;
+
+use super::Result;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NodesState {
@@ -21,6 +27,12 @@ pub struct NodesState {
 }
 
 impl NodesState {
+    pub fn stdout_logs(&self, name: &str) -> Result<PathBuf> {
+        let dir = self.path(name);
+        std::fs::create_dir_all(&dir)?;
+        Ok(NodePaths::new(&dir).stdout())
+    }
+
     pub fn delete_sigkill(&self, name: &str, sigkill: bool) -> Result<()> {
         self._delete(name, sigkill)
     }
@@ -57,14 +69,6 @@ pub struct NodeState {
 }
 
 impl NodeState {
-    fn init(path: PathBuf, config: NodeConfig) -> Result<Self> {
-        std::fs::create_dir_all(&path)?;
-        let state = Self::new(path, config)?;
-        std::fs::File::create(state.stdout_log())?;
-        std::fs::File::create(state.stderr_log())?;
-        Ok(state)
-    }
-
     fn _delete(&self, sikgill: bool) -> Result<()> {
         self.kill_process(sikgill)?;
         std::fs::remove_dir_all(&self.path)?;
@@ -168,8 +172,6 @@ pub struct NodeConfig {
     default_vault: PathBuf,
     #[serde(skip)]
     default_identity: PathBuf,
-    // TODO
-    // authorities: AuthoritiesConfig,
 }
 
 impl NodeConfig {
@@ -296,23 +298,25 @@ impl Default for ConfigVersion {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
 pub struct NodeSetupConfig {
     pub verbose: u8,
+    #[serde(default)]
+    pub disable_file_logging: bool,
 
     /// This flag is used to determine how the node status should be
     /// displayed in print_query_status.
     /// The field might be missing in previous configuration files, hence it is an Option
     pub authority_node: Option<bool>,
     pub project: Option<ProjectLookup>,
-    transports: Vec<CreateTransportJson>,
-    // TODO
-    // secure_channels: ?,
-    // inlets: ?,
-    // outlets: ?,
-    // services: ?,
+    pub api_transport: Option<CreateTransportJson>,
 }
 
 impl NodeSetupConfig {
     pub fn set_verbose(mut self, verbose: u8) -> Self {
         self.verbose = verbose;
+        self
+    }
+
+    pub fn set_disable_file_logging(mut self, disable_file_logging: bool) -> Self {
+        self.disable_file_logging = disable_file_logging;
         self
     }
 
@@ -326,16 +330,17 @@ impl NodeSetupConfig {
         self
     }
 
-    pub fn default_tcp_listener(&self) -> Result<&CreateTransportJson> {
-        self.transports
-            .iter()
-            .find(|t| t.tt == TransportType::Tcp && t.tm == TransportMode::Listen)
-            .ok_or(CliStateError::NotFound)
+    pub fn set_api_transport(mut self, transport: CreateTransportJson) -> Self {
+        self.api_transport = Some(transport);
+        self
     }
 
-    pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
-        self.transports.push(transport);
-        self
+    pub fn api_transport(&self) -> Result<&CreateTransportJson> {
+        self.api_transport.as_ref().ok_or_else(|| {
+            CliStateError::InvalidOperation(
+                "The api transport was not set for the node".to_string(),
+            )
+        })
     }
 }
 
@@ -384,11 +389,66 @@ impl NodePaths {
     }
 }
 
-mod traits {
+mod backwards_compatibility {
     use super::*;
-    use crate::cli_state::traits::*;
-    use crate::cli_state::{file_stem, CliStateError};
+
+    #[derive(Deserialize, Debug, Clone)]
+    #[serde(untagged)]
+    pub(super) enum NodeConfigs {
+        V1(NodeConfigV1),
+        V2(NodeConfig),
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+    pub(super) struct NodeConfigV1 {
+        #[serde(flatten)]
+        pub setup: NodeSetupConfigV1,
+        #[serde(skip)]
+        pub version: ConfigVersion,
+        #[serde(skip)]
+        pub default_vault: PathBuf,
+        #[serde(skip)]
+        pub default_identity: PathBuf,
+    }
+
+    #[derive(Deserialize, Debug, Clone)]
+    #[serde(untagged)]
+    pub(super) enum NodeSetupConfigs {
+        V1(NodeSetupConfigV1),
+        V2(NodeSetupConfig),
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
+    pub(super) struct NodeSetupConfigV1 {
+        pub verbose: u8,
+        #[serde(default)]
+        pub disable_file_logging: bool,
+
+        /// This flag is used to determine how the node status should be
+        /// displayed in print_query_status.
+        /// The field might be missing in previous configuration files, hence it is an Option
+        pub authority_node: Option<bool>,
+        pub project: Option<ProjectLookup>,
+        pub transports: HashSet<CreateTransportJson>,
+    }
+
+    #[cfg(test)]
+    impl NodeSetupConfigV1 {
+        pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
+            self.transports.insert(transport);
+            self
+        }
+    }
+}
+
+mod traits {
     use ockam_core::async_trait;
+
+    use crate::cli_state::file_stem;
+    use crate::cli_state::traits::*;
+    use crate::nodes::models::transport::{TransportMode, TransportType};
+
+    use super::*;
 
     #[async_trait]
     impl StateDirTrait for NodesState {
@@ -409,23 +469,47 @@ mod traits {
             self.dir().join(name.as_ref())
         }
 
-        fn create(
-            &self,
-            name: impl AsRef<str>,
-            config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
-        ) -> Result<Self::Item> {
-            if self.exists(&name) {
-                return Err(CliStateError::AlreadyExists);
-            }
-            let state = Self::Item::init(self.path(&name), config)?;
-            if !self.default_path()?.exists() {
-                self.set_default(&name)?;
-            }
-            Ok(state)
+        /// A node contains several files, and the existence of the main directory is not not enough
+        /// to determine if a node exists as it could be created but empty.
+        fn exists(&self, name: impl AsRef<str>) -> bool {
+            let paths = NodePaths::new(&self.path(&name));
+            paths.setup().exists()
         }
 
         fn delete(&self, name: impl AsRef<str>) -> Result<()> {
             self._delete(&name, false)
+        }
+
+        async fn migrate(&self, node_path: &Path) -> Result<()> {
+            if node_path.is_file() {
+                // If path is a file, it is probably a non supported file (e.g. .DS_Store)
+                return Ok(());
+            }
+            let paths = NodePaths::new(node_path);
+            let contents = std::fs::read_to_string(paths.setup())?;
+            match serde_json::from_str(&contents)? {
+                NodeSetupConfigs::V1(setup) => {
+                    // Get the first tcp-listener from the transports hashmap and
+                    // use it as the api transport
+                    let mut new_setup = NodeSetupConfig {
+                        verbose: setup.verbose,
+                        disable_file_logging: setup.disable_file_logging,
+                        authority_node: setup.authority_node,
+                        project: setup.project,
+                        api_transport: None,
+                    };
+                    if let Some(t) = setup
+                        .transports
+                        .into_iter()
+                        .find(|t| t.tt == TransportType::Tcp && t.tm == TransportMode::Listen)
+                    {
+                        new_setup.api_transport = Some(t);
+                    }
+                    std::fs::write(paths.setup(), serde_json::to_string(&new_setup)?)?;
+                }
+                NodeSetupConfigs::V2(_) => (),
+            }
+            Ok(())
         }
     }
 
@@ -434,6 +518,7 @@ mod traits {
         type Config = NodeConfig;
 
         fn new(path: PathBuf, mut config: Self::Config) -> Result<Self> {
+            std::fs::create_dir_all(&path)?;
             let paths = NodePaths::new(&path);
             let name = file_stem(&path)?;
             std::fs::write(paths.setup(), serde_json::to_string(config.setup())?)?;
@@ -488,5 +573,85 @@ mod traits {
         fn config(&self) -> &Self::Config {
             &self.config
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::lookup::InternetAddress;
+    use crate::nodes::models::transport::{TransportMode, TransportType};
+
+    use super::*;
+
+    #[test]
+    fn node_config_setup_transports_no_duplicates() {
+        let mut config = NodeSetupConfigV1 {
+            verbose: 0,
+            disable_file_logging: false,
+            authority_node: None,
+            project: None,
+            transports: HashSet::new(),
+        };
+        let transport = CreateTransportJson {
+            tt: TransportType::Tcp,
+            tm: TransportMode::Listen,
+            addr: InternetAddress::V4("127.0.0.1:1020".parse().unwrap()),
+        };
+        config = config.add_transport(transport.clone());
+        assert_eq!(config.transports.len(), 1);
+        assert_eq!(config.transports.iter().next(), Some(&transport));
+
+        config = config.add_transport(transport);
+        assert_eq!(config.transports.len(), 1);
+    }
+
+    #[test]
+    fn node_config_setup_transports_parses_a_json_with_duplicate_entries() {
+        // This test is to ensure backwards compatibility, for versions where transports where stored as a Vec<>
+        let config_json = r#"{
+            "verbose": 0,
+            "authority_node": null,
+            "project": null,
+            "transports": [
+                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}},
+                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}}
+            ]
+        }"#;
+        let config = serde_json::from_str::<NodeSetupConfigV1>(config_json).unwrap();
+        assert_eq!(config.transports.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn migrate_node_config_from_v1_to_v2() {
+        // Create a v1 setup.json file
+        let v1_json_json = r#"{
+            "verbose": 0,
+            "authority_node": null,
+            "project": null,
+            "transports": [
+                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}}
+            ]
+        }"#;
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let node_dir = tmp_dir.path().join("n");
+        std::fs::create_dir(&node_dir).unwrap();
+        let tmp_file = node_dir.join("setup.json");
+        std::fs::write(&tmp_file, v1_json_json).unwrap();
+
+        // Run migration
+        let nodes_state = NodesState::new(tmp_dir.path().to_path_buf());
+        nodes_state.migrate(&node_dir).await.unwrap();
+
+        // Check migration was done correctly
+        let contents = std::fs::read_to_string(&tmp_file).unwrap();
+        let v2_setup: NodeSetupConfig = serde_json::from_str(&contents).unwrap();
+        assert_eq!(
+            v2_setup.api_transport,
+            Some(CreateTransportJson {
+                tt: TransportType::Tcp,
+                tm: TransportMode::Listen,
+                addr: InternetAddress::V4("127.0.0.1:1020".parse().unwrap())
+            })
+        );
     }
 }

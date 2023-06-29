@@ -1,29 +1,30 @@
 use std::str::FromStr;
 
 use clap::Args;
-
 use colorful::Colorful;
-use ockam::Context;
-use ockam_api::cloud::lease_manager::models::influxdb::Token;
-use ockam_core::api::Request;
-use ockam_multiaddr::MultiAddr;
+use miette::IntoDiagnostic;
 use time::format_description::well_known::Iso8601;
 use time::PrimitiveDateTime;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::terminal::OckamColor;
+use ockam::Context;
+use ockam_api::cloud::lease_manager::models::influxdb::Token;
+use ockam_core::api::Request;
+use ockam_multiaddr::MultiAddr;
+
 use crate::{
+    CommandGlobalOpts,
     docs,
     util::{
         api::{CloudOpts, TrustContextOpts},
         node_rpc,
         orchestrator_api::OrchestratorApiBuilder,
     },
-    CommandGlobalOpts,
 };
 use crate::{fmt_log, fmt_ok};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::terminal::OckamColor;
 
 const HELP_DETAIL: &str = "";
 
@@ -42,7 +43,7 @@ impl CreateCommand {
 async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustContextOpts),
-) -> crate::Result<()> {
+) -> miette::Result<()> {
     opts.terminal
         .write_line(&fmt_log!("Creating influxdb token...\n"))?;
 
@@ -75,7 +76,7 @@ async fn run_impl(
     opts.terminal
         .stdout()
         .machine(resp_token.token.to_string())
-        .json(serde_json::to_string_pretty(&resp_token)?)
+        .json(serde_json::to_string_pretty(&resp_token).into_diagnostic()?)
         .plain(
             fmt_ok!("Created influxdb token\n")
                 + &fmt_log!(
@@ -94,7 +95,8 @@ async fn run_impl(
                 )
                 + &fmt_log!(
                     "Expires at {}\n",
-                    PrimitiveDateTime::parse(&resp_token.expires, &Iso8601::DEFAULT)?
+                    PrimitiveDateTime::parse(&resp_token.expires, &Iso8601::DEFAULT)
+                        .into_diagnostic()?
                         .to_string()
                         .color(OckamColor::PrimaryResource.color())
                 ),

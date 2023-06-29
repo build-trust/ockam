@@ -1,16 +1,21 @@
-use crate::terminal::OckamColor;
-use crate::util::output::Output;
-use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{CommandGlobalOpts, Result};
+use std::fmt::Write;
+
 use clap::Args;
 use colorful::Colorful;
-use ockam::Context;
-use ockam_abac::Resource;
-use ockam_api::nodes::models::policy::{Expression, PolicyList};
-use ockam_core::api::Request;
-use std::fmt::Write;
+use miette::miette;
 use tokio::sync::Mutex;
 use tokio::try_join;
+
+use ockam::Context;
+use ockam_abac::Resource;
+use ockam_api::cli_state::StateDirTrait;
+use ockam_api::nodes::models::policy::{Expression, PolicyList};
+use ockam_core::api::Request;
+
+use crate::{CommandGlobalOpts, Result};
+use crate::terminal::OckamColor;
+use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::output::Output;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
@@ -27,13 +32,25 @@ impl ListCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> Result<()> {
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ListCommand),
+) -> miette::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts, cmd: ListCommand) -> Result<()> {
+async fn run_impl(
+    ctx: &mut Context,
+    opts: CommandGlobalOpts,
+    cmd: ListCommand,
+) -> miette::Result<()> {
     let resource = cmd.resource;
     let node = extract_address_value(&cmd.at)?;
+
+    if !opts.state.nodes.get(&node)?.is_running() {
+        return Err(miette!("The node '{}' is not running", node));
+    }
+
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
