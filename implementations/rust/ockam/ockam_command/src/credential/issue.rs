@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 use clap::Args;
-use miette::miette;
+use miette::{IntoDiagnostic, miette};
 
 use ockam::Context;
 use ockam::identity::CredentialData;
