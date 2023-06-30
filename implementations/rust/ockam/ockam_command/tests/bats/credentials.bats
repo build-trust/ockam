@@ -50,7 +50,7 @@ teardown() {
   idt1=$($OCKAM identity show i1 --full --encoding hex)
 
   # create an invalid credential
-  echo "FOOBAR" > "$OCKAM_HOME/bad_credential"
+  echo "FOOBAR" >"$OCKAM_HOME/bad_credential"
 
   run "$OCKAM" credential verify --issuer "$idt1" --credential-path "$OCKAM_HOME/bad_credential"
   assert_success
