@@ -5,6 +5,8 @@ use crate::{
     terminal::OckamColor,
     util::{node_rpc, random_name},
     CommandGlobalOpts, Result,
+    credential::validate_encoded_cred,
+    vault::default_vault_name,
 };
 use colorful::Colorful;
 use miette::miette;
@@ -74,14 +76,37 @@ async fn run_impl(
             }
         };
 
-        // store
-        opts.state.credentials.create(
-            &cmd.credential_name,
-            CredentialConfig::new(cmd.identity().await?, cred_as_str.to_string())?,
-        )?;
+        let vault_name = cmd
+            .vault
+            .clone()
+            .unwrap_or_else(|| default_vault_name(&opts.state));
 
-        *is_finished.lock().await = true;
-        Ok(cred_as_str)
+        let issuer = match &cmd.identity().await {
+            Ok(i) => i,
+            Err(_) => {
+                *is_finished.lock().await = true;
+                return Ok((false, "Issuer is invalid".to_string()));
+            }
+        }
+        .identifier();
+
+        match validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await
+        {
+            Ok(_) => {
+                // store
+                opts.state.credentials.create(
+                    &cmd.credential_name,
+                    CredentialConfig::new(cmd.identity().await?, cred_as_str.clone())?,
+                )?;
+
+                *is_finished.lock().await = true;
+                Ok((true, cred_as_str))
+            },
+            Err(e) => {
+                *is_finished.lock().await = true;
+                Ok((false, format!("Credential is invalid\n{}", e.to_string())))
+            }
+        }
     };
 
     let output_messages = vec![format!("Storing credential...")];
@@ -90,25 +115,29 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (cred_as_str, _) = try_join!(send_req, progress_output)?;
+    let ((is_valid, result), _) = try_join!(send_req, progress_output)?;
 
-    opts.terminal
-        .stdout()
-        .machine(cred_as_str.to_string())
-        .json(serde_json::json!(
-            {
-                "name": cmd.credential_name,
-                "issuer": cmd.issuer,
-                "credential": cred_as_str
-            }
-        ))
-        .plain(fmt_ok!(
-            "Credential {} stored\n",
-            cmd.credential_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))
-        .write_line()?;
+    if !is_valid {
+        Err(miette!(result).into())
+    } else {
+        opts.terminal
+            .stdout()
+            .machine(result.to_string())
+            .json(serde_json::json!(
+                {
+                    "name": cmd.credential_name,
+                    "issuer": cmd.issuer,
+                    "credential": result
+                }
+            ))
+            .plain(fmt_ok!(
+                "Credential {} stored\n",
+                cmd.credential_name
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ))
+            .write_line()?;
 
-    Ok(())
+        Ok(())
+    }
 }
