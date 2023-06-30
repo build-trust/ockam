@@ -109,3 +109,22 @@ pub async fn check_upgrade() {
         }
     }
 }
+
+pub async fn download_latest_binary(name: &str, download_path: &PathBuf) -> miette::Result<()> {
+    let url = format!(
+        "https://github.com/build-trust/ockam/releases/latest/download/{}",
+        name
+    );
+    let resp = reqwest::get(url).await.into_diagnostic()?;
+    let bytes = resp.bytes().await.into_diagnostic()?;
+    let mut file = File::create(download_path).into_diagnostic()?;
+    file.write_all(&bytes).into_diagnostic()
+}
+
+pub fn download_latest_binary_sync(name: &str, download_path: &PathBuf) -> miette::Result<()> {
+    Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(download_latest_binary(name, download_path))
+}

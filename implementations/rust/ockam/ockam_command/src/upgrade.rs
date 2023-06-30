@@ -94,7 +94,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: UpgradeCommand) -> miette::Result<()> 
         latest_version
     ))?;
 
-    upgrade_ockam(latest_version, &opts)?;
+    upgrade_ockam(&opts)?;
     opts.terminal
         .stdout()
         .plain(fmt_ok!("Ockam upgraded to version {}", latest_version))
@@ -147,10 +147,10 @@ fn start_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> miet
     Ok(())
 }
 
-fn upgrade_ockam(latest_version: &str, opts: &CommandGlobalOpts) -> miette::Result<()> {
+fn upgrade_ockam(opts: &CommandGlobalOpts) -> miette::Result<()> {
     let stopped_nodes_names = stop_all_running_nodes(opts)?;
     let installer = get_installer()?;
-    let result = installer.upgrade(latest_version);
+    let result = installer.upgrade();
     // Try to restart nodes even if upgrade failed
     start_nodes(&stopped_nodes_names, opts)?;
     result
