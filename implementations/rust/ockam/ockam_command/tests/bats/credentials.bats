@@ -28,6 +28,7 @@ teardown() {
 
   run "$OCKAM" credential verify --issuer "$idt1" --credential-path "$OCKAM_HOME/credential"
   assert_success
+  assert_output --partial "true"
 
   run "$OCKAM" credential store smart_nyc_cred --issuer "$idt1" --credential-path "$OCKAM_HOME/credential"
   assert_success
@@ -41,4 +42,25 @@ teardown() {
   assert_success
   assert_output --partial "Credential: smart_nyc_cred"
   assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\""
+}
+
+@test "credential - verify and store reject invalid credentials" {
+  run "$OCKAM" identity create i1
+  assert_success
+  idt1=$($OCKAM identity show i1 --full --encoding hex)
+
+  # create an invalid credential
+  echo "FOOBAR" > "$OCKAM_HOME/bad_credential"
+
+  run "$OCKAM" credential verify --issuer "$idt1" --credential-path "$OCKAM_HOME/bad_credential"
+  assert_success
+  assert_output --partial "false"
+
+  run "$OCKAM" credential store smart_la_cred --issuer "$idt1" --credential-path "$OCKAM_HOME/bad_credential"
+  assert_failure
+  assert_output --partial "Credential is invalid"
+
+  run "$OCKAM" credential show smart_la_cred
+  assert_failure
+  assert_output --partial "Unable to find credential named smart_la_cred"
 }
