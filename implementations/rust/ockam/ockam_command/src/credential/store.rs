@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use crate::{
+    credential::validate_encoded_cred,
     fmt_log, fmt_ok,
     terminal::OckamColor,
     util::{node_rpc, random_name},
-    CommandGlobalOpts, Result,
-    credential::validate_encoded_cred,
     vault::default_vault_name,
+    CommandGlobalOpts, Result,
 };
 use colorful::Colorful;
 use miette::miette;
@@ -85,28 +85,26 @@ async fn run_impl(
             Ok(i) => i,
             Err(_) => {
                 *is_finished.lock().await = true;
-                return Ok((false, "Issuer is invalid".to_string()));
+                return Err(miette!("Issuer is invalid").into());
             }
         }
         .identifier();
 
-        match validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await
-        {
-            Ok(_) => {
-                // store
-                opts.state.credentials.create(
-                    &cmd.credential_name,
-                    CredentialConfig::new(cmd.identity().await?, cred_as_str.clone())?,
-                )?;
-
-                *is_finished.lock().await = true;
-                Ok((true, cred_as_str))
-            },
-            Err(e) => {
-                *is_finished.lock().await = true;
-                Ok((false, format!("Credential is invalid\n{}", e.to_string())))
-            }
+        if let Err(e) =
+            validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await {
+            *is_finished.lock().await = true;
+            return Err(miette!("Credential is invalid\n{}", e).into());
         }
+
+        // store
+        opts.state.credentials.create(
+            &cmd.credential_name,
+            CredentialConfig::new(cmd.identity().await?, cred_as_str.clone())?,
+        )?;
+
+        *is_finished.lock().await = true;
+
+        Ok(cred_as_str)
     };
 
     let output_messages = vec![format!("Storing credential...")];
@@ -115,29 +113,25 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let ((is_valid, result), _) = try_join!(send_req, progress_output)?;
+    let (credential, _) = try_join!(send_req, progress_output)?;
 
-    if !is_valid {
-        Err(miette!(result).into())
-    } else {
-        opts.terminal
-            .stdout()
-            .machine(result.to_string())
-            .json(serde_json::json!(
-                {
-                    "name": cmd.credential_name,
-                    "issuer": cmd.issuer,
-                    "credential": result
-                }
-            ))
-            .plain(fmt_ok!(
-                "Credential {} stored\n",
-                cmd.credential_name
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ))
-            .write_line()?;
+    opts.terminal
+        .stdout()
+        .machine(credential.to_string())
+        .json(serde_json::json!(
+            {
+                "name": cmd.credential_name,
+                "issuer": cmd.issuer,
+                "credential": credential
+            }
+        ))
+        .plain(fmt_ok!(
+            "Credential {} stored\n",
+            cmd.credential_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))
+        .write_line()?;
 
-        Ok(())
-    }
+    Ok(())
 }
