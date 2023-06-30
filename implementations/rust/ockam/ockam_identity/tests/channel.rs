@@ -1127,8 +1127,8 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
 }
 
 #[allow(non_snake_case)]
-#[ockam_macros::test(timeout = 400000)]
-async fn should_stop_encryptor__and__decryptor__timeout(
+#[ockam_macros::test(timeout = 21000)]
+async fn should_stop_encryptor__and__decryptor__per__timeout(
     ctx: &mut Context,
 ) -> Result<()> {
     let secure_channels = secure_channels();
@@ -1188,7 +1188,7 @@ async fn should_stop_encryptor__and__decryptor__timeout(
     additional_workers.retain(|w| !initial_workers.contains(w));
     let works_count = additional_workers.len();
 
-    tokio::time::sleep(std::time::Duration::from_secs(11)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(20)).await;
     
     additional_workers = ctx.list_workers().await?;
     additional_workers.retain(|w| !initial_workers.contains(w));
@@ -1199,8 +1199,8 @@ async fn should_stop_encryptor__and__decryptor__timeout(
 
 
 #[allow(non_snake_case)]
-#[ockam_macros::test(timeout = 400000)]
-async fn should_not__stop_encryptor__and__decryptor__timeout(
+#[ockam_macros::test(timeout = 16000)]
+async fn should_not__stop_encryptor__and__decryptor(
     ctx: &mut Context,
 ) -> Result<()> {
     let secure_channels = secure_channels();
@@ -1260,7 +1260,7 @@ async fn should_not__stop_encryptor__and__decryptor__timeout(
     additional_workers.retain(|w| !initial_workers.contains(w));
     let works_count = additional_workers.len();
 
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(7)).await;
 
     child_ctx
         .send(
@@ -1269,7 +1269,7 @@ async fn should_not__stop_encryptor__and__decryptor__timeout(
         )
         .await?;
 
-    tokio::time::sleep(std::time::Duration::from_secs(6)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(8)).await;
 
     additional_workers = ctx.list_workers().await?;
     additional_workers.retain(|w| !initial_workers.contains(w));

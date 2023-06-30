@@ -96,8 +96,8 @@ impl SecureChannels {
         let flow_control_id = options.flow_control_id.clone();
         let route = route.into();
         let next = route.next()?;
-        let mut maximum_idle_time = options.maximum_idle_time.clone();
-        let flag = Arc::new(AtomicBool::new(false));
+        let idle_timeout = Arc::new(AtomicBool::new(true));
+        let maximum_idle_time = options.maximum_idle_time.clone();
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
 
@@ -112,7 +112,7 @@ impl SecureChannels {
             options.trust_context,
             Some(route),
             Some(options.timeout),
-            Arc::clone(&flag),
+            Some(Arc::clone(&idle_timeout)),
             Role::Initiator,
         )
         .await?;
@@ -121,15 +121,13 @@ impl SecureChannels {
         let ctx_clone = ctx.async_try_clone().await?;
         let addr = addresses.encryptor.clone();
         tokio::spawn(async move {
-            let flag_value = Arc::clone(&flag);
-            while !flag_value.load(Ordering::Relaxed) {
+            loop { 
                 sleep(maximum_idle_time).await;
-                if !flag_value.load(Ordering::Relaxed) {
+                if idle_timeout.load(Ordering::Relaxed) {
                     self_clone.stop_secure_channel(&ctx_clone, &addr).await.unwrap();
                     break;
                 }
-                maximum_idle_time = maximum_idle_time.clone();
-                flag_value.store(false, Ordering::Relaxed);
+                idle_timeout.store(true, Ordering::Relaxed);
             }
         });
 

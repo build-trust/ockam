@@ -41,7 +41,7 @@ pub(crate) struct HandshakeWorker {
     role: Role,
     remote_route: Option<Route>,
     decryptor_handler: Option<DecryptorHandler>,
-    flag: Arc<AtomicBool>,
+    idle_timeout: Option<Arc<AtomicBool>>,
 }
 
 #[ockam_core::worker]
@@ -85,6 +85,10 @@ impl Worker for HandshakeWorker {
         // Some messages can come from other systems using the remote address
         // and some messages can come from the current node when the decryptor
         // used to support the decryption of Kafka messages for example
+        if let Some(idle_timeout) = self.idle_timeout.as_ref() {
+            idle_timeout.store(false, Ordering::Relaxed);
+        };
+
         if let Some(decryptor_handler) = self.decryptor_handler.as_mut() {
             let msg_addr = message.msg_addr();
 
@@ -95,7 +99,6 @@ impl Worker for HandshakeWorker {
             } else {
                 Err(IdentityError::UnknownChannelMsgDestination.into())
             };
-            self.flag.store(true, Ordering::Relaxed);
             return result;
         };
 
@@ -156,7 +159,7 @@ impl HandshakeWorker {
         trust_context: Option<TrustContext>,
         remote_route: Option<Route>,
         timeout: Option<Duration>,
-        flag: Arc<AtomicBool>,
+        idle_timeout: Option<Arc<AtomicBool>>,
         role: Role,
     ) -> Result<()> {
         let vault = to_xx_vault(secure_channels.vault());
@@ -203,7 +206,7 @@ impl HandshakeWorker {
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
-            flag,
+            idle_timeout,
         };
 
         WorkerBuilder::new(worker)
