@@ -36,6 +36,8 @@ Unit tests doesn't need any special setup. This will run the simple local-only t
 bats implementations/rust/ockam/ockam_command/tests/bats
 ```
 
+_note_: In addition to setting `$OCKAM` executable's path, `$BATS_LIB` must be set the directory you have installed `bats-support` and `bats-assert`.
+
 ## How to run the orchestrator tests
 
 The orchestrator tests require having an enrolled identity under `$OCKAM_HOME` (by default set at `$HOME/.ockam`), which will be copied to each test environment.
