@@ -52,6 +52,10 @@ pub struct CreateCommand {
     )]
     tcp_listener_address: String,
 
+    /// `authority create` started a child process to run this node in foreground.
+    #[arg(long, hide = true)]
+    pub child_process: bool,
+
     /// Set this option if the authority node should not support the enrollment
     /// of new project members
     #[arg(long, value_name = "BOOL", default_value_t = false)]
@@ -95,9 +99,6 @@ pub struct CreateCommand {
     /// Authority Identity
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
-
-    #[arg(long)]
-    disable_file_logging: bool,
 }
 
 /// Start an authority node by calling the `ockam` executable with the current command-line
@@ -118,6 +119,10 @@ async fn spawn_background_node(
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
     let mut args = vec![
+        match opts.global_args.verbose {
+            0 => "-vv".to_string(),
+            v => format!("-{}", "v".repeat(v as usize)),
+        },
         "authority".to_string(),
         "create".to_string(),
         "--project-identifier".to_string(),
@@ -125,19 +130,10 @@ async fn spawn_background_node(
         "--tcp-listener-address".to_string(),
         cmd.tcp_listener_address.clone(),
         "--foreground".to_string(),
-        match opts.global_args.verbose {
-            0 => "-vv".to_string(),
-            v => format!("-{}", "v".repeat(v as usize)),
-        },
+        "--child-process".to_string(),
     ];
 
-    if cmd.disable_file_logging {
-        args.push("--disable-file-logging".to_string());
-        if !opts.terminal.is_tty() {
-            args.push("--no-color".to_string());
-        }
-    } else {
-        // We want to disable colors when logging to file
+    if cmd.logging_to_file() || !opts.terminal.is_tty() {
         args.push("--no-color".to_string());
     }
 
@@ -191,7 +187,7 @@ async fn spawn_background_node(
     }
     args.push(cmd.node_name.to_string());
 
-    run_ockam(opts, &cmd.node_name, args, cmd.disable_file_logging)
+    run_ockam(opts, &cmd.node_name, args, cmd.logging_to_file())
 }
 
 impl CreateCommand {
@@ -228,6 +224,18 @@ impl CreateCommand {
                 exitcode::CONFIG,
                 miette!("Exactly one of 'reload-from-trusted-identities-file' or 'trusted-identities' must be defined"),
             )),
+        }
+    }
+
+    pub fn logging_to_file(&self) -> bool {
+        // Background nodes will spawn a foreground node in a child process.
+        // In that case, the child process will log to files.
+        if self.child_process {
+            true
+        }
+        // The main process will log to stdout only if it's a foreground node.
+        else {
+            !self.foreground
         }
     }
 }
@@ -309,7 +317,6 @@ async fn start_authority_node(
             .config()
             .setup_mut()
             .set_verbose(opts.global_args.verbose)
-            .set_disable_file_logging(cmd.disable_file_logging)
             .set_authority_node()
             .set_api_transport(
                 CreateTransportJson::new(

@@ -113,7 +113,7 @@ force_kill_node() {
   assert_success
 }
 
-@test "node - logs to file" {
+@test "node - background node logs to file" {
   n="$(random_str)"
   $OCKAM node create $n
 
@@ -121,30 +121,11 @@ force_kill_node() {
   if [ ! -s $log_file ]; then
     fail "Log file shouldn't be empty"
   fi
-
-  # Repeat the same with a foreground node
-  n="$(random_str)"
-  $OCKAM node create $n -vv -f &
-  sleep 1
-
-  log_file="$($OCKAM node logs $n)"
-  if [ ! -s $log_file ]; then
-    fail "Log file shouldn't be empty"
-  fi
 }
 
-@test "node - disable file logging" {
+@test "node - foreground node logs to stdout only" {
   n="$(random_str)"
-  $OCKAM node create $n --disable-file-logging
-
-  log_file="$($OCKAM node logs $n)"
-  if [ -s $log_file ]; then
-    fail "Log file should be empty"
-  fi
-
-  # Repeat the same with a foreground node
-  n="$(random_str)"
-  $OCKAM node create $n -vv -f --disable-file-logging &
+  $OCKAM node create $n -vv -f &
   sleep 1
 
   log_file="$($OCKAM node logs $n)"
