@@ -1,5 +1,8 @@
 name: CARGO_TARGET_DIR Cache
 description: CARGO_TARGET_DIR Cache
+inputs:
+  ockam_dir:
+    description: Ockam Directory
 runs:
   using: composite
   steps:
