@@ -36,9 +36,9 @@ impl AddonListSubcommand {
 
 async fn run_impl(
     ctx: Context,
-    (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, AddonListSubcommand),
+    (opts, _cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, AddonListSubcommand),
 ) -> miette::Result<()> {
-    let controller_route = &cloud_opts.route();
+    let controller_route = &CloudOpts::route();
     let project_name = cmd.project_name;
 
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;

@@ -53,7 +53,7 @@ async fn run_impl(
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;
-    let controller_route = &cmd.cloud_opts.route();
+    let controller_route = &CloudOpts::route();
 
     // Try to remove from config, in case the project was removed from the cloud but not from the config file.
     opts.state.projects.delete(&cmd.project_name)?;

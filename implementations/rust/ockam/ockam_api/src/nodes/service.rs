@@ -353,7 +353,7 @@ impl NodeManager {
             node_name: general_options.node_name,
             api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
             tcp_transport: transport_options.tcp_transport,
-            controller_identity_id: Self::load_controller_identity_id()?,
+            controller_identity_id: Self::load_controller_identifier()?,
             skip_defaults: general_options.skip_defaults,
             enable_credential_checks: trust_options.trust_context_config.is_some()
                 && trust_options

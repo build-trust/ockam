@@ -157,7 +157,7 @@ async fn default_space<'a>(
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let is_finished = Mutex::new(false);
     let send_req = async {
-        rpc.request(api::space::list(&cloud_opts.route())).await?;
+        rpc.request(api::space::list(&CloudOpts::route())).await?;
         *is_finished.lock().await = true;
         rpc.parse_response::<Vec<Space>>()
     };
@@ -256,7 +256,7 @@ async fn default_project(
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let is_finished = Mutex::new(false);
     let send_req = async {
-        rpc.request(api::project::list(&cloud_opts.route())).await?;
+        rpc.request(api::project::list(&CloudOpts::route())).await?;
         *is_finished.lock().await = true;
         rpc.parse_response::<Vec<Project>>()
     };
@@ -282,7 +282,7 @@ async fn default_project(
         let name = "default";
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
         let send_req = async {
-            rpc.request(api::project::create(name, &space.id, &cloud_opts.route()))
+            rpc.request(api::project::create(name, &space.id, &CloudOpts::route()))
                 .await?;
             *is_finished.lock().await = true;
             rpc.parse_response::<Project>()

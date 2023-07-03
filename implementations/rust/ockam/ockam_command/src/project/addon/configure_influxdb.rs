@@ -135,7 +135,7 @@ async fn run_impl(
         AddonConfigureInfluxdbSubcommand,
     ),
 ) -> miette::Result<()> {
-    let controller_route = &cloud_opts.route();
+    let controller_route = &CloudOpts::route();
     let AddonConfigureInfluxdbSubcommand {
         project_name,
         endpoint_url,

@@ -44,14 +44,13 @@ async fn rpc(
 async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
-    cmd: ListCommand,
+    _cmd: ListCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
     let send_req = async {
-        rpc.request(api::space::list(&cmd.cloud_opts.route()))
-            .await?;
+        rpc.request(api::space::list(&CloudOpts::route())).await?;
 
         *is_finished.lock().await = true;
         rpc.parse_response::<Vec<Space>>()

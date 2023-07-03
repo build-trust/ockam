@@ -57,7 +57,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let controller_route = &cmd.cloud_opts.route();
+    let controller_route = &CloudOpts::route();
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Show {

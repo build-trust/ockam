@@ -12,7 +12,7 @@ use crate::CommandGlobalOpts;
 pub async fn check_for_completion<'a>(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    cloud_opts: &CloudOpts,
+    _cloud_opts: &CloudOpts,
     api_node: &str,
     operation_id: &str,
 ) -> miette::Result<()> {
@@ -23,14 +23,14 @@ pub async fn check_for_completion<'a>(
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Configuring project...");
     }
-
+    let route = CloudOpts::route();
     let operation = Retry::spawn(retry_strategy.clone(), || async {
         let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
 
         // Handle the operation show request result
         // so we can provide better errors in the case orchestrator does not respond timely
         if rpc
-            .request(api::operation::show(operation_id, &cloud_opts.route()))
+            .request(api::operation::show(operation_id, &route))
             .await
             .is_ok()
         {
