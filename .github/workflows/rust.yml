@@ -38,6 +38,8 @@ on:
     inputs:
       commit_sha:
         description: Git commit sha, on which, to run this workflow
+      ockam_command_cli_version:
+        description: SHA to build Ockam CLI
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -370,34 +372,47 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
-      - name: Checkout repository
+      - name: Checkout ockam cli repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
-          ref: ${{ github.event.inputs.release_branch }}
+          ref: ${{ inputs.ockam_command_cli_version != '' && inputs.ockam_command_cli_version || inputs.commit_sha  }}
+          path: ockam_cli
+
+      - name: Checkout ockam bats repository
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ inputs.commit_sha }}
+          path: ockam_bats
 
       - name: Use cache cargo_home
-        uses: ./.github/actions/cargo_home_cache
+        uses: ./ockam_bats/.github/actions/cargo_home_cache
       - name: Use cache cargo_target
-        uses: ./.github/actions/cargo_target_dir_cache
+        uses: ./ockam_bats/.github/actions/cargo_target_dir_cache
+        with:
+          ockam_dir: ockam_cli
 
       - name: Build Binary
         shell: bash
+        working-directory: ockam_cli
         run: |
           rustc --version
           set -x
           cargo build --bin ockam
+          echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV;
 
       - name: Run Script On Ubuntu
-        if: matrix.build == 'linux_86'
+        working-directory: ockam_bats
         shell: bash
         run: |
-          export PATH=$(pwd)/target/debug:$PATH;
+          ockam --version
           bats implementations/rust/ockam/ockam_command/tests/bats;
         env:
           OCKAM_DISABLE_UPGRADE_CHECK: 1
 
       - name: Prep cache cargo_target before persisting
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+        uses: ./ockam_bats/.github/actions/cargo_target_dir_pre_cache
+        with:
+          ockam_dir: ockam_cli
 
   ockam_command_cross_build:
     name: Rust - ockam_command_cross_build
@@ -421,7 +436,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
-          ref: ${{ github.event.inputs.release_branch }}
+          ref: ${{ inputs.commit_sha }}
 
       - uses: ./.github/actions/build_binaries
         with:
