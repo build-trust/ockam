@@ -265,7 +265,7 @@ pub(crate) mod space {
         let b = CreateSpace::new(&cmd.name, &cmd.admins);
         Request::post("v0/spaces").body(CloudRequestWrapper::new(
             b,
-            &cmd.cloud_opts.route(),
+            &CloudOpts::route(),
             None::<CowStr>,
         ))
     }
@@ -514,7 +514,7 @@ pub fn parse_trust_context(
 }
 
 impl CloudOpts {
-    pub fn route(&self) -> MultiAddr {
+    pub fn route() -> MultiAddr {
         let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)
             .into_diagnostic()
             .wrap_err(format!(

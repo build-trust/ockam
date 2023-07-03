@@ -38,7 +38,7 @@ pub struct SendCommand {
     #[arg(long)]
     pub hex: bool,
 
-    /// Override Default Timeout
+    /// Override default timeout (in seconds)
     #[arg(long, value_name = "TIMEOUT", default_value = "10")]
     pub timeout: u64,
 

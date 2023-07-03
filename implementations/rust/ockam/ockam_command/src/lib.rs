@@ -24,6 +24,7 @@ mod markdown;
 mod message;
 pub mod node;
 mod operation;
+mod orchestrator;
 mod pager;
 mod policy;
 mod project;
@@ -32,7 +33,6 @@ mod reset;
 mod run;
 mod secure_channel;
 mod service;
-mod show;
 mod space;
 mod status;
 mod subscription;
@@ -76,13 +76,13 @@ use miette::GraphicalReportHandler;
 use node::NodeCommand;
 use ockam_api::cli_state::CliState;
 use once_cell::sync::Lazy;
+use orchestrator::OrchestratorCommand;
 use policy::PolicyCommand;
 use project::ProjectCommand;
 use relay::RelayCommand;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
-use show::ShowCommand;
 use space::SpaceCommand;
 use status::StatusCommand;
 use std::{path::PathBuf, sync::Mutex};
@@ -272,8 +272,7 @@ pub enum OckamSubcommand {
     Message(MessageCommand),
     Relay(RelayCommand),
 
-    #[command(hide = docs::hide())]
-    Show(ShowCommand),
+    Orchestrator(OrchestratorCommand),
 
     TcpListener(TcpListenerCommand),
     TcpConnection(TcpConnectionCommand),
@@ -413,7 +412,7 @@ impl OckamCommand {
             OckamSubcommand::Authority(c) => c.run(options),
             OckamSubcommand::Policy(c) => c.run(options),
             OckamSubcommand::Lease(c) => c.run(options),
-            OckamSubcommand::Show(c) => c.run(options),
+            OckamSubcommand::Orchestrator(c) => c.run(options),
 
             OckamSubcommand::Run(c) => c.run(options),
             OckamSubcommand::Status(c) => c.run(options),

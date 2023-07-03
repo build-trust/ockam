@@ -64,7 +64,7 @@ async fn run_impl(
         AddonConfigureConfluentSubcommand,
     ),
 ) -> miette::Result<()> {
-    let controller_route = &cloud_opts.route();
+    let controller_route = &CloudOpts::route();
     let AddonConfigureConfluentSubcommand {
         project_name,
         bootstrap_server,

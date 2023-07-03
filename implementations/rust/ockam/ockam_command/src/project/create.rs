@@ -59,7 +59,7 @@ async fn run_impl(
     rpc.request(api::project::create(
         &cmd.project_name,
         &space_id,
-        &cmd.cloud_opts.route(),
+        &CloudOpts::route(),
     ))
     .await?;
     let project = rpc.parse_response::<Project>()?;

@@ -96,17 +96,17 @@ mod node {
         /// Load controller identity id from file.
         ///
         /// If the env var `OCKAM_CONTROLLER_IDENTITY_ID` is set, that will be used to
-        /// load the identity instead of the file.
-        pub(crate) fn load_controller_identity_id() -> Result<IdentityIdentifier> {
+        /// load the identifier instead of the file.
+        pub fn load_controller_identifier() -> Result<IdentityIdentifier> {
             if let Ok(Some(idt)) = get_env::<IdentityIdentifier>(OCKAM_CONTROLLER_IDENTITY_ID) {
-                trace!(idt = %idt, "Read controller identity id from env");
+                trace!(idt = %idt, "Read controller identifier from env");
                 return Ok(idt);
             }
             IdentityIdentifier::from_str(include_str!("../../static/controller.id"))
         }
 
         /// Return controller identity's identifier.
-        pub(crate) fn controller_identity_id(&self) -> IdentityIdentifier {
+        pub fn controller_identifier(&self) -> IdentityIdentifier {
             self.controller_identity_id.clone()
         }
     }
@@ -173,7 +173,7 @@ mod node {
                         .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
                 let options = SecureChannelOptions::new().with_trust_policy(
-                    TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
+                    TrustIdentifierPolicy::new(node_manager.controller_identifier()),
                 );
                 secure_channels
                     .create_secure_channel(ctx, &identifier, cloud_route.route, options)

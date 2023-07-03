@@ -169,7 +169,7 @@ async fn delete_secure_channel<'a>(
 pub async fn check_project_readiness(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    cloud_opts: &CloudOpts,
+    _cloud_opts: &CloudOpts,
     api_node: &str,
     tcp: Option<&TcpTransport>,
     mut project: Project,
@@ -190,7 +190,7 @@ pub async fn check_project_readiness(
 
     // Check if Project and Project Authority info is available
     if !project.is_ready() {
-        let cloud_route = &cloud_opts.route();
+        let cloud_route = &CloudOpts::route();
         let project_id = project.id.clone();
         project = Retry::spawn(retry_strategy.clone(), || async {
             let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();

@@ -48,14 +48,14 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ShowCommand,
 ) -> miette::Result<()> {
-    let controller_route = &cmd.cloud_opts.route();
+    let controller_route = &CloudOpts::route();
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     // Lookup project
     let id = match &opts.state.projects.get(&cmd.name) {
         Ok(state) => state.config().id.clone(),
         Err(_) => {
-            refresh_projects(ctx, &opts, &node_name, &cmd.cloud_opts.route(), None).await?;
+            refresh_projects(ctx, &opts, &node_name, &CloudOpts::route(), None).await?;
             opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };
