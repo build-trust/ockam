@@ -2581,9 +2581,9 @@ dependencies = [
 
 [[package]]
 name = "io-lifetimes"
-version = "2.0.0"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d45cdeff9f146d37336161718e4ae84d7771c159270ac78f7aacc042461eb71"
+checksum = "bffb4def18c48926ccac55c1223e02865ce1a821751a95920448662696e7472c"
 
 [[package]]
 name = "iovec"
@@ -3395,7 +3395,7 @@ dependencies = [
  "home",
  "indicatif",
  "indoc",
- "io-lifetimes 2.0.0",
+ "io-lifetimes 2.0.2",
  "is-terminal",
  "itertools 0.11.0",
  "miette",
