@@ -75,8 +75,8 @@ pub struct CreateCommand {
     )]
     pub tcp_listener_address: String,
 
-    /// ockam_command started a child process to run this node in foreground.
-    #[arg(display_order = 900, long, hide = true)]
+    /// `node create` started a child process to run this node in foreground.
+    #[arg(long, hide = true)]
     pub child_process: bool,
 
     /// JSON config to setup a foreground node
@@ -106,9 +106,6 @@ pub struct CreateCommand {
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
 
-    #[arg(long)]
-    pub disable_file_logging: bool,
-
     #[command(flatten)]
     pub trust_context_opts: TrustContextOpts,
 }
@@ -129,7 +126,6 @@ impl Default for CreateCommand {
             reload_from_trusted_identities_file: None,
             authority_identity: None,
             credential: None,
-            disable_file_logging: false,
             trust_context_opts: TrustContextOpts::default(),
         }
     }
@@ -153,6 +149,22 @@ impl CreateCommand {
         } else {
             node_rpc(background_mode, (opts, self))
         }
+    }
+
+    pub fn logging_to_file(&self) -> bool {
+        // Background nodes will spawn a foreground node in a child process.
+        // In that case, the child process will log to files.
+        if self.child_process {
+            true
+        }
+        // The main process will log to stdout only if it's a foreground node.
+        else {
+            !self.foreground
+        }
+    }
+
+    pub fn logging_to_stdout(&self) -> bool {
+        !self.logging_to_file()
     }
 }
 
@@ -280,7 +292,6 @@ async fn run_foreground_node(
             .config()
             .setup_mut()
             .set_verbose(opts.global_args.verbose)
-            .set_disable_file_logging(cmd.disable_file_logging)
             .set_api_transport(
                 CreateTransportJson::new(
                     TransportType::Tcp,
@@ -497,7 +508,7 @@ async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> 
         cmd.credential.as_ref(),
         trust_context_path.as_ref(),
         cmd.trust_context_opts.project.as_ref(),
-        cmd.disable_file_logging,
+        cmd.logging_to_file(),
     )?;
 
     Ok(())

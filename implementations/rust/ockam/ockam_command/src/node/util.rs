@@ -204,7 +204,7 @@ pub fn spawn_node(
     credential: Option<&String>,
     trust_context: Option<&PathBuf>,
     project_name: Option<&String>,
-    disable_file_logging: bool,
+    logging_to_file: bool,
 ) -> miette::Result<()> {
     let mut args = vec![
         match opts.global_args.verbose {
@@ -219,13 +219,7 @@ pub fn spawn_node(
         "--child-process".to_string(),
     ];
 
-    if disable_file_logging {
-        args.push("--disable-file-logging".to_string());
-        if !opts.terminal.is_tty() {
-            args.push("--no-color".to_string());
-        }
-    } else {
-        // We want to disable colors when logging to file
+    if logging_to_file || !opts.terminal.is_tty() {
         args.push("--no-color".to_string());
     }
 
@@ -288,7 +282,7 @@ pub fn spawn_node(
 
     args.push(name.to_owned());
 
-    run_ockam(opts, name, args, disable_file_logging)
+    run_ockam(opts, name, args, logging_to_file)
 }
 
 /// Run the ockam command line with specific arguments
@@ -296,7 +290,7 @@ pub fn run_ockam(
     opts: &CommandGlobalOpts,
     node_name: &str,
     args: Vec<String>,
-    disable_file_logging: bool,
+    logging_to_file: bool,
 ) -> miette::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
@@ -306,7 +300,7 @@ pub fn run_ockam(
 
     let mut cmd = Command::new(ockam_exe);
 
-    if !disable_file_logging {
+    if logging_to_file {
         let (mlog, elog) = { (node_state.stdout_log(), node_state.stderr_log()) };
         let main_log_file = OpenOptions::new()
             .create(true)
@@ -320,13 +314,12 @@ pub fn run_ockam(
             .open(elog)
             .into_diagnostic()
             .context("failed to open stderr log path")?;
-        cmd.stdout(main_log_file)
-            .stderr(stderr_log_file)
-            .stdin(Stdio::null());
+        cmd.stdout(main_log_file).stderr(stderr_log_file);
     }
 
     let child = cmd
         .args(args)
+        .stdin(Stdio::null())
         .spawn()
         .into_diagnostic()
         .context("failed to spawn node")?;

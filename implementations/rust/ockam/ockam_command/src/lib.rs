@@ -430,7 +430,7 @@ impl OckamCommand {
         // for the node that is being created
         if let OckamSubcommand::Node(c) = &self.subcommand {
             if let NodeSubcommand::Create(c) = &c.subcommand {
-                if c.disable_file_logging {
+                if c.logging_to_stdout() {
                     return None;
                 }
                 // In the case where a node is explicitly created in foreground mode, we need

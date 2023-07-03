@@ -301,8 +301,6 @@ impl Default for ConfigVersion {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
 pub struct NodeSetupConfig {
     pub verbose: u8,
-    #[serde(default)]
-    pub disable_file_logging: bool,
 
     /// This flag is used to determine how the node status should be
     /// displayed in print_query_status.
@@ -315,11 +313,6 @@ pub struct NodeSetupConfig {
 impl NodeSetupConfig {
     pub fn set_verbose(mut self, verbose: u8) -> Self {
         self.verbose = verbose;
-        self
-    }
-
-    pub fn set_disable_file_logging(mut self, disable_file_logging: bool) -> Self {
-        self.disable_file_logging = disable_file_logging;
         self
     }
 
@@ -421,11 +414,10 @@ mod backwards_compatibility {
         V2(NodeSetupConfig),
     }
 
+    // The change was replacing the `transports` field with `api_transport`
     #[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
     pub(super) struct NodeSetupConfigV1 {
         pub verbose: u8,
-        #[serde(default)]
-        pub disable_file_logging: bool,
 
         /// This flag is used to determine how the node status should be
         /// displayed in print_query_status.
@@ -494,7 +486,6 @@ mod traits {
                     // use it as the api transport
                     let mut new_setup = NodeSetupConfig {
                         verbose: setup.verbose,
-                        disable_file_logging: setup.disable_file_logging,
                         authority_node: setup.authority_node,
                         project: setup.project,
                         api_transport: None,
@@ -587,7 +578,6 @@ mod tests {
     fn node_config_setup_transports_no_duplicates() {
         let mut config = NodeSetupConfigV1 {
             verbose: 0,
-            disable_file_logging: false,
             authority_node: None,
             project: None,
             transports: HashSet::new(),
