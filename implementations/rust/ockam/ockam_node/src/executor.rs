@@ -110,6 +110,19 @@ impl Executor {
 
     /// Execute a future and block until a result is returned
     #[cfg(feature = "std")]
+    pub fn spawn<F>(&self, future: F) -> Result<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        let join_body = self.rt.spawn(future);
+        self.rt
+            .block_on(join_body)
+            .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))
+    }
+
+    /// Execute a future using a one time Runtime and block until a result is returned
+    #[cfg(feature = "std")]
     pub fn execute_future<F>(future: F) -> Result<F::Output>
     where
         F: Future + Send + 'static,

@@ -1,11 +1,13 @@
 use crate::logs::rolling::{RollingConditionBasic, RollingFileAppender};
 
+use crate::util::Runtime;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use std::io::stdout;
 use std::path::PathBuf;
 use std::str::FromStr;
 use termimad::crossterm::tty::IsTty;
 use tracing::level_filters::LevelFilter;
+use tracing::{info, info_span};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -96,9 +98,21 @@ pub fn setup_logging(
             .with_default_directive(level.into())
             .parse_lossy(ockam_crates.map(|c| format!("{c}={level}")).join(","))
     };
+    #[cfg(feature = "otel")]
+    let telemetry = Runtime::spawn(async move {
+        let tracer = opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(opentelemetry_otlp::new_exporter().tonic())
+            .install_simple()
+            .expect("Failed to install telemetry pipeline");
+        tracing_opentelemetry::layer().with_tracer(tracer)
+    });
+    #[cfg(not(feature = "otel"))]
+    let telemetry = tracing_opentelemetry::layer();
     let subscriber = tracing_subscriber::registry()
         .with(filter)
-        .with(tracing_error::ErrorLayer::default());
+        .with(tracing_error::ErrorLayer::default())
+        .with(telemetry);
     let (appender, guard) = match log_path {
         // If a log path is not provided, log to stdout.
         None => {
@@ -128,5 +142,11 @@ pub fn setup_logging(
         LogFormat::Default => subscriber.with(appender).try_init(),
     };
     res.expect("Failed to initialize tracing subscriber");
+
+    // TODO: remove, this is just to show that tracing is working
+    info!("pre-span event: not exported");
+    let _ = info_span!("test trace").entered();
+    info!("post-span event: exported");
+
     Some(guard)
 }

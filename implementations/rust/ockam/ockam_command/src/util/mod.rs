@@ -1,5 +1,7 @@
 use core::time::Duration;
 
+use std::future::Future;
+use std::sync::Mutex;
 use std::{
     net::{SocketAddr, TcpListener},
     path::Path,
@@ -9,6 +11,7 @@ use std::{
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use minicbor::{data::Type, Decode, Decoder, Encode};
+use once_cell::sync::Lazy;
 
 use tracing::{debug, error, trace};
 
@@ -26,6 +29,7 @@ use ockam_multiaddr::{
     proto::{self, Node},
     MultiAddr, Protocol,
 };
+use ockam_node::Executor;
 
 use crate::util::output::Output;
 use crate::{node::util::start_embedded_node, EncodeFormat};
@@ -396,6 +400,36 @@ where
     }
 }
 
+pub(crate) static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| {
+    let (ctx, executor) = NodeBuilder::new().no_logging().build();
+    Mutex::new(Some(Runtime { ctx, executor }))
+});
+
+pub(crate) struct Runtime {
+    pub(crate) ctx: Context,
+    pub(crate) executor: Executor,
+}
+
+impl Runtime {
+    pub(crate) fn spawn<F>(future: F) -> F::Output
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        let lock = RUNTIME.lock().unwrap();
+        let rt = lock.as_ref().expect("Runtime was consumed");
+        rt.executor.spawn(future).expect("Failed to run future")
+    }
+
+    pub(crate) fn take() -> Self {
+        RUNTIME
+            .lock()
+            .unwrap()
+            .take()
+            .expect("Runtime was consumed")
+    }
+}
+
 pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
 where
     A: Send + Sync + 'static,
@@ -403,7 +437,8 @@ where
     Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
-    let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
+    let rt = Runtime::take();
+    let (ctx, mut executor) = (rt.ctx, rt.executor);
     executor
         .execute(async move {
             let child_ctx = ctx
@@ -428,7 +463,8 @@ where
     Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
-    let (mut ctx, mut executor) = NodeBuilder::new().no_logging().build();
+    let rt = Runtime::take();
+    let (mut ctx, mut executor) = (rt.ctx, rt.executor);
     executor
         .execute(async move {
             let child_ctx = ctx
