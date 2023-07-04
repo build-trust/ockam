@@ -9,8 +9,6 @@ use ockam_core::compat::sync::Arc;
 #[cfg(feature = "storage")]
 use ockam_core::Result;
 use ockam_node::InMemoryKeyValueStorage;
-#[cfg(feature = "std")]
-use std::path::Path;
 
 /// Builder for Vaults
 /// The `VaultBuilder` allows the setting of different implementations for the external interfaces of a Vault:
@@ -48,8 +46,11 @@ impl VaultBuilder {
 
     /// Set a persistent storage as a file storage with a specific path
     /// Note: this overrides all previously set implementations
-    #[cfg(feature = "std")]
-    pub async fn with_persistent_storage_path(&mut self, path: &Path) -> Result<&mut Self> {
+    #[cfg(feature = "storage")]
+    pub async fn with_persistent_storage_path(
+        &mut self,
+        path: &std::path::Path,
+    ) -> Result<&mut Self> {
         Ok(self.with_persistent_storage(PersistentStorage::create(path).await?))
     }
 

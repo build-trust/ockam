@@ -8,8 +8,6 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, Result};
 use ockam_node::KeyValueStorage;
-#[cfg(feature = "std")]
-use std::path::Path;
 
 /// A Vault provides high-level interfaces to manage secrets:
 ///
@@ -80,8 +78,8 @@ impl Vault {
     }
 
     /// Create a new vault with a persistent storage
-    #[cfg(feature = "std")]
-    pub async fn create_with_persistent_storage_path(path: &Path) -> Result<Arc<Vault>> {
+    #[cfg(feature = "storage")]
+    pub async fn create_with_persistent_storage_path(path: &std::path::Path) -> Result<Arc<Vault>> {
         Ok(Vault::builder()
             .with_persistent_storage_path(path)
             .await?
