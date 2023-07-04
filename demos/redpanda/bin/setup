@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+ockam reset
+ockam enroll
