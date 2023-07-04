@@ -32,7 +32,7 @@ in {
         typescript = pkgs.mkShell {
           buildInputs = [
             pkgs.nodejs
-            (pkgs.nodePackages.pnpm.override { version = cfg.pnpmVersion; })
+            (pkgs.nodePackages.pnpm.override {version = cfg.pnpmVersion;})
           ];
         };
       };
