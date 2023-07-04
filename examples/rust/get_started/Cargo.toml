@@ -38,6 +38,7 @@ ockam_api = { path = "../../../implementations/rust/ockam/ockam_api" }
 ockam_core = { path = "../../../implementations/rust/ockam/ockam_core" }
 ockam_multiaddr = { path = "../../../implementations/rust/ockam/ockam_multiaddr" }
 ockam_node = { path = "../../../implementations/rust/ockam/ockam_node" }
+ockam_macros = { path = "../../../implementations/rust/ockam/ockam_macros" }
 ockam_transport_tcp = { path = "../../../implementations/rust/ockam/ockam_transport_tcp" }
 ockam_transport_udp = { path = "../../../implementations/rust/ockam/ockam_transport_udp" }
 ockam_transport_uds = { path = "../../../implementations/rust/ockam/ockam_transport_uds" }
@@ -46,6 +47,9 @@ ockam_vault = { path = "../../../implementations/rust/ockam/ockam_vault" }
 serde = { version = "1", default_features = false, features = ["derive"] }
 serde_bare = "0.5.0"
 serde_json = { version = "1.0", default_features = false }
+tracing = "0.1.25"
+tracing-capture = "0.1.0"
+tracing-subscriber = "0.3.17"
 
 [dev-dependencies]
 example_test_helper = { path = "../../../tools/docs/example_test_helper" }

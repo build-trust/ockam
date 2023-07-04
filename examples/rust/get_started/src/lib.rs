@@ -8,6 +8,7 @@ mod hop;
 pub use forwarder::*;
 pub use hop::*;
 
+pub mod log_collector;
 mod logger;
 mod project;
 mod token;

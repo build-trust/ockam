@@ -89,6 +89,7 @@ fn output(mut cont: Container) -> TokenStream {
     let test_fn_ident = &cont.test_fn.sig.ident;
     let ockam_crate = cont.data.attrs.ockam_crate;
     let timeout_ms = cont.data.attrs.timeout_ms;
+    let no_logging = cont.data.attrs.no_logging;
     cont.original_fn.block = parse2(quote! {
         {
             use core::panic::AssertUnwindSafe;
@@ -103,7 +104,7 @@ fn output(mut cont: Container) -> TokenStream {
                Some(_) => (),
             };
 
-            let (mut #ctx_ident, mut executor) = NodeBuilder::new().build();
+            let (mut #ctx_ident, mut executor) = NodeBuilder::new().with_logging(!#no_logging).build();
             executor
                 .execute(async move {
                     // Wraps the test function call in a `catch_unwind` to catch possible panics.
@@ -217,12 +218,14 @@ impl<'a> Data<'a> {
 struct TestArguments {
     ockam_crate: TokenStream,
     timeout_ms: u64,
+    no_logging: bool,
 }
 
 impl TestArguments {
     fn from_ast(ctx: &Context, args: &TokenStream) -> Self {
         let mut ockam_crate = Attr::none(ctx, OCKAM_CRATE);
         let mut timeout_ms = Attr::none(ctx, TIMEOUT_MS);
+        let mut no_logging = Attr::none(ctx, NO_LOGGING);
 
         let p = parser(|meta| {
             if meta.path.is_ident(&OCKAM_CRATE) {
@@ -238,6 +241,12 @@ impl TestArguments {
                     timeout_ms.set(&meta.path, timeout);
                 };
                 Ok(())
+            } else if meta.path.is_ident(&NO_LOGGING) {
+                let value_expr: Expr = meta.value()?.parse()?;
+                if let Ok(nologging) = parse_lit_into_int::<bool>(ctx, NO_LOGGING, &value_expr) {
+                    no_logging.set(&meta.path, nologging);
+                };
+                Ok(())
             } else {
                 ctx.error_spanned_by(
                     meta.path.clone(),
@@ -251,6 +260,7 @@ impl TestArguments {
         Self {
             ockam_crate: ockam_crate.get().unwrap_or(quote! { ockam_node }),
             timeout_ms: timeout_ms.get().unwrap_or(30_000),
+            no_logging: no_logging.get().unwrap_or(true),
         }
     }
 }

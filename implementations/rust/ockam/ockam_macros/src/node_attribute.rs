@@ -60,6 +60,11 @@ fn output(cont: Container) -> TokenStream {
                 let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::new().build() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
+
+            pub async fn main_function(ctx: Context) #ret_type {
+                #body
+            }
+
         }
     } else {
         // Assumes you will be defining the ockam node inside your own entry point
@@ -70,6 +75,10 @@ fn output(cont: Container) -> TokenStream {
                 let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::with_access_control().build() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
+            pub async fn main_function(ctx: Context) #ret_type {
+                #body
+            }
+
             // TODO: safe way to print the error before panicking?
             ockam_async_main().unwrap();
         }

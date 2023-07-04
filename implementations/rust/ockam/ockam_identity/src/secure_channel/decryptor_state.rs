@@ -8,7 +8,7 @@ use ockam_core::Result;
 use ockam_key_exchange_xx::XXInitializedVault;
 use tracing::warn;
 
-pub(crate) struct Decryptor {
+pub(crate) struct DecryptorState {
     current_key: KeyId,
     current_key_nonce: u64,
 
@@ -17,7 +17,7 @@ pub(crate) struct Decryptor {
     nonce_tracker: NonceTracker,
 }
 
-impl Decryptor {
+impl DecryptorState {
     /// Restore 12-byte nonce needed for AES GCM from 8 byte that we use for noise
     fn convert_nonce_from_small(b: &[u8]) -> Result<(u64, [u8; 12])> {
         let bytes: [u8; 8] = b.try_into().map_err(|_| IdentityError::InvalidNonce)?;

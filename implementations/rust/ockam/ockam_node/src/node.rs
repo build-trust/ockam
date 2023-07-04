@@ -35,7 +35,12 @@ impl NodeBuilder {
 
     /// Disable logging on this node
     pub fn no_logging(self) -> Self {
-        Self { logging: false }
+        self.with_logging(false)
+    }
+
+    /// Set logging on this node
+    pub fn with_logging(self, logging: bool) -> Self {
+        Self { logging }
     }
 
     /// Consume this builder and yield a new Ockam Node

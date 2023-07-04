@@ -10,6 +10,7 @@ pub(crate) struct Symbol(&'static str);
 pub(crate) const NO_MAIN: Symbol = Symbol("no_main");
 pub(crate) const OCKAM_CRATE: Symbol = Symbol("crate");
 pub(crate) const TIMEOUT_MS: Symbol = Symbol("timeout");
+pub(crate) const NO_LOGGING: Symbol = Symbol("no_logging");
 
 // Derive's helper attributes
 pub(crate) const ASYNC_TRY_CLONE: Symbol = Symbol("async_try_clone");
