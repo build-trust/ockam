@@ -99,11 +99,11 @@ fn run_04_udp() -> Result<(), Error> {
 fn run_05_secure_channel_over_two_transport_hops() -> Result<(), Error> {
     // Launch responder, wait for it to start up
     let resp = CmdBuilder::new("cargo run --example 05-secure-channel-over-two-transport-hops-responder").spawn()?;
-    resp.match_stdout(r"(?i)Waiting for incoming TCP connection")?;
+    resp.match_stdout("Initializing ockam processor")?;
 
     // Launch middle, wait for it to start up
     let mid = CmdBuilder::new("cargo run --example 05-secure-channel-over-two-transport-hops-middle").spawn()?;
-    mid.match_stdout(r"(?i)Waiting for incoming TCP connection")?;
+    mid.match_stdout("Initializing ockam processor")?;
 
     // Run initiator to completion
     let (exitcode, stdout) =
