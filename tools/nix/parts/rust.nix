@@ -33,12 +33,11 @@ in {
       ...
     }: {
       devShells = let
-        compilerTools = with pkgs;
-          [
-            clang
-            cmake
-            lld
-          ];
+        compilerTools = with pkgs; [
+          clang
+          cmake
+          lld
+        ];
 
         nightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
         toolchain = pkgs.rust-bin.stable.${cfg.version}.default;
