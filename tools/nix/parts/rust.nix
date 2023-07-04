@@ -104,6 +104,7 @@ in {
 
           inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS;
 
+          DYLD_FALLBACK_LIBRARY_PATH = "${toolchain}/lib";
           RUST_SRC_PATH = lib.optional cfg.rustAnalyzer "${toolchain}/lib/rustlib/src/rust/library";
         };
 
@@ -117,6 +118,7 @@ in {
             ++ nightlyTooling
             ++ sharedInputs;
           inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS;
+          DYLD_FALLBACK_LIBRARY_PATH = "${nightlyToolchain}/lib";
           RUST_SRC_PATH = lib.optional cfg.rustAnalyzer "${nightlyToolchain}/lib/rustlib/src/rust/library";
         };
       };
