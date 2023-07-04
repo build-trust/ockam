@@ -22,6 +22,14 @@ exceptions = [
   { allow = ["Unicode-DFS-2016"], name = "unicode-ident", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
+
+  # ockam_app exceptions
+  { allow = ["MPL-2.0"], name = "cssparser", version = "*" },
+  { allow = ["MPL-2.0"], name = "cssparser-macros", version = "*" },
+  { allow = ["MPL-2.0"], name = "dtoa-short", version = "*" },
+  { allow = ["MPL-2.0"], name = "selectors", version = "*" },
+  { allow = ["MPL-2.0"], name = "thin-slice", version = "*" },
+  { allow = ["Apache-2.0 WITH LLVM-exception"], name = "target-lexicon", version = "*" },
 ]
 
 [[licenses.clarify]]
@@ -61,6 +69,10 @@ ignore = [
   # dependency `serde-xml`
   # (https://rustsec.org/advisories/RUSTSEC-2022-0048.html)
   "RUSTSEC-2022-0048",
+
+  # `kuchiki` dependency of tauri, html/css parser, unmaintened
+  # (https://rustsec.org/advisories/RUSTSEC-2023-0019.html)
+  "RUSTSEC-2023-0019",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still
