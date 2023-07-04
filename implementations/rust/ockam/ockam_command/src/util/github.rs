@@ -41,12 +41,13 @@ pub async fn get_latest_release_version() -> Result<LatestRelease> {
         .header("User-Agent", "Ockam Command")
         .send()
         .await;
-    if let Ok(r) = resp {
-        if let Ok(release) = r.json::<LatestRelease>().await {
-            return Ok(release);
-        }
+    match resp {
+        Ok(r) => match r.json::<LatestRelease>().await {
+            Ok(release) => return Ok(release),
+            Err(e) => Err(miette!("Failed to get latest release: {}", e).into()),
+        },
+        Err(e) => Err(miette!("Failed to get latest release: {}", e).into()),
     }
-    Err(miette!("Failed to get latest release").into())
 }
 
 pub fn download_install_file_sync(install_path: &PathBuf) -> miette::Result<()> {

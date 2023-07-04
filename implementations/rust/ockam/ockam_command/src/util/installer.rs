@@ -1,4 +1,5 @@
 use crate::error::Result;
+use colorful::Colorful;
 use miette::miette;
 use miette::Context;
 use miette::IntoDiagnostic;
@@ -49,7 +50,10 @@ fn installed_with_brew() -> Result<bool> {
             }
             Ok(false)
         }
-        Err(_) => Ok(false),
+        Err(e) => {
+            eprintln!("{}", e.to_string().yellow());
+            Ok(false)
+        }
     }
 }
 
@@ -93,12 +97,12 @@ fn remove_ockam_lines_from_files(files: &[String]) -> miette::Result<()> {
     let home = home();
     for file in files.iter() {
         let path = home.join(file);
-        remove_okcam_lines_from_file(path)?;
+        remove_ockam_lines_from_file(path)?;
     }
     Ok(())
 }
 
-fn remove_okcam_lines_from_file(file: PathBuf) -> miette::Result<()> {
+fn remove_ockam_lines_from_file(file: PathBuf) -> miette::Result<()> {
     let contents_result = std::fs::read_to_string(&file);
     if let Ok(contents) = contents_result {
         let lines = contents.lines();

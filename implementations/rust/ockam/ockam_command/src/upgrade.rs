@@ -15,13 +15,13 @@ use crate::{
 };
 
 pub fn check_if_an_upgrade_is_available() {
-    if !upgrade_check_is_disabled() {
+    if upgrade_check_is_enabled() {
         check_upgrade_sync(); // check if a new version has been released
     }
 }
 
-fn upgrade_check_is_disabled() -> bool {
-    get_env_with_default("OCKAM_DISABLE_UPGRADE_CHECK", false).unwrap_or(false)
+fn upgrade_check_is_enabled() -> bool {
+    !get_env_with_default("OCKAM_DISABLE_UPGRADE_CHECK", false).unwrap_or(false)
 }
 
 #[derive(Clone, Debug, Args)]
@@ -59,22 +59,16 @@ fn run_impl(opts: CommandGlobalOpts, cmd: UpgradeCommand) -> miette::Result<()> 
         return Ok(());
     }
 
-    if cmd.check {
-        opts.terminal
-            .stdout()
-            .plain(fmt_info!(
-                "A new version of ockam is available: {}. Current ockam version: {}",
-                latest_version,
-                current_version
-            ))
-            .write_line()?;
-        return Ok(());
-    }
     opts.terminal.write_line(fmt_info!(
         "A new version of ockam is available: {}. Current ockam version: {}",
         latest_version,
         current_version
     ))?;
+
+    if cmd.check {
+        return Ok(());
+    }
+
     if !cmd.yes {
         match opts.terminal.confirm(&fmt_info!(
             "This will upgrade ockam to the latest version. Are you sure?"
@@ -118,7 +112,7 @@ fn stop_all_running_nodes(opts: &CommandGlobalOpts) -> Result<Vec<String>> {
     Ok(stopped_nodes)
 }
 
-fn start_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> miette::Result<()> {
+fn restart_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> miette::Result<()> {
     opts.terminal
         .write_line(fmt_info!("Restarting all stopped nodes"))?;
     for node_name in stopped_nodes_names.iter() {
@@ -126,19 +120,18 @@ fn start_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> miet
         node_state.kill_process(false)?;
         let node_setup = node_state.config().setup();
         spawn_node(
-            opts,
-            node_setup.verbose, // Previously user-chosen verbosity level
-            node_name,          // The selected node name
+            &opts,
+            &node_name,                                    // The selected node name
             &node_setup.api_transport()?.addr.to_string(), // The selected node api address
-            None,               // No project information available
-            None,               // No trusted identities
-            None,               // "
-            None,               // "
-            None,               // Launch config
-            None,               // Authority Identity
-            None,               // Credential
-            None,               // Trust Context
-            None,               // Project Name
+            None,                                          // No project information available
+            None,                                          // No trusted identities
+            None,                                          // "
+            None,                                          // "
+            None,                                          // Launch config
+            None,                                          // Authority Identity
+            None,                                          // Credential
+            None,                                          // Trust Context
+            None,                                          // Project Name
             node_setup.disable_file_logging,
         )?;
         opts.terminal
@@ -152,6 +145,6 @@ fn upgrade_ockam(opts: &CommandGlobalOpts) -> miette::Result<()> {
     let installer = get_installer()?;
     let result = installer.upgrade();
     // Try to restart nodes even if upgrade failed
-    start_nodes(&stopped_nodes_names, opts)?;
+    restart_nodes(&stopped_nodes_names, opts)?;
     result
 }
