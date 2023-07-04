@@ -34,6 +34,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.0.0-alpha.5", features = [] }
 
 [dependencies]
+miette = { version = "5.8.0", features = ["fancy-no-backtrace"] }
 ockam = { path = "../ockam", version = "^0.90.0", features = ["software_vault"] }
 ockam_api = { path = "../ockam_api", version = "0.33.0", features = ["std", "authenticators"] }
 ockam_command = { path = "../ockam_command", version = "^0.90.0" }

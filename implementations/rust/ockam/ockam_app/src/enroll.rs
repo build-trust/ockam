@@ -1,3 +1,5 @@
+use miette::miette;
+
 use ockam_api::{
     cli_state::traits::StateDirTrait,
     cloud::{enroll::auth0::AuthenticateAuth0Token, CloudRequestWrapper},
@@ -25,7 +27,7 @@ pub fn enroll() -> String {
     "Enrolled".to_string()
 }
 
-async fn rpc(ctx: ockam::Context, options: CommandGlobalOpts) -> ockam_command::error::Result<()> {
+async fn rpc(ctx: ockam::Context, options: CommandGlobalOpts) -> miette::Result<()> {
     let auth0 = Auth0Service::new(Auth0Provider::Auth0);
     let dc = auth0.device_code().await?;
     let uri: &str = &dc.verification_uri_complete;
@@ -37,7 +39,8 @@ async fn rpc(ctx: ockam::Context, options: CommandGlobalOpts) -> ockam_command::
     let token = auth0.poll_token(dc, &options).await?;
     let node_name = start_embedded_node(&ctx, &options, None).await?;
     let mut rpc = RpcBuilder::new(&ctx, &options, &node_name).build();
-    let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)?;
+    let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)
+        .map_err(|e| miette!("The default controller address is incorrect: {:?}", e))?;
     let token = AuthenticateAuth0Token::new(token);
     let request = ockam_core::api::Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(
         token,

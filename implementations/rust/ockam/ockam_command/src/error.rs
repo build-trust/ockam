@@ -1,8 +1,9 @@
-use crate::{exitcode, fmt_log, ExitCode};
-
+use colorful::Colorful;
 use miette::miette;
 use miette::Diagnostic;
 use std::fmt::Debug;
+
+use crate::{exitcode, fmt_log, ExitCode, Version};
 
 pub type Result<T> = miette::Result<T, Error>;
 
@@ -46,9 +47,9 @@ pub enum Error {
     // ==== 5xx Errors ====
     // InternalError
     #[diagnostic(
-        code(OCK500),
-        help("Please report this issue, with a copy of your logs, to https://github.com/build-trust/ockam/issues"),
-        url("https://docs.ockam.io/errors/OCK500")
+    code(OCK500),
+    help("Please report this issue, with a copy of your logs, to https://github.com/build-trust/ockam/issues"),
+    url("https://docs.ockam.io/errors/OCK500")
     )]
     #[error("{error_message}")]
     InternalError {
