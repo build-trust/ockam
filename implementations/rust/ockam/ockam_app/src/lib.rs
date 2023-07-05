@@ -1,7 +1,8 @@
-mod enroll;
+use tauri::{CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 
 use enroll::enroll;
-use tauri::{CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
+
+mod enroll;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,7 +17,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .system_tray(system_tray)
-        .on_system_tray_event(|_app, event| match event {
+        .on_system_tray_event(|app, event| match event {
             SystemTrayEvent::LeftClick {
                 position: _,
                 size: _,
@@ -35,6 +36,10 @@ pub fn run() {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "enroll" => {
                     enroll();
+                    app.tray_handle()
+                        .get_item("enroll")
+                        .set_title("Enrolled")
+                        .unwrap();
                 }
                 "quit" => {
                     std::process::exit(0);
