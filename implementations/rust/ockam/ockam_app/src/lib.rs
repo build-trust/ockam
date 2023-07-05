@@ -18,21 +18,6 @@ pub fn run() {
     tauri::Builder::default()
         .system_tray(system_tray)
         .on_system_tray_event(|app, event| match event {
-            SystemTrayEvent::LeftClick {
-                position: _,
-                size: _,
-                ..
-            } => {}
-            SystemTrayEvent::RightClick {
-                position: _,
-                size: _,
-                ..
-            } => {}
-            SystemTrayEvent::DoubleClick {
-                position: _,
-                size: _,
-                ..
-            } => {}
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "enroll" => {
                     enroll();
