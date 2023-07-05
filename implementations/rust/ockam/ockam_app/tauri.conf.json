@@ -51,13 +51,6 @@
       "csp": null
     },
     "windows": [
-      {
-        "fullscreen": false,
-        "height": 600,
-        "resizable": true,
-        "title": "Ockam",
-        "width": 800
-      }
     ]
   }
 }
