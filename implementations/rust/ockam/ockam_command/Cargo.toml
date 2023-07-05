@@ -120,3 +120,7 @@ ockam_api = { path = "../ockam_api", version = "0.33.0", features = ["std", "aut
 ockam_macros = { path = "../ockam_macros", version = "^0.30.0" }
 tempfile = "3.7.0"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
+
+[features]
+default = ["orchestrator"]
+orchestrator = []
