@@ -48,7 +48,6 @@ pub fn run() {
             },
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![enroll])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app_handle, event| {
