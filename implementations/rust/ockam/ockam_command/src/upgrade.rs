@@ -14,9 +14,9 @@ use crate::{
     fmt_info, fmt_ok, node::util::spawn_node, terminal::ConfirmResult, CommandGlobalOpts, Result,
 };
 
-pub fn check_if_an_upgrade_is_available() {
+pub fn check_if_an_upgrade_is_available(opts: &CommandGlobalOpts) {
     if upgrade_check_is_enabled() {
-        check_upgrade_sync(); // check if a new version has been released
+        check_upgrade_sync(opts); // check if a new version has been released
     }
 }
 
@@ -117,7 +117,6 @@ fn restart_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> mi
         .write_line(fmt_info!("Restarting all stopped nodes"))?;
     for node_name in stopped_nodes_names.iter() {
         let node_state = opts.state.nodes.get(node_name)?;
-        node_state.kill_process(false)?;
         let node_setup = node_state.config().setup();
         spawn_node(
             &opts,
@@ -142,7 +141,7 @@ fn restart_nodes(stopped_nodes_names: &[String], opts: &CommandGlobalOpts) -> mi
 
 fn upgrade_ockam(opts: &CommandGlobalOpts) -> miette::Result<()> {
     let stopped_nodes_names = stop_all_running_nodes(opts)?;
-    let installer = get_installer()?;
+    let installer = get_installer(opts)?;
     let result = installer.upgrade();
     // Try to restart nodes even if upgrade failed
     restart_nodes(&stopped_nodes_names, opts)?;

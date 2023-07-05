@@ -344,10 +344,6 @@ pub fn run() {
 
     match OckamCommand::try_parse_from(input) {
         Ok(command) => {
-            if !command.global_args.test_argument_parser {
-                check_if_an_upgrade_is_available();
-            }
-
             command.run();
         }
         Err(help) => pager::render_help(help),
@@ -368,6 +364,9 @@ impl OckamCommand {
             )
         }));
         let options = CommandGlobalOpts::new(self.global_args.clone());
+        if !self.global_args.test_argument_parser {
+            check_if_an_upgrade_is_available(&options);
+        }
 
         let _tracing_guard = if !options.global_args.quiet {
             let log_path = self.log_path(&options);

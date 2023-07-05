@@ -6,7 +6,7 @@ use miette::{miette, IntoDiagnostic};
 use serde::Deserialize;
 use tokio::runtime::Builder;
 
-use crate::error::Result;
+use crate::{error::Result, CommandGlobalOpts};
 
 #[derive(Deserialize, Debug)]
 pub struct LatestRelease {
@@ -79,15 +79,15 @@ struct UpgradeFile {
     upgrade_message_macos: Option<String>,
 }
 
-pub fn check_upgrade_sync() {
+pub fn check_upgrade_sync(opts: &CommandGlobalOpts) {
     Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(check_upgrade());
+        .block_on(check_upgrade(opts));
 }
 
-pub async fn check_upgrade() {
+pub async fn check_upgrade(opts: &CommandGlobalOpts) {
     let url = format!(
         "https://github.com/build-trust/ockam/releases/download/ockam_v{}/upgrade.json",
         crate_version!()
@@ -97,15 +97,19 @@ pub async fn check_upgrade() {
     if let Ok(r) = resp {
         if let Ok(upgrade) = r.json::<UpgradeFile>().await {
             if let Some(message) = upgrade.upgrade_message {
-                eprintln!("\n{}", message.yellow());
+                opts.terminal
+                    .write_line(format!("\n{}", message.yellow()))
+                    .ok();
 
                 if cfg!(target_os = "macos") {
                     if let Some(message) = upgrade.upgrade_message_macos {
-                        eprintln!("\n{}", message.yellow());
+                        opts.terminal
+                            .write_line(format!("\n{}", message.yellow()))
+                            .ok();
                     }
                 }
 
-                eprintln!();
+                opts.terminal.write_line("").ok();
             }
         }
     }

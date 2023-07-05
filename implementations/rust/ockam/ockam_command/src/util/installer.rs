@@ -1,4 +1,6 @@
 use crate::error::Result;
+use crate::fmt_warn;
+use crate::CommandGlobalOpts;
 use colorful::Colorful;
 use miette::miette;
 use miette::Context;
@@ -12,8 +14,8 @@ use std::{path::PathBuf, process::Command};
 use crate::util::github::{download_install_file_sync, download_latest_binary_sync};
 
 /// Get the appropriate installer to upgrade and uninstall ockam.
-pub fn get_installer() -> Result<Box<dyn Installer>> {
-    if installed_with_brew()? {
+pub fn get_installer(opts: &CommandGlobalOpts) -> Result<Box<dyn Installer>> {
+    if installed_with_brew(opts)? {
         return Ok(Box::<BrewInstaller>::default());
     } else if installed_with_script()? {
         return Ok(Box::<ScriptInstaller>::default());
@@ -28,7 +30,7 @@ pub trait Installer {
     fn upgrade(&self) -> miette::Result<()>;
 }
 
-fn installed_with_brew() -> Result<bool> {
+fn installed_with_brew(opts: &CommandGlobalOpts) -> Result<bool> {
     // First we check to see if the ockam binary matches the brew list path
     // We check the canonical file paths to ensure that all paths are absoulte
     // and the simlinks are resolved.
@@ -51,7 +53,9 @@ fn installed_with_brew() -> Result<bool> {
             Ok(false)
         }
         Err(e) => {
-            eprintln!("{}", e.to_string().yellow());
+            opts.terminal
+                .write_line(fmt_warn!("Error checking brew installation: {}", e))
+                .ok();
             Ok(false)
         }
     }
