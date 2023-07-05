@@ -2,7 +2,7 @@ name: CARGO_TARGET_DIR Pre Cache
 description: CARGO_TARGET_DIR Pre Cache
 inputs:
   ockam_dir:
-    description: Ockam Directory
+    description: Ockam Root Directory To Cache
     default: '.'
 runs:
   using: composite
