@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "1.0.0-next.50",
-    "@sveltejs/kit": "^1.5.0",
+    "@sveltejs/kit": "^1.22.0",
     "svelte": "^3.54.0",
     "svelte-check": "^3.0.1",
     "tslib": "^2.4.1",
