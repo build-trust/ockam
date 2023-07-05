@@ -60,7 +60,7 @@ alloc = [
 
 [dependencies]
 arrayref = "0.3"
-async-trait = "0.1.70"
+async-trait = "0.1.71"
 cfg-if = "1.0.0"
 delegate = "0.9.0"
 group = { version = "0.13.0", default-features = false }
