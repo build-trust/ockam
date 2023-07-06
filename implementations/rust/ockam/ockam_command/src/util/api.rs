@@ -238,18 +238,16 @@ fn node_service(service_name: &str) -> String {
 pub mod enroll {
     use ockam_api::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
 
-    use crate::enroll::*;
-
     use super::*;
 
-    pub(crate) fn auth0<'a>(
-        cmd: EnrollCommand,
+    pub fn auth0<'a>(
+        route: &MultiAddr,
         token: Auth0Token,
     ) -> RequestBuilder<'a, CloudRequestWrapper<'a, AuthenticateAuth0Token>> {
         let token = AuthenticateAuth0Token::new(token);
         Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(
             token,
-            &cmd.cloud_opts.route(),
+            route,
             None::<CowStr>,
         ))
     }

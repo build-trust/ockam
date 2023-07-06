@@ -1,16 +1,13 @@
-use clap::Args;
-
-use miette::{miette, WrapErr};
-use ockam_identity::IdentityIdentifier;
-use tokio::sync::Mutex;
-use tokio::try_join;
-
 use std::borrow::Borrow;
 use std::io::stdin;
 
+use clap::Args;
 use colorful::Colorful;
+use miette::{miette, WrapErr};
 use reqwest::StatusCode;
+use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
+use tokio::try_join;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, info};
 
@@ -21,18 +18,19 @@ use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
 use ockam_core::api::Status;
+use ockam_identity::IdentityIdentifier;
+use ockam_multiaddr::MultiAddr;
 
+use crate::identity::initialize_identity_if_default;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
-
 use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
-
-use crate::identity::initialize_identity_if_default;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{
-    display_parse_logs, docs, fmt_err, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts, Result,
+    display_parse_logs, docs, fmt_err, fmt_info, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts,
+    Result,
 };
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -71,9 +69,12 @@ async fn run_impl(
 
     display_parse_logs(&opts);
 
+    let auth0 = Auth0Service::new(Auth0Provider::Auth0);
+    let token = auth0.get_token_interactively(&opts).await?;
+
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
-    enroll(ctx, &opts, &cmd, &node_name)
+    enroll_with_node(ctx, &opts, &cmd.cloud_opts.route(), &node_name, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
@@ -110,16 +111,16 @@ async fn run_impl(
     Ok(())
 }
 
-async fn enroll(
+/// Enroll a user with a token, using a specific node to contact the controller
+pub async fn enroll_with_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    cmd: &EnrollCommand,
+    route: &MultiAddr,
     node_name: &str,
+    token: Auth0Token,
 ) -> miette::Result<()> {
-    let auth0 = Auth0Service::new(Auth0Provider::Auth0);
-    let token = auth0.token(&cmd.cloud_opts, opts).await?;
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-    rpc.request(api::enroll::auth0(cmd.clone(), token)).await?;
+    rpc.request(api::enroll::auth0(route, token)).await?;
     let (res, dec) = rpc.check_response()?;
     if res.status() == Some(Status::Ok) {
         info!("Enrolled successfully");
@@ -130,6 +131,17 @@ async fn enroll(
     } else {
         Err(miette!("{}", rpc.parse_err_msg(res, dec)))
     }
+}
+
+/// Use an embedded node to enroll a user with a token
+pub async fn enroll(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    token: Auth0Token,
+) -> miette::Result<()> {
+    let cloud_opts = CloudOpts { identity: None };
+    let node_name = start_embedded_node(ctx, opts, None).await?;
+    enroll_with_node(ctx, opts, &cloud_opts.route(), node_name.as_str(), token).await
 }
 
 async fn default_space<'a>(
@@ -386,6 +398,12 @@ impl Auth0Provider {
 
 pub struct Auth0Service(Auth0Provider);
 
+impl Default for Auth0Service {
+    fn default() -> Self {
+        Auth0Service::new(Auth0Provider::Auth0)
+    }
+}
+
 impl Auth0Service {
     pub fn new(provider: Auth0Provider) -> Self {
         Self(provider)
@@ -395,9 +413,8 @@ impl Auth0Service {
         &self.0
     }
 
-    pub(crate) async fn token(
+    pub(crate) async fn get_token_interactively(
         &self,
-        _cloud_opts: &CloudOpts,
         opts: &CommandGlobalOpts,
     ) -> Result<Auth0Token> {
         let dc = self.device_code().await?;
@@ -449,6 +466,23 @@ impl Auth0Service {
             ))?;
         }
 
+        self.poll_token(dc, opts).await
+    }
+
+    /// Using the device code get a token from the Auth0 service
+    /// The device code is directly pasted to the current opened browser window
+    pub async fn get_token(&self, opts: &CommandGlobalOpts) -> Result<Auth0Token> {
+        let dc = self.device_code().await?;
+
+        let uri: &str = &dc.verification_uri_complete;
+        opts.terminal
+            .write_line(&fmt_info!("Opening {}", uri.to_string().light_green()))?;
+        if open::that(uri).is_err() {
+            opts.terminal.write_line(&fmt_err!(
+                "Couldn't open activation url automatically [url={}]",
+                uri.to_string().light_green()
+            ))?;
+        }
         self.poll_token(dc, opts).await
     }
 

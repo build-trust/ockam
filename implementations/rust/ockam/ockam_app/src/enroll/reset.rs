@@ -1,18 +1,20 @@
-use tracing;
-use tracing::{error, info};
+use miette::{miette, IntoDiagnostic};
 
 use ockam_command::{CommandGlobalOpts, GlobalArgs};
 
 /// Reset the project.
 /// This function removes all persisted state
 /// So that the user must enroll again in order to be able to access a project
-///
 #[tauri::command]
-pub fn reset() {
+pub fn reset() -> miette::Result<()> {
     let options = CommandGlobalOpts::new(GlobalArgs::default());
     if let Err(e) = options.state.delete(true) {
-        error!("{:?}", e)
+        Err(miette!("{:?}", e))
     } else {
-        info!("Local Ockam configuration deleted")
+        options
+            .terminal
+            .write_line("Local Ockam configuration deleted")
+            .into_diagnostic()?;
+        Ok(())
     }
 }
