@@ -4290,7 +4290,7 @@ dependencies = [
  "ockam_command",
  "ockam_core",
  "ockam_multiaddr",
- "open 4.2.0",
+ "open",
  "serde",
  "serde_json",
  "tauri",
@@ -4337,7 +4337,7 @@ dependencies = [
  "ockam_vault",
  "ockam_vault_aws",
  "once_cell",
- "open 5.0.0",
+ "open",
  "pem-rfc7468",
  "rand 0.8.5",
  "regex",
@@ -4692,17 +4692,6 @@ name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
-
-[[package]]
-name = "open"
-version = "4.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a083c0c7e5e4a8ec4176346cf61f67ac674e8bfb059d9226e1c54a96b377c12"
-dependencies = [
- "is-wsl",
- "libc",
- "pathdiff",
-]
 
 [[package]]
 name = "open"
