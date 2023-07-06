@@ -4351,6 +4351,7 @@ dependencies = [
  "serde_json",
  "tauri",
  "tauri-build",
+ "tracing",
 ]
 
 [[package]]
