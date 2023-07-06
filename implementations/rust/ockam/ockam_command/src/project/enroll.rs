@@ -1,33 +1,28 @@
 use clap::Args;
-
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
-use ockam_api::cloud::project::{OktaAuth0, Project};
-use ockam_api::identity::EnrollmentTicket;
-use ockam_core::api::{Request, Status};
-use ockam_multiaddr::MultiAddr;
-use tracing::debug;
-
-use crate::enroll::{Auth0Provider, Auth0Service};
-use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::ProjectInfo;
-use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::{node_rpc, RpcBuilder};
-use crate::{docs, CommandGlobalOpts, Result};
-
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::config::lookup::ProjectAuthority;
+use ockam_api::identity::EnrollmentTicket;
 use ockam_api::DefaultAddress;
 use ockam_core::route;
 use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
+use ockam_multiaddr::MultiAddr;
 use ockam_node::RpcClient;
+
+use crate::enroll::{enroll_with_node, Auth0Provider, Auth0Service};
+use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::project::util::create_secure_channel_to_authority;
+use crate::project::ProjectInfo;
+use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::node_rpc;
+use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -35,8 +30,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt"
 /// Use an OTC to enroll an identity with a project node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
     #[arg(long = "okta", group = "authentication_method")]
@@ -149,15 +144,8 @@ async fn run_impl(
             .await
             .into_diagnostic()?
     } else if cmd.okta {
-        authenticate_through_okta(
-            &ctx,
-            &cmd,
-            &opts,
-            &node_name,
-            proj,
-            secure_channel_addr.clone(),
-        )
-        .await?
+        authenticate_through_okta(&ctx, &opts, &node_name, proj, secure_channel_addr.clone())
+            .await?
     }
 
     let credential_issuer_route = {
@@ -193,7 +181,6 @@ async fn run_impl(
 
 async fn authenticate_through_okta(
     ctx: &Context,
-    cmd: &EnrollCommand,
     opts: &CommandGlobalOpts,
     node_name: &str,
     p: ProjectInfo<'_>,
@@ -205,7 +192,7 @@ async fn authenticate_through_okta(
         .ok_or(miette!("Okta addon not configured"))?
         .into();
     let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config));
-    let token = auth0.token(&cmd.cloud_opts, opts).await?;
+    let token = auth0.get_token_interactively(opts).await?;
 
     // Return address to the "okta_authenticator" worker on the authority node through the secure channel
     let okta_authenticator_addr = {
@@ -222,19 +209,7 @@ async fn authenticate_through_okta(
         addr
     };
 
-    // Send enroll request to authority node
-    let token = AuthenticateAuth0Token::new(token);
-    let req = Request::post("v0/enroll").body(token);
-    let mut rpc = RpcBuilder::new(ctx, opts, node_name)
-        .to(&okta_authenticator_addr)?
-        .build();
-    debug!(addr = %okta_authenticator_addr, "enrolling");
-    rpc.request(req).await?;
-    let (res, dec) = rpc.check_response()?;
-    if res.status() == Some(Status::Ok) {
-        Ok(())
-    } else {
-        eprintln!("{}", rpc.parse_err_msg(res, dec));
-        Err(miette!("Failed to enroll"))
-    }
+    enroll_with_node(ctx, opts, &okta_authenticator_addr, node_name, token)
+        .await
+        .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")
 }
