@@ -1,6 +1,6 @@
 use miette::miette;
-use ockam::Context;
 
+use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cloud::{enroll::auth0::AuthenticateAuth0Token, CloudRequestWrapper};
 use ockam_command::enroll::{Auth0Provider, Auth0Service};
@@ -18,16 +18,12 @@ use ockam_multiaddr::MultiAddr;
 ///  - connects to the Orchestrator with the retrieved token to create a project
 ///
 #[tauri::command]
-pub fn enroll_user() -> String {
+pub fn enroll_user() {
     let options = CommandGlobalOpts::new(GlobalArgs::default());
-
     if options.state.identities.default().is_err() {
         create_default_identity(&options);
     }
-
-    node_rpc(rpc, options);
-
-    "Enrolled".to_string()
+    node_rpc(rpc, options)
 }
 
 async fn rpc(ctx: Context, options: CommandGlobalOpts) -> miette::Result<()> {
