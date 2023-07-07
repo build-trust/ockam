@@ -20,6 +20,6 @@
   },
   "type": "module",
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-alpha.4"
+    "@tauri-apps/api": "2.0.0-alpha.5"
   }
 }
