@@ -1,0 +1,164 @@
+---
+version: "3.7"
+name: redpanda-quickstart
+networks:
+  redpanda_network:
+    driver: bridge
+volumes:
+  redpanda-0: null
+  ockam-redpanda-outlet-data: null
+  ockam-kafka-consumer-sidecar-data: null
+  ockam-kafka-producer-sidecar-data: null
+services:
+  redpanda-0:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers'
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers'
+      # from outside the Docker network.
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # Redpanda brokers use the RPC API to communicate with eachother internally.
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
+      - --smp 1
+      # The amount of memory to make available to Redpanda.
+      - --memory 1G
+      # Mode dev-container uses well-known configuration properties for development in containers.
+      - --mode dev-container
+      # enable logs for debugging.
+      - --default-log-level=debug
+    image: docker.redpanda.com/redpandadata/redpanda:v23.1.13
+    container_name: redpanda-0
+    volumes:
+      - redpanda-0:/var/lib/redpanda/data
+    networks:
+      - redpanda_network
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:v2.2.4
+    networks:
+      - redpanda_network
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda-0:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda-0:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-0:9644"]
+    ports:
+      - 8080:8080
+    depends_on:
+      - redpanda-0
+  ockam-redpanda-outlet:
+    command:
+      - kafka-outlet
+      - --tcp-listener-address
+      - 0.0.0.0:6000
+      - --bootstrap-server-address
+      - redpanda-0:9092
+      - --enrollment-ticket
+      - /mnt/secrets/ticket
+    environment:
+      OCKAM_HOME: /opt/ockam/data
+    image: ghcr.io/build-trust/ockam-kafka-sidecar:latest
+    container_name: ockam-redpanda-outlet
+    volumes:
+      - ockam-redpanda-outlet-data:/opt/ockam/data
+      - ./mount/outlet/secrets:/mnt/secrets
+    networks:
+      - redpanda_network
+    depends_on:
+      - redpanda-0
+
+  ockam-kafka-consumer-sidecar:
+    command:
+      - kafka-consumer
+      - --bootstrap-server-address
+      - 127.0.0.1:9092
+      - --route-to-outlet
+      - /dnsaddr/ockam-redpanda-outlet/tcp/6000/secure/api
+      - --enrollment-ticket
+      - /mnt/secrets/ticket
+    environment:
+      OCKAM_HOME: /opt/ockam/data
+    image: ghcr.io/build-trust/ockam-kafka-sidecar:latest
+    container_name: ockam-kafka-consumer-sidecar
+    volumes:
+      - ockam-kafka-consumer-sidecar-data:/opt/ockam/data
+      - ./mount/consumer/secrets:/mnt/secrets
+    networks:
+      - redpanda_network
+    depends_on:
+      - ockam-redpanda-outlet
+  kafka-consumer-a:
+    command:
+      - kafka-console-consumer.sh
+      - --topic
+      - demo-topic
+      - --bootstrap-server
+      - 127.0.0.1:9092
+    image: docker.io/bitnami/kafka:3.4.0-debian-11-r28
+    network_mode: "service:ockam-kafka-consumer-sidecar"
+    depends_on:
+      - ockam-kafka-consumer-sidecar
+  kafka-consumer-b:
+    command:
+      - kafka-console-consumer.sh
+      - --topic
+      - demo-topic
+      - --bootstrap-server
+      - redpanda-0:9092
+    image: docker.io/bitnami/kafka:3.4.0-debian-11-r28
+    networks:
+      - redpanda_network
+    depends_on:
+      - redpanda-0
+
+  ockam-kafka-producer-sidecar:
+    command:
+      - kafka-producer
+      - --bootstrap-server-address
+      - 127.0.0.1:9092
+      - --route-to-outlet
+      - /dnsaddr/ockam-redpanda-outlet/tcp/6000/secure/api
+      - --enrollment-ticket
+      - /mnt/secrets/ticket
+    environment:
+      OCKAM_HOME: /opt/ockam/data
+    image: ghcr.io/build-trust/ockam-kafka-sidecar:latest
+    container_name: ockam-kafka-producer-sidecar
+    volumes:
+      - ockam-kafka-producer-sidecar-data:/opt/ockam/data
+      - ./mount/producer/secrets:/mnt/secrets
+    networks:
+      - redpanda_network
+    depends_on:
+      - ockam-kafka-consumer-sidecar
+  kafka-producer:
+    command: ["sleep", "infinity"]
+    image: docker.io/bitnami/kafka:3.4.0-debian-11-r28
+    container_name: kafka-producer
+    network_mode: "service:ockam-kafka-producer-sidecar"
+    depends_on:
+      - ockam-kafka-producer-sidecar
