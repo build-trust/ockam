@@ -1,6 +1,25 @@
 
 From the root directory of the ockam codebase:
 
+## Builder Tauri
+
+Tauri brings many ui-related dependencies for this reason lives in a dedicated
+base image.  
+Build the builder-tauri:
+
+```
+docker build \
+  --tag ockam-builder-tauri:latest \
+  --tag ghcr.io/build-trust/ockam-builder-tauri:latest \
+  tools/docker/builder-tauri
+```
+
+Run the builder-tauri:
+
+```
+docker run --rm -it -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ockam-builder-tauri:latest bash
+```
+
 ## Builder
 
 Build the builder:

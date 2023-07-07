@@ -1,4 +1,4 @@
-FROM gcc:12.3.0@sha256:5e1768ffd3230192358cfbde63443750f8f78f160a449d25007de9828c41976d
+FROM ockam-builder-tauri:latest
 
 ARG RUSTUP_INIT_VERSION=1.25.2
 ARG RUST_VERSION=1.68.0
@@ -60,7 +60,7 @@ RUN set -xe; \
 # Setup base tools
     apt update; \
     DEBIAN_FRONTEND=noninteractive apt install --assume-yes --no-install-recommends  \
-      apt-utils build-essential parallel ca-certificates curl locales xz-utils clang; \
+      parallel ca-certificates curl locales xz-utils clang; \
 # Setup locale
     LANG=en_US.UTF-8; \
     echo $LANG UTF-8 > /etc/locale.gen; \
@@ -105,7 +105,6 @@ RUN set -xe; \
     cargo install --locked cargo-deny; \
     cargo install --locked cargo-nextest; \
     cargo install --locked cargo-readme; \
-    cargo install --locked tauri-cli; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
     apt update; \
@@ -152,14 +151,6 @@ RUN set -xe; \
     echo "${GH_CLI_SHA256}  gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" | sha256sum -c; \
     tar -xf "gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" -C /opt/; \
     mv "/opt/gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}" "${GH_CLI_HOME}"; \
-# Setup Tauri dependencies
-    echo "deb http://deb.debian.org/debian experimental main" >> /etc/apt/sources.list; \
-    echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list; \
-    apt update; \
-    DEBIAN_FRONTEND=noninteractive apt install --assume-yes -t experimental libgtk-4-dev vite -y; \
-    DEBIAN_FRONTEND=noninteractive apt install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y; \
-    npm install -g pnpm@${PNPM_VERSION}; \
-    npm install -g vite@${VITE_VERSION}; \
 # Setup cosign
     cd /tmp; \
     COSIGN_PACKAGE="cosign-linux-${COSIGN_OS}"; \

@@ -1,0 +1,15 @@
+Package: *
+Pin: release a=stable
+Pin-Priority: 700
+
+Package: *
+Pin: release a=testing
+Pin-Priority: 650
+
+Package: libgtk-4-dev
+Pin: release n=experimental
+Pin-Priority: 1000
+
+Package: vite
+Pin: release n=experimental
+Pin-Priority: 1000
