@@ -25,6 +25,11 @@ pub struct DeleteCommand {
 
     #[command(flatten)]
     node_opts: NodeOpts,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
+
 }
 
 impl DeleteCommand {
