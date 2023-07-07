@@ -5,6 +5,7 @@ use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
+
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -15,9 +16,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 /// Delete a space
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct DeleteCommand {
     /// Name of the space.
@@ -26,6 +27,10 @@ pub struct DeleteCommand {
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -46,31 +51,28 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> miette::Result<()> {
-    let id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
+    if opts
+        .terminal
+        .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this space?")?
+    {
+        let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
+        let node_name = start_embedded_node(ctx, &opts, None).await?;
+        let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
+        rpc.request(api::space::delete(&space_id, &CloudOpts::route()))
+            .await?;
+        rpc.is_ok()?;
 
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
-    let controller_route = &CloudOpts::route();
+        let _ = opts.state.spaces.delete(&cmd.name);
+        // TODO: remove projects associated to the space.
+        //  Currently we are not storing that association in the project config file.
+        delete_embedded_node(&opts, rpc.node_name()).await;
 
-    // Send request
-    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request(api::space::delete(&id, controller_route))
-        .await?;
-    rpc.is_ok()?;
-
-    // Remove from state
-    let _ = opts.state.spaces.delete(&cmd.name);
-    // TODO: remove projects associated to the space.
-    //  Currently we are not storing that association in the project config file.
-
-    delete_embedded_node(&opts, rpc.node_name()).await;
-
-    // log the deletion
-    opts.terminal
-        .stdout()
-        .plain(fmt_ok!("Space with name '{}' has been deleted.", &cmd.name))
-        .machine(&cmd.name)
-        .json(serde_json::json!({ "space": { "name": &cmd.name } }))
-        .write_line()?;
-
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("Space with name '{}' has been deleted.", &cmd.name))
+            .machine(&cmd.name)
+            .json(serde_json::json!({ "space": { "name": &cmd.name } }))
+            .write_line()?;
+    }
     Ok(())
 }

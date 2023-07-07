@@ -1,19 +1,21 @@
 use crate::node::get_node_name;
-use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::Result;
+
+use crate::util::{node_rpc, parse_node_name, Rpc};
+
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
+
 use ockam::Context;
-use ockam_core::api::{Request, RequestBuilder};
+use ockam_core::api::Request;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
 /// Delete a Relay
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = false,
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+arg_required_else_help = false,
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct DeleteCommand {
     /// Name assigned to Relay that will be deleted
@@ -23,6 +25,10 @@ pub struct DeleteCommand {
     /// Node on which to delete the Relay. If not provided, the default node will be used
     #[arg(global = true, long, value_name = "NODE")]
     pub at: Option<String>,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -33,32 +39,32 @@ impl DeleteCommand {
 
 pub async fn run_impl(
     ctx: Context,
-    (options, cmd): (CommandGlobalOpts, DeleteCommand),
+    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let relay_name = cmd.relay_name.clone();
-    let at = get_node_name(&options.state, &cmd.at);
-    let node = extract_address_value(&at)?;
-    let mut rpc = Rpc::background(&ctx, &options, &node)?;
-    rpc.request(make_api_request(cmd)?).await?;
-
-    rpc.is_ok()?;
-
-    options
+    if opts
         .terminal
-        .stdout()
-        .plain(fmt_ok!(
-            "Relay with name {} on Node {} has been deleted.",
-            relay_name,
-            node
-        ))
-        .machine(&relay_name)
-        .json(serde_json::json!({ "forwarder": { "name": relay_name, "node": node } }))
-        .write_line()?;
-    Ok(())
-}
+        .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this relay?")?
+    {
+        let relay_name = cmd.relay_name.clone();
+        let at = get_node_name(&opts.state, &cmd.at);
+        let node = parse_node_name(&at)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+        rpc.request(Request::delete(format!("/node/forwarder/{relay_name}",)))
+            .await?;
+        rpc.is_ok()?;
 
-/// Construct a request to delete a relay
-fn make_api_request<'a>(cmd: DeleteCommand) -> Result<RequestBuilder<'a>> {
-    let request = Request::delete(format!("/node/forwarder/{}", cmd.relay_name));
-    Ok(request)
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!(
+                "Relay with name {} on Node {} has been deleted.",
+                relay_name,
+                node
+            ))
+            .machine(&relay_name)
+            .json(serde_json::json!({ "forwarder": { "name": relay_name,
+                "node": node } }))
+            .write_line()
+            .unwrap();
+    }
+    Ok(())
 }

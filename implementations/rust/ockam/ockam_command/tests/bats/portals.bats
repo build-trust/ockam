@@ -261,7 +261,7 @@ teardown() {
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
   assert_success
 
-  run "$OCKAM" node delete blue
+  run "$OCKAM" node delete blue --yes
   assert_success
 
   run curl --fail --head --max-time 2 "127.0.0.1:$port"
@@ -299,7 +299,7 @@ teardown() {
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
   assert_success
 
-  $OCKAM node delete blue
+  $OCKAM node delete blue --yes
 
   run curl --fail --head --max-time 2 "127.0.0.1:$port"
   assert_failure

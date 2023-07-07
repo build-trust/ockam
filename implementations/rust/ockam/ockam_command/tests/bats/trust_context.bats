@@ -41,7 +41,7 @@ teardown() {
   assert_output --partial "${t}"
 
   # Delete and verify
-  run "$OCKAM" trust-context delete "${t}"
+  run "$OCKAM" trust-context delete "${t}" --yes
   assert_success
   run "$OCKAM" trust-context show "${t}"
   assert_failure
@@ -131,7 +131,7 @@ teardown() {
   assert_success
   assert_output $msg
 
-  $OCKAM node delete alice
+  $OCKAM node delete alice --yes
   echo "{\"id\": \"$authority_id\"}" >"$OCKAM_HOME/alice-trust-context.json"
   $OCKAM node create alice --tcp-listener-address 127.0.0.1:$port --identity alice --trust-context "$OCKAM_HOME/alice-trust-context.json"
 

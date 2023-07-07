@@ -114,7 +114,7 @@ teardown() {
 
   run "$OCKAM" vault create "${v}"
   assert_success
-  run "$OCKAM" vault delete "${v}"
+  run "$OCKAM" vault delete "${v}" --yes
   assert_success
   run "$OCKAM" vault show "${v}"
   assert_failure
@@ -127,7 +127,7 @@ teardown() {
   assert_success
   run "$OCKAM" identity create "${i}" --vault "${v}"
   assert_success
-  run "$OCKAM" vault delete "${v}"
+  run "$OCKAM" vault delete "${v}" --yes
   assert_success
   run "$OCKAM" vault show "${v}"
   assert_failure
@@ -163,7 +163,7 @@ teardown() {
   run "$OCKAM" identity create "${i}"
   assert_success
 
-  run "$OCKAM" identity delete "${i}"
+  run "$OCKAM" identity delete "${i}" --yes
   assert_success
 
   # Fail to delete identity when it's in use by a node
@@ -174,13 +174,13 @@ teardown() {
   assert_success
   run "$OCKAM" node create "${n}" --identity "${i}"
   assert_success
-  run "$OCKAM" identity delete "${i}"
+  run "$OCKAM" identity delete "${i}" --yes
   assert_failure
 
   # Delete identity after deleting the node
-  run "$OCKAM" node delete "${n}"
+  run "$OCKAM" node delete "${n}" --yes
   assert_success
-  run "$OCKAM" identity delete "${i}"
+  run "$OCKAM" identity delete "${i}" --yes
   assert_success
 }
 
@@ -208,7 +208,7 @@ teardown() {
   assert_output --partial "$id"
 
   # Delete the connection
-  run "$OCKAM" tcp-connection delete --at n1 "$id"
+  run "$OCKAM" tcp-connection delete --at n1 "$id" --yes
   assert_success
 
   # Check that it's no longer listed
@@ -239,7 +239,7 @@ teardown() {
   assert_output --partial "$addr"
 
   # Delete the listener
-  run "$OCKAM" tcp-listener delete --at n1 "$addr"
+  run "$OCKAM" tcp-listener delete --at n1 "$addr" --yes
   assert_success
 
   # Check that it's no longer listed
@@ -468,11 +468,11 @@ teardown() {
   assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
   assert_success
 
-  run $OCKAM tcp-inlet delete "test-inlet" --at /node/n2
+  run $OCKAM tcp-inlet delete "test-inlet" --at /node/n2 --yes
   assert_success
 
   # Test deletion of a previously deleted TCP inlet
-  run $OCKAM tcp-inlet delete "test-inlet" --at /node/n2
+  run $OCKAM tcp-inlet delete "test-inlet" --at /node/n2 --yes
   assert_output --partial "NotFound"
 }
 
@@ -498,11 +498,11 @@ teardown() {
   assert_output --regexp "To TCP: 127.0.0.1:$port"
   assert_success
 
-  run $OCKAM tcp-outlet delete "test-outlet"
+  run $OCKAM tcp-outlet delete "test-outlet" --yes
   assert_success
 
   # Test deletion of a previously deleted TCP outlet
-  run $OCKAM tcp-outlet delete "test-outlet"
+  run $OCKAM tcp-outlet delete "test-outlet" --yes
   assert_output --partial "NotFound"
 }
 

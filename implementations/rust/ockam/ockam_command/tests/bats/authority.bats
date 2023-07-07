@@ -52,7 +52,7 @@ teardown() {
 
   echo "$trusted" >"$OCKAM_HOME/trusted-anchors.json"
   # Restart the authority node with a trusted identities file and check that m1 can still enroll
-  run "$OCKAM" node delete authority
+  run "$OCKAM" node delete authority --yes
   run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:$port --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
   assert_success
   sleep 1 # wait for authority to start TCP listener

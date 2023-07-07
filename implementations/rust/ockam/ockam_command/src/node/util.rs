@@ -165,7 +165,7 @@ pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> miette:
     Ok(())
 }
 
-pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> miette::Result<()> {
+pub fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::Result<()> {
     let nodes_states = opts.state.nodes.list()?;
     let mut deletion_errors = Vec::new();
     for s in nodes_states {
