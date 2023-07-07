@@ -45,8 +45,8 @@ importers:
         specifier: ^4.0.4
         version: 4.0.4
       svelte-check:
-        specifier: ^3.0.1
-        version: 3.0.1(@babel/core@7.21.8)(svelte@4.0.4)
+        specifier: ^3.4.5
+        version: 3.4.5(@babel/core@7.21.8)(svelte@4.0.4)
       tslib:
         specifier: ^2.4.1
         version: 2.4.1
@@ -3055,11 +3055,11 @@ packages:
     engines: {node: '>= 0.4'}
     dev: true
 
-  /svelte-check@3.0.1(@babel/core@7.21.8)(svelte@4.0.4):
-    resolution: {integrity: sha512-7YpHYWv6V2qhcvVeAlXixUPAlpLCXB1nZEQK0EItB3PtuYmENhKclbc5uKSJTodTwWR1y+4stKGcbH30k6A3Yw==}
+  /svelte-check@3.4.5(@babel/core@7.21.8)(svelte@4.0.4):
+    resolution: {integrity: sha512-FsD/CUVdEI0F9sfylh1Fe15kDjvvbyBxzDpACPsdq0EASgaZukBXaMXofpxlgmWsgVET3OynMQlbtUQoWCz9Rw==}
     hasBin: true
     peerDependencies:
-      svelte: ^3.55.0
+      svelte: ^3.55.0 || ^4.0.0-next.0 || ^4.0.0
     dependencies:
       '@jridgewell/trace-mapping': 0.3.18
       chokidar: 3.5.3
@@ -3068,8 +3068,8 @@ packages:
       picocolors: 1.0.0
       sade: 1.8.1
       svelte: 4.0.4
-      svelte-preprocess: 5.0.4(@babel/core@7.21.8)(svelte@4.0.4)(typescript@4.9.5)
-      typescript: 4.9.5
+      svelte-preprocess: 5.0.4(@babel/core@7.21.8)(svelte@4.0.4)(typescript@5.1.6)
+      typescript: 5.1.6
     transitivePeerDependencies:
       - '@babel/core'
       - coffeescript
@@ -3091,7 +3091,7 @@ packages:
       svelte: 4.0.4
     dev: true
 
-  /svelte-preprocess@5.0.4(@babel/core@7.21.8)(svelte@4.0.4)(typescript@4.9.5):
+  /svelte-preprocess@5.0.4(@babel/core@7.21.8)(svelte@4.0.4)(typescript@5.1.6):
     resolution: {integrity: sha512-ABia2QegosxOGsVlsSBJvoWeXy1wUKSfF7SWJdTjLAbx/Y3SrVevvvbFNQqrSJw89+lNSsM58SipmZJ5SRi5iw==}
     engines: {node: '>= 14.10.0'}
     requiresBuild: true
@@ -3136,7 +3136,7 @@ packages:
       sorcery: 0.11.0
       strip-indent: 3.0.0
       svelte: 4.0.4
-      typescript: 4.9.5
+      typescript: 5.1.6
     dev: true
 
   /svelte@4.0.4:
@@ -3234,12 +3234,6 @@ packages:
   /type-fest@0.21.3:
     resolution: {integrity: sha512-t0rzBq87m3fVcduHDUFhKmyyX+9eo6WQjZvf51Ea/M0Q7+T374Jp1aUiyUl0GKxp8M/OETVHSDvmkyPgvX+X2w==}
     engines: {node: '>=10'}
-    dev: true
-
-  /typescript@4.9.5:
-    resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
-    engines: {node: '>=4.2.0'}
-    hasBin: true
     dev: true
 
   /typescript@5.1.6:
