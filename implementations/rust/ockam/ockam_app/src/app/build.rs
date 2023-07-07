@@ -1,14 +1,17 @@
 use tauri::{CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem};
 
-use crate::{enroll, quit};
+use crate::enroll::EnrollActions;
+use crate::quit::QuitActions;
 
 /// Create the system tray with all the major functions.
 /// Separate groups of related functions with a native separator
 pub fn create_system_tray() -> SystemTray {
+    let enroll = EnrollActions::new();
+    let quit = QuitActions::new();
     let tray_menu = SystemTrayMenu::new()
-        .add_menu_items(enroll::menu_items())
+        .add_menu_items(vec![enroll.enroll])
         .add_native_item(SystemTrayMenuItem::Separator)
-        .add_menu_items(quit::menu_items());
+        .add_menu_items(vec![enroll.reset, quit.quit]);
 
     SystemTray::new().with_menu(tray_menu)
 }
