@@ -6,7 +6,7 @@
     "distDir": "../../../typescript/ockam/ockam_app/build"
   },
   "package": {
-    "productName": "Ockam",
+    "productName": "Ockam Desktop",
     "version": "0.1.0"
   },
   "tauri": {
@@ -19,7 +19,10 @@
       "category": "DeveloperTool",
       "copyright": "",
       "deb": {
-        "depends": []
+        "depends": [],
+        "files": {
+          "/usr/bin/ockam": "../../../../target/release/ockam"
+        }
       },
       "externalBin": [],
       "icon": [
@@ -30,7 +33,7 @@
         "icons/icon.ico"
       ],
       "identifier": "io.ockam.app",
-      "longDescription": "",
+      "longDescription": "End-to-end encryption and mutual authentication for distributed applications.",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",

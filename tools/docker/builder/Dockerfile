@@ -58,8 +58,9 @@ RUN set -xe; \
       ;; \
     esac; \
 # Setup base tools
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends parallel ca-certificates curl locales xz-utils clang; \
+    apt update; \
+    DEBIAN_FRONTEND=noninteractive apt install --assume-yes --no-install-recommends  \
+      apt-utils build-essential parallel ca-certificates curl locales xz-utils clang; \
 # Setup locale
     LANG=en_US.UTF-8; \
     echo $LANG UTF-8 > /etc/locale.gen; \
@@ -86,8 +87,8 @@ RUN set -xe; \
     npm --global config set user root && \
     npm install --global @commitlint/cli@${COMMITLINT_VERSION}; \
 # Setup rust
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes \
+    apt update; \
+    DEBIAN_FRONTEND=noninteractive apt install --assume-yes \
       libssl-dev pkg-config procps qemu-system-arm libdbus-1-dev cmake; \
     curl --proto '=https' --tlsv1.2 -sSOL \
       "https://static.rust-lang.org/rustup/archive/${RUSTUP_INIT_VERSION}/${OS}/rustup-init"; \
@@ -104,12 +105,13 @@ RUN set -xe; \
     cargo install --locked cargo-deny; \
     cargo install --locked cargo-nextest; \
     cargo install --locked cargo-readme; \
+    cargo install --locked tauri-cli; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
+    apt update; \
+    DEBIAN_FRONTEND=noninteractive apt install --assume-yes --no-install-recommends \
       libncurses5 libwxbase3.0-0v5 libwxgtk3.0-gtk3-0v5 libsctp1 libgtk-3-dev; \
-    apt-get clean; \
+    apt clean; \
     rm -rf /var/lib/apt/lists/*; \
     ERLANG_PACKAGE="esl-erlang_${ERLANG_VERSION}_${ERLANG_OS}.deb"; \
     curl --proto '=https' --tlsv1.2 -sSOL "https://packages.erlang-solutions.com/erlang/debian/pool/${ERLANG_PACKAGE}"; \
@@ -154,8 +156,8 @@ RUN set -xe; \
     echo "deb http://deb.debian.org/debian experimental main" >> /etc/apt/sources.list; \
     echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list; \
     apt update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes -t experimental libgtk-4-dev vite -y; \
-    DEBIAN_FRONTEND=noninteractive apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y; \
+    DEBIAN_FRONTEND=noninteractive apt install --assume-yes -t experimental libgtk-4-dev vite -y; \
+    DEBIAN_FRONTEND=noninteractive apt install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y; \
     npm install -g pnpm@${PNPM_VERSION}; \
     npm install -g vite@${VITE_VERSION}; \
 # Setup cosign
@@ -166,8 +168,8 @@ RUN set -xe; \
     mv ${COSIGN_PACKAGE} /usr/bin/cosign; \
     chmod +x /usr/bin/cosign; \
 # Setup mold linker
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends clang; \
+    apt update; \
+    DEBIAN_FRONTEND=noninteractive apt install --assume-yes --no-install-recommends clang; \
     cd /tmp; \
     MOLD_PACKAGE="mold-${MOLD_VERSION}-${MOLD_OS}.tar.gz"; \
     curl --proto '=https' --tlsv1.2 -sSOL "https://github.com/rui314/mold/releases/download/v${MOLD_VERSION}/${MOLD_PACKAGE}"; \
@@ -185,7 +187,7 @@ RUN set -xe; \
     mv ${SHFMT_PACKAGE} /usr/bin/shfmt; \
     chmod +x /usr/bin/shfmt; \
 # Cleanup
-    apt-get clean; \
+    apt clean; \
     rm -rf /var/lib/apt/lists/*
 
 ENV PATH="${GH_CLI_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:${MOLD_HOME}/bin:$PATH" \
