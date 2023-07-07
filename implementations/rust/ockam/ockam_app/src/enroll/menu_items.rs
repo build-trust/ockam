@@ -46,29 +46,3 @@ pub fn on_reset(backend: impl Backend, app: &AppHandle<Wry>) -> tauri::Result<()
         Ok(())
     }
 }
-
-#[cfg(tests)]
-mod tests {
-    use super::*;
-
-    fn test_enroll_reset() {
-        let backend = TestBackend {};
-        let app = tauri::Builder::default()
-            .build(tauri::generate_context!())
-            .unwrap();
-        on_enroll(backend, &app.handle()).unwrap();
-    }
-
-    /// TEST HELPERS
-    struct TestBackend {}
-
-    impl Backend for TestBackend {
-        fn enroll_user(&self) -> miette::Result<()> {
-            Ok(())
-        }
-
-        fn reset(&self) -> miette::Result<()> {
-            Ok(())
-        }
-    }
-}
