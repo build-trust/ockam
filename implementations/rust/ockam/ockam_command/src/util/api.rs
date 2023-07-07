@@ -328,6 +328,27 @@ pub(crate) mod operation {
     }
 }
 
+/// Helpers to create share API requests
+#[cfg(feature = "orchestrator")]
+pub(crate) mod share {
+    // use crate::share::ListCommand;
+    use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
+
+    use super::*;
+
+    pub(crate) fn list(
+        kind: InvitationListKind,
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<CloudRequestWrapper<ListInvitations>> {
+        let req = ListInvitations { kind };
+        Request::get("v0/invitations".to_string()).body(CloudRequestWrapper::new(
+            req,
+            cloud_route,
+            None,
+        ))
+    }
+}
+
 ////////////// !== parsers
 
 pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<Response> {
