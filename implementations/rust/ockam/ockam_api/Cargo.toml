@@ -101,7 +101,7 @@ default-features = false
 cddl-cat = "0.6.1"
 fake = { version = "2", features = ['derive', 'uuid'] }
 hex = "0.4.3"
-indexmap = "1.7.0"
+indexmap = "2.0.0"
 mockall = "0.11"
 # TODO enable "tag" feature once implemented on elixir side
 ockam_api = { path = ".", features = ["std", "authenticators"] }
