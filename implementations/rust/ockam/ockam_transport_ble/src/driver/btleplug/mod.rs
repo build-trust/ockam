@@ -36,7 +36,11 @@ impl From<btleplug::Error> for BleError {
             btleplug::Error::TimedOut(_) => BleError::TimedOut,
             btleplug::Error::Uuid(_) => BleError::ConfigurationFailed,
             btleplug::Error::InvalidBDAddr(_) => BleError::ConfigurationFailed,
-            btleplug::Error::Other(e) => BleError::Other,
+            btleplug::Error::UnexpectedCallback => BleError::UnexpectedCallback,
+            btleplug::Error::UnexpectedCharacteristic => BleError::UnexpectedCharacteristic,
+            btleplug::Error::NoSuchCharacteristic => BleError::NoSuchCharacteristic,
+            btleplug::Error::RuntimeError(e) => BleError::RuntimeError(e),
+            btleplug::Error::Other(e) => BleError::Other(format!("{:?}", e)),
         }
     }
 }

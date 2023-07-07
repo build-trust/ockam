@@ -4,7 +4,7 @@ use ockam_core::{
 };
 
 /// A Bluetooth Low Energy connection worker specific error type
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum BleError {
     PermissionDenied,
@@ -22,7 +22,11 @@ pub enum BleError {
     ConnectionClosed,
     ReadError,
     WriteError,
-    Other,
+    UnexpectedCallback,
+    UnexpectedCharacteristic,
+    NoSuchCharacteristic,
+    RuntimeError(String),
+    Other(String),
     Unknown,
 }
 
@@ -41,7 +45,11 @@ impl core::fmt::Display for BleError {
             Self::ConnectionClosed => write!(f, "connection closed"),
             Self::ReadError => write!(f, "read error"),
             Self::WriteError => write!(f, "write error"),
-            Self::Other => write!(f, "other error"),
+            Self::UnexpectedCallback => write!(f, "unexpected callback"),
+            Self::UnexpectedCharacteristic => write!(f, "unexpected characteristic"),
+            Self::NoSuchCharacteristic => write!(f, "no such characteristic"),
+            Self::RuntimeError(s) => write!(f, "runtime error {:?}", s),
+            Self::Other(s) => write!(f, "other error {:?}", s),
             Self::Unknown => write!(f, "unknown error"),
         }
     }
