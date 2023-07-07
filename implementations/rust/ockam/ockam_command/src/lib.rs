@@ -32,6 +32,8 @@ mod reset;
 mod run;
 mod secure_channel;
 mod service;
+#[cfg(feature = "orchestrator")]
+mod share;
 mod space;
 mod status;
 mod subscription;
@@ -81,6 +83,8 @@ use relay::RelayCommand;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
+#[cfg(feature = "orchestrator")]
+use share::ShareCommand;
 use space::SpaceCommand;
 use status::StatusCommand;
 use std::{path::PathBuf, sync::Mutex};
@@ -261,6 +265,8 @@ pub enum OckamSubcommand {
     Space(SpaceCommand),
     Project(ProjectCommand),
     Admin(AdminCommand),
+    #[cfg(feature = "orchestrator")]
+    Share(ShareCommand),
     Subscription(SubscriptionCommand),
 
     Node(Box<NodeCommand>),
@@ -381,6 +387,8 @@ impl OckamCommand {
             OckamSubcommand::Space(c) => c.run(options),
             OckamSubcommand::Project(c) => c.run(options),
             OckamSubcommand::Admin(c) => c.run(options),
+            #[cfg(feature = "orchestrator")]
+            OckamSubcommand::Share(c) => c.run(options),
             OckamSubcommand::Subscription(c) => c.run(options),
 
             OckamSubcommand::Node(c) => c.run(options),
