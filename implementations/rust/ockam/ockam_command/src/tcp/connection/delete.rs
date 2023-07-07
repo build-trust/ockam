@@ -1,7 +1,10 @@
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{docs, node::NodeOpts, CommandGlobalOpts};
+use crate::util::{node_rpc, Rpc};
+use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 use clap::Args;
+
+use colorful::Colorful;
+
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 
@@ -14,8 +17,12 @@ pub struct DeleteCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
 
-    /// Tcp Connection ID
+    /// TCP connection ID
     pub address: String,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -29,15 +36,25 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = extract_address_value(&node_name)?;
-
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    let req = Request::delete("/node/tcp/connection")
-        .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-    rpc.request(req).await?;
-    rpc.is_ok()?;
-
-    println!("Tcp connection `{}` successfully deleted", cmd.address);
+    if opts.terminal.confirmed_with_flag_or_prompt(
+        cmd.yes,
+        "Are you sure you want to delete this TCP connection?",
+    )? {
+        let address = cmd.address;
+        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+        let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+        let req = Request::delete("/node/tcp/connection")
+            .body(models::transport::DeleteTransport::new(address.clone()));
+        rpc.request(req).await?;
+        rpc.is_ok()?;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!(
+                "TCP connection {address} has been successfully deleted"
+            ))
+            .json(serde_json::json!({ "tcp-connection": {"address": address } }))
+            .write_line()
+            .unwrap();
+    }
     Ok(())
 }

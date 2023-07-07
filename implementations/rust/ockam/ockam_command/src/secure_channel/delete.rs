@@ -1,18 +1,18 @@
+use crate::docs;
+
+use crate::util::is_tty;
 use crate::{
     util::{api, exitcode, extract_address_value, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat,
 };
-use std::str::FromStr;
-
-use colorful::Colorful;
-use serde_json::json;
-
-use crate::docs;
-use crate::util::is_tty;
 use clap::Parser;
+use colorful::Colorful;
+
 use ockam::{route, Context};
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
+use serde_json::json;
+use std::str::FromStr;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -20,9 +20,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 /// Delete Secure Channels
 #[derive(Clone, Debug, Parser)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct DeleteCommand {
     /// Node at which the secure channel was initiated
@@ -32,6 +32,10 @@ pub struct DeleteCommand {
     /// Address at which the channel to be deleted is running
     #[arg(value_parser(parse_address), display_order = 800)]
     address: Address,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -128,7 +132,7 @@ impl DeleteCommand {
     }
 }
 
-fn parse_address(input: &str) -> core::result::Result<Address, AddressParseError> {
+fn parse_address(input: &str) -> Result<Address, AddressParseError> {
     let buf: String = input.into();
 
     if buf.contains("/service/") {
@@ -145,19 +149,17 @@ fn parse_address(input: &str) -> core::result::Result<Address, AddressParseError
     Address::from_str(&buf)
 }
 
-async fn rpc(
-    ctx: Context,
-    (options, command): (CommandGlobalOpts, DeleteCommand),
-) -> miette::Result<()> {
-    let at = &command.parse_at_node();
-    let address = &command.address;
-
-    let mut rpc = Rpc::background(&ctx, &options, at)?;
-    let request = api::delete_secure_channel(address);
-    rpc.request(request).await?;
-    let response = rpc.parse_response::<DeleteSecureChannelResponse>()?;
-
-    command.print_output(at, address, &options, response);
-
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> miette::Result<()> {
+    if opts.terminal.confirmed_with_flag_or_prompt(
+        cmd.yes,
+        "Are you sure you want to delete this secure channel?",
+    )? {
+        let at = &cmd.parse_at_node();
+        let address = &cmd.address;
+        let mut rpc = Rpc::background(&ctx, &opts, at)?;
+        rpc.request(api::delete_secure_channel(address)).await?;
+        let res = rpc.parse_response::<DeleteSecureChannelResponse>()?;
+        cmd.print_output(at, address, &opts, res);
+    }
     Ok(())
 }

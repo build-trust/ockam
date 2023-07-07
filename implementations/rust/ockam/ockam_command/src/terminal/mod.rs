@@ -211,7 +211,7 @@ impl<W: TerminalWriter> Terminal<W> {
     }
 
     /// Prompt the user for a confirmation.
-    pub fn confirm(&self, msg: &str) -> Result<ConfirmResult> {
+    pub fn confirm(&self, msg: impl AsRef<str>) -> Result<ConfirmResult> {
         if !self.can_ask_for_user_input() {
             return Ok(ConfirmResult::NonTTY);
         }
@@ -219,9 +219,26 @@ impl<W: TerminalWriter> Terminal<W> {
             dialoguer::Confirm::new()
                 .default(true)
                 .show_default(true)
-                .with_prompt(msg)
+                .with_prompt(fmt_warn!("{}", msg.as_ref()))
                 .interact()?,
         ))
+    }
+
+    pub fn confirmed_with_flag_or_prompt(
+        &self,
+        flag: bool,
+        prompt_msg: impl AsRef<str>,
+    ) -> Result<bool> {
+        if flag {
+            Ok(true)
+        } else {
+            // If the confirmation flag is not provided, prompt the user.
+            match self.confirm(prompt_msg)? {
+                ConfirmResult::Yes => Ok(true),
+                ConfirmResult::No => Ok(false),
+                ConfirmResult::NonTTY => Err(miette!("Use --yes to confirm").into()),
+            }
+        }
     }
 
     fn can_ask_for_user_input(&self) -> bool {

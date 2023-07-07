@@ -1,12 +1,14 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
-use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::Result;
+
+use crate::fmt_ok;
+use crate::util::{node_rpc, parse_node_name, Rpc};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
+
 use ockam::Context;
-use ockam_core::api::{Request, RequestBuilder};
+use ockam_core::api::Request;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -21,6 +23,10 @@ pub struct DeleteCommand {
     /// Node on which to stop the tcp outlet. If none are provided, the default node will be used
     #[command(flatten)]
     node_opts: NodeOpts,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -34,29 +40,27 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let alias = cmd.alias.clone();
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = extract_address_value(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node)?;
-    rpc.request(make_api_request(cmd)?).await?;
+    if opts.terminal.confirmed_with_flag_or_prompt(
+        cmd.yes,
+        "Are you sure you want to delete this TCP outlet?",
+    )? {
+        let alias = cmd.alias.clone();
+        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+        let node = parse_node_name(&node_name)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+        rpc.request(Request::delete(format!("/node/outlet/{alias}")))
+            .await?;
+        rpc.is_ok()?;
 
-    rpc.is_ok()?;
-
-    opts.terminal
-        .stdout()
-        .plain(format!(
-            "{} TCP Outlet with alias {alias} on Node {node} has been deleted.",
-            "✔︎".light_green(),
-        ))
-        .machine(&alias)
-        .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node } }))
-        .write_line()?;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!(
+                "TCP outlet with alias {alias} on node {node} has been deleted."
+            ))
+            .machine(&alias)
+            .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node } }))
+            .write_line()
+            .unwrap();
+    }
     Ok(())
-}
-
-/// Construct a request to delete a tcp outlet
-fn make_api_request<'a>(cmd: DeleteCommand) -> Result<RequestBuilder<'a>> {
-    let alias = cmd.alias;
-    let request = Request::delete(format!("/node/outlet/{alias}"));
-    Ok(request)
 }

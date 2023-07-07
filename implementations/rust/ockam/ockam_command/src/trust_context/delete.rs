@@ -5,7 +5,7 @@ use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::terminal::ConfirmResult;
 use crate::util::local_cmd;
-use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -32,16 +32,19 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
     let DeleteCommand { name } = cmd;
     let state = opts.state.trust_contexts;
     state.get(&name)?;
-    if let ConfirmResult::No = opts.terminal.confirm(&fmt_warn!(
-        "This will delete the trust context named '{name}'. Do you wish to proceed?"
-    ))? {
+    if let ConfirmResult::No = opts
+        .terminal
+        .confirm("Are you sure you want to delete this trust context?")?
+    {
         // If the user has not confirmed, exit
         return Ok(());
     }
     state.delete(&name)?;
     opts.terminal
         .stdout()
-        .plain(fmt_ok!("The trust context named '{name}' has been deleted"))
+        .plain(fmt_ok!(
+            "The trust context with name '{name}' has been deleted"
+        ))
         .machine(&name)
         .json(serde_json::json!({ "trust-context": { "name": &name } }))
         .write_line()?;
