@@ -57,7 +57,7 @@ impl IdentitiesState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IdentityState {
     name: String,
     path: PathBuf,

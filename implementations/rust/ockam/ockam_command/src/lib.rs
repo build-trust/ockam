@@ -24,7 +24,6 @@ mod markdown;
 mod message;
 pub mod node;
 mod operation;
-mod orchestrator;
 mod pager;
 mod policy;
 mod project;
@@ -76,7 +75,6 @@ use miette::GraphicalReportHandler;
 use node::NodeCommand;
 use ockam_api::cli_state::CliState;
 use once_cell::sync::Lazy;
-use orchestrator::OrchestratorCommand;
 use policy::PolicyCommand;
 use project::ProjectCommand;
 use relay::RelayCommand;
@@ -272,8 +270,6 @@ pub enum OckamSubcommand {
     Message(MessageCommand),
     Relay(RelayCommand),
 
-    Orchestrator(OrchestratorCommand),
-
     TcpListener(TcpListenerCommand),
     TcpConnection(TcpConnectionCommand),
     TcpOutlet(TcpOutletCommand),
@@ -412,7 +408,6 @@ impl OckamCommand {
             OckamSubcommand::Authority(c) => c.run(options),
             OckamSubcommand::Policy(c) => c.run(options),
             OckamSubcommand::Lease(c) => c.run(options),
-            OckamSubcommand::Orchestrator(c) => c.run(options),
 
             OckamSubcommand::Run(c) => c.run(options),
             OckamSubcommand::Status(c) => c.run(options),
