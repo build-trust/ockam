@@ -74,7 +74,7 @@ async fn run_impl(
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
-    enroll_with_node(ctx, &opts, &cmd.cloud_opts.route(), &node_name, token)
+    enroll_with_node(ctx, &opts, &CloudOpts::route(), &node_name, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
@@ -139,9 +139,8 @@ pub async fn enroll(
     opts: &CommandGlobalOpts,
     token: Auth0Token,
 ) -> miette::Result<()> {
-    let cloud_opts = CloudOpts { identity: None };
     let node_name = start_embedded_node(ctx, opts, None).await?;
-    enroll_with_node(ctx, opts, &cloud_opts.route(), node_name.as_str(), token).await
+    enroll_with_node(ctx, opts, &CloudOpts::route(), node_name.as_str(), token).await
 }
 
 async fn default_space<'a>(
