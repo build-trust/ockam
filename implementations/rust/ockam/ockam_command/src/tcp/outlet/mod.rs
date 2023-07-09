@@ -1,6 +1,6 @@
-mod create;
+pub mod create;
 mod delete;
-mod list;
+pub mod list;
 mod show;
 
 use crate::{docs, CommandGlobalOpts};

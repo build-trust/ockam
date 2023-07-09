@@ -1,16 +1,28 @@
-use crate::app::{create_system_tray, process_application_event, process_system_tray_event};
+use crate::app::{process_application_event, process_system_tray_event, SystemTrayMenuBuilder};
+use crate::ctx::TauriCtx;
+use crate::error::Result;
+use tauri::{Manager, SystemTray};
 
 mod app;
+mod ctx;
 mod enroll;
+mod error;
 mod quit;
+mod tcp;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let system_tray = create_system_tray();
-
     // For now the application only consists in a system tray with several menu items
     tauri::Builder::default()
-        .system_tray(system_tray)
+        .setup(|app| {
+            let ctx = TauriCtx::new(app.app_handle());
+            app.listen_global(app::events::SYSTEM_TRAY_ON_UPDATE, move |_event| {
+                let _ = SystemTrayMenuBuilder::refresh(&ctx.clone());
+            });
+            app.trigger_global(app::events::SYSTEM_TRAY_ON_UPDATE, None);
+            Ok(())
+        })
+        .system_tray(SystemTray::new().with_menu(SystemTrayMenuBuilder::default()))
         .on_system_tray_event(process_system_tray_event)
         .build(tauri::generate_context!())
         .expect("Error while building the Ockam application")

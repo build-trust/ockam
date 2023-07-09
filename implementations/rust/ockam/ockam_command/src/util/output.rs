@@ -249,7 +249,7 @@ impl Output for ShowSecureChannelResponse<'_> {
     }
 }
 
-impl Output for OutletStatus<'_> {
+impl Output for OutletStatus {
     fn output(&self) -> Result<String> {
         let output = format!(
             r#"

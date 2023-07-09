@@ -1,4 +1,5 @@
-use tauri::{AppHandle, CustomMenuItem, Wry};
+use crate::ctx::TauriCtx;
+use tauri::CustomMenuItem;
 
 pub const QUIT_MENU_ID: &str = "quit";
 
@@ -15,6 +16,6 @@ impl QuitActions {
 }
 
 /// Quit the application when the user wants to
-pub fn on_quit(_app: &AppHandle<Wry>) -> tauri::Result<()> {
+pub fn on_quit(_ctx: TauriCtx) -> tauri::Result<()> {
     std::process::exit(0);
 }

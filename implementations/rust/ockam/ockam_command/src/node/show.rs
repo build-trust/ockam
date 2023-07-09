@@ -152,7 +152,7 @@ fn print_node_info(
             println!("    Outlet:");
             println!("      Forward Address: {}", e.tcp_addr);
 
-            if let Some(ma) = addr_to_multiaddr(e.worker_addr.as_ref()) {
+            if let Some(ma) = addr_to_multiaddr(&e.worker_addr) {
                 println!("      Address: {ma}");
             }
         }

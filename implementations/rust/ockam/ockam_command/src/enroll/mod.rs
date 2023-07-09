@@ -118,7 +118,7 @@ pub async fn enroll_with_node(
     route: &MultiAddr,
     node_name: &str,
     token: Auth0Token,
-) -> miette::Result<()> {
+) -> Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     rpc.request(api::enroll::auth0(route, token)).await?;
     let (res, dec) = rpc.check_response()?;
@@ -129,16 +129,12 @@ pub async fn enroll_with_node(
         info!("Already enrolled");
         Ok(())
     } else {
-        Err(miette!("{}", rpc.parse_err_msg(res, dec)))
+        Err(miette!("{}", rpc.parse_err_msg(res, dec)).into())
     }
 }
 
 /// Use an embedded node to enroll a user with a token
-pub async fn enroll(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    token: Auth0Token,
-) -> miette::Result<()> {
+pub async fn enroll(ctx: &Context, opts: &CommandGlobalOpts, token: Auth0Token) -> Result<()> {
     let node_name = start_embedded_node(ctx, opts, None).await?;
     enroll_with_node(ctx, opts, &CloudOpts::route(), node_name.as_str(), token).await
 }

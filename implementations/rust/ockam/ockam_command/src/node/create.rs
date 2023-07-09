@@ -472,7 +472,10 @@ where
     Ok(())
 }
 
-async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
+pub async fn spawn_background_node(
+    opts: &CommandGlobalOpts,
+    cmd: CreateCommand,
+) -> miette::Result<()> {
     let node_name = parse_node_name(&cmd.node_name)?;
     // Create node state, including the vault and identity if don't exist
     init_node_state(

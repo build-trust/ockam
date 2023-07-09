@@ -15,7 +15,7 @@ use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
-use ockam_core::api::{Request, RequestBuilder};
+use ockam_core::api::Request;
 use std::net::SocketAddr;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -50,7 +50,7 @@ impl CreateCommand {
     }
 }
 
-fn default_from_addr() -> String {
+pub fn default_from_addr() -> String {
     "/service/outlet".to_string()
 }
 
@@ -67,41 +67,42 @@ pub async fn run_impl(
     display_parse_logs(&opts);
 
     let node_name = get_node_name(&opts.state, &cmd.at);
-    let node = extract_address_value(&node_name)?;
+    let node_name = extract_address_value(&node_name)?;
     let project = opts
         .state
         .nodes
-        .get(&node)?
+        .get(&node_name)?
         .config()
         .setup()
         .project
         .to_owned();
     let resource = Resource::new("tcp-outlet");
     if let Some(p) = project {
-        if !has_policy(&node, &ctx, &opts, &resource).await? {
-            add_default_project_policy(&node, &ctx, &opts, p, &resource).await?;
+        if !has_policy(&node_name, &ctx, &opts, &resource).await? {
+            add_default_project_policy(&node_name, &ctx, &opts, p, &resource).await?;
         }
     }
 
-    let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let new_cmd = CreateCommand {
-            from: extract_address_value(&cmd.from)?,
-            ..cmd
-        };
-
-        rpc.request(make_api_request(new_cmd)?).await?;
-
+        let payload = CreateOutlet::new(
+            cmd.to.to_string(),
+            extract_address_value(&cmd.from)?,
+            cmd.alias,
+            true,
+        );
+        let res = send_request(&ctx, &opts, payload, node_name.clone()).await;
         *is_finished.lock().await = true;
-        rpc.parse_response::<OutletStatus>()
+        res
     };
 
     let output_messages = vec![
         format!(
             "Creating outlet service on node {}...",
-            &node.to_string().color(OckamColor::PrimaryResource.color()),
+            &node_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
         ),
         "Setting up TCP outlet worker...".to_string(),
         format!(
@@ -124,7 +125,9 @@ pub async fn run_impl(
         .stdout()
         .plain(fmt_ok!(
             "Created a new TCP Outlet on node {} from address {} to {}",
-            &node.to_string().color(OckamColor::PrimaryResource.color()),
+            &node_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
             format!("/service/{}", extract_address_value(&cmd.from)?)
                 .color(OckamColor::PrimaryResource.color()),
             &cmd.to
@@ -138,12 +141,15 @@ pub async fn run_impl(
     Ok(())
 }
 
-/// Construct a request to create a tcp outlet
-fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, CreateOutlet<'a>>> {
-    let tcp_addr = cmd.to.to_string();
-    let worker_addr = cmd.from;
-    let alias = cmd.alias.map(|a| a.into());
-    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, true);
-    let request = Request::post("/node/outlet").body(payload);
-    Ok(request)
+pub async fn send_request(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    payload: CreateOutlet,
+    to_node: impl Into<Option<String>>,
+) -> crate::Result<OutletStatus> {
+    let to_node = get_node_name(&opts.state, &to_node.into());
+    let mut rpc = Rpc::background(ctx, opts, &to_node)?;
+    let req = Request::post("/node/outlet").body(payload);
+    rpc.request(req).await?;
+    rpc.parse_response::<OutletStatus>()
 }
