@@ -50,11 +50,11 @@ impl NodeManagerWorker {
         ))
     }
 
-    pub(super) fn get_outlets<'a>(
+    pub(super) fn get_outlets(
         &self,
         req: &Request<'_>,
-        outlet_registry: &'a BTreeMap<String, OutletInfo>,
-    ) -> ResponseBuilder<OutletList<'a>> {
+        outlet_registry: &BTreeMap<String, OutletInfo>,
+    ) -> ResponseBuilder<OutletList> {
         Response::ok(req.id()).body(OutletList::new(
             outlet_registry
                 .iter()
@@ -295,7 +295,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<OutletStatus<'a>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let CreateOutlet {
             tcp_addr,
             worker_addr,
@@ -304,14 +304,12 @@ impl NodeManagerWorker {
             ..
         } = dec.decode()?;
 
-        let tcp_addr = tcp_addr.to_string();
-
         self.create_outlet_impl(
             ctx,
             req.id(),
             tcp_addr,
-            worker_addr.into(),
-            alias.map(|a| a.0.into()),
+            worker_addr,
+            alias,
             reachable_from_default_secure_channel,
         )
         .await
@@ -325,7 +323,7 @@ impl NodeManagerWorker {
         worker_addr: String,
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
-    ) -> Result<ResponseBuilder<OutletStatus<'a>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let resource = alias
             .as_deref()
@@ -390,11 +388,6 @@ impl NodeManagerWorker {
                 ))
             }
             Err(e) => {
-                // TODO: Use better way to store outlets?
-                node_manager
-                    .registry
-                    .outlets
-                    .insert(alias.clone(), OutletInfo::new(&tcp_addr, None));
                 let err_body = Error::new_without_path()
                     .with_message(format!("Failed to create outlet: {}", e));
                 return Err(Response::bad_request(request_id).body(err_body));
@@ -406,7 +399,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<OutletStatus<'a>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         info!(%alias, "Handling request to delete outlet portal");
@@ -445,7 +438,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<OutletStatus<'a>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
 
         info!(%alias, "Handling request to show outlet portal");

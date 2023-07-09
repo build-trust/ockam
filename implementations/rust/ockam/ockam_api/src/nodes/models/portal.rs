@@ -127,25 +127,25 @@ impl<'a> CreateInlet<'a> {
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateOutlet<'a> {
+pub struct CreateOutlet {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5351558>,
     /// The address the portal should connect or bind to
-    #[b(1)] pub tcp_addr: Cow<'a, str>,
+    #[n(1)] pub tcp_addr: String,
     /// The address the portal should connect or bind to
-    #[b(2)] pub worker_addr: Cow<'a, str>,
+    #[n(2)] pub worker_addr: String,
     /// A human-friendly alias for this portal endpoint
-    #[b(3)] pub alias: Option<CowStr<'a>>,
+    #[n(3)] pub alias: Option<String>,
     /// Allow the outlet to be reachable from the default secure channel, useful when we want to
     /// tighten the flow control
     #[b(4)] pub reachable_from_default_secure_channel: bool,
 }
 
-impl<'a> CreateOutlet<'a> {
+impl CreateOutlet {
     pub fn new(
-        tcp_addr: impl Into<Cow<'a, str>>,
-        worker_addr: impl Into<Cow<'a, str>>,
-        alias: impl Into<Option<CowStr<'a>>>,
+        tcp_addr: impl Into<String>,
+        worker_addr: impl Into<String>,
+        alias: impl Into<Option<String>>,
         reachable_from_default_secure_channel: bool,
     ) -> Self {
         Self {
@@ -225,17 +225,17 @@ impl<'a> InletStatus<'a> {
 #[derive(Clone, Debug, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct OutletStatus<'a> {
+pub struct OutletStatus {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4012569>,
-    #[b(1)] pub tcp_addr: CowStr<'a>,
-    #[b(2)] pub worker_addr: CowStr<'a>,
-    #[b(3)] pub alias: CowStr<'a>,
+    #[n(1)] pub tcp_addr: String,
+    #[n(2)] pub worker_addr: String,
+    #[n(3)] pub alias:String,
     /// An optional status payload
-    #[b(4)] pub payload: Option<CowStr<'a>>,
+    #[n(4)] pub payload: Option<String>,
 }
 
-impl<'a> OutletStatus<'a> {
+impl OutletStatus {
     pub fn bad_request(reason: &'static str) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -248,10 +248,10 @@ impl<'a> OutletStatus<'a> {
     }
 
     pub fn new(
-        tcp_addr: impl Into<CowStr<'a>>,
-        worker_addr: impl Into<CowStr<'a>>,
-        alias: impl Into<CowStr<'a>>,
-        payload: impl Into<Option<CowStr<'a>>>,
+        tcp_addr: impl Into<String>,
+        worker_addr: impl Into<String>,
+        alias: impl Into<String>,
+        payload: impl Into<Option<String>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -293,14 +293,14 @@ impl<'a> InletList<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct OutletList<'a> {
+pub struct OutletList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8708916>,
-    #[b(1)] pub list: Vec<OutletStatus<'a>>
+    #[n(1)] pub list: Vec<OutletStatus>
 }
 
-impl<'a> OutletList<'a> {
-    pub fn new(list: Vec<OutletStatus<'a>>) -> Self {
+impl OutletList {
+    pub fn new(list: Vec<OutletStatus>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,

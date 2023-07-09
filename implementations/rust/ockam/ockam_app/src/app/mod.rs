@@ -1,5 +1,6 @@
-mod build;
+pub mod events;
 mod process;
+mod system_tray;
 
-pub use build::*;
 pub use process::*;
+pub use system_tray::*;

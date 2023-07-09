@@ -1,10 +1,9 @@
-use tauri::{AppHandle, CustomMenuItem, Wry};
-use tracing::info;
-
+use crate::ctx::TauriCtx;
+use crate::enroll::backend::Backend;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_command::{CommandGlobalOpts, GlobalArgs};
-
-use crate::enroll::backend::Backend;
+use tauri::CustomMenuItem;
+use tracing::info;
 
 pub const ENROLL_MENU_ID: &str = "enroll";
 pub const RESET_MENU_ID: &str = "reset";
@@ -40,24 +39,32 @@ impl EnrollActions {
 }
 
 /// Enroll the user and show that it has been enrolled
-pub fn on_enroll(backend: impl Backend, app: &AppHandle<Wry>) -> tauri::Result<()> {
+pub fn on_enroll(backend: impl Backend, ctx: TauriCtx) -> tauri::Result<()> {
     if backend.enroll_user().is_ok() {
-        app.tray_handle()
+        ctx.app_handle()
+            .tray_handle()
             .get_item(ENROLL_MENU_ID)
             .set_enabled(false)?;
-        app.tray_handle().get_item(RESET_MENU_ID).set_enabled(true)
+        ctx.app_handle()
+            .tray_handle()
+            .get_item(RESET_MENU_ID)
+            .set_enabled(true)
     } else {
         Ok(())
     }
 }
 
 /// Reset the persistent state
-pub fn on_reset(backend: impl Backend, app: &AppHandle<Wry>) -> tauri::Result<()> {
-    if backend.reset().is_ok() {
-        app.tray_handle()
+pub fn on_reset(backend: impl Backend, ctx: TauriCtx) -> tauri::Result<()> {
+    if backend.reset(&ctx).is_ok() {
+        ctx.app_handle()
+            .tray_handle()
             .get_item(ENROLL_MENU_ID)
             .set_enabled(true)?;
-        app.tray_handle().get_item(RESET_MENU_ID).set_enabled(false)
+        ctx.app_handle()
+            .tray_handle()
+            .get_item(RESET_MENU_ID)
+            .set_enabled(false)
     } else {
         Ok(())
     }

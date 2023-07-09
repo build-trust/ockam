@@ -11,6 +11,7 @@ use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::portal::OutletList;
 
 use ockam_core::api::Request;
+use ockam_node::Context;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -45,14 +46,12 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        rpc.request(Request::get("/node/outlet")).await?;
-
+        let res = send_request(&ctx, &opts, node_name.clone()).await;
         *is_finished.lock().await = true;
-        rpc.parse_response::<OutletList>()
+        res
     };
 
     let output_messages = vec![format!(
@@ -76,4 +75,15 @@ async fn run_impl(
     opts.terminal.stdout().plain(list).write_line()?;
 
     Ok(())
+}
+
+pub async fn send_request(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    to_node: impl Into<Option<String>>,
+) -> crate::Result<OutletList> {
+    let to_node = get_node_name(&opts.state, &to_node.into());
+    let mut rpc = Rpc::background(ctx, opts, &to_node)?;
+    rpc.request(Request::get("/node/outlet")).await?;
+    rpc.parse_response::<OutletList>()
 }

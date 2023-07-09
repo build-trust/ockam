@@ -91,7 +91,7 @@ impl KafkaOutletController {
             ))
         } else {
             let status: OutletStatus = decoder.decode()?;
-            Ok(status.tcp_addr.to_string())
+            Ok(status.tcp_addr)
         }
     }
 }

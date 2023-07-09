@@ -621,6 +621,12 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     Ok(())
 }
 
+pub fn get_free_address() -> Result<SocketAddr> {
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let port = listener.local_addr()?.port();
+    Ok(format!("127.0.0.1:{port}").parse()?)
+}
+
 pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {
     use is_terminal::IsTerminal;
     s.is_terminal()

@@ -35,7 +35,7 @@ mod service;
 mod space;
 mod status;
 mod subscription;
-mod tcp;
+pub mod tcp;
 mod terminal;
 mod trust_context;
 mod upgrade;

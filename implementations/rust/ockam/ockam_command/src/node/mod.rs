@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
 
 use colorful::Colorful;
-pub(crate) use create::CreateCommand;
+pub use create::CreateCommand;
 use default::DefaultCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
@@ -90,8 +90,9 @@ pub fn initialize_node_if_default(opts: &CommandGlobalOpts, node_name: &Option<S
 }
 
 /// Return the node_name if Some otherwise return the default node name
-pub fn get_node_name(cli_state: &CliState, node_name: &Option<String>) -> String {
+pub fn get_node_name<'a>(cli_state: &CliState, node_name: impl Into<&'a Option<String>>) -> String {
     node_name
+        .into()
         .clone()
         .unwrap_or_else(|| get_default_node_name(cli_state))
 }

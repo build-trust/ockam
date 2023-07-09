@@ -12,6 +12,7 @@ use ockam_api::nodes::service::{
     NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_core::env::get_env_with_default;
 use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
@@ -295,7 +296,8 @@ pub fn run_ockam(
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
     // deterministic way of starting a node.
-    let ockam_exe = current_exe().unwrap_or_else(|_| "ockam".into());
+    let ockam_exe = get_env_with_default("OCKAM", current_exe().unwrap_or_else(|_| "ockam".into()))
+        .into_diagnostic()?;
     let node_state = opts.state.nodes.get(node_name)?;
 
     let mut cmd = Command::new(ockam_exe);
