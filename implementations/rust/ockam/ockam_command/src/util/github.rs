@@ -43,7 +43,7 @@ pub async fn get_latest_release_version() -> Result<LatestRelease> {
         .await;
     match resp {
         Ok(r) => match r.json::<LatestRelease>().await {
-            Ok(release) => return Ok(release),
+            Ok(release) => Ok(release),
             Err(e) => Err(miette!("Failed to get latest release: {}", e).into()),
         },
         Err(e) => Err(miette!("Failed to get latest release: {}", e).into()),
