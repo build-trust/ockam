@@ -451,6 +451,7 @@ jobs:
     runs-on: ubuntu-20.04
     container: ghcr.io/build-trust/artifacts-helper:latest
     if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
+    environment: merge_queue
     permissions:
       contents: read
       packages: read
