@@ -17,7 +17,7 @@ pub struct SecureChannelOptions {
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) credentials: Vec<Credential>,
     pub(crate) timeout: Duration,
-    pub(crate) maximum_idle_time: Duration
+    pub(crate) maximum_idle_time: Duration,
 }
 
 impl fmt::Debug for SecureChannelOptions {

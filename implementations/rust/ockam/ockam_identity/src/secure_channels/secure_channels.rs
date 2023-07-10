@@ -8,12 +8,12 @@ use crate::secure_channel::{
 };
 use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder};
 use ockam_core::compat::sync::Arc;
+use ockam_core::AsyncTryClone;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
-use ockam_node::Context;
 use ockam_node::compat::tokio;
 use ockam_node::compat::tokio::time::sleep;
-use ockam_core::AsyncTryClone;
+use ockam_node::Context;
 use std::sync::atomic::{AtomicBool, Ordering};
 /// Identity implementation
 #[derive(Clone)]
@@ -97,7 +97,7 @@ impl SecureChannels {
         let route = route.into();
         let next = route.next()?;
         let idle_timeout = Arc::new(AtomicBool::new(true));
-        let maximum_idle_time = options.maximum_idle_time.clone();
+        let maximum_idle_time = options.maximum_idle_time;
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
 
@@ -121,10 +121,13 @@ impl SecureChannels {
         let ctx_clone = ctx.async_try_clone().await?;
         let addr = addresses.encryptor.clone();
         tokio::spawn(async move {
-            loop { 
+            loop {
                 sleep(maximum_idle_time).await;
                 if idle_timeout.load(Ordering::Relaxed) {
-                    self_clone.stop_secure_channel(&ctx_clone, &addr).await.unwrap();
+                    self_clone
+                        .stop_secure_channel(&ctx_clone, &addr)
+                        .await
+                        .unwrap();
                     break;
                 }
                 idle_timeout.store(true, Ordering::Relaxed);

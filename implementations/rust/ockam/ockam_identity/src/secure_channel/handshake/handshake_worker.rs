@@ -27,8 +27,8 @@ use ockam_core::{
 use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
-use tracing::{debug, info};
 use std::sync::atomic::{AtomicBool, Ordering};
+use tracing::{debug, info};
 
 /// This struct implements a Worker receiving and sending messages
 /// on one side of the secure channel creation as specified with its role: INITIATOR or REPSONDER

@@ -1117,7 +1117,7 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
         .await?;
 
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    
+
     dbg!(ctx.list_workers().await?);
     additional_workers = ctx.list_workers().await?;
 
@@ -1128,9 +1128,7 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
 
 #[allow(non_snake_case)]
 #[ockam_macros::test(timeout = 21000)]
-async fn should_stop_encryptor__and__decryptor__per__timeout(
-    ctx: &mut Context,
-) -> Result<()> {
+async fn should_stop_encryptor__and__decryptor__per__timeout(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
 
@@ -1141,13 +1139,13 @@ async fn should_stop_encryptor__and__decryptor__per__timeout(
     let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier());
 
     let identity_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
-    
+
     let bob_listener = secure_channels
         .create_secure_channel_listener(ctx, &bob.identifier(), "bob_listener", identity_options)
         .await?;
-    
+
     let initial_workers = ctx.list_workers().await?;
-    
+
     let mut child_ctx = ctx
         .new_detached_with_mailboxes(Mailboxes::main(
             "child",
@@ -1158,19 +1156,21 @@ async fn should_stop_encryptor__and__decryptor__per__timeout(
 
     ctx.flow_controls()
         .add_consumer("child", bob_listener.flow_control_id());
-    
+
     let sc = {
-        let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy).with_maximum_idle_time(Duration::new(10, 0));
+        let alice_options = SecureChannelOptions::new()
+            .with_trust_policy(alice_trust_policy)
+            .with_maximum_idle_time(Duration::new(10, 0));
         secure_channels
-        .create_secure_channel(
-            ctx,
-            &alice.identifier(),
-            route!["bob_listener"],
-            alice_options,
-        )
-        .await?
+            .create_secure_channel(
+                ctx,
+                &alice.identifier(),
+                route!["bob_listener"],
+                alice_options,
+            )
+            .await?
     };
-    
+
     child_ctx
         .send(
             route![sc.clone(), child_ctx.address()],
@@ -1189,7 +1189,7 @@ async fn should_stop_encryptor__and__decryptor__per__timeout(
     let works_count = additional_workers.len();
 
     tokio::time::sleep(std::time::Duration::from_secs(20)).await;
-    
+
     additional_workers = ctx.list_workers().await?;
     additional_workers.retain(|w| !initial_workers.contains(w));
     // 3 workers: 1 for encryptor, 1 for decryptor, 1 for spawn
@@ -1197,12 +1197,9 @@ async fn should_stop_encryptor__and__decryptor__per__timeout(
     ctx.stop().await
 }
 
-
 #[allow(non_snake_case)]
 #[ockam_macros::test(timeout = 16000)]
-async fn should_not__stop_encryptor__and__decryptor(
-    ctx: &mut Context,
-) -> Result<()> {
+async fn should_not__stop_encryptor__and__decryptor(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
 
@@ -1213,13 +1210,13 @@ async fn should_not__stop_encryptor__and__decryptor(
     let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier());
 
     let identity_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
-    
+
     let bob_listener = secure_channels
         .create_secure_channel_listener(ctx, &bob.identifier(), "bob_listener", identity_options)
         .await?;
-    
+
     let initial_workers = ctx.list_workers().await?;
-    
+
     let mut child_ctx = ctx
         .new_detached_with_mailboxes(Mailboxes::main(
             "child",
@@ -1230,19 +1227,21 @@ async fn should_not__stop_encryptor__and__decryptor(
 
     ctx.flow_controls()
         .add_consumer("child", bob_listener.flow_control_id());
-    
+
     let sc = {
-        let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy).with_maximum_idle_time(Duration::new(10, 0));
+        let alice_options = SecureChannelOptions::new()
+            .with_trust_policy(alice_trust_policy)
+            .with_maximum_idle_time(Duration::new(10, 0));
         secure_channels
-        .create_secure_channel(
-            ctx,
-            &alice.identifier(),
-            route!["bob_listener"],
-            alice_options,
-        )
-        .await?
+            .create_secure_channel(
+                ctx,
+                &alice.identifier(),
+                route!["bob_listener"],
+                alice_options,
+            )
+            .await?
     };
-    
+
     child_ctx
         .send(
             route![sc.clone(), child_ctx.address()],
