@@ -8,13 +8,13 @@ use crate::secure_channel::{
 };
 use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder};
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::sync::{AtomicBool, Ordering};
 use ockam_core::AsyncTryClone;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
-use ockam_node::compat::tokio;
 use ockam_node::compat::tokio::time::sleep;
-use ockam_node::Context;
-use std::sync::atomic::{AtomicBool, Ordering};
+use ockam_node::{spawn, Context};
+
 /// Identity implementation
 #[derive(Clone)]
 pub struct SecureChannels {
@@ -120,7 +120,7 @@ impl SecureChannels {
         let self_clone = self.clone();
         let ctx_clone = ctx.async_try_clone().await?;
         let addr = addresses.encryptor.clone();
-        tokio::spawn(async move {
+        spawn(async move {
             loop {
                 sleep(maximum_idle_time).await;
                 if idle_timeout.load(Ordering::Relaxed) {

@@ -18,6 +18,7 @@ use crate::{
 };
 use alloc::sync::Arc;
 use core::time::Duration;
+use ockam_core::compat::sync::{AtomicBool, Ordering};
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
@@ -27,7 +28,6 @@ use ockam_core::{
 use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
-use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{debug, info};
 
 /// This struct implements a Worker receiving and sending messages

@@ -225,6 +225,7 @@ pub mod sync {
     use core::convert::Infallible;
 
     pub use alloc::sync::Arc;
+    pub use core::sync::atomic::{AtomicBool, Ordering};
 
     /// Wrap `spin::RwLock` as it does not return LockResult<Guard> like `std::sync::Mutex`.
     #[derive(Debug)]
@@ -289,6 +290,7 @@ pub mod sync {
 /// Provides `std::sync` for `std` targets.
 #[cfg(feature = "std")]
 pub mod sync {
+    pub use std::sync::atomic::{AtomicBool, Ordering};
     pub use std::sync::Arc;
     pub use std::sync::{Mutex, RwLock};
 }
