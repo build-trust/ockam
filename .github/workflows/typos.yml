@@ -1,6 +1,6 @@
 name: Typos
 on: [pull_request]
-      
+
 jobs:
   run:
     name: Spell check with Typos
