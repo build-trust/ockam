@@ -70,11 +70,11 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) fn get_tcp_connections(
+    pub(super) async fn get_tcp_connections(
         &self,
-        req: &Request,
-        tcp: &TcpTransport,
+        req: &Request<'_>,
     ) -> ResponseBuilder<TransportList> {
+        let tcp_transport = &self.node_manager.read().await.tcp_transport;
         let map = |info: &TcpSenderInfo| {
             TransportStatus::new(ApiTransport {
                 tt: TransportType::Tcp,
@@ -87,7 +87,8 @@ impl NodeManagerWorker {
         };
 
         Response::ok(req.id()).body(TransportList::new(
-            tcp.registry()
+            tcp_transport
+                .registry()
                 .get_all_sender_workers()
                 .iter()
                 .map(map)
@@ -95,13 +96,13 @@ impl NodeManagerWorker {
         ))
     }
 
-    pub(super) fn get_tcp_connection(
+    pub(super) async fn get_tcp_connection(
         &self,
-        req: &Request,
-        tcp: &TcpTransport,
+        req: &Request<'_>,
         address: String,
     ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
-        let sender = match Self::find_connection(tcp, address.to_string()) {
+        let tcp_transport = &self.node_manager.read().await.tcp_transport;
+        let sender = match Self::find_connection(tcp_transport, address.to_string()) {
             None => {
                 let error = Error::new(req.path()).with_message(format!(
                     "Connection {address} was not found in the registry."
@@ -123,11 +124,12 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()).body(status))
     }
 
-    pub(super) fn get_tcp_listeners(
+    pub(super) async fn get_tcp_listeners(
         &self,
-        req: &Request,
-        tcp: &TcpTransport,
+        req: &Request<'_>,
     ) -> ResponseBuilder<TransportList> {
+        let tcp_transport = &self.node_manager.read().await.tcp_transport;
+
         let map = |info: &TcpListenerInfo| {
             TransportStatus::new(ApiTransport {
                 tt: TransportType::Tcp,
@@ -140,17 +142,23 @@ impl NodeManagerWorker {
         };
 
         Response::ok(req.id()).body(TransportList::new(
-            tcp.registry().get_all_listeners().iter().map(map).collect(),
+            tcp_transport
+                .registry()
+                .get_all_listeners()
+                .iter()
+                .map(map)
+                .collect(),
         ))
     }
 
-    pub(super) fn get_tcp_listener(
+    pub(super) async fn get_tcp_listener(
         &self,
-        req: &Request,
-        tcp: &TcpTransport,
+        req: &Request<'_>,
         address: String,
     ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
-        let listener = match Self::find_listener(tcp, address.to_string()) {
+        let tcp_transport = &self.node_manager.read().await.tcp_transport;
+
+        let listener = match Self::find_listener(tcp_transport, address.to_string()) {
             None => {
                 let err_body = Error::new(req.path())
                     .with_message(format!("Listener {address} was not found in the registry."));

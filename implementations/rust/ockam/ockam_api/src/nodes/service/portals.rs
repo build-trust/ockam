@@ -22,20 +22,16 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
-use std::collections::BTreeMap;
 use std::sync::Mutex;
 use std::time::Duration;
 
 use super::{NodeManager, NodeManagerWorker};
 
 impl NodeManagerWorker {
-    pub(super) fn get_inlets<'a>(
-        &self,
-        req: &Request<'a>,
-        inlet_registry: &'a BTreeMap<String, InletInfo>,
-    ) -> ResponseBuilder<InletList<'a>> {
+    pub(super) async fn get_inlets(&self, req: &Request<'_>) -> ResponseBuilder<InletList> {
+        let registry = &self.node_manager.read().await.registry.inlets;
         Response::ok(req.id()).body(InletList::new(
-            inlet_registry
+            registry
                 .iter()
                 .map(|(alias, info)| {
                     InletStatus::new(
@@ -50,13 +46,10 @@ impl NodeManagerWorker {
         ))
     }
 
-    pub(super) fn get_outlets(
-        &self,
-        req: &Request<'_>,
-        outlet_registry: &BTreeMap<String, OutletInfo>,
-    ) -> ResponseBuilder<OutletList> {
+    pub(super) async fn get_outlets(&self, req: &Request<'_>) -> ResponseBuilder<OutletList> {
+        let registry = &self.node_manager.read().await.registry.outlets;
         Response::ok(req.id()).body(OutletList::new(
-            outlet_registry
+            registry
                 .iter()
                 .map(|(alias, info)| {
                     OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
@@ -65,33 +58,30 @@ impl NodeManagerWorker {
         ))
     }
 
-    pub(super) async fn create_inlet<'a>(
+    pub(super) async fn create_inlet(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<InletStatus>, ResponseBuilder<Error>> {
         let rid = req.id();
         let req: CreateInlet = dec.decode()?;
         self.create_inlet_impl(rid, req, ctx).await
     }
 
-    pub(super) async fn create_inlet_impl<'a>(
+    pub(super) async fn create_inlet_impl(
         &mut self,
-        rid: ockam_core::api::Id,
+        req_id: Id,
         req: CreateInlet<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
-        let manager = self.node_manager.clone();
+    ) -> Result<ResponseBuilder<InletStatus>, ResponseBuilder<Error>> {
+        info!("Handling request to create inlet portal");
 
         let listen_addr = req.listen_addr().to_string();
         let alias = req
             .alias()
             .map(|a| a.to_string())
             .unwrap_or_else(random_alias);
-
-        info!("Handling request to create inlet portal");
-
         debug! {
             prefix = %req.prefix_route(),
             suffix = %req.suffix_route(),
@@ -99,6 +89,28 @@ impl NodeManagerWorker {
             outlet_addr = %req.outlet_addr(),
             %alias,
             "Creating inlet portal"
+        }
+
+        {
+            let registry = &self.node_manager.read().await.registry.inlets;
+
+            // Check that there is no entry in the registry with the same alias
+            if registry.contains_key(&alias) {
+                let err_body = Error::new_without_path()
+                    .with_message(format!("A TCP inlet with alias '{alias}' already exists"));
+                return Err(Response::bad_request(req_id).body(err_body));
+            }
+
+            // Check that there is no entry in the registry with the same TCP bind address
+            if registry
+                .values()
+                .any(|inlet| inlet.bind_addr == listen_addr)
+            {
+                let err_body = Error::new_without_path().with_message(format!(
+                    "A TCP inlet with bind tcp address '{listen_addr}' already exists",
+                ));
+                return Err(Response::bad_request(req_id).body(err_body));
+            }
         }
 
         // The addressing scheme is very flexible. Typically the node connects to
@@ -116,14 +128,14 @@ impl NodeManagerWorker {
                 .with_authorized_identity(req.authorized())
                 .with_timeout(duration);
 
-            NodeManager::connect(manager.clone(), connection).await?
+            NodeManager::connect(self.node_manager.clone(), connection).await?
         };
 
         let outlet_route = match local_multiaddr_to_route(&connection_instance.normalized_addr) {
             Some(route) => route,
             None => {
                 let err_body = Error::new_without_path().with_message("Invalid outlet route.");
-                return Err(Response::bad_request(rid).body(err_body));
+                return Err(Response::bad_request(req_id).body(err_body));
             }
         };
 
@@ -152,7 +164,7 @@ impl NodeManagerWorker {
             if pid.is_none() {
                 let err_body = Error::new_without_path()
                     .with_message("Credential check requires a project or trust context");
-                return Err(Response::bad_request(rid).body(err_body));
+                return Err(Response::bad_request(req_id).body(err_body));
             }
             pid
         } else {
@@ -186,7 +198,7 @@ impl NodeManagerWorker {
 
                     let ctx = Arc::new(ctx.async_try_clone().await?);
                     let repl = replacer(
-                        manager,
+                        self.node_manager.clone(),
                         connection_instance,
                         worker_addr.clone(),
                         listen_addr.clone(),
@@ -201,7 +213,7 @@ impl NodeManagerWorker {
                     node_manager.sessions.lock().unwrap().add(session);
                 }
 
-                Response::ok(rid).body(InletStatus::new(
+                Response::ok(req_id).body(InletStatus::new(
                     listen_addr,
                     worker_addr.to_string(),
                     alias,
@@ -210,17 +222,10 @@ impl NodeManagerWorker {
                 ))
             }
             Err(e) => {
-                warn!(to = %req.outlet_addr(), err = %e, "failed to create tcp inlet");
-                // TODO: Use better way to store inlets?
-                node_manager.registry.inlets.insert(
-                    alias.clone(),
-                    InletInfo::new(&listen_addr, None, &outlet_route),
-                );
-
+                warn!(to = %req.outlet_addr(), err = %e, "Failed to create TCP inlet");
                 let err_body = Error::new_without_path()
-                    .with_message(format!("Failed to create inlet: {}", e));
-
-                return Err(Response::bad_request(rid).body(err_body));
+                    .with_message(format!("Failed to create TCP inlet: {}", e));
+                return Err(Response::bad_request(req_id).body(err_body));
             }
         })
     }
@@ -229,7 +234,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<InletStatus>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         info!(%alias, "Handling request to delete inlet portal");
@@ -269,7 +274,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<InletStatus<'a>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<InletStatus>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
 
         info!(%alias, "Handling request to show inlet portal");
@@ -318,12 +323,13 @@ impl NodeManagerWorker {
     pub(super) async fn create_outlet_impl<'a>(
         &mut self,
         ctx: &Context,
-        request_id: Id,
+        req_id: Id,
         tcp_addr: String,
         worker_addr: String,
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
+        info!("Handling request to create outlet portal");
         let mut node_manager = self.node_manager.write().await;
         let resource = alias
             .as_deref()
@@ -332,7 +338,26 @@ impl NodeManagerWorker {
 
         let alias = alias.unwrap_or_else(random_alias);
 
-        info!("Handling request to create outlet portal");
+        // Check that there is no entry in the registry with the same alias
+        if node_manager.registry.outlets.contains_key(&alias) {
+            let err_body = Error::new_without_path()
+                .with_message(format!("A TCP outlet with alias '{alias}' already exists"));
+            return Err(Response::bad_request(req_id).body(err_body));
+        }
+
+        // Check that there is no entry in the registry with the same tcp address
+        if node_manager
+            .registry
+            .outlets
+            .values()
+            .any(|outlet| outlet.tcp_addr == tcp_addr)
+        {
+            let err_body = Error::new_without_path().with_message(format!(
+                "A TCP outlet with tcp address '{tcp_addr}' already exists",
+            ));
+            return Err(Response::bad_request(req_id).body(err_body));
+        }
+
         let worker_addr = Address::from_string(&worker_addr);
 
         let check_credential = node_manager.enable_credential_checks;
@@ -380,7 +405,7 @@ impl NodeManagerWorker {
                     OutletInfo::new(&tcp_addr, Some(&worker_addr)),
                 );
 
-                Response::ok(request_id).body(OutletStatus::new(
+                Response::ok(req_id).body(OutletStatus::new(
                     tcp_addr,
                     worker_addr.to_string(),
                     alias,
@@ -388,9 +413,10 @@ impl NodeManagerWorker {
                 ))
             }
             Err(e) => {
+                warn!(at = %tcp_addr, err = %e, "Failed to create TCP outlet");
                 let err_body = Error::new_without_path()
                     .with_message(format!("Failed to create outlet: {}", e));
-                return Err(Response::bad_request(request_id).body(err_body));
+                return Err(Response::bad_request(req_id).body(err_body));
             }
         })
     }
