@@ -52,7 +52,7 @@ async fn run_impl(
         let identity = get_identity_name(&opts.state, &cloud_opts.identity);
         let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
             .as_identity(identity)
-            .with_new_embbeded_node()
+            .with_new_embedded_node()
             .await?
             .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
             .await?;

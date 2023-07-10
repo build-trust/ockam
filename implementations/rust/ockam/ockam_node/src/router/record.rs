@@ -161,7 +161,7 @@ impl InternalMap {
             .map_or(false, |rec| rec.ready(reply))
     }
 
-    /// Retrieve the next cluster in reverse-initialsation order
+    /// Retrieve the next cluster in reverse-initialisation order
     pub(super) fn next_cluster(&mut self) -> Option<Vec<&mut AddressRecord>> {
         let name = self.cluster_order.pop()?;
         let addrs = self.clusters.remove(&name)?;

@@ -94,7 +94,7 @@ impl UdsTransport {
         self.router_handle.disconnect(peer.as_ref()).await
     }
 
-    /// Binds the [`UdsTransport`] to listen and accept incomming connection requests to the given socket.
+    /// Binds the [`UdsTransport`] to listen and accept incoming connection requests to the given socket.
     ///
     /// ```rust
     /// use ockam_transport_uds::UdsTransport;

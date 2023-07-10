@@ -2,12 +2,12 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
   @moduledoc """
   TCP client wrapper to recover connections.
 
-  Creates and monitors Ockam.Transport.TCP.CLient
+  Creates and monitors Ockam.Transport.TCP.Client
   If client stops, it's restarted after `refresh_timeout`
 
   Options:
 
-  `desination` - Ockam.Transport.TCPAddress or {host, port} tuple to connect to
+  `destination` - Ockam.Transport.TCPAddress or {host, port} tuple to connect to
   `refresh_timeout` - time to wait between client restarts
   """
   use Ockam.AsymmetricWorker

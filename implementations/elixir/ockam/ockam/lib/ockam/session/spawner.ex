@@ -5,7 +5,7 @@ defmodule Ockam.Session.Spawner do
   Options:
 
   `worker_mod` - worker module to spawn, required
-  `worker_opions` - additional options of the spawned worker, defaults to []
+  `worker_options` - additional options of the spawned worker, defaults to []
   `message_parser` - function parsing init message to a Keyword list,
     @spec message_parser(Ockam.Message.t()) :: {:ok, Keyword.t()} | {:error, any()}
     defaults to `&default_message_parser/1`

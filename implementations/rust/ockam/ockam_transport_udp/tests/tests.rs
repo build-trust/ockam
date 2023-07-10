@@ -58,7 +58,7 @@ async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
     Ok(())
 }
 
-/// The transport should still allow sending of mesages
+/// The transport should still allow sending of messages
 /// even after a send socket error.
 ///
 /// Examples of errors are when an IPv4 socket is asked to send to
@@ -111,7 +111,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
 /// The transport should send messages to peers, with different
 /// destination addresses, from the same UDP port.
 ///
-/// This is important fot NAT hole punching.
+/// This is important for NAT hole punching.
 #[ockam_macros::test]
 async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
     // Find available ports

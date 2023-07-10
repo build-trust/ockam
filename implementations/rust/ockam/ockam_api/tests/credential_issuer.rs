@@ -33,7 +33,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         ),
     )]);
 
-    let boostrapped = BootstrapedIdentityStore::new(
+    let bootstrapped = BootstrapedIdentityStore::new(
         Arc::new(PreTrustedIdentities::from(pre_trusted)),
         identities.repository(),
     );
@@ -42,7 +42,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     // (so that the authority can verify its signature)
     // and the repository containing the trusted identities
     let identities = Identities::builder()
-        .with_identities_repository(Arc::new(boostrapped))
+        .with_identities_repository(Arc::new(bootstrapped))
         .with_identities_vault(identities.clone().vault())
         .build();
     let secure_channels = SecureChannels::builder()

@@ -237,7 +237,7 @@ pub enum Kind {
     /// - A ockam node already exists
     /// - A vault state already exists
     /// - An entry in a cddl file that already has an entry for a given key.
-    ///   This would indicate that a resource has been definied multiple times,
+    ///   This would indicate that a resource has been defined multiple times,
     ///   possibly in different wasys.
     ///
     /// Information about what exactly it is that already existed should be

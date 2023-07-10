@@ -116,7 +116,7 @@ async fn print_status(
             println!("{:2}{}", "", line);
         }
 
-        node_details.retain(|nd| nd.identifier == identity.config().identifier());
+        node_details.retain(|and| and.identifier == identity.config().identifier());
         if !node_details.is_empty() {
             println!("{:2}Linked Nodes:", "");
             for (n_idx, node) in node_details.iter().enumerate() {

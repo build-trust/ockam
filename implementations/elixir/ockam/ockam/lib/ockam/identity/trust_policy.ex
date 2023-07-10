@@ -42,7 +42,7 @@ defmodule Ockam.Identity.TrustPolicy do
   Check contact identity using known identities storage via `Ockam.Identity.TrustPolicy.KnownIdentities` module
 
   If the contact is not present in known identities - refuse
-  If the contact with the same ID exists in known identities - check the idenity history
+  If the contact with the same ID exists in known identities - check the identity history
     If history is equal - contact is trusted
     If history is newer - update the known contact
     If history is older of in conflict - refuse to trust the contact
@@ -86,7 +86,7 @@ defmodule Ockam.Identity.TrustPolicy do
   Check contact identity using known identities storage via `Ockam.Identity.TrustPolicy.KnownIdentities` module
 
   If the contact is not present in known identities - add it as a new contact
-  If the contact with the same ID exists in known identities - check the idenity history
+  If the contact with the same ID exists in known identities - check the identity history
     If history is equal - contact is trusted
     If history is newer - update the known contact
     If history is older of in conflict - refuse to trust the contact

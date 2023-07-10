@@ -1,6 +1,6 @@
 defmodule Ockam.ABAC.Policy do
   @moduledoc """
-  Policy data structore for Ockam ABAC
+  Policy data structure for Ockam ABAC
   """
 
   alias Ockam.ABAC.ActionId

@@ -102,7 +102,7 @@ impl UdpHolePuncher {
         })
     }
 
-    /// Wait until Hole Puncher successfuly opens a hole to the peer or a
+    /// Wait until Hole Puncher successfully opens a hole to the peer or a
     /// timeout
     ///
     /// Note that the hole could close at anytime. If the hole closes, the

@@ -35,7 +35,7 @@ impl NodeError {
     pub fn already_exists(self) -> Error {
         Error::new(Origin::Node, Kind::AlreadyExists, self)
     }
-    /// Turn a NodeError into a Kind::Confilct ockam_core::Error
+    /// Turn a NodeError into a Kind::Conflict ockam_core::Error
     pub fn conflict(self) -> Error {
         Error::new(Origin::Node, Kind::Conflict, self)
     }

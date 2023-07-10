@@ -74,7 +74,7 @@ defmodule Ockam.Kafka.Interceptor do
   defp process_kafka_packet(type, packet, %{read_buffer: <<>>} = state, replies) do
     case packet do
       <<size::signed-big-integer-size(32), data::binary-size(size), rest::binary()>> ->
-        ## Thre is enough data in the packet to read the message
+        ## There is enough data in the packet to read the message
         case process_kafka_message(type, data, state) do
           {:ok, new_data, state} ->
             size = byte_size(new_data)
