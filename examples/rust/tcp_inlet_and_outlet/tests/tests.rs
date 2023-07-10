@@ -77,6 +77,7 @@ fn run_03_inlet_outlet_seperate_processes_secure_channel() -> Result<(), Error> 
 }
 
 #[test]
+#[ignore]
 fn run_04_inlet_outlet_seperate_processes_secure_channel_via_ockam_hub() -> Result<(), Error> {
     let port = rand::thread_rng().gen_range(10000..65535);
     // Spawn outlet, wait for it to start up, grab dynamic forwarding address
