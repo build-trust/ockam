@@ -542,10 +542,10 @@ impl NodeManagerWorker {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
             (Get, ["node"]) => {
-                let node_manager = self.node_manager.read().await;
+                let node_name = &self.node_manager.read().await.node_name;
                 Response::ok(req.id())
                     .body(NodeStatus::new(
-                        &node_manager.node_name,
+                        node_name,
                         "Running",
                         ctx.list_workers().await?.len() as u32,
                         std::process::id() as i32,
@@ -554,18 +554,9 @@ impl NodeManagerWorker {
             }
 
             // ==*== Tcp Connection ==*==
-            (Get, ["node", "tcp", "connection"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.get_tcp_connections(req, &node_manager.tcp_transport)
-                    .to_vec()?
-            }
+            (Get, ["node", "tcp", "connection"]) => self.get_tcp_connections(req).await.to_vec()?,
             (Get, ["node", "tcp", "connection", address]) => {
-                let node_manager = self.node_manager.read().await;
-                encode_request_result(self.get_tcp_connection(
-                    req,
-                    &node_manager.tcp_transport,
-                    address.to_string(),
-                ))?
+                encode_request_result(self.get_tcp_connection(req, address.to_string()).await)?
             }
             (Post, ["node", "tcp", "connection"]) => {
                 encode_request_result(self.create_tcp_connection(req, dec, ctx).await)?
@@ -575,18 +566,9 @@ impl NodeManagerWorker {
             }
 
             // ==*== Tcp Listeners ==*==
-            (Get, ["node", "tcp", "listener"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.get_tcp_listeners(req, &node_manager.tcp_transport)
-                    .to_vec()?
-            }
+            (Get, ["node", "tcp", "listener"]) => self.get_tcp_listeners(req).await.to_vec()?,
             (Get, ["node", "tcp", "listener", address]) => {
-                let node_manager = self.node_manager.read().await;
-                encode_request_result(self.get_tcp_listener(
-                    req,
-                    &node_manager.tcp_transport,
-                    address.to_string(),
-                ))?
+                encode_request_result(self.get_tcp_listener(req, address.to_string()).await)?
             }
             (Post, ["node", "tcp", "listener"]) => {
                 encode_request_result(self.create_tcp_listener(req, dec).await)?
@@ -605,16 +587,9 @@ impl NodeManagerWorker {
             }
 
             // ==*== Secure channels ==*==
-            // TODO: Change to RequestBuilder format
-            (Get, ["node", "secure_channel"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.list_secure_channels(req, &node_manager.registry)
-                    .to_vec()?
-            }
+            (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).await.to_vec()?,
             (Get, ["node", "secure_channel_listener"]) => {
-                let node_manager = self.node_manager.read().await;
-                self.list_secure_channel_listener(req, &node_manager.registry)
-                    .to_vec()?
+                self.list_secure_channel_listener(req).await.to_vec()?
             }
             (Post, ["node", "secure_channel"]) => {
                 encode_request_result(self.create_secure_channel(req, dec, ctx).await)?
@@ -697,39 +672,18 @@ impl NodeManagerWorker {
             (Get, ["node", "forwarder", remote_address]) => {
                 encode_request_result(self.show_forwarder(req, remote_address).await)?
             }
-            (Get, ["node", "forwarder"]) => {
-                let forwarder_registry = {
-                    let node_manager = self.node_manager.read().await;
-                    &node_manager.registry.forwarders.clone()
-                };
-                self.get_forwarders(req, forwarder_registry)
-                    .await
-                    .to_vec()?
-            }
+            (Get, ["node", "forwarder"]) => self.get_forwarders(req).await.to_vec()?,
             (Delete, ["node", "forwarder", remote_address]) => {
                 encode_request_result(self.delete_forwarder(ctx, req, remote_address).await)?
             }
-
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
 
             // ==*== Inlets & Outlets ==*==
-            (Get, ["node", "inlet"]) => {
-                let inlet_registry = {
-                    let node_manager = self.node_manager.read().await;
-                    &node_manager.registry.inlets.clone()
-                };
-                self.get_inlets(req, inlet_registry).to_vec()?
-            }
+            (Get, ["node", "inlet"]) => self.get_inlets(req).await.to_vec()?,
             (Get, ["node", "inlet", alias]) => {
                 encode_request_result(self.show_inlet(req, alias).await)?
             }
-            (Get, ["node", "outlet"]) => {
-                let outlet_registry = {
-                    let node_manager = self.node_manager.read().await;
-                    &node_manager.registry.outlets.clone()
-                };
-                self.get_outlets(req, outlet_registry).to_vec()?
-            }
+            (Get, ["node", "outlet"]) => self.get_outlets(req).await.to_vec()?,
             (Get, ["node", "outlet", alias]) => {
                 encode_request_result(self.show_outlet(req, alias).await)?
             }
@@ -765,7 +719,6 @@ impl NodeManagerWorker {
                     .body(WorkerList::new(list))
                     .to_vec()?
             }
-
             (Post, ["policy", resource, action]) => encode_request_result(
                 self.node_manager
                     .read()

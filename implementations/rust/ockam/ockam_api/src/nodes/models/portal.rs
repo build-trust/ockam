@@ -163,18 +163,18 @@ impl CreateOutlet {
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct InletStatus<'a> {
+pub struct InletStatus {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9302588>,
-    #[b(1)] pub bind_addr: CowStr<'a>,
-    #[b(2)] pub worker_addr: CowStr<'a>,
-    #[b(3)] pub alias: CowStr<'a>,
+    #[n(1)] pub bind_addr: String,
+    #[n(2)] pub worker_addr: String,
+    #[n(3)] pub alias: String,
     /// An optional status payload
-    #[b(4)] pub payload: Option<CowStr<'a>>,
-    #[b(5)] pub outlet_route: CowStr<'a>,
+    #[n(4)] pub payload: Option<String>,
+    #[n(5)] pub outlet_route: String,
 }
 
-impl<'a> Serialize for InletStatus<'a> {
+impl Serialize for InletStatus {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -189,7 +189,7 @@ impl<'a> Serialize for InletStatus<'a> {
     }
 }
 
-impl<'a> InletStatus<'a> {
+impl InletStatus {
     pub fn bad_request(reason: &'static str) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -203,11 +203,11 @@ impl<'a> InletStatus<'a> {
     }
 
     pub fn new(
-        bind_addr: impl Into<CowStr<'a>>,
-        worker_addr: impl Into<CowStr<'a>>,
-        alias: impl Into<CowStr<'a>>,
-        payload: impl Into<Option<CowStr<'a>>>,
-        outlet_route: impl Into<CowStr<'a>>,
+        bind_addr: impl Into<String>,
+        worker_addr: impl Into<String>,
+        alias: impl Into<String>,
+        payload: impl Into<Option<String>>,
+        outlet_route: impl Into<String>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -273,14 +273,14 @@ impl OutletStatus {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct InletList<'a> {
+pub struct InletList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8401504>,
-    #[b(1)] pub list: Vec<InletStatus<'a>>
+    #[b(1)] pub list: Vec<InletStatus>
 }
 
-impl<'a> InletList<'a> {
-    pub fn new(list: Vec<InletStatus<'a>>) -> Self {
+impl InletList {
+    pub fn new(list: Vec<InletStatus>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,

@@ -296,9 +296,9 @@ impl Output for Vec<u8> {
     }
 }
 
-impl Output for InletStatus<'_> {
+impl Output for InletStatus {
     fn output(&self) -> Result<String> {
-        let outlet = if let Some(r) = Route::parse(self.outlet_route.as_ref()) {
+        let outlet = if let Some(r) = Route::parse(&self.outlet_route) {
             if let Some(ma) = route_to_multiaddr(&r) {
                 ma.to_string()
             } else {

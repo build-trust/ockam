@@ -49,7 +49,7 @@ pub async fn run_impl(
     println!("Inlet:");
     println!("  Alias: {}", inlet_to_show.alias);
     println!("  TCP Address: {}", inlet_to_show.bind_addr);
-    if let Some(r) = Route::parse(inlet_to_show.outlet_route.as_ref()) {
+    if let Some(r) = Route::parse(inlet_to_show.outlet_route) {
         if let Some(ma) = route_to_multiaddr(&r) {
             println!("  To Outlet Address: {ma}");
         }

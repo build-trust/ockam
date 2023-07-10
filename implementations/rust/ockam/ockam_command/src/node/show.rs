@@ -141,7 +141,7 @@ fn print_node_info(
         for e in &inlets.list {
             println!("    Inlet:");
             println!("      Listen Address: {}", e.bind_addr);
-            if let Some(r) = Route::parse(e.outlet_route.as_ref()) {
+            if let Some(r) = Route::parse(&e.outlet_route) {
                 if let Some(ma) = route_to_multiaddr(&r) {
                     println!("      Route To Outlet: {ma}");
                 }

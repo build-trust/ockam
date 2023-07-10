@@ -1,11 +1,10 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::sync::Mutex;
 use ockam::identity::IdentityIdentifier;
-use ockam::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
+use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::AsyncTryClone;
@@ -176,9 +175,9 @@ impl NodeManagerWorker {
     pub(super) async fn get_forwarders<'a>(
         &mut self,
         req: &Request<'a>,
-        registry: &'a BTreeMap<String, RemoteForwarderInfo>,
     ) -> ResponseBuilder<Vec<ForwarderInfo<'a>>> {
         debug!("Handling ListForwarders request");
+        let registry = &self.node_manager.read().await.registry.forwarders;
         Response::ok(req.id()).body(
             registry
                 .iter()

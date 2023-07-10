@@ -25,7 +25,7 @@ use crate::nodes::models::secure_channel::{
     SecureChannelListenersList, ShowSecureChannelListenerRequest,
     ShowSecureChannelListenerResponse, ShowSecureChannelRequest, ShowSecureChannelResponse,
 };
-use crate::nodes::registry::{Registry, SecureChannelListenerInfo};
+use crate::nodes::registry::SecureChannelListenerInfo;
 use crate::nodes::service::invalid_multiaddr_error;
 use crate::nodes::service::NodeIdentities;
 use crate::nodes::NodeManager;
@@ -278,14 +278,13 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-    pub(super) fn list_secure_channels(
+    pub(super) async fn list_secure_channels(
         &self,
         req: &Request<'_>,
-        registry: &Registry,
     ) -> ResponseBuilder<Vec<String>> {
+        let registry = &self.node_manager.read().await.registry.secure_channels;
         Response::ok(req.id()).body(
             registry
-                .secure_channels
                 .list()
                 .iter()
                 .map(|v| v.sc().encryptor_address().to_string())
@@ -293,14 +292,18 @@ impl NodeManagerWorker {
         )
     }
 
-    pub(super) fn list_secure_channel_listener(
+    pub(super) async fn list_secure_channel_listener(
         &self,
         req: &Request<'_>,
-        registry: &Registry,
     ) -> ResponseBuilder<SecureChannelListenersList> {
+        let registry = &self
+            .node_manager
+            .read()
+            .await
+            .registry
+            .secure_channel_listeners;
         Response::ok(req.id()).body(SecureChannelListenersList::new(
             registry
-                .secure_channel_listeners
                 .values()
                 .map(ShowSecureChannelListenerResponse::new)
                 .collect(),
