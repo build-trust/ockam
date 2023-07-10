@@ -226,7 +226,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixes broken tests for macos, let the os choose available ports
 - Reorganize bats tests to run them in parallel
-- 'ockam enroll' ovewrites current configuration instead of returning error
+- 'ockam enroll' overwrites current configuration instead of returning error
 - Update cli_state test with credentials entry
 
 ## 0.24.0 - 2023-02-24
@@ -240,7 +240,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pre-trusted identity identifiers attributes
 - Use credential instead of credentials
 - Usable kafka sidecar implementation
-- Standarize where authority stores membership information
+- Standardize where authority stores membership information
 - Implemented kafka message encryption and orchestrator integration
 - Bump aws-sdk-kms to 0.24.0 and aws-config to 0.54.1
 - Split cddl schema files & merge when cbor api validation is needed

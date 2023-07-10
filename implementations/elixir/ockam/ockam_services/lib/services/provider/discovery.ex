@@ -22,7 +22,7 @@ defmodule Ockam.Services.Provider.Discovery do
        [
          address: "discovery",
          storage: Ockam.Services.Discovery.Storage.Supervisor,
-         ## TODO: provide superviser from args
+         ## TODO: provide supervisor from args
          storage_options: [supervisor: Ockam.Services]
        ],
        args

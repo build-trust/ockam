@@ -55,7 +55,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
          {:ok, protocol_state} <- setup_e(options, protocol_state),
          {:ok, protocol_state} <- setup_h(protocol_state),
          {:ok, protocol_state} <- setup_ck(protocol_state),
-         {:ok, protocol_state} <- setup_prologe(options, protocol_state) do
+         {:ok, protocol_state} <- setup_prologue(options, protocol_state) do
       setup_message_payloads(options, protocol_state)
     end
   end
@@ -141,7 +141,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  defp setup_prologe(options, state) do
+  defp setup_prologue(options, state) do
     prologue = Keyword.get(options, :prologue, @default_prologue)
 
     with {:ok, state} <- mix_hash(state, prologue) do

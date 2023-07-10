@@ -82,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Introduce `TrustOptions::insecure()` and `::insecure_test()`
 - Improve `SecureChannelListener` `TrustOptions` for better support of consumer use case
-- Simplify `TrustOptions` for outgoing negotations
+- Simplify `TrustOptions` for outgoing negotiations
 - Rename `insecure_test` -> `new`
 - Rename `Sessions` -> `FlowControls`
 - Rename `TrustOptions` -> `Options`

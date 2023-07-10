@@ -26,7 +26,7 @@ pub(crate) struct UdsRouter {
     allow_auto_connection: bool,
 }
 
-/// Public Implementaions to instantiate a UDS Router and UDS Router Handler
+/// Public Implementations to instantiate a UDS Router and UDS Router Handler
 impl UdsRouter {
     /// Create and register a new UDS router with the given node context
     pub async fn register(ctx: &Context) -> Result<UdsRouterHandle> {

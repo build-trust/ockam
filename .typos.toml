@@ -1,0 +1,5 @@
+[files]
+extend-exclude = ["**/*.lock", "**/pnpm-lock.yaml"]
+
+[default.extend-identifiers]
+OT = "OT"

@@ -37,7 +37,7 @@ Errors:
 - 401 - current user does not have permission to show the space
 
 #### Update space
-Mathod: PUT
+Method: PUT
 Path: /v0/:space_id
 Request: update_request
 Response: space

@@ -111,13 +111,13 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let bob_credential_2nd = secure_channels
+    let bob_credential_2 = secure_channels
         .identities()
         .credentials()
         .issue_credential(
             &authority.identifier(),
             CredentialData::builder(bob.identifier(), authority.identifier())
-                .with_attribute("bob_2nd", b"true")
+                .with_attribute("bob_2", b"true")
                 .build()?,
         )
         .await?;
@@ -129,7 +129,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
             "bob_listener",
             SecureChannelListenerOptions::new()
                 .with_trust_context(trust_context.clone())
-                .with_credential(bob_credential_2nd),
+                .with_credential(bob_credential_2),
         )
         .await?;
 
@@ -144,13 +144,13 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let alice_credential_2nd = secure_channels
+    let alice_credential_2 = secure_channels
         .identities()
         .credentials()
         .issue_credential(
             &authority.identifier(),
             CredentialData::builder(alice.identifier(), authority.identifier())
-                .with_attribute("alice_2nd", b"true")
+                .with_attribute("alice_2", b"true")
                 .build()?,
         )
         .await?;
@@ -162,7 +162,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
             route!["bob_listener"],
             SecureChannelOptions::new()
                 .with_trust_context(trust_context)
-                .with_credential(alice_credential_2nd),
+                .with_credential(alice_credential_2),
         )
         .await?;
 
@@ -182,10 +182,10 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     // );
     assert_eq!(
         "true".as_bytes(),
-        alice_attributes.attrs().get("alice_2nd").unwrap()
+        alice_attributes.attrs().get("alice_2").unwrap()
     );
     assert!(alice_attributes.attrs().get("is_bob").is_none());
-    assert!(alice_attributes.attrs().get("bob_2nd").is_none());
+    assert!(alice_attributes.attrs().get("bob_2").is_none());
 
     let bob_attributes = secure_channels
         .identities()
@@ -195,7 +195,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .unwrap();
 
     assert!(bob_attributes.attrs().get("is_alice").is_none());
-    assert!(bob_attributes.attrs().get("alice_2nd").is_none());
+    assert!(bob_attributes.attrs().get("alice_2").is_none());
     //FIXME: only the last credential is kept around in the storage
     // assert_eq!(
     //     "true".as_bytes(),
@@ -203,7 +203,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     // );
     assert_eq!(
         "true".as_bytes(),
-        bob_attributes.attrs().get("bob_2nd").unwrap()
+        bob_attributes.attrs().get("bob_2").unwrap()
     );
 
     context.stop().await
@@ -904,7 +904,7 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
     };
 
     let access_control = IdentityAccessControlBuilder::new_with_id(
-        "P79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
+        "P79b26ca2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
     );
     WorkerBuilder::new(receiver)
         .with_address("receiver")

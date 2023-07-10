@@ -114,7 +114,7 @@ async fn do_main(ctx: &mut Context) -> Result<()> {
     // Exchange messages with peer
     let r = route![puncher.address(), ECHOER];
     for i in 1..=MESSAGE_COUNT {
-        // Try to send messgaes to remote echoer
+        // Try to send messages to remote echoer
         let msg = format!(
             "Testing {} => {}, {} of {}",
             this_name, that_name, i, MESSAGE_COUNT

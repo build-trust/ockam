@@ -572,7 +572,7 @@ mod tests {
                     _ => {
                         error!("Invalid request: {req:#?}");
                         let err_body = Error::new(req.path())
-                            .with_message(format!("Invalid request, inviation id not provided."));
+                            .with_message(format!("Invalid request, invitation id not provided."));
                         Response::bad_request(req.id()).body(err_body).to_vec()?
                     }
                 },
@@ -598,7 +598,7 @@ mod tests {
                     _ => {
                         error!("Invalid request: {req:#?}");
                         let err_body = Error::new(req.path())
-                            .with_message(format!("Invalid request, inviation id not provided."));
+                            .with_message(format!("Invalid request, invitation id not provided."));
                         Response::bad_request(req.id()).body(err_body).to_vec()?
                     }
                 },

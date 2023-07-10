@@ -3,7 +3,7 @@ defmodule Ockam.Services.TokenLeaseManager.CloudService.Influxdb do
   Implementation of Ockam.Services.TokenLeaseManager.CloudService for InfluxDB
 
   Options:
-  - endpoint (string) - InfluxDB endpoint to connect to ("https://your-cluser-url-here")
+  - endpoint (string) - InfluxDB endpoint to connect to ("https://your-cluster-url-here")
   - org_id (string) - InfluxDB organization id to use
   - token (string) - `All Access API Token` to authorize API requests
   - permissions (json string) - default set of permissions new tokens are granted

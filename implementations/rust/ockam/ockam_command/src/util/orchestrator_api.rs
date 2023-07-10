@@ -74,9 +74,9 @@ impl<'a> OrchestratorApiBuilder<'a> {
 
     /// Creates a new embedded node to communicate with the cloud
     /// FIXME: There is an ordering issue, is as_identity/1 is used,
-    ///        it *must* be called before with_new_embbeded_node/1,
+    ///        it *must* be called before with_new_embedded_node/1,
     ///        as the identity must be know at the time of this call.
-    pub async fn with_new_embbeded_node(&mut self) -> Result<&mut OrchestratorApiBuilder<'a>> {
+    pub async fn with_new_embedded_node(&mut self) -> Result<&mut OrchestratorApiBuilder<'a>> {
         // TODO: always use the default vault
         let node_name = start_embedded_node_with_vault_and_identity(
             self.ctx,

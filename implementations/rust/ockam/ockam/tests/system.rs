@@ -75,7 +75,7 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
     let mut w = TestWorker::default();
 
     // Each handler is given an address to forward messages to.  But
-    // this is _very_ dependente on the type of handler that is being
+    // this is _very_ dependent on the type of handler that is being
     // initialised.  Also: this system MUST interact with the
     // MetadataMessage, meaning that for some System Handlers it is
     // possible to get the "next" address from the metadata section.

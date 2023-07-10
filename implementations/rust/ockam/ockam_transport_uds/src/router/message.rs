@@ -25,10 +25,10 @@ pub enum UdsRouterRequest {
 pub enum UdsRouterResponse {
     /// Response containing a result when attempting to register a new client
     Register(Result<()>),
-    /// Response containing an [`Address`] on succesful connection to a peer
+    /// Response containing an [`Address`] on successful connection to a peer
     Connect(Result<Address>),
     /// Response containing a result when attempting to disconnect from a peer
     Disconnect(Result<()>),
-    /// Resposne containing a result when attempt to unregister
+    /// Response containing a result when attempt to unregister
     Unregister(Result<()>),
 }

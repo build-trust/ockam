@@ -23,7 +23,7 @@ fn run_01_inlet_outlet_one_process() -> Result<(), Error> {
 }
 
 #[test]
-fn run_02_inlet_outlet_seperate_processes() -> Result<(), Error> {
+fn run_02_inlet_outlet_separate_processes() -> Result<(), Error> {
     let routing_port = rand::thread_rng().gen_range(10000..65535);
     let inlet_port = rand::thread_rng().gen_range(10000..65535);
     // Spawn outlet, wait for it to start up
@@ -50,7 +50,7 @@ fn run_02_inlet_outlet_seperate_processes() -> Result<(), Error> {
 }
 
 #[test]
-fn run_03_inlet_outlet_seperate_processes_secure_channel() -> Result<(), Error> {
+fn run_03_inlet_outlet_separate_processes_secure_channel() -> Result<(), Error> {
     let routing_port = rand::thread_rng().gen_range(10000..65535);
     let inlet_port = rand::thread_rng().gen_range(10000..65535);
     // Spawn outlet, wait for it to start up
