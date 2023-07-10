@@ -94,7 +94,7 @@ Combine other rules
 
 `not` - unary operator
 `if` - ternary operator with condition rule, true rule and false rule
-  if condition rule matches - true rule is checkes
+  if condition rule matches - true rule is checks
   if condition rule doesn't match - false rule is checked
 `and|or` - operators combining multiple rules (can be 2 and more)
 

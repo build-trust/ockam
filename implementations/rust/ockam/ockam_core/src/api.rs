@@ -822,7 +822,7 @@ mod merged_cddl_test {
     fn test_merged_cddl_duplicate_entry() {
         let schema1: &str = r##"request_1 = {id: int, name: tstr}"##;
 
-        // same key, albeit with captial "ID" -> should error
+        // same key, albeit with capital "ID" -> should error
         let schema2: &str = r##"request_1 = {ID: int, name: tstr}"##;
 
         let merged_cddl = merged_cddl(&[schema1, schema2]);
@@ -841,7 +841,7 @@ mod merged_cddl_test {
 
         let merged_cddl = merged_cddl(&[schema1]);
         match merged_cddl {
-            Err(e) => assert_eq!("Unparseable(bar)", e.to_string()),
+            Err(e) => assert_eq!("Unparsable(bar)", e.to_string()),
             Ok(_) => panic!("Returned an Ok variant!"),
         }
     }

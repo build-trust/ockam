@@ -107,7 +107,7 @@ impl Context {
                     break Ok(routed_msg);
                 }
                 Err(_err) => {
-                    error!(destination_addr = %destination_addr, "Encountered unparseable message")
+                    error!(destination_addr = %destination_addr, "Encountered unparsable message")
                 }
             }
         }

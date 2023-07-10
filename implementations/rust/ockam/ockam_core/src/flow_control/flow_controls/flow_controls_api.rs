@@ -96,7 +96,7 @@ impl FlowControls {
     }
 
     /// Get [`ProducerInfo`] for which given [`Address`] is a Producer or is an additional [`Address`]
-    /// fot that Producer (e.g. Encryptor address for its Decryptor, or TCP Sender for its TCP Receiver)
+    /// for that Producer (e.g. Encryptor address for its Decryptor, or TCP Sender for its TCP Receiver)
     pub fn find_flow_control_with_producer_address(
         &self,
         address: &Address,

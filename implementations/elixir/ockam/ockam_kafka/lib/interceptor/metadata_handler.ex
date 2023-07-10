@@ -103,7 +103,7 @@ defmodule Ockam.Kafka.Interceptor.MetadataHandler do
     end
   end
 
-  ## TODO: maybe we shold return the port from InletManager functions
+  ## TODO: maybe we should return the port from InletManager functions
   defp inlet_port(node_id, base_port) do
     base_port + node_id
   end

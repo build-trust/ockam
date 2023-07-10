@@ -234,7 +234,7 @@ impl NodeManagerWorker {
 
         info!(%alias, "Handling request to delete inlet portal");
         if let Some(inlet_to_delete) = node_manager.registry.inlets.remove(alias) {
-            debug!(%alias, "Sucessfully removed inlet from node registry");
+            debug!(%alias, "Successfully removed inlet from node registry");
             match node_manager
                 .tcp_transport
                 .stop_inlet(inlet_to_delete.worker_addr.clone())

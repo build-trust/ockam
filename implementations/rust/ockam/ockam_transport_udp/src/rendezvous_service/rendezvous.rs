@@ -205,7 +205,7 @@ mod tests {
             .unwrap();
         assert_eq!(res, our_public_route);
 
-        // Query service for non-existant node, should error
+        // Query service for non-existent node, should error
         let res = query_operation("DoesNotExist", ctx, &rendezvous_route).await;
         assert!(res.is_err(), "Query operation should have failed");
 

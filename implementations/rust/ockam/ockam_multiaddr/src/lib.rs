@@ -759,7 +759,7 @@ impl<'a> Iterator for ProtoIter<'a> {
     }
 }
 
-// This iterator is only constructed from a MutiAddr value, hence
+// This iterator is only constructed from a MultiAddr value, hence
 // the protocol parts are valid by construction and we expect them to be.
 #[derive(Debug)]
 struct ValidBytesIter<'a>(iter::BytesIter<'a>);

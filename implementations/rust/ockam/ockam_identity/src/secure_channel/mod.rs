@@ -112,7 +112,7 @@ mod tests {
             let ciphertext = encryptor.encrypt(&msg).await.unwrap();
             let mut trash_packet = ciphertext.clone();
             // toggle a bit, to make the packet invalid.  The nonce is not affected
-            // as it at the beggining of the packet
+            // as it at the beginning of the packet
             trash_packet[ciphertext.len() - 1] ^= 0b1000_0000;
 
             // Generate a packet with some lookinly-valid content, but a nonce

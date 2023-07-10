@@ -153,7 +153,7 @@ impl UdsRouterHandle {
         }
     }
 
-    /// Resovle the given peer to a [`SocketAddr`](std::os::unix::net::SocketAddr)
+    /// Resolve the given peer to a [`SocketAddr`](std::os::unix::net::SocketAddr)
     pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;

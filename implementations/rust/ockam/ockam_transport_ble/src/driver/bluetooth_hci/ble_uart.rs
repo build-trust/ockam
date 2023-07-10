@@ -43,7 +43,7 @@ pub type Event = bluetooth_hci::event::Event<BlueNRGEvent>;
 pub struct BleContext {
     pub service_handle: Option<bluenrg::gatt::ServiceHandle>,
     pub dev_name_handle: Option<bluenrg::gatt::CharacteristicHandle>,
-    pub appearence_handle: Option<bluenrg::gatt::CharacteristicHandle>,
+    pub appearance_handle: Option<bluenrg::gatt::CharacteristicHandle>,
 
     pub uart_service_handle: Option<bluenrg::gatt::ServiceHandle>,
     pub uart_tx_handle: Option<bluenrg::gatt::CharacteristicHandle>,
@@ -152,7 +152,7 @@ where
                 debug!("\t=> CommandComplete::init_gap -> {:?}", params);
                 ble_context.service_handle = Some(params.service_handle);
                 ble_context.dev_name_handle = Some(params.dev_name_handle);
-                ble_context.appearence_handle = Some(params.appearance_handle);
+                ble_context.appearance_handle = Some(params.appearance_handle);
             }
             _ => debug!("\t=> unknown event: {:?}", event),
         },
