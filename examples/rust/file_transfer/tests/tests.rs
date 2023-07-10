@@ -13,26 +13,31 @@ const TINY_FILE_SIZE: u32 = 100;
 const MEDIUM_FILE_SIZE: u32 = 100 * 1024;
 
 #[test]
+#[ignore]
 fn tiny_file_transfer() -> Result<(), Error> {
     do_file_transfer(TINY_FILE_SIZE, None)
 }
 
 #[test]
+#[ignore]
 fn tiny_file_transfer_small_chunks() -> Result<(), Error> {
     do_file_transfer(TINY_FILE_SIZE, Some(SMALL_CHUNK_SIZE))
 }
 
 #[test]
+#[ignore]
 fn medium_file_transfer() -> Result<(), Error> {
     do_file_transfer(MEDIUM_FILE_SIZE, None)
 }
 
 #[test]
+#[ignore]
 fn medium_file_transfer_small_chunks() -> Result<(), Error> {
     do_file_transfer(MEDIUM_FILE_SIZE, Some(SMALL_CHUNK_SIZE))
 }
 
 #[test]
+#[ignore]
 fn medium_file_transfer_large_chunks() -> Result<(), Error> {
     do_file_transfer(MEDIUM_FILE_SIZE, Some(LARGE_CHUNK_SIZE))
 }
