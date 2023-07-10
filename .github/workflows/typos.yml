@@ -1,13 +1,15 @@
 name: Typos
-on: [pull_request]
+on: pull_request
 
 jobs:
   run:
     name: Spell check with Typos
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout Actions Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
 
       - name: Check spelling
-        uses: crate-ci/typos@master
+        uses: crate-ci/typos@ccdede0f8c1e877aa3248b9c837f3f9b0abbbdf9
+        with:
+          config: tools/typos/typos.toml
