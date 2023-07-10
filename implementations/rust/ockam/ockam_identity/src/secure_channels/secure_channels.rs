@@ -96,7 +96,7 @@ impl SecureChannels {
         let flow_control_id = options.flow_control_id.clone();
         let route = route.into();
         let next = route.next()?;
-        let idle_timeout = Arc::new(AtomicBool::new(true));
+        let is_idle = Arc::new(AtomicBool::new(true));
         let maximum_idle_time = options.maximum_idle_time;
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
@@ -112,7 +112,7 @@ impl SecureChannels {
             options.trust_context,
             Some(route),
             Some(options.timeout),
-            Some(Arc::clone(&idle_timeout)),
+            Some(Arc::clone(&is_idle)),
             Role::Initiator,
         )
         .await?;
@@ -120,17 +120,21 @@ impl SecureChannels {
         let self_clone = self.clone();
         let ctx_clone = ctx.async_try_clone().await?;
         let addr = addresses.encryptor.clone();
+
+        // start a background thread to observe the connection activity
+        // If a message is received before maximum_idle_time has passed then the connection is
+        // active. Otherwise, we close the secure channel
         spawn(async move {
             loop {
                 sleep(maximum_idle_time).await;
-                if idle_timeout.load(Ordering::Relaxed) {
+                if is_idle.load(Ordering::Relaxed) {
                     self_clone
                         .stop_secure_channel(&ctx_clone, &addr)
                         .await
                         .unwrap();
                     break;
                 }
-                idle_timeout.store(true, Ordering::Relaxed);
+                is_idle.store(true, Ordering::Relaxed);
             }
         });
 
