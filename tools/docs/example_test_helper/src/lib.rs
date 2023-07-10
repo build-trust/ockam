@@ -1,6 +1,6 @@
 //! Helper for the test code of Ockam Examples.
 //!
-//! Allows test code to spawn or run-to-completeion child processes
+//! Allows test code to spawn or run-to-completion child processes
 //! described by command lines.
 //!
 //! Processes have these environment variables set...
@@ -223,7 +223,7 @@ impl std::fmt::Debug for CmdRunner {
 }
 
 impl Drop for CmdRunner {
-    /// Cleanup spwaned process.
+    /// Cleanup spawned process.
     ///
     /// On unix, send SIGINT (Ctrl-C) to process to allow it the possibility
     /// of shutting itself down and saving its llvm coverage data.

@@ -29,7 +29,7 @@ const QUICK_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// [`Worker`] for UDP NAT Hole Puncher
 ///
-/// Using a remote Rendezvous service [`UdpRendezvousService`](crate::rendezvous_service::UdpRendezvousService`) trys to create
+/// Using a remote Rendezvous service [`UdpRendezvousService`](crate::rendezvous_service::UdpRendezvousService`) tries to create
 /// one half of a bi-directional NAT hole with a remote Hole Puncher.
 ///
 /// See documentation for [`UdpHolePuncher`](crate::hole_puncher::UdpHolePuncher).
@@ -54,7 +54,7 @@ const QUICK_TIMEOUT: Duration = Duration::from_secs(3);
 ///
 /// Messages received from the peer's puncher [`UdpHolePunchWorker`]
 /// by the 'main' mailbox are forwarded to local entities from
-/// the 'local' maibox.
+/// the 'local' mailbox.
 pub(crate) struct UdpHolePunchWorker {
     /// Address of main mailbox
     main_addr: Address,
@@ -162,7 +162,7 @@ impl UdpHolePunchWorker {
             Arc::new(AllowAll), // FIXME: @ac
         );
 
-        // TODO: Allow app to specifiy the access control for the local mailbox
+        // TODO: Allow app to specify the access control for the local mailbox
 
         let local_mailbox = Mailbox::new(
             local_addr.clone(),

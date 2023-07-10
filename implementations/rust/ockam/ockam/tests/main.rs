@@ -39,7 +39,7 @@ fn node() {
         //   are iterating on some aspect of error messaging.
         // - Choosing stable avoids us needing contributors to install nightly rust
         //   if they need to rebuild the trybuild output files, which would be an
-        //   unnecessarly contribution roadblock.
+        //   unnecessarily contribution roadblock.
 
         if std::env::var_os("NIGHTLY_CI").is_none() {
             t.compile_fail("tests/node/std/fail*.rs");

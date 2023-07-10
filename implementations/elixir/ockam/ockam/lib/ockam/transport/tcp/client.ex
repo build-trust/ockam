@@ -13,7 +13,7 @@ defmodule Ockam.Transport.TCP.Client do
   @impl true
   def address_prefix(_options), do: "TCP_C_"
 
-  ## Override default create in order to alway set restart_type: :temporary
+  ## Override default create in order to always set restart_type: :temporary
   def create(options, timeout) when is_list(options) do
     options = Keyword.put(options, :restart_type, :temporary)
     Ockam.Worker.create(__MODULE__, options, timeout)

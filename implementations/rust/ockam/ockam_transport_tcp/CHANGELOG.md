@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Introduce `TrustOptions::insecure()` and `::insecure_test()`
-- Simplify `TrustOptions` for outgoing negotations
+- Simplify `TrustOptions` for outgoing negotiations
 - Rename `insecure_test` -> `new`
 - Rename `Sessions` -> `FlowControls`
 - Rename `TrustOptions` -> `Options`

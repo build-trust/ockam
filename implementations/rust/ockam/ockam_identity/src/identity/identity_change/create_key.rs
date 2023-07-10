@@ -46,7 +46,7 @@ impl fmt::Display for CreateKeyChangeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "prev_change_id:{} key attibutes:{} public key:{}",
+            "prev_change_id:{} key attributes:{} public key:{}",
             self.prev_change_id(),
             self.key_attributes(),
             self.public_key()

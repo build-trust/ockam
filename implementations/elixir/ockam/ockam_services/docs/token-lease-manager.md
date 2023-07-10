@@ -138,7 +138,7 @@ The message will contain the action `get` and the `token_id`.
 {
     "result": "success",
     "lease": {
-        "value": "lsHqFqd7qf6JuW9A0zQI6FZc29FmGxNaxRe5VbzZX5-GxIAQGX7HX_uTOdlwWNgcyCi0BlofvXOC6vdDHPMAmg==",
+        "value": "lsHqFqd7qf6JuW9A0zQI6FZc29FmGxFaxRe5VbzZX5-GxIAQGX7HX_uTOdlwWNgcyCi0BlofvXOC6vdDHPMAmg==",
         "ttl": 60000,
         "tags": [],
         "renewable": false,

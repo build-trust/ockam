@@ -573,7 +573,7 @@ mod test {
             "     name_with_multiple_leading_space",
             "name__with_consecutive_underscore",
             "_name_with_leading_underscore",
-            "name-with-traling-underscore_",
+            "name-with-trailing-underscore_",
             "name_with_consecutive---dashes",
             "name_with_trailing_dashes--",
             "---name_with_leading_dashes",

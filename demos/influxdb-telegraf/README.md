@@ -9,7 +9,7 @@ This is a demo that shows how to use Ockam to securely connect Telegraf and Infl
 
 ## Setup
 
-There's a script to setup the inital project (`influxdb-demo`) that our nodes
+There's a script to setup the initial project (`influxdb-demo`) that our nodes
 will later register with:
 
 ```bash

@@ -326,7 +326,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extend the declarative config support
 - Unify ockam_command help
 - `node create` to return result
-- `node start` reads from the config file to execute the appropiate commands
+- `node start` reads from the config file to execute the appropriate commands
 - Okta identity provider
 - Enforce certificate pinning on okta tenants
 - Reduce output for short help command
