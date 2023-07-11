@@ -11,20 +11,18 @@ use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertSt
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-
 use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::{OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 use ockam_core::CowStr;
 
-use crate::enroll::{Auth0Provider, Auth0Service};
+use crate::enroll::{Auth0Service, OktaAuth0Provider};
 use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::configure_addon_endpoint;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
-
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
 
@@ -35,9 +33,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_lo
 /// Configure the Okta addon for a project
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct AddonConfigureOktaSubcommand {
     /// Ockam Project name
@@ -125,7 +123,7 @@ async fn run_impl(
     let body = okta_config.clone();
 
     // Validate okta configuration
-    let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config.into()));
+    let auth0 = Auth0Service::new(Arc::new(OktaAuth0Provider::new(okta_config.into())));
     auth0.validate_provider_config().await?;
 
     // Do request

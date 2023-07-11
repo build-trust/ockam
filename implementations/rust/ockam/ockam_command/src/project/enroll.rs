@@ -1,6 +1,7 @@
 use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
@@ -15,7 +16,7 @@ use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::RpcClient;
 
-use crate::enroll::{enroll_with_node, Auth0Provider, Auth0Service};
+use crate::enroll::{enroll_with_node, Auth0Service, OktaAuth0Provider};
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::create_secure_channel_to_authority;
@@ -191,7 +192,7 @@ async fn authenticate_through_okta(
         .okta_config
         .ok_or(miette!("Okta addon not configured"))?
         .into();
-    let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config));
+    let auth0 = Auth0Service::new(Arc::new(OktaAuth0Provider::new(okta_config)));
     let token = auth0.get_token_interactively(opts).await?;
 
     // Return address to the "okta_authenticator" worker on the authority node through the secure channel

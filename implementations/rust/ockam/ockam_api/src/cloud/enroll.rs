@@ -136,6 +136,11 @@ pub mod auth0 {
     }
 
     #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
+    pub struct AuthorizationCode {
+        pub code: String,
+    }
+
+    #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
     pub struct TokensError<'a> {
         pub error: Cow<'a, str>,
         pub error_description: Cow<'a, str>,
