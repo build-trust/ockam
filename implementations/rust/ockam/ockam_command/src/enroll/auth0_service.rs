@@ -34,6 +34,10 @@ impl Default for Auth0Service {
 }
 
 impl Auth0Service {
+    pub fn default_with_redirect_timeout(timeout: Duration) -> Self {
+        Self::new(Arc::new(OckamAuth0Provider::new(timeout)))
+    }
+
     pub fn new(provider: Arc<dyn Auth0Provider + Send + Sync + 'static>) -> Self {
         Self(provider)
     }
@@ -117,23 +121,75 @@ impl Auth0Service {
 
     /// Request a device code
     pub async fn device_code(&self) -> Result<DeviceCode<'_>> {
-        self.request_code(self.provider().device_code_url(), &[])
+        self.request_code(
+            self.provider().device_code_url(),
+            &[("scope", self.scopes())],
+        )
+        .await
+    }
+
+    /// Request an authorization token with a PKCE flow
+    /// See the full protocol here: https://datatracker.ietf.org/doc/html/rfc7636
+    pub async fn get_token_with_pkce(&self) -> Result<Auth0Token> {
+        let code_verifier = self.create_code_verifier();
+        let authorization_code = self.authorization_code(&code_verifier).await?;
+        self.retrieve_token(authorization_code, &code_verifier)
             .await
     }
 
-    /// Request an authorization code
-    pub async fn authorization_code(&self) -> Result<AuthorizationCode> {
-        // Generate 32 random bytes for the code verifier
-        let code_verifier = {
-            let mut code_verifier = [0u8; 32];
-            let mut rng = thread_rng();
-            rng.fill_bytes(&mut code_verifier);
-            code_verifier
+    /// Return the information about a user once enrolled
+    pub async fn get_user_info(&self, token: Auth0Token) -> Result<UserInfo> {
+        let client = self.provider().build_http_client()?;
+        let access_token = token.access_token.0.clone();
+        let req = || {
+            client
+                .get("https://account.ockam.io/userinfo")
+                .header("Authorization", format!("Bearer {}", access_token.clone()))
         };
+        let retry_strategy = ExponentialBackoff::from_millis(10).take(3);
+        let res = Retry::spawn(retry_strategy, move || req().send())
+            .await
+            .into_diagnostic()?;
+        res.json().await.map_err(|e| miette!(e).into())
+    }
 
+    /// Retrieve a token given an authorization code obtained
+    /// with a specific code verifier
+    pub async fn retrieve_token(
+        &self,
+        authorization_code: AuthorizationCode,
+        code_verifier: &str,
+    ) -> Result<Auth0Token> {
+        self.accept_redirect().await?;
+        let result = self
+            .request_code(
+                "https://account.ockam.io/oauth/token".to_string(),
+                vec![
+                    ("code", authorization_code.code),
+                    ("code_verifier", code_verifier.to_string()),
+                    ("grant_type", "authorization_code".to_string()),
+                    ("redirect_uri", self.provider().redirect_url().to_string()),
+                ]
+                .as_slice(),
+            )
+            .await;
+        result
+    }
+
+    // Generate 32 random bytes as a code verifier
+    // to prove that this client was the one requesting an authorization code
+    fn create_code_verifier(&self) -> String {
+        let mut code_verifier = [0u8; 32];
+        let mut rng = thread_rng();
+        rng.fill_bytes(&mut code_verifier);
+        base64_url::encode(&code_verifier)
+    }
+
+    /// Request an authorization code
+    pub async fn authorization_code(&self, code_verifier: &str) -> Result<AuthorizationCode> {
         // Hash and base64 encode the random bytes
         // to obtain a code challenge
-        let hashed = Vault::sha256(&code_verifier);
+        let hashed = Vault::sha256(code_verifier.as_bytes());
         let code_challenge = base64_url::encode(&hashed);
 
         // Start a local server to get back the authorization code after redirect
@@ -192,10 +248,7 @@ impl Auth0Service {
         let client = self.provider().build_http_client()?;
 
         let parameters = {
-            let mut ps = vec![
-                ("client_id", self.provider().client_id()),
-                ("scope", self.scopes()),
-            ];
+            let mut ps = vec![("client_id", self.provider().client_id())];
             ps.extend_from_slice(query_parameters);
             ps
         };
@@ -308,7 +361,7 @@ impl Auth0Service {
             server_url.host().unwrap(),
             server_url.port().unwrap()
         );
-        let server = Server::http(host_and_port).map_err(|e| miette!(e))?;
+        let server = Arc::new(Server::http(host_and_port).map_err(|e| miette!(e))?);
         info!(
             "server is started at {} and waiting for an authorization code",
             server_url
@@ -325,6 +378,48 @@ impl Auth0Service {
                         .send(AuthorizationCode::new(code))
                         .into_diagnostic()?;
 
+                    let response = Response::from_string(ENROLL_SUCCESS_RESPONSE)
+                        .with_header(Header::from_str("Content-Type: text/html").unwrap());
+                    request.respond(response).into_diagnostic()
+                }
+                Ok(None) => Err(miette!(
+                    "timeout while trying to receive a request on {} (waited for {:?})",
+                    server_url,
+                    redirect_timeout
+                )
+                .into()),
+                Err(e) => Err(miette!(
+                    "error while trying to receive a request on {}: {}",
+                    server_url,
+                    e
+                )
+                .into()),
+            }
+        });
+        Ok(())
+    }
+
+    /// This function starts a server which will wait for a redirected query
+    /// being sent
+    pub(crate) async fn accept_redirect(&self) -> Result<()> {
+        let server_url = self.provider().redirect_url();
+        let host_and_port = format!(
+            "{}:{}",
+            server_url.host().unwrap(),
+            server_url.port().unwrap()
+        );
+        let server = Arc::new(Server::http(host_and_port).map_err(|e| miette!(e))?);
+        info!(
+            "server is started at {} and waiting for a redirect call",
+            server_url
+        );
+
+        let redirect_timeout = self.provider().redirect_timeout();
+
+        // Start a background thread which will wait for a redirect request
+        tokio::spawn(async move {
+            match server.recv_timeout(redirect_timeout) {
+                Ok(Some(request)) => {
                     let response = Response::from_string(ENROLL_SUCCESS_RESPONSE)
                         .with_header(Header::from_str("Content-Type: text/html").unwrap());
                     request.respond(response).into_diagnostic()
@@ -381,11 +476,36 @@ impl Auth0Service {
 mod tests {
     use super::*;
 
+    /// This test can only run with an open browser in order to authenticate the user
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    // #[ignore]
+    async fn test_user_info() -> Result<()> {
+        let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
+        let token = auth0_service.get_token_with_pkce().await?;
+        let user_info = auth0_service.get_user_info(token).await;
+        assert!(user_info.is_ok());
+        Ok(())
+    }
+
+    /// This test can only run with an open browser in order to authenticate the user
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    // #[ignore]
+    async fn test_get_token_with_pkce() -> Result<()> {
+        let auth0_service = Auth0Service::default(); //_with_redirect_timeout(Duration::from_secs(15));
+        let token = auth0_service.get_token_with_pkce().await;
+        assert!(token.is_ok());
+        Ok(())
+    }
+
+    /// This test can only run with an open browser in order to authenticate the user
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore]
     async fn test_authorization_code() -> Result<()> {
-        let auth0_service = Auth0Service::default();
-        let authorization_code = auth0_service.authorization_code().await;
+        let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
+        let code_verifier = auth0_service.create_code_verifier();
+        let authorization_code = auth0_service
+            .authorization_code(code_verifier.as_str())
+            .await;
         assert!(authorization_code.is_ok());
         Ok(())
     }
