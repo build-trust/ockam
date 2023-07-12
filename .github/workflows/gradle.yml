@@ -52,8 +52,6 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - uses: ./.github/actions/elixir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: mkdir build
       - run: ./gradlew build -Pmode=release
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
