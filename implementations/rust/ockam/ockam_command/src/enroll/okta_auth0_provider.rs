@@ -1,16 +1,21 @@
 use miette::{miette, Result};
-
 use ockam_api::cloud::project::OktaAuth0;
+use std::time::Duration;
+use url::Url;
 
 use crate::enroll::auth0_provider::Auth0Provider;
 
 pub struct OktaAuth0Provider {
     okta: OktaAuth0,
+    redirect_timeout: Duration,
 }
 
 impl OktaAuth0Provider {
     pub fn new(okta: OktaAuth0) -> Self {
-        Self { okta }
+        Self {
+            okta,
+            redirect_timeout: Duration::from_secs(60),
+        }
     }
 }
 
@@ -19,8 +24,12 @@ impl Auth0Provider for OktaAuth0Provider {
         self.okta.client_id.clone()
     }
 
-    fn redirect_uri(&self) -> String {
-        "http://localhost:8000/callback".to_string()
+    fn redirect_timeout(&self) -> Duration {
+        self.redirect_timeout.clone()
+    }
+
+    fn redirect_url(&self) -> Url {
+        Url::parse("http://localhost:8000/callback").unwrap()
     }
 
     fn device_code_url(&self) -> String {
