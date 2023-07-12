@@ -2067,10 +2067,17 @@ dependencies = [
 
 [[package]]
 name = "embedded-hal"
-version = "1.0.0-alpha.8"
+version = "1.0.0-alpha.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3babfc7fd332142a0b11aebf592992f211f4e01b6222fb04b03aba1bd80018d"
+checksum = "f7724ebabcadfeb15920571dd727bc8ccde8586e52f2890bdb8182fdf42c3ff2"
+
+[[package]]
+name = "embedded-hal-nb"
+version = "1.0.0-alpha.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a09e4c3f8a54e60803405e1cc17e36c963ab32e654f8d6bb49d48cd8116360d7"
 dependencies = [
+ "embedded-hal 1.0.0-alpha.11",
  "nb 1.1.0",
 ]
 
@@ -6342,9 +6349,9 @@ dependencies = [
 
 [[package]]
 name = "stm32f4xx-hal"
-version = "0.16.2"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc2877159274bc374744f10a4dd913b5175593ce02a94d70b8ba978e49db199b"
+checksum = "dcf8a8f19470fab8b28799a1394bc134356db29217dd041a91c9ee2157e31e40"
 dependencies = [
  "bare-metal 1.0.0",
  "bitflags 2.3.3",
@@ -6352,7 +6359,8 @@ dependencies = [
  "cortex-m-rt",
  "embedded-dma",
  "embedded-hal 0.2.7",
- "embedded-hal 1.0.0-alpha.8",
+ "embedded-hal 1.0.0-alpha.11",
+ "embedded-hal-nb",
  "embedded-storage 0.2.0",
  "fugit",
  "fugit-timer",
