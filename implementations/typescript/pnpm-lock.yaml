@@ -37,10 +37,10 @@ importers:
     devDependencies:
       '@sveltejs/adapter-static':
         specifier: 2.0.2
-        version: 2.0.2(@sveltejs/kit@1.22.1)
+        version: 2.0.2(@sveltejs/kit@1.22.2)
       '@sveltejs/kit':
-        specifier: ^1.22.1
-        version: 1.22.1(svelte@4.0.5)(vite@4.4.3)
+        specifier: ^1.22.2
+        version: 1.22.2(svelte@4.0.5)(vite@4.4.3)
       svelte:
         specifier: ^4.0.5
         version: 4.0.5
@@ -909,16 +909,16 @@ packages:
       '@sinonjs/commons': 3.0.0
     dev: true
 
-  /@sveltejs/adapter-static@2.0.2(@sveltejs/kit@1.22.1):
+  /@sveltejs/adapter-static@2.0.2(@sveltejs/kit@1.22.2):
     resolution: {integrity: sha512-9wYtf6s6ew7DHUHMrt55YpD1FgV7oWql2IGsW5BXquLxqcY9vjrqCFo0TzzDpo+ZPZkW/v77k0eOP6tsAb8HmQ==}
     peerDependencies:
       '@sveltejs/kit': ^1.5.0
     dependencies:
-      '@sveltejs/kit': 1.22.1(svelte@4.0.5)(vite@4.4.3)
+      '@sveltejs/kit': 1.22.2(svelte@4.0.5)(vite@4.4.3)
     dev: true
 
-  /@sveltejs/kit@1.22.1(svelte@4.0.5)(vite@4.4.3):
-    resolution: {integrity: sha512-idFhKVEHuCKbTETvuo3V7UShqSYX9JMKVJXP546dOTkh5ZRejo5XtKtsB5TCSwNBa0TH8hIV44/bnylaFhM1Vg==}
+  /@sveltejs/kit@1.22.2(svelte@4.0.5)(vite@4.4.3):
+    resolution: {integrity: sha512-T6GY5jSfQgoDnNPNqAuDi9IK+ZW0TspzTV16UAN6GTsxbri67DGVIbw7QOXPg8FMrZQMmda1AtAxPMfXbOqCgw==}
     engines: {node: ^16.14 || >=18}
     hasBin: true
     requiresBuild: true
