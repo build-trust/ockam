@@ -160,6 +160,10 @@ impl Auth0Service {
         authorization_code: AuthorizationCode,
         code_verifier: &str,
     ) -> Result<Auth0Token> {
+        info!(
+            "getting an Auth0 token using the authorization code {}",
+            authorization_code.code
+        );
         self.accept_redirect().await?;
         let result = self
             .request_code(
