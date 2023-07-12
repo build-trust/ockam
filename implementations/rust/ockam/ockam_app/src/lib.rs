@@ -1,7 +1,9 @@
+use tauri::{Manager, SystemTray};
+use tauri_plugin_log::{Target, TargetKind};
+
 use crate::app::{process_application_event, process_system_tray_event, SystemTrayMenuBuilder};
 use crate::ctx::TauriCtx;
 use crate::error::Result;
-use tauri::{Manager, SystemTray};
 
 mod app;
 mod ctx;
@@ -14,6 +16,16 @@ mod tcp;
 pub fn run() {
     // For now the application only consists in a system tray with several menu items
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .targets([
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("ockam.log".to_string()),
+                    }),
+                ])
+                .build(),
+        )
         .setup(|app| {
             let ctx = TauriCtx::new(app.app_handle());
             app.listen_global(app::events::SYSTEM_TRAY_ON_UPDATE, move |_event| {
