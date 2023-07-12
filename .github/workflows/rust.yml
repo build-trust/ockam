@@ -73,9 +73,6 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          mkdir build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_fmt_check
@@ -106,9 +103,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          mkdir build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_clippy
@@ -124,9 +118,6 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          mkdir build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_deny
@@ -143,9 +134,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          mkdir build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build_docs
@@ -184,9 +172,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          mkdir build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build_examples
@@ -259,9 +244,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          mkdir build
       - run: |
           rustc --version
           RUSTFLAGS='-Dwarnings' cargo check --features tag
@@ -301,9 +283,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          mkdir build
       - run: |
           rustc --version
           RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
