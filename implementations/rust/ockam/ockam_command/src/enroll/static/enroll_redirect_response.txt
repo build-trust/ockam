@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+  <html lang="en" >
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="stylesheet" href="https://cdn.auth0.com/ulp/react-components/1.76.1/css/main.cdn.min.css" />
+    <style id="custom-styles-container">
+          :root {
+    --primary-color: #0E1A2A;
+  }
+          :root {
+    --button-font-color: #ffffff;
+  }
+          :root {
+    --secondary-button-border-color: #c9cace;
+    --social-button-border-color: #c9cace;
+    --radio-button-border-color: #c9cace;
+  }
+          :root {
+    --secondary-button-text-color: #1e212a;
+  }
+          :root {
+    --link-color: #0E1A2A;
+  }
+          :root {
+    --title-font-color: #1e212a;
+  }
+          :root {
+    --font-default-color: #1e212a;
+  }
+          :root {
+    --widget-background-color: #ffffff;
+  }
+          :root {
+    --box-border-color: #c9cace;
+  }
+          :root {
+    --font-light-color: #65676e;
+  }
+          :root {
+    --input-text-color: #000000;
+  }
+          :root {
+    --input-border-color: #c9cace;
+    --border-default-color: #c9cace;
+  }
+          :root {
+    --input-background-color: #ffffff;
+  }
+          :root {
+    --icon-default-color: #65676e;
+  }
+          :root {
+    --error-color: #d03c38;
+    --error-text-color: #ffffff;
+  }
+          :root {
+    --success-color: #13a688;
+  }
+          :root {
+    --base-focus-color: #0E1A2A;
+    --transparency-focus-color: rgba(14,26,42, 0.15);
+  }
+          :root {
+    --base-hover-color: #000000;
+    --transparency-hover-color: rgba(0,0,0, var(--hover-transparency-value));
+  }
+          html, :root {
+    font-size: 16px;
+    --default-font-size: 16px;
+  }
+          body {
+    --title-font-size: 1.5rem;
+    --title-font-weight: var(--font-default-weight);
+  }
+          .cb47b1075 {
+    font-size: 0.875rem;
+    font-weight: var(--font-default-weight);
+  }
+          .c7bd5e6dd {
+    font-size: 0.875rem;
+    font-weight: var(--font-default-weight);
+  }
+          .c3768468a, .c7e8b6319 {
+    font-size: 1rem;
+    font-weight: var(--font-bold-weight);
+  }
+          .c5ee62a5a {
+    font-size: 1rem;
+    font-weight: var(--font-default-weight);
+  }
+          .cbedbe5ed, .c8eae5860, [id^='ulp-container-'] a {
+    font-size: 0.875rem;
+    font-weight: var(--font-bold-weight) !important;
+  }
+          :root {
+    --button-border-width: 1px;
+    --social-button-border-width: 1px;
+    --radio-border-width: 1px;
+  }
+          body {
+    --button-border-radius: 3px;
+    --radio-border-radius: 3px;
+  }
+          :root {
+    --input-border-width: 1px;
+  }
+          body {
+    --input-border-radius: 3px;
+  }
+          :root {
+    --border-radius-outer: 5px;
+  }
+          :root {
+    --box-border-width: 0.5px;
+  }
+    body {
+      --logo-alignment: 0 auto 0 0;
+    }
+    .ccec4e90c {
+      content: url('https://raw.githubusercontent.com/build-trust/ockam-website/develop/src/assets/logo-dark.png');
+    }
+          body {
+    --logo-height: 52px;
+  }
+  .ccec4e90c {
+    height: var(--logo-height);
+  }
+    body {
+      --header-alignment: left;
+    }
+          .cb6ef9106 {
+    display: flex;
+    flex-direction: column;
+  }
+  .cb6ef9106 form, .cb6ef9106 > .ca5ac6fbf {
+    order: 3;
+  }
+  .cb6ef9106 ._alternate-action {
+    order: 4
+  }
+  .cb6ef9106 > .ca017d3e4 {
+    order: 2;
+    margin-bottom: 24px;
+  }
+  .cb6ef9106 .c1c614334 {
+    order: 1;
+    margin-top: 0;
+  }
+          .ca82dd33d {
+    --page-background-alignment: right;
+  }
+          body {
+    --page-background-color: #ffffff;
+  }
+          .ca82dd33d {
+    --page-background-image: url('https://raw.githubusercontent.com/build-trust/ockam-website/develop/src/assets/account-screens-background.png');
+  }
+    </style>
+    <style>
+      /* By default, hide features for javascript-disabled browsing */
+      /* We use !important to override any css with higher specificity */
+      /* It is also overriden by the styles in <noscript> in the header file */
+      .no-js {
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        height: 1px;
+        overflow: hidden;
+        position: absolute;
+        white-space: nowrap;
+        width: 1px;
+      }
+    </style>
+    <noscript>
+      <style>
+        /* We use !important to override the default for js enabled */
+        /* If the display should be other than block, it should be defined specifically here */
+        .js-required { display: none !important; }
+        .no-js {
+          clip: auto;
+          clip-path: none;
+          height: auto;
+          overflow: auto;
+          position: static;
+          white-space: normal;
+          width: var(--prompt-width);
+        }
+      </style>
+    </noscript>
+
+    <title>Login successful | </title>
+  </head>
+
+  <script type="text/javascript">
+    function closeWindow() {
+      open(location, '_self').close()
+    }
+  </script>
+
+  <body onload="javascript:closeWindow()">
+
+    <div class="c6708bd19 ca82dd33d">
+<main class="cc9f0952c c49e1f473">
+  <section class="c22d42f7e _prompt-box-outer c1f100abc ce1ecc585">
+    <div class="c63580e18 cc29cdfb1">
+      <div class="c7bd5e6dd c749073f5 c39ee52a3" data-event-id="">
+        <div class="c4d510ff0 cdf65f933">
+          <span class="c73824b4a success-lock"></span>
+        </div>
+        <section class="c84504f3d cfd63d3a2">
+            <h1 class="c24e3ef33 cc39cb39e">Congratulations, you&#39;re all set!</h1>
+            <p class="cc62200eb c431e9ec4 c42c53f7f cf9c47a72 c431e9ec4 caecb7e5f">Your device is now connected.</p>
+        </section>
+      </div>
+    </div>
+  </section>
+</main>
+    </div>
+  </body>
+</html>

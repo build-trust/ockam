@@ -140,6 +140,12 @@ pub mod auth0 {
         pub code: String,
     }
 
+    impl AuthorizationCode {
+        pub fn new(s: impl Into<String>) -> Self {
+            Self { code: s.into() }
+        }
+    }
+
     #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
     pub struct TokensError<'a> {
         pub error: Cow<'a, str>,

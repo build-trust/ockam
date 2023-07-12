@@ -210,6 +210,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ascii"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d92bec98840b8f03a5ff5413de5293bfcd8bf96467cf5452609f939ec6f5de16"
+
+[[package]]
 name = "assert_cmd"
 version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -697,6 +703,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64-url"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c5b0a88aa36e9f095ee2e2b13fb8c5e4313e022783aedacc123328c0084916d"
+dependencies = [
+ "base64 0.21.2",
+]
+
+[[package]]
 name = "base64ct"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1049,6 +1064,12 @@ dependencies = [
  "serde",
  "winapi",
 ]
+
+[[package]]
+name = "chunked_transfer"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cca491388666e04d7248af3f60f0c40cfb0991c72205595d7c396e3510207d1a"
 
 [[package]]
 name = "cipher"
@@ -4361,6 +4382,7 @@ dependencies = [
  "assert_cmd",
  "async-recursion",
  "async-trait",
+ "base64-url",
  "clap 4.3.11",
  "clap_complete",
  "clap_mangen",
@@ -4411,12 +4433,14 @@ dependencies = [
  "termimad",
  "thiserror",
  "time",
+ "tiny_http",
  "tokio",
  "tokio-retry",
  "tracing",
  "tracing-appender",
  "tracing-error",
  "tracing-subscriber",
+ "url",
  "which",
 ]
 
@@ -7040,6 +7064,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96ba15a897f3c86766b757e5ac7221554c6750054d74d5b28844fce5fb36a6c4"
 dependencies = [
  "time-core",
+]
+
+[[package]]
+name = "tiny_http"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "389915df6413a2e74fb181895f933386023c71110878cd0825588928e64cdc82"
+dependencies = [
+ "ascii",
+ "chunked_transfer",
+ "httpdate",
+ "log",
 ]
 
 [[package]]

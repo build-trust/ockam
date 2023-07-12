@@ -55,6 +55,7 @@ path = "src/bin/ockam.rs"
 anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
+base64-url = "2.0.0"
 clap = { version = "4.3.11", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.3.2"
 clap_mangen = "0.2.12"
@@ -103,12 +104,14 @@ termcolor = "1.2.0"
 termimad = "0.23"
 thiserror = "1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
+tiny_http = "0.12.0"
 tokio = { version = "1.29.1", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-appender = "0.2.2"
 tracing-error = "0.2"
 tracing-subscriber = { version = "0.3.17", features = ["json"] }
+url = "2.4.0"
 which = "4.4.0"
 
 [dev-dependencies]
