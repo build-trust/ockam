@@ -20,6 +20,7 @@ pub struct Identity {
 
 impl Identity {
     /// Create a new identity
+    // FIXME: Should be private
     pub fn new(identifier: IdentityIdentifier, change_history: IdentityChangeHistory) -> Self {
         Self {
             identifier,
@@ -71,6 +72,7 @@ impl Identity {
     }
 
     /// Create an Identity from serialized data
+    // FIXME: signatures verification should be mandatory
     pub fn import(identifier: &IdentityIdentifier, data: &[u8]) -> Result<Identity> {
         let change_history = IdentityChangeHistory::import(data)?;
         Ok(Identity::new(identifier.clone(), change_history))
