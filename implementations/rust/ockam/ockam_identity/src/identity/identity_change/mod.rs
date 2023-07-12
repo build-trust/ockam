@@ -4,6 +4,7 @@ mod create_key;
 mod identity_change;
 pub(crate) mod identity_change_constants;
 mod key_attributes;
+mod models;
 mod rotate_key;
 mod signature;
 
