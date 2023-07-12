@@ -23,7 +23,7 @@ pub fn enroll_user() -> Result<()> {
 
 async fn rpc(ctx: Context, options: CommandGlobalOpts) -> miette::Result<()> {
     // get an Auth0 token
-    let token = Auth0Service::default().get_token(&options).await?;
+    let token = Auth0Service::default().get_token_with_pkce().await?;
     // enroll the current user using that token on the controller
     enroll(&ctx, &options, token).await?;
     Ok(())
