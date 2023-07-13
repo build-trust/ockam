@@ -51,6 +51,14 @@
       "csp": null
     },
     "windows": [
+      {
+        "height": 600,
+        "label": "ockam",
+        "title": "Ockam",
+        "url": "index.html",
+        "visible": true,
+        "width": 800
+      }
     ]
   }
 }
