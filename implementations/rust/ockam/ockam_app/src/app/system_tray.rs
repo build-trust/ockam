@@ -1,8 +1,11 @@
+use crate::enroll::DefaultBackend;
 use crate::enroll::EnrollActions;
 use crate::quit::QuitActions;
 use crate::tcp::outlet::TcpOutletActions;
-use crate::{AppHandle, Result};
+use crate::{enroll, quit, tcp, AppHandle, Result};
+use tauri::SystemTrayEvent;
 use tauri::{CustomMenuItem, SystemTrayMenu, SystemTrayMenuItem};
+use tracing::error;
 
 /// Create the system tray with all the major functions.
 /// Separate groups of related functions with a native separator.
@@ -15,10 +18,10 @@ pub struct SystemTrayMenuBuilder {
 impl SystemTrayMenuBuilder {
     /// Create the default system tray menu with the basic elements (i.e. without list items).
     pub fn default() -> SystemTrayMenu {
-        Self::init().build()
+        Self::new().build()
     }
 
-    pub fn init() -> Self {
+    pub fn new() -> Self {
         let enroll = EnrollActions::new();
         let tcp = TcpOutletActions::new();
         let quit = QuitActions::new();
@@ -35,11 +38,9 @@ impl SystemTrayMenuBuilder {
             .add_menu_items(&[self.enroll.reset, self.quit.quit])
     }
 
-    /// Refresh the system tray menu with the latest state, including all list items.
-    pub fn refresh(app_handle: &AppHandle) -> Result<()> {
-        let menu = Self::get_full_menu().unwrap_or(Self::default());
-        app_handle.tray_handle().set_menu(menu)?;
-        Ok(())
+    /// Return a system tray menu with the latest state, including all list items.
+    pub fn full() -> SystemTrayMenu {
+        Self::get_full_menu().unwrap_or(Self::default())
     }
 
     fn get_full_menu() -> Result<SystemTrayMenu> {
@@ -65,5 +66,21 @@ impl SystemTrayMenuItems for SystemTrayMenu {
             tm = tm.add_item(item.clone());
         }
         tm
+    }
+}
+
+/// This is the function dispatching events for the SystemTray
+pub fn process_system_tray_event(app_handle: AppHandle, event: SystemTrayEvent) {
+    if let SystemTrayEvent::MenuItemClick { id, .. } = event {
+        let result = match id.as_str() {
+            enroll::ENROLL_MENU_ID => enroll::on_enroll(DefaultBackend, app_handle),
+            tcp::outlet::TCP_OUTLET_CREATE_MENU_ID => tcp::outlet::on_create(app_handle),
+            enroll::RESET_MENU_ID => enroll::on_reset(DefaultBackend, app_handle),
+            quit::QUIT_MENU_ID => quit::on_quit(),
+            _ => Ok(()),
+        };
+        if let Err(e) = result {
+            error!("{:?}", e)
+        }
     }
 }

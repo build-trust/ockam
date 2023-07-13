@@ -26,15 +26,18 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            let app_handle = app.app_handle();
+            let moved_app_handle = app.handle();
+            SystemTray::new()
+                .with_menu(SystemTrayMenuBuilder::full())
+                .on_event(move |event| process_system_tray_event(moved_app_handle.clone(), event))
+                .build(app)?;
+            let moved_app_handle = app.handle();
             app.listen_global(app::events::SYSTEM_TRAY_ON_UPDATE, move |_event| {
-                let _ = SystemTrayMenuBuilder::refresh(&app_handle);
+                let menu = SystemTrayMenuBuilder::full();
+                let _ = moved_app_handle.tray_handle().set_menu(menu);
             });
-            app.trigger_global(app::events::SYSTEM_TRAY_ON_UPDATE, None);
             Ok(())
         })
-        .system_tray(SystemTray::new().with_menu(SystemTrayMenuBuilder::default()))
-        .on_system_tray_event(process_system_tray_event)
         .build(tauri::generate_context!())
         .expect("Error while building the Ockam application")
         .run(process_application_event);
