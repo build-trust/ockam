@@ -454,9 +454,8 @@ impl Auth0Service {
 mod tests {
     use super::*;
 
-    /// This test can only run with an open browser in order to authenticate the user
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    #[ignore]
+    #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_user_info() -> Result<()> {
         let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
         let token = auth0_service.get_token_with_pkce().await?;
@@ -465,9 +464,8 @@ mod tests {
         Ok(())
     }
 
-    /// This test can only run with an open browser in order to authenticate the user
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    #[ignore]
+    #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_get_token_with_pkce() -> Result<()> {
         let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
         let token = auth0_service.get_token_with_pkce().await;
@@ -475,9 +473,8 @@ mod tests {
         Ok(())
     }
 
-    /// This test can only run with an open browser in order to authenticate the user
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    #[ignore]
+    #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_authorization_code() -> Result<()> {
         let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
         let code_verifier = auth0_service.create_code_verifier();
