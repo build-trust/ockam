@@ -35,6 +35,7 @@ path = "src/lib.rs"
 tauri-build = { version = "2.0.0-alpha.6", features = [] }
 
 [dependencies]
+log = { version = "0.4.19", optional = true }
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
 muda = "0.7"
 ockam = { path = "../ockam", version = "^0.90.0", features = ["software_vault"] }
@@ -57,4 +58,4 @@ tracing = "0.1"
 # DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
 default = ["log"]
-log = ["tracing/log"]
+log = ["dep:log", "log/release_max_level_info", "tracing/log"]

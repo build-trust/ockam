@@ -4460,6 +4460,7 @@ dependencies = [
 name = "ockam_app"
 version = "0.1.0"
 dependencies = [
+ "log",
  "miette",
  "muda",
  "ockam",
