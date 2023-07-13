@@ -1,8 +1,7 @@
-use crate::ctx::TauriCtx;
 use crate::enroll::EnrollActions;
 use crate::quit::QuitActions;
 use crate::tcp::outlet::TcpOutletActions;
-use crate::Result;
+use crate::{AppHandle, Result};
 use tauri::{CustomMenuItem, SystemTrayMenu, SystemTrayMenuItem};
 
 /// Create the system tray with all the major functions.
@@ -37,15 +36,15 @@ impl SystemTrayMenuBuilder {
     }
 
     /// Refresh the system tray menu with the latest state, including all list items.
-    pub fn refresh(ctx: &TauriCtx) -> Result<()> {
-        let menu = Self::get_full_menu(ctx).unwrap_or(Self::default());
-        ctx.app_handle().tray_handle().set_menu(menu)?;
+    pub fn refresh(app_handle: &AppHandle) -> Result<()> {
+        let menu = Self::get_full_menu().unwrap_or(Self::default());
+        app_handle.tray_handle().set_menu(menu)?;
         Ok(())
     }
 
-    fn get_full_menu(ctx: &TauriCtx) -> Result<SystemTrayMenu> {
+    fn get_full_menu() -> Result<SystemTrayMenu> {
         let enroll = EnrollActions::new();
-        let tcp = TcpOutletActions::full(ctx)?;
+        let tcp = TcpOutletActions::full()?;
         let quit = QuitActions::new();
         let menu = Self { enroll, tcp, quit }.build();
         Ok(menu)

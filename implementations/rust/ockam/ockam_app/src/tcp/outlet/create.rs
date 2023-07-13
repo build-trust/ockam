@@ -1,5 +1,3 @@
-use crate::ctx::TauriCtx;
-use crate::Result;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
@@ -10,13 +8,13 @@ use tauri::Manager;
 
 /// Create a TCP outlet within the default node.
 #[tauri::command]
-pub fn create(ctx: TauriCtx) -> Result<()> {
+pub fn tcp_outlet_create(app_handle: tauri::AppHandle) {
     let opts = CommandGlobalOpts::new(GlobalArgs::default());
     initialize_node_if_default(&opts, &None);
-    embedded_node(rpc, opts)?;
-    ctx.app_handle()
-        .trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
-    Ok(())
+    if let Err(e) = embedded_node(rpc, opts) {
+        println!("Error while creating TCP outlet: {e:?}");
+    }
+    app_handle.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
 }
 
 async fn rpc(ctx: Context, opts: CommandGlobalOpts) -> miette::Result<OutletStatus> {

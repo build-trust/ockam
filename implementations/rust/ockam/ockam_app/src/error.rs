@@ -1,6 +1,8 @@
 use miette::Diagnostic;
 use thiserror::Error;
 
+pub type TauriCommandResult<T> = std::result::Result<T, String>;
+
 pub type Result<T> = miette::Result<T, Error>;
 
 #[derive(Error, Diagnostic, Debug)]
@@ -27,5 +29,17 @@ pub enum Error {
 impl From<miette::Report> for Error {
     fn from(e: miette::Report) -> Self {
         Error::Generic(e.to_string())
+    }
+}
+
+impl From<std::fmt::Error> for Error {
+    fn from(e: std::fmt::Error) -> Self {
+        Error::Generic(e.to_string())
+    }
+}
+
+impl From<String> for Error {
+    fn from(e: String) -> Self {
+        Error::Generic(e)
     }
 }

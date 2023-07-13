@@ -1,16 +1,18 @@
-use tauri::{Manager, SystemTray};
+use crate::app::{process_application_event, process_system_tray_event, SystemTrayMenuBuilder};
+use crate::error::Result;
+use tauri::{Manager, SystemTray, Wry};
 use tauri_plugin_log::{Target, TargetKind};
 
-use crate::app::{process_application_event, process_system_tray_event, SystemTrayMenuBuilder};
-use crate::ctx::TauriCtx;
-use crate::error::Result;
-
 mod app;
-mod ctx;
 mod enroll;
 mod error;
 mod quit;
 mod tcp;
+
+use enroll::enroll_user;
+use tcp::outlet::{tcp_outlet_create, tcp_outlet_list};
+
+type AppHandle = tauri::AppHandle<Wry>;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -27,9 +29,9 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            let ctx = TauriCtx::new(app.app_handle());
+            let app_handle = app.app_handle();
             app.listen_global(app::events::SYSTEM_TRAY_ON_UPDATE, move |_event| {
-                let _ = SystemTrayMenuBuilder::refresh(&ctx.clone());
+                let _ = SystemTrayMenuBuilder::refresh(&app_handle);
             });
             app.trigger_global(app::events::SYSTEM_TRAY_ON_UPDATE, None);
             Ok(())

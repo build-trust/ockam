@@ -1,6 +1,5 @@
-use crate::ctx::TauriCtx;
-use crate::enroll;
 use crate::Result;
+use crate::{enroll, AppHandle};
 
 /// This trait represents all the enroll actions which
 /// can interact with the network or the local configuration
@@ -10,17 +9,18 @@ pub trait Backend {
     fn enroll_user(&self) -> Result<()>;
 
     /// Reset the local configuration as if running `ockam reset -y`
-    fn reset(&self, ctx: &TauriCtx) -> Result<()>;
+    fn reset(&self, app_handle: AppHandle) -> Result<()>;
 }
 
 pub struct DefaultBackend;
 
 impl Backend for DefaultBackend {
     fn enroll_user(&self) -> Result<()> {
-        enroll::enroll_user::enroll_user()
+        enroll::enroll_user::enroll_user();
+        Ok(())
     }
 
-    fn reset(&self, ctx: &TauriCtx) -> Result<()> {
-        enroll::reset::reset(ctx)
+    fn reset(&self, app_handle: AppHandle) -> Result<()> {
+        enroll::reset::reset(app_handle)
     }
 }

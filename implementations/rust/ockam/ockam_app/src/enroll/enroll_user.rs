@@ -1,4 +1,3 @@
-use crate::Result;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_command::enroll::{enroll, Auth0Service};
@@ -12,14 +11,15 @@ use ockam_command::{CommandGlobalOpts, GlobalArgs};
 ///  - connects to the Auth0 service to authenticate the user of the Ockam application to retrieve a token
 ///  - connects to the Orchestrator with the retrieved token to create a project
 #[tauri::command]
-pub fn enroll_user() -> Result<()> {
+pub fn enroll_user() {
     let args = GlobalArgs::default().set_quiet();
     let options = CommandGlobalOpts::new(args);
     if options.state.identities.default().is_err() {
         create_default_identity(&options);
     }
-    embedded_node(rpc, options)?;
-    Ok(())
+    if let Err(e) = embedded_node(rpc, options) {
+        println!("Error while enrolling user: {e:?}");
+    }
 }
 
 async fn rpc(ctx: Context, options: CommandGlobalOpts) -> miette::Result<()> {
