@@ -1,11 +1,11 @@
 use crate::error::TauriCommandResult;
-
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_command::node::initialize_node_if_default;
 use ockam_command::util::embedded_node;
 use ockam_command::{tcp, CommandGlobalOpts, GlobalArgs};
+use tauri::Manager;
 
 /// List TCP outlets of the default node.
 #[tauri::command]

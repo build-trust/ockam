@@ -1,4 +1,5 @@
 mod create;
+mod events;
 mod list;
 mod menu_items;
 
