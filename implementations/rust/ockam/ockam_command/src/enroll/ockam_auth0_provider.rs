@@ -26,7 +26,7 @@ impl Auth0Provider for OckamAuth0Provider {
     }
 
     fn redirect_timeout(&self) -> Duration {
-        self.redirect_timeout.clone()
+        self.redirect_timeout
     }
 
     fn redirect_url(&self) -> Url {

@@ -1,7 +1,9 @@
-use miette::{miette, Result};
-use ockam_api::cloud::project::OktaAuth0;
 use std::time::Duration;
+
+use miette::{miette, Result};
 use url::Url;
+
+use ockam_api::cloud::project::OktaAuth0;
 
 use crate::enroll::auth0_provider::Auth0Provider;
 
@@ -25,7 +27,7 @@ impl Auth0Provider for OktaAuth0Provider {
     }
 
     fn redirect_timeout(&self) -> Duration {
-        self.redirect_timeout.clone()
+        self.redirect_timeout
     }
 
     fn redirect_url(&self) -> Url {

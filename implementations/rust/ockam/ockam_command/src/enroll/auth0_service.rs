@@ -223,19 +223,17 @@ impl Auth0Service {
             "getting an Auth0 token using the authorization code {}",
             authorization_code.code
         );
-        let result = self
-            .request_code(
-                Url::parse("https://account.ockam.io/oauth/token").unwrap(),
-                vec![
-                    ("code", authorization_code.code),
-                    ("code_verifier", code_verifier.to_string()),
-                    ("grant_type", "authorization_code".to_string()),
-                    ("redirect_uri", self.provider().redirect_url().to_string()),
-                ]
-                .as_slice(),
-            )
-            .await;
-        result
+        self.request_code(
+            Url::parse("https://account.ockam.io/oauth/token").unwrap(),
+            vec![
+                ("code", authorization_code.code),
+                ("code_verifier", code_verifier.to_string()),
+                ("grant_type", "authorization_code".to_string()),
+                ("redirect_uri", self.provider().redirect_url().to_string()),
+            ]
+            .as_slice(),
+        )
+        .await
     }
 
     /// Request a code from a given Auth0 URL
@@ -322,14 +320,12 @@ impl Auth0Service {
                     "timeout while trying to receive a request on {} (waited for {:?})",
                     server_url,
                     redirect_timeout
-                )
-                .into()),
+                )),
                 Err(e) => Err(miette!(
                     "error while trying to receive a request on {}: {}",
                     server_url,
                     e
-                )
-                .into()),
+                )),
             }
         });
         Ok(())
@@ -473,7 +469,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore]
     async fn test_get_token_with_pkce() -> Result<()> {
-        let auth0_service = Auth0Service::default(); //_with_redirect_timeout(Duration::from_secs(15));
+        let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
         let token = auth0_service.get_token_with_pkce().await;
         assert!(token.is_ok());
         Ok(())
