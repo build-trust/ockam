@@ -9,9 +9,6 @@ mod error;
 mod quit;
 mod tcp;
 
-use enroll::enroll_user;
-use tcp::outlet::{tcp_outlet_create, tcp_outlet_list};
-
 type AppHandle = tauri::AppHandle<Wry>;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
