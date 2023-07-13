@@ -33,16 +33,16 @@ impl Auth0Provider for OckamAuth0Provider {
         Url::parse("http://localhost:8000/callback").unwrap()
     }
 
-    fn device_code_url(&self) -> String {
-        "https://account.ockam.io/oauth/device/code".to_string()
+    fn device_code_url(&self) -> Url {
+        Url::parse("https://account.ockam.io/oauth/device/code").unwrap()
     }
 
-    fn authorization_url(&self) -> String {
-        "https://account.ockam.io/authorize".to_string()
+    fn authorization_url(&self) -> Url {
+        Url::parse("https://account.ockam.io/authorize").unwrap()
     }
 
-    fn token_request_url(&self) -> String {
-        "https://account.ockam.io/oauth/token".to_string()
+    fn token_request_url(&self) -> Url {
+        Url::parse("https://account.ockam.io/oauth/token").unwrap()
     }
 
     fn build_http_client(&self) -> Result<reqwest::Client> {

@@ -7,8 +7,8 @@ pub trait Auth0Provider {
     fn client_id(&self) -> String;
     fn redirect_timeout(&self) -> Duration;
     fn redirect_url(&self) -> Url;
-    fn device_code_url(&self) -> String;
-    fn authorization_url(&self) -> String;
-    fn token_request_url(&self) -> String;
+    fn device_code_url(&self) -> Url;
+    fn authorization_url(&self) -> Url;
+    fn token_request_url(&self) -> Url;
     fn build_http_client(&self) -> Result<reqwest::Client>;
 }
