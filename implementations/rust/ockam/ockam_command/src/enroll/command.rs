@@ -90,6 +90,8 @@ async fn retrieve_user_project(
     let space = default_space(ctx, &opts, &node_name)
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
+    info!("Retrieved the user default space {:?}", space);
+
     let project = default_project(ctx, &opts, &node_name, &space)
         .await
         .wrap_err(format!(
@@ -99,6 +101,8 @@ async fn retrieve_user_project(
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
+    info!("Retrieved the user default project {:?}", project);
+
     let identifier = update_enrolled_identity(&opts, &node_name)
         .await
         .wrap_err(format!(
@@ -108,6 +112,8 @@ async fn retrieve_user_project(
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
+    info!("Enrolled a user with the IdentityIdentifier {}", identifier);
+
     Ok(identifier)
 }
 

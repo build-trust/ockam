@@ -13,7 +13,8 @@ use ockam_command::{CommandGlobalOpts, GlobalArgs};
 ///  - connects to the Orchestrator with the retrieved token to create a project
 #[tauri::command]
 pub fn enroll_user() -> Result<()> {
-    let options = CommandGlobalOpts::new(GlobalArgs::default());
+    let args = GlobalArgs::default().set_quiet();
+    let options = CommandGlobalOpts::new(args);
     if options.state.identities.default().is_err() {
         create_default_identity(&options);
     }
