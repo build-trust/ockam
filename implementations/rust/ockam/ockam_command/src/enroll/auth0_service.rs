@@ -21,10 +21,17 @@ use ockam_vault::Vault;
 use crate::enroll::auth0_provider::Auth0Provider;
 use crate::enroll::OckamAuth0Provider;
 use crate::terminal::OckamColor;
-use crate::{fmt_err, fmt_info, fmt_log, fmt_para, CommandGlobalOpts, Result};
+use crate::{fmt_err, fmt_log, fmt_para, CommandGlobalOpts, Result};
 
-const ENROLL_SUCCESS_RESPONSE: &str = include_str!("./static/enroll_redirect_response.txt");
-
+/// This service supports various flows of authentication with Auth0
+///
+/// The Auth0Provider trait is currently implemented for:
+///   - Ockam: uses Github and account creation with an email
+///   - Okta
+///
+/// The main purpose of the Auth0Service is to authenticate a user and get
+/// back an Auth0Token allowing the user to connect to the Orchestrator
+///
 pub struct Auth0Service(Arc<dyn Auth0Provider + Send + Sync + 'static>);
 
 impl Default for Auth0Service {
@@ -34,18 +41,17 @@ impl Default for Auth0Service {
 }
 
 impl Auth0Service {
-    pub fn default_with_redirect_timeout(timeout: Duration) -> Self {
-        Self::new(Arc::new(OckamAuth0Provider::new(timeout)))
-    }
-
+    /// Create an Auth0 service using a specific Auth0 provider
     pub fn new(provider: Arc<dyn Auth0Provider + Send + Sync + 'static>) -> Self {
         Self(provider)
     }
 
-    fn provider(&self) -> Arc<dyn Auth0Provider + Send + Sync + 'static> {
-        self.0.clone()
+    /// Create an Auth0 service using the Ockam provider with a specific timeout for redirects
+    pub fn default_with_redirect_timeout(timeout: Duration) -> Self {
+        Self::new(Arc::new(OckamAuth0Provider::new(timeout)))
     }
 
+    /// Retrieve a token by having the user copy and paste a device code in their browser
     pub(crate) async fn get_token_interactively(
         &self,
         opts: &CommandGlobalOpts,
@@ -91,41 +97,16 @@ impl Auth0Service {
         // want to open it on another browser, for example), the uri gets
         // invalidated and the user would have to restart the process (i.e.
         // rerun the command).
-        let uri: &str = dc.verification_uri.borrow();
-        if open::that(uri).is_err() {
-            opts.terminal.write_line(&fmt_err!(
-                "Couldn't open activation url automatically [url={}]",
-                uri.to_string().light_green()
-            ))?;
-        }
-
-        self.poll_token(dc, opts).await
+        let uri = dc.verification_uri.to_string();
+        self.get_token_from_browser(opts, dc, uri).await
     }
 
-    /// Using the device code get a token from the Auth0 service
-    /// The device code is directly pasted to the current opened browser window
+    /// Retrieve a token using the device code get a token from the Auth0 service
+    /// The device code is directly pasted to the currently opened browser window
     pub async fn get_token(&self, opts: &CommandGlobalOpts) -> Result<Auth0Token> {
         let dc = self.device_code().await?;
-
-        let uri: &str = &dc.verification_uri_complete;
-        opts.terminal
-            .write_line(&fmt_info!("Opening {}", uri.to_string().light_green()))?;
-        if open::that(uri).is_err() {
-            opts.terminal.write_line(&fmt_err!(
-                "Couldn't open activation url automatically [url={}]",
-                uri.to_string().light_green()
-            ))?;
-        }
-        self.poll_token(dc, opts).await
-    }
-
-    /// Request a device code
-    pub async fn device_code(&self) -> Result<DeviceCode<'_>> {
-        self.request_code(
-            self.provider().device_code_url(),
-            &[("scope", self.scopes())],
-        )
-        .await
+        let uri = dc.verification_uri_complete.to_string();
+        self.get_token_from_browser(opts, dc, uri).await
     }
 
     /// Request an authorization token with a PKCE flow
@@ -133,11 +114,11 @@ impl Auth0Service {
     pub async fn get_token_with_pkce(&self) -> Result<Auth0Token> {
         let code_verifier = self.create_code_verifier();
         let authorization_code = self.authorization_code(&code_verifier).await?;
-        self.retrieve_token(authorization_code, &code_verifier)
+        self.retrieve_token_with_authorization_code(authorization_code, &code_verifier)
             .await
     }
 
-    /// Return the information about a user once enrolled
+    /// Return the information about a user once authenticated
     pub async fn get_user_info(&self, token: Auth0Token) -> Result<UserInfo> {
         let client = self.provider().build_http_client()?;
         let access_token = token.access_token.0.clone();
@@ -153,44 +134,32 @@ impl Auth0Service {
         res.json().await.map_err(|e| miette!(e).into())
     }
 
-    /// Retrieve a token given an authorization code obtained
-    /// with a specific code verifier
-    pub async fn retrieve_token(
-        &self,
-        authorization_code: AuthorizationCode,
-        code_verifier: &str,
-    ) -> Result<Auth0Token> {
-        info!(
-            "getting an Auth0 token using the authorization code {}",
-            authorization_code.code
-        );
-        self.accept_redirect().await?;
-        let result = self
-            .request_code(
-                "https://account.ockam.io/oauth/token".to_string(),
-                vec![
-                    ("code", authorization_code.code),
-                    ("code_verifier", code_verifier.to_string()),
-                    ("grant_type", "authorization_code".to_string()),
-                    ("redirect_uri", self.provider().redirect_url().to_string()),
-                ]
-                .as_slice(),
-            )
-            .await;
-        result
+    pub(crate) async fn validate_provider_config(&self) -> miette::Result<()> {
+        if let Err(e) = self.device_code().await {
+            return Err(miette!("Invalid OIDC configuration: {}", e));
+        }
+        Ok(())
+    }
+}
+
+/// Implementation methods for the Auth0Service
+impl Auth0Service {
+    /// Return the Auth0 provider
+    fn provider(&self) -> Arc<dyn Auth0Provider + Send + Sync + 'static> {
+        self.0.clone()
     }
 
-    // Generate 32 random bytes as a code verifier
-    // to prove that this client was the one requesting an authorization code
-    fn create_code_verifier(&self) -> String {
-        let mut code_verifier = [0u8; 32];
-        let mut rng = thread_rng();
-        rng.fill_bytes(&mut code_verifier);
-        base64_url::encode(&code_verifier)
+    /// Request a device code for the current client
+    pub async fn device_code(&self) -> Result<DeviceCode<'_>> {
+        self.request_code(
+            self.provider().device_code_url(),
+            &[("scope", self.scopes())],
+        )
+        .await
     }
 
-    /// Request an authorization code
-    pub async fn authorization_code(&self, code_verifier: &str) -> Result<AuthorizationCode> {
+    /// Request an authorization code for the PKCE Auth0 flow
+    async fn authorization_code(&self, code_verifier: &str) -> Result<AuthorizationCode> {
         // Hash and base64 encode the random bytes
         // to obtain a code challenge
         let hashed = Vault::sha256(code_verifier.as_bytes());
@@ -243,7 +212,35 @@ impl Auth0Service {
             })
     }
 
+    /// Retrieve a token given an authorization code obtained
+    /// with a specific code verifier
+    pub async fn retrieve_token_with_authorization_code(
+        &self,
+        authorization_code: AuthorizationCode,
+        code_verifier: &str,
+    ) -> Result<Auth0Token> {
+        info!(
+            "getting an Auth0 token using the authorization code {}",
+            authorization_code.code
+        );
+        let result = self
+            .request_code(
+                "https://account.ockam.io/oauth/token".to_string(),
+                vec![
+                    ("code", authorization_code.code),
+                    ("code_verifier", code_verifier.to_string()),
+                    ("grant_type", "authorization_code".to_string()),
+                    ("redirect_uri", self.provider().redirect_url().to_string()),
+                ]
+                .as_slice(),
+            )
+            .await;
+        result
+    }
+
     /// Request a code from a given Auth0 URL
+    /// This code can be a device code or an authorization code depending on the URL
+    /// and the query parameters
     async fn request_code<T: DeserializeOwned + Debug>(
         &self,
         url: String,
@@ -283,8 +280,80 @@ impl Auth0Service {
         }
     }
 
-    /// Poll for token until it's ready
-    pub async fn poll_token<'a>(
+    /// Wait for an authorization code after a redirect
+    /// by starting temporarily a local web server
+    /// Use the provided callback channel sender to return the authorization code asynchronously
+    async fn wait_for_authorization_code(
+        &self,
+        authorization_code: CallbackSender<AuthorizationCode>,
+    ) -> Result<()> {
+        let server_url = self.provider().redirect_url();
+        let host_and_port = format!(
+            "{}:{}",
+            server_url.host().unwrap(),
+            server_url.port().unwrap()
+        );
+        let server = Arc::new(Server::http(host_and_port).map_err(|e| miette!(e))?);
+        info!(
+            "server is started at {} and waiting for an authorization code",
+            server_url
+        );
+
+        let redirect_timeout = self.provider().redirect_timeout();
+
+        // Start a background thread which will wait for a request sending the authorization code
+        tokio::spawn(async move {
+            match server.recv_timeout(redirect_timeout) {
+                Ok(Some(request)) => {
+                    let code = Self::get_code(request.url())?;
+                    authorization_code
+                        .send(AuthorizationCode::new(code))
+                        .into_diagnostic()?;
+
+                    // Note that a code 303 does not properly redirect to the success page
+                    let response = Response::empty(302).with_header(
+                        Header::from_str("Location: https://account.ockam.io/device/success")
+                            .unwrap(),
+                    );
+
+                    request.respond(response).into_diagnostic()
+                }
+                Ok(None) => Err(miette!(
+                    "timeout while trying to receive a request on {} (waited for {:?})",
+                    server_url,
+                    redirect_timeout
+                )
+                .into()),
+                Err(e) => Err(miette!(
+                    "error while trying to receive a request on {}: {}",
+                    server_url,
+                    e
+                )
+                .into()),
+            }
+        });
+        Ok(())
+    }
+
+    /// Open a browser from one of the URIs returned by a device code
+    /// in order to authenticate and poll the Auth0 token url to get a token back
+    async fn get_token_from_browser<'a>(
+        &self,
+        opts: &CommandGlobalOpts,
+        dc: DeviceCode<'a>,
+        uri: String,
+    ) -> Result<Auth0Token> {
+        if open::that(uri.clone()).is_err() {
+            opts.terminal.write_line(&fmt_err!(
+                "Couldn't open activation url automatically [url={}]",
+                uri.light_green()
+            ))?;
+        }
+        self.poll_token(dc, opts).await
+    }
+
+    /// Poll for an Auth0Token until it's ready
+    async fn poll_token<'a>(
         &'a self,
         dc: DeviceCode<'a>,
         opts: &CommandGlobalOpts,
@@ -340,110 +409,19 @@ impl Auth0Service {
         }
     }
 
-    pub(crate) async fn validate_provider_config(&self) -> miette::Result<()> {
-        if let Err(e) = self.device_code().await {
-            return Err(miette!("Invalid OIDC configuration: {}", e));
-        }
-        Ok(())
+    // Generate 32 random bytes as a code verifier
+    // to prove that this client was really the one requesting an authorization code
+    /// See the full PKCE flow here: https://datatracker.ietf.org/doc/html/rfc7636
+    fn create_code_verifier(&self) -> String {
+        let mut code_verifier = [0u8; 32];
+        let mut rng = thread_rng();
+        rng.fill_bytes(&mut code_verifier);
+        base64_url::encode(&code_verifier)
     }
 
     /// Return the list of scopes for the authorization requests
     fn scopes(&self) -> String {
         "profile openid email".to_string()
-    }
-
-    /// Wait for an authorization code after a redirect
-    /// by starting temporarily a local web server
-    /// Use the provided callback channel sender to return the authorization code asynchronously
-    pub(crate) async fn wait_for_authorization_code(
-        &self,
-        authorization_code: CallbackSender<AuthorizationCode>,
-    ) -> Result<()> {
-        let server_url = self.provider().redirect_url();
-        let host_and_port = format!(
-            "{}:{}",
-            server_url.host().unwrap(),
-            server_url.port().unwrap()
-        );
-        let server = Arc::new(Server::http(host_and_port).map_err(|e| miette!(e))?);
-        info!(
-            "server is started at {} and waiting for an authorization code",
-            server_url
-        );
-
-        let redirect_timeout = self.provider().redirect_timeout();
-
-        // Start a background thread which will wait for a request sending the authorization code
-        tokio::spawn(async move {
-            match server.recv_timeout(redirect_timeout) {
-                Ok(Some(request)) => {
-                    let code = Self::get_code(request.url())?;
-                    authorization_code
-                        .send(AuthorizationCode::new(code))
-                        .into_diagnostic()?;
-
-                    let response = Response::from_string(ENROLL_SUCCESS_RESPONSE)
-                        .with_header(Header::from_str("Content-Type: text/html").unwrap());
-                    request.respond(response).into_diagnostic()
-                }
-                Ok(None) => Err(miette!(
-                    "timeout while trying to receive a request on {} (waited for {:?})",
-                    server_url,
-                    redirect_timeout
-                )
-                .into()),
-                Err(e) => Err(miette!(
-                    "error while trying to receive a request on {}: {}",
-                    server_url,
-                    e
-                )
-                .into()),
-            }
-        });
-        Ok(())
-    }
-
-    /// This function starts a server which will wait for a redirected query
-    /// being sent
-    pub(crate) async fn accept_redirect(&self) -> Result<()> {
-        let server_url = self.provider().redirect_url();
-        let host_and_port = format!(
-            "{}:{}",
-            server_url.host().unwrap(),
-            server_url.port().unwrap()
-        );
-        let server = Arc::new(Server::http(host_and_port).map_err(|e| miette!(e))?);
-        info!(
-            "server is started at {} and waiting for a redirect call",
-            server_url
-        );
-
-        let redirect_timeout = self.provider().redirect_timeout();
-
-        // Start a background thread which will wait for a redirect request
-        tokio::spawn(async move {
-            match server.recv_timeout(redirect_timeout) {
-                Ok(Some(request)) => {
-                    let response = Response::from_string(ENROLL_SUCCESS_RESPONSE)
-                        .with_header(Header::from_str("Content-Type: text/html").unwrap());
-                    request.respond(response).into_diagnostic()
-                }
-                Ok(None) => Err(miette!(
-                    "timeout while trying to receive a request on {} (waited for {:?})",
-                    server_url,
-                    redirect_timeout
-                )
-                .into()),
-                Err(e) => Err(miette!(
-                    "error while trying to receive a request on {}: {}",
-                    server_url,
-                    e
-                )
-                .into()),
-            }
-        });
-
-        Ok(())
     }
 
     /// Extract the `code` query parameter from the callback request
@@ -482,7 +460,7 @@ mod tests {
 
     /// This test can only run with an open browser in order to authenticate the user
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    // #[ignore]
+    #[ignore]
     async fn test_user_info() -> Result<()> {
         let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
         let token = auth0_service.get_token_with_pkce().await?;
@@ -493,7 +471,7 @@ mod tests {
 
     /// This test can only run with an open browser in order to authenticate the user
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    // #[ignore]
+    #[ignore]
     async fn test_get_token_with_pkce() -> Result<()> {
         let auth0_service = Auth0Service::default(); //_with_redirect_timeout(Duration::from_secs(15));
         let token = auth0_service.get_token_with_pkce().await;
