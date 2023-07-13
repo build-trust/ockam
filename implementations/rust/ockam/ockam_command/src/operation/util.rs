@@ -12,7 +12,6 @@ use crate::CommandGlobalOpts;
 pub async fn check_for_completion<'a>(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    _cloud_opts: &CloudOpts,
     api_node: &str,
     operation_id: &str,
 ) -> miette::Result<()> {

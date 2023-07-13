@@ -122,18 +122,14 @@ pub struct AddonConfigureInfluxdbSubcommand {
 }
 
 impl AddonConfigureInfluxdbSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts) {
-        node_rpc(run_impl, (opts, cloud_opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) {
+        node_rpc(run_impl, (opts, self));
     }
 }
 
 async fn run_impl(
     ctx: Context,
-    (opts, cloud_opts, cmd): (
-        CommandGlobalOpts,
-        CloudOpts,
-        AddonConfigureInfluxdbSubcommand,
-    ),
+    (opts, cmd): (CommandGlobalOpts, AddonConfigureInfluxdbSubcommand),
 ) -> miette::Result<()> {
     let controller_route = &CloudOpts::route();
     let AddonConfigureInfluxdbSubcommand {
@@ -186,14 +182,14 @@ async fn run_impl(
     let operation_id = res.operation_id;
 
     // Wait until project is ready again
-    check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
+    check_for_completion(&ctx, &opts, rpc.node_name(), &operation_id).await?;
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     let mut rpc = rpc.clone();
     rpc.request(api::project::show(&project_id, controller_route))
         .await?;
     let project: Project = rpc.parse_response()?;
-    check_project_readiness(&ctx, &opts, &cloud_opts, rpc.node_name(), None, project).await?;
+    check_project_readiness(&ctx, &opts, rpc.node_name(), None, project).await?;
 
     opts.terminal
         .write_line(&fmt_ok!("InfluxDB addon configured successfully"))?;

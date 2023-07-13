@@ -64,9 +64,8 @@ async fn run_impl(
     .await?;
     let project = rpc.parse_response::<Project>()?;
     let operation_id = project.operation_id.clone().unwrap();
-    check_for_completion(ctx, &opts, &cmd.cloud_opts, rpc.node_name(), &operation_id).await?;
-    let project =
-        check_project_readiness(ctx, &opts, &cmd.cloud_opts, &node_name, None, project).await?;
+    check_for_completion(ctx, &opts, rpc.node_name(), &operation_id).await?;
+    let project = check_project_readiness(ctx, &opts, &node_name, None, project).await?;
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;

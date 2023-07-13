@@ -169,7 +169,6 @@ async fn delete_secure_channel<'a>(
 pub async fn check_project_readiness(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    _cloud_opts: &CloudOpts,
     api_node: &str,
     tcp: Option<&TcpTransport>,
     mut project: Project,

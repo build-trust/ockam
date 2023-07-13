@@ -44,9 +44,9 @@ pub enum AddonSubcommand {
 impl AddonCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         match self.subcommand {
-            AddonSubcommand::List(cmd) => cmd.run(opts, self.cloud_opts),
-            AddonSubcommand::Disable(cmd) => cmd.run(opts, self.cloud_opts),
-            AddonSubcommand::Configure(cmd) => cmd.run(opts, self.cloud_opts),
+            AddonSubcommand::List(cmd) => cmd.run(opts),
+            AddonSubcommand::Disable(cmd) => cmd.run(opts),
+            AddonSubcommand::Configure(cmd) => cmd.run(opts),
         }
     }
 }
@@ -59,11 +59,11 @@ pub enum ConfigureAddonCommand {
 }
 
 impl ConfigureAddonCommand {
-    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) {
         match self {
-            ConfigureAddonCommand::Okta(cmd) => cmd.run(opts, cloud_opts),
-            ConfigureAddonCommand::Influxdb(cmd) => cmd.run(opts, cloud_opts),
-            ConfigureAddonCommand::Confluent(cmd) => cmd.run(opts, cloud_opts),
+            ConfigureAddonCommand::Okta(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::Influxdb(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::Confluent(cmd) => cmd.run(opts),
         }
     }
 }

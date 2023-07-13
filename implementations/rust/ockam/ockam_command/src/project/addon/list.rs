@@ -29,14 +29,14 @@ pub struct AddonListSubcommand {
 }
 
 impl AddonListSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts) {
-        node_rpc(run_impl, (opts, cloud_opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) {
+        node_rpc(run_impl, (opts, self));
     }
 }
 
 async fn run_impl(
     ctx: Context,
-    (opts, _cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, AddonListSubcommand),
+    (opts, cmd): (CommandGlobalOpts, AddonListSubcommand),
 ) -> miette::Result<()> {
     let controller_route = &CloudOpts::route();
     let project_name = cmd.project_name;
