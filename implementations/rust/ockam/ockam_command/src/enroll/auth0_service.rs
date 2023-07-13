@@ -225,7 +225,7 @@ impl Auth0Service {
         );
         let result = self
             .request_code(
-                "https://account.ockam.io/oauth/token".to_string(),
+                Url::parse("https://account.ockam.io/oauth/token").unwrap(),
                 vec![
                     ("code", authorization_code.code),
                     ("code_verifier", code_verifier.to_string()),
@@ -243,7 +243,7 @@ impl Auth0Service {
     /// and the query parameters
     async fn request_code<T: DeserializeOwned + Debug>(
         &self,
-        url: String,
+        url: Url,
         query_parameters: &[(&str, String)],
     ) -> Result<T> {
         let client = self.provider().build_http_client()?;
