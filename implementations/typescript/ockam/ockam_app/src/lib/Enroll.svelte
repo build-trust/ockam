@@ -4,7 +4,7 @@
   let visible = false;
 
   async function enroll() {
-    invoke('enroll').then((message) => visible = true)
+    invoke('enroll_user').then((message) => visible = true)
   }
 </script>
 
