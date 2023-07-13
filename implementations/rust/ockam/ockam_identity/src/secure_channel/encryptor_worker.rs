@@ -121,7 +121,10 @@ impl Worker for EncryptorWorker {
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
+        let _ = context
+            .stop_worker(self.addresses.decryptor_internal.clone())
+            .await;
         self.encryptor.shutdown().await
     }
 }

@@ -1,6 +1,6 @@
 use crate::identities::Identities;
 use crate::identities::IdentitiesVault;
-use crate::identity::{IdentityError, IdentityIdentifier};
+use crate::identity::IdentityIdentifier;
 use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
@@ -121,26 +121,6 @@ impl SecureChannels {
 
     /// Stop a SecureChannel given an encryptor address
     pub async fn stop_secure_channel(&self, ctx: &Context, channel: &Address) -> Result<()> {
-        if let Some(entry) = self.secure_channel_registry.unregister_channel(channel) {
-            let err1 = ctx
-                .stop_worker(entry.encryptor_messaging_address().clone())
-                .await
-                .err();
-            let err2 = ctx
-                .stop_worker(entry.decryptor_messaging_address().clone())
-                .await
-                .err();
-
-            if let Some(err1) = err1 {
-                return Err(err1);
-            }
-            if let Some(err2) = err2 {
-                return Err(err2);
-            }
-        } else {
-            return Err(IdentityError::SecureChannelNotFound.into());
-        }
-
-        Ok(())
+        ctx.stop_worker(channel.clone()).await
     }
 }

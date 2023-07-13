@@ -131,10 +131,16 @@ impl Worker for HandshakeWorker {
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
+        let _ = context.stop_worker(self.addresses.encryptor.clone()).await;
+        self.secure_channels
+            .secure_channel_registry
+            .unregister_channel(&self.addresses.encryptor);
+
         if let Some(handler) = &self.decryptor_handler {
             handler.shutdown().await?
         }
+
         Ok(())
     }
 }
