@@ -4,7 +4,7 @@ use ockam_api::cloud::space::Space;
 use rand::prelude::random;
 
 use crate::node::util::delete_embedded_node;
-use crate::util::api::{self, CloudOpts};
+use crate::util::api::{self};
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
@@ -23,9 +23,6 @@ pub struct CreateCommand {
     /// Name of the space - must be unique across all Ockam Orchestrator users.
     #[arg(display_order = 1001, value_name = "SPACE_NAME", default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_space_name)]
     pub name: String,
-
-    #[command(flatten)]
-    pub cloud_opts: CloudOpts,
 
     /// Administrators for this space
     #[arg(display_order = 1100, last = true)]

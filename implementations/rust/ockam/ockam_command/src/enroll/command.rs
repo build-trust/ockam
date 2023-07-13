@@ -1,6 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, WrapErr};
+use miette::{miette, IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::info;
@@ -35,13 +35,13 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    #[arg(global = true, value_name = "IDENTITY_NAME", long)]
+    pub identity: Option<String>,
 }
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
+        initialize_identity_if_default(&opts, &self.identity);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -53,7 +53,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> m
 async fn run_impl(
     ctx: &Context,
     opts: CommandGlobalOpts,
-    cmd: EnrollCommand,
+    _cmd: EnrollCommand,
 ) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!(
         "Enrolling your default Ockam identity with Ockam Orchestrator...\n"
@@ -70,11 +70,27 @@ async fn run_impl(
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
-    let cloud_opts = cmd.cloud_opts.clone();
-    let space = default_space(ctx, &opts, &cloud_opts, &node_name)
+    let identifier = retrieve_user_project(ctx, &opts, &node_name).await?;
+    delete_embedded_node(&opts, &node_name).await;
+
+    opts.terminal.write_line(&fmt_ok!(
+        "Enrolled {} as one of the Ockam identities of your Orchestrator account.",
+        identifier
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    ))?;
+    Ok(())
+}
+
+async fn retrieve_user_project(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    node_name: &String,
+) -> Result<IdentityIdentifier> {
+    let space = default_space(ctx, &opts, &node_name)
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
-    let project = default_project(ctx, &opts, &cloud_opts, &node_name, &space)
+    let project = default_project(ctx, &opts, &node_name, &space)
         .await
         .wrap_err(format!(
             "Unable to retrieve and set a project as default with space {}",
@@ -92,15 +108,7 @@ async fn run_impl(
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
-    delete_embedded_node(&opts, &node_name).await;
-
-    opts.terminal.write_line(&fmt_ok!(
-        "Enrolled {} as one of the Ockam identities of your Orchestrator account.",
-        identifier
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
-    ))?;
-    Ok(())
+    Ok(identifier)
 }
 
 /// Enroll a user with a token, using a specific node to contact the controller
@@ -132,13 +140,16 @@ pub async fn enroll(
     token: Auth0Token,
 ) -> miette::Result<()> {
     let node_name = start_embedded_node(ctx, opts, None).await?;
-    enroll_with_node(ctx, opts, &CloudOpts::route(), node_name.as_str(), token).await
+    enroll_with_node(ctx, opts, &CloudOpts::route(), node_name.as_str(), token).await?;
+    retrieve_user_project(ctx, opts, &node_name)
+        .await
+        .map(|_| ())
+        .into_diagnostic()
 }
 
 async fn default_space<'a>(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    cloud_opts: &CloudOpts,
     node_name: &str,
 ) -> Result<Space<'a>> {
     // Get available spaces for node's identity
@@ -178,7 +189,6 @@ async fn default_space<'a>(
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
         let send_req = async {
             let cmd = crate::space::CreateCommand {
-                cloud_opts: cloud_opts.clone(),
                 name: name.to_string(),
                 admins: vec![],
             };
@@ -231,7 +241,6 @@ async fn default_space<'a>(
 async fn default_project(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    cloud_opts: &CloudOpts,
     node_name: &str,
     space: &Space<'_>,
 ) -> Result<Project> {
@@ -295,7 +304,7 @@ async fn default_project(
         ))?;
 
         let operation_id = project.operation_id.clone().unwrap();
-        check_for_completion(ctx, opts, cloud_opts, rpc.node_name(), &operation_id).await?;
+        check_for_completion(ctx, opts, rpc.node_name(), &operation_id).await?;
 
         project.to_owned()
     }
@@ -322,8 +331,7 @@ async fn default_project(
         ))?;
         p
     };
-    let project =
-        check_project_readiness(ctx, opts, cloud_opts, node_name, None, default_project).await?;
+    let project = check_project_readiness(ctx, opts, node_name, None, default_project).await?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked this project as your default project, on this machine.\n"
