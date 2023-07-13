@@ -85,14 +85,14 @@ async fn run_impl(
 async fn retrieve_user_project(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    node_name: &String,
+    node_name: &str,
 ) -> Result<IdentityIdentifier> {
-    let space = default_space(ctx, &opts, &node_name)
+    let space = default_space(ctx, opts, node_name)
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
     info!("Retrieved the user default space {:?}", space);
 
-    let project = default_project(ctx, &opts, &node_name, &space)
+    let project = default_project(ctx, opts, node_name, &space)
         .await
         .wrap_err(format!(
             "Unable to retrieve and set a project as default with space {}",
@@ -103,7 +103,7 @@ async fn retrieve_user_project(
         ))?;
     info!("Retrieved the user default project {:?}", project);
 
-    let identifier = update_enrolled_identity(&opts, &node_name)
+    let identifier = update_enrolled_identity(opts, node_name)
         .await
         .wrap_err(format!(
             "Unable to set the local identity as enrolled with project {}",
