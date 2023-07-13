@@ -1,8 +1,14 @@
 {
   "build": {
-    "beforeBuildCommand": "cd ../../typescript/ockam/ockam_app && pnpm run build",
-    "beforeDevCommand": "cd ../../typescript/ockam/ockam_app && pnpm run build",
-    "devPath": "../../../typescript/ockam/ockam_app/build",
+    "beforeBuildCommand": {
+      "cwd": "../../../typescript/ockam/ockam_app",
+      "script": "pnpm run build"
+    },
+    "beforeDevCommand": {
+      "cwd": "../../../typescript/ockam/ockam_app",
+      "script": "pnpm run dev"
+    },
+    "devPath": "http://localhost:5173",
     "distDir": "../../../typescript/ockam/ockam_app/build"
   },
   "package": {
