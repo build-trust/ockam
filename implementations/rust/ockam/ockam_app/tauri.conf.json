@@ -56,7 +56,6 @@
     "security": {
       "csp": null
     },
-    "windows": [
-    ]
+    "windows": []
   }
 }

@@ -1,6 +1,1 @@
-<script>
-  import Enroll from '../components/Enroll.svelte'
-</script>
-
-<h1>Ockam</h1>
-<Enroll />
+<p class="italic text-center">This page is left as a placeholder.</p>
