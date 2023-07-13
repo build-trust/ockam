@@ -1,8 +1,8 @@
 mod create;
 mod events;
 mod list;
-mod menu_items;
+mod tray_menu;
 
 pub use create::tcp_outlet_create;
 pub use list::tcp_outlet_list;
-pub use menu_items::*;
+pub use tray_menu::*;

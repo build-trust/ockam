@@ -1,3 +1,4 @@
+use crate::app::State;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
@@ -14,7 +15,13 @@ pub fn tcp_outlet_create(app_handle: tauri::AppHandle) {
     if let Err(e) = embedded_node(rpc, opts) {
         println!("Error while creating TCP outlet: {e:?}");
     }
-    app_handle.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+    // Update tray menu
+    let state = app_handle.state::<State>();
+    {
+        let tray_handle = app_handle.tray_handle();
+        let mut tray_menu = state.tray_menu.write().unwrap();
+        tray_menu.refresh(&tray_handle);
+    }
 }
 
 async fn rpc(ctx: Context, opts: CommandGlobalOpts) -> miette::Result<OutletStatus> {

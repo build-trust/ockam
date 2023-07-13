@@ -1,6 +1,6 @@
-pub mod events;
 mod process;
-mod system_tray;
+mod state;
+pub mod tray_menu;
 
 pub use process::*;
-pub use system_tray::*;
+pub use state::State;

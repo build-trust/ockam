@@ -1,4 +1,5 @@
-use crate::app::{process_application_event, process_system_tray_event, SystemTrayMenuBuilder};
+use crate::app::tray_menu::process_system_tray_event;
+use crate::app::{process_application_event, State};
 use crate::error::Result;
 use tauri::{Manager, SystemTray, Wry};
 use tauri_plugin_log::{Target, TargetKind};
@@ -6,7 +7,7 @@ use tauri_plugin_log::{Target, TargetKind};
 mod app;
 mod enroll;
 mod error;
-mod quit;
+mod options;
 mod tcp;
 
 type AppHandle = tauri::AppHandle<Wry>;
@@ -26,18 +27,21 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            // Setup tray menu
+            let tray_menu = {
+                let app_handle = app.handle();
+                let state = app_handle.state::<State>();
+                let tray_menu = state.tray_menu.read().unwrap();
+                tray_menu.init().build()
+            };
             let moved_app_handle = app.handle();
             SystemTray::new()
-                .with_menu(SystemTrayMenuBuilder::full())
+                .with_menu(tray_menu)
                 .on_event(move |event| process_system_tray_event(moved_app_handle.clone(), event))
                 .build(app)?;
-            let moved_app_handle = app.handle();
-            app.listen_global(app::events::SYSTEM_TRAY_ON_UPDATE, move |_event| {
-                let menu = SystemTrayMenuBuilder::full();
-                let _ = moved_app_handle.tray_handle().set_menu(menu);
-            });
             Ok(())
         })
+        .manage(State::default())
         .build(tauri::generate_context!())
         .expect("Error while building the Ockam application")
         .run(process_application_event);

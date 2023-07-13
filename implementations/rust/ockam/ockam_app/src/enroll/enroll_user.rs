@@ -1,9 +1,12 @@
+use crate::app::State;
+use crate::AppHandle;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_command::enroll::{enroll, Auth0Service};
 use ockam_command::identity::create_default_identity;
 use ockam_command::util::embedded_node;
 use ockam_command::{CommandGlobalOpts, GlobalArgs};
+use tauri::Manager;
 
 /// Enroll a user.
 /// This function:
@@ -19,6 +22,19 @@ pub fn enroll_user() {
     }
     if let Err(e) = embedded_node(rpc, options) {
         println!("Error while enrolling user: {e:?}");
+    }
+    // Update tray menu
+    let state = app_handle.state::<State>();
+    {
+        let mut tray_menu = state.tray_menu.write().unwrap();
+        tray_menu
+            .options
+            .reset
+            .set_enabled(&app_handle.tray_handle(), true);
+        tray_menu
+            .enroll
+            .enroll
+            .set_enabled(&app_handle.tray_handle(), false);
     }
 }
 
