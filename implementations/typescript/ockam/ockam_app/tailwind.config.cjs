@@ -41,6 +41,7 @@ export default {
     },
     extend: {},
     fontFamily: {
+      blog: ["Source\\ Serif\\ Pro", "ui-serif", "Georgia", "Cambria", "Times\\ New\\ Roman", "Times", "serif"],
       brand: ["Inter", "ui-serif", "Georgia", "Cambria", "Times\\ New\\ Roman", "Times", "serif"]
     }
   },
