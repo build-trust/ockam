@@ -1,11 +1,8 @@
-use clap::Args;
-use colorful::Colorful;
-
-use ockam_api::cli_state::traits::StateDirTrait;
-
-use crate::terminal::ConfirmResult;
 use crate::util::local_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
+use clap::Args;
+use colorful::Colorful;
+use ockam_api::cli_state::traits::StateDirTrait;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -20,6 +17,10 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 pub struct DeleteCommand {
     /// Name of the trust context
     pub name: String,
+
+    /// Confirm the deletion without prompting
+    #[arg(display_order = 901, long, short)]
+    yes: bool,
 }
 
 impl DeleteCommand {
@@ -29,24 +30,22 @@ impl DeleteCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
-    let DeleteCommand { name } = cmd;
-    let state = opts.state.trust_contexts;
-    state.get(&name)?;
-    if let ConfirmResult::No = opts
-        .terminal
-        .confirm("Are you sure you want to delete this trust context?")?
-    {
-        // If the user has not confirmed, exit
-        return Ok(());
+    if opts.terminal.confirmed_with_flag_or_prompt(
+        cmd.yes,
+        "Are you sure you want to delete this trust context?",
+    )? {
+        let name = cmd.name;
+        let state = opts.state.trust_contexts;
+        state.get(&name)?;
+        state.delete(&name)?;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!(
+                "The trust context with name '{name}' has been deleted"
+            ))
+            .machine(&name)
+            .json(serde_json::json!({ "trust-context": { "name": &name } }))
+            .write_line()?;
     }
-    state.delete(&name)?;
-    opts.terminal
-        .stdout()
-        .plain(fmt_ok!(
-            "The trust context with name '{name}' has been deleted"
-        ))
-        .machine(&name)
-        .json(serde_json::json!({ "trust-context": { "name": &name } }))
-        .write_line()?;
     Ok(())
 }
