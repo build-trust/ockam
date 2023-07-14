@@ -1,6 +1,7 @@
+use crate::node::get_node_name;
 use crate::terminal::OckamColor;
 use crate::util::output::Output;
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, parse_node_name, Rpc};
 use crate::{CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
@@ -17,7 +18,7 @@ use tokio::try_join;
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
     #[arg(long, display_order = 900, id = "NODE_NAME")]
-    at: String,
+    at: Option<String>,
 
     #[arg(short, long)]
     resource: Resource,
@@ -42,13 +43,15 @@ async fn run_impl(
     cmd: ListCommand,
 ) -> miette::Result<()> {
     let resource = cmd.resource;
-    let node = extract_address_value(&cmd.at)?;
 
-    if !opts.state.nodes.get(&node)?.is_running() {
-        return Err(miette!("The node '{}' is not running", node));
+    let at = get_node_name(&opts.state, &cmd.at);
+    let node_name = parse_node_name(&at)?;
+
+    if !opts.state.nodes.get(&node_name)?.is_running() {
+        return Err(miette!("The node '{}' is not running", &node_name));
     }
 
-    let mut rpc = Rpc::background(ctx, &opts, &node)?;
+    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
@@ -60,7 +63,9 @@ async fn run_impl(
 
     let output_messages = vec![format!(
         "Listing Policies on {} for Resource {}...\n",
-        node.to_string().color(OckamColor::PrimaryResource.color()),
+        node_name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color()),
         resource
             .to_string()
             .color(OckamColor::PrimaryResource.color())
@@ -74,8 +79,8 @@ async fn run_impl(
 
     let list = opts.terminal.build_list(
         policies.expressions(),
-        &format!("Policies on Node {} for {}", node, resource),
-        &format!("No Policies on Node {} for {}", node, resource),
+        &format!("Policies on Node {} for {}", &node_name, resource),
+        &format!("No Policies on Node {} for {}", &node_name, resource),
     )?;
     opts.terminal.stdout().plain(list).write_line()?;
 
