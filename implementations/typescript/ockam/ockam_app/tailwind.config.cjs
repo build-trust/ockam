@@ -40,6 +40,9 @@ export default {
       }
     },
     extend: {},
+    fontFamily: {
+      brand: ["Inter", "ui-serif", "Georgia", "Cambria", "Times\\ New\\ Roman", "Times", "serif"]
+    }
   },
   plugins: [],
 }

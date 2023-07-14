@@ -1,5 +1,8 @@
 <script>
   import '../app.css'
+  import '../assets/fonts/Inter-Light.ttf'
+  import '../assets/fonts/Inter-Regular.ttf'
+  import '../assets/fonts/Inter-Thin.ttf'
   import Navbar from '../components/Navbar.svelte'
 </script>
 
