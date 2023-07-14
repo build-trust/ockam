@@ -3,7 +3,7 @@
 import logo from "../assets/sygnet_white.svg"
 
 let links = [
-  {name: "Enroll", path: "/"},
+  {name: "Enroll", path: "/enroll"},
   {name: "Outlets", path: "/"},
   {name: "Share", path: "/"},
   {name: "Reset", path: "/"},
