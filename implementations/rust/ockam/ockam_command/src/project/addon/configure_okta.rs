@@ -6,7 +6,6 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, Context as _, IntoDiagnostic};
-use reqwest::Url;
 use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 
 use ockam::Context;
@@ -14,6 +13,7 @@ use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::{OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
+use ockam_api::minicbor_url::Url;
 use ockam_core::api::Request;
 use ockam_core::CowStr;
 
@@ -119,7 +119,7 @@ async fn run_impl(
         _ => query_certificate_chain(domain)?,
     };
 
-    let okta_config = OktaConfig::new(tenant, certificate, client_id, &attributes);
+    let okta_config = OktaConfig::new(base_url, certificate, client_id, &attributes);
     let body = okta_config.clone();
 
     // Validate okta configuration

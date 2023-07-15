@@ -4401,6 +4401,7 @@ dependencies = [
  "tokio",
  "tokio-retry",
  "tracing",
+ "url",
  "uuid",
 ]
 

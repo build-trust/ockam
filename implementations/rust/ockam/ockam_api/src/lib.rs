@@ -134,6 +134,7 @@ pub mod error;
 pub mod hop;
 pub mod identity;
 pub mod kafka;
+pub mod minicbor_url;
 pub mod nodes;
 pub mod okta;
 pub mod port_range;

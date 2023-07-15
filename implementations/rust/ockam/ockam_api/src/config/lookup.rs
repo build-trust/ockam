@@ -243,7 +243,7 @@ impl ProjectLookup {
         )
         .await?;
         let okta = project.okta_config.as_ref().map(|o| OktaAuth0 {
-            tenant_base_url: o.tenant_base_url.to_string(),
+            tenant_base_url: o.tenant_base_url.clone(),
             client_id: o.client_id.to_string(),
             certificate: o.certificate.to_string(),
         });
