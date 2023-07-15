@@ -55,6 +55,7 @@ time = { version = "0.3.23", default-features = false }
 tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
 tokio-retry = "0.3.0"
 tracing = { version = "0.1", default-features = false }
+url = "2.4.0"
 
 ockam = { path = "../ockam", version = "^0.90.0", features = ["software_vault"] }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.24.0", features = ["cbor", "serde"] }

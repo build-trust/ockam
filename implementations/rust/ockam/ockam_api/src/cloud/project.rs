@@ -13,6 +13,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 
 use crate::error::ApiError;
+use crate::minicbor_url::Url;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
@@ -107,7 +108,7 @@ pub struct OktaConfig {
     #[serde(skip)]
     #[cbor(b(0))] pub tag: TypeTag<6434814>,
 
-    #[cbor(b(1))] pub tenant_base_url: String,
+    #[cbor(b(1))] pub tenant_base_url: Url,
 
     #[cbor(b(2))] pub certificate: String,
 
@@ -118,7 +119,7 @@ pub struct OktaConfig {
 
 impl<'a> OktaConfig {
     pub fn new<S: ToString, T: AsRef<str>>(
-        tenant_base_url: S,
+        tenant_base_url: Url,
         certificate: S,
         client_id: S,
         attributes: &'a [T],
@@ -126,7 +127,7 @@ impl<'a> OktaConfig {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tenant_base_url: tenant_base_url.to_string(),
+            tenant_base_url,
             certificate: certificate.to_string(),
             client_id: client_id.to_string(),
             attributes: attributes.iter().map(|x| x.as_ref().to_string()).collect(),
@@ -134,14 +135,14 @@ impl<'a> OktaConfig {
     }
 
     pub fn new_empty_attributes<S: ToString>(
-        tenant_base_url: S,
+        tenant_base_url: Url,
         certificate: S,
         client_id: S,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tenant_base_url: tenant_base_url.to_string(),
+            tenant_base_url,
             certificate: certificate.to_string(),
             client_id: client_id.to_string(),
             attributes: Vec::new(),
@@ -151,7 +152,7 @@ impl<'a> OktaConfig {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OktaAuth0 {
-    pub tenant_base_url: String,
+    pub tenant_base_url: Url,
     pub client_id: String,
     pub certificate: String,
 }
