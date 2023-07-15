@@ -2,7 +2,6 @@ use crate::tokio::task::{spawn_blocking, JoinError};
 use crate::{Action, Expr, PolicyStorage, Resource};
 use core::str;
 use lmdb::{Cursor, Transaction};
-use minicbor::{Decode, Encode};
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::vec::Vec;
@@ -12,15 +11,7 @@ use ockam_identity::LmdbStorage;
 use std::borrow::Cow;
 use tracing as log;
 
-/// Policy storage entry.
-///
-/// Used instead of storing plain `Expr` values to allow for additional
-/// metadata, versioning, etc.
-#[derive(Debug, Encode, Decode)]
-#[rustfmt::skip]
-struct PolicyEntry<'a> {
-    #[b(0)] expr: Cow<'a, Expr>,
-}
+use super::PolicyEntry;
 
 #[async_trait]
 impl PolicyStorage for LmdbStorage {
