@@ -1,14 +1,11 @@
 build:
 	cargo build
-build_%:
-	cargo build --package $*
-
-
 build_release:
 	cargo --locked build --release
 build_release_%:
 	cargo --locked build --release --package $*
-
+build_%:
+	cargo build --package $*
 
 test:
 	@if [ "$(CI)" = "true" ]; then \
@@ -22,11 +19,9 @@ test_%:
 	else \
 		cargo --locked test; \
 	fi
-
 test_nextest:
 	cargo --locked nextest --config-file tools/nextest/.config/nextest.toml run
 	cargo --locked test --doc
-
 
 lint: lint_format lint_cargo_deny lint_cargo_clippy
 lint_format:
@@ -38,12 +33,10 @@ lint_cargo_deny:
 lint_cargo_clippy:
 	cargo clippy --no-deps --all-targets -- -D warnings
 
-
 clean:
 	cargo clean
 clean_%:
 	cargo clean --package $*
-
 
 very_clean:
 	rm -rf ../../target
@@ -53,7 +46,6 @@ docs:
 
 format:
 	cargo fmt --all
-
 
 .PHONY: \
 	build build_% build_release build_release_% \
