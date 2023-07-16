@@ -18,7 +18,7 @@ pub struct EnrollActions {
 impl EnrollActions {
     pub fn new() -> EnrollActions {
         let enroll = CustomMenuItem::new(ENROLL_MENU_ID, "Enroll...").accelerator("cmd+e");
-        let reset = CustomMenuItem::new(RESET_MENU_ID, "Reset...").accelerator("cmd+r");
+        let reset = CustomMenuItem::new(RESET_MENU_ID, "Reset").accelerator("cmd+r");// Updated label to "Reset"
         let options = CommandGlobalOpts::new(GlobalArgs::default());
         match options.state.projects.default() {
             Ok(_) => EnrollActions {
