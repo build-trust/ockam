@@ -59,7 +59,7 @@ RUN set -xe; \
     esac; \
 # Setup base tools
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends parallel ca-certificates curl locales xz-utils clang; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends parallel ca-certificates curl locales xz-utils clang net-tools; \
 # Setup locale
     LANG=en_US.UTF-8; \
     echo $LANG UTF-8 > /etc/locale.gen; \
