@@ -8,7 +8,7 @@ publish = false
 rust-version = "1.56.0"
 
 [dependencies]
-anyhow = "1.0.71"
+anyhow = "1.0.72"
 ockam = { path = "../../../implementations/rust/ockam/ockam" }
 ockam_transport_tcp = { path = "../../../implementations/rust/ockam/ockam_transport_tcp" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
