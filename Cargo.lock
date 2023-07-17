@@ -4421,6 +4421,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-log",
+ "tauri-runtime",
  "thiserror",
  "tracing",
 ]
