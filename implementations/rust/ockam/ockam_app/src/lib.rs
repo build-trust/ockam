@@ -1,6 +1,8 @@
 use tauri::{Manager, SystemTray};
 use tauri_plugin_log::{Target, TargetKind};
 
+use ockam_command::{CommandGlobalOpts, GlobalArgs};
+
 use crate::app::{process_application_event, process_system_tray_event, SystemTrayMenuBuilder};
 use crate::ctx::TauriCtx;
 use crate::error::Result;
@@ -14,6 +16,10 @@ mod tcp;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let args = GlobalArgs::default().set_quiet();
+    let options = CommandGlobalOpts::new(args);
+    let options_clone = options.clone();
+
     // For now the application only consists in a system tray with several menu items
     tauri::Builder::default()
         .plugin(
@@ -26,16 +32,17 @@ pub fn run() {
                 ])
                 .build(),
         )
-        .setup(|app| {
+        .setup(move |app| {
             let ctx = TauriCtx::new(app.app_handle());
             app.listen_global(app::events::SYSTEM_TRAY_ON_UPDATE, move |_event| {
-                let _ = SystemTrayMenuBuilder::refresh(&ctx.clone());
+                let _ = SystemTrayMenuBuilder::refresh(&ctx.clone(), &options_clone);
             });
             app.trigger_global(app::events::SYSTEM_TRAY_ON_UPDATE, None);
             Ok(())
         })
-        .system_tray(SystemTray::new().with_menu(SystemTrayMenuBuilder::default()))
+        .system_tray(SystemTray::new().with_menu(SystemTrayMenuBuilder::default(&options)))
         .on_system_tray_event(process_system_tray_event)
+        .manage(options)
         .build(tauri::generate_context!())
         .expect("Error while building the Ockam application")
         .run(process_application_event);
