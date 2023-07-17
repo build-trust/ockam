@@ -1,8 +1,10 @@
+use tauri::CustomMenuItem;
+
+use ockam_command::CommandGlobalOpts;
+
 use crate::ctx::TauriCtx;
 use crate::tcp::outlet::create::create;
 use crate::Result;
-use ockam_command::{CommandGlobalOpts, GlobalArgs};
-use tauri::CustomMenuItem;
 
 pub const TCP_OUTLET_HEADER_MENU_ID: &str = "tcp_outlet_header";
 pub const TCP_OUTLET_CREATE_MENU_ID: &str = "tcp_outlet_create";
@@ -14,21 +16,20 @@ pub struct TcpOutletActions {
 }
 
 impl TcpOutletActions {
-    pub fn new() -> TcpOutletActions {
+    pub fn new(options: &CommandGlobalOpts) -> TcpOutletActions {
         let header = CustomMenuItem::new(TCP_OUTLET_HEADER_MENU_ID, "TCP Outlets").disabled();
         let create = CustomMenuItem::new(TCP_OUTLET_CREATE_MENU_ID, "Create...");
         let menu_items = vec![header, create];
-        let opts = CommandGlobalOpts::new(GlobalArgs::default());
         TcpOutletActions {
-            options: opts,
+            options: options.clone(),
             menu_items,
         }
     }
 
     ///
-    pub fn full(ctx: &TauriCtx) -> Result<TcpOutletActions> {
-        let mut s = TcpOutletActions::new();
-        let mut tcp_outlets = super::list(ctx)?
+    pub fn full(ctx: &TauriCtx, options: &CommandGlobalOpts) -> Result<TcpOutletActions> {
+        let mut s = TcpOutletActions::new(options);
+        let mut tcp_outlets = super::list(ctx, options)?
             .list
             .iter()
             .map(|outlet| {
@@ -46,7 +47,7 @@ impl TcpOutletActions {
 }
 
 /// Event listener for the "Create..." menu item
-pub fn on_create(ctx: TauriCtx) -> tauri::Result<()> {
-    let _ = create(ctx);
+pub fn on_create(ctx: TauriCtx, options: &CommandGlobalOpts) -> tauri::Result<()> {
+    let _ = create(ctx, options);
     Ok(())
 }
