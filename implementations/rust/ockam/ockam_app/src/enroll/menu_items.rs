@@ -1,9 +1,14 @@
-use crate::ctx::TauriCtx;
-use crate::enroll::backend::Backend;
+use tauri::CustomMenuItem;
+use tauri::Error::Runtime;
+use tauri_runtime::Error::SystemTray;
+use tracing::info;
+
 use ockam_api::cli_state::StateDirTrait;
 use ockam_command::{CommandGlobalOpts, GlobalArgs};
-use tauri::CustomMenuItem;
-use tracing::info;
+
+use crate::ctx::TauriCtx;
+use crate::enroll::enroll_user::enroll_user;
+use crate::enroll::reset::reset;
 
 pub const ENROLL_MENU_ID: &str = "enroll";
 pub const RESET_MENU_ID: &str = "reset";
@@ -39,33 +44,35 @@ impl EnrollActions {
 }
 
 /// Enroll the user and show that it has been enrolled
-pub fn on_enroll(backend: impl Backend, ctx: TauriCtx) -> tauri::Result<()> {
-    if backend.enroll_user().is_ok() {
-        ctx.app_handle()
-            .tray_handle()
-            .get_item(ENROLL_MENU_ID)
-            .set_enabled(false)?;
-        ctx.app_handle()
-            .tray_handle()
-            .get_item(RESET_MENU_ID)
-            .set_enabled(true)
-    } else {
-        Ok(())
+pub fn on_enroll(ctx: TauriCtx) -> tauri::Result<()> {
+    match enroll_user() {
+        Ok(_) => {
+            ctx.app_handle()
+                .tray_handle()
+                .get_item(ENROLL_MENU_ID)
+                .set_enabled(false)?;
+            ctx.app_handle()
+                .tray_handle()
+                .get_item(RESET_MENU_ID)
+                .set_enabled(true)
+        }
+        Err(e) => Err(Runtime(SystemTray(Box::new(e)))),
     }
 }
 
 /// Reset the persistent state
-pub fn on_reset(backend: impl Backend, ctx: TauriCtx) -> tauri::Result<()> {
-    if backend.reset(&ctx).is_ok() {
-        ctx.app_handle()
-            .tray_handle()
-            .get_item(ENROLL_MENU_ID)
-            .set_enabled(true)?;
-        ctx.app_handle()
-            .tray_handle()
-            .get_item(RESET_MENU_ID)
-            .set_enabled(false)
-    } else {
-        Ok(())
+pub fn on_reset(ctx: TauriCtx) -> tauri::Result<()> {
+    match reset(&ctx) {
+        Ok(_) => {
+            ctx.app_handle()
+                .tray_handle()
+                .get_item(ENROLL_MENU_ID)
+                .set_enabled(true)?;
+            ctx.app_handle()
+                .tray_handle()
+                .get_item(RESET_MENU_ID)
+                .set_enabled(false)
+        }
+        Err(e) => Err(Runtime(SystemTray(Box::new(e)))),
     }
 }
