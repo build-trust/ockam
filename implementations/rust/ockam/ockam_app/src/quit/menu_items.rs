@@ -10,7 +10,7 @@ pub struct QuitActions {
 
 impl QuitActions {
     pub fn new() -> QuitActions {
-        let quit = CustomMenuItem::new("quit".to_string(), "Quit").accelerator("cmd+q");
+        let quit = CustomMenuItem::new("quit".to_string(), "Quit Ockam").accelerator("cmd+q");
         QuitActions { quit }
     }
 }
