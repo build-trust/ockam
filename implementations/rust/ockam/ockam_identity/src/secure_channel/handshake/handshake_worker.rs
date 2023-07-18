@@ -1,6 +1,7 @@
 use alloc::sync::Arc;
 use core::sync::atomic::AtomicBool;
 use core::time::Duration;
+use ockam_core::compat::string::ToString;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
@@ -29,7 +30,7 @@ use crate::secure_channel::handshake::responder_state_machine::ResponderStateMac
 use crate::secure_channel::{Addresses, Role};
 use crate::{
     ChangeHistoryRepository, CredentialRetriever, IdentityError, SecureChannelPurposeKey,
-    SecureChannelRegistryEntry, SecureChannels, TrustPolicy,
+    SecureChannelRegistryEntry, SecureChannels, TrustPolicy, IDENTITY_SECURE_CHANNEL_IDENTIFIER,
 };
 
 /// This struct implements a Worker receiving and sending messages
@@ -385,11 +386,20 @@ impl HandshakeWorker {
                 Arc::new(DenyAll),
             );
 
+            let their_identifier = handshake_results.their_identifier.clone();
+
             WorkerBuilder::new(encryptor)
                 .with_mailboxes(Mailboxes::new(
                     main_mailbox,
                     vec![api_mailbox, internal_mailbox],
                 ))
+                .terminal_with_attributes(
+                    self.addresses.encryptor.clone(),
+                    vec![(
+                        IDENTITY_SECURE_CHANNEL_IDENTIFIER.to_string(),
+                        their_identifier.to_string(),
+                    )],
+                )
                 .start(context)
                 .await?;
         }

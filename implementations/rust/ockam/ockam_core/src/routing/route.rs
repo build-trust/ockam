@@ -268,6 +268,12 @@ impl Display for Route {
     }
 }
 
+impl From<Route> for Vec<Address> {
+    fn from(value: Route) -> Self {
+        value.inner.into()
+    }
+}
+
 /// Convert a `RouteBuilder` into a `Route`.
 impl From<RouteBuilder<'_>> for Route {
     fn from(RouteBuilder { ref inner, .. }: RouteBuilder) -> Self {

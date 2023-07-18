@@ -1,11 +1,12 @@
 use crate::debugger;
 use crate::error::{NodeError, NodeReason};
 use crate::{relay::ProcessorRelay, Context, NodeMessage};
-use ockam_core::compat::sync::Arc;
+use alloc::string::String;
+use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, DenyAll, Error, IncomingAccessControl, Mailboxes, OutgoingAccessControl, Processor,
-    Result,
+    Address, AddressAndMetadata, AddressMetadata, DenyAll, Error, IncomingAccessControl, Mailboxes,
+    OutgoingAccessControl, Processor, Result,
 };
 
 /// Start a [`Processor`]
@@ -40,6 +41,7 @@ where
             outgoing_ac: Arc::new(DenyAll),
             processor: self.processor,
             address: address.into(),
+            metadata: None,
         }
     }
 
@@ -48,6 +50,7 @@ where
         ProcessorBuilderMultipleAddresses {
             mailboxes,
             processor: self.processor,
+            metadata_list: vec![],
         }
     }
 }
@@ -58,15 +61,72 @@ where
 {
     mailboxes: Mailboxes,
     processor: P,
+    metadata_list: Vec<AddressAndMetadata>,
 }
 
 impl<P> ProcessorBuilderMultipleAddresses<P>
 where
     P: Processor<Context = Context>,
 {
+    /// Mark the provided address as terminal
+    pub fn terminal(self, address: impl Into<Address>) -> Self {
+        self.terminal_with_attributes(address.into(), vec![])
+    }
+
+    /// Mark the provided address as terminal
+    pub fn terminal_with_attributes(
+        mut self,
+        address: impl Into<Address>,
+        attributes: Vec<(String, String)>,
+    ) -> Self {
+        let address = address.into();
+        let metadata = self.metadata_list.iter_mut().find(|m| m.address == address);
+
+        if let Some(metadata) = metadata {
+            metadata.metadata.is_terminal = true;
+            metadata.metadata.attributes = attributes;
+        } else {
+            self.metadata_list.push(AddressAndMetadata {
+                address,
+                metadata: AddressMetadata {
+                    is_terminal: true,
+                    attributes,
+                },
+            });
+        }
+        self
+    }
+
+    /// Adds metadata attribute for the provided address
+    pub fn with_metadata_attribute(
+        mut self,
+        address: impl Into<Address>,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Self {
+        let address = address.into();
+        let metadata = self.metadata_list.iter_mut().find(|m| m.address == address);
+
+        if let Some(metadata) = metadata {
+            metadata
+                .metadata
+                .attributes
+                .push((key.into(), value.into()));
+        } else {
+            self.metadata_list.push(AddressAndMetadata {
+                address,
+                metadata: AddressMetadata {
+                    is_terminal: false,
+                    attributes: vec![(key.into(), value.into())],
+                },
+            });
+        }
+        self
+    }
+
     /// Consume this builder and start a new Ockam [`Processor`] from the given context
     pub async fn start(self, context: &Context) -> Result<()> {
-        start(context, self.mailboxes, self.processor).await
+        start(context, self.mailboxes, self.processor, self.metadata_list).await
     }
 }
 
@@ -78,18 +138,65 @@ where
     outgoing_ac: Arc<dyn OutgoingAccessControl>,
     address: Address,
     processor: P,
+    metadata: Option<AddressAndMetadata>,
 }
 
 impl<P> ProcessorBuilderOneAddress<P>
 where
     P: Processor<Context = Context>,
 {
+    /// Mark the address as terminal
+    pub fn terminal(self) -> Self {
+        self.terminal_with_attributes(vec![])
+    }
+
+    /// Mark the address as terminal
+    pub fn terminal_with_attributes(mut self, attributes: Vec<(String, String)>) -> Self {
+        if let Some(metadata) = self.metadata.as_mut() {
+            metadata.metadata.is_terminal = true;
+            metadata.metadata.attributes = attributes;
+        } else {
+            self.metadata = Some(AddressAndMetadata {
+                address: self.address.clone(),
+                metadata: AddressMetadata {
+                    is_terminal: true,
+                    attributes,
+                },
+            });
+        }
+        self
+    }
+
+    /// Adds metadata attribute
+    pub fn with_metadata_attribute(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Self {
+        if let Some(metadata) = self.metadata.as_mut() {
+            metadata
+                .metadata
+                .attributes
+                .push((key.into(), value.into()));
+        } else {
+            self.metadata = Some(AddressAndMetadata {
+                address: self.address.clone(),
+                metadata: AddressMetadata {
+                    is_terminal: false,
+                    attributes: vec![(key.into(), value.into())],
+                },
+            });
+        }
+        self
+    }
+
     /// Consume this builder and start a new Ockam [`Processor`] from the given context
     pub async fn start(self, context: &Context) -> Result<()> {
         start(
             context,
             Mailboxes::main(self.address, self.incoming_ac, self.outgoing_ac),
             self.processor,
+            self.metadata.map(|m| vec![m]).unwrap_or_default(),
         )
         .await
     }
@@ -137,7 +244,13 @@ where
 }
 
 /// Consume this builder and start a new Ockam [`Processor`] from the given context
-pub async fn start<P>(context: &Context, mailboxes: Mailboxes, processor: P) -> Result<()>
+
+pub async fn start<P>(
+    context: &Context,
+    mailboxes: Mailboxes,
+    processor: P,
+    metadata: Vec<AddressAndMetadata>,
+) -> Result<()>
 where
     P: Processor<Context = Context>,
 {
@@ -148,7 +261,7 @@ where
         mailboxes.main_mailbox().outgoing_access_control(),
     );
 
-    let main_address = mailboxes.main_address().clone();
+    let addresses = mailboxes.addresses();
 
     // Pass it to the context
     let (ctx, sender, ctrl_rx) = context.copy_with_mailboxes(mailboxes);
@@ -156,7 +269,7 @@ where
     debugger::log_inherit_context("PROCESSOR", context, &ctx);
 
     // Send start request to router
-    let (msg, mut rx) = NodeMessage::start_processor(main_address.clone(), sender);
+    let (msg, mut rx) = NodeMessage::start_processor(addresses, sender, metadata);
     context
         .sender()
         .send(msg)

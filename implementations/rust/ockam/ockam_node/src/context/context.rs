@@ -10,11 +10,13 @@ use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
 use ockam_core::{
-    async_trait, Address, Mailboxes, ProtocolVersion, RelayMessage, Result, TransportType,
+    async_trait, Address, AddressAndMetadata, AddressMetadata, Error, Mailboxes, ProtocolVersion,
+    RelayMessage, Result, TransportType,
 };
 
 #[cfg(feature = "std")]
 use core::fmt::{Debug, Formatter};
+use ockam_core::errcode::{Kind, Origin};
 use ockam_transport_core::Transport;
 
 /// A default timeout in seconds
@@ -191,5 +193,51 @@ impl Context {
             .await
             .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
         Ok(())
+    }
+
+    /// Finds the terminal address of a route, if present
+    pub async fn find_terminal_address(
+        &self,
+        route: impl Into<Vec<Address>>,
+    ) -> Result<Option<AddressAndMetadata>> {
+        let addresses = route.into();
+
+        if addresses.iter().any(|a| !a.transport_type().is_local()) {
+            return Err(Error::new(
+                Origin::Node,
+                Kind::Invalid,
+                "Only local addresses are allowed while looking for a terminal address",
+            ));
+        }
+
+        let (msg, mut reply) = NodeMessage::find_terminal_address(addresses);
+        self.sender
+            .send(msg)
+            .await
+            .map_err(NodeError::from_send_err)?;
+
+        reply
+            .recv()
+            .await
+            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
+            .take_terminal_address()
+    }
+
+    /// Read metadata for the provided address
+    pub async fn read_metadata(
+        &self,
+        address: impl Into<Address>,
+    ) -> Result<Option<AddressMetadata>> {
+        let (msg, mut reply) = NodeMessage::read_metadata(address.into());
+        self.sender
+            .send(msg)
+            .await
+            .map_err(NodeError::from_send_err)?;
+
+        reply
+            .recv()
+            .await
+            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
+            .take_metadata()
     }
 }
