@@ -10,6 +10,7 @@ use ockam_identity::{
     DecryptionResponse, EncryptionRequest, EncryptionResponse, IdentityAccessControlBuilder,
     IdentitySecureChannelLocalInfo, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannels, TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
+    IDENTITY_SECURE_CHANNEL_IDENTIFIER,
 };
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use ockam_vault::{
@@ -1085,6 +1086,51 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     assert!(!workers.contains(channel1.encryptor_messaging_address()));
     assert!(!workers.contains(channel2.decryptor_messaging_address()));
     assert!(!workers.contains(channel2.encryptor_messaging_address()));
+
+    Ok(())
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn address_metadata__encryptor__should_be_terminal(ctx: &mut Context) -> Result<()> {
+    let secure_channels = secure_channels().await?;
+    let identities_creation = secure_channels.identities().identities_creation();
+
+    let alice = identities_creation.create_identity().await?;
+    let bob = identities_creation.create_identity().await?;
+
+    let _bob_listener = secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &bob,
+            "bob_listener",
+            SecureChannelListenerOptions::new(),
+        )
+        .await?;
+
+    let sc = secure_channels
+        .create_secure_channel(
+            ctx,
+            &alice,
+            route!["bob_listener"],
+            SecureChannelOptions::new(),
+        )
+        .await?;
+
+    let meta = ctx
+        .find_terminal_address(route!["app", sc.clone(), "test"])
+        .await?
+        .unwrap();
+
+    assert_eq!(meta.address, sc.into());
+    assert_eq!(
+        meta.metadata.attributes,
+        vec![(
+            IDENTITY_SECURE_CHANNEL_IDENTIFIER.to_string(),
+            bob.to_string()
+        )]
+    );
+    assert!(meta.metadata.is_terminal);
 
     Ok(())
 }

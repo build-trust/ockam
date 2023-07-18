@@ -5,7 +5,9 @@ use crate::{
 };
 use core::{fmt, sync::atomic::AtomicUsize};
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
-use ockam_core::{Address, Error, RelayMessage, Result, TransportType};
+use ockam_core::{
+    Address, AddressAndMetadata, AddressMetadata, Error, RelayMessage, Result, TransportType,
+};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]
@@ -22,6 +24,8 @@ pub enum NodeMessage {
         mailbox_count: Arc<AtomicUsize>,
         /// Reply channel for command confirmation
         reply: SmallSender<NodeReplyResult>,
+        /// List of metadata for each address
+        addresses_metadata: Vec<AddressAndMetadata>,
     },
     /// Return a list of all worker addresses
     ListWorkers(SmallSender<NodeReplyResult>),
@@ -30,7 +34,16 @@ pub enum NodeMessage {
     /// Stop an existing worker
     StopWorker(Address, bool, SmallSender<NodeReplyResult>),
     /// Start a new processor
-    StartProcessor(Address, SenderPair, SmallSender<NodeReplyResult>),
+    StartProcessor {
+        /// The set of addresses in use by this processor
+        addrs: Vec<Address>,
+        /// Pair of senders to the worker relay (msgs and ctrl)
+        senders: SenderPair,
+        /// Reply channel for command confirmation
+        reply: SmallSender<NodeReplyResult>,
+        /// List of metadata for each address
+        addresses_metadata: Vec<AddressAndMetadata>,
+    },
     /// Stop an existing processor
     StopProcessor(Address, SmallSender<NodeReplyResult>),
     /// Stop the node (and all workers)
@@ -47,6 +60,10 @@ pub enum NodeMessage {
     SetReady(Address),
     /// Check whether an address has been marked as "ready"
     CheckReady(Address, SmallSender<NodeReplyResult>),
+    /// Find the terminal address for a given route
+    FindTerminalAddress(Vec<Address>, SmallSender<NodeReplyResult>),
+    /// Get address metadata
+    GetMetadata(Address, SmallSender<NodeReplyResult>),
 }
 
 impl fmt::Display for NodeMessage {
@@ -56,7 +73,7 @@ impl fmt::Display for NodeMessage {
             NodeMessage::ListWorkers(_) => write!(f, "ListWorkers"),
             NodeMessage::SetCluster(_, _, _) => write!(f, "SetCluster"),
             NodeMessage::StopWorker(_, _, _) => write!(f, "StopWorker"),
-            NodeMessage::StartProcessor(_, _, _) => write!(f, "StartProcessor"),
+            NodeMessage::StartProcessor { .. } => write!(f, "StartProcessor"),
             NodeMessage::StopProcessor(_, _) => write!(f, "StopProcessor"),
             NodeMessage::StopNode(_, _) => write!(f, "StopNode"),
             NodeMessage::AbortNode => write!(f, "AbortNode"),
@@ -65,6 +82,8 @@ impl fmt::Display for NodeMessage {
             NodeMessage::Router(_, _, _) => write!(f, "Router"),
             NodeMessage::SetReady(_) => write!(f, "SetReady"),
             NodeMessage::CheckReady(_, _) => write!(f, "CheckReady"),
+            NodeMessage::FindTerminalAddress(_, _) => write!(f, "FindTerminalAddress"),
+            NodeMessage::GetMetadata(_, _) => write!(f, "ReadMetadata"),
         }
     }
 }
@@ -83,6 +102,7 @@ impl NodeMessage {
         senders: SenderPair,
         detached: bool,
         mailbox_count: Arc<AtomicUsize>,
+        metadata: Vec<AddressAndMetadata>,
     ) -> (Self, SmallReceiver<NodeReplyResult>) {
         let (reply, rx) = small_channel();
         (
@@ -92,6 +112,7 @@ impl NodeMessage {
                 detached,
                 mailbox_count,
                 reply,
+                addresses_metadata: metadata,
             },
             rx,
         )
@@ -99,11 +120,20 @@ impl NodeMessage {
 
     /// Create a start worker message
     pub fn start_processor(
-        address: Address,
+        addrs: Vec<Address>,
         senders: SenderPair,
+        metadata: Vec<AddressAndMetadata>,
     ) -> (Self, SmallReceiver<NodeReplyResult>) {
         let (tx, rx) = small_channel();
-        (Self::StartProcessor(address, senders, tx), rx)
+        (
+            Self::StartProcessor {
+                addrs,
+                senders,
+                reply: tx,
+                addresses_metadata: metadata,
+            },
+            rx,
+        )
     }
 
     /// Create a stop worker message and reply receiver
@@ -152,6 +182,18 @@ impl NodeMessage {
         let (tx, rx) = small_channel();
         (Self::CheckReady(addr, tx), rx)
     }
+
+    /// Creates a [NodeMessage::FindTerminalAddress] message and reply receiver
+    pub fn find_terminal_address(addrs: Vec<Address>) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
+        (Self::FindTerminalAddress(addrs, tx), rx)
+    }
+
+    /// Creates a [NodeMessage::ReadMetadata] message and reply receiver
+    pub fn read_metadata(address: Address) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
+        (Self::GetMetadata(address, tx), rx)
+    }
 }
 
 /// The reply/result of a Node
@@ -173,6 +215,10 @@ pub enum RouterReply {
     },
     /// Indicate the 'ready' state of an address
     State(bool),
+    /// Metadata value of the first terminal address in the route
+    TerminalAddress(Option<AddressAndMetadata>),
+    /// Optional metadata value
+    Metadata(Option<AddressMetadata>),
 }
 
 /// Specify the type of node shutdown
@@ -264,6 +310,16 @@ impl RouterReply {
         Ok(Self::Workers(v))
     }
 
+    /// Returns [RouterReply::TerminalAddress] for the given address
+    pub fn terminal_address(address: Option<AddressAndMetadata>) -> NodeReplyResult {
+        Ok(Self::TerminalAddress(address))
+    }
+
+    /// Returns [RouterReply::Metadata] for the given metadata
+    pub fn metadata(value: Option<AddressMetadata>) -> NodeReplyResult {
+        Ok(Self::Metadata(value))
+    }
+
     /// Return [RouterReply::Sender] for the given information
     pub fn sender(addr: Address, sender: MessageSender<RelayMessage>) -> NodeReplyResult {
         Ok(RouterReply::Sender { addr, sender })
@@ -289,6 +345,22 @@ impl RouterReply {
     pub fn take_state(self) -> Result<bool> {
         match self {
             Self::State(b) => Ok(b),
+            _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
+        }
+    }
+
+    /// Consumes the wrapper and returns [RouterReply::TerminalAddress]
+    pub fn take_terminal_address(self) -> Result<Option<AddressAndMetadata>> {
+        match self {
+            Self::TerminalAddress(addr) => Ok(addr),
+            _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
+        }
+    }
+
+    /// Consumes the wrapper and returns [RouterReply::Metadata]
+    pub fn take_metadata(self) -> Result<Option<AddressMetadata>> {
+        match self {
+            Self::Metadata(value) => Ok(value),
             _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
         }
     }

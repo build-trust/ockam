@@ -197,7 +197,8 @@ impl Mailboxes {
 
     /// Return all (mail + additional) [`Address`]es represented by this [`Mailboxes`]
     pub fn addresses(&self) -> Vec<Address> {
-        let mut addresses = vec![self.main_mailbox.address.clone()];
+        let mut addresses = Vec::with_capacity(self.additional_mailboxes.len() + 1);
+        addresses.push(self.main_mailbox.address.clone());
         addresses.append(&mut self.additional_addresses());
         addresses
     }

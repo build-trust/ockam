@@ -1,4 +1,4 @@
-use super::{AddressMeta, AddressRecord, NodeState, Router, SenderPair};
+use super::{AddressRecord, NodeState, Router, SenderPair, WorkerMeta};
 use crate::channel_types::SmallSender;
 use crate::{
     error::{NodeError, NodeReason},
@@ -9,7 +9,7 @@ use core::sync::atomic::AtomicUsize;
 use ockam_core::env::get_env;
 use ockam_core::{
     compat::{sync::Arc, vec::Vec},
-    Address, Result,
+    Address, AddressAndMetadata, Result,
 };
 
 /// Execute a `StartWorker` command
@@ -18,11 +18,23 @@ pub(super) async fn exec(
     addrs: Vec<Address>,
     senders: SenderPair,
     detached: bool,
+    addresses_metadata: Vec<AddressAndMetadata>,
     metrics: Arc<AtomicUsize>,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
     match router.state.node_state() {
-        NodeState::Running => start(router, addrs, senders, detached, metrics, reply).await,
+        NodeState::Running => {
+            start(
+                router,
+                addrs,
+                senders,
+                detached,
+                addresses_metadata,
+                metrics,
+                reply,
+            )
+            .await
+        }
         NodeState::Stopping(_) => reject(reply).await,
         NodeState::Dead => unreachable!(),
     }?;
@@ -34,6 +46,7 @@ async fn start(
     addrs: Vec<Address>,
     senders: SenderPair,
     detached: bool,
+    addresses_metadata: Vec<AddressAndMetadata>,
     metrics: Arc<AtomicUsize>,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
@@ -55,7 +68,7 @@ async fn start(
         msgs,
         ctrl,
         metrics,
-        AddressMeta {
+        WorkerMeta {
             processor: false,
             detached,
         },
@@ -64,6 +77,18 @@ async fn start(
     router
         .map
         .insert_address_record(primary_addr.clone(), address_record);
+
+    for metadata in addresses_metadata {
+        if !addrs.contains(&metadata.address) {
+            warn!(
+                "Address {} is not in the set of addresses for this worker",
+                metadata.address
+            );
+            continue;
+        }
+
+        router.map.set_address_metadata(metadata);
+    }
 
     #[cfg(feature = "std")]
     if let Ok(Some(_)) = get_env::<String>("OCKAM_DUMP_INTERNALS") {

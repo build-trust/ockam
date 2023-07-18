@@ -17,5 +17,9 @@ mod macros;
 mod mailbox;
 pub use mailbox::*;
 
+mod address_meta;
+pub use address_meta::*;
+
 mod transport_type;
+
 pub use transport_type::*;
