@@ -1,4 +1,5 @@
 use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, SystemTrayMenuItem, Wry};
+use tracing::log::{error, info};
 
 use ockam_command::CommandGlobalOpts;
 
@@ -39,15 +40,22 @@ impl SystemTrayMenuBuilder {
     }
 
     /// Refresh the system tray menu with the latest state, including all list items.
-    pub fn refresh(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<()> {
-        let menu = Self::get_full_menu(app, options).unwrap_or(Self::default(options));
+    pub async fn refresh(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<()> {
+        info!("refreshing the menu");
+        let menu = Self::get_full_menu(app, options).await.unwrap_or_else(|e| {
+            error!("{:?}", e);
+            Self::default(options)
+        });
         app.tray_handle().set_menu(menu)?;
         Ok(())
     }
 
-    fn get_full_menu(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<SystemTrayMenu> {
+    async fn get_full_menu(
+        app: &AppHandle<Wry>,
+        options: &CommandGlobalOpts,
+    ) -> Result<SystemTrayMenu> {
         let enroll = EnrollActions::new(options);
-        let tcp = TcpOutletActions::full(app, options)?;
+        let tcp = TcpOutletActions::full(app, options).await?;
         let quit = QuitActions::new();
         let menu = Self { enroll, tcp, quit }.build();
         Ok(menu)
