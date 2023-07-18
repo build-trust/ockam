@@ -1,4 +1,3 @@
-use crate::ctx::TauriCtx;
 use crate::Result;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
@@ -6,10 +5,11 @@ use ockam_api::nodes::models::portal::OutletList;
 use ockam_command::node::initialize_node_if_default;
 use ockam_command::util::embedded_node;
 use ockam_command::{tcp, CommandGlobalOpts};
+use tauri::{AppHandle, Wry};
 
 /// List TCP outlets of the default node.
 #[tauri::command]
-pub fn list(_ctx: &TauriCtx, options: &CommandGlobalOpts) -> Result<OutletList> {
+pub fn list(_app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<OutletList> {
     initialize_node_if_default(options, &None);
     let res = embedded_node(rpc, options.clone())?;
     Ok(res)

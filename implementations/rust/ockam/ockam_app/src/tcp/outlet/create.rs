@@ -1,4 +1,4 @@
-use tauri::Manager;
+use tauri::{AppHandle, Manager, Wry};
 
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
@@ -7,16 +7,14 @@ use ockam_command::node::initialize_node_if_default;
 use ockam_command::util::{embedded_node, extract_address_value, get_free_address};
 use ockam_command::{tcp, CommandGlobalOpts};
 
-use crate::ctx::TauriCtx;
 use crate::Result;
 
 /// Create a TCP outlet within the default node.
 #[tauri::command]
-pub fn create(ctx: TauriCtx, options: &CommandGlobalOpts) -> Result<()> {
+pub fn create(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<()> {
     initialize_node_if_default(options, &None);
     embedded_node(rpc, options.clone())?;
-    ctx.app_handle()
-        .trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+    app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
     Ok(())
 }
 

@@ -4,11 +4,9 @@ use tauri_plugin_log::{Target, TargetKind};
 use ockam_command::{CommandGlobalOpts, GlobalArgs};
 
 use crate::app::{process_application_event, process_system_tray_event, SystemTrayMenuBuilder};
-use crate::ctx::TauriCtx;
 use crate::error::Result;
 
 mod app;
-mod ctx;
 mod enroll;
 mod error;
 mod quit;
@@ -33,9 +31,9 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
-            let ctx = TauriCtx::new(app.app_handle());
+            let app_handle = app.app_handle().clone();
             app.listen_global(app::events::SYSTEM_TRAY_ON_UPDATE, move |_event| {
-                let _ = SystemTrayMenuBuilder::refresh(&ctx.clone(), &options_clone);
+                let _ = SystemTrayMenuBuilder::refresh(&app_handle, &options_clone);
             });
             app.trigger_global(app::events::SYSTEM_TRAY_ON_UPDATE, None);
             Ok(())

@@ -1,10 +1,11 @@
-use crate::ctx::TauriCtx;
+use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, SystemTrayMenuItem, Wry};
+
+use ockam_command::CommandGlobalOpts;
+
 use crate::enroll::EnrollActions;
 use crate::quit::QuitActions;
 use crate::tcp::outlet::TcpOutletActions;
 use crate::Result;
-use ockam_command::CommandGlobalOpts;
-use tauri::{CustomMenuItem, SystemTrayMenu, SystemTrayMenuItem};
 
 /// Create the system tray with all the major functions.
 /// Separate groups of related functions with a native separator.
@@ -38,15 +39,15 @@ impl SystemTrayMenuBuilder {
     }
 
     /// Refresh the system tray menu with the latest state, including all list items.
-    pub fn refresh(ctx: &TauriCtx, options: &CommandGlobalOpts) -> Result<()> {
-        let menu = Self::get_full_menu(ctx, options).unwrap_or(Self::default(options));
-        ctx.app_handle().tray_handle().set_menu(menu)?;
+    pub fn refresh(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<()> {
+        let menu = Self::get_full_menu(app, options).unwrap_or(Self::default(options));
+        app.tray_handle().set_menu(menu)?;
         Ok(())
     }
 
-    fn get_full_menu(ctx: &TauriCtx, options: &CommandGlobalOpts) -> Result<SystemTrayMenu> {
+    fn get_full_menu(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<SystemTrayMenu> {
         let enroll = EnrollActions::new(options);
-        let tcp = TcpOutletActions::full(ctx, options)?;
+        let tcp = TcpOutletActions::full(app, options)?;
         let quit = QuitActions::new();
         let menu = Self { enroll, tcp, quit }.build();
         Ok(menu)

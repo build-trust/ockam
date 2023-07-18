@@ -1,14 +1,13 @@
-use crate::ctx::TauriCtx;
 use crate::Result;
 use miette::{miette, IntoDiagnostic};
 use ockam_command::{CommandGlobalOpts, GlobalArgs};
-use tauri::Manager;
+use tauri::{AppHandle, Manager, Wry};
 
 /// Reset the project.
 /// This function removes all persisted state
 /// So that the user must enroll again in order to be able to access a project
 #[tauri::command]
-pub fn reset(ctx: &TauriCtx) -> Result<()> {
+pub fn reset(app: &AppHandle<Wry>) -> Result<()> {
     let options = CommandGlobalOpts::new(GlobalArgs::default());
     let res = if let Err(e) = options.state.delete(true) {
         Err(miette!("{:?}", e).into())
@@ -19,7 +18,6 @@ pub fn reset(ctx: &TauriCtx) -> Result<()> {
             .into_diagnostic()?;
         Ok(())
     };
-    ctx.app_handle()
-        .trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+    app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
     res
 }
