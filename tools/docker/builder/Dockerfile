@@ -1,4 +1,4 @@
-FROM gcc:12.3.0@sha256:5e1768ffd3230192358cfbde63443750f8f78f160a449d25007de9828c41976d
+FROM gcc:13.1.0-bookworm@sha256:02046172695139f68f584e6f13b889cf95a04dc2096ab7148b5cba43a2f22af2
 
 ARG RUSTUP_INIT_VERSION=1.25.2
 ARG RUST_VERSION=1.68.0
@@ -59,7 +59,7 @@ RUN set -xe; \
     esac; \
 # Setup base tools
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends parallel ca-certificates curl locales xz-utils clang net-tools; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends parallel ca-certificates curl locales xz-utils clang net-tools libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev; \
 # Setup locale
     LANG=en_US.UTF-8; \
     echo $LANG UTF-8 > /etc/locale.gen; \
@@ -104,11 +104,13 @@ RUN set -xe; \
     cargo install --locked cargo-deny; \
     cargo install --locked cargo-nextest; \
     cargo install --locked cargo-readme; \
+    cargo install --locked tauri-cli; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
+    echo "deb http://deb.debian.org/debian bullseye main" >> /etc/apt/sources.list; \
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
-      libncurses5 libwxbase3.0-0v5 libwxgtk3.0-gtk3-0v5 libsctp1 libgtk-3-dev; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes -t bullseye --no-install-recommends \
+      libtiff5  libncurses5 libwxbase3.0-0v5 libwxgtk3.0-gtk3-0v5 libsctp1 libgtk-3-dev libssl1.1 libgdk-pixbuf2.0-0 libgdk-pixbuf-xlib-2.0-0 libwebp6; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*; \
     ERLANG_PACKAGE="esl-erlang_${ERLANG_VERSION}_${ERLANG_OS}.deb"; \
@@ -151,11 +153,6 @@ RUN set -xe; \
     tar -xf "gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" -C /opt/; \
     mv "/opt/gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}" "${GH_CLI_HOME}"; \
 # Setup Tauri dependencies
-    echo "deb http://deb.debian.org/debian experimental main" >> /etc/apt/sources.list; \
-    echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list; \
-    apt update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes -t experimental libgtk-4-dev vite -y; \
-    DEBIAN_FRONTEND=noninteractive apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y; \
     npm install -g pnpm@${PNPM_VERSION}; \
     npm install -g vite@${VITE_VERSION}; \
 # Setup cosign
