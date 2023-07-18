@@ -1,4 +1,4 @@
-mod enroll_user;
+pub(crate) mod enroll_user;
 mod menu_items;
 mod reset;
 

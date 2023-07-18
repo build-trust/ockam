@@ -46,7 +46,7 @@ impl TcpOutletActions {
 }
 
 /// Event listener for the "Create..." menu item
-pub fn on_create(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> tauri::Result<()> {
-    let _ = create(app, options);
+pub fn on_create(app: &AppHandle<Wry>) -> tauri::Result<()> {
+    let _ = create(app);
     Ok(())
 }

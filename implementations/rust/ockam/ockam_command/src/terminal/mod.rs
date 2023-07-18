@@ -4,6 +4,7 @@ use std::io::Write;
 use std::time::Duration;
 
 use colorful::Colorful;
+use console::Term;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
@@ -33,6 +34,12 @@ pub struct Terminal<T: TerminalWriter, WriteMode = ToStdErr> {
     no_input: bool,
     output_format: OutputFormat,
     mode: WriteMode,
+}
+
+impl Default for Terminal<TerminalStream<Term>> {
+    fn default() -> Self {
+        Terminal::new(true, true, true, OutputFormat::Plain)
+    }
 }
 
 pub enum ConfirmResult {

@@ -54,6 +54,11 @@ impl Executor {
         }
     }
 
+    /// Start the router asynchronously
+    pub async fn start_router(&mut self) -> Result<()> {
+        self.router.run().await
+    }
+
     /// Get access to the internal message sender
     pub(crate) fn sender(&self) -> SmallSender<NodeMessage> {
         self.router.sender()
