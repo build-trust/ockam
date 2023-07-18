@@ -1,8 +1,7 @@
-use tauri::CustomMenuItem;
+use tauri::{AppHandle, CustomMenuItem, Wry};
 
 use ockam_command::CommandGlobalOpts;
 
-use crate::ctx::TauriCtx;
 use crate::tcp::outlet::create::create;
 use crate::Result;
 
@@ -27,9 +26,9 @@ impl TcpOutletActions {
     }
 
     ///
-    pub fn full(ctx: &TauriCtx, options: &CommandGlobalOpts) -> Result<TcpOutletActions> {
+    pub fn full(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<TcpOutletActions> {
         let mut s = TcpOutletActions::new(options);
-        let mut tcp_outlets = super::list(ctx, options)?
+        let mut tcp_outlets = super::list(app, options)?
             .list
             .iter()
             .map(|outlet| {
@@ -47,7 +46,7 @@ impl TcpOutletActions {
 }
 
 /// Event listener for the "Create..." menu item
-pub fn on_create(ctx: TauriCtx, options: &CommandGlobalOpts) -> tauri::Result<()> {
-    let _ = create(ctx, options);
+pub fn on_create(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> tauri::Result<()> {
+    let _ = create(app, options);
     Ok(())
 }
