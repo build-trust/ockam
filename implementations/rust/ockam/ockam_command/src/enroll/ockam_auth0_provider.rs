@@ -10,7 +10,7 @@ pub struct OckamAuth0Provider {
 
 impl Default for OckamAuth0Provider {
     fn default() -> Self {
-        OckamAuth0Provider::new(Duration::from_secs(60))
+        OckamAuth0Provider::new(Duration::from_secs(10))
     }
 }
 

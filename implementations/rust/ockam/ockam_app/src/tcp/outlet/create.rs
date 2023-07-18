@@ -1,5 +1,6 @@
 use tauri::{AppHandle, Manager, Wry};
 
+use crate::app::AppState;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
@@ -11,8 +12,9 @@ use crate::Result;
 
 /// Create a TCP outlet within the default node.
 #[tauri::command]
-pub fn create(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<()> {
-    initialize_node_if_default(options, &None);
+pub fn create(app: &AppHandle<Wry>) -> Result<()> {
+    let options = app.state::<AppState>().options();
+    initialize_node_if_default(&options, &None);
     embedded_node(rpc, options.clone())?;
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
     Ok(())

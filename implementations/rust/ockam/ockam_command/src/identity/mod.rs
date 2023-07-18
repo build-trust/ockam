@@ -5,7 +5,7 @@ mod list;
 mod show;
 
 use colorful::Colorful;
-pub(crate) use create::CreateCommand;
+pub use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;

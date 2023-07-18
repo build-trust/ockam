@@ -51,7 +51,7 @@ use crate::logs::setup_logging;
 use crate::node::NodeSubcommand;
 use crate::run::RunCommand;
 use crate::subscription::SubscriptionCommand;
-use crate::terminal::{Terminal, TerminalStream};
+pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 
@@ -88,7 +88,6 @@ use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
 };
-use terminal::OckamColor;
 use trust_context::TrustContextCommand;
 use upgrade::check_if_an_upgrade_is_available;
 use util::{exitcode, exitcode::ExitCode};

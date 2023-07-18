@@ -23,6 +23,7 @@ impl EnrollActions {
     pub fn new(options: &CommandGlobalOpts) -> EnrollActions {
         let enroll = CustomMenuItem::new(ENROLL_MENU_ID, "Enroll...").accelerator("cmd+e");
         let reset = CustomMenuItem::new(RESET_MENU_ID, "Reset").accelerator("cmd+r");
+        info!("refreshing the menu");
         match options.state.projects.default() {
             Ok(_) => EnrollActions {
                 options: options.clone(),
@@ -42,16 +43,10 @@ impl EnrollActions {
 }
 
 /// Enroll the user and show that it has been enrolled
-pub fn on_enroll(app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> tauri::Result<()> {
-    match enroll_user(options) {
-        Ok(_) => {
-            app.tray_handle()
-                .get_item(ENROLL_MENU_ID)
-                .set_enabled(false)?;
-            app.tray_handle().get_item(RESET_MENU_ID).set_enabled(true)
-        }
-        Err(e) => Err(Runtime(SystemTray(Box::new(e)))),
-    }
+pub fn on_enroll(app: &AppHandle<Wry>) -> tauri::Result<()> {
+    let app_handle = app.clone();
+    tauri::async_runtime::spawn(async move { enroll_user(&app_handle).await });
+    Ok(())
 }
 
 /// Reset the persistent state

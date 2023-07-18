@@ -10,8 +10,9 @@ use tauri::{AppHandle, Wry};
 /// List TCP outlets of the default node.
 #[tauri::command]
 pub fn list(_app: &AppHandle<Wry>, options: &CommandGlobalOpts) -> Result<OutletList> {
-    initialize_node_if_default(options, &None);
-    let res = embedded_node(rpc, options.clone())?;
+    // initialize_node_if_default(options, &None);
+    // let res = embedded_node(rpc, options.clone())?;
+    let res = OutletList::new(vec![]);
     Ok(res)
 }
 
