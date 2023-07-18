@@ -105,7 +105,8 @@ impl TcpSendWorker {
         );
 
         WorkerBuilder::new(sender_worker)
-            .with_mailboxes(Mailboxes::new(main_mailbox, vec![internal_mailbox]))
+            .with_mailboxes(Mailboxes::new(main_mailbox.clone(), vec![internal_mailbox]))
+            .terminal(addresses.sender_address().clone())
             .start(ctx)
             .await?;
 

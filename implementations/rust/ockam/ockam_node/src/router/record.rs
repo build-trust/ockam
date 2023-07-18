@@ -22,6 +22,8 @@ pub struct InternalMap {
     address_records_map: BTreeMap<Address, AddressRecord>,
     /// Alias-registry to map arbitrary address to primary addresses
     alias_map: BTreeMap<Address, Address>,
+    /// Registry of arbitrary metadata for each address, lazily populated
+    address_metadata_map: BTreeMap<Address, AddressMeta>,
     /// The order in which clusters are allocated and de-allocated
     cluster_order: Vec<String>,
     /// Cluster data records
@@ -40,6 +42,7 @@ impl InternalMap {
         Self {
             address_records_map: Default::default(),
             alias_map: Default::default(),
+            address_metadata_map: Default::default(),
             cluster_order: Default::default(),
             clusters: Default::default(),
             stopping: Default::default(),
@@ -86,9 +89,42 @@ impl InternalMap {
         self.address_records_map.insert(primary_address, record)
     }
 
-    pub(super) fn remove_alias(&mut self, alias_address: &Address) -> Option<Address> {
-        self.flow_controls.cleanup_address(alias_address);
-        self.alias_map.remove(alias_address)
+    pub(super) fn mark_address_as_terminal(&mut self, address: Address) {
+        let metadata = self
+            .address_metadata_map
+            .entry(address)
+            .or_insert_with(AddressMeta::default);
+        metadata.is_terminal = true;
+    }
+
+    pub(super) fn find_terminal_address(&self, addresses: &[Address]) -> Option<Address> {
+        addresses
+            .iter()
+            .find(|address| {
+                //every remote transport is implicitly considered a terminal address
+                if !address.transport_type().is_local() {
+                    return true;
+                }
+                self.address_metadata_map
+                    .get(address)
+                    .map(|meta| meta.is_terminal)
+                    .unwrap_or(false)
+            })
+            .cloned()
+    }
+
+    pub(super) fn write_address_metadata(&mut self, address: Address, key: &str, value: &str) {
+        let metadata = self
+            .address_metadata_map
+            .entry(address)
+            .or_insert_with(AddressMeta::default);
+        metadata.attributes.insert(key.into(), value.into());
+    }
+
+    pub(super) fn read_address_metadata(&self, address: &Address, key: &str) -> Option<String> {
+        self.address_metadata_map
+            .get(address)
+            .and_then(|meta| meta.attributes.get(key).cloned())
     }
 
     pub(super) fn insert_alias(&mut self, alias_address: &Address, primary_address: &Address) {
@@ -216,17 +252,26 @@ impl InternalMap {
     /// Permanently free all remaining resources associated to a particular address
     pub(super) fn free_address(&mut self, primary: Address) {
         self.stopping.remove(&primary);
+        self.address_metadata_map.remove(&primary);
         if let Some(record) = self.remove_address_record(&primary) {
             for addr in record.address_set {
                 self.alias_map.remove(&addr);
+                self.address_metadata_map.remove(&addr);
             }
         }
     }
 }
 
 /// Additional metadata for address records
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AddressMeta {
+    pub is_terminal: bool,
+    pub attributes: BTreeMap<String, String>,
+}
+
+/// Additional metadata for worker records
+#[derive(Debug)]
+pub struct WorkerMeta {
     pub processor: bool,
     pub detached: bool,
 }
@@ -238,7 +283,7 @@ pub struct AddressRecord {
     ctrl_tx: SmallSender<CtrlSignal>,
     state: AddressState,
     ready: ReadyState,
-    meta: AddressMeta,
+    meta: WorkerMeta,
     msg_count: Arc<AtomicUsize>,
 }
 
@@ -260,7 +305,7 @@ impl AddressRecord {
         sender: MessageSender<RelayMessage>,
         ctrl_tx: SmallSender<CtrlSignal>,
         msg_count: Arc<AtomicUsize>,
-        meta: AddressMeta,
+        meta: WorkerMeta,
     ) -> Self {
         AddressRecord {
             address_set,

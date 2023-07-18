@@ -10,7 +10,7 @@ mod utils;
 #[cfg(feature = "metrics")]
 use std::sync::atomic::AtomicUsize;
 
-use record::{AddressMeta, AddressRecord, InternalMap};
+use record::{AddressRecord, InternalMap, WorkerMeta};
 use state::{NodeState, RouterState};
 
 use crate::channel_types::{router_channel, MessageSender, RouterReceiver, SmallSender};
@@ -94,7 +94,7 @@ impl Router {
                 senders.msgs,
                 senders.ctrl,
                 Arc::new(0.into()), // don't track for app worker (yet?)
-                AddressMeta {
+                WorkerMeta {
                     processor: false,
                     detached: true,
                 },
@@ -183,15 +183,30 @@ impl Router {
                 detached,
                 mailbox_count,
                 ref reply,
-            } => start_worker::exec(self, addrs, senders, detached, mailbox_count, reply).await?,
+                addresses_metadata,
+            } => {
+                start_worker::exec(
+                    self,
+                    addrs,
+                    senders,
+                    detached,
+                    addresses_metadata,
+                    mailbox_count,
+                    reply,
+                )
+                .await?
+            }
             StopWorker(ref addr, ref detached, ref reply) => {
                 stop_worker::exec(self, addr, *detached, reply).await?
             }
 
             //// ==! Basic processor control
-            StartProcessor(addr, senders, ref reply) => {
-                start_processor::exec(self, addr, senders, reply).await?
-            }
+            StartProcessor {
+                addrs,
+                senders,
+                ref reply,
+                addresses_metadata,
+            } => start_processor::exec(self, addrs, senders, addresses_metadata, reply).await?,
             StopProcessor(ref addr, ref reply) => stop_processor::exec(self, addr, reply).await?,
 
             //// ==! Core node controls
@@ -290,6 +305,20 @@ impl Router {
                     utils::resolve(self, &addr, reply).await?
                 }
             },
+            FindTerminalAddress(ref addresses, ref reply) => {
+                let terminal_address = self.map.find_terminal_address(addresses);
+                reply
+                    .send(RouterReply::terminal_address(terminal_address))
+                    .await
+                    .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
+            }
+            ReadMetadata(ref address, ref key, ref reply) => {
+                let meta = self.map.read_address_metadata(address, key);
+                reply
+                    .send(RouterReply::metadata(meta))
+                    .await
+                    .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
+            }
         }
 
         Ok(false)

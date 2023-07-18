@@ -6,7 +6,7 @@ use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{async_trait, Address, Mailboxes, RelayMessage, Result, TransportType};
+use ockam_core::{async_trait, Address, Mailboxes, RelayMessage, Result, Route, TransportType};
 
 #[cfg(feature = "std")]
 use core::fmt::{Debug, Formatter};
@@ -160,5 +160,46 @@ impl Context {
             .await
             .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
         Ok(())
+    }
+
+    /// Finds the terminal address of a route, if present
+    pub async fn find_terminal_address<A: Into<Route>>(&self, route: A) -> Result<Option<Address>> {
+        let route = route.into();
+        let addresses: Vec<Address> = route.iter().cloned().collect();
+
+        let (msg, mut reply) = NodeMessage::find_terminal_address(addresses);
+        self.sender
+            .send(msg)
+            .await
+            .map_err(NodeError::from_send_err)?;
+
+        // This call blocks until the address has become ready or is
+        // dropped by the router
+        reply
+            .recv()
+            .await
+            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
+            .take_terminal_address()
+    }
+
+    /// Read metadata for the provided address and key
+    pub async fn read_metadata<A: Into<Address>, K: Into<String>>(
+        &self,
+        address: A,
+        key: K,
+    ) -> Result<Option<String>> {
+        let (msg, mut reply) = NodeMessage::read_metadata(address.into(), key.into());
+        self.sender
+            .send(msg)
+            .await
+            .map_err(NodeError::from_send_err)?;
+
+        // This call blocks until the address has become ready or is
+        // dropped by the router
+        reply
+            .recv()
+            .await
+            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
+            .take_metadata()
     }
 }
