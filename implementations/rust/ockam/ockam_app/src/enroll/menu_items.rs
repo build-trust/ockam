@@ -21,9 +21,8 @@ pub struct EnrollActions {
 
 impl EnrollActions {
     pub fn new(options: &CommandGlobalOpts) -> EnrollActions {
-        let enroll = CustomMenuItem::new(ENROLL_MENU_ID, "Enroll...").accelerator("cmd+e");
+        let enroll = CustomMenuItem::new(ENROLL_MENU_ID, "Enroll").accelerator("cmd+e");
         let reset = CustomMenuItem::new(RESET_MENU_ID, "Reset").accelerator("cmd+r");
-        info!("refreshing the menu");
         match options.state.projects.default() {
             Ok(_) => EnrollActions {
                 options: options.clone(),

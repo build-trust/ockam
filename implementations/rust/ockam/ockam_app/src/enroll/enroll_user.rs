@@ -4,7 +4,7 @@ use tracing::log::{error, info};
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_command::enroll::{enroll, Auth0Service};
-use ockam_command::identity::{create_default_identity, CreateCommand};
+use ockam_command::identity::CreateCommand;
 use ockam_command::CommandGlobalOpts;
 use ockam_core::AsyncTryClone;
 

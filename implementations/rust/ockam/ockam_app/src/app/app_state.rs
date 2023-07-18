@@ -26,11 +26,15 @@ impl AppState {
         }
     }
 
+    pub fn context(&self) -> Arc<Context> {
+        self.context.clone()
+    }
+
     pub fn options(&self) -> CommandGlobalOpts {
         CommandGlobalOpts {
             global_args: self.global_args.clone(),
             state: self.state.clone(),
-            terminal: Terminal::default(),
+            terminal: Terminal::default().set_quiet(),
         }
     }
 }

@@ -8,6 +8,7 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decoder, Encode};
 use std::io::{self, Read};
+use std::sync::Arc;
 use std::{path::PathBuf, process, str::FromStr};
 use tokio::try_join;
 
@@ -181,7 +182,7 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
 }
 
 // Create a new node running in the background (i.e. another, new OS process)
-pub(crate) async fn background_mode(
+pub async fn background_mode(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
@@ -389,6 +390,91 @@ async fn run_foreground_node(
             .unwrap();
     }
 
+    Ok(())
+}
+
+pub async fn start_foreground_node(
+    ctx: Arc<Context>,
+    opts: CommandGlobalOpts,
+    cmd: CreateCommand,
+) -> miette::Result<()> {
+    let node_name = parse_node_name(&cmd.node_name)?;
+
+    // This node was initially created as a foreground node
+    // and there is no existing state for it yet.
+    if !cmd.child_process && !opts.state.nodes.exists(&node_name) {
+        init_node_state(
+            &opts,
+            &node_name,
+            cmd.vault.as_deref(),
+            cmd.identity.as_deref(),
+        )
+        .await?;
+    }
+
+    add_project_info_to_node_state(&node_name, &opts, &cmd.trust_context_opts).await?;
+
+    let trust_context_config =
+        TrustContextConfigBuilder::new(&opts.state, &cmd.trust_context_opts)?
+            .with_authority_identity(cmd.authority_identity.as_ref())
+            .with_credential_name(cmd.credential.as_ref())
+            .build();
+
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
+    let options = TcpListenerOptions::new();
+    let listener = tcp
+        .listen(&cmd.tcp_listener_address, options)
+        .await
+        .into_diagnostic()?;
+
+    let node_state = opts.state.nodes.get(&node_name)?;
+    node_state.set_pid(process::id() as i32)?;
+    node_state.set_setup(
+        &node_state
+            .config()
+            .setup_mut()
+            .set_verbose(opts.global_args.verbose)
+            .set_api_transport(
+                CreateTransportJson::new(
+                    TransportType::Tcp,
+                    TransportMode::Listen,
+                    &listener.socket_address().to_string(),
+                )
+                .into_diagnostic()?,
+            ),
+    )?;
+
+    let projects = ProjectLookup::from_state(opts.state.projects.list()?).await?;
+    let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
+
+    let node_man = NodeManager::create(
+        &ctx,
+        NodeManagerGeneralOptions::new(
+            opts.state.clone(),
+            cmd.node_name.clone(),
+            cmd.launch_config.is_some(),
+            pre_trusted_identities,
+        ),
+        NodeManagerProjectsOptions::new(projects),
+        NodeManagerTransportOptions::new(
+            listener.flow_control_id().clone(),
+            tcp.async_try_clone().await.into_diagnostic()?,
+        ),
+        NodeManagerTrustOptions::new(trust_context_config),
+    )
+    .await
+    .into_diagnostic()?;
+    let node_manager_worker = NodeManagerWorker::new(node_man);
+
+    ctx.flow_controls()
+        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
+        .await
+        .into_diagnostic()?;
+
+    if let Some(config) = &cmd.launch_config {
+        start_services(&ctx, config).await?;
+    }
     Ok(())
 }
 
