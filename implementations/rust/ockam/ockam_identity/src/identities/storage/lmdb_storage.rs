@@ -1,6 +1,12 @@
-use crate::Storage;
 use core::str;
+use std::fmt;
+use std::path::Path;
+
 use lmdb::{Cursor, Database, Environment, Transaction};
+use tokio_retry::strategy::{jitter, FixedInterval};
+use tokio_retry::Retry;
+use tracing::debug;
+
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
@@ -9,11 +15,8 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_node::tokio::task::{self, JoinError};
-use std::fmt;
-use std::path::Path;
-use tokio_retry::strategy::{jitter, FixedInterval};
-use tokio_retry::Retry;
-use tracing::debug;
+
+use crate::Storage;
 
 /// Storage using the LMDB database
 #[derive(Clone)]
@@ -46,6 +49,8 @@ impl LmdbStorage {
 
     async fn make(p: &Path) -> Result<Self> {
         debug!("create the LMDB database");
+        std::fs::create_dir_all(p.parent().unwrap())
+            .map_err(|e| Error::new(Origin::Node, Kind::Io, e))?;
         let p = p.to_path_buf();
         let env = Environment::new()
             .set_flags(lmdb::EnvironmentFlags::NO_SUB_DIR | lmdb::EnvironmentFlags::NO_TLS)
