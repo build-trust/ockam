@@ -8,6 +8,7 @@ use miette::Context as _;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
+use std::fmt::Write;
 
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -141,18 +142,24 @@ impl Output for NodeListOutput {
             ),
         };
         let default = match self.is_default {
-            true => "(default)".to_string(),
+            true => " (default)".to_string(),
             false => "".to_string(),
         };
 
-        let output = format!(
-            r#"Node {node_name} {default} {status}
+        let mut output = String::new();
+        write!(
+            output,
+            r#"Node {node_name}{default} {status}
 {pid}"#,
             node_name = self
                 .node_name
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-        );
+            default = default,
+            status = status,
+            pid = pid
+        )?;
+
         Ok(output)
     }
 }
