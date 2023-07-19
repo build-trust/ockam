@@ -151,10 +151,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          npm install @sveltejs/kit
-          pnpm run build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build
@@ -194,10 +190,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          npm install @sveltejs/kit
-          pnpm run build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew test
@@ -302,10 +294,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          npm install @sveltejs/kit
-          pnpm run build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build
@@ -325,10 +313,6 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - working-directory: implementations/typescript/ockam/ockam_app
-        run: |
-          npm install @sveltejs/kit
-          pnpm run build
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew test
