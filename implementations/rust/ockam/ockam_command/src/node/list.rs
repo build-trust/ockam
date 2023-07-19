@@ -4,6 +4,7 @@ use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
+use indoc::formatdoc;
 use miette::Context as _;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
@@ -141,18 +142,19 @@ impl Output for NodeListOutput {
             ),
         };
         let default = match self.is_default {
-            true => "(default)".to_string(),
+            true => " (default)".to_string(),
             false => "".to_string(),
         };
 
-        let output = format!(
-            r#"Node {node_name} {default} {status}
-{pid}"#,
-            node_name = self
-                .node_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-        );
+        let output = formatdoc! {"
+        Node {node_name}{default} {status}
+        {pid}",
+        node_name = self
+            .node_name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color()),
+        };
+
         Ok(output)
     }
 }
