@@ -311,21 +311,24 @@ dependencies = [
 
 [[package]]
 name = "atsamd-hal"
-version = "0.14.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cddc374559f476b8225083732b400544075c67616e1b1e1635b0efe84bef158"
+checksum = "8b73296d570757d7701a102d1186ffc5120ed941fbe1112e88391db1277b3b06"
 dependencies = [
+ "aes",
  "atsame54p",
  "bitfield",
  "bitflags 1.3.2",
+ "cipher",
  "cortex-m 0.7.7",
  "embedded-hal 0.2.7",
+ "fugit",
  "modular-bitfield",
- "nb 0.1.3",
+ "nb 1.1.0",
  "num-traits",
+ "opaque-debug",
  "paste",
- "rand_core 0.5.1",
- "replace_with",
+ "rand_core 0.6.4",
  "seq-macro",
  "typenum",
  "vcell",
@@ -334,9 +337,9 @@ dependencies = [
 
 [[package]]
 name = "atsame54_xpro"
-version = "0.4.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fb6be0369d21c3054533bc70ee0bcf93d41f26f508639e5ca96d4dfd66cecca"
+checksum = "fd3ae2c9b1285cd6c7263e6cf9b93ac3209f863bd938a725a6d7f3695ffb3ffb"
 dependencies = [
  "atsamd-hal",
  "cortex-m-rt",
@@ -344,11 +347,10 @@ dependencies = [
 
 [[package]]
 name = "atsame54p"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f390ca0900fad2de2d318ac2d7720f47f91badbbc4a08cd80f3b60eff68ce7a"
+checksum = "611bda2cbd195525ccd87b5376ba1057c934818a433fe71c385df0d2ef42cbcd"
 dependencies = [
- "bare-metal 0.2.5",
  "cortex-m 0.7.7",
  "cortex-m-rt",
  "vcell",
@@ -5586,12 +5588,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ab07dc67230e4a4718e70fd5c20055a4334b121f1f9db8fe63ef39ce9b8c846"
 
 [[package]]
-name = "replace_with"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
-
-[[package]]
 name = "reqwest"
 version = "0.11.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5943,9 +5939,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "seq-macro"
-version = "0.2.2"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a9f47faea3cad316faa914d013d24f471cd90bfca1a0c70f05a3f42c6441e99"
+checksum = "a3f0bf26fd526d2a95683cd0f87bf103b8539e2ca1ef48ce002d67aad59aa0b4"
 
 [[package]]
 name = "serde"
