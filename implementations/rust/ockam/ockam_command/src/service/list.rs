@@ -90,7 +90,7 @@ async fn run_impl(
     Ok(())
 }
 
-impl Output for ServiceStatus<'_> {
+impl Output for ServiceStatus {
     fn output(&self) -> crate::Result<String> {
         let mut output = String::new();
 

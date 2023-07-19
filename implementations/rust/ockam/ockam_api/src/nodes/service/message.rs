@@ -5,7 +5,6 @@ use minicbor::{Decode, Encode};
 use ockam_core::Result;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_core::{CowBytes, CowStr};
 use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
@@ -14,20 +13,20 @@ use crate::error::ApiError;
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct SendMessage<'a> {
+pub struct SendMessage {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8400702>,
-    #[b(1)] pub route: CowStr<'a>,
-    #[b(2)] pub message: CowBytes<'a>,
+    #[b(1)] pub route: String,
+    #[b(2)] pub message: Vec<u8>,
 }
 
-impl<'a> SendMessage<'a> {
-    pub fn new<S: Into<CowBytes<'a>>>(route: &MultiAddr, message: S) -> Self {
+impl SendMessage {
+    pub fn new(route: &MultiAddr, message: Vec<u8>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            route: route.to_string().into(),
-            message: message.into(),
+            route: route.to_string(),
+            message,
         }
     }
 
@@ -41,13 +40,13 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
-    use crate::error::ApiError;
-    use crate::local_multiaddr_to_route;
-    use crate::nodes::connection::Connection;
     use ockam_core::api::{Request, Response, Status};
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
+    use crate::error::ApiError;
+    use crate::local_multiaddr_to_route;
+    use crate::nodes::connection::Connection;
     use crate::nodes::{NodeManager, NodeManagerWorker};
 
     const TARGET: &str = "ockam_api::message";
@@ -56,7 +55,7 @@ mod node {
         pub(crate) async fn send_message(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
+            req: &Request,
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_body: super::SendMessage = dec.decode()?;

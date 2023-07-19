@@ -37,8 +37,8 @@ impl SpaceConfig {
     }
 }
 
-impl From<&Space<'_>> for SpaceConfig {
-    fn from(s: &Space<'_>) -> Self {
+impl From<&Space> for SpaceConfig {
+    fn from(s: &Space) -> Self {
         Self {
             name: s.name.to_string(),
             id: s.id.to_string(),

@@ -1,7 +1,6 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
@@ -9,18 +8,18 @@ use ockam_core::TypeTag;
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ActivateSubscription<'a> {
+pub struct ActivateSubscription {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<3888657>,
-    #[b(1)] pub space_id: Option<CowStr<'a>>,
-    #[b(2)] pub subscription_data: CowStr<'a>,
-    #[b(3)] pub space_name: Option<CowStr<'a>>,
-    #[b(4)] pub owner_emails: Option<Vec<CowStr<'a>>>,
+    #[b(1)] pub space_id: Option<String>,
+    #[b(2)] pub subscription_data: String,
+    #[b(3)] pub space_name: Option<String>,
+    #[b(4)] pub owner_emails: Option<Vec<String>>,
 }
 
-impl<'a> ActivateSubscription<'a> {
+impl ActivateSubscription {
     /// Activates a subscription for an existing space
-    pub fn existing<S: Into<CowStr<'a>>>(space_id: S, subscription_data: S) -> Self {
+    pub fn existing<S: Into<String>>(space_id: S, subscription_data: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -33,9 +32,9 @@ impl<'a> ActivateSubscription<'a> {
 
     /// Activates a subscription for a space that will be newly created with the given space name
     #[allow(unused)]
-    pub fn create<S: Into<CowStr<'a>>, T: AsRef<str>>(
+    pub fn create<S: Into<String>, T: AsRef<str>>(
         space_name: S,
-        owner_emails: &'a [T],
+        owner_emails: &[T],
         subscription_data: S,
     ) -> Self {
         Self {
@@ -44,12 +43,7 @@ impl<'a> ActivateSubscription<'a> {
             space_id: None,
             subscription_data: subscription_data.into(),
             space_name: Some(space_name.into()),
-            owner_emails: Some(
-                owner_emails
-                    .iter()
-                    .map(|x| CowStr::from(x.as_ref()))
-                    .collect(),
-            ),
+            owner_emails: Some(owner_emails.iter().map(|x| x.as_ref().into()).collect()),
         }
     }
 }
@@ -57,32 +51,25 @@ impl<'a> ActivateSubscription<'a> {
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[cbor(map)]
-pub struct Subscription<'a> {
+pub struct Subscription {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)]
     pub tag: TypeTag<3783606>,
     #[b(1)]
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+    pub id: String,
     #[b(2)]
-    #[serde(borrow)]
-    marketplace: CowStr<'a>,
+    marketplace: String,
     #[b(3)]
-    #[serde(borrow)]
-    pub status: CowStr<'a>,
+    pub status: String,
     #[b(4)]
-    #[serde(borrow)]
-    pub entitlements: CowStr<'a>,
+    pub entitlements: String,
     #[b(5)]
-    #[serde(borrow)]
-    pub metadata: CowStr<'a>,
+    pub metadata: String,
     #[b(6)]
-    #[serde(borrow)]
-    pub contact_info: CowStr<'a>,
+    pub contact_info: String,
     #[b(7)]
-    #[serde(borrow)]
-    pub space_id: Option<CowStr<'a>>,
+    pub space_id: Option<String>,
 }
 
 mod node {

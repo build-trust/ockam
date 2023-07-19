@@ -1,5 +1,4 @@
 use minicbor::{Decode, Encode};
-use ockam_core::CowStr;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -7,14 +6,14 @@ use ockam_core::TypeTag;
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct WorkerStatus<'a>  {
+pub struct WorkerStatus {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2610323>,
-    #[b(2)] pub addr: CowStr<'a>,
+    #[b(2)] pub addr: String,
 }
 
-impl<'a> WorkerStatus<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
+impl WorkerStatus {
+    pub fn new(addr: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -27,14 +26,14 @@ impl<'a> WorkerStatus<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct WorkerList<'a> {
+pub struct WorkerList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7336987>,
-    #[b(1)] pub list: Vec<WorkerStatus<'a>>
+    #[b(1)] pub list: Vec<WorkerStatus>,
 }
 
-impl<'a> WorkerList<'a> {
-    pub fn new(list: Vec<WorkerStatus<'a>>) -> Self {
+impl WorkerList {
+    pub fn new(list: Vec<WorkerStatus>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,

@@ -1,14 +1,17 @@
-use crate::identity::models::*;
-use crate::nodes::service::NodeIdentities;
 use core::convert::Infallible;
+
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
+use tracing::trace;
+
 use ockam::identity::IdentityHistoryComparison;
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_vault::Signature;
-use tracing::trace;
+
+use crate::identity::models::*;
+use crate::nodes::service::NodeIdentities;
 
 /// Vault Service Worker
 pub struct IdentityService {
@@ -72,7 +75,7 @@ impl IdentityService {
 
     async fn handle_request<W>(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         enc: W,
     ) -> Result<()>

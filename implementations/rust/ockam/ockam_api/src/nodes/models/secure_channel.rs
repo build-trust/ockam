@@ -1,18 +1,17 @@
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
+use serde::Serialize;
 
-use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
 use ockam::identity::IdentityIdentifier;
-use ockam_core::compat::borrow::Cow;
 use ockam_core::flow_control::FlowControlId;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_core::{route, Address, CowStr, Result};
+use ockam_core::{route, Address, Result};
 use ockam_multiaddr::MultiAddr;
-use serde::Serialize;
 
 use crate::error::ApiError;
+use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
 use crate::route_to_multiaddr;
 
 #[derive(Debug, Clone, Copy, Decode, Encode)]
@@ -28,18 +27,18 @@ pub enum CredentialExchangeMode {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateSecureChannelRequest<'a> {
+pub struct CreateSecureChannelRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6300395>,
-    #[b(1)] pub addr: CowStr<'a>,
-    #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
+    #[b(1)] pub addr: String,
+    #[b(2)] pub authorized_identifiers: Option<Vec<String>>,
     #[n(3)] pub credential_exchange_mode: CredentialExchangeMode,
     #[n(4)] pub timeout: Option<Duration>,
-    #[b(5)] pub identity_name: Option<CowStr<'a>>,
-    #[b(6)] pub credential_name: Option<CowStr<'a>>,
+    #[b(5)] pub identity_name: Option<String>,
+    #[b(6)] pub credential_name: Option<String>,
 }
 
-impl<'a> CreateSecureChannelRequest<'a> {
+impl CreateSecureChannelRequest {
     pub fn new(
         addr: &MultiAddr,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
@@ -50,13 +49,13 @@ impl<'a> CreateSecureChannelRequest<'a> {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.to_string().into(),
+            addr: addr.to_string(),
             authorized_identifiers: authorized_identifiers
-                .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
+                .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
             credential_exchange_mode,
             timeout: None,
-            identity_name: identity_name.map(|x| x.into()),
-            credential_name: credential_name.map(|x| x.into()),
+            identity_name,
+            credential_name,
         }
     }
 }
@@ -69,7 +68,7 @@ pub struct CreateSecureChannelResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6056513>,
     #[n(1)] pub addr: Address,
-    #[n(2)] pub flow_control_id: FlowControlId
+    #[n(2)] pub flow_control_id: FlowControlId,
 }
 
 impl CreateSecureChannelResponse {
@@ -96,16 +95,16 @@ impl CreateSecureChannelResponse {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateSecureChannelListenerRequest<'a> {
+pub struct CreateSecureChannelListenerRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8112242>,
-    #[b(1)] pub addr: Cow<'a, str>,
-    #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
-    #[b(3)] pub vault: Option<CowStr<'a>>,
-    #[b(4)] pub identity: Option<CowStr<'a>>,
+    #[b(1)] pub addr: String,
+    #[b(2)] pub authorized_identifiers: Option<Vec<String>>,
+    #[b(3)] pub vault: Option<String>,
+    #[b(4)] pub identity: Option<String>,
 }
 
-impl<'a> CreateSecureChannelListenerRequest<'a> {
+impl CreateSecureChannelListenerRequest {
     pub fn new(
         addr: &Address,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
@@ -115,11 +114,11 @@ impl<'a> CreateSecureChannelListenerRequest<'a> {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.to_string().into(),
+            addr: addr.to_string(),
             authorized_identifiers: authorized_identifiers
-                .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
-            vault: vault.map(|x| x.into()),
-            identity: identity.map(|x| x.into()),
+                .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
+            vault,
+            identity,
         }
     }
 }
@@ -128,18 +127,18 @@ impl<'a> CreateSecureChannelListenerRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct DeleteSecureChannelListenerRequest<'a> {
+pub struct DeleteSecureChannelListenerRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8293631>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: String,
 }
 
-impl<'a> DeleteSecureChannelListenerRequest<'a> {
+impl DeleteSecureChannelListenerRequest {
     pub fn new(addr: &Address) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.to_string().into(),
+            addr: addr.to_string(),
         }
     }
 }
@@ -168,18 +167,18 @@ impl DeleteSecureChannelListenerResponse {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ShowSecureChannelListenerRequest<'a> {
+pub struct ShowSecureChannelListenerRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3538219>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: String,
 }
 
-impl<'a> ShowSecureChannelListenerRequest<'a> {
+impl ShowSecureChannelListenerRequest {
     pub fn new(addr: &Address) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.to_string().into(),
+            addr: addr.to_string(),
         }
     }
 }
@@ -209,18 +208,18 @@ impl ShowSecureChannelListenerResponse {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct DeleteSecureChannelRequest<'a> {
+pub struct DeleteSecureChannelRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8472592>,
-    #[b(1)] pub channel: Cow<'a, str>,
+    #[b(1)] pub channel: String,
 }
 
-impl<'a> DeleteSecureChannelRequest<'a> {
+impl DeleteSecureChannelRequest {
     pub fn new(channel: &Address) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            channel: channel.to_string().into(),
+            channel: channel.to_string(),
         }
     }
 }
@@ -228,18 +227,18 @@ impl<'a> DeleteSecureChannelRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct DeleteSecureChannelResponse<'a> {
+pub struct DeleteSecureChannelResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6953395>,
-    #[b(1)] pub channel: Option<Cow<'a, str>>,
+    #[b(1)] pub channel: Option<String>,
 }
 
-impl<'a> DeleteSecureChannelResponse<'a> {
+impl DeleteSecureChannelResponse {
     pub fn new(channel: Option<Address>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            channel: channel.map(|ch| ch.to_string().into()),
+            channel: channel.map(|ch| ch.to_string()),
         }
     }
 }
@@ -247,18 +246,18 @@ impl<'a> DeleteSecureChannelResponse<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ShowSecureChannelRequest<'a> {
+pub struct ShowSecureChannelRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3277982>,
-    #[b(1)] pub channel: Cow<'a, str>,
+    #[b(1)] pub channel: String,
 }
 
-impl<'a> ShowSecureChannelRequest<'a> {
+impl ShowSecureChannelRequest {
     pub fn new(channel: &Address) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            channel: channel.to_string().into(),
+            channel: channel.to_string(),
         }
     }
 }
@@ -266,27 +265,27 @@ impl<'a> ShowSecureChannelRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ShowSecureChannelResponse<'a> {
+pub struct ShowSecureChannelResponse {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)] tag: TypeTag<4566220>,
-    #[b(1)] pub channel: Option<Cow<'a, str>>,
-    #[b(2)] pub route: Option<Cow<'a, str>>,
-    #[b(3)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
+    #[b(1)] pub channel: Option<String>,
+    #[b(2)] pub route: Option<String>,
+    #[b(3)] pub authorized_identifiers: Option<Vec<String>>,
     #[n(4)] pub flow_control_id: Option<FlowControlId>,
 }
 
-impl<'a> ShowSecureChannelResponse<'a> {
+impl ShowSecureChannelResponse {
     pub fn new(info: Option<&SecureChannelInfo>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            channel: info.map(|info| info.sc().encryptor_address().to_string().into()),
-            route: info.map(|info| info.route().to_string().into()),
+            channel: info.map(|info| info.sc().encryptor_address().to_string()),
+            route: info.map(|info| info.route().to_string()),
             authorized_identifiers: info
                 .map(|info| {
                     info.authorized_identifiers()
-                        .map(|ids| ids.iter().map(|iid| iid.to_string().into()).collect())
+                        .map(|ids| ids.iter().map(|iid| iid.to_string()).collect())
                 })
                 .unwrap_or(None),
             flow_control_id: info.map(|info| info.sc().flow_control_id().clone()),
@@ -300,7 +299,7 @@ impl<'a> ShowSecureChannelResponse<'a> {
 pub struct SecureChannelListenersList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5141124>,
-    #[n(1)] pub list: Vec<ShowSecureChannelListenerResponse>
+    #[n(1)] pub list: Vec<ShowSecureChannelListenerResponse>,
 }
 
 impl SecureChannelListenersList {

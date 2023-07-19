@@ -1,3 +1,21 @@
+use std::sync::Mutex;
+use std::time::Duration;
+
+use minicbor::Decoder;
+
+use ockam::compat::tokio::time::timeout;
+use ockam::identity::IdentityIdentifier;
+use ockam::{Address, AsyncTryClone, Result};
+use ockam_abac::Resource;
+use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{route, IncomingAccessControl, Route};
+use ockam_multiaddr::proto::Project;
+use ockam_multiaddr::MultiAddr;
+use ockam_node::compat::asynchronous::RwLock;
+use ockam_node::Context;
+use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
+
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
 use crate::nodes::connection::{Connection, ConnectionInstance};
@@ -8,27 +26,11 @@ use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::random_alias;
 use crate::session::sessions::{Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 use crate::{actions, resources, DefaultAddress};
-use minicbor::Decoder;
-use ockam::compat::tokio::time::timeout;
-use ockam::identity::IdentityIdentifier;
-use ockam::{Address, AsyncTryClone, Result};
-
-use ockam_abac::Resource;
-use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder};
-use ockam_core::compat::sync::Arc;
-use ockam_core::{route, IncomingAccessControl, Route};
-use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::MultiAddr;
-use ockam_node::compat::asynchronous::RwLock;
-use ockam_node::Context;
-use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
-use std::sync::Mutex;
-use std::time::Duration;
 
 use super::{NodeManager, NodeManagerWorker};
 
 impl NodeManagerWorker {
-    pub(super) async fn get_inlets(&self, req: &Request<'_>) -> ResponseBuilder<InletList> {
+    pub(super) async fn get_inlets(&self, req: &Request) -> ResponseBuilder<InletList> {
         let registry = &self.node_manager.read().await.registry.inlets;
         Response::ok(req.id()).body(InletList::new(
             registry
@@ -46,13 +48,13 @@ impl NodeManagerWorker {
         ))
     }
 
-    pub(super) async fn get_outlets(&self, req: &Request<'_>) -> ResponseBuilder<OutletList> {
+    pub(super) async fn get_outlets(&self, req: &Request) -> ResponseBuilder<OutletList> {
         Response::ok(req.id()).body(self.list_outlets().await)
     }
 
     pub(super) async fn create_inlet(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<ResponseBuilder<InletStatus>, ResponseBuilder<Error>> {
@@ -224,7 +226,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_inlet<'a>(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         alias: &'a str,
     ) -> Result<ResponseBuilder<InletStatus>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -264,7 +266,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn show_inlet<'a>(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         alias: &'a str,
     ) -> Result<ResponseBuilder<InletStatus>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
@@ -290,7 +292,7 @@ impl NodeManagerWorker {
     pub(super) async fn create_outlet<'a>(
         &mut self,
         ctx: &Context,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let CreateOutlet {
@@ -415,7 +417,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_outlet<'a>(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         alias: &'a str,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -454,7 +456,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn show_outlet<'a>(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         alias: &'a str,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;

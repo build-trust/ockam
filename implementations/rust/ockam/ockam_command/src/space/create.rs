@@ -57,7 +57,7 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
-    rpc.request(api::space::create(&cmd)).await?;
+    rpc.request(api::space::create(cmd)).await?;
     let space = rpc.parse_and_print_response::<Space>()?;
     opts.state
         .spaces

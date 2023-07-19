@@ -4,14 +4,12 @@ use minicbor::Decoder;
 
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{and, eq, ident, str};
-
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, IncomingAccessControl};
 use ockam_identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
-
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
 
@@ -340,7 +338,7 @@ impl NodeManager {
         addr: Address,
         tenant_base_url: &str,
         certificate: &str,
-        attributes: &[&str],
+        attributes: &[String],
         project: &str,
     ) -> Result<()> {
         use crate::nodes::registry::OktaIdentityProviderServiceInfo;
@@ -372,7 +370,7 @@ impl NodeManagerWorker {
     pub(super) async fn start_identity_service(
         &mut self,
         ctx: &Context,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -385,7 +383,7 @@ impl NodeManagerWorker {
     pub(super) async fn start_authenticated_service(
         &mut self,
         ctx: &Context,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -400,7 +398,7 @@ impl NodeManagerWorker {
     pub(super) async fn start_uppercase_service(
         &mut self,
         ctx: &Context,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -413,7 +411,7 @@ impl NodeManagerWorker {
     pub(super) async fn start_echoer_service(
         &mut self,
         ctx: &Context,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -426,7 +424,7 @@ impl NodeManagerWorker {
     pub(super) async fn start_hop_service(
         &mut self,
         ctx: &Context,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -437,10 +435,10 @@ impl NodeManagerWorker {
     }
 
     //TODO: split this into the different services it really starts
-    pub(super) async fn start_authenticator_service<'a>(
+    pub(super) async fn start_authenticator_service(
         &mut self,
         ctx: &Context,
-        req: &'a Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -477,10 +475,10 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
-    pub(super) async fn start_okta_identity_provider_service<'a>(
+    pub(super) async fn start_okta_identity_provider_service(
         &mut self,
         ctx: &Context,
-        req: &'a Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -501,10 +499,10 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
-    pub(super) async fn start_verifier_service<'a>(
+    pub(super) async fn start_verifier_service(
         &mut self,
         ctx: &Context,
-        req: &'a Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -529,10 +527,10 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
-    pub(super) async fn start_credentials_service<'a>(
+    pub(super) async fn start_credentials_service(
         &mut self,
         ctx: &Context,
-        req: &'a Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
@@ -565,10 +563,10 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
-    pub(super) async fn start_kafka_outlet_service<'a>(
+    pub(super) async fn start_kafka_outlet_service(
         &mut self,
         context: &Context,
-        request: &'a Request<'_>,
+        request: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let body: StartServiceRequest<StartKafkaOutletRequest> = dec.decode()?;
@@ -614,10 +612,10 @@ impl NodeManagerWorker {
         Ok(Response::ok(request.id()).to_vec()?)
     }
 
-    pub(super) async fn start_kafka_consumer_service<'a>(
+    pub(super) async fn start_kafka_consumer_service(
         &mut self,
         context: &Context,
-        req: &'a Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let body: StartServiceRequest<StartKafkaConsumerRequest> = dec.decode()?;
@@ -644,10 +642,10 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()).to_vec()?)
     }
 
-    pub(super) async fn start_kafka_producer_service<'a>(
+    pub(super) async fn start_kafka_producer_service(
         &mut self,
         context: &Context,
-        req: &'a Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let body: StartServiceRequest<StartKafkaProducerRequest> = dec.decode()?;
@@ -675,10 +673,10 @@ impl NodeManagerWorker {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(super) async fn start_kafka_service_impl<'a>(
+    pub(super) async fn start_kafka_service_impl(
         &mut self,
         context: &Context,
-        request: &'a Request<'_>,
+        request: &Request,
         local_interceptor_address: Address,
         bind_ip: IpAddr,
         server_bootstrap_port: u16,
@@ -769,10 +767,10 @@ impl NodeManagerWorker {
         Ok(())
     }
 
-    pub(crate) async fn delete_kafka_service<'a>(
-        &'a self,
+    pub(crate) async fn delete_kafka_service(
+        &self,
         ctx: &Context,
-        req: &'a Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         kind: KafkaServiceKind,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
@@ -809,10 +807,10 @@ impl NodeManagerWorker {
         Ok(res)
     }
 
-    pub(super) async fn list_services_of_type<'a>(
+    pub(super) async fn list_services_of_type(
         &self,
-        req: &Request<'a>,
-        service_type: &'a str,
+        req: &Request,
+        service_type: &str,
     ) -> Result<Vec<u8>> {
         if !DefaultAddress::is_valid(service_type) {
             let err_body = Error::new(req.path())
@@ -830,7 +828,7 @@ impl NodeManagerWorker {
             .to_vec()?)
     }
 
-    pub(super) async fn list_services<'a>(&self, req: &Request<'a>) -> Result<Vec<u8>> {
+    pub(super) async fn list_services(&self, req: &Request) -> Result<Vec<u8>> {
         let n = self.node_manager.read().await;
         let services = Self::list_services_impl(&n.registry);
         Ok(Response::ok(req.id())

@@ -7,7 +7,6 @@ use ockam::Context;
 use ockam_api::cloud::subscription::Subscription;
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
-use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
 use crate::util::api::CloudOpts;
@@ -123,13 +122,13 @@ pub mod utils {
         let subscriptions = rpc.parse_response::<Vec<Subscription>>()?;
         let subscription = subscriptions
             .into_iter()
-            .find(|s| s.space_id == Some(CowStr::from(space_id)))
+            .find(|s| s.space_id == Some(space_id.into()))
             .ok_or_else(|| miette!("no subscription found for space {}", space_id))?;
-        Ok(subscription.id.to_string())
+        Ok(subscription.id)
     }
 }
 
-impl Output for Subscription<'_> {
+impl Output for Subscription {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Subscription")?;
@@ -138,16 +137,16 @@ impl Output for Subscription<'_> {
         write!(
             w,
             "\n  Space id: {}",
-            self.space_id.as_ref().unwrap_or(&CowStr::from("N/A"))
+            self.space_id.clone().unwrap_or("N/A".to_string())
         )?;
-        write!(w, "\n  Entitlements: {}", self.entitlements.as_ref())?;
-        write!(w, "\n  Metadata: {}", self.metadata.as_ref())?;
-        write!(w, "\n  Contact info: {}", self.contact_info.as_ref())?;
+        write!(w, "\n  Entitlements: {}", self.entitlements)?;
+        write!(w, "\n  Metadata: {}", self.metadata)?;
+        write!(w, "\n  Contact info: {}", self.contact_info)?;
         Ok(w)
     }
 }
 
-impl Output for Vec<Subscription<'_>> {
+impl Output for Vec<Subscription> {
     fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No subscriptions found".to_string());
@@ -160,11 +159,11 @@ impl Output for Vec<Subscription<'_>> {
             write!(
                 w,
                 "\n  Space id: {}",
-                s.space_id.as_ref().unwrap_or(&CowStr::from("N/A"))
+                s.space_id.as_ref().unwrap_or(&"N/A".to_string())
             )?;
-            write!(w, "\n  Entitlements: {}", s.entitlements.as_ref())?;
-            write!(w, "\n  Metadata: {}", s.metadata.as_ref())?;
-            write!(w, "\n  Contact info: {}", s.contact_info.as_ref())?;
+            write!(w, "\n  Entitlements: {}", s.entitlements)?;
+            write!(w, "\n  Metadata: {}", s.metadata)?;
+            write!(w, "\n  Contact info: {}", s.contact_info)?;
             writeln!(w)?;
         }
         Ok(w)

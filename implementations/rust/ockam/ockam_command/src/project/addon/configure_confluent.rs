@@ -9,14 +9,12 @@ use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
-use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::configure_addon_endpoint;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
-
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
@@ -26,8 +24,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/configure_confluent/after_l
 /// Configure the Confluent Cloud addon for a project
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct AddonConfigureConfluentSubcommand {
     /// Ockam project name
@@ -74,11 +72,7 @@ async fn run_impl(
         configure_addon_endpoint(&opts.state, &project_name)?,
         addon_id
     );
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(
-        body,
-        controller_route,
-        None::<CowStr>,
-    ));
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, controller_route, None));
     rpc.request(req).await?;
     let res = rpc.parse_response::<CreateOperationResponse>()?;
     let operation_id = res.operation_id;

@@ -20,7 +20,7 @@ use super::NodeManagerWorker;
 impl NodeManagerWorker {
     pub(super) async fn get_credential(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<Either<ResponseBuilder<Error>, ResponseBuilder<Credential>>> {
@@ -58,7 +58,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn present_credential(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {

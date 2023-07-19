@@ -1,14 +1,13 @@
-use miette::{Context as _, IntoDiagnostic};
 use std::path::PathBuf;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
+use miette::{Context as _, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::{ActivateSubscription, Subscription};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
-use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
 use crate::subscription::utils;
@@ -157,7 +156,7 @@ async fn run_impl(
             let req = Request::post("subscription").body(CloudRequestWrapper::new(
                 b,
                 controller_route,
-                None::<CowStr>,
+                None,
             ));
 
             rpc.request(req).await?;
@@ -207,10 +206,8 @@ async fn run_impl(
                         space_id,
                     )
                     .await?;
-                    let req =
-                        Request::put(format!("subscription/{subscription_id}/contact_info")).body(
-                            CloudRequestWrapper::new(json, controller_route, None::<CowStr>),
-                        );
+                    let req = Request::put(format!("subscription/{subscription_id}/contact_info"))
+                        .body(CloudRequestWrapper::new(json, controller_route, None));
                     rpc.request(req).await?;
                     rpc.parse_and_print_response::<Subscription>()?;
                 }
@@ -228,12 +225,10 @@ async fn run_impl(
                         space_id,
                     )
                     .await?;
-                    let req = Request::put(format!("subscription/{subscription_id}/space_id"))
-                        .body(CloudRequestWrapper::new(
-                            new_space_id,
-                            controller_route,
-                            None::<CowStr>,
-                        ));
+                    let req =
+                        Request::put(format!("subscription/{subscription_id}/space_id")).body(
+                            CloudRequestWrapper::new(new_space_id, controller_route, None),
+                        );
                     rpc.request(req).await?;
                     rpc.parse_and_print_response::<Subscription>()?;
                 }

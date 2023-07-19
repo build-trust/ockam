@@ -203,7 +203,7 @@ pub async fn check_project_readiness(
             {
                 let p = rpc.parse_response::<Project>()?;
                 if p.is_ready() {
-                    return Ok(p.to_owned());
+                    return Ok(p);
                 }
             }
             Err(miette!("Project creation timed out. Plaese try again."))

@@ -162,7 +162,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     Ok(())
 }
 
-impl Output for ForwarderInfo<'_> {
+impl Output for ForwarderInfo {
     fn output(&self) -> Result<String> {
         let output = format!(
             r#"

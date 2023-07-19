@@ -80,7 +80,7 @@ async fn run_impl(
     Ok(())
 }
 
-impl Output for WorkerStatus<'_> {
+impl Output for WorkerStatus {
     fn output(&self) -> crate::Result<String> {
         Ok(format!(
             "Worker {}",

@@ -47,7 +47,7 @@ impl Server {
         project: String,
         tenant_base_url: &str,
         certificate: &str,
-        attributes: &[&str],
+        attributes: &[String],
     ) -> Result<Self> {
         let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
             .map_err(|err| ApiError::generic(&err.to_string()))?;

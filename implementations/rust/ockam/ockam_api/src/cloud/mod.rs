@@ -36,22 +36,22 @@ pub type ProjectAddress = CowStr<'static>;
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CloudRequestWrapper<'a, T> {
+pub struct CloudRequestWrapper<T> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8956240>,
     #[b(1)] pub req: T,
-    #[b(2)] route: CowStr<'a>,
-    #[b(3)] pub identity_name: Option<CowStr<'a>>,
+    #[b(2)] route: String,
+    #[b(3)] pub identity_name: Option<String>,
 }
 
-impl<'a, T> CloudRequestWrapper<'a, T> {
-    pub fn new<S: Into<CowStr<'a>>>(req: T, route: &MultiAddr, identity_name: Option<S>) -> Self {
+impl<T> CloudRequestWrapper<T> {
+    pub fn new(req: T, route: &MultiAddr, identity_name: Option<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             req,
-            route: route.to_string().into(),
-            identity_name: identity_name.map(|x| x.into()),
+            route: route.to_string(),
+            identity_name,
         }
     }
 
@@ -62,31 +62,33 @@ impl<'a, T> CloudRequestWrapper<'a, T> {
 }
 
 /// A CloudRequestWrapper without an internal request.
-pub type BareCloudRequestWrapper<'a> = CloudRequestWrapper<'a, ()>;
+pub type BareCloudRequestWrapper = CloudRequestWrapper<()>;
 
-impl<'a> BareCloudRequestWrapper<'a> {
+impl BareCloudRequestWrapper {
     pub fn bare(route: &MultiAddr) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
             req: (),
-            route: route.to_string().into(),
+            route: route.to_string(),
             identity_name: None,
         }
     }
 }
 
 mod node {
+    use std::time::Duration;
+
     use minicbor::Encode;
+
     use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_core::api::RequestBuilder;
     use ockam_core::compat::str::FromStr;
     use ockam_core::env::get_env;
-    use ockam_core::{self, route, CowStr, Result};
+    use ockam_core::{self, route, Result};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::api::request_with_options;
     use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
-    use std::time::Duration;
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
@@ -114,14 +116,14 @@ mod node {
     impl NodeManagerWorker {
         #[allow(clippy::too_many_arguments)]
         pub(super) async fn request_controller<T>(
-            &mut self,
+            &self,
             ctx: &Context,
             label: &str,
             schema: impl Into<Option<&str>>,
             cloud_multiaddr: &MultiAddr,
             api_service: &str,
-            req: RequestBuilder<'_, T>,
-            ident: Option<CowStr<'_>>,
+            req: RequestBuilder<T>,
+            ident: Option<String>,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
@@ -141,20 +143,20 @@ mod node {
 
         #[allow(clippy::too_many_arguments)]
         pub(super) async fn request_controller_with_timeout<T>(
-            &mut self,
+            &self,
             ctx: &Context,
             label: &str,
             schema: impl Into<Option<&str>>,
             cloud_multiaddr: &MultiAddr,
             api_service: &str,
-            req: RequestBuilder<'_, T>,
-            ident: Option<CowStr<'_>>,
+            req: RequestBuilder<T>,
+            ident: Option<String>,
             timeout: Duration,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
         {
-            let identity_name = ident.map(|i| i.to_string()).clone();
+            let identity_name = ident.clone();
             let identifier = {
                 let node_manager = self.get().read().await;
                 node_manager.get_identifier(identity_name.clone()).await?

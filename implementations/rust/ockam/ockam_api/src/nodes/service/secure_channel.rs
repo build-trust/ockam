@@ -278,10 +278,7 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-    pub(super) async fn list_secure_channels(
-        &self,
-        req: &Request<'_>,
-    ) -> ResponseBuilder<Vec<String>> {
+    pub(super) async fn list_secure_channels(&self, req: &Request) -> ResponseBuilder<Vec<String>> {
         let registry = &self.node_manager.read().await.registry.secure_channels;
         Response::ok(req.id()).body(
             registry
@@ -294,7 +291,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn list_secure_channel_listener(
         &self,
-        req: &Request<'_>,
+        req: &Request,
     ) -> ResponseBuilder<SecureChannelListenersList> {
         let registry = &self
             .node_manager
@@ -312,7 +309,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_secure_channel(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<ResponseBuilder<CreateSecureChannelResponse>, ResponseBuilder<Error>> {
@@ -333,7 +330,7 @@ impl NodeManagerWorker {
             Some(ids) => {
                 let ids = ids
                     .into_iter()
-                    .map(|x| IdentityIdentifier::try_from(x.0.as_ref()))
+                    .map(IdentityIdentifier::try_from)
                     .collect::<Result<Vec<IdentityIdentifier>>>()?;
 
                 Some(ids)
@@ -342,7 +339,7 @@ impl NodeManagerWorker {
         };
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
-        let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
+        let addr = MultiAddr::try_from(addr.as_str()).map_err(map_multiaddr_err)?;
 
         let connection = Connection::new(ctx, &addr);
         let connection_instance =
@@ -362,9 +359,9 @@ impl NodeManagerWorker {
                 authorized_identifiers,
                 credential_exchange_mode,
                 timeout,
-                identity.map(|i| i.to_string()),
+                identity,
                 ctx,
-                credential_name.map(|c| c.to_string()),
+                credential_name,
             )
             .await?;
 
@@ -378,12 +375,12 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_secure_channel(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<DeleteSecureChannelResponse<'_>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<DeleteSecureChannelResponse>, ResponseBuilder<Error>> {
         let body: DeleteSecureChannelRequest = dec.decode()?;
-        let addr = Address::from(body.channel.as_ref());
+        let addr = Address::from(body.channel);
         info!(%addr, "Handling request to delete secure channel");
         let mut node_manager = self.node_manager.write().await;
         let res = match node_manager.delete_secure_channel(ctx, &addr).await {
@@ -401,13 +398,13 @@ impl NodeManagerWorker {
 
     pub(super) async fn show_secure_channel(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<ShowSecureChannelResponse<'_>>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<ShowSecureChannelResponse>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
         let body: ShowSecureChannelRequest = dec.decode()?;
 
-        let sc_address = Address::from(body.channel.as_ref());
+        let sc_address = Address::from(body.channel);
 
         debug!(%sc_address, "On show secure channel");
 
@@ -421,7 +418,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_secure_channel_listener(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
@@ -438,7 +435,7 @@ impl NodeManagerWorker {
             Some(ids) => {
                 let ids = ids
                     .into_iter()
-                    .map(|x| IdentityIdentifier::try_from(x.0.as_ref()))
+                    .map(IdentityIdentifier::try_from)
                     .collect::<Result<Vec<IdentityIdentifier>>>()?;
 
                 Some(ids)
@@ -446,7 +443,7 @@ impl NodeManagerWorker {
             None => None,
         };
 
-        let addr = Address::from(addr.as_ref());
+        let addr = Address::from(addr);
         if !addr.is_local() {
             let err_body =
                 Error::new(req.path()).with_message(format!("Invalid address: {}", addr));
@@ -457,8 +454,8 @@ impl NodeManagerWorker {
             .create_secure_channel_listener_impl(
                 addr,
                 authorized_identifiers,
-                vault.map(|v| v.to_string()),
-                identity.map(|v| v.to_string()),
+                vault,
+                identity,
                 ctx,
             )
             .await?;
@@ -470,11 +467,11 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_secure_channel_listener(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let body: DeleteSecureChannelListenerRequest = dec.decode()?;
-        let addr = Address::from(body.addr.as_ref());
+        let addr = Address::from(body.addr);
         info!(%addr, "Handling request to delete secure channel listener");
         let mut node_manager = self.node_manager.write().await;
         let id = req.id();
@@ -501,13 +498,13 @@ impl NodeManagerWorker {
 
     pub(super) async fn show_secure_channel_listener<'a>(
         &mut self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let node_manager = self.node_manager.read().await;
         let body: ShowSecureChannelListenerRequest = dec.decode()?;
 
-        let address = Address::from(body.addr.as_ref());
+        let address = Address::from(body.addr);
 
         debug!(%address, "On show secure channel listener");
 

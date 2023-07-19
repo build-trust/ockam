@@ -1,19 +1,20 @@
-use crate::nodes::models::transport::{
-    CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportList, TransportMode,
-    TransportStatus, TransportType,
-};
-use crate::nodes::service::ApiTransport;
+use std::net::SocketAddr;
+
 use minicbor::Decoder;
+
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
-
 use ockam_core::Address;
 use ockam_node::Context;
 use ockam_transport_tcp::{
     TcpConnectionOptions, TcpListenerInfo, TcpListenerOptions, TcpSenderInfo, TcpTransport,
 };
 
-use std::net::SocketAddr;
+use crate::nodes::models::transport::{
+    CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportList, TransportMode,
+    TransportStatus, TransportType,
+};
+use crate::nodes::service::ApiTransport;
 
 use super::NodeManagerWorker;
 
@@ -72,7 +73,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn get_tcp_connections(
         &self,
-        req: &Request<'_>,
+        req: &Request,
     ) -> ResponseBuilder<TransportList> {
         let tcp_transport = &self.node_manager.read().await.tcp_transport;
         let map = |info: &TcpSenderInfo| {
@@ -98,7 +99,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn get_tcp_connection(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         address: String,
     ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
         let tcp_transport = &self.node_manager.read().await.tcp_transport;
@@ -124,10 +125,7 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()).body(status))
     }
 
-    pub(super) async fn get_tcp_listeners(
-        &self,
-        req: &Request<'_>,
-    ) -> ResponseBuilder<TransportList> {
+    pub(super) async fn get_tcp_listeners(&self, req: &Request) -> ResponseBuilder<TransportList> {
         let tcp_transport = &self.node_manager.read().await.tcp_transport;
 
         let map = |info: &TcpListenerInfo| {
@@ -153,7 +151,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn get_tcp_listener(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         address: String,
     ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
         let tcp_transport = &self.node_manager.read().await.tcp_transport;
@@ -181,7 +179,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_tcp_connection<'a>(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
@@ -233,7 +231,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_tcp_listener<'a>(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
@@ -272,7 +270,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_tcp_connection(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
@@ -319,7 +317,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_tcp_listener(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;

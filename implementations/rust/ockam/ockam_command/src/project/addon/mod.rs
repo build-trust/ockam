@@ -68,7 +68,7 @@ impl ConfigureAddonCommand {
     }
 }
 
-impl Output for Addon<'_> {
+impl Output for Addon {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Addon:")?;
@@ -80,7 +80,7 @@ impl Output for Addon<'_> {
     }
 }
 
-impl Output for Vec<Addon<'_>> {
+impl Output for Vec<Addon> {
     fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No addons found".to_string());

@@ -1,6 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic, WrapErr};
+use miette::{miette, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::info;
@@ -11,6 +11,7 @@ use ockam_api::cli_state::SpaceConfig;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
+use ockam_core::api::Response;
 use ockam_core::api::Status;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
@@ -82,7 +83,7 @@ async fn run_impl(
     Ok(())
 }
 
-async fn retrieve_user_project(
+pub async fn retrieve_user_project(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
@@ -135,29 +136,11 @@ pub async fn enroll_with_node(
         info!("Already enrolled");
         Ok(())
     } else {
-        Err(miette!("{}", rpc.parse_err_msg(res, dec)))
+        Err(miette!("{}", Response::parse_err_msg(&[], res, dec)))
     }
 }
 
-/// Use an embedded node to enroll a user with a token
-pub async fn enroll(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    token: Auth0Token,
-) -> miette::Result<()> {
-    let node_name = start_embedded_node(ctx, opts, None).await?;
-    enroll_with_node(ctx, opts, &CloudOpts::route(), node_name.as_str(), token).await?;
-    retrieve_user_project(ctx, opts, &node_name)
-        .await
-        .map(|_| ())
-        .into_diagnostic()
-}
-
-async fn default_space<'a>(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-) -> Result<Space<'a>> {
+async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
@@ -199,7 +182,7 @@ async fn default_space<'a>(
                 admins: vec![],
             };
 
-            rpc.request(api::space::create(&cmd)).await?;
+            rpc.request(api::space::create(cmd)).await?;
             *is_finished.lock().await = true;
             rpc.parse_response::<Space>()
         };
@@ -210,7 +193,7 @@ async fn default_space<'a>(
         )];
         let progress_output = opts.terminal.progress_output(&message, &is_finished);
         let (space, _) = try_join!(send_req, progress_output)?;
-        space.to_owned()
+        space
     }
     // If it has, return the first one on the list
     else {
@@ -224,7 +207,7 @@ async fn default_space<'a>(
             .drain(..1)
             .next()
             .expect("already checked that is not empty")
-            .to_owned();
+            ;
 
         opts.terminal.write_line(&fmt_log!(
             "Found space {}.",
@@ -248,7 +231,7 @@ async fn default_project(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
-    space: &Space<'_>,
+    space: &Space,
 ) -> Result<Project> {
     // Get available project for the given space
     opts.terminal.write_line(&fmt_log!(
@@ -326,7 +309,7 @@ async fn default_project(
                 .drain(..1)
                 .next()
                 .expect("already checked that is not empty")
-                .to_owned(),
+                ,
             Some(p) => p.to_owned(),
         };
         opts.terminal.write_line(&fmt_log!(

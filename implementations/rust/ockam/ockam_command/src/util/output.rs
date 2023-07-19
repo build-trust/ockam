@@ -1,26 +1,25 @@
-use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
+
+use cli_table::{Cell, Style, Table};
+use colorful::Colorful;
 use miette::miette;
 use miette::IntoDiagnostic;
-use ockam_api::cli_state::{StateItemTrait, VaultState};
 
 use ockam::identity::credential::Credential;
-
+use ockam_api::cli_state::{StateItemTrait, VaultState};
 use ockam_api::cloud::project::Project;
-
-use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
-
-use crate::project::ProjectInfo;
-use crate::terminal::OckamColor;
-use crate::util::comma_separated;
-use crate::Result;
-use colorful::Colorful;
 use ockam_api::cloud::space::Space;
+use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelResponse, ShowSecureChannelResponse,
 };
 use ockam_api::route_to_multiaddr;
 use ockam_core::{route, Route};
+
+use crate::project::ProjectInfo;
+use crate::terminal::OckamColor;
+use crate::util::comma_separated;
+use crate::Result;
 
 /// Trait to control how a given type will be printed as a CLI output.
 ///
@@ -60,7 +59,7 @@ impl<O: Output> Output for &O {
     }
 }
 
-impl Output for Space<'_> {
+impl Output for Space {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Space").into_diagnostic()?;
@@ -92,7 +91,7 @@ impl Output for Space<'_> {
     }
 }
 
-impl Output for Vec<Space<'_>> {
+impl Output for Vec<Space> {
     fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No spaces found".to_string());
@@ -219,7 +218,7 @@ impl Output for CreateSecureChannelResponse {
     }
 }
 
-impl Output for ShowSecureChannelResponse<'_> {
+impl Output for ShowSecureChannelResponse {
     fn output(&self) -> Result<String> {
         let s = match &self.channel {
             Some(addr) => {
@@ -231,13 +230,13 @@ impl Output for ShowSecureChannelResponse<'_> {
                         .to_string()
                         .light_yellow(),
                     "  •         To: ".light_magenta(),
-                    self.route.as_ref().unwrap().light_yellow(),
+                    self.route.clone().unwrap().light_yellow(),
                     "  • Authorized: ".light_magenta(),
                     self.authorized_identifiers
                         .as_ref()
-                        .unwrap_or(&Vec::<ockam_core::CowStr>::from(["none".into()]))
+                        .unwrap_or(&vec!["none".to_string()])
                         .iter()
-                        .map(|id| id.light_yellow().to_string())
+                        .map(|id| id.clone().light_yellow().to_string())
                         .collect::<Vec<String>>()
                         .join("\n\t")
                 )

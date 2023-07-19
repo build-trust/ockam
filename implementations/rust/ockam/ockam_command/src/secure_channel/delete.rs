@@ -53,7 +53,7 @@ impl DeleteCommand {
     ) {
         match response.channel {
             Some(address) => {
-                let route = &route![address.to_string()];
+                let route = &route![address];
                 match route_to_multiaddr(route) {
                     Some(multiaddr) => {
                         // if stdout is not interactive/tty write the secure channel address to it

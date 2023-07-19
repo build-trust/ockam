@@ -1,83 +1,76 @@
 use minicbor::{Decode, Encode};
 use serde::Serialize;
 
-use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
-#[derive(Encode, Decode, Serialize, Debug)]
+#[derive(Encode, Decode, Serialize, Debug, Clone)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct Space<'a> {
+pub struct Space {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)] pub tag: TypeTag<7574645>,
-    #[b(1)] pub id: CowStr<'a>,
-    #[b(2)] pub name: CowStr<'a>,
-    #[b(3)] pub users: Vec<CowStr<'a>>,
-}
-
-impl Clone for Space<'_> {
-    fn clone(&self) -> Self {
-        self.to_owned()
-    }
-}
-
-impl Space<'_> {
-    pub fn to_owned<'r>(&self) -> Space<'r> {
-        Space {
-            #[cfg(feature = "tag")]
-            tag: self.tag.to_owned(),
-            id: self.id.to_owned(),
-            name: self.name.to_owned(),
-            users: self.users.iter().map(|x| x.to_owned()).collect(),
-        }
-    }
+    #[b(1)] pub id: String,
+    #[b(2)] pub name: String,
+    #[b(3)] pub users: Vec<String>,
 }
 
 #[derive(Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateSpace<'a> {
+pub struct CreateSpace {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<2321503>,
-    #[b(1)] pub name: CowStr<'a>,
-    #[b(2)] pub users: Vec<CowStr<'a>>,
+    #[b(1)] pub name: String,
+    #[b(2)] pub users: Vec<String>,
 }
 
-impl<'a> CreateSpace<'a> {
-    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(name: S, users: &'a [T]) -> Self {
+impl CreateSpace {
+    pub fn new(name: String, users: Vec<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            name: name.into(),
-            users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
+            name,
+            users,
         }
     }
 }
 
 mod node {
-    use minicbor::Decoder;
     use tracing::trace;
 
-    use ockam_core::api::Request;
+    use ockam_core::api::{Request, Response};
     use ockam_core::{self, Result};
+    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
-    use crate::cloud::space::CreateSpace;
+    use crate::cloud::space::{CreateSpace, Space};
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManagerWorker;
 
     const TARGET: &str = "ockam_api::cloud::space";
 
     impl NodeManagerWorker {
-        pub(crate) async fn create_space(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+        pub async fn create_space(
+            &self,
+            ctx: &Context,
+            req: CreateSpace,
+            route: &MultiAddr,
+            identity_name: Option<String>,
+        ) -> Result<Space> {
+            let bytes = self
+                .create_space_response(ctx, CloudRequestWrapper::new(req, route, identity_name))
+                .await?;
+            Response::parse_response::<Space>(bytes)
+        }
+
+        pub async fn create_space_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: CloudRequestWrapper<CreateSpace>,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<CreateSpace> = dec.decode()?;
             let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
 
@@ -98,12 +91,18 @@ mod node {
             .await
         }
 
-        pub(crate) async fn list_spaces(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+        pub async fn list_spaces(&self, ctx: &Context, route: &MultiAddr) -> Result<Vec<Space>> {
+            let bytes = self
+                .list_spaces_response(ctx, CloudRequestWrapper::bare(route))
+                .await?;
+            Response::parse_response::<Vec<Space>>(bytes)
+        }
+
+        pub async fn list_spaces_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "list_spaces";
@@ -123,13 +122,19 @@ mod node {
             .await
         }
 
-        pub(crate) async fn get_space(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+        pub async fn get_space(&self, ctx: &Context, route: &MultiAddr, id: &str) -> Result<Space> {
+            let bytes = self
+                .get_space_response(ctx, CloudRequestWrapper::bare(route), id)
+                .await?;
+            Response::parse_response::<Space>(bytes)
+        }
+
+        pub(crate) async fn get_space_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
             id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "get_space";
@@ -149,13 +154,19 @@ mod node {
             .await
         }
 
-        pub(crate) async fn delete_space(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+        pub async fn delete_space(&self, ctx: &Context, route: &MultiAddr, id: &str) -> Result<()> {
+            let _ = self
+                .delete_space_response(ctx, CloudRequestWrapper::bare(route), id)
+                .await?;
+            Ok(())
+        }
+
+        pub(crate) async fn delete_space_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
             id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "delete_space";
@@ -194,30 +205,30 @@ pub mod tests {
         use super::*;
 
         #[derive(Debug, Clone)]
-        struct Sp(Space<'static>);
+        struct Sp(Space);
 
         impl Arbitrary for Sp {
             fn arbitrary(g: &mut Gen) -> Self {
                 Sp(Space {
                     #[cfg(feature = "tag")]
                     tag: Default::default(),
-                    id: String::arbitrary(g).into(),
-                    name: String::arbitrary(g).into(),
-                    users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                    id: String::arbitrary(g),
+                    name: String::arbitrary(g),
+                    users: vec![String::arbitrary(g), String::arbitrary(g)],
                 })
             }
         }
 
         #[derive(Debug, Clone)]
-        struct CSp(CreateSpace<'static>);
+        struct CSp(CreateSpace);
 
         impl Arbitrary for CSp {
             fn arbitrary(g: &mut Gen) -> Self {
                 CSp(CreateSpace {
                     #[cfg(feature = "tag")]
                     tag: Default::default(),
-                    name: String::arbitrary(g).into(),
-                    users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                    name: String::arbitrary(g),
+                    users: vec![String::arbitrary(g), String::arbitrary(g)],
                 })
             }
         }

@@ -458,7 +458,7 @@ async fn start_services(ctx: &Context, cfg: &Config) -> miette::Result<()> {
     Ok(())
 }
 
-async fn send_req_to_node_manager<T>(ctx: &Context, req: RequestBuilder<'_, T>) -> Result<()>
+async fn send_req_to_node_manager<T>(ctx: &Context, req: RequestBuilder<T>) -> Result<()>
 where
     T: Encode<()>,
 {
