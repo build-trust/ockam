@@ -1,3 +1,4 @@
+use ockam_api::cli_state::StateDirTrait;
 use tauri::{AppHandle, CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem, Wry};
 use tracing::log::{error, info};
 
@@ -24,7 +25,7 @@ pub struct SystemTrayMenuBuilder {
 impl SystemTrayMenuBuilder {
     /// Create the default system tray menu with the basic elements (i.e. without list items).
     pub fn default(options: &CommandGlobalOpts) -> SystemTrayMenu {
-        Self::init(options).build()
+        Self::init(options).build(options)
     }
 
     pub fn init(options: &CommandGlobalOpts) -> Self {
@@ -35,13 +36,30 @@ impl SystemTrayMenuBuilder {
     }
 
     /// Create a `SystemTrayMenu` instance, adding the menu items in the expected order.
-    pub fn build(self) -> SystemTrayMenu {
+    pub fn build(self, options: &CommandGlobalOpts) -> SystemTrayMenu {
+        match options.state.projects.default() {
+            Ok(_) => Self::init(options).after_enroll(),
+            Err(_) => Self::init(options).before_enroll(),
+        }
+    }
+
+    fn after_enroll(self) -> SystemTrayMenu {
         SystemTrayMenu::new()
             .add_menu_items(&[self.enroll.enroll])
+            .add_menu_items(&[self.enroll.please_enroll])
             .add_native_item(SystemTrayMenuItem::Separator)
             .add_menu_items(&self.tcp.menu_items)
             .add_native_item(SystemTrayMenuItem::Separator)
             .add_menu_items(&[self.enroll.reset, self.quit.quit])
+    }
+
+    fn before_enroll(self) -> SystemTrayMenu {
+        SystemTrayMenu::new()
+            .add_menu_items(&[self.enroll.enroll])
+            .add_native_item(SystemTrayMenuItem::Separator)
+            .add_menu_items(&[self.enroll.please_enroll])
+            .add_native_item(SystemTrayMenuItem::Separator)
+            .add_menu_items(&[self.quit.quit])
     }
 
     /// Refresh the system tray menu with the latest state, including all list items.
@@ -62,7 +80,7 @@ impl SystemTrayMenuBuilder {
         let enroll = EnrollActions::new(options);
         let tcp = TcpOutletActions::full(app, options).await?;
         let quit = QuitActions::new();
-        let menu = Self { enroll, tcp, quit }.build();
+        let menu = Self { enroll, tcp, quit }.build(options);
         Ok(menu)
     }
 }
