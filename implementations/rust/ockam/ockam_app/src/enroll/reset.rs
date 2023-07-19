@@ -1,4 +1,4 @@
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 use tauri::{AppHandle, Manager, Wry};
 use tracing::log::info;
 

@@ -10,7 +10,7 @@ use crate::Result;
 
 /// Make a full system tray
 pub fn make_system_tray(options: &CommandGlobalOpts) -> SystemTray {
-    SystemTray::new().with_menu(SystemTrayMenuBuilder::default(&options))
+    SystemTray::new().with_menu(SystemTrayMenuBuilder::default(options))
 }
 
 /// Create the system tray with all the major functions.
