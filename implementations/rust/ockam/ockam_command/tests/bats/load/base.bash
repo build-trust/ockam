@@ -115,4 +115,9 @@ random_port() {
   echo "$port"
 }
 
+run_success() {
+  run "$@"
+  assert_success
+}
+
 bats_require_minimum_version 1.5.0
