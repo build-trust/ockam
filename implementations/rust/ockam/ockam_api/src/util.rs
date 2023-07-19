@@ -444,7 +444,7 @@ pub mod test_utils {
         )
         .await?;
 
-        let mut node_manager_worker = NodeManagerWorker::new(node_manager);
+        let node_manager_worker = NodeManagerWorker::new(node_manager);
         let node_manager = node_manager_worker.get().clone();
         let secure_channels = node_manager.read().await.secure_channels.clone();
 

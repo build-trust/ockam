@@ -163,7 +163,11 @@ impl NodeManagerWorker {
         }
     }
 
-    pub fn get(&mut self) -> &mut Arc<RwLock<NodeManager>> {
+    pub fn get(&self) -> &Arc<RwLock<NodeManager>> {
+        &self.node_manager
+    }
+
+    pub fn get_mut(&mut self) -> &mut Arc<RwLock<NodeManager>> {
         &mut self.node_manager
     }
 }
@@ -519,7 +523,7 @@ impl NodeManagerWorker {
     async fn handle_request(
         &mut self,
         ctx: &mut Context,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         debug! {
@@ -750,10 +754,12 @@ impl NodeManagerWorker {
             )?,
 
             // ==*== Spaces ==*==
-            (Post, ["v0", "spaces"]) => self.create_space(ctx, dec).await?,
-            (Get, ["v0", "spaces"]) => self.list_spaces(ctx, dec).await?,
-            (Get, ["v0", "spaces", id]) => self.get_space(ctx, dec, id).await?,
-            (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, dec, id).await?,
+            (Post, ["v0", "spaces"]) => self.create_space_response(ctx, dec.decode()?).await?,
+            (Get, ["v0", "spaces"]) => self.list_spaces_response(ctx, dec.decode()?).await?,
+            (Get, ["v0", "spaces", id]) => self.get_space_response(ctx, dec.decode()?, id).await?,
+            (Delete, ["v0", "spaces", id]) => {
+                self.delete_space_response(ctx, dec.decode()?, id).await?
+            }
 
             // ==*== Projects ==*==
             (Post, ["v1", "spaces", space_id, "projects"]) => {
@@ -766,7 +772,7 @@ impl NodeManagerWorker {
             }
 
             // ==*== Enroll ==*==
-            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, dec).await?,
+            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, dec.decode()?).await?,
             (Get, ["v0", "enroll", "token"]) => self.generate_enrollment_token(ctx, dec).await?,
             (Put, ["v0", "enroll", "token"]) => {
                 self.authenticate_enrollment_token(ctx, dec).await?

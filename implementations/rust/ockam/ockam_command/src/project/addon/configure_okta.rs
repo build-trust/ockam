@@ -15,7 +15,6 @@ use ockam_api::cloud::project::{OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_api::minicbor_url::Url;
 use ockam_core::api::Request;
-use ockam_core::CowStr;
 
 use crate::enroll::{Auth0Service, OktaAuth0Provider};
 use crate::node::util::delete_embedded_node;
@@ -119,7 +118,7 @@ async fn run_impl(
         _ => query_certificate_chain(domain)?,
     };
 
-    let okta_config = OktaConfig::new(base_url, certificate, client_id, &attributes);
+    let okta_config = OktaConfig::new(base_url, certificate, client_id, attributes);
     let body = okta_config.clone();
 
     // Validate okta configuration
@@ -133,11 +132,7 @@ async fn run_impl(
         configure_addon_endpoint(&opts.state, &project_name)?,
         addon_id
     );
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(
-        body,
-        controller_route,
-        None::<CowStr>,
-    ));
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, controller_route, None));
     rpc.request(req).await?;
     let res = rpc.parse_response::<CreateOperationResponse>()?;
     let operation_id = res.operation_id;

@@ -3,19 +3,15 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-
 use ockam_api::cloud::addon::DisableAddon;
 use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
-use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::disable_addon_endpoint;
-
 use crate::util::api::CloudOpts;
-
 use crate::util::{node_rpc, Rpc};
 use crate::{fmt_ok, CommandGlobalOpts};
 
@@ -61,11 +57,7 @@ async fn run_impl(
     let body = DisableAddon::new(addon_id);
     let endpoint = disable_addon_endpoint(&opts.state, &project_name)?;
 
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(
-        body,
-        controller_route,
-        None::<CowStr>,
-    ));
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, controller_route, None));
     rpc.request(req).await?;
     let res = rpc.parse_response::<CreateOperationResponse>()?;
     let operation_id = res.operation_id;

@@ -1,18 +1,20 @@
 #![allow(missing_docs)]
 
-use crate::{Context, MessageSendReceiveOptions};
 use core::fmt::Display;
+
 use minicbor::Encode;
+
 use ockam_core::api::RequestBuilder;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{LocalInfo, Result, Route};
-
 #[cfg(feature = "tag")]
 use {
     cddl_cat::context::BasicContext,
     ockam_core::api::{assert_request_match, merged_cddl},
     once_cell::race::OnceBox,
 };
+
+use crate::{Context, MessageSendReceiveOptions};
 
 #[cfg(feature = "tag")]
 pub fn cddl() -> &'static BasicContext {
@@ -26,7 +28,7 @@ pub async fn request<T>(
     label: &str,
     #[allow(unused_variables)] struct_name: impl Into<Option<&str>>,
     route: impl Into<Route> + Display,
-    req: RequestBuilder<'_, T>,
+    req: RequestBuilder<T>,
 ) -> Result<Vec<u8>>
 where
     T: Encode<()>,
@@ -48,7 +50,7 @@ pub async fn request_with_options<T>(
     label: &str,
     #[allow(unused_variables)] struct_name: impl Into<Option<&str>>,
     route: impl Into<Route> + Display,
-    req: RequestBuilder<'_, T>,
+    req: RequestBuilder<T>,
     options: MessageSendReceiveOptions,
 ) -> Result<Vec<u8>>
 where
@@ -80,7 +82,7 @@ pub async fn request_with_local_info<T>(
     label: &str,
     #[allow(unused_variables)] struct_name: impl Into<Option<&str>>,
     route: impl Into<Route> + Display,
-    req: RequestBuilder<'_, T>,
+    req: RequestBuilder<T>,
 ) -> Result<(Vec<u8>, Vec<LocalInfo>)>
 where
     T: Encode<()>,

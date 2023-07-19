@@ -1,6 +1,6 @@
 use minicbor::{Decode, Encode};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::{Address, CowBytes, CowStr};
+use ockam_core::Address;
 
 use serde::Serialize;
 
@@ -11,15 +11,15 @@ use ockam_multiaddr::MultiAddr;
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartServiceRequest<'a, T> {
+pub struct StartServiceRequest<T> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3470984>,
-    #[b(1)] addr: CowStr<'a>,
+    #[b(1)] addr: String,
     #[n(2)] req: T,
 }
 
-impl<'a, T> StartServiceRequest<'a, T> {
-    pub fn new<S: Into<CowStr<'a>>>(req: T, addr: S) -> Self {
+impl<T> StartServiceRequest<T> {
+    pub fn new<S: Into<String>>(req: T, addr: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -28,11 +28,11 @@ impl<'a, T> StartServiceRequest<'a, T> {
         }
     }
 
-    pub fn address(&'a self) -> &'a str {
+    pub fn address(&self) -> &str {
         &self.addr
     }
 
-    pub fn request(&'a self) -> &'a T {
+    pub fn request(&self) -> &T {
         &self.req
     }
 }
@@ -40,14 +40,14 @@ impl<'a, T> StartServiceRequest<'a, T> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct DeleteServiceRequest<'a> {
+pub struct DeleteServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9359178>,
-    #[b(1)] addr: CowStr<'a>,
+    #[b(1)] addr: String,
 }
 
-impl<'a> DeleteServiceRequest<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(addr: S) -> Self {
+impl DeleteServiceRequest {
+    pub fn new<S: Into<String>>(addr: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -55,8 +55,8 @@ impl<'a> DeleteServiceRequest<'a> {
         }
     }
 
-    pub fn address(&'a self) -> Address {
-        Address::from(self.addr.as_ref())
+    pub fn address(&self) -> Address {
+        Address::from(self.addr.clone())
     }
 }
 
@@ -82,13 +82,13 @@ impl StartKafkaOutletRequest {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartKafkaConsumerRequest<'a> {
+pub struct StartKafkaConsumerRequest {
     #[b(1)] pub bootstrap_server_addr: SocketAddr,
     #[n(2)] brokers_port_range: (u16, u16),
-    #[b(3)] project_route: CowStr<'a>,
+    #[b(3)] project_route: String,
 }
 
-impl<'a> StartKafkaConsumerRequest<'a> {
+impl StartKafkaConsumerRequest {
     pub fn new(
         bootstrap_server_addr: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
@@ -97,7 +97,7 @@ impl<'a> StartKafkaConsumerRequest<'a> {
         Self {
             bootstrap_server_addr,
             brokers_port_range: brokers_port_range.into(),
-            project_route: project_route.to_string().into(),
+            project_route: project_route.to_string(),
         }
     }
 
@@ -107,7 +107,7 @@ impl<'a> StartKafkaConsumerRequest<'a> {
     pub fn brokers_port_range(&self) -> (u16, u16) {
         self.brokers_port_range
     }
-    pub fn project_route(&self) -> &CowStr<'a> {
+    pub fn project_route(&self) -> &String {
         &self.project_route
     }
 }
@@ -115,13 +115,13 @@ impl<'a> StartKafkaConsumerRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartKafkaProducerRequest<'a> {
+pub struct StartKafkaProducerRequest {
     #[b(1)] pub bootstrap_server_addr: SocketAddr,
     #[n(2)] brokers_port_range: (u16, u16),
-    #[b(3)] project_route: CowStr<'a>,
+    #[b(3)] project_route: String,
 }
 
-impl<'a> StartKafkaProducerRequest<'a> {
+impl StartKafkaProducerRequest {
     pub fn new(
         bootstrap_server_addr: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
@@ -130,7 +130,7 @@ impl<'a> StartKafkaProducerRequest<'a> {
         Self {
             bootstrap_server_addr,
             brokers_port_range: brokers_port_range.into(),
-            project_route: project_route.to_string().into(),
+            project_route: project_route.to_string(),
         }
     }
 
@@ -140,7 +140,7 @@ impl<'a> StartKafkaProducerRequest<'a> {
     pub fn brokers_port_range(&self) -> (u16, u16) {
         self.brokers_port_range
     }
-    pub fn project_route(&self) -> &CowStr<'a> {
+    pub fn project_route(&self) -> &String {
         &self.project_route
     }
 }
@@ -149,14 +149,14 @@ impl<'a> StartKafkaProducerRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartIdentityServiceRequest<'a> {
+pub struct StartIdentityServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6129106>,
-    #[b(1)] pub addr: CowStr<'a>,
+    #[b(1)] pub addr: String,
 }
 
-impl<'a> StartIdentityServiceRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
+impl StartIdentityServiceRequest {
+    pub fn new(addr: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -169,14 +169,14 @@ impl<'a> StartIdentityServiceRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartAuthenticatedServiceRequest<'a> {
+pub struct StartAuthenticatedServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5179596>,
-    #[b(1)] pub addr: CowStr<'a>,
+    #[b(1)] pub addr: String,
 }
 
-impl<'a> StartAuthenticatedServiceRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
+impl StartAuthenticatedServiceRequest {
+    pub fn new(addr: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -189,14 +189,14 @@ impl<'a> StartAuthenticatedServiceRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartUppercaseServiceRequest<'a> {
+pub struct StartUppercaseServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8177400>,
-    #[b(1)] pub addr: CowStr<'a>,
+    #[b(1)] pub addr: String,
 }
 
-impl<'a> StartUppercaseServiceRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
+impl StartUppercaseServiceRequest {
+    pub fn new(addr: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -209,14 +209,14 @@ impl<'a> StartUppercaseServiceRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartEchoerServiceRequest<'a> {
+pub struct StartEchoerServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7636656>,
-    #[b(1)] pub addr: CowStr<'a>,
+    #[b(1)] pub addr: String,
 }
 
-impl<'a> StartEchoerServiceRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
+impl StartEchoerServiceRequest {
+    pub fn new(addr: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -229,14 +229,14 @@ impl<'a> StartEchoerServiceRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartHopServiceRequest<'a> {
+pub struct StartHopServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7361428>,
-    #[b(1)] pub addr: CowStr<'a>,
+    #[b(1)] pub addr: String,
 }
 
-impl<'a> StartHopServiceRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
+impl StartHopServiceRequest {
+    pub fn new(addr: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -248,16 +248,16 @@ impl<'a> StartHopServiceRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartAuthenticatorRequest<'a> {
+pub struct StartAuthenticatorRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2749734>,
-    #[b(1)] addr: CowStr<'a>,
-    #[b(3)] proj: CowBytes<'a>,
+    #[b(1)] addr: String,
+    #[b(3)] proj: Vec<u8>,
     // FIXME: test id old format still matches with this
 }
 
-impl<'a> StartAuthenticatorRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>, proj: impl Into<CowBytes<'a>>) -> Self {
+impl StartAuthenticatorRequest {
+    pub fn new(addr: impl Into<String>, proj: impl Into<Vec<u8>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -266,11 +266,11 @@ impl<'a> StartAuthenticatorRequest<'a> {
         }
     }
 
-    pub fn address(&'a self) -> &'a str {
+    pub fn address(&self) -> &str {
         &self.addr
     }
 
-    pub fn project(&'a self) -> &'a [u8] {
+    pub fn project(&self) -> &[u8] {
         &self.proj
     }
 }
@@ -278,14 +278,14 @@ impl<'a> StartAuthenticatorRequest<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartVerifierService<'a> {
+pub struct StartVerifierService {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9580740>,
-    #[b(1)] addr: CowStr<'a>,
+    #[b(1)] addr: String,
 }
 
-impl<'a> StartVerifierService<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
+impl StartVerifierService {
+    pub fn new(addr: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -293,7 +293,7 @@ impl<'a> StartVerifierService<'a> {
         }
     }
 
-    pub fn address(&'a self) -> &'a str {
+    pub fn address(&self) -> &str {
         &self.addr
     }
 }
@@ -301,20 +301,16 @@ impl<'a> StartVerifierService<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartCredentialsService<'a> {
+pub struct StartCredentialsService {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6467937>,
-    #[b(1)] public_identity: CowStr<'a>,
-    #[b(2)] addr: CowStr<'a>,
+    #[b(1)] public_identity: String,
+    #[b(2)] addr: String,
     #[n(3)] oneway: bool,
 }
 
-impl<'a> StartCredentialsService<'a> {
-    pub fn new(
-        public_identity: impl Into<CowStr<'a>>,
-        addr: impl Into<CowStr<'a>>,
-        oneway: bool,
-    ) -> Self {
+impl StartCredentialsService {
+    pub fn new(public_identity: impl Into<String>, addr: impl Into<String>, oneway: bool) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -324,7 +320,7 @@ impl<'a> StartCredentialsService<'a> {
         }
     }
 
-    pub fn address(&'a self) -> &'a str {
+    pub fn address(&self) -> &str {
         &self.addr
     }
 
@@ -332,7 +328,7 @@ impl<'a> StartCredentialsService<'a> {
         self.oneway
     }
 
-    pub fn public_identity(&'a self) -> &'a str {
+    pub fn public_identity(&self) -> &str {
         &self.public_identity
     }
 }
@@ -341,23 +337,23 @@ impl<'a> StartCredentialsService<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartOktaIdentityProviderRequest<'a> {
+pub struct StartOktaIdentityProviderRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2291842>,
-    #[b(1)] addr: CowStr<'a>,
-    #[b(2)] tenant_base_url: CowStr<'a>,
-    #[b(3)] certificate: CowStr<'a>,
-    #[b(4)] attributes: Vec<&'a str>,
-    #[b(5)] proj: CowBytes<'a>
+    #[b(1)] addr: String,
+    #[b(2)] tenant_base_url: String,
+    #[b(3)] certificate: String,
+    #[b(4)] attributes: Vec<String>,
+    #[b(5)] proj: Vec<u8>
 }
 
-impl<'a> StartOktaIdentityProviderRequest<'a> {
+impl StartOktaIdentityProviderRequest {
     pub fn new(
-        addr: impl Into<CowStr<'a>>,
-        tenant_base_url: impl Into<CowStr<'a>>,
-        certificate: impl Into<CowStr<'a>>,
-        attributes: Vec<&'a str>,
-        proj: impl Into<CowBytes<'a>>,
+        addr: impl Into<String>,
+        tenant_base_url: impl Into<String>,
+        certificate: impl Into<String>,
+        attributes: Vec<String>,
+        proj: impl Into<Vec<u8>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -370,19 +366,19 @@ impl<'a> StartOktaIdentityProviderRequest<'a> {
         }
     }
 
-    pub fn address(&'a self) -> &'a str {
+    pub fn address(&self) -> &str {
         &self.addr
     }
-    pub fn tenant_base_url(&'a self) -> &'a str {
+    pub fn tenant_base_url(&self) -> &str {
         &self.tenant_base_url
     }
-    pub fn certificate(&'a self) -> &'a str {
+    pub fn certificate(&self) -> &str {
         &self.certificate
     }
-    pub fn project(&'a self) -> &'a [u8] {
+    pub fn project(&self) -> &[u8] {
         &self.proj
     }
-    pub fn attributes(&self) -> &[&str] {
+    pub fn attributes(&self) -> &[String] {
         &self.attributes
     }
 }
@@ -390,16 +386,16 @@ impl<'a> StartOktaIdentityProviderRequest<'a> {
 #[derive(Debug, Clone, Serialize, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ServiceStatus<'a> {
+pub struct ServiceStatus {
     #[cfg(feature = "tag")]
     #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<8542064>,
-    #[b(2)] pub addr: CowStr<'a>,
-    #[b(3)] pub service_type: CowStr<'a>,
+    #[b(2)] pub addr: String,
+    #[b(3)] pub service_type: String,
 }
 
-impl<'a> ServiceStatus<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>, service_type: impl Into<CowStr<'a>>) -> Self {
+impl ServiceStatus {
+    pub fn new(addr: impl Into<String>, service_type: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -413,15 +409,15 @@ impl<'a> ServiceStatus<'a> {
 #[derive(Debug, Clone, Serialize, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ServiceList<'a> {
+pub struct ServiceList {
     #[cfg(feature = "tag")]
     #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<9587601>,
-    #[b(1)] pub list: Vec<ServiceStatus<'a>>
+    #[b(1)] pub list: Vec<ServiceStatus>
 }
 
-impl<'a> ServiceList<'a> {
-    pub fn new(list: Vec<ServiceStatus<'a>>) -> Self {
+impl ServiceList {
+    pub fn new(list: Vec<ServiceStatus>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,

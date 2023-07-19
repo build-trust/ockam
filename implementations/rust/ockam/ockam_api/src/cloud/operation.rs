@@ -1,42 +1,25 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
 #[cbor(map)]
-pub struct Operation<'a> {
+pub struct Operation {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[cbor(n(0))]
     pub tag: TypeTag<2432199>,
 
     #[cbor(b(1))]
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+    pub id: String,
 
     #[cbor(n(2))]
     pub status: Status,
 }
 
-impl Clone for Operation<'_> {
-    fn clone(&self) -> Self {
-        self.to_owned()
-    }
-}
-
-impl Operation<'_> {
-    pub fn to_owned<'r>(&self) -> Operation<'r> {
-        Operation {
-            #[cfg(feature = "tag")]
-            tag: self.tag.to_owned(),
-            id: self.id.to_owned(),
-            status: self.status.clone(),
-        }
-    }
-
+impl Operation {
     pub fn is_successful(&self) -> bool {
         self.status == Status::Succeeded
     }
@@ -50,33 +33,16 @@ impl Operation<'_> {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone)]
 #[cbor(map)]
-pub struct CreateOperationResponse<'a> {
+pub struct CreateOperationResponse {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[cbor(n(0))]
     pub tag: TypeTag<9056534>,
 
     #[cbor(b(1))]
-    #[serde(borrow)]
-    pub operation_id: CowStr<'a>,
-}
-
-impl Clone for CreateOperationResponse<'_> {
-    fn clone(&self) -> Self {
-        self.to_owned()
-    }
-}
-
-impl CreateOperationResponse<'_> {
-    pub fn to_owned<'r>(&self) -> CreateOperationResponse<'r> {
-        CreateOperationResponse {
-            #[cfg(feature = "tag")]
-            tag: self.tag.to_owned(),
-            operation_id: self.operation_id.to_owned(),
-        }
-    }
+    pub operation_id: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, PartialEq)]

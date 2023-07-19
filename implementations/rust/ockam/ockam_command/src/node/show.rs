@@ -163,7 +163,7 @@ fn print_node_info(
         for e in &list.list {
             println!("    Service:");
             println!("      Type: {}", e.service_type);
-            if let Some(ma) = addr_to_multiaddr(e.addr.as_ref()) {
+            if let Some(ma) = addr_to_multiaddr(e.addr.as_str()) {
                 println!("      Address: {ma}");
             }
         }

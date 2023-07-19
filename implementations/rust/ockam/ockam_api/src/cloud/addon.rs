@@ -1,24 +1,21 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[cbor(map)]
-pub struct Addon<'a> {
+pub struct Addon {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)]
     pub tag: TypeTag<1530077>,
     #[b(1)]
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+    pub id: String,
     #[b(2)]
-    #[serde(borrow)]
-    pub description: CowStr<'a>,
+    pub description: String,
     #[n(3)]
     pub enabled: bool,
 }
@@ -26,17 +23,16 @@ pub struct Addon<'a> {
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ConfluentConfig<'a> {
+pub struct ConfluentConfig {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[cbor(n(0))] pub tag: TypeTag<1697996>,
 
-    #[serde(borrow)]
-    #[cbor(b(1))] pub bootstrap_server: CowStr<'a>,
+    #[cbor(b(1))] pub bootstrap_server: String,
 }
 
-impl<'a> ConfluentConfig<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(bootstrap_server: S) -> Self {
+impl ConfluentConfig {
+    pub fn new<S: Into<String>>(bootstrap_server: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -69,17 +65,16 @@ impl ConfluentConfigResponse {
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct DisableAddon<'a> {
+pub struct DisableAddon {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[cbor(n(0))] pub tag: TypeTag<8677807>,
 
-    #[serde(borrow)]
-    #[cbor(b(1))] pub addon_id: CowStr<'a>,
+    #[cbor(b(1))] pub addon_id: String,
 }
 
-impl<'a> DisableAddon<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(addon_id: S) -> Self {
+impl DisableAddon {
+    pub fn new<S: Into<String>>(addon_id: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,

@@ -27,7 +27,7 @@ use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
 use ockam_core::env::{get_env_with_default, FromString};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{Address, CowStr};
+use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 
 use crate::project::ProjectInfo;
@@ -38,59 +38,59 @@ use crate::Result;
 ////////////// !== generators
 
 /// Construct a request to query node status
-pub(crate) fn query_status() -> RequestBuilder<'static, ()> {
+pub(crate) fn query_status() -> RequestBuilder<()> {
     Request::get("/node")
 }
 
 /// Construct a request to query node tcp listeners
-pub(crate) fn list_tcp_listeners() -> RequestBuilder<'static, ()> {
+pub(crate) fn list_tcp_listeners() -> RequestBuilder<()> {
     Request::get("/node/tcp/listener")
 }
 
 /// Construct a request to create node tcp connection
 pub(crate) fn create_tcp_connection(
     cmd: &crate::tcp::connection::CreateCommand,
-) -> RequestBuilder<'static, models::transport::CreateTcpConnection> {
+) -> RequestBuilder<models::transport::CreateTcpConnection> {
     let payload = models::transport::CreateTcpConnection::new(cmd.address.clone());
 
     Request::post("/node/tcp/connection").body(payload)
 }
 
 /// Construct a request to print a list of services for the given node
-pub(crate) fn list_services() -> RequestBuilder<'static, ()> {
+pub(crate) fn list_services() -> RequestBuilder<()> {
     Request::get("/node/services")
 }
 
 /// Construct a request to print a list of inlets for the given node
-pub(crate) fn list_inlets() -> RequestBuilder<'static, ()> {
+pub(crate) fn list_inlets() -> RequestBuilder<()> {
     Request::get("/node/inlet")
 }
 
 /// Construct a request to print a list of outlets for the given node
-pub(crate) fn list_outlets() -> RequestBuilder<'static, ()> {
+pub(crate) fn list_outlets() -> RequestBuilder<()> {
     Request::get("/node/outlet")
 }
 
 /// Construct a request builder to list all secure channels on the given node
-pub(crate) fn list_secure_channels() -> RequestBuilder<'static, ()> {
+pub(crate) fn list_secure_channels() -> RequestBuilder<()> {
     Request::get("/node/secure_channel")
 }
 
 /// Construct a request builder to list all workers on the given node
-pub(crate) fn list_workers() -> RequestBuilder<'static, ()> {
+pub(crate) fn list_workers() -> RequestBuilder<()> {
     Request::get("/node/workers")
 }
 
 pub(crate) fn delete_secure_channel(
     addr: &Address,
-) -> RequestBuilder<'static, models::secure_channel::DeleteSecureChannelRequest<'static>> {
+) -> RequestBuilder<models::secure_channel::DeleteSecureChannelRequest> {
     let payload = models::secure_channel::DeleteSecureChannelRequest::new(addr);
     Request::delete("/node/secure_channel").body(payload)
 }
 
 pub(crate) fn show_secure_channel(
     addr: &Address,
-) -> RequestBuilder<'static, models::secure_channel::ShowSecureChannelRequest<'static>> {
+) -> RequestBuilder<models::secure_channel::ShowSecureChannelRequest> {
     let payload = models::secure_channel::ShowSecureChannelRequest::new(addr);
     Request::get("/node/show_secure_channel").body(payload)
 }
@@ -116,13 +116,13 @@ pub(crate) fn create_secure_channel_listener(
 }
 
 /// Construct a request to list Secure Channel Listeners
-pub(crate) fn list_secure_channel_listener() -> RequestBuilder<'static, ()> {
+pub(crate) fn list_secure_channel_listener() -> RequestBuilder<()> {
     Request::get("/node/secure_channel_listener")
 }
 
 pub(crate) fn delete_secure_channel_listener(
     addr: &Address,
-) -> RequestBuilder<'static, models::secure_channel::DeleteSecureChannelListenerRequest<'static>> {
+) -> RequestBuilder<models::secure_channel::DeleteSecureChannelListenerRequest> {
     let payload = models::secure_channel::DeleteSecureChannelListenerRequest::new(addr);
     Request::delete("/node/secure_channel_listener").body(payload)
 }
@@ -130,21 +130,19 @@ pub(crate) fn delete_secure_channel_listener(
 /// Construct a request to show Secure Channel Listener
 pub(crate) fn show_secure_channel_listener(
     addr: &Address,
-) -> RequestBuilder<'static, models::secure_channel::ShowSecureChannelListenerRequest<'static>> {
+) -> RequestBuilder<models::secure_channel::ShowSecureChannelListenerRequest> {
     let payload = models::secure_channel::ShowSecureChannelListenerRequest::new(addr);
     Request::get("/node/show_secure_channel_listener").body(payload)
 }
 
 /// Construct a request to start a Hop Service
-pub(crate) fn start_hop_service(addr: &str) -> RequestBuilder<'static, StartHopServiceRequest> {
+pub(crate) fn start_hop_service(addr: &str) -> RequestBuilder<StartHopServiceRequest> {
     let payload = StartHopServiceRequest::new(addr);
     Request::post(node_service(DefaultAddress::HOP_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Identity Service
-pub(crate) fn start_identity_service(
-    addr: &str,
-) -> RequestBuilder<'static, StartIdentityServiceRequest> {
+pub(crate) fn start_identity_service(addr: &str) -> RequestBuilder<StartIdentityServiceRequest> {
     let payload = StartIdentityServiceRequest::new(addr);
     Request::post(node_service(DefaultAddress::IDENTITY_SERVICE)).body(payload)
 }
@@ -152,52 +150,49 @@ pub(crate) fn start_identity_service(
 /// Construct a request to start an Authenticated Service
 pub(crate) fn start_authenticated_service(
     addr: &str,
-) -> RequestBuilder<'static, StartAuthenticatedServiceRequest> {
+) -> RequestBuilder<StartAuthenticatedServiceRequest> {
     let payload = StartAuthenticatedServiceRequest::new(addr);
     Request::post(node_service(DefaultAddress::AUTHENTICATED_SERVICE)).body(payload)
 }
 
 /// Construct a request to start a Verifier Service
-pub(crate) fn start_verifier_service(addr: &str) -> RequestBuilder<'static, StartVerifierService> {
+pub(crate) fn start_verifier_service(addr: &str) -> RequestBuilder<StartVerifierService> {
     let payload = StartVerifierService::new(addr);
     Request::post(node_service(DefaultAddress::VERIFIER)).body(payload)
 }
 
 /// Construct a request to start a Credential Service
-pub(crate) fn start_credentials_service<'a>(
-    public_identity: &'a str,
-    addr: &'a str,
+pub(crate) fn start_credentials_service(
+    public_identity: &str,
+    addr: &str,
     oneway: bool,
-) -> RequestBuilder<'static, StartCredentialsService<'a>> {
+) -> RequestBuilder<StartCredentialsService> {
     let payload = StartCredentialsService::new(public_identity, addr, oneway);
     Request::post(node_service(DefaultAddress::CREDENTIALS_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Authenticator Service
-pub(crate) fn start_authenticator_service<'a>(
-    addr: &'a str,
-    project: &'a str,
-) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
+pub(crate) fn start_authenticator_service(
+    addr: &str,
+    project: &str,
+) -> RequestBuilder<StartAuthenticatorRequest> {
     let payload = StartAuthenticatorRequest::new(addr, project.as_bytes());
     Request::post(node_service(DefaultAddress::DIRECT_AUTHENTICATOR)).body(payload)
 }
 
-pub(crate) fn add_consumer(
-    id: FlowControlId,
-    address: MultiAddr,
-) -> RequestBuilder<'static, AddConsumer> {
+pub(crate) fn add_consumer(id: FlowControlId, address: MultiAddr) -> RequestBuilder<AddConsumer> {
     let payload = AddConsumer::new(id, address);
     Request::post("/node/flow_controls/add_consumer").body(payload)
 }
 
 pub(crate) fn start_okta_service(
-    cfg: &'_ OktaIdentityProviderConfig,
-) -> RequestBuilder<'static, StartOktaIdentityProviderRequest<'_>> {
+    cfg: &OktaIdentityProviderConfig,
+) -> RequestBuilder<StartOktaIdentityProviderRequest> {
     let payload = StartOktaIdentityProviderRequest::new(
         &cfg.address,
         &cfg.tenant_base_url,
         &cfg.certificate,
-        cfg.attributes.iter().map(|s| s as &str).collect(),
+        cfg.attributes.clone(),
         cfg.project.as_bytes(),
     );
     Request::post(format!(
@@ -220,10 +215,10 @@ pub(crate) mod credentials {
         Request::post("/node/credentials/actions/present").body(b)
     }
 
-    pub(crate) fn get_credential<'r>(
+    pub(crate) fn get_credential(
         overwrite: bool,
         identity_name: Option<String>,
-    ) -> RequestBuilder<'r, GetCredentialRequest> {
+    ) -> RequestBuilder<GetCredentialRequest> {
         let b = GetCredentialRequest::new(overwrite, identity_name);
         Request::post("/node/credentials/actions/get").body(b)
     }
@@ -240,16 +235,12 @@ pub mod enroll {
 
     use super::*;
 
-    pub fn auth0<'a>(
+    pub fn auth0(
         route: &MultiAddr,
         token: Auth0Token,
-    ) -> RequestBuilder<'a, CloudRequestWrapper<'a, AuthenticateAuth0Token>> {
+    ) -> RequestBuilder<CloudRequestWrapper<AuthenticateAuth0Token>> {
         let token = AuthenticateAuth0Token::new(token);
-        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(
-            token,
-            route,
-            None::<CowStr>,
-        ))
+        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token, route, None))
     }
 }
 
@@ -261,30 +252,26 @@ pub(crate) mod space {
 
     use super::*;
 
-    pub(crate) fn create(cmd: &CreateCommand) -> RequestBuilder<CloudRequestWrapper<CreateSpace>> {
-        let b = CreateSpace::new(&cmd.name, &cmd.admins);
-        Request::post("v0/spaces").body(CloudRequestWrapper::new(
-            b,
-            &CloudOpts::route(),
-            None::<CowStr>,
-        ))
+    pub(crate) fn create(cmd: CreateCommand) -> RequestBuilder<CloudRequestWrapper<CreateSpace>> {
+        let b = CreateSpace::new(cmd.name, cmd.admins);
+        Request::post("v0/spaces").body(CloudRequestWrapper::new(b, &CloudOpts::route(), None))
     }
 
     pub(crate) fn list(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::get("v0/spaces").body(CloudRequestWrapper::bare(cloud_route))
     }
 
-    pub(crate) fn show<'a>(
+    pub(crate) fn show(
         id: &str,
-        cloud_route: &'a MultiAddr,
-    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::get(format!("v0/spaces/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 
-    pub(crate) fn delete<'a>(
+    pub(crate) fn delete(
         id: &str,
-        cloud_route: &'a MultiAddr,
-    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::delete(format!("v0/spaces/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 }
@@ -295,16 +282,16 @@ pub(crate) mod project {
 
     use super::*;
 
-    pub(crate) fn create<'a>(
-        project_name: &'a str,
-        space_id: &'a str,
-        cloud_route: &'a MultiAddr,
-    ) -> RequestBuilder<'a, CloudRequestWrapper<'a, CreateProject<'a>>> {
-        let b = CreateProject::new::<&str, &str>(project_name, &[]);
+    pub(crate) fn create(
+        project_name: &str,
+        space_id: &str,
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
+        let b = CreateProject::new(project_name.to_string(), vec![]);
         Request::post(format!("v1/spaces/{space_id}/projects")).body(CloudRequestWrapper::new(
             b,
             cloud_route,
-            None::<CowStr>,
+            None,
         ))
     }
 
@@ -312,18 +299,18 @@ pub(crate) mod project {
         Request::get("v0/projects").body(CloudRequestWrapper::bare(cloud_route))
     }
 
-    pub(crate) fn show<'a>(
+    pub(crate) fn show(
         id: &str,
-        cloud_route: &'a MultiAddr,
-    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::get(format!("v0/projects/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 
-    pub(crate) fn delete<'a>(
-        space_id: &'a str,
-        project_id: &'a str,
-        cloud_route: &'a MultiAddr,
-    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+    pub(crate) fn delete(
+        space_id: &str,
+        project_id: &str,
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::delete(format!("v0/projects/{space_id}/{project_id}"))
             .body(CloudRequestWrapper::bare(cloud_route))
     }
@@ -333,10 +320,10 @@ pub(crate) mod project {
 pub(crate) mod operation {
     use super::*;
 
-    pub(crate) fn show<'a>(
+    pub(crate) fn show(
         id: &str,
-        cloud_route: &'a MultiAddr,
-    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::get(format!("v1/operations/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 }

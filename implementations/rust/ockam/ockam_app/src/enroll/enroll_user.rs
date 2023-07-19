@@ -1,13 +1,14 @@
-use miette::IntoDiagnostic;
+use miette::{miette, IntoDiagnostic};
 use tauri::{AppHandle, Manager, State, Wry};
 use tracing::log::{error, info};
 
-use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::CliState;
-use ockam_command::enroll::{enroll, Auth0Service};
-use ockam_command::CommandGlobalOpts;
-use ockam_core::AsyncTryClone;
+use ockam_api::cli_state::{CliState, SpaceConfig};
+use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
+use ockam_api::cloud::space::CreateSpace;
+use ockam_api::cloud::CloudRequestWrapper;
+use ockam_command::enroll::{retrieve_user_project, Auth0Service};
+use ockam_command::util::api::CloudOpts;
 
 use crate::app::AppState;
 use crate::Result;
@@ -30,8 +31,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
             })?;
     };
 
-    let context = app_state.context().async_try_clone().await.unwrap();
-    enroll_with_token(&context, app_state.options())
+    enroll_with_token(&app_state)
         .await
         .unwrap_or_else(|e| error!("{:?}", e));
 
@@ -40,11 +40,27 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     Ok(())
 }
 
-async fn enroll_with_token(ctx: &Context, options: CommandGlobalOpts) -> Result<()> {
+async fn enroll_with_token(app_state: &AppState) -> Result<()> {
     // get an Auth0 token
     let token = Auth0Service::default().get_token_with_pkce().await?;
     // enroll the current user using that token on the controller
-    enroll(ctx, &options, token).await?;
+    let request = CloudRequestWrapper::new(
+        AuthenticateAuth0Token::new(token),
+        &CloudOpts::route(),
+        None,
+    );
+    app_state
+        .node_manager()
+        .enroll_auth0(&app_state.context(), request)
+        .await
+        .into_diagnostic()?;
+
+    retrieve_space(app_state).await?;
+
+    retrieve_user_project(&app_state.context(), &app_state.options(), "default")
+        .await
+        .map(|_| ())
+        .into_diagnostic()?;
     Ok(())
 }
 
@@ -71,5 +87,32 @@ async fn create_default_identity(state: CliState) -> Result<()> {
         .create_identity_state(&identity.identifier(), None)
         .await?;
     info!("created a new identity state");
+    Ok(())
+}
+
+async fn retrieve_space(app_state: &AppState) -> Result<()> {
+    let spaces = app_state
+        .node_manager()
+        .list_spaces(&app_state.context(), &CloudOpts::route())
+        .await
+        .map_err(|e| miette!(e))?;
+    let space = match spaces.first() {
+        Some(space) => space.clone(),
+        None => app_state
+            .node_manager()
+            .create_space(
+                &app_state.context(),
+                CreateSpace::new("default".to_string(), vec![]),
+                &CloudOpts::route(),
+                None,
+            )
+            .await
+            .map_err(|e| miette!(e))?,
+    };
+    app_state
+        .state()
+        .spaces
+        .overwrite(&space.name, SpaceConfig::from(&space))?;
+
     Ok(())
 }

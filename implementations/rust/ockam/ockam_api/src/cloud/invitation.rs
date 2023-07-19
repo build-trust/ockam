@@ -1,9 +1,8 @@
 use minicbor::{Decode, Encode};
-use serde::{Deserialize, Serialize};
-
 use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use serde::{Deserialize, Serialize};
 
 #[derive(Encode, Decode, Serialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
@@ -70,10 +69,9 @@ impl<'a> CreateInvitation<'a> {
 
 mod node {
     use minicbor::Decoder;
-    use tracing::trace;
-
     use ockam_core::{self, Result};
     use ockam_node::Context;
+    use tracing::trace;
 
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManager;
@@ -88,7 +86,7 @@ mod node {
         pub(crate) async fn create_invitation(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
+            req: &Request,
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateInvitation> = dec.decode()?;
@@ -126,7 +124,7 @@ mod node {
         pub(crate) async fn list_invitations(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
+            req: &Request,
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
@@ -157,7 +155,7 @@ mod node {
         pub(crate) async fn accept_invitation(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
+            req: &Request,
             dec: &mut Decoder<'_>,
             id: &str,
         ) -> Result<Vec<u8>> {
@@ -189,7 +187,7 @@ mod node {
         pub(crate) async fn reject_invitation(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
+            req: &Request,
             dec: &mut Decoder<'_>,
             id: &str,
         ) -> Result<Vec<u8>> {
@@ -223,11 +221,10 @@ mod node {
 #[cfg(test)]
 mod tests {
     use minicbor::Decoder;
-    use quickcheck::{Arbitrary, Gen};
-
     use ockam_core::compat::collections::HashMap;
     use ockam_core::{Routed, Worker};
     use ockam_node::Context;
+    use quickcheck::{Arbitrary, Gen};
 
     use crate::{Method, Request, Response};
 
@@ -330,10 +327,11 @@ mod tests {
     }
 
     mod node_api {
+        use ockam_core::route;
+
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeManager;
         use crate::{route_to_multiaddr, Status};
-        use ockam_core::route;
 
         use super::*;
 

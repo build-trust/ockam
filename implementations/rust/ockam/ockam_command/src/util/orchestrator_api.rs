@@ -1,16 +1,9 @@
 use std::path::PathBuf;
 
-use crate::{
-    node::util::{delete_node, start_embedded_node_with_vault_and_identity},
-    project::{
-        util::{create_secure_channel_to_authority, create_secure_channel_to_project},
-        ProjectInfo,
-    },
-    util::Rpc,
-    CommandGlobalOpts, Result,
-};
 use miette::miette;
 use minicbor::{Decode, Encode};
+use tracing::info;
+
 use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -23,7 +16,16 @@ use ockam_core::route;
 use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
-use tracing::info;
+
+use crate::{
+    node::util::{delete_node, start_embedded_node_with_vault_and_identity},
+    project::{
+        util::{create_secure_channel_to_authority, create_secure_channel_to_project},
+        ProjectInfo,
+    },
+    util::Rpc,
+    CommandGlobalOpts, Result,
+};
 
 use super::{api::TrustContextOpts, RpcBuilder};
 
@@ -274,10 +276,10 @@ pub struct OrchestratorApi<'a> {
 }
 
 impl<'a> OrchestratorApi<'a> {
-    pub async fn request_with_response<T, R>(&'a mut self, req: RequestBuilder<'_, T>) -> Result<R>
+    pub async fn request_with_response<T, R>(&'a mut self, req: RequestBuilder<T>) -> Result<R>
     where
         T: Encode<()>,
-        R: Decode<'a, ()>,
+        R: for<'b> Decode<'b, ()>,
     {
         self.request(req).await?;
 
@@ -288,7 +290,7 @@ impl<'a> OrchestratorApi<'a> {
         self.rpc.parse_response()
     }
 
-    pub async fn request<T>(&mut self, req: RequestBuilder<'_, T>) -> Result<()>
+    pub async fn request<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
     where
         T: Encode<()>,
     {

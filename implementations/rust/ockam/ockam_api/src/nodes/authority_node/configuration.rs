@@ -111,8 +111,8 @@ impl OktaConfiguration {
     }
 
     /// Return the list of attributes managed by Okta as a vector of str
-    pub(crate) fn attributes(&self) -> Vec<&str> {
-        self.attributes.iter().map(|a| a.as_str()).collect()
+    pub(crate) fn attributes(&self) -> Vec<String> {
+        self.attributes.clone()
     }
 }
 

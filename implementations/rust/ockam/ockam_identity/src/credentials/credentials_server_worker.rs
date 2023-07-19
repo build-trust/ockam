@@ -44,7 +44,7 @@ impl CredentialsServerWorker {
     async fn handle_request(
         &mut self,
         ctx: &mut Context,
-        req: &Request<'_>,
+        req: &Request,
         sender: IdentityIdentifier,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {

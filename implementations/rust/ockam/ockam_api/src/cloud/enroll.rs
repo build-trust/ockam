@@ -24,6 +24,7 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
+    use ockam::identity::credential::Attributes;
     use ockam_core::api::Request;
     use ockam_core::{self, Result};
     use ockam_node::Context;
@@ -32,18 +33,16 @@ mod node {
     use crate::cloud::enroll::enrollment_token::{EnrollmentToken, RequestEnrollmentToken};
     use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT};
     use crate::nodes::NodeManagerWorker;
-    use ockam::identity::credential::Attributes;
 
     const TARGET: &str = "ockam_api::cloud::enroll";
 
     impl NodeManagerWorker {
         /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
-        pub(crate) async fn enroll_auth0(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+        pub async fn enroll_auth0(
+            &self,
+            ctx: &Context,
+            req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token>,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token> = dec.decode()?;
             let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body: AuthenticateAuth0Token = req_wrapper.req;
             let req_builder = Request::post("v0/enroll").body(req_body);
@@ -205,8 +204,9 @@ pub mod auth0 {
 }
 
 pub mod enrollment_token {
-    use ockam::identity::credential::Attributes;
     use serde::Serialize;
+
+    use ockam::identity::credential::Attributes;
 
     use super::*;
 

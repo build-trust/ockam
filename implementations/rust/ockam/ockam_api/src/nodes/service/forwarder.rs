@@ -109,12 +109,12 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn delete_forwarder<'a>(
+    pub(super) async fn delete_forwarder(
         &mut self,
         ctx: &mut Context,
-        req: &Request<'_>,
-        remote_address: &'a str,
-    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>, ResponseBuilder<Error>> {
+        req: &Request,
+        remote_address: &str,
+    ) -> Result<ResponseBuilder<Option<ForwarderInfo>>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         debug!(%remote_address , "Handling DeleteForwarder request");
@@ -149,11 +149,11 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn show_forwarder<'a>(
+    pub(super) async fn show_forwarder(
         &mut self,
-        req: &Request<'_>,
-        remote_address: &'a str,
-    ) -> Result<ResponseBuilder<Option<ForwarderInfo<'a>>>, ResponseBuilder<Error>> {
+        req: &Request,
+        remote_address: &str,
+    ) -> Result<ResponseBuilder<Option<ForwarderInfo>>, ResponseBuilder<Error>> {
         debug!("Handling ShowForwarder request");
         let node_manager = self.node_manager.read().await;
         if let Some(forwarder_to_show) = node_manager.registry.forwarders.get(remote_address) {
@@ -172,10 +172,10 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn get_forwarders<'a>(
+    pub(super) async fn get_forwarders(
         &mut self,
-        req: &Request<'a>,
-    ) -> ResponseBuilder<Vec<ForwarderInfo<'a>>> {
+        req: &Request,
+    ) -> ResponseBuilder<Vec<ForwarderInfo>> {
         debug!("Handling ListForwarders request");
         let registry = &self.node_manager.read().await.registry.forwarders;
         Response::ok(req.id()).body(

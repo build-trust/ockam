@@ -47,7 +47,7 @@ impl RpcClient {
     }
 
     /// Encode request header and body (if any) and send the package to the server.
-    pub async fn request<T, R>(&self, req: &RequestBuilder<'_, T>) -> Result<R>
+    pub async fn request<T, R>(&self, req: &RequestBuilder<T>) -> Result<R>
     where
         T: Encode<()>,
         R: for<'a> Decode<'a, ()>,
@@ -70,7 +70,7 @@ impl RpcClient {
     }
 
     /// Encode request header and body (if any) and send the package to the server.
-    pub async fn request_no_resp_body<T>(&self, req: &RequestBuilder<'_, T>) -> Result<()>
+    pub async fn request_no_resp_body<T>(&self, req: &RequestBuilder<T>) -> Result<()>
     where
         T: Encode<()>,
     {

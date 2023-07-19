@@ -113,11 +113,8 @@ async fn rpc(
             cmd.message.as_bytes().to_vec()
         };
 
-        rpc.request_with_timeout(
-            req(&to, msg_bytes.as_slice()),
-            Duration::from_secs(cmd.timeout),
-        )
-        .await?;
+        rpc.request_with_timeout(req(&to, msg_bytes), Duration::from_secs(cmd.timeout))
+            .await?;
         let res = {
             let res = rpc.parse_response::<Vec<u8>>()?;
             if cmd.hex {
@@ -141,6 +138,6 @@ async fn rpc(
     go(&mut ctx, opts, cmd).await
 }
 
-pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a [u8]) -> RequestBuilder<'a, SendMessage<'a>> {
+pub(crate) fn req(to: &MultiAddr, message: Vec<u8>) -> RequestBuilder<SendMessage> {
     Request::post("v0/message").body(SendMessage::new(to, message))
 }

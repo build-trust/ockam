@@ -1,4 +1,7 @@
-use crate::app::{configure_tauri_plugin_log, process_application_event, setup_app, AppState};
+use crate::app::{
+    configure_tauri_plugin_log, make_system_tray, process_application_event,
+    process_system_tray_event, setup_app, AppState,
+};
 use crate::error::Result;
 
 mod app;

@@ -1,9 +1,11 @@
-use crate::nodes::models::policy::{Expression, Policy, PolicyList};
 use either::Either;
 use minicbor::Decoder;
+
 use ockam_abac::{Action, Resource};
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::Result;
+
+use crate::nodes::models::policy::{Expression, Policy, PolicyList};
 
 use super::NodeManager;
 
@@ -12,7 +14,7 @@ impl NodeManager {
         &self,
         resource: &str,
         action: &str,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
         let p: Policy = dec.decode()?;
@@ -24,7 +26,7 @@ impl NodeManager {
 
     pub(super) async fn get_policy<'a>(
         &self,
-        req: &'a Request<'_>,
+        req: &'a Request,
         resource: &str,
         action: &str,
     ) -> Result<Either<ResponseBuilder<Error>, ResponseBuilder<Policy>>> {
@@ -43,7 +45,7 @@ impl NodeManager {
 
     pub(super) async fn list_policies(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         res: &str,
     ) -> Result<ResponseBuilder<PolicyList>, ResponseBuilder<Error>> {
         let r = Resource::new(res);
@@ -54,7 +56,7 @@ impl NodeManager {
 
     pub(super) async fn del_policy(
         &self,
-        req: &Request<'_>,
+        req: &Request,
         res: &str,
         act: &str,
     ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {

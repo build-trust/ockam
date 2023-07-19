@@ -1,17 +1,17 @@
+use clap::{Args, Subcommand};
+use colorful::Colorful;
+use miette::{miette, IntoDiagnostic};
+use minicbor::Encode;
+
+use ockam::{Context, TcpTransport};
+use ockam_api::DefaultAddress;
+use ockam_core::api::{RequestBuilder, Status};
+
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{fmt_ok, CommandGlobalOpts};
 use crate::{fmt_warn, Result};
-use clap::{Args, Subcommand};
-use miette::{miette, IntoDiagnostic};
-
-use colorful::Colorful;
-use minicbor::Encode;
-use ockam::{Context, TcpTransport};
-
-use ockam_api::DefaultAddress;
-use ockam_core::api::{RequestBuilder, Status};
 
 /// Start a specified service
 #[derive(Clone, Debug, Args)]
@@ -161,7 +161,7 @@ pub(crate) async fn start_service_impl<T>(
     opts: &CommandGlobalOpts,
     node_name: &str,
     serv_name: &str,
-    req: RequestBuilder<'_, T>,
+    req: RequestBuilder<T>,
     tcp: Option<&'_ TcpTransport>,
 ) -> Result<()>
 where

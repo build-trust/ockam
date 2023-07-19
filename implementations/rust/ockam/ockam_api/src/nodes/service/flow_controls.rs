@@ -1,9 +1,11 @@
-use crate::local_multiaddr_to_route;
-use crate::nodes::models::flow_controls::AddConsumer;
 use minicbor::Decoder;
+
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::Result;
 use ockam_node::Context;
+
+use crate::local_multiaddr_to_route;
+use crate::nodes::models::flow_controls::AddConsumer;
 
 use super::NodeManagerWorker;
 
@@ -11,7 +13,7 @@ impl NodeManagerWorker {
     pub(super) fn add_consumer(
         &self,
         ctx: &Context,
-        req: &Request<'_>,
+        req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let request: AddConsumer = dec.decode()?;
