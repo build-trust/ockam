@@ -47,15 +47,7 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn get_outlets(&self, req: &Request<'_>) -> ResponseBuilder<OutletList> {
-        let registry = &self.node_manager.read().await.registry.outlets;
-        Response::ok(req.id()).body(OutletList::new(
-            registry
-                .iter()
-                .map(|(alias, info)| {
-                    OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
-                })
-                .collect(),
-        ))
+        Response::ok(req.id()).body(self.list_outlets().await)
     }
 
     pub(super) async fn create_inlet(
@@ -320,8 +312,8 @@ impl NodeManagerWorker {
         .await
     }
 
-    pub(super) async fn create_outlet_impl<'a>(
-        &mut self,
+    pub async fn create_outlet_impl<'a>(
+        &self,
         ctx: &Context,
         req_id: Id,
         tcp_addr: String,
@@ -482,6 +474,18 @@ impl NodeManagerWorker {
                 Error::new(req.path()).with_message(format!("Outlet with alias {alias} not found"));
             Err(Response::not_found(req.id()).body(err_body))
         }
+    }
+
+    pub async fn list_outlets(&self) -> OutletList {
+        let outlets = &self.node_manager.read().await.registry.outlets;
+        OutletList::new(
+            outlets
+                .iter()
+                .map(|(alias, info)| {
+                    OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
+                })
+                .collect(),
+        )
     }
 }
 

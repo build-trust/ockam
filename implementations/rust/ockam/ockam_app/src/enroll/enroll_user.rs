@@ -13,20 +13,21 @@ use crate::app::AppState;
 use crate::Result;
 
 /// Enroll a user.
+///
 /// This function:
-///  - creates a default node, with a default identity, if it doesn't exist
+///  - creates a default node, with a default identity if it doesn't exist
 ///  - connects to the Auth0 service to authenticate the user of the Ockam application to retrieve a token
 ///  - connects to the Orchestrator with the retrieved token to create a project
 pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
-    info!("starting to enroll the user");
+    info!("enrolling the user");
     let app_state: State<AppState> = app.state::<AppState>();
-    if app_state.state.identities.default().is_err() {
+    if app_state.state().identities.default().is_err() {
         let create_command = CreateCommand::new("default".to_string(), None);
         create_command.create_identity(app_state.options()).await?;
     }
 
-    info!("got the default identity");
-    let context = app_state.context.async_try_clone().await.unwrap();
+    info!("default identity created or retrieved");
+    let context = app_state.context().async_try_clone().await.unwrap();
     match enroll_with_token(&context, app_state.options()).await {
         Ok(_) => (),
         Err(e) => error!("{:?}", e),
@@ -39,6 +40,6 @@ async fn enroll_with_token(ctx: &Context, options: CommandGlobalOpts) -> Result<
     // get an Auth0 token
     let token = Auth0Service::default().get_token_with_pkce().await?;
     // enroll the current user using that token on the controller
-    enroll(&ctx, &options, token).await?;
+    enroll(ctx, &options, token).await?;
     Ok(())
 }

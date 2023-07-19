@@ -4,16 +4,17 @@ use std::io::Write;
 use std::time::Duration;
 
 use colorful::Colorful;
-use console::Term;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use tokio::sync::Mutex;
+use tokio::time::sleep;
 
+pub use colors::*;
+pub use fmt::*;
 use mode::*;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::errcode::Kind;
-use tokio::sync::Mutex;
-use tokio::time::sleep;
 
 use crate::error::Error;
 use crate::{fmt_list, fmt_log, fmt_warn, OutputFormat, Result};
@@ -21,9 +22,6 @@ use crate::{fmt_list, fmt_log, fmt_warn, OutputFormat, Result};
 pub mod colors;
 pub mod fmt;
 pub mod term;
-
-pub use colors::*;
-pub use fmt::*;
 
 /// A terminal abstraction to handle commands' output and messages styling.
 #[derive(Clone)]
@@ -36,9 +34,9 @@ pub struct Terminal<T: TerminalWriter, WriteMode = ToStdErr> {
     mode: WriteMode,
 }
 
-impl Default for Terminal<TerminalStream<Term>> {
+impl<W: TerminalWriter> Default for Terminal<W> {
     fn default() -> Self {
-        Terminal::new(true, true, true, OutputFormat::Plain)
+        Terminal::new(false, false, false, OutputFormat::Plain)
     }
 }
 
@@ -213,8 +211,8 @@ impl<W: TerminalWriter> Terminal<W> {
         self.stderr.is_tty()
     }
 
-    pub fn default() -> Self {
-        Self::new(false, false, false, OutputFormat::Plain)
+    pub fn quiet() -> Self {
+        Self::new(true, false, false, OutputFormat::Plain)
     }
 
     /// Prompt the user for a confirmation.
