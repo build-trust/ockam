@@ -23,7 +23,7 @@ teardown() {
   run_success "$OCKAM" node create n2 --verbose
 
   run_success "$OCKAM" node list
-  assert_output --partial "Node n1  UP"
+  assert_output --partial "Node n1 UP"
 
   run_success "$OCKAM" node stop n1
   assert_output --partial "Stopped node 'n1'"
