@@ -1,13 +1,17 @@
-use super::Result;
-use crate::cli_state::traits::StateItemTrait;
-use crate::cli_state::{CliStateError, StateDirTrait, DATA_DIR_NAME};
-use ockam_identity::IdentitiesVault;
-use ockam_vault::Vault;
-use ockam_vault_aws::{AwsKmsConfig, AwsSecurityModule};
-use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+
+use ockam_identity::IdentitiesVault;
+use ockam_vault::Vault;
+use ockam_vault_aws::{AwsKmsConfig, AwsSecurityModule};
+
+use crate::cli_state::traits::StateItemTrait;
+use crate::cli_state::{CliStateError, StateDirTrait, DATA_DIR_NAME};
+
+use super::Result;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultsState {
@@ -113,10 +117,12 @@ impl VaultConfig {
 }
 
 mod traits {
-    use super::*;
+    use ockam_core::async_trait;
+
     use crate::cli_state::file_stem;
     use crate::cli_state::traits::*;
-    use ockam_core::async_trait;
+
+    use super::*;
 
     #[async_trait]
     impl StateDirTrait for VaultsState {
@@ -165,6 +171,7 @@ mod traits {
 
         fn new(path: PathBuf, config: Self::Config) -> Result<Self> {
             let contents = serde_json::to_string(&config)?;
+            std::fs::create_dir_all(path.parent().unwrap())?;
             std::fs::write(&path, contents)?;
             let name = file_stem(&path)?;
             let data_path = VaultState::build_data_path(&name, &path);

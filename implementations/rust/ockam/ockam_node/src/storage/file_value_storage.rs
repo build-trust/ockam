@@ -53,6 +53,8 @@ impl<V: Default + Serialize + for<'de> Deserialize<'de>> FileValueStorage<V> {
     /// Create FileStorage using file at given Path
     /// If file doesn't exist, it will be created
     async fn init(&mut self) -> Result<()> {
+        std::fs::create_dir_all(self.path.parent().unwrap())
+            .map_err(|e| Error::new(Origin::Node, Kind::Io, e))?;
         // This can block, but only when first initializing and just need to write an empty vault.
         // So didn't bother to do it async
         let lock_file = Self::open_lock_file(&self.lock_path)?;

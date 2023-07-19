@@ -1,5 +1,6 @@
 use crate::cli_state::{file_stem, CliState, CliStateError};
-use ockam_core::async_trait;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{async_trait, Error};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -188,9 +189,13 @@ pub trait StateDirTrait: Sized + Send + Sync {
         }
         let original = self.path(&name);
         let link = self.default_path()?;
+        info!("removing link {:?}", link);
         // Remove link if it exists
         let _ = std::fs::remove_file(&link);
-        // Create link to the identity
+        info!("symlink to {:?}", original);
+        // Create link to the default item
+        std::fs::create_dir_all(link.parent().unwrap())
+            .map_err(|e| Error::new(Origin::Node, Kind::Io, e))?;
         std::os::unix::fs::symlink(original, link)?;
         info!(name = %name.as_ref(), "Set default item");
         Ok(())
