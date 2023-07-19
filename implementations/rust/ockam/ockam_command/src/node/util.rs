@@ -120,7 +120,7 @@ pub async fn add_project_info_to_node_state(
     }
 }
 
-pub(crate) async fn init_node_state(
+pub async fn init_node_state(
     opts: &CommandGlobalOpts,
     node_name: &str,
     vault_name: Option<&str>,

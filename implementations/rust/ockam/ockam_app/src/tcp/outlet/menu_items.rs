@@ -31,7 +31,7 @@ impl TcpOutletActions {
         options: &CommandGlobalOpts,
     ) -> Result<TcpOutletActions> {
         let mut s = TcpOutletActions::new(options);
-        let mut tcp_outlets = super::list(app, options)
+        let mut tcp_outlets = super::list(app)
             .await?
             .list
             .iter()

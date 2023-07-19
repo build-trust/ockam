@@ -151,6 +151,7 @@ impl NodeManager {
     }
 }
 
+#[derive(Clone)]
 pub struct NodeManagerWorker {
     node_manager: Arc<RwLock<NodeManager>>,
 }

@@ -1,4 +1,4 @@
-use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, SystemTrayMenuItem, Wry};
+use tauri::{AppHandle, CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem, Wry};
 use tracing::log::{error, info};
 
 use ockam_command::CommandGlobalOpts;
@@ -7,6 +7,11 @@ use crate::enroll::EnrollActions;
 use crate::quit::QuitActions;
 use crate::tcp::outlet::TcpOutletActions;
 use crate::Result;
+
+/// Make a full system tray
+pub fn make_system_tray(options: &CommandGlobalOpts) -> SystemTray {
+    SystemTray::new().with_menu(SystemTrayMenuBuilder::default(&options))
+}
 
 /// Create the system tray with all the major functions.
 /// Separate groups of related functions with a native separator.
