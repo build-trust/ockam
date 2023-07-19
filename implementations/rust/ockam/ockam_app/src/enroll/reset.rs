@@ -1,7 +1,10 @@
-use crate::Result;
 use miette::{miette, IntoDiagnostic};
-use ockam_command::{CommandGlobalOpts, GlobalArgs};
 use tauri::{AppHandle, Manager, Wry};
+use tracing::log::info;
+
+use ockam_command::{CommandGlobalOpts, GlobalArgs};
+
+use crate::Result;
 
 /// Reset the project.
 /// This function removes all persisted state
@@ -12,10 +15,7 @@ pub fn reset(app: &AppHandle<Wry>) -> Result<()> {
     let res = if let Err(e) = options.state.delete(true) {
         Err(miette!("{:?}", e).into())
     } else {
-        options
-            .terminal
-            .write_line("Local Ockam configuration deleted")
-            .into_diagnostic()?;
+        info!("Local Ockam configuration deleted");
         Ok(())
     };
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
