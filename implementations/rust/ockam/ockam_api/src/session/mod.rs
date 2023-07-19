@@ -171,7 +171,10 @@ impl Medic {
                         }
                     }
                 },
-                else => break
+                else => {
+                    sleep(self.delay).await;
+                    break
+                }
             }
         }
     }
