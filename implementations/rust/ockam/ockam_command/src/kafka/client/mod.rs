@@ -1,8 +1,8 @@
 use clap::{command, Args, Subcommand};
 
-use crate::kafka::consumer::create::CreateCommand;
-use crate::kafka::consumer::delete::DeleteCommand;
-use crate::kafka::consumer::list::ListCommand;
+use crate::kafka::client::create::CreateCommand;
+use crate::kafka::client::delete::DeleteCommand;
+use crate::kafka::client::list::ListCommand;
 use crate::CommandGlobalOpts;
 
 mod create;

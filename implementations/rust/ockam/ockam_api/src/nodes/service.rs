@@ -43,7 +43,6 @@ use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
-use crate::nodes::registry::KafkaServiceKind;
 use crate::nodes::NODEMANAGER_ADDR;
 use crate::session::sessions::{Key, Session};
 use crate::session::MedicHandle;
@@ -659,23 +658,11 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
                 self.start_kafka_outlet_service(ctx, req, dec).await?
             }
-            (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
-                self.start_kafka_consumer_service(ctx, req, dec).await?
+            (Post, ["node", "services", DefaultAddress::KAFKA_CLIENT]) => {
+                self.start_kafka_client_service(ctx, req, dec).await?
             }
-            (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
-                encode_request_result(
-                    self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Consumer)
-                        .await,
-                )?
-            }
-            (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
-                self.start_kafka_producer_service(ctx, req, dec).await?
-            }
-            (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
-                encode_request_result(
-                    self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Producer)
-                        .await,
-                )?
+            (Delete, ["node", "services", DefaultAddress::KAFKA_CLIENT]) => {
+                encode_request_result(self.delete_kafka_service(ctx, req, dec).await)?
             }
             (Get, ["node", "services"]) => self.list_services(req).await?,
             (Get, ["node", "services", service_type]) => {

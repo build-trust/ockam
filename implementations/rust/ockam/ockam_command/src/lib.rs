@@ -65,8 +65,7 @@ use enroll::EnrollCommand;
 use environment::EnvironmentCommand;
 use error::{Error, Result};
 use identity::IdentityCommand;
-use kafka::consumer::KafkaConsumerCommand;
-use kafka::producer::KafkaProducerCommand;
+use kafka::client::KafkaConsumerCommand;
 use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use markdown::MarkdownCommand;
@@ -276,7 +275,6 @@ pub enum OckamSubcommand {
 
     KafkaOutlet(KafkaOutletCommand),
     KafkaConsumer(KafkaConsumerCommand),
-    KafkaProducer(KafkaProducerCommand),
 
     SecureChannelListener(SecureChannelListenerCommand),
     SecureChannel(SecureChannelCommand),
@@ -396,7 +394,6 @@ impl OckamCommand {
             OckamSubcommand::TcpInlet(c) => c.run(options),
 
             OckamSubcommand::KafkaConsumer(c) => c.run(options),
-            OckamSubcommand::KafkaProducer(c) => c.run(options),
 
             OckamSubcommand::SecureChannelListener(c) => c.run(options),
             OckamSubcommand::SecureChannel(c) => c.run(options),

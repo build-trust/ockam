@@ -28,12 +28,12 @@ use crate::nodes::models::portal::CreateInlet;
 use crate::nodes::models::services::{
     DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
     StartAuthenticatorRequest, StartCredentialsService, StartEchoerServiceRequest,
-    StartHopServiceRequest, StartIdentityServiceRequest, StartKafkaConsumerRequest,
-    StartKafkaOutletRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
-    StartServiceRequest, StartUppercaseServiceRequest, StartVerifierService,
+    StartHopServiceRequest, StartIdentityServiceRequest, StartKafkaClientRequest,
+    StartKafkaOutletRequest, StartOktaIdentityProviderRequest, StartServiceRequest,
+    StartUppercaseServiceRequest, StartVerifierService,
 };
 use crate::nodes::registry::{
-    AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
+    AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, Registry,
     VerifierServiceInfo,
 };
 use crate::nodes::NodeManager;
@@ -612,19 +612,19 @@ impl NodeManagerWorker {
         Ok(Response::ok(request.id()).to_vec()?)
     }
 
-    pub(super) async fn start_kafka_consumer_service(
+    pub(super) async fn start_kafka_client_service<'a>(
         &mut self,
         context: &Context,
         req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        let body: StartServiceRequest<StartKafkaConsumerRequest> = dec.decode()?;
+        let body: StartServiceRequest<StartKafkaClientRequest> = dec.decode()?;
         let listener_address: Address = body.address().into();
         let body_req = body.request();
         let outlet_node_multiaddr = body_req.project_route().to_string().parse()?;
 
         if let Err(e) = self
-            .start_kafka_service_impl(
+            .start_kafka_client_service_impl(
                 context,
                 req,
                 listener_address,
@@ -632,37 +632,6 @@ impl NodeManagerWorker {
                 body_req.bootstrap_server_addr.port(),
                 body_req.brokers_port_range(),
                 outlet_node_multiaddr,
-                KafkaServiceKind::Consumer,
-            )
-            .await
-        {
-            return Ok(e.to_vec()?);
-        };
-
-        Ok(Response::ok(req.id()).to_vec()?)
-    }
-
-    pub(super) async fn start_kafka_producer_service(
-        &mut self,
-        context: &Context,
-        req: &Request,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Vec<u8>> {
-        let body: StartServiceRequest<StartKafkaProducerRequest> = dec.decode()?;
-        let listener_address: Address = body.address().into();
-        let body_req = body.request();
-        let outlet_node_multiaddr = body_req.project_route().to_string().parse()?;
-
-        if let Err(e) = self
-            .start_kafka_service_impl(
-                context,
-                req,
-                listener_address,
-                body_req.bootstrap_server_addr.ip(),
-                body_req.bootstrap_server_addr.port(),
-                body_req.brokers_port_range(),
-                outlet_node_multiaddr,
-                KafkaServiceKind::Producer,
             )
             .await
         {
@@ -673,7 +642,7 @@ impl NodeManagerWorker {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(super) async fn start_kafka_service_impl(
+    pub(super) async fn start_kafka_client_service_impl<'a>(
         &mut self,
         context: &Context,
         request: &Request,
@@ -682,7 +651,6 @@ impl NodeManagerWorker {
         server_bootstrap_port: u16,
         brokers_port_range: (u16, u16),
         outlet_node_multiaddr: MultiAddr,
-        kind: KafkaServiceKind,
     ) -> Result<(), ResponseBuilder<Error>> {
         debug!(
             "outlet_node_multiaddr: {}",
@@ -761,7 +729,7 @@ impl NodeManagerWorker {
             node_manager
                 .registry
                 .kafka_services
-                .insert(local_interceptor_address, KafkaServiceInfo::new(kind));
+                .insert(local_interceptor_address, KafkaServiceInfo {});
         }
 
         Ok(())
@@ -772,7 +740,6 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request,
         dec: &mut Decoder<'_>,
-        kind: KafkaServiceKind,
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let body: DeleteServiceRequest = match dec.decode() {
             Ok(it) => it,
@@ -789,19 +756,11 @@ impl NodeManagerWorker {
                     .with_message(format!("Service at address '{}' not found", address));
                 return Err(Response::not_found(req.id()).body(err_body));
             }
-            Some(e) => {
-                if kind.eq(e.kind()) {
-                    ctx.stop_worker(address.clone()).await?;
-                    node_manager.registry.kafka_services.remove(&address);
-                    Response::ok(req.id())
-                } else {
-                    error!(address = %address, "Service is not a kafka {}", kind.to_string());
-                    let err_body = Error::new(req.path()).with_message(format!(
-                        "Service at address '{}' is not a kafka {}",
-                        address, kind
-                    ));
-                    return Err(Response::internal_error(req.id()).body(err_body));
-                }
+            Some(_) => {
+                //TODO: more complete stop
+                ctx.stop_worker(address.clone()).await?;
+                node_manager.registry.kafka_services.remove(&address);
+                Response::ok(req.id())
             }
         };
         Ok(res)
@@ -877,14 +836,8 @@ impl NodeManagerWorker {
                 DefaultAddress::CREDENTIALS_SERVICE,
             ))
         });
-        registry.kafka_services.iter().for_each(|(address, info)| {
-            list.push(ServiceStatus::new(
-                address.address(),
-                match info.kind() {
-                    KafkaServiceKind::Consumer => "kafka-consumer",
-                    KafkaServiceKind::Producer => "kafka-producer",
-                },
-            ))
+        registry.kafka_services.iter().for_each(|(address, _info)| {
+            list.push(ServiceStatus::new(address.address(), "kafka-client"))
         });
 
         #[cfg(feature = "direct-authenticator")]

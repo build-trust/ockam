@@ -82,46 +82,13 @@ impl StartKafkaOutletRequest {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartKafkaConsumerRequest {
-    #[n(1)] pub bootstrap_server_addr: SocketAddr,
+pub struct StartKafkaClientRequest {
+    #[b(1)] pub bootstrap_server_addr: SocketAddr,
     #[n(2)] brokers_port_range: (u16, u16),
     #[n(3)] project_route: String,
 }
 
-impl StartKafkaConsumerRequest {
-    pub fn new(
-        bootstrap_server_addr: SocketAddr,
-        brokers_port_range: impl Into<(u16, u16)>,
-        project_route: MultiAddr,
-    ) -> Self {
-        Self {
-            bootstrap_server_addr,
-            brokers_port_range: brokers_port_range.into(),
-            project_route: project_route.to_string(),
-        }
-    }
-
-    pub fn bootstrap_server_addr(&self) -> SocketAddr {
-        self.bootstrap_server_addr
-    }
-    pub fn brokers_port_range(&self) -> (u16, u16) {
-        self.brokers_port_range
-    }
-    pub fn project_route(&self) -> &String {
-        &self.project_route
-    }
-}
-
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct StartKafkaProducerRequest {
-    #[n(1)] pub bootstrap_server_addr: SocketAddr,
-    #[n(2)] brokers_port_range: (u16, u16),
-    #[n(3)] project_route: String,
-}
-
-impl StartKafkaProducerRequest {
+impl StartKafkaClientRequest {
     pub fn new(
         bootstrap_server_addr: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,

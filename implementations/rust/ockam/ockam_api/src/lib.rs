@@ -170,8 +170,7 @@ impl DefaultAddress {
     pub const VERIFIER: &'static str = "verifier";
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
-    pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
-    pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
+    pub const KAFKA_CLIENT: &'static str = "kafka_client";
     pub const RPC_PROXY: &'static str = "rpc_proxy_service";
 
     pub fn is_valid(name: &str) -> bool {
@@ -191,8 +190,7 @@ impl DefaultAddress {
                 | Self::ENROLLMENT_TOKEN_ACCEPTOR
                 | Self::VERIFIER
                 | Self::OKTA_IDENTITY_PROVIDER
-                | Self::KAFKA_CONSUMER
-                | Self::KAFKA_PRODUCER
+                | Self::KAFKA_CLIENT
                 | Self::RPC_PROXY
         )
     }
@@ -213,8 +211,8 @@ impl DefaultAddress {
             Self::ENROLLMENT_TOKEN_ACCEPTOR,
             Self::VERIFIER,
             Self::OKTA_IDENTITY_PROVIDER,
-            Self::KAFKA_CONSUMER,
-            Self::KAFKA_PRODUCER,
+            Self::KAFKA_CLIENT,
+            Self::KAFKA_OUTLET,
             Self::RPC_PROXY,
         ]
         .iter()
@@ -325,8 +323,7 @@ mod test {
         assert!(DefaultAddress::is_valid(
             DefaultAddress::OKTA_IDENTITY_PROVIDER
         ));
-        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_CONSUMER));
-        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_PRODUCER));
+        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_CLIENT));
         assert!(DefaultAddress::is_valid(DefaultAddress::RPC_PROXY));
     }
 }

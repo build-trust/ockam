@@ -4,7 +4,7 @@ use colorful::Colorful;
 use tokio::{sync::Mutex, try_join};
 
 use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::services::{StartKafkaProducerRequest, StartServiceRequest};
+use ockam_api::nodes::models::services::{StartKafkaClientRequest, StartServiceRequest};
 use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -48,7 +48,7 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
         let tcp = TcpTransport::create(&ctx).await?;
         let node_name = get_node_name(&opts.state, &node_opts.at_node);
 
-        let payload = StartKafkaProducerRequest::new(
+        let payload = StartKafkaClientRequest::new(
             bootstrap_server.to_owned(),
             brokers_port_range,
             project_route,

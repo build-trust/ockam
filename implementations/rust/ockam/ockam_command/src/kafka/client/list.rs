@@ -47,7 +47,7 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(Request::get(format!(
         "/node/services/{}",
-        DefaultAddress::KAFKA_CONSUMER
+        DefaultAddress::KAFKA_CLIENT
     )))
     .await?;
     let services = rpc.parse_response_body::<models::services::ServiceList>()?;
