@@ -9,7 +9,6 @@ use ockam_command::enroll::{enroll, Auth0Service};
 use ockam_command::CommandGlobalOpts;
 use ockam_core::AsyncTryClone;
 
-use crate::app;
 use crate::app::AppState;
 use crate::Result;
 
@@ -35,7 +34,9 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     enroll_with_token(&context, app_state.options())
         .await
         .unwrap_or_else(|e| error!("{:?}", e));
-    app.trigger_global(app::events::SYSTEM_TRAY_ON_UPDATE, None);
+
+    app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+
     Ok(())
 }
 
