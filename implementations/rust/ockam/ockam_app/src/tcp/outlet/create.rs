@@ -10,7 +10,7 @@ use crate::app::AppState;
 use crate::Result;
 
 /// Create a TCP outlet within the default node.
-pub async fn create(app: &AppHandle<Wry>) -> Result<()> {
+pub async fn tcp_outlet_create(app: &AppHandle<Wry>) -> Result<()> {
     info!("creating an outlet");
     let state = app.state::<AppState>();
     let to = get_free_address()?.to_string();
@@ -26,6 +26,8 @@ pub async fn create(app: &AppHandle<Wry>) -> Result<()> {
         Err(e) => error!("{:?}", e),
         Ok(s) => info!("the outlet status is {:?}", s),
     }
+
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+
     Ok(())
 }

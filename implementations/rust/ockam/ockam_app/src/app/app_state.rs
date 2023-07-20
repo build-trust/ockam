@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use miette::IntoDiagnostic;
+use tauri::async_runtime::RwLock;
 
+use crate::app::tray_menu::TrayMenu;
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{CliState, StateDirTrait};
@@ -26,6 +28,7 @@ pub struct AppState {
     global_args: GlobalArgs,
     state: CliState,
     node_manager: NodeManagerWorker,
+    tray_menu: Arc<RwLock<TrayMenu>>,
 }
 
 impl From<AppState> for CommandGlobalOpts {
@@ -58,6 +61,7 @@ impl AppState {
             global_args: options.global_args,
             state: options.state,
             node_manager,
+            tray_menu: Arc::new(RwLock::new(TrayMenu::default())),
         }
     }
 
@@ -85,6 +89,14 @@ impl AppState {
             state: self.state.clone(),
             terminal: Terminal::quiet(),
         }
+    }
+
+    pub fn tray_menu(&self) -> Arc<RwLock<TrayMenu>> {
+        self.tray_menu.clone()
+    }
+
+    pub fn is_enrolled(&self) -> bool {
+        self.state.projects.default().is_ok()
     }
 }
 
