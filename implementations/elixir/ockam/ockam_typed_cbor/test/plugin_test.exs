@@ -37,7 +37,7 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
 
     p = %Test.Person{p | age: nil}
     {:ok, data} = Test.Person.encode(p)
-    {:ok, ^p, ""} = Test.Person.decode(data)
+    assert {:ok, ^p, ""} = Test.Person.decode(data)
 
     p = %Test.Person{
       p
@@ -48,14 +48,14 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
     }
 
     {:ok, data} = Test.Person.encode(p)
-    {:ok, ^p, ""} = Test.Person.decode(data)
+    assert {:ok, ^p, ""} = Test.Person.decode(data)
 
     p = %Test.Person{p | nicknames: ["aa", "bb"]}
     {:ok, data} = Test.Person.encode(p)
-    {:ok, ^p, ""} = Test.Person.decode(data)
+    assert {:ok, ^p, ""} = Test.Person.decode(data)
 
     {:ok, data} = Test.Person.encode_list([p, p])
-    {:ok, [^p, ^p], ""} = Test.Person.decode_list(data)
+    assert {:ok, [^p, ^p], ""} = Test.Person.decode_list(data)
   end
 
   test "encode errors" do
@@ -65,7 +65,9 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
 
     # Incorrect type
     p = %Test.Person{name: ["Test"], age: 23, gender: :male, addresses: [], like_shoes: false}
-    {:error, "type mismatch, expected schema :string, value: [\"Test\"]"} = Test.Person.encode(p)
+
+    assert {:error, "type mismatch, expected schema :string, value: [\"Test\"]"} =
+             Test.Person.encode(p)
   end
 
   test "decode errors" do
@@ -73,10 +75,10 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
     {:error, _} = Test.Person.decode(CBOR.encode(%{}))
 
     # Incorrect type for field 1 (name)
-    {:error, "type mismatch, expected schema :string"} =
-      Test.Person.decode(CBOR.encode(%{1 => 22, 2 => [], 4 => 0, 5 => true}))
+    assert {:error, "type mismatch, expected schema :string"} =
+             Test.Person.decode(CBOR.encode(%{1 => 22, 2 => [], 4 => 0, 5 => true}))
 
     # Garbage data
-    {:error, _} = Test.Person.decode(<<200>>)
+    assert {:error, _} = Test.Person.decode(<<200>>)
   end
 end
