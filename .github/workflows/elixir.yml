@@ -147,6 +147,19 @@ jobs:
       - uses: ./.github/actions/elixir_cache
       - run: cd implementations/elixir && ../../gradlew lint_ockam_cloud_node
 
+  lint_ockam_typed_cbor:
+    name: Elixir - lint_ockam_typed_cbor
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/elixir_cache
+      - run: cd implementations/elixir && ../../gradlew lint_ockam_typed_cbor
+
   build_ockam_vault_software:
     name: Elixir - build_ockam_vault_software
     runs-on: ubuntu-20.04
@@ -237,6 +250,19 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/elixir_cache
       - run: cd implementations/elixir && ../../gradlew build_ockam_cloud_node
+
+  build_ockam_typed_cbor:
+    name: Elixir - build_ockam_typed_cbor
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/elixir_cache
+      - run: cd implementations/elixir && ../../gradlew build_ockam_typed_cbor
 
   test_ockam_vault_software:
     name: Elixir - test_ockam_vault_software
@@ -331,3 +357,16 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/elixir_cache
       - run: cd implementations/elixir && ../../gradlew test_ockam_cloud_node
+
+  test_ockam_typed_cbor:
+    name: Elixir - test_ockam_typed_cbor
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/elixir_cache
+      - run: cd implementations/elixir && ../../gradlew test_ockam_typed_cbor
