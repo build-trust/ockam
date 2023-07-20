@@ -71,6 +71,7 @@ defmodule Ockam.TypedCBOR.Plugin do
   def extract_options({:|, _, [opt1, opts2]}), do: [extract_option(opt1) | extract_options(opts2)]
   def extract_options(val), do: [extract_option(val)]
 
+  # credo:disable-for-lines:2 Credo.Check.Refactor.CyclomaticComplexity
   @impl true
   def after_definition(_) do
     quote do
