@@ -12,12 +12,22 @@ mod error;
 mod quit;
 mod tcp;
 
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(not(target_os = "macos"))]
+mod others;
+
+#[cfg(target_os = "macos")]
+use macos as platform;
+#[cfg(not(target_os = "macos"))]
+use others as platform;
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppState::new();
 
-    // For now the application only consists in a system tray with several menu items
+    // For now, the application only consists of a system tray with several menu items
     let mut app = tauri::Builder::default()
         .plugin(configure_tauri_plugin_log())
         .setup(move |app| setup_app(app))
@@ -27,8 +37,7 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("Error while building the Ockam application");
 
-    #[cfg(target_os = "macos")]
-    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+    platform::set_platform_activation_policy(&mut app);
 
     app.run(process_application_event);
 }
