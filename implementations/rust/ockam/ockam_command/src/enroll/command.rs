@@ -128,7 +128,7 @@ pub async fn enroll_with_node(
 ) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     rpc.request(api::enroll::auth0(route, token)).await?;
-    let (res, dec) = rpc.check_response()?;
+    let (res, dec) = rpc.parse_response_header()?;
     if res.status() == Some(Status::Ok) {
         info!("Enrolled successfully");
         Ok(())
@@ -136,7 +136,7 @@ pub async fn enroll_with_node(
         info!("Already enrolled");
         Ok(())
     } else {
-        Err(miette!("{}", Response::parse_err_msg(&[], res, dec)))
+        Err(miette!("{}", Response::parse_err_msg(res, dec)))
     }
 }
 
@@ -150,7 +150,7 @@ async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str)
     let send_req = async {
         rpc.request(api::space::list(&CloudOpts::route())).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response::<Vec<Space>>()
+        rpc.parse_response_body::<Vec<Space>>()
     };
 
     let message = vec![format!("Checking for any existing spaces...")];
@@ -184,7 +184,7 @@ async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str)
 
             rpc.request(api::space::create(cmd)).await?;
             *is_finished.lock().await = true;
-            rpc.parse_response::<Space>()
+            rpc.parse_response_body::<Space>()
         };
 
         let message = vec![format!(
@@ -246,7 +246,7 @@ async fn default_project(
     let send_req = async {
         rpc.request(api::project::list(&CloudOpts::route())).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response::<Vec<Project>>()
+        rpc.parse_response_body::<Vec<Project>>()
     };
 
     let message = vec![format!("Checking for any existing projects...")];
@@ -273,7 +273,7 @@ async fn default_project(
             rpc.request(api::project::create(name, &space.id, &CloudOpts::route()))
                 .await?;
             *is_finished.lock().await = true;
-            rpc.parse_response::<Project>()
+            rpc.parse_response_body::<Project>()
         };
 
         let message = vec![format!(

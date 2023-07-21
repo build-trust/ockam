@@ -67,7 +67,7 @@ async fn run_impl(
 
     let send_req = async {
         rpc.request(api::list_secure_channel_listener()).await?;
-        let res = rpc.parse_response::<SecureChannelListenersList>()?;
+        let res = rpc.parse_response_body::<SecureChannelListenersList>()?;
 
         *is_finished.lock().await = true;
         Ok(res)

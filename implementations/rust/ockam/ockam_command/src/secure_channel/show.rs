@@ -47,7 +47,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let request = api::show_secure_channel(address);
     rpc.request(request).await?;
-    let response = rpc.parse_response::<ShowSecureChannelResponse>()?;
+    let response = rpc.parse_response_body::<ShowSecureChannelResponse>()?;
 
     rpc.print_response(response)?;
 

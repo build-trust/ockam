@@ -52,7 +52,7 @@ async fn run_impl(
         rpc.request(Request::get("/node/inlet")).await?;
 
         *is_finished.lock().await = true;
-        rpc.parse_response::<models::portal::InletList>()
+        rpc.parse_response_body::<models::portal::InletList>()
     };
 
     let output_messages = vec![format!(

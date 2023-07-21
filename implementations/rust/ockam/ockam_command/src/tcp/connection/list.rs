@@ -53,7 +53,7 @@ async fn run_impl(
         rpc.request(Request::get("/node/tcp/connection")).await?;
 
         *is_finished.lock().await = true;
-        rpc.parse_response::<models::transport::TransportList>()
+        rpc.parse_response_body::<models::transport::TransportList>()
     };
 
     let output_messages = vec![format!(

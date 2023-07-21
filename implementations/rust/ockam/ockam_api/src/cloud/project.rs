@@ -258,7 +258,11 @@ mod node {
                 route,
                 None,
             );
-            Response::parse_response(self.create_project_response(ctx, request, space_id).await?)
+            Response::parse_response_body(
+                self.create_project_response(ctx, request, space_id)
+                    .await?
+                    .as_slice(),
+            )
         }
 
         pub(crate) async fn create_project_response(
@@ -294,7 +298,7 @@ mod node {
             let bytes = self
                 .list_projects_response(ctx, CloudRequestWrapper::bare(route))
                 .await?;
-            Response::parse_response(bytes)
+            Response::parse_response_body(bytes.as_slice())
         }
 
         pub(crate) async fn list_projects_response(
@@ -325,9 +329,10 @@ mod node {
             route: &MultiAddr,
             project_id: &str,
         ) -> Result<Project> {
-            Response::parse_response(
+            Response::parse_response_body(
                 self.get_project_response(ctx, CloudRequestWrapper::bare(route), project_id)
-                    .await?,
+                    .await?
+                    .as_slice(),
             )
         }
 

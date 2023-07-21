@@ -54,7 +54,7 @@ pub(crate) async fn has_policy(
     let req = Request::get(format!("/policy/{resource}"));
     let mut rpc = Rpc::background(ctx, opts, node)?;
     rpc.request(req).await?;
-    let pol: PolicyList = rpc.parse_response()?;
+    let pol: PolicyList = rpc.parse_response_body()?;
     Ok(!pol.expressions().is_empty())
 }
 

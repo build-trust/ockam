@@ -128,44 +128,64 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn parse_response<T>(bytes: Vec<u8>) -> Result<T>
+    /// Return true if the status is defined and Ok
+    pub fn is_ok(&self) -> bool {
+        self.status.map(|s| s == Status::Ok).unwrap_or(false)
+    }
+
+    /// Parse the response header and if it is ok
+    /// parse the response body
+    pub fn parse_response_body<T>(bytes: &[u8]) -> Result<T>
     where
         T: for<'a> Decode<'a, ()>,
     {
-        let mut dec = Self::parse_response_decoder(bytes.as_slice())?;
-        match dec.decode() {
-            Ok(t) => Ok(t),
-            Err(e) => {
-                error!(%e, dec = %minicbor::display(bytes.as_slice()), hex = %hex::encode(bytes.as_slice()), "Failed to decode response");
+        let (response, mut decoder) = Self::parse_response_header(bytes)?;
+        if response.is_ok() {
+            if response.has_body() {
+                match decoder.decode() {
+                    Ok(t) => Ok(t),
+                    Err(e) => {
+                        #[cfg(all(feature = "alloc", feature = "minicbor/half"))]
+                        error!(%e, dec = %minicbor::display(bytes), hex = %hex::encode(bytes), "Failed to decode response");
+                        Err(crate::Error::new(
+                            Origin::Api,
+                            Kind::Serialization,
+                            format!("Failed to decode response body: {}", e),
+                        ))
+                    }
+                }
+            } else {
                 Err(crate::Error::new(
                     Origin::Api,
                     Kind::Serialization,
-                    format!("Failed to decode response body: {}", e),
+                    "expected a message body, got nothing".to_string(),
                 ))
             }
-        }
-    }
-
-    /// Parse the header and returns the decoder.
-    fn parse_response_decoder(bytes: &[u8]) -> Result<Decoder> {
-        let mut dec = Decoder::new(bytes);
-        let hdr = dec.decode::<Response>()?;
-        if hdr.status() == Some(Status::Ok) {
-            Ok(dec)
         } else {
-            let msg = Self::parse_err_msg(bytes, hdr, dec);
+            let msg = Self::parse_err_msg(response, decoder);
             Err(crate::Error::new(Origin::Api, Kind::Serialization, msg))
         }
     }
 
-    pub fn parse_err_msg(bytes: &[u8], hdr: Response, mut dec: Decoder) -> String {
+    /// Parse the response header and return it + the Decoder to continue parsing if necessary
+    pub fn parse_response_header(bytes: &[u8]) -> Result<(Response, Decoder)> {
+        #[cfg(all(feature = "alloc", feature = "minicbor/half"))]
         trace! {
             dec = %minicbor::display(bytes),
             hex = %hex::encode(bytes),
             "Received CBOR message"
         };
-        match hdr.status() {
-            Some(status) if hdr.has_body() => {
+
+        let mut dec = Decoder::new(bytes);
+        let hdr = dec.decode::<Response>()?;
+        Ok((hdr, dec))
+    }
+
+    /// If the response is not successful and the response has a body
+    /// parse the response body as an error
+    pub fn parse_err_msg(response: Response, mut dec: Decoder) -> String {
+        match response.status() {
+            Some(status) if response.has_body() => {
                 let err = if matches!(dec.datatype(), Ok(Type::String)) {
                     dec.decode::<String>()
                         .map(|msg| format!("Message: {msg}"))

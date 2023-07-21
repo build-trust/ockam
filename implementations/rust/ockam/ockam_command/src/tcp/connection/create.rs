@@ -91,7 +91,7 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let request = api::create_tcp_connection(&cmd);
     rpc.request(request).await?;
-    let response = rpc.parse_response::<models::transport::TransportStatus>()?;
+    let response = rpc.parse_response_body::<models::transport::TransportStatus>()?;
 
     cmd.print_output(&opts, &response)
 }

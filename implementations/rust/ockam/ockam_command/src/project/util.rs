@@ -123,7 +123,7 @@ pub async fn create_secure_channel_to_project(
     let req = Request::post("/node/secure_channel").body(payload);
     rpc.request(req).await?;
 
-    let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
+    let sc = rpc.parse_response_body::<CreateSecureChannelResponse>()?;
     Ok(sc.multiaddr()?)
 }
 
@@ -147,7 +147,7 @@ pub async fn create_secure_channel_to_authority(
     );
     let req = Request::post("/node/secure_channel").body(payload);
     rpc.request(req).await?;
-    let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
+    let res = rpc.parse_response_body::<CreateSecureChannelResponse>()?;
     let addr = res.multiaddr()?;
     Ok(addr)
 }
@@ -201,7 +201,7 @@ pub async fn check_project_readiness(
                 .await
                 .is_ok()
             {
-                let p = rpc.parse_response::<Project>()?;
+                let p = rpc.parse_response_body::<Project>()?;
                 if p.is_ready() {
                     return Ok(p);
                 }
@@ -316,7 +316,7 @@ pub async fn refresh_projects(
 ) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
     rpc.request(api::project::list(controller_route)).await?;
-    let projects = rpc.parse_response::<Vec<Project>>()?;
+    let projects = rpc.parse_response_body::<Vec<Project>>()?;
     for project in projects {
         opts.state
             .projects

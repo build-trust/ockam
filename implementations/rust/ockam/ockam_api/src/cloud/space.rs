@@ -60,12 +60,13 @@ mod node {
             route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<Space> {
-            Response::parse_response(
+            Response::parse_response_body(
                 self.create_space_response(
                     ctx,
                     CloudRequestWrapper::new(req, route, identity_name),
                 )
-                .await?,
+                .await?
+                .as_slice(),
             )
         }
 
@@ -95,9 +96,10 @@ mod node {
         }
 
         pub async fn list_spaces(&self, ctx: &Context, route: &MultiAddr) -> Result<Vec<Space>> {
-            Response::parse_response(
+            Response::parse_response_body(
                 self.list_spaces_response(ctx, CloudRequestWrapper::bare(route))
-                    .await?,
+                    .await?
+                    .as_slice(),
             )
         }
 
@@ -126,9 +128,10 @@ mod node {
         }
 
         pub async fn get_space(&self, ctx: &Context, route: &MultiAddr, id: &str) -> Result<Space> {
-            Response::parse_response(
+            Response::parse_response_body(
                 self.get_space_response(ctx, CloudRequestWrapper::bare(route), id)
-                    .await?,
+                    .await?
+                    .as_slice(),
             )
         }
 

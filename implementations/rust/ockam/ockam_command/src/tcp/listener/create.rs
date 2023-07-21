@@ -40,7 +40,7 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(Request::post("/node/tcp/listener").body(CreateTcpListener::new(cmd.address)))
         .await?;
-    let response = rpc.parse_response::<models::transport::TransportStatus>()?;
+    let response = rpc.parse_response_body::<models::transport::TransportStatus>()?;
 
     let socket = response.socket_addr().into_diagnostic()?;
     let port = socket.port();

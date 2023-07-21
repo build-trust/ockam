@@ -123,7 +123,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         let request = Request::post("/node/secure_channel").body(payload);
 
         rpc.request(request).await?;
-        let resp = rpc.parse_response::<CreateSecureChannelResponse>()?;
+        let resp = rpc.parse_response_body::<CreateSecureChannelResponse>()?;
         *is_finished.lock().await = true;
 
         Ok(resp)

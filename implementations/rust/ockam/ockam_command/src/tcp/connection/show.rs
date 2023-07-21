@@ -44,7 +44,7 @@ async fn run_impl(
         &cmd.address
     )))
     .await?;
-    let res = rpc.parse_response::<models::transport::TransportStatus>()?;
+    let res = rpc.parse_response_body::<models::transport::TransportStatus>()?;
 
     println!("TCP Connection:");
     println!("  Type: {}", res.tt);

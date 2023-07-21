@@ -154,7 +154,7 @@ async fn rpc(
             match rpc.is_ok() {
                 Ok(_) => {
                     *is_finished.lock().await = true;
-                    break rpc.parse_response::<InletStatus>()?;
+                    break rpc.parse_response_body::<InletStatus>()?;
                 }
                 Err(_) => {
                     if let Some(spinner) = progress_bar.as_ref() {

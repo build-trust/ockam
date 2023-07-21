@@ -59,7 +59,7 @@ async fn run_impl(
         rpc.request(api::list_tcp_listeners()).await?;
 
         *is_finished.lock().await = true;
-        rpc.parse_response::<TransportList>()
+        rpc.parse_response_body::<TransportList>()
     };
 
     let output_messages = vec![format!(

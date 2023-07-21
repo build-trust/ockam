@@ -58,7 +58,7 @@ async fn run_impl(
         let req = Request::get(format!("/policy/{resource}"));
 
         rpc.request(req).await?;
-        rpc.parse_response::<PolicyList>()
+        rpc.parse_response_body::<PolicyList>()
     };
 
     let output_messages = vec![format!(

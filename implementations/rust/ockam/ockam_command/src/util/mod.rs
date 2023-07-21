@@ -150,7 +150,7 @@ impl<'a> Rpc<'a> {
             })?;
 
         if self.is_ok().is_err() {
-            let err: Error = self.parse_response()?;
+            let err: Error = self.parse_response_body()?;
             let err_msg = err.message().unwrap_or_default().to_string();
             return Err(miette!(err_msg).into());
         }
@@ -177,7 +177,7 @@ impl<'a> Rpc<'a> {
             })?.body();
 
         if self.is_ok().is_err() {
-            let err: Error = self.parse_response()?;
+            let err: Error = self.parse_response_body()?;
             let err_msg = err.message().unwrap_or_default().to_string();
             return Err(miette!(err_msg).into());
         }
@@ -217,26 +217,28 @@ impl<'a> Rpc<'a> {
     }
 
     /// Parse the response body and return it.
-    pub fn parse_response<T>(&self) -> Result<T>
+    pub fn parse_response_body<T>(&self) -> Result<T>
     where
         T: for<'b> Decode<'b, ()>,
     {
-        Response::parse_response(self.buf.clone()).map_err(|e| miette!(e).into())
+        Response::parse_response_body(self.buf.as_slice()).map_err(|e| miette!(e).into())
     }
 
     /// Check response's status code is OK.
     pub fn is_ok(&self) -> Result<()> {
-        Response::parse_response(self.buf.clone())?;
-        Ok(())
+        let (response, decoder) = Response::parse_response_header(self.buf.as_slice())?;
+        if !response.is_ok() {
+            Err(miette!(Response::parse_err_msg(response, decoder)).into())
+        } else {
+            Ok(())
+        }
     }
 
-    pub fn check_response(&self) -> Result<(Response, Decoder)> {
-        let mut dec = Decoder::new(&self.buf);
-        let hdr = dec
-            .decode::<Response>()
+    pub fn parse_response_header(&self) -> Result<(Response, Decoder)> {
+        let (response, decoder) = Response::parse_response_header(self.buf.as_slice())
             .into_diagnostic()
             .context("Failed to decode response header")?;
-        Ok((hdr, dec))
+        Ok((response, decoder))
     }
 
     /// Parse the response body and print it.
@@ -244,7 +246,7 @@ impl<'a> Rpc<'a> {
     where
         T: for<'b> Decode<'b, ()> + Output + serde::Serialize,
     {
-        let b: T = self.parse_response()?;
+        let b: T = self.parse_response_body()?;
         self.print_response(b)
     }
 

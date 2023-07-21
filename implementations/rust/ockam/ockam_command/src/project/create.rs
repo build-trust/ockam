@@ -62,7 +62,7 @@ async fn run_impl(
         &CloudOpts::route(),
     ))
     .await?;
-    let project = rpc.parse_response::<Project>()?;
+    let project = rpc.parse_response_body::<Project>()?;
     let operation_id = project.operation_id.clone().unwrap();
     check_for_completion(ctx, &opts, rpc.node_name(), &operation_id).await?;
     let project = check_project_readiness(ctx, &opts, &node_name, None, project).await?;

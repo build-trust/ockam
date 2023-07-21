@@ -5,7 +5,7 @@ use minicbor::Encode;
 
 use ockam::{Context, TcpTransport};
 use ockam_api::DefaultAddress;
-use ockam_core::api::{RequestBuilder, Status};
+use ockam_core::api::RequestBuilder;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
@@ -170,10 +170,10 @@ where
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp)?.build();
     rpc.request(req).await?;
 
-    let (res, _dec) = rpc.check_response()?;
-    match res.status() {
-        Some(Status::Ok) => Ok(()),
-        _ => Err(miette!("Failed to start {} service", serv_name).into()),
+    if rpc.is_ok().is_ok() {
+        Ok(())
+    } else {
+        Err(miette!("Failed to start {} service", serv_name).into())
     }
 }
 

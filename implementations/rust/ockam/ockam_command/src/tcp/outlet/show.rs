@@ -46,7 +46,7 @@ pub async fn run_impl(
     rpc.request(make_api_request(cmd)?).await?;
     rpc.is_ok()?;
 
-    let outlet_to_show = rpc.parse_response::<OutletStatus>()?;
+    let outlet_to_show = rpc.parse_response_body::<OutletStatus>()?;
 
     println!("Outlet:");
     println!("  Alias: {}", outlet_to_show.alias);
