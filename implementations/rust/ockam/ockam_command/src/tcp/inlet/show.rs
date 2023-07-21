@@ -44,7 +44,7 @@ pub async fn run_impl(
     rpc.request(make_api_request(cmd)?).await?;
     rpc.is_ok()?;
 
-    let inlet_to_show = rpc.parse_response::<InletStatus>()?;
+    let inlet_to_show = rpc.parse_response_body::<InletStatus>()?;
 
     println!("Inlet:");
     println!("  Alias: {}", inlet_to_show.alias);

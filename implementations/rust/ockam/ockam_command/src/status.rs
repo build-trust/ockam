@@ -94,7 +94,7 @@ async fn get_node_status(
         .await
         .is_ok()
     {
-        let resp = rpc.parse_response::<NodeStatusModel>()?;
+        let resp = rpc.parse_response_body::<NodeStatusModel>()?;
         node_status = resp.status;
     }
 

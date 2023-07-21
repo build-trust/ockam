@@ -59,7 +59,7 @@ async fn run_impl(
 
         let send_req = async {
             let node_status = if rpc.request(api::query_status()).await.is_ok() {
-                let resp = rpc.parse_response::<NodeStatus>()?;
+                let resp = rpc.parse_response_body::<NodeStatus>()?;
                 if let Ok(node_state) = opts.state.nodes.get(&node_name) {
                     // Update the persisted configuration data with the pids
                     // responded by nodes.

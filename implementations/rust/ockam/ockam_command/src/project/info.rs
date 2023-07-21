@@ -134,7 +134,7 @@ async fn run_impl(
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::project::show(&id, controller_route))
         .await?;
-    let info: ProjectInfo = rpc.parse_response::<Project>()?.into();
+    let info: ProjectInfo = rpc.parse_response_body::<Project>()?.into();
 
     rpc.print_response(&info)?;
 

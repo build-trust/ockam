@@ -116,7 +116,7 @@ async fn rpc(
         rpc.request_with_timeout(req(&to, msg_bytes), Duration::from_secs(cmd.timeout))
             .await?;
         let res = {
-            let res = rpc.parse_response::<Vec<u8>>()?;
+            let res = rpc.parse_response_body::<Vec<u8>>()?;
             if cmd.hex {
                 hex::encode(res)
             } else {

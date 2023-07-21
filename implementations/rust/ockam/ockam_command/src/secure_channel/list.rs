@@ -100,7 +100,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 
     let send_req = async {
         rpc.request(api::list_secure_channels()).await?;
-        let channel_identifiers = rpc.parse_response::<Vec<String>>()?;
+        let channel_identifiers = rpc.parse_response_body::<Vec<String>>()?;
 
         *is_finished.lock().await = true;
         Ok(channel_identifiers)
@@ -122,7 +122,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
                 ockam_api::nodes::models::secure_channel::ShowSecureChannelRequest,
             > = api::show_secure_channel(&Address::from(channel_addr));
             rpc.request(request).await?;
-            let show_response = rpc.parse_response::<ShowSecureChannelResponse>()?;
+            let show_response = rpc.parse_response_body::<ShowSecureChannelResponse>()?;
             let secure_channel_output =
                 cmd.build_output(&node_name, channel_addr, show_response)?;
             *is_finished.lock().await = true;

@@ -41,7 +41,7 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
     rpc.request(Request::get(format!("/node/tcp/listener/{}", &cmd.address)))
         .await?;
-    let res = rpc.parse_response::<models::transport::TransportStatus>()?;
+    let res = rpc.parse_response_body::<models::transport::TransportStatus>()?;
 
     println!("TCP Listener:");
     println!("  Type: {}", res.tt);

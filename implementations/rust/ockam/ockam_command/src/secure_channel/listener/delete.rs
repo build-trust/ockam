@@ -48,7 +48,7 @@ async fn run_impl(
     let req = api::delete_secure_channel_listener(&cmd.address);
     rpc.request(req).await?;
     rpc.is_ok()?;
-    let res = rpc.parse_response::<DeleteSecureChannelListenerResponse>()?;
+    let res = rpc.parse_response_body::<DeleteSecureChannelListenerResponse>()?;
     let addr = res.addr;
     opts.terminal
         .stdout()

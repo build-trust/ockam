@@ -119,7 +119,7 @@ pub mod utils {
         let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
         let req = Request::get("subscription").body(CloudRequestWrapper::bare(controller_route));
         rpc.request(req).await?;
-        let subscriptions = rpc.parse_response::<Vec<Subscription>>()?;
+        let subscriptions = rpc.parse_response_body::<Vec<Subscription>>()?;
         let subscription = subscriptions
             .into_iter()
             .find(|s| s.space_id == Some(space_id.into()))

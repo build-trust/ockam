@@ -213,27 +213,27 @@ pub async fn print_query_status(
         // Get list of services for the node
         let mut rpc = rpc.clone();
         rpc.request(api::list_services()).await?;
-        let services = rpc.parse_response::<ServiceList>()?;
+        let services = rpc.parse_response_body::<ServiceList>()?;
 
         // Get list of TCP listeners for node
         let mut rpc = rpc.clone();
         rpc.request(api::list_tcp_listeners()).await?;
-        let tcp_listeners = rpc.parse_response::<TransportList>()?;
+        let tcp_listeners = rpc.parse_response_body::<TransportList>()?;
 
         // Get list of Secure Channel Listeners
         let mut rpc = rpc.clone();
         rpc.request(api::list_secure_channel_listener()).await?;
-        let secure_channel_listeners = rpc.parse_response::<SecureChannelListenersList>()?;
+        let secure_channel_listeners = rpc.parse_response_body::<SecureChannelListenersList>()?;
 
         // Get list of inlets
         let mut rpc = rpc.clone();
         rpc.request(api::list_inlets()).await?;
-        let inlets = rpc.parse_response::<InletList>()?;
+        let inlets = rpc.parse_response_body::<InletList>()?;
 
         // Get list of outlets
         let mut rpc = rpc.clone();
         rpc.request(api::list_outlets()).await?;
-        let outlets = rpc.parse_response::<OutletList>()?;
+        let outlets = rpc.parse_response_body::<OutletList>()?;
 
         let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state

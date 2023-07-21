@@ -59,7 +59,7 @@ async fn run_impl(
 
     let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, controller_route, None));
     rpc.request(req).await?;
-    let res = rpc.parse_response::<CreateOperationResponse>()?;
+    let res = rpc.parse_response_body::<CreateOperationResponse>()?;
     let operation_id = res.operation_id;
 
     check_for_completion(&ctx, &opts, rpc.node_name(), &operation_id).await?;

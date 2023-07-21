@@ -50,7 +50,7 @@ async fn run_impl(
         DefaultAddress::KAFKA_CONSUMER
     )))
     .await?;
-    let services = rpc.parse_response::<models::services::ServiceList>()?;
+    let services = rpc.parse_response_body::<models::services::ServiceList>()?;
     if services.list.is_empty() {
         opts.terminal
             .stdout()

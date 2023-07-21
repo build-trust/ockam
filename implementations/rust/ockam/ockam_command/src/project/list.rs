@@ -51,7 +51,7 @@ async fn run_impl(
 
     let send_req = async {
         rpc.request(api::project::list(&CloudOpts::route())).await?;
-        let r = rpc.parse_response::<Vec<Project>>()?;
+        let r = rpc.parse_response_body::<Vec<Project>>()?;
 
         *is_finished.lock().await = true;
         Ok(r)

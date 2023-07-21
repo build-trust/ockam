@@ -287,7 +287,7 @@ impl<'a> OrchestratorApi<'a> {
 
         info!("Response is OK!");
 
-        self.rpc.parse_response()
+        self.rpc.parse_response_body()
     }
 
     pub async fn request<T>(&mut self, req: RequestBuilder<T>) -> Result<()>

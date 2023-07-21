@@ -151,5 +151,5 @@ pub async fn send_request(
     let mut rpc = Rpc::background(ctx, opts, &to_node)?;
     let req = Request::post("/node/outlet").body(payload);
     rpc.request(req).await?;
-    rpc.parse_response::<OutletStatus>()
+    rpc.parse_response_body::<OutletStatus>()
 }

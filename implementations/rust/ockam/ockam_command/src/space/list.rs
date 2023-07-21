@@ -53,7 +53,7 @@ async fn run_impl(
         rpc.request(api::space::list(&CloudOpts::route())).await?;
 
         *is_finished.lock().await = true;
-        rpc.parse_response::<Vec<Space>>()
+        rpc.parse_response_body::<Vec<Space>>()
     };
 
     let output_messages = vec![format!("Listing Spaces...\n",)];
