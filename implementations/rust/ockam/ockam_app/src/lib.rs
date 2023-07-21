@@ -22,7 +22,6 @@ use macos as platform;
 #[cfg(not(target_os = "macos"))]
 use others as platform;
 
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppState::new();
