@@ -231,10 +231,9 @@ impl CreateProject {
 }
 
 mod node {
-    use minicbor::Decoder;
     use tracing::trace;
 
-    use ockam_core::api::Request;
+    use ockam_core::api::{Request, Response};
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
@@ -246,19 +245,32 @@ mod node {
     const TARGET: &str = "ockam_api::cloud::project";
 
     impl NodeManagerWorker {
-        pub(crate) async fn create_project(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+        pub async fn create_project(
+            &self,
+            ctx: &Context,
+            route: &MultiAddr,
+            space_id: &str,
+            project_name: &str,
+            users: Vec<String>,
+        ) -> Result<Project> {
+            let request = CloudRequestWrapper::new(
+                CreateProject::new(project_name.to_string(), users),
+                route,
+                None,
+            );
+            Response::parse_response(self.create_project_response(ctx, request, space_id).await?)
+        }
+
+        pub(crate) async fn create_project_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: CloudRequestWrapper<CreateProject>,
             space_id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<CreateProject> = dec.decode()?;
             let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
-
             let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
-
             let req_builder =
                 Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
 
@@ -274,17 +286,25 @@ mod node {
             .await
         }
 
-        pub(crate) async fn list_projects(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
+        pub async fn list_projects(
+            &self,
+            ctx: &Context,
+            route: &MultiAddr,
+        ) -> Result<Vec<Project>> {
+            let bytes = self
+                .list_projects_response(ctx, CloudRequestWrapper::bare(route))
+                .await?;
+            Response::parse_response(bytes)
+        }
 
+        pub(crate) async fn list_projects_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
+        ) -> Result<Vec<u8>> {
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let label = "list_projects";
             trace!(target: TARGET, "listing projects");
-
             let req_builder = Request::get("/v0");
 
             self.request_controller(
@@ -299,18 +319,28 @@ mod node {
             .await
         }
 
-        pub(crate) async fn get_project(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+        pub async fn get_project(
+            &self,
+            ctx: &Context,
+            route: &MultiAddr,
+            project_id: &str,
+        ) -> Result<Project> {
+            Response::parse_response(
+                self.get_project_response(ctx, CloudRequestWrapper::bare(route), project_id)
+                    .await?,
+            )
+        }
+
+        pub(crate) async fn get_project_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
             project_id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "get_project";
             trace!(target: TARGET, %project_id, "getting project");
-
             let req_builder = Request::get(format!("/v0/{project_id}"));
 
             self.request_controller(
@@ -325,14 +355,31 @@ mod node {
             .await
         }
 
-        pub(crate) async fn delete_project(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+        pub async fn delete_project(
+            &self,
+            ctx: &Context,
+            route: &MultiAddr,
+            space_id: &str,
+            project_id: &str,
+        ) -> Result<()> {
+            let _ = self
+                .delete_project_response(
+                    ctx,
+                    CloudRequestWrapper::bare(route),
+                    space_id,
+                    project_id,
+                )
+                .await?;
+            Ok(())
+        }
+
+        pub(crate) async fn delete_project_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
             space_id: &str,
             project_id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "delete_project";

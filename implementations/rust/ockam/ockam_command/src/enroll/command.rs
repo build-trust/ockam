@@ -206,8 +206,7 @@ async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str)
         let space = available_spaces
             .drain(..1)
             .next()
-            .expect("already checked that is not empty")
-            ;
+            .expect("already checked that is not empty");
 
         opts.terminal.write_line(&fmt_log!(
             "Found space {}.",
@@ -308,8 +307,7 @@ async fn default_project(
             None => available_projects
                 .drain(..1)
                 .next()
-                .expect("already checked that is not empty")
-                ,
+                .expect("already checked that is not empty"),
             Some(p) => p.to_owned(),
         };
         opts.terminal.write_line(&fmt_log!(
@@ -335,7 +333,7 @@ async fn default_project(
     Ok(project)
 }
 
-async fn update_enrolled_identity(
+pub async fn update_enrolled_identity(
     opts: &CommandGlobalOpts,
     node_name: &str,
 ) -> Result<IdentityIdentifier> {

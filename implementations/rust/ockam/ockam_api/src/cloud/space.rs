@@ -60,13 +60,16 @@ mod node {
             route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<Space> {
-            let bytes = self
-                .create_space_response(ctx, CloudRequestWrapper::new(req, route, identity_name))
-                .await?;
-            Response::parse_response::<Space>(bytes)
+            Response::parse_response(
+                self.create_space_response(
+                    ctx,
+                    CloudRequestWrapper::new(req, route, identity_name),
+                )
+                .await?,
+            )
         }
 
-        pub async fn create_space_response(
+        pub(crate) async fn create_space_response(
             &self,
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<CreateSpace>,
@@ -92,13 +95,13 @@ mod node {
         }
 
         pub async fn list_spaces(&self, ctx: &Context, route: &MultiAddr) -> Result<Vec<Space>> {
-            let bytes = self
-                .list_spaces_response(ctx, CloudRequestWrapper::bare(route))
-                .await?;
-            Response::parse_response::<Vec<Space>>(bytes)
+            Response::parse_response(
+                self.list_spaces_response(ctx, CloudRequestWrapper::bare(route))
+                    .await?,
+            )
         }
 
-        pub async fn list_spaces_response(
+        pub(crate) async fn list_spaces_response(
             &self,
             ctx: &Context,
             req_wrapper: BareCloudRequestWrapper,
@@ -123,10 +126,10 @@ mod node {
         }
 
         pub async fn get_space(&self, ctx: &Context, route: &MultiAddr, id: &str) -> Result<Space> {
-            let bytes = self
-                .get_space_response(ctx, CloudRequestWrapper::bare(route), id)
-                .await?;
-            Response::parse_response::<Space>(bytes)
+            Response::parse_response(
+                self.get_space_response(ctx, CloudRequestWrapper::bare(route), id)
+                    .await?,
+            )
         }
 
         pub(crate) async fn get_space_response(
