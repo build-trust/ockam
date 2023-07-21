@@ -763,12 +763,17 @@ impl NodeManagerWorker {
 
             // ==*== Projects ==*==
             (Post, ["v1", "spaces", space_id, "projects"]) => {
-                self.create_project(ctx, dec, space_id).await?
+                self.create_project_response(ctx, dec.decode()?, space_id)
+                    .await?
             }
-            (Get, ["v0", "projects"]) => self.list_projects(ctx, dec).await?,
-            (Get, ["v0", "projects", project_id]) => self.get_project(ctx, dec, project_id).await?,
+            (Get, ["v0", "projects"]) => self.list_projects_response(ctx, dec.decode()?).await?,
+            (Get, ["v0", "projects", project_id]) => {
+                self.get_project_response(ctx, dec.decode()?, project_id)
+                    .await?
+            }
             (Delete, ["v0", "projects", space_id, project_id]) => {
-                self.delete_project(ctx, dec, space_id, project_id).await?
+                self.delete_project_response(ctx, dec.decode()?, space_id, project_id)
+                    .await?
             }
 
             // ==*== Enroll ==*==

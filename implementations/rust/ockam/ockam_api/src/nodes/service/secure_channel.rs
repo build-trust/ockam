@@ -451,13 +451,7 @@ impl NodeManagerWorker {
         }
 
         node_manager
-            .create_secure_channel_listener_impl(
-                addr,
-                authorized_identifiers,
-                vault,
-                identity,
-                ctx,
-            )
+            .create_secure_channel_listener_impl(addr, authorized_identifiers, vault, identity, ctx)
             .await?;
 
         let response = Response::ok(req.id());

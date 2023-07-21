@@ -1,13 +1,15 @@
 use miette::{miette, IntoDiagnostic};
+use ockam::identity::IdentityIdentifier;
 use tauri::{AppHandle, Manager, State, Wry};
 use tracing::log::{error, info};
 
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{CliState, SpaceConfig};
 use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
-use ockam_api::cloud::space::CreateSpace;
+use ockam_api::cloud::project::Project;
+use ockam_api::cloud::space::{CreateSpace, Space};
 use ockam_api::cloud::CloudRequestWrapper;
-use ockam_command::enroll::{retrieve_user_project, Auth0Service};
+use ockam_command::enroll::{update_enrolled_identity, Auth0Service};
 use ockam_command::util::api::CloudOpts;
 
 use crate::app::AppState;
@@ -33,6 +35,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
 
     enroll_with_token(&app_state)
         .await
+        .map(|i| info!("Enrolled a new user with identifier {}", i))
         .unwrap_or_else(|e| error!("{:?}", e));
 
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
@@ -40,7 +43,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     Ok(())
 }
 
-async fn enroll_with_token(app_state: &AppState) -> Result<()> {
+async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     // get an Auth0 token
     let token = Auth0Service::default().get_token_with_pkce().await?;
     // enroll the current user using that token on the controller
@@ -55,13 +58,12 @@ async fn enroll_with_token(app_state: &AppState) -> Result<()> {
         .await
         .into_diagnostic()?;
 
-    retrieve_space(app_state).await?;
-
-    retrieve_user_project(&app_state.context(), &app_state.options(), "default")
+    let space = retrieve_space(app_state).await?;
+    let _ = retrieve_project(app_state, &space).await?;
+    let identifier = update_enrolled_identity(&app_state.options(), "default")
         .await
-        .map(|_| ())
         .into_diagnostic()?;
-    Ok(())
+    Ok(identifier)
 }
 
 async fn create_default_identity(state: CliState) -> Result<()> {
@@ -90,19 +92,20 @@ async fn create_default_identity(state: CliState) -> Result<()> {
     Ok(())
 }
 
-async fn retrieve_space(app_state: &AppState) -> Result<()> {
+async fn retrieve_space(app_state: &AppState) -> Result<Space> {
+    let default_space_name = "default".to_string();
     let spaces = app_state
         .node_manager()
         .list_spaces(&app_state.context(), &CloudOpts::route())
         .await
         .map_err(|e| miette!(e))?;
-    let space = match spaces.first() {
+    let space = match spaces.iter().find(|s| s.name == default_space_name) {
         Some(space) => space.clone(),
         None => app_state
             .node_manager()
             .create_space(
                 &app_state.context(),
-                CreateSpace::new("default".to_string(), vec![]),
+                CreateSpace::new(default_space_name, vec![]),
                 &CloudOpts::route(),
                 None,
             )
@@ -114,5 +117,34 @@ async fn retrieve_space(app_state: &AppState) -> Result<()> {
         .spaces
         .overwrite(&space.name, SpaceConfig::from(&space))?;
 
-    Ok(())
+    Ok(space)
+}
+
+async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project> {
+    let default_project_name = "default";
+    let projects = app_state
+        .node_manager()
+        .list_projects(&app_state.context(), &CloudOpts::route())
+        .await
+        .map_err(|e| miette!(e))?;
+    let project = match projects.iter().find(|p| p.name == default_project_name) {
+        Some(project) => project.clone(),
+        None => app_state
+            .node_manager()
+            .create_project(
+                &app_state.context(),
+                &CloudOpts::route(),
+                space.id.as_str(),
+                default_project_name,
+                vec![],
+            )
+            .await
+            .map_err(|e| miette!(e))?,
+    };
+    app_state
+        .state()
+        .projects
+        .overwrite(&project.name, project.clone())?;
+
+    Ok(project)
 }
