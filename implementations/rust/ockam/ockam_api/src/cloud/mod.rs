@@ -111,6 +111,74 @@ mod node {
         pub fn controller_identifier(&self) -> IdentityIdentifier {
             self.controller_identity_id.clone()
         }
+
+        #[allow(clippy::too_many_arguments)]
+        pub(super) async fn request_controller<T>(
+            &self,
+            ctx: &Context,
+            label: &str,
+            schema: impl Into<Option<&str>>,
+            cloud_multiaddr: &MultiAddr,
+            api_service: &str,
+            req: RequestBuilder<T>,
+            ident: Option<String>,
+        ) -> Result<Vec<u8>>
+        where
+            T: Encode<()>,
+        {
+            self.request_controller_with_timeout(
+                ctx,
+                label,
+                schema,
+                cloud_multiaddr,
+                api_service,
+                req,
+                ident,
+                Duration::from_secs(DEFAULT_TIMEOUT),
+            )
+            .await
+        }
+
+        #[allow(clippy::too_many_arguments)]
+        pub(super) async fn request_controller_with_timeout<T>(
+            &self,
+            ctx: &Context,
+            label: &str,
+            schema: impl Into<Option<&str>>,
+            cloud_multiaddr: &MultiAddr,
+            api_service: &str,
+            req: RequestBuilder<T>,
+            ident: Option<String>,
+            timeout: Duration,
+        ) -> Result<Vec<u8>>
+        where
+            T: Encode<()>,
+        {
+            let identity_name = ident.clone();
+            let identifier = self.get_identifier(identity_name.clone()).await?;
+
+            let secure_channels = self.secure_channels.clone();
+
+            let sc = {
+                let cloud_route = crate::multiaddr_to_route(cloud_multiaddr, &self.tcp_transport)
+                    .await
+                    .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+
+                let options = SecureChannelOptions::new()
+                    .with_trust_policy(TrustIdentifierPolicy::new(self.controller_identifier()));
+                secure_channels
+                    .create_secure_channel(ctx, &identifier, cloud_route.route, options)
+                    .await?
+            };
+
+            let route = route![sc.clone(), api_service];
+            let options = MessageSendReceiveOptions::new().with_timeout(timeout);
+            let res = request_with_options(ctx, label, schema, route, req, options).await;
+            secure_channels
+                .stop_secure_channel(ctx, sc.encryptor_address())
+                .await?;
+            res
+        }
     }
 
     impl NodeManagerWorker {
@@ -156,39 +224,19 @@ mod node {
         where
             T: Encode<()>,
         {
-            let identity_name = ident.clone();
-            let identifier = {
-                let node_manager = self.get().read().await;
-                node_manager.get_identifier(identity_name.clone()).await?
-            };
-
-            let secure_channels = {
-                let node_manager = self.get().write().await;
-                node_manager.secure_channels.clone()
-            };
-
-            let sc = {
-                let node_manager = self.get().read().await;
-                let cloud_route =
-                    crate::multiaddr_to_route(cloud_multiaddr, &node_manager.tcp_transport)
-                        .await
-                        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
-
-                let options = SecureChannelOptions::new().with_trust_policy(
-                    TrustIdentifierPolicy::new(node_manager.controller_identifier()),
-                );
-                secure_channels
-                    .create_secure_channel(ctx, &identifier, cloud_route.route, options)
-                    .await?
-            };
-
-            let route = route![sc.clone(), api_service];
-            let options = MessageSendReceiveOptions::new().with_timeout(timeout);
-            let res = request_with_options(ctx, label, schema, route, req, options).await;
-            secure_channels
-                .stop_secure_channel(ctx, sc.encryptor_address())
-                .await?;
-            res
+            let node_manager = self.get().read().await;
+            node_manager
+                .request_controller_with_timeout(
+                    ctx,
+                    label,
+                    schema,
+                    cloud_multiaddr,
+                    api_service,
+                    req,
+                    ident,
+                    timeout,
+                )
+                .await
         }
     }
 }

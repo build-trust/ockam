@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use miette::IntoDiagnostic;
 
@@ -16,8 +16,6 @@ use ockam_command::node::util::init_node_state;
 use ockam_command::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use ockam_command::{CommandGlobalOpts, GlobalArgs, Terminal};
 
-use crate::app::model_state::ModelState;
-
 pub const NODE_NAME: &str = "default";
 pub const SPACE_NAME: &str = "default";
 pub const PROJECT_NAME: &str = "default";
@@ -32,8 +30,7 @@ pub struct AppState {
     context: Arc<Context>,
     global_args: GlobalArgs,
     state: CliState,
-    node_manager: NodeManagerWorker,
-    model_state: Mutex<ModelState>,
+    pub(crate) node_manager: NodeManagerWorker,
 }
 
 impl From<AppState> for CommandGlobalOpts {
@@ -61,15 +58,11 @@ impl AppState {
         tauri::async_runtime::spawn(async move { executor.start_router().await });
         let node_manager = create_node_manager(context.clone(), options.clone());
 
-        // initialize the model state
-        let model_state = Self::initialize_model_state(options.clone(), node_manager.clone());
-
         AppState {
             context,
             global_args: options.global_args,
             state: options.state,
-            node_manager,
-            model_state: Mutex::new(model_state),
+            node_manager: NodeManagerWorker::new(node_manager),
         }
     }
 
@@ -85,11 +78,6 @@ impl AppState {
         self.state.clone()
     }
 
-    /// Return the node manager associated to the application
-    pub fn node_manager(&self) -> NodeManagerWorker {
-        self.node_manager.clone()
-    }
-
     /// Return the global options with a quiet terminal
     pub fn options(&self) -> CommandGlobalOpts {
         CommandGlobalOpts {
@@ -100,44 +88,20 @@ impl AppState {
     }
 
     pub fn is_enrolled(&self) -> bool {
-        self.model_state.lock().unwrap().is_enrolled
+        self.state.projects.default().is_ok()
     }
 
-    pub fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
-        self.model_state.lock().unwrap().outlets.clone()
-    }
-
-    pub fn set_enrolled(&self) {
-        let mut model_state = self.model_state.lock().unwrap();
-        model_state.set_enrolled();
-    }
-
-    pub fn add_outlet(&self, outlet: OutletStatus) {
-        let mut model_state = self.model_state.lock().unwrap();
-        model_state.add_outlet(outlet);
-    }
-
-    pub fn reset(&self) {
-        let mut model_state = self.model_state.lock().unwrap();
-        *model_state = ModelState::default();
-    }
-
-    fn initialize_model_state(
-        options: CommandGlobalOpts,
-        node_manager: NodeManagerWorker,
-    ) -> ModelState {
-        let outlets =
-            tauri::async_runtime::block_on(async { node_manager.list_outlets().await.list });
-        let is_enrolled = options.state.projects.default().is_ok();
-        ModelState::new(is_enrolled, outlets)
+    pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
+        let node_manager = self.node_manager.get().read().await;
+        node_manager.list_outlets().list
     }
 }
 
 /// Create a node manager
-fn create_node_manager(ctx: Arc<Context>, opts: CommandGlobalOpts) -> NodeManagerWorker {
+fn create_node_manager(ctx: Arc<Context>, opts: CommandGlobalOpts) -> NodeManager {
     let options = opts;
     match tauri::async_runtime::block_on(async { make_node_manager(ctx.clone(), options).await }) {
-        Ok(node_manager) => NodeManagerWorker::new(node_manager),
+        Ok(node_manager) => node_manager,
         Err(e) => {
             println!("cannot create a node manager: {:?}", e);
             panic!("{}", e)

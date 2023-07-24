@@ -17,9 +17,7 @@ pub async fn reset(app: &AppHandle<Wry>) -> Result<()> {
         info!("Local Ockam configuration deleted");
         Ok(())
     };
-    state.reset();
 
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
-
     res
 }

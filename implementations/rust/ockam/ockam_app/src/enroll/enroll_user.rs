@@ -1,8 +1,8 @@
 use miette::{miette, IntoDiagnostic};
-use ockam::identity::IdentityIdentifier;
 use tauri::{AppHandle, Manager, State, Wry};
 use tracing::log::{error, info};
 
+use ockam::identity::IdentityIdentifier;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{CliState, SpaceConfig};
 use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
@@ -38,9 +38,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
         .map(|i| info!("Enrolled a new user with identifier {}", i))
         .unwrap_or_else(|e| error!("{:?}", e));
 
-    app_state.set_enrolled();
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
-
     Ok(())
 }
 
@@ -53,8 +51,9 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
         &CloudOpts::route(),
         None,
     );
-    app_state
-        .node_manager()
+
+    let node_manager = app_state.node_manager.get().read().await;
+    node_manager
         .enroll_auth0(&app_state.context(), request)
         .await
         .into_diagnostic()?;
@@ -94,15 +93,17 @@ async fn create_default_identity(state: CliState) -> Result<()> {
 }
 
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
-    let spaces = app_state
-        .node_manager()
-        .list_spaces(&app_state.context(), &CloudOpts::route())
-        .await
-        .map_err(|e| miette!(e))?;
+    let node_manager = app_state.node_manager.get().read().await;
+    let spaces = {
+        node_manager
+            .list_spaces(&app_state.context(), &CloudOpts::route())
+            .await
+            .map_err(|e| miette!(e))?
+    };
+
     let space = match spaces.iter().find(|s| s.name == SPACE_NAME) {
         Some(space) => space.clone(),
-        None => app_state
-            .node_manager()
+        None => node_manager
             .create_space(
                 &app_state.context(),
                 CreateSpace::new(SPACE_NAME.to_string(), vec![]),
@@ -121,15 +122,16 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
 }
 
 async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project> {
-    let projects = app_state
-        .node_manager()
-        .list_projects(&app_state.context(), &CloudOpts::route())
-        .await
-        .map_err(|e| miette!(e))?;
+    let node_manager = app_state.node_manager.get().read().await;
+    let projects = {
+        node_manager
+            .list_projects(&app_state.context(), &CloudOpts::route())
+            .await
+            .map_err(|e| miette!(e))?
+    };
     let project = match projects.iter().find(|p| p.name == *PROJECT_NAME) {
         Some(project) => project.clone(),
-        None => app_state
-            .node_manager()
+        None => node_manager
             .create_project(
                 &app_state.context(),
                 &CloudOpts::route(),

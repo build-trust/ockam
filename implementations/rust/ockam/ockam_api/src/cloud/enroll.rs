@@ -32,11 +32,11 @@ mod node {
     use crate::cloud::enroll::auth0::AuthenticateAuth0Token;
     use crate::cloud::enroll::enrollment_token::{EnrollmentToken, RequestEnrollmentToken};
     use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT};
-    use crate::nodes::NodeManagerWorker;
+    use crate::nodes::{NodeManager, NodeManagerWorker};
 
     const TARGET: &str = "ockam_api::cloud::enroll";
 
-    impl NodeManagerWorker {
+    impl NodeManager {
         /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
         pub async fn enroll_auth0(
             &self,
@@ -61,6 +61,18 @@ mod node {
                 Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
+        }
+    }
+
+    impl NodeManagerWorker {
+        /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
+        pub async fn enroll_auth0(
+            &self,
+            ctx: &Context,
+            req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token>,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager.enroll_auth0(ctx, req_wrapper).await
         }
 
         /// Generates a token that will be associated to the passed attributes.

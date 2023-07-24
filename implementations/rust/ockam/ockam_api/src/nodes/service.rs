@@ -46,6 +46,7 @@ use crate::nodes::connection::{
     ProjectInstantiator, SecureChannelInstantiator,
 };
 use crate::nodes::models::base::NodeStatus;
+use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::nodes::registry::KafkaServiceKind;
@@ -148,6 +149,18 @@ impl NodeManager {
 
     pub(super) fn secure_channels_vault(&self) -> Arc<dyn IdentitiesVault> {
         self.secure_channels.vault().clone()
+    }
+
+    pub fn list_outlets(&self) -> OutletList {
+        let outlets = self.registry.outlets.clone();
+        OutletList::new(
+            outlets
+                .iter()
+                .map(|(alias, info)| {
+                    OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
+                })
+                .collect(),
+        )
     }
 }
 
@@ -696,7 +709,7 @@ impl NodeManagerWorker {
                 encode_request_result(self.create_inlet(req, dec, ctx).await)?
             }
             (Post, ["node", "outlet"]) => {
-                encode_request_result(self.create_outlet(ctx, req, dec).await)?
+                encode_request_result(self.create_outlet(ctx, req, dec.decode()?).await)?
             }
             (Delete, ["node", "outlet", alias]) => {
                 encode_request_result(self.delete_outlet(req, alias).await)?

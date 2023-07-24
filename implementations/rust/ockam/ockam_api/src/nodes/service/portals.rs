@@ -9,6 +9,7 @@ use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, IncomingAccessControl, Route};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
@@ -28,6 +29,110 @@ use crate::session::sessions::{Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY
 use crate::{actions, resources, DefaultAddress};
 
 use super::{NodeManager, NodeManagerWorker};
+
+impl NodeManager {
+    pub async fn create_outlet(
+        &mut self,
+        ctx: &Context,
+        tcp_addr: String,
+        worker_addr: String,
+        alias: Option<String>,
+        reachable_from_default_secure_channel: bool,
+    ) -> Result<OutletStatus> {
+        info!("Handling request to create outlet portal");
+        let resource = alias
+            .as_deref()
+            .map(Resource::new)
+            .unwrap_or(resources::OUTLET);
+
+        let alias = alias.unwrap_or_else(random_alias);
+
+        // Check that there is no entry in the registry with the same alias
+        if self.registry.outlets.contains_key(&alias) {
+            let message = format!("A TCP outlet with alias '{alias}' already exists");
+            return Err(ockam_core::Error::new(
+                Origin::Node,
+                Kind::AlreadyExists,
+                message,
+            ));
+        }
+
+        // Check that there is no entry in the registry with the same tcp address
+        if self
+            .registry
+            .outlets
+            .values()
+            .any(|outlet| outlet.tcp_addr == tcp_addr)
+        {
+            let message = format!("A TCP outlet with tcp address '{tcp_addr}' already exists",);
+            return Err(ockam_core::Error::new(
+                Origin::Node,
+                Kind::AlreadyExists,
+                message,
+            ));
+        }
+
+        let worker_addr = Address::from_string(&worker_addr);
+
+        let check_credential = self.enable_credential_checks;
+        let trust_context_id = if check_credential {
+            Some(self.trust_context()?.id())
+        } else {
+            None
+        };
+
+        let access_control = self
+            .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
+            .await?;
+
+        let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
+        let options = if !check_credential {
+            options.as_consumer(&self.api_transport_flow_control_id)
+        } else {
+            options
+        };
+
+        let options = if reachable_from_default_secure_channel {
+            // Accept messages from the default secure channel listener
+            if let Some(flow_control_id) = ctx
+                .flow_controls()
+                .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+            {
+                options.as_consumer(&flow_control_id)
+            } else {
+                options
+            }
+        } else {
+            options
+        };
+
+        let res = self
+            .tcp_transport
+            .create_outlet(worker_addr.clone(), tcp_addr.clone(), options)
+            .await;
+
+        Ok(match res {
+            Ok(_) => {
+                // TODO: Use better way to store outlets?
+                self.registry.outlets.insert(
+                    alias.clone(),
+                    OutletInfo::new(&tcp_addr, Some(&worker_addr)),
+                );
+
+                OutletStatus::new(tcp_addr, worker_addr.to_string(), alias, None)
+            }
+            Err(e) => {
+                warn!(at = %tcp_addr, err = %e, "Failed to create TCP outlet");
+                let message = format!("Failed to create outlet: {}", e);
+                return Err(ockam_core::Error::new(
+                    Origin::Node,
+                    Kind::Internal,
+                    message,
+                ));
+            }
+        })
+    }
+}
 
 impl NodeManagerWorker {
     pub(super) async fn get_inlets(&self, req: &Request) -> ResponseBuilder<InletList> {
@@ -289,11 +394,11 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn create_outlet<'a>(
+    pub(super) async fn create_outlet(
         &mut self,
         ctx: &Context,
         req: &Request,
-        dec: &mut Decoder<'_>,
+        create_outlet: CreateOutlet,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let CreateOutlet {
             tcp_addr,
@@ -301,7 +406,7 @@ impl NodeManagerWorker {
             alias,
             reachable_from_default_secure_channel,
             ..
-        } = dec.decode()?;
+        } = create_outlet;
 
         self.create_outlet_impl(
             ctx,
@@ -314,7 +419,7 @@ impl NodeManagerWorker {
         .await
     }
 
-    pub async fn create_outlet_impl<'a>(
+    pub async fn create_outlet_impl(
         &self,
         ctx: &Context,
         req_id: Id,
@@ -323,96 +428,23 @@ impl NodeManagerWorker {
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
-        info!("Handling request to create outlet portal");
-        let mut node_manager = self.node_manager.write().await;
-        let resource = alias
-            .as_deref()
-            .map(Resource::new)
-            .unwrap_or(resources::OUTLET);
-
-        let alias = alias.unwrap_or_else(random_alias);
-
-        // Check that there is no entry in the registry with the same alias
-        if node_manager.registry.outlets.contains_key(&alias) {
-            let err_body = Error::new_without_path()
-                .with_message(format!("A TCP outlet with alias '{alias}' already exists"));
-            return Err(Response::bad_request(req_id).body(err_body));
-        }
-
-        // Check that there is no entry in the registry with the same tcp address
-        if node_manager
-            .registry
-            .outlets
-            .values()
-            .any(|outlet| outlet.tcp_addr == tcp_addr)
+        let mut node_manager = self.get().write().await;
+        match node_manager
+            .create_outlet(
+                ctx,
+                tcp_addr,
+                worker_addr,
+                alias,
+                reachable_from_default_secure_channel,
+            )
+            .await
         {
-            let err_body = Error::new_without_path().with_message(format!(
-                "A TCP outlet with tcp address '{tcp_addr}' already exists",
-            ));
-            return Err(Response::bad_request(req_id).body(err_body));
-        }
-
-        let worker_addr = Address::from_string(&worker_addr);
-
-        let check_credential = node_manager.enable_credential_checks;
-        let trust_context_id = if check_credential {
-            Some(node_manager.trust_context()?.id())
-        } else {
-            None
-        };
-
-        let access_control = node_manager
-            .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
-            .await?;
-
-        let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
-        let options = if !check_credential {
-            options.as_consumer(&node_manager.api_transport_flow_control_id)
-        } else {
-            options
-        };
-
-        let options = if reachable_from_default_secure_channel {
-            // Accept messages from the default secure channel listener
-            if let Some(flow_control_id) = ctx
-                .flow_controls()
-                .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-            {
-                options.as_consumer(&flow_control_id)
-            } else {
-                options
-            }
-        } else {
-            options
-        };
-
-        let res = node_manager
-            .tcp_transport
-            .create_outlet(worker_addr.clone(), tcp_addr.clone(), options)
-            .await;
-
-        Ok(match res {
-            Ok(_) => {
-                // TODO: Use better way to store outlets?
-                node_manager.registry.outlets.insert(
-                    alias.clone(),
-                    OutletInfo::new(&tcp_addr, Some(&worker_addr)),
-                );
-
-                Response::ok(req_id).body(OutletStatus::new(
-                    tcp_addr,
-                    worker_addr.to_string(),
-                    alias,
-                    None,
-                ))
-            }
+            Ok(outlet_status) => Ok(Response::ok(req_id).body(outlet_status)),
             Err(e) => {
-                warn!(at = %tcp_addr, err = %e, "Failed to create TCP outlet");
-                let err_body = Error::new_without_path()
-                    .with_message(format!("Failed to create outlet: {}", e));
-                return Err(Response::bad_request(req_id).body(err_body));
+                let err_body = Error::new_without_path().with_message(format!("{e:?}"));
+                Err(Response::bad_request(req_id).body(err_body))
             }
-        })
+        }
     }
 
     pub(super) async fn delete_outlet<'a>(
@@ -479,15 +511,7 @@ impl NodeManagerWorker {
     }
 
     pub async fn list_outlets(&self) -> OutletList {
-        let outlets = &self.node_manager.read().await.registry.outlets;
-        OutletList::new(
-            outlets
-                .iter()
-                .map(|(alias, info)| {
-                    OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
-                })
-                .collect(),
-        )
+        self.node_manager.read().await.list_outlets()
     }
 }
 
