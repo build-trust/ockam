@@ -41,7 +41,7 @@ impl KeyTracker {
     pub(crate) fn get_key(&self, nonce: u64) -> Result<Option<KeyId>> {
         debug!(
             "The current number of rekeys is {}, the rekey interval is {}",
-            self.current_key, self.renewal_interval
+            self.number_of_rekeys, self.renewal_interval
         );
 
         // for example 2 rekeys happened, renewal every 10 keys
