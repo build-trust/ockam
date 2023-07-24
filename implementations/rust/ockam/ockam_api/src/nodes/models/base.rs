@@ -14,8 +14,8 @@ use ockam_core::TypeTag;
 pub struct NodeStatus {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6586555>,
-    #[b(1)] pub node_name: String,
-    #[b(2)] pub status: String,
+    #[n(1)] pub node_name: String,
+    #[n(2)] pub status: String,
     #[n(3)] pub workers: u32,
     #[n(4)] pub pid: i32,
 }

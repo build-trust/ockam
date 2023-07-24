@@ -12,9 +12,9 @@ pub struct Addon {
     #[serde(skip)]
     #[n(0)]
     pub tag: TypeTag<1530077>,
-    #[b(1)]
+    #[n(1)]
     pub id: String,
-    #[b(2)]
+    #[n(2)]
     pub description: String,
     #[n(3)]
     pub enabled: bool,
@@ -28,7 +28,7 @@ pub struct ConfluentConfig {
     #[serde(skip)]
     #[cbor(n(0))] pub tag: TypeTag<1697996>,
 
-    #[cbor(b(1))] pub bootstrap_server: String,
+    #[cbor(n(1))] pub bootstrap_server: String,
 }
 
 impl ConfluentConfig {
@@ -70,7 +70,7 @@ pub struct DisableAddon {
     #[serde(skip)]
     #[cbor(n(0))] pub tag: TypeTag<8677807>,
 
-    #[cbor(b(1))] pub addon_id: String,
+    #[cbor(n(1))] pub addon_id: String,
 }
 
 impl DisableAddon {

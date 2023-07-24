@@ -11,9 +11,9 @@ pub struct Space {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)] pub tag: TypeTag<7574645>,
-    #[b(1)] pub id: String,
-    #[b(2)] pub name: String,
-    #[b(3)] pub users: Vec<String>,
+    #[n(1)] pub id: String,
+    #[n(2)] pub name: String,
+    #[n(3)] pub users: Vec<String>,
 }
 
 #[derive(Encode, Decode, Debug)]
@@ -23,8 +23,8 @@ pub struct Space {
 pub struct CreateSpace {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<2321503>,
-    #[b(1)] pub name: String,
-    #[b(2)] pub users: Vec<String>,
+    #[n(1)] pub name: String,
+    #[n(2)] pub users: Vec<String>,
 }
 
 impl CreateSpace {

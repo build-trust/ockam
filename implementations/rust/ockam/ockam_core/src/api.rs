@@ -89,7 +89,7 @@ pub struct Request {
     /// The request identifier.
     #[n(1)] id: Id,
     /// The resource path.
-    #[b(2)] path: String,
+    #[n(2)] path: String,
     /// The request method.
     ///
     /// It is wrapped in an `Option` to be forwards compatible, i.e. adding
@@ -476,11 +476,11 @@ pub struct Error {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5359172>,
     /// The resource path of this error.
-    #[b(1)] path: Option<String>,
+    #[n(1)] path: Option<String>,
     /// The request method of this error.
     #[n(2)] method: Option<Method>,
     /// The actual error message.
-    #[b(3)] message: Option<String>,
+    #[n(3)] message: Option<String>,
     /// The cause of the error, if any.
     #[b(4)] cause: Option<Box<Error>>,
 

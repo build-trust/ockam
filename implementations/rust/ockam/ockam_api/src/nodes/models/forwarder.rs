@@ -21,7 +21,7 @@ pub struct CreateForwarder {
     /// Address to create forwarder at.
     #[n(1)] address: MultiAddr,
     /// Forwarder alias.
-    #[b(2)] alias: Option<String>,
+    #[n(2)] alias: Option<String>,
     /// Forwarding service is at rust node.
     #[n(3)] at_rust_node: bool,
     /// An authorised identity for secure channels.
@@ -83,9 +83,9 @@ pub struct ForwarderInfo {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)] tag: TypeTag<2757430>,
-    #[b(1)] forwarding_route: String,
-    #[b(2)] remote_address: String,
-    #[b(3)] worker_address: String,
+    #[n(1)] forwarding_route: String,
+    #[n(2)] remote_address: String,
+    #[n(3)] worker_address: String,
     #[n(4)] flow_control_id: Option<FlowControlId>,
 }
 

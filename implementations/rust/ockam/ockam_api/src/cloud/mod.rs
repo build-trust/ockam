@@ -40,8 +40,8 @@ pub struct CloudRequestWrapper<T> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8956240>,
     #[b(1)] pub req: T,
-    #[b(2)] route: String,
-    #[b(3)] pub identity_name: Option<String>,
+    #[n(2)] route: String,
+    #[n(3)] pub identity_name: Option<String>,
 }
 
 impl<T> CloudRequestWrapper<T> {

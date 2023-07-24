@@ -9,7 +9,7 @@ use ockam_core::TypeTag;
 pub struct WorkerStatus {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2610323>,
-    #[b(2)] pub addr: String,
+    #[n(2)] pub addr: String,
 }
 
 impl WorkerStatus {
@@ -29,7 +29,7 @@ impl WorkerStatus {
 pub struct WorkerList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7336987>,
-    #[b(1)] pub list: Vec<WorkerStatus>,
+    #[n(1)] pub list: Vec<WorkerStatus>,
 }
 
 impl WorkerList {

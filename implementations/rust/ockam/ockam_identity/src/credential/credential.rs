@@ -22,10 +22,10 @@ pub struct Credential {
     #[n(0)] tag: TypeTag<3796735>,
     /// CBOR-encoded [`CredentialData`].
     #[cbor(with = "minicbor::bytes")]
-    #[b(1)] pub data: Vec<u8>,
+    #[n(1)] pub data: Vec<u8>,
     /// Cryptographic signature of attributes data.
     #[cbor(with = "minicbor::bytes")]
-    #[b(2)] pub signature: Vec<u8>,
+    #[n(2)] pub signature: Vec<u8>,
 }
 
 impl Credential {

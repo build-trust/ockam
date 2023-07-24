@@ -1,7 +1,9 @@
-use crate::app::{
-    configure_tauri_plugin_log, make_system_tray, process_application_event,
-    process_system_tray_event, setup_app, AppState,
-};
+#[cfg(target_os = "macos")]
+use macos as platform;
+#[cfg(not(target_os = "macos"))]
+use others as platform;
+
+use crate::app::{configure_tauri_plugin_log, process_application_event, setup_app, AppState};
 use crate::error::Result;
 
 mod app;
@@ -14,11 +16,6 @@ mod tcp;
 mod macos;
 #[cfg(not(target_os = "macos"))]
 mod others;
-
-#[cfg(target_os = "macos")]
-use macos as platform;
-#[cfg(not(target_os = "macos"))]
-use others as platform;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

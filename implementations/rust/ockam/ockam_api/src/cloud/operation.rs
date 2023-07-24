@@ -12,7 +12,7 @@ pub struct Operation {
     #[cbor(n(0))]
     pub tag: TypeTag<2432199>,
 
-    #[cbor(b(1))]
+    #[cbor(n(1))]
     pub id: String,
 
     #[cbor(n(2))]
@@ -41,7 +41,7 @@ pub struct CreateOperationResponse {
     #[cbor(n(0))]
     pub tag: TypeTag<9056534>,
 
-    #[cbor(b(1))]
+    #[cbor(n(1))]
     pub operation_id: String,
 }
 

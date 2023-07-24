@@ -138,7 +138,7 @@ pub struct CreateOutlet {
     #[n(3)] pub alias: Option<String>,
     /// Allow the outlet to be reachable from the default secure channel, useful when we want to
     /// tighten the flow control
-    #[b(4)] pub reachable_from_default_secure_channel: bool,
+    #[n(4)] pub reachable_from_default_secure_channel: bool,
 }
 
 impl CreateOutlet {
@@ -276,7 +276,7 @@ impl OutletStatus {
 pub struct InletList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8401504>,
-    #[b(1)] pub list: Vec<InletStatus>
+    #[n(1)] pub list: Vec<InletStatus>
 }
 
 impl InletList {

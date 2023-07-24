@@ -11,10 +11,10 @@ use ockam_core::TypeTag;
 pub struct ActivateSubscription {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<3888657>,
-    #[b(1)] pub space_id: Option<String>,
-    #[b(2)] pub subscription_data: String,
-    #[b(3)] pub space_name: Option<String>,
-    #[b(4)] pub owner_emails: Option<Vec<String>>,
+    #[n(1)] pub space_id: Option<String>,
+    #[n(2)] pub subscription_data: String,
+    #[n(3)] pub space_name: Option<String>,
+    #[n(4)] pub owner_emails: Option<Vec<String>>,
 }
 
 impl ActivateSubscription {
@@ -56,19 +56,19 @@ pub struct Subscription {
     #[serde(skip)]
     #[n(0)]
     pub tag: TypeTag<3783606>,
-    #[b(1)]
+    #[n(1)]
     pub id: String,
-    #[b(2)]
+    #[n(2)]
     marketplace: String,
-    #[b(3)]
+    #[n(3)]
     pub status: String,
-    #[b(4)]
+    #[n(4)]
     pub entitlements: String,
-    #[b(5)]
+    #[n(5)]
     pub metadata: String,
-    #[b(6)]
+    #[n(6)]
     pub contact_info: String,
-    #[b(7)]
+    #[n(7)]
     pub space_id: Option<String>,
 }
 

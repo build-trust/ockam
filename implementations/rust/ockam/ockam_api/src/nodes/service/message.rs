@@ -16,8 +16,8 @@ use crate::error::ApiError;
 pub struct SendMessage {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8400702>,
-    #[b(1)] pub route: String,
-    #[b(2)] pub message: Vec<u8>,
+    #[n(1)] pub route: String,
+    #[n(2)] pub message: Vec<u8>,
 }
 
 impl SendMessage {

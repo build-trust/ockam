@@ -14,8 +14,8 @@ pub struct Invitation<'a> {
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub inviter: CowStr<'a>,
     #[b(3)] pub invitee: CowStr<'a>,
-    #[b(4)] pub scope: Scope,
-    #[b(5)] pub state: State,
+    #[n(4)] pub scope: Scope,
+    #[n(5)] pub state: State,
     #[b(6)] pub space_id: CowStr<'a>,
     #[b(7)] pub project_id: Option<CowStr<'a>>,
 }
@@ -47,7 +47,7 @@ pub struct CreateInvitation<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<1886440>,
     #[b(1)] pub invitee: CowStr<'a>,
-    #[b(2)] pub scope: Scope,
+    #[n(2)] pub scope: Scope,
     #[b(3)] pub space_id: CowStr<'a>,
     #[b(4)] pub project_id: Option<CowStr<'a>>,
 }
