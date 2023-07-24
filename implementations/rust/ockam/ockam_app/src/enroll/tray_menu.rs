@@ -1,8 +1,9 @@
-use crate::app::{AppState, TrayMenuItem, TrayMenuSection};
-use crate::enroll::enroll_user::enroll_user;
+use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
 
 use ockam_core::async_trait;
-use tauri::{AppHandle, CustomMenuItem, Manager, SystemTrayMenu, Wry};
+
+use crate::app::{AppState, TrayMenuItem, TrayMenuSection};
+use crate::enroll::enroll_user::enroll_user;
 
 pub const ENROLL_MENU_HEADER_ID: &str = "enroll-header";
 pub const ENROLL_MENU_ID: &str = "enroll";
@@ -42,9 +43,8 @@ impl TrayMenuSection for EnrollTrayMenuSection {
         }
     }
 
-    async fn refresh(&mut self, app: &AppHandle<Wry>) {
-        let state = app.state::<AppState>();
-        if state.is_enrolled() {
+    async fn refresh(&mut self, app_state: &AppState) {
+        if app_state.is_enrolled() {
             self.header = None;
             self.enroll = None;
         } else {

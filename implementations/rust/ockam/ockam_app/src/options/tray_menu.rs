@@ -1,8 +1,9 @@
-use crate::app::{AppState, TrayMenuItem, TrayMenuSection};
-use crate::options::reset;
+use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
 
 use ockam_core::async_trait;
-use tauri::{AppHandle, CustomMenuItem, Manager, SystemTrayMenu, Wry};
+
+use crate::app::{AppState, TrayMenuItem, TrayMenuSection};
+use crate::options::reset;
 
 pub const RESET_MENU_ID: &str = "reset";
 pub const QUIT_MENU_ID: &str = "quit";
@@ -40,9 +41,8 @@ impl TrayMenuSection for OptionsTrayMenuSection {
         tray_menu.add_item(self.quit.inner())
     }
 
-    async fn refresh(&mut self, app: &AppHandle<Wry>) {
-        let state = app.state::<AppState>();
-        if state.is_enrolled() {
+    async fn refresh(&mut self, app_state: &AppState) {
+        if app_state.is_enrolled() {
             self.reset = Some(
                 CustomMenuItem::new(RESET_MENU_ID, "Reset")
                     .accelerator("cmd+r")
