@@ -12,7 +12,7 @@ use ockam_api::cloud::CloudRequestWrapper;
 use ockam_command::enroll::{update_enrolled_identity, Auth0Service};
 use ockam_command::util::api::CloudOpts;
 
-use crate::app::AppState;
+use crate::app::{AppState, NODE_NAME, PROJECT_NAME, SPACE_NAME};
 use crate::Result;
 
 /// Enroll a user.
@@ -60,7 +60,7 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
 
     let space = retrieve_space(app_state).await?;
     let _ = retrieve_project(app_state, &space).await?;
-    let identifier = update_enrolled_identity(&app_state.options(), "default")
+    let identifier = update_enrolled_identity(&app_state.options(), NODE_NAME)
         .await
         .into_diagnostic()?;
     Ok(identifier)
@@ -93,19 +93,18 @@ async fn create_default_identity(state: CliState) -> Result<()> {
 }
 
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
-    let default_space_name = "default".to_string();
     let spaces = app_state
         .node_manager()
         .list_spaces(&app_state.context(), &CloudOpts::route())
         .await
         .map_err(|e| miette!(e))?;
-    let space = match spaces.iter().find(|s| s.name == default_space_name) {
+    let space = match spaces.iter().find(|s| s.name == SPACE_NAME) {
         Some(space) => space.clone(),
         None => app_state
             .node_manager()
             .create_space(
                 &app_state.context(),
-                CreateSpace::new(default_space_name, vec![]),
+                CreateSpace::new(SPACE_NAME.to_string(), vec![]),
                 &CloudOpts::route(),
                 None,
             )
@@ -121,13 +120,12 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
 }
 
 async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project> {
-    let default_project_name = "default";
     let projects = app_state
         .node_manager()
         .list_projects(&app_state.context(), &CloudOpts::route())
         .await
         .map_err(|e| miette!(e))?;
-    let project = match projects.iter().find(|p| p.name == default_project_name) {
+    let project = match projects.iter().find(|p| p.name == *PROJECT_NAME) {
         Some(project) => project.clone(),
         None => app_state
             .node_manager()
@@ -135,7 +133,7 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
                 &app_state.context(),
                 &CloudOpts::route(),
                 space.id.as_str(),
-                default_project_name,
+                PROJECT_NAME,
                 vec![],
             )
             .await

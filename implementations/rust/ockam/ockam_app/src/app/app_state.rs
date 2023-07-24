@@ -17,6 +17,10 @@ use ockam_command::node::util::init_node_state;
 use ockam_command::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use ockam_command::{CommandGlobalOpts, GlobalArgs, Terminal};
 
+pub const NODE_NAME: &str = "default";
+pub const SPACE_NAME: &str = "default";
+pub const PROJECT_NAME: &str = "default";
+
 /// The AppState struct contains all the state managed by `tauri`.
 /// It can be retrieved with the `AppHandle<Wry>` parameter and the `AppHandle::state()` method
 /// Note that it contains a `NodeManagerWorker`. This makes the desktop app a full-fledged node
@@ -117,8 +121,7 @@ async fn make_node_manager(
     ctx: Arc<Context>,
     opts: CommandGlobalOpts,
 ) -> miette::Result<NodeManager> {
-    let node_name = "default";
-    init_node_state(&opts, node_name, None, None).await?;
+    init_node_state(&opts, NODE_NAME, None, None).await?;
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let options = TcpListenerOptions::new();
@@ -135,7 +138,7 @@ async fn make_node_manager(
 
     let node_manager = NodeManager::create(
         &ctx,
-        NodeManagerGeneralOptions::new(opts.state.clone(), node_name.to_string(), false, None),
+        NodeManagerGeneralOptions::new(opts.state.clone(), NODE_NAME.to_string(), false, None),
         NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
