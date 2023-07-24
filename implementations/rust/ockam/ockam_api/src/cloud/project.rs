@@ -95,6 +95,21 @@ impl Project {
     }
 }
 
+#[derive(Decode, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
+#[cbor(map)]
+pub struct ProjectVersion {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))]
+    pub tag: TypeTag<9116532>,
+
+    #[cbor(n(1))]
+    pub version: Option<String>,
+
+    #[cbor(n(2))]
+    pub project_version: Option<String>,
+}
+
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -360,6 +375,41 @@ mod node {
             .await
         }
 
+        pub async fn get_project_version(
+            &self,
+            ctx: &Context,
+            route: &MultiAddr,
+        ) -> Result<ProjectVersion> {
+            Response::parse_response_body(
+                self.get_project_version_response(ctx, CloudRequestWrapper::bare(route))
+                    .await?
+                    .as_slice(),
+            )
+        }
+
+        pub(crate) async fn get_project_version_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
+        ) -> Result<Vec<u8>> {
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
+
+            let label = "version_info";
+            trace!(target: TARGET, "getting project version");
+            let req_builder = Request::get("");
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                &cloud_multiaddr,
+                "version_info",
+                req_builder,
+                None,
+            )
+            .await
+        }
+
         pub async fn delete_project(
             &self,
             ctx: &Context,
@@ -436,6 +486,17 @@ mod node {
             let node_manager = self.get().read().await;
             node_manager
                 .get_project_response(ctx, req_wrapper, project_id)
+                .await
+        }
+
+        pub(crate) async fn get_project_version_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager
+                .get_project_version_response(ctx, req_wrapper)
                 .await
         }
 

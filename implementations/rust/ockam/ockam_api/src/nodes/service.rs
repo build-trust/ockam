@@ -779,6 +779,10 @@ impl NodeManagerWorker {
                 self.create_project_response(ctx, dec.decode()?, space_id)
                     .await?
             }
+            (Get, ["v0", "projects", "version_info"]) => {
+                self.get_project_version_response(ctx, dec.decode()?)
+                    .await?
+            }
             (Get, ["v0", "projects"]) => self.list_projects_response(ctx, dec.decode()?).await?,
             (Get, ["v0", "projects", project_id]) => {
                 self.get_project_response(ctx, dec.decode()?, project_id)
