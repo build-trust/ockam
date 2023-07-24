@@ -1,16 +1,13 @@
-use crate::enroll::EnrollTrayMenuSection;
-use crate::options::OptionsTrayMenuSection;
-use crate::tcp::outlet::TcpOutletTrayMenuSection;
-use crate::{enroll, options, tcp};
+use tauri::{AppHandle, CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, Wry};
+use tracing::error;
 
 use ockam_core::async_trait;
 
 use crate::app::AppState;
-use tauri::{
-    AppHandle, CustomMenuItem, Manager, SystemTrayEvent, SystemTrayHandle, SystemTrayMenu,
-    SystemTrayMenuItem, Wry,
-};
-use tracing::error;
+use crate::enroll::EnrollTrayMenuSection;
+use crate::options::OptionsTrayMenuSection;
+use crate::tcp::outlet::TcpOutletTrayMenuSection;
+use crate::{enroll, options, tcp};
 
 #[derive(Default)]
 pub struct TrayMenu {
@@ -34,12 +31,13 @@ impl TrayMenu {
         tray_menu
     }
 
-    pub async fn refresh(&mut self, app: &AppHandle<Wry>) {
-        self.enroll.refresh(app).await;
-        self.tcp.refresh(app).await;
-        self.options.refresh(app).await;
-        let is_enrolled = app.state::<AppState>().is_enrolled();
-        let _ = app.tray_handle().set_menu(self.build(is_enrolled));
+    pub async fn refresh(&mut self, app: &AppHandle<Wry>, app_state: &AppState) {
+        self.enroll.refresh(app_state).await;
+        self.tcp.refresh(app_state).await;
+        self.options.refresh(app_state).await;
+        let _ = app
+            .tray_handle()
+            .set_menu(self.build(app_state.is_enrolled()));
     }
 }
 
@@ -57,23 +55,13 @@ impl TrayMenuItem {
     pub fn inner(&self) -> CustomMenuItem {
         self.inner.clone()
     }
-
-    pub fn id(&self) -> &str {
-        &self.inner.id_str
-    }
-
-    pub fn set_enabled(&mut self, tray_handle: &SystemTrayHandle, enabled: bool) {
-        let _ = tray_handle.get_item(self.id()).set_enabled(enabled);
-        let mut inner = self.inner.clone();
-        inner.enabled = enabled;
-        self.inner = inner;
-    }
 }
 
 #[async_trait]
 pub trait TrayMenuSection {
     fn build(&self, tray_menu: SystemTrayMenu) -> SystemTrayMenu;
-    async fn refresh(&mut self, _app: &AppHandle<Wry>) {
+
+    async fn refresh(&mut self, _app: &AppState) {
         // Do nothing by default
     }
 }

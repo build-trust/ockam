@@ -1,7 +1,9 @@
-use crate::app::{TrayMenuItem, TrayMenuSection};
-use crate::tcp::outlet::{tcp_outlet_create, tcp_outlet_list};
-use ockam_core::async_trait;
 use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
+
+use ockam_core::async_trait;
+
+use crate::app::{AppState, TrayMenuItem, TrayMenuSection};
+use crate::tcp::outlet::{tcp_outlet_create, tcp_outlet_list};
 
 pub const TCP_OUTLET_HEADER_MENU_ID: &str = "tcp_outlet_header";
 pub const TCP_OUTLET_CREATE_MENU_ID: &str = "tcp_outlet_create";
@@ -23,8 +25,8 @@ impl TcpOutletTrayMenuSection {
         }
     }
 
-    async fn get_tcp_outlet_list(app: &AppHandle<Wry>) -> Vec<TrayMenuItem> {
-        tcp_outlet_list(app)
+    async fn get_tcp_outlet_list(app_state: &AppState) -> Vec<TrayMenuItem> {
+        tcp_outlet_list(app_state)
             .await
             .unwrap_or(vec![])
             .iter()
@@ -58,8 +60,8 @@ impl TrayMenuSection for TcpOutletTrayMenuSection {
         tray_menu
     }
 
-    async fn refresh(&mut self, app: &AppHandle<Wry>) {
-        self.list = Self::get_tcp_outlet_list(app).await;
+    async fn refresh(&mut self, app_state: &AppState) {
+        self.list = Self::get_tcp_outlet_list(app_state).await;
     }
 }
 
