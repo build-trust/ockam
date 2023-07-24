@@ -58,17 +58,21 @@ impl<V: Default + Serialize + for<'de> Deserialize<'de>> FileValueStorage<V> {
         // This can block, but only when first initializing and just need to write an empty vault.
         // So didn't bother to do it async
         let lock_file = Self::open_lock_file(&self.lock_path)?;
-        lock_file.lock_exclusive().map_err(map_io_err)?;
+        lock_file
+            .lock_exclusive()
+            .map_err(|e| map_io_err(&self.lock_path, e))?;
         if !self.path.exists() {
             let empty = V::default();
             Self::flush_to_file(&self.path, &self.temp_path, &empty)?;
         }
-        lock_file.unlock().map_err(map_io_err)?;
+        lock_file
+            .unlock()
+            .map_err(|e| map_io_err(&self.lock_path, e))?;
         Ok(())
     }
 
     fn load(path: &Path) -> Result<V> {
-        let file = File::open(path).map_err(map_io_err)?;
+        let file = File::open(path).map_err(|e| map_io_err(path, e))?;
         let reader = BufReader::new(file);
         Ok(serde_json::from_reader::<BufReader<File>, V>(reader)
             .map_err(|e| ValueStorageError::InvalidStorageData(e.to_string()))?)
@@ -120,7 +124,7 @@ impl<V> FileValueStorage<V> {
             .read(true)
             .create(true)
             .open(lock_path)
-            .map_err(map_io_err)
+            .map_err(|e| map_io_err(lock_path, e))
     }
 }
 
@@ -143,12 +147,12 @@ impl<V: Default + for<'a> Deserialize<'a> + Serialize + Send + Sync + 'static> V
         let path = self.path.clone();
         let tr = move || -> Result<R> {
             let file = FileValueStorage::<V>::open_lock_file(&lock_path)?;
-            file.lock_exclusive().map_err(map_io_err)?;
+            file.lock_exclusive().map_err(|e| map_io_err(&path, e))?;
             let existing_value = FileValueStorage::<V>::load(&path)?;
             let (updated_value, result) = f(existing_value)?;
             FileValueStorage::<V>::flush_to_file(&path, &temp_path, &updated_value)?;
             // if something goes wrong it will be unlocked once the file handler get closed anyway
-            file.unlock().map_err(map_io_err)?;
+            file.unlock().map_err(|e| map_io_err(&path, e))?;
             Ok(result)
         };
         task::spawn_blocking(tr).await.map_err(map_join_err)?
@@ -162,11 +166,11 @@ impl<V: Default + for<'a> Deserialize<'a> + Serialize + Send + Sync + 'static> V
         let lock_path = self.lock_path.clone();
         let tr = move || {
             let file = FileValueStorage::<V>::open_lock_file(&lock_path)?;
-            file.lock_shared().map_err(map_io_err)?;
+            file.lock_shared().map_err(|e| map_io_err(&path, e))?;
             let data = FileValueStorage::<V>::load(&path)?;
             let r = f(data)?;
             // if something goes wrong it will be unlocked once the file handler get closed anyway
-            file.unlock().map_err(map_io_err)?;
+            file.unlock().map_err(|e| map_io_err(&path, e))?;
             Ok(r)
         };
         task::spawn_blocking(tr).await.map_err(map_join_err)?
@@ -177,8 +181,12 @@ fn map_join_err(err: JoinError) -> Error {
     Error::new(Origin::Application, Kind::Io, err)
 }
 
-fn map_io_err(err: std::io::Error) -> Error {
-    Error::new(Origin::Application, Kind::Io, err)
+fn map_io_err(path: &Path, err: std::io::Error) -> Error {
+    Error::new(
+        Origin::Application,
+        Kind::Io,
+        format!("{err} for path {:?}", path),
+    )
 }
 
 /// Represents the failures that can occur when storing values
