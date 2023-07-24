@@ -101,11 +101,11 @@ impl Project {
 pub struct OktaConfig {
     #[cfg(feature = "tag")]
     #[serde(skip)]
-    #[cbor(b(0))] pub tag: TypeTag<6434814>,
-    #[cbor(b(1))] pub tenant_base_url: Url,
-    #[cbor(b(2))] pub certificate: String,
-    #[cbor(b(3))] pub client_id: String,
-    #[cbor(b(4))] pub attributes: Vec<String>,
+    #[cbor(n(0))] pub tag: TypeTag<6434814>,
+    #[cbor(n(1))] pub tenant_base_url: Url,
+    #[cbor(n(2))] pub certificate: String,
+    #[cbor(n(3))] pub client_id: String,
+    #[cbor(n(4))] pub attributes: Vec<String>,
 }
 
 impl OktaConfig {
@@ -171,13 +171,13 @@ pub struct InfluxDBTokenLeaseManagerConfig {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[cbor(n(0))] pub tag: TypeTag<4166488>,
-    #[cbor(b(1))] pub endpoint: String,
-    #[cbor(b(2))] pub token: String,
-    #[cbor(b(3))] pub org_id: String,
-    #[cbor(b(4))] pub permissions: String,
-    #[cbor(b(5))] pub max_ttl_secs: i32,
-    #[cbor(b(6))] pub user_access_rule: Option<String>,
-    #[cbor(b(7))] pub admin_access_rule: Option<String>,
+    #[cbor(n(1))] pub endpoint: String,
+    #[cbor(n(2))] pub token: String,
+    #[cbor(n(3))] pub org_id: String,
+    #[cbor(n(4))] pub permissions: String,
+    #[cbor(n(5))] pub max_ttl_secs: i32,
+    #[cbor(n(6))] pub user_access_rule: Option<String>,
+    #[cbor(n(7))] pub admin_access_rule: Option<String>,
 }
 
 impl InfluxDBTokenLeaseManagerConfig {
@@ -215,8 +215,8 @@ impl InfluxDBTokenLeaseManagerConfig {
 pub struct CreateProject {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8669570>,
-    #[b(1)] pub name: String,
-    #[b(3)] pub users: Vec<String>,
+    #[n(1)] pub name: String,
+    #[n(3)] pub users: Vec<String>,
 }
 
 impl CreateProject {

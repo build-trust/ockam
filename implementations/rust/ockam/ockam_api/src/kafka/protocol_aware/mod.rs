@@ -84,8 +84,8 @@ impl KafkaMessageInterceptor for InletInterceptorImpl {
 struct MessageWrapper {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<1652221>,
-    #[b(1)] consumer_decryptor_address: Address,
-    #[b(2)] content: Vec<u8>
+    #[n(1)] consumer_decryptor_address: Address,
+    #[n(2)] content: Vec<u8>
 }
 
 impl InletInterceptorImpl {

@@ -30,12 +30,12 @@ pub enum CredentialExchangeMode {
 pub struct CreateSecureChannelRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6300395>,
-    #[b(1)] pub addr: String,
-    #[b(2)] pub authorized_identifiers: Option<Vec<String>>,
+    #[n(1)] pub addr: String,
+    #[n(2)] pub authorized_identifiers: Option<Vec<String>>,
     #[n(3)] pub credential_exchange_mode: CredentialExchangeMode,
     #[n(4)] pub timeout: Option<Duration>,
-    #[b(5)] pub identity_name: Option<String>,
-    #[b(6)] pub credential_name: Option<String>,
+    #[n(5)] pub identity_name: Option<String>,
+    #[n(6)] pub credential_name: Option<String>,
 }
 
 impl CreateSecureChannelRequest {
@@ -98,10 +98,10 @@ impl CreateSecureChannelResponse {
 pub struct CreateSecureChannelListenerRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8112242>,
-    #[b(1)] pub addr: String,
-    #[b(2)] pub authorized_identifiers: Option<Vec<String>>,
-    #[b(3)] pub vault: Option<String>,
-    #[b(4)] pub identity: Option<String>,
+    #[n(1)] pub addr: String,
+    #[n(2)] pub authorized_identifiers: Option<Vec<String>>,
+    #[n(3)] pub vault: Option<String>,
+    #[n(4)] pub identity: Option<String>,
 }
 
 impl CreateSecureChannelListenerRequest {
@@ -130,7 +130,7 @@ impl CreateSecureChannelListenerRequest {
 pub struct DeleteSecureChannelListenerRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8293631>,
-    #[b(1)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl DeleteSecureChannelListenerRequest {
@@ -150,7 +150,7 @@ impl DeleteSecureChannelListenerRequest {
 pub struct DeleteSecureChannelListenerResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8642885>,
-    #[b(1)] pub addr: Address,
+    #[n(1)] pub addr: Address,
 }
 
 impl DeleteSecureChannelListenerResponse {
@@ -170,7 +170,7 @@ impl DeleteSecureChannelListenerResponse {
 pub struct ShowSecureChannelListenerRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3538219>,
-    #[b(1)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl ShowSecureChannelListenerRequest {
@@ -211,7 +211,7 @@ impl ShowSecureChannelListenerResponse {
 pub struct DeleteSecureChannelRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8472592>,
-    #[b(1)] pub channel: String,
+    #[n(1)] pub channel: String,
 }
 
 impl DeleteSecureChannelRequest {
@@ -230,7 +230,7 @@ impl DeleteSecureChannelRequest {
 pub struct DeleteSecureChannelResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6953395>,
-    #[b(1)] pub channel: Option<String>,
+    #[n(1)] pub channel: Option<String>,
 }
 
 impl DeleteSecureChannelResponse {
@@ -249,7 +249,7 @@ impl DeleteSecureChannelResponse {
 pub struct ShowSecureChannelRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3277982>,
-    #[b(1)] pub channel: String,
+    #[n(1)] pub channel: String,
 }
 
 impl ShowSecureChannelRequest {
@@ -269,9 +269,9 @@ pub struct ShowSecureChannelResponse {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)] tag: TypeTag<4566220>,
-    #[b(1)] pub channel: Option<String>,
-    #[b(2)] pub route: Option<String>,
-    #[b(3)] pub authorized_identifiers: Option<Vec<String>>,
+    #[n(1)] pub channel: Option<String>,
+    #[n(2)] pub route: Option<String>,
+    #[n(3)] pub authorized_identifiers: Option<Vec<String>>,
     #[n(4)] pub flow_control_id: Option<FlowControlId>,
 }
 

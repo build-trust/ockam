@@ -14,7 +14,7 @@ use ockam_multiaddr::MultiAddr;
 pub struct StartServiceRequest<T> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3470984>,
-    #[b(1)] addr: String,
+    #[n(1)] addr: String,
     #[n(2)] req: T,
 }
 
@@ -43,7 +43,7 @@ impl<T> StartServiceRequest<T> {
 pub struct DeleteServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9359178>,
-    #[b(1)] addr: String,
+    #[n(1)] addr: String,
 }
 
 impl DeleteServiceRequest {
@@ -64,7 +64,7 @@ impl DeleteServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaOutletRequest {
-    #[b(1)] pub bootstrap_server_addr: String,
+    #[n(1)] pub bootstrap_server_addr: String,
 }
 
 impl StartKafkaOutletRequest {
@@ -83,9 +83,9 @@ impl StartKafkaOutletRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaConsumerRequest {
-    #[b(1)] pub bootstrap_server_addr: SocketAddr,
+    #[n(1)] pub bootstrap_server_addr: SocketAddr,
     #[n(2)] brokers_port_range: (u16, u16),
-    #[b(3)] project_route: String,
+    #[n(3)] project_route: String,
 }
 
 impl StartKafkaConsumerRequest {
@@ -116,9 +116,9 @@ impl StartKafkaConsumerRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaProducerRequest {
-    #[b(1)] pub bootstrap_server_addr: SocketAddr,
+    #[n(1)] pub bootstrap_server_addr: SocketAddr,
     #[n(2)] brokers_port_range: (u16, u16),
-    #[b(3)] project_route: String,
+    #[n(3)] project_route: String,
 }
 
 impl StartKafkaProducerRequest {
@@ -152,7 +152,7 @@ impl StartKafkaProducerRequest {
 pub struct StartIdentityServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6129106>,
-    #[b(1)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl StartIdentityServiceRequest {
@@ -172,7 +172,7 @@ impl StartIdentityServiceRequest {
 pub struct StartAuthenticatedServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5179596>,
-    #[b(1)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl StartAuthenticatedServiceRequest {
@@ -192,7 +192,7 @@ impl StartAuthenticatedServiceRequest {
 pub struct StartUppercaseServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8177400>,
-    #[b(1)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl StartUppercaseServiceRequest {
@@ -212,7 +212,7 @@ impl StartUppercaseServiceRequest {
 pub struct StartEchoerServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7636656>,
-    #[b(1)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl StartEchoerServiceRequest {
@@ -232,7 +232,7 @@ impl StartEchoerServiceRequest {
 pub struct StartHopServiceRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7361428>,
-    #[b(1)] pub addr: String,
+    #[n(1)] pub addr: String,
 }
 
 impl StartHopServiceRequest {
@@ -251,8 +251,8 @@ impl StartHopServiceRequest {
 pub struct StartAuthenticatorRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2749734>,
-    #[b(1)] addr: String,
-    #[b(3)] proj: Vec<u8>,
+    #[n(1)] addr: String,
+    #[n(3)] proj: Vec<u8>,
     // FIXME: test id old format still matches with this
 }
 
@@ -281,7 +281,7 @@ impl StartAuthenticatorRequest {
 pub struct StartVerifierService {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9580740>,
-    #[b(1)] addr: String,
+    #[n(1)] addr: String,
 }
 
 impl StartVerifierService {
@@ -304,8 +304,8 @@ impl StartVerifierService {
 pub struct StartCredentialsService {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6467937>,
-    #[b(1)] public_identity: String,
-    #[b(2)] addr: String,
+    #[n(1)] public_identity: String,
+    #[n(2)] addr: String,
     #[n(3)] oneway: bool,
 }
 
@@ -340,11 +340,11 @@ impl StartCredentialsService {
 pub struct StartOktaIdentityProviderRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2291842>,
-    #[b(1)] addr: String,
-    #[b(2)] tenant_base_url: String,
-    #[b(3)] certificate: String,
-    #[b(4)] attributes: Vec<String>,
-    #[b(5)] proj: Vec<u8>
+    #[n(1)] addr: String,
+    #[n(2)] tenant_base_url: String,
+    #[n(3)] certificate: String,
+    #[n(4)] attributes: Vec<String>,
+    #[n(5)] proj: Vec<u8>
 }
 
 impl StartOktaIdentityProviderRequest {
@@ -390,8 +390,8 @@ pub struct ServiceStatus {
     #[cfg(feature = "tag")]
     #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<8542064>,
-    #[b(2)] pub addr: String,
-    #[b(3)] pub service_type: String,
+    #[n(2)] pub addr: String,
+    #[n(3)] pub service_type: String,
 }
 
 impl ServiceStatus {
@@ -413,7 +413,7 @@ pub struct ServiceList {
     #[cfg(feature = "tag")]
     #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<9587601>,
-    #[b(1)] pub list: Vec<ServiceStatus>
+    #[n(1)] pub list: Vec<ServiceStatus>
 }
 
 impl ServiceList {

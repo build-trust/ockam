@@ -218,7 +218,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// Newtype around [`Vec<u8>`] that provides base-16 string encoding using serde.
 #[derive(Debug, Clone, Default, Encode, Decode)]
 #[cbor(transparent)]
-pub struct HexByteVec(#[b(0)] pub Vec<u8>);
+pub struct HexByteVec(#[n(0)] pub Vec<u8>);
 
 impl HexByteVec {
     pub fn as_slice(&self) -> &[u8] {
