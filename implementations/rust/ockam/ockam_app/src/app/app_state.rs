@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use miette::IntoDiagnostic;
 
@@ -6,6 +6,7 @@ use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::config::lookup::ProjectLookup;
+use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
     NodeManagerTrustOptions,
@@ -14,6 +15,8 @@ use ockam_api::nodes::{NodeManager, NodeManagerWorker};
 use ockam_command::node::util::init_node_state;
 use ockam_command::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use ockam_command::{CommandGlobalOpts, GlobalArgs, Terminal};
+
+use crate::app::model_state::ModelState;
 
 pub const NODE_NAME: &str = "default";
 pub const SPACE_NAME: &str = "default";
@@ -30,6 +33,7 @@ pub struct AppState {
     global_args: GlobalArgs,
     state: CliState,
     node_manager: NodeManagerWorker,
+    model_state: Mutex<ModelState>,
 }
 
 impl From<AppState> for CommandGlobalOpts {
@@ -57,11 +61,15 @@ impl AppState {
         tauri::async_runtime::spawn(async move { executor.start_router().await });
         let node_manager = create_node_manager(context.clone(), options.clone());
 
+        // initialize the model state
+        let model_state = Self::initialize_model_state(options.clone(), node_manager.clone());
+
         AppState {
             context,
             global_args: options.global_args,
             state: options.state,
             node_manager,
+            model_state: Mutex::new(model_state),
         }
     }
 
@@ -92,7 +100,36 @@ impl AppState {
     }
 
     pub fn is_enrolled(&self) -> bool {
-        self.state.projects.default().is_ok()
+        self.model_state.lock().unwrap().is_enrolled
+    }
+
+    pub fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
+        self.model_state.lock().unwrap().outlets.clone()
+    }
+
+    pub fn set_enrolled(&self) {
+        let mut model_state = self.model_state.lock().unwrap();
+        model_state.set_enrolled();
+    }
+
+    pub fn add_outlet(&self, outlet: OutletStatus) {
+        let mut model_state = self.model_state.lock().unwrap();
+        model_state.add_outlet(outlet);
+    }
+
+    pub fn reset(&self) {
+        let mut model_state = self.model_state.lock().unwrap();
+        *model_state = ModelState::default();
+    }
+
+    fn initialize_model_state(
+        options: CommandGlobalOpts,
+        node_manager: NodeManagerWorker,
+    ) -> ModelState {
+        let outlets =
+            tauri::async_runtime::block_on(async { node_manager.list_outlets().await.list });
+        let is_enrolled = options.state.projects.default().is_ok();
+        ModelState::new(is_enrolled, outlets)
     }
 }
 
