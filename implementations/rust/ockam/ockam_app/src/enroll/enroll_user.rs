@@ -38,6 +38,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
         .map(|i| info!("Enrolled a new user with identifier {}", i))
         .unwrap_or_else(|e| error!("{:?}", e));
 
+    app_state.set_enrolled();
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
 
     Ok(())
