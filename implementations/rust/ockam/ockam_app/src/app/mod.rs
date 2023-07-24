@@ -10,7 +10,6 @@ pub use tray_menu::*;
 mod app_state;
 pub(crate) mod events;
 mod logging;
-mod model_state;
 mod process;
 mod tray_menu;
 
@@ -20,9 +19,10 @@ mod tray_menu;
 pub fn setup_app(app: &mut App<Wry>) -> Result<(), Box<dyn Error>> {
     let app_state = app.state::<AppState>();
     let moved_app = app.handle();
+    let tray_menu = tauri::async_runtime::block_on(build_tray_menu(&app_state));
 
     SystemTray::new()
-        .with_menu(build_tray_menu(&app_state))
+        .with_menu(tray_menu)
         .on_event(move |event| process_system_tray_event(&moved_app, event))
         .build(app)
         .expect("Couldn't initialize the system tray menu");
@@ -35,7 +35,7 @@ pub fn setup_app(app: &mut App<Wry>) -> Result<(), Box<dyn Error>> {
             let app_state = moved_app.state::<AppState>();
             moved_app
                 .tray_handle()
-                .set_menu(build_tray_menu(&app_state))
+                .set_menu(build_tray_menu(&app_state).await)
         });
     });
     Ok(())

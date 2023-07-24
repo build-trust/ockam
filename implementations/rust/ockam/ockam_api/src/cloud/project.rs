@@ -238,13 +238,13 @@ mod node {
     use ockam_node::Context;
 
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeManagerWorker;
+    use crate::nodes::{NodeManager, NodeManagerWorker};
 
     use super::*;
 
     const TARGET: &str = "ockam_api::cloud::project";
 
-    impl NodeManagerWorker {
+    impl NodeManager {
         pub async fn create_project(
             &self,
             ctx: &Context,
@@ -402,6 +402,54 @@ mod node {
                 None,
             )
             .await
+        }
+    }
+
+    impl NodeManagerWorker {
+        pub(crate) async fn create_project_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: CloudRequestWrapper<CreateProject>,
+            space_id: &str,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager
+                .create_project_response(ctx, req_wrapper, space_id)
+                .await
+        }
+
+        pub(crate) async fn list_projects_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager.list_projects_response(ctx, req_wrapper).await
+        }
+
+        pub(crate) async fn get_project_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
+            project_id: &str,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager
+                .get_project_response(ctx, req_wrapper, project_id)
+                .await
+        }
+
+        pub(crate) async fn delete_project_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
+            space_id: &str,
+            project_id: &str,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager
+                .delete_project_response(ctx, req_wrapper, space_id, project_id)
+                .await
         }
     }
 }

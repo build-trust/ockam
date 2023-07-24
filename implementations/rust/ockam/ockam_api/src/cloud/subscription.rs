@@ -179,7 +179,6 @@ mod node {
             trace!(target: TARGET, "listing subscriptions");
 
             let req_builder = Request::get("/v0/");
-
             self.request_controller(
                 ctx,
                 label,

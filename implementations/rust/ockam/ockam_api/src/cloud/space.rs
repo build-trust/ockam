@@ -48,11 +48,11 @@ mod node {
 
     use crate::cloud::space::{CreateSpace, Space};
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeManagerWorker;
+    use crate::nodes::{NodeManager, NodeManagerWorker};
 
     const TARGET: &str = "ockam_api::cloud::space";
 
-    impl NodeManagerWorker {
+    impl NodeManager {
         pub async fn create_space(
             &self,
             ctx: &Context,
@@ -158,6 +158,36 @@ mod node {
                 None,
             )
             .await
+        }
+    }
+
+    impl NodeManagerWorker {
+        pub(crate) async fn create_space_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: CloudRequestWrapper<CreateSpace>,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager.create_space_response(ctx, req_wrapper).await
+        }
+
+        pub(crate) async fn list_spaces_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager.list_spaces_response(ctx, req_wrapper).await
+        }
+
+        pub(crate) async fn get_space_response(
+            &self,
+            ctx: &Context,
+            req_wrapper: BareCloudRequestWrapper,
+            id: &str,
+        ) -> Result<Vec<u8>> {
+            let node_manager = self.get().read().await;
+            node_manager.get_space_response(ctx, req_wrapper, id).await
         }
 
         pub async fn delete_space(&self, ctx: &Context, route: &MultiAddr, id: &str) -> Result<()> {

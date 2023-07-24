@@ -8,19 +8,11 @@ pub const QUIT_MENU_ID: &str = "quit";
 
 pub fn build_options_section(app_state: &AppState, tray_menu: SystemTrayMenu) -> SystemTrayMenu {
     let tm = if app_state.is_enrolled() {
-        tray_menu.add_item(
-            CustomMenuItem::new(RESET_MENU_ID, "Reset")
-                .accelerator("cmd+r")
-                .into(),
-        )
+        tray_menu.add_item(CustomMenuItem::new(RESET_MENU_ID, "Reset").accelerator("cmd+r"))
     } else {
         tray_menu
     };
-    tm.add_item(
-        CustomMenuItem::new(QUIT_MENU_ID, "Quit")
-            .accelerator("cmd+q")
-            .into(),
-    )
+    tm.add_item(CustomMenuItem::new(QUIT_MENU_ID, "Quit").accelerator("cmd+q"))
 }
 
 /// Event listener for the "Reset" menu item
