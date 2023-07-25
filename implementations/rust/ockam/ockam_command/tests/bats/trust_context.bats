@@ -117,13 +117,10 @@ teardown() {
 
   # Fail, attacker will present an invalid credential (self signed rather than signed by authority)
   $OCKAM credential issue --as attacker --for $($OCKAM identity show attacker --full --encoding hex) --encoding hex >"$OCKAM_HOME/attacker.cred"
-  $OCKAM credential store att-cred --issuer $authority_identity --credential-path $OCKAM_HOME/attacker.cred
-  $OCKAM trust-context create att-trust-context --credential att-cred
-
-  run $OCKAM message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context att-trust-context $msg
+  run $OCKAM credential store att-cred --issuer $authority_identity --credential-path $OCKAM_HOME/attacker.cred
   assert_failure
 
-  # Fail, attacker will present an invalid credential (bob' credential, not own)
+  # Fail, attacker will present an invalid credential (bob's credential, not own)
   run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context bob-trust-context $msg
   assert_failure
 

@@ -90,8 +90,7 @@ async fn run_impl(
         }
         .identifier();
 
-        if let Err(e) =
-            validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await {
+        if let Err(e) = validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await {
             *is_finished.lock().await = true;
             return Err(miette!("Credential is invalid\n{}", e).into());
         }
