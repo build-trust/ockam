@@ -69,7 +69,7 @@ storage = ["ockam_node/storage", "std", "serde", "serde_cbor"]
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
 arrayref = "0.3"
 cfg-if = "1.0.0"
-curve25519-dalek = { version = "3.1", default-features = false }
+curve25519-dalek = { version = "4.0", default-features = false }
 ed25519-dalek = { version = "1.0", default-features = false }
 hex = { version = "0.4", default-features = false }
 hkdf = { version = "0.12", default-features = false }
