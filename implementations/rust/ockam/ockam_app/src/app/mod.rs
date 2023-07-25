@@ -11,6 +11,7 @@ mod app_state;
 pub(crate) mod events;
 mod logging;
 mod model_state;
+mod model_state_repository;
 mod process;
 mod tray_menu;
 

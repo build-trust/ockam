@@ -1,6 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use miette::IntoDiagnostic;
+use tauri::async_runtime::{block_on, spawn};
 
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
@@ -18,6 +19,8 @@ use ockam_command::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use ockam_command::{CommandGlobalOpts, GlobalArgs, Terminal};
 
 use crate::app::model_state::ModelState;
+use crate::app::model_state_repository::{LmdbModelStateRepository, ModelStateRepository};
+use crate::Result;
 
 pub const NODE_NAME: &str = "default";
 pub const SPACE_NAME: &str = "default";
@@ -35,6 +38,7 @@ pub struct AppState {
     state: CliState,
     pub(crate) node_manager: NodeManagerWorker,
     model_state: Arc<RwLock<ModelState>>,
+    model_state_repository: Arc<dyn ModelStateRepository>,
 }
 
 impl From<AppState> for CommandGlobalOpts {
@@ -59,15 +63,18 @@ impl AppState {
         // from now on we use the same runtime everywhere we need to run an async action
         tauri::async_runtime::set(context.runtime().clone());
         // start the router, it is needed for the node manager creation
-        tauri::async_runtime::spawn(async move { executor.start_router().await });
+        spawn(async move { executor.start_router().await });
         let node_manager = create_node_manager(context.clone(), options.clone());
+        let model_state_repository = create_model_state_repository(options.clone());
+        let model_state = load_model_state(model_state_repository.clone());
 
         AppState {
             context,
             global_args: options.global_args,
             state: options.state,
             node_manager: NodeManagerWorker::new(node_manager),
-            model_state: Arc::new(RwLock::new(ModelState::default())),
+            model_state: Arc::new(RwLock::new(model_state)),
+            model_state_repository,
         }
     }
 
@@ -92,20 +99,37 @@ impl AppState {
         }
     }
 
+    /// Return true if the user is enrolled
+    /// At the moment this check only verifies that there is a default project.
+    /// This project should be the project that is created at the end of the enrollment procedure
     pub fn is_enrolled(&self) -> bool {
         self.state.projects.default().is_ok()
     }
 
+    /// Return the list of currently running outlets
     pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
         let node_manager = self.node_manager.get().read().await;
         node_manager.list_outlets().list
     }
 
-    pub async fn set_user_info(&self, user_info: UserInfo) {
-        let mut model_state = self.model_state.write().unwrap();
-        model_state.set_user_info(user_info);
+    /// Set the retrieved user info on the model state
+    pub async fn set_user_info(&self, user_info: UserInfo) -> Result<()> {
+        {
+            let mut model_state = self.model_state.write().unwrap();
+            model_state.set_user_info(user_info);
+        }
+
+        let model_state_clone = {
+            let model_state = self.model_state.read().unwrap();
+            model_state.clone()
+        };
+        self.model_state_repository
+            .store(&model_state_clone)
+            .await?;
+        Ok(())
     }
 
+    /// Return the user information if it has been retrieved
     pub async fn get_user_info(&self) -> Option<UserInfo> {
         let model_state = self.model_state.read().unwrap();
         model_state.get_user_info()
@@ -115,11 +139,11 @@ impl AppState {
 /// Create a node manager
 fn create_node_manager(ctx: Arc<Context>, opts: CommandGlobalOpts) -> NodeManager {
     let options = opts;
-    match tauri::async_runtime::block_on(async { make_node_manager(ctx.clone(), options).await }) {
+    match block_on(async { make_node_manager(ctx.clone(), options).await }) {
         Ok(node_manager) => node_manager,
         Err(e) => {
-            println!("cannot create a node manager: {:?}", e);
-            panic!("{}", e)
+            println!("cannot create a node manager: {e:?}");
+            panic!("{e}")
         }
     }
 }
@@ -154,4 +178,27 @@ async fn make_node_manager(
     .await
     .into_diagnostic()?;
     Ok(node_manager)
+}
+
+/// Create the repository containing the model state
+fn create_model_state_repository(opts: CommandGlobalOpts) -> Arc<dyn ModelStateRepository> {
+    let identity_path = opts.state.identities.identities_repository_path().unwrap();
+    match block_on(async move { LmdbModelStateRepository::new(identity_path).await }) {
+        Ok(model_state_repository) => Arc::new(model_state_repository),
+        Err(e) => {
+            println!("cannot create a model state repository manager: {e:?}");
+            panic!("{}", e)
+        }
+    }
+}
+
+/// Load a previously persisted ModelState
+fn load_model_state(model_state_repository: Arc<dyn ModelStateRepository>) -> ModelState {
+    match block_on(model_state_repository.load()) {
+        Ok(model_state) => model_state.unwrap_or(ModelState::default()),
+        Err(e) => {
+            println!("cannot load the model state: {e:?}");
+            panic!("{}", e)
+        }
+    }
 }
