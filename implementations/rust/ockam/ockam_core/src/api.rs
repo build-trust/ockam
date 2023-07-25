@@ -959,7 +959,7 @@ mod schema_test {
     ];
 
     #[derive(Debug, Clone)]
-    struct Req(Request<'static>);
+    struct Req(Request);
 
     #[derive(Debug, Clone)]
     struct Res(Response);
