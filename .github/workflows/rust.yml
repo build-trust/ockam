@@ -40,6 +40,8 @@ on:
         description: Commit SHA, to run workflow
       ockam_command_cli_version:
         description: SHA to build Ockam command CLI
+      ockam_crate_version_to_test_with_docs_examples:
+        description: Ockam crate version to tests docs.ockam.io library examples
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -413,7 +415,7 @@ jobs:
     name: Rust - test_orchestrator_ockam_command
     runs-on: ubuntu-20.04
     container: ghcr.io/build-trust/artifacts-helper:latest
-    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'merge_group'
     environment: merge_queue
     permissions:
       contents: read
@@ -428,4 +430,29 @@ jobs:
           ockam_repository_ref: ${{ inputs.commit_sha }}
           controller_id: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ID }}
           controller_addr: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ADDRESS }}
-          ockam_cli_repository_ref: ${{ inputs.ockam_command_cli_version }}
+
+  test_docs_rust_library_examples:
+    name: Rust - test_docs_rust_library_examples
+    runs-on: ubuntu-20.04
+    container: ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      # Run ockam example code against a different version of ockam library
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ inputs.commit_sha }}
+          path: ockam_examples
+
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
+          path: ockam_library
+
+      - name: Move Implementation Directory From Ockam Library To Ockam Examples
+        run: |
+          cp -r ockam_library/implementations/rust/ockam ockam_examples/implementations/rust/ockam
+
+      - name: Run Ockam Examples
+        working-directory: ockam_examples
+        run: cargo test -p hello_ockam
