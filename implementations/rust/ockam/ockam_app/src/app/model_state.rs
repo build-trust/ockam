@@ -1,5 +1,13 @@
+use serde::{Deserialize, Serialize};
+
 use ockam_api::cloud::enroll::auth0::UserInfo;
 
+/// The ModelState stores all the data which is not maintained by the NodeManager:
+///    - user information
+///    - shared services
+///    - sent invitations
+///    - etc...
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ModelState {
     user_info: Option<UserInfo>,
 }

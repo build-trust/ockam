@@ -48,7 +48,7 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     // retrieve the user information
     let user_info = auth0_service.get_user_info(token.clone()).await?;
     info!("the user info is {user_info:?}");
-    app_state.set_user_info(user_info).await;
+    app_state.set_user_info(user_info).await?;
 
     // enroll the current user using that token on the controller
     let node_manager = app_state.node_manager.get().read().await;
