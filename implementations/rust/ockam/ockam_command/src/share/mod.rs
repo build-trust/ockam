@@ -2,10 +2,12 @@ use clap::{Args, Subcommand};
 
 use crate::CommandGlobalOpts;
 
+mod create;
 mod list;
 mod output;
 mod service;
 
+pub use create::CreateCommand;
 pub use list::ListCommand;
 pub use service::ServiceCreateCommand;
 
@@ -17,14 +19,12 @@ pub struct ShareCommand {
     subcommand: ShareSubcommand,
 }
 
-// This can be removed when the other variants each become wrappers
-#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Subcommand)]
 pub enum ShareSubcommand {
     /// Accept a received sharing invitation
     Accept,
     /// Create an invitation for another user to join a Space or Project
-    Create,
+    Create(CreateCommand),
     /// List sharing invitations you've created or received
     List(ListCommand),
     /// Revoke a sharing invitation you've previously created
@@ -38,7 +38,7 @@ impl ShareCommand {
         use ShareSubcommand::*;
         match self.subcommand {
             Accept => todo!(),
-            Create => todo!(),
+            Create(c) => c.run(options),
             List(c) => c.run(options),
             Revoke => todo!(),
             Service(c) => c.run(options),
