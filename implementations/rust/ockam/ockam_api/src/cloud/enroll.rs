@@ -25,11 +25,12 @@ mod node {
     use tracing::trace;
 
     use ockam::identity::credential::Attributes;
-    use ockam_core::api::Request;
+    use ockam_core::api::{Request, Response};
     use ockam_core::{self, Result};
+    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
-    use crate::cloud::enroll::auth0::AuthenticateAuth0Token;
+    use crate::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
     use crate::cloud::enroll::enrollment_token::{EnrollmentToken, RequestEnrollmentToken};
     use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT};
     use crate::nodes::{NodeManager, NodeManagerWorker};
@@ -41,11 +42,23 @@ mod node {
         pub async fn enroll_auth0(
             &self,
             ctx: &Context,
+            route: &MultiAddr,
+            token: Auth0Token,
+        ) -> Result<()> {
+            let request = CloudRequestWrapper::new(AuthenticateAuth0Token::new(token), route, None);
+            Response::parse_response_body(
+                self.enroll_auth0_response(ctx, request).await?.as_slice(),
+            )
+        }
+
+        /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
+        pub(crate) async fn enroll_auth0_response(
+            &self,
+            ctx: &Context,
             req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token>,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-            let req_body: AuthenticateAuth0Token = req_wrapper.req;
-            let req_builder = Request::post("v0/enroll").body(req_body);
+            let route = req_wrapper.multiaddr()?;
+            let req_builder = Request::post("v0/enroll").body(req_wrapper.req);
             let api_service = "auth0_authenticator";
 
             trace!(target: TARGET, "executing auth0 flow");
@@ -54,7 +67,7 @@ mod node {
                 ctx,
                 api_service,
                 None,
-                &cloud_multiaddr,
+                &route,
                 api_service,
                 req_builder,
                 None,
@@ -66,13 +79,13 @@ mod node {
 
     impl NodeManagerWorker {
         /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
-        pub async fn enroll_auth0(
+        pub async fn enroll_auth0_response(
             &self,
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token>,
         ) -> Result<Vec<u8>> {
             let node_manager = self.get().read().await;
-            node_manager.enroll_auth0(ctx, req_wrapper).await
+            node_manager.enroll_auth0_response(ctx, req_wrapper).await
         }
 
         /// Generates a token that will be associated to the passed attributes.

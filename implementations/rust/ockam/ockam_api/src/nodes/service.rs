@@ -790,7 +790,9 @@ impl NodeManagerWorker {
             }
 
             // ==*== Enroll ==*==
-            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, dec.decode()?).await?,
+            (Post, ["v0", "enroll", "auth0"]) => {
+                self.enroll_auth0_response(ctx, dec.decode()?).await?
+            }
             (Get, ["v0", "enroll", "token"]) => self.generate_enrollment_token(ctx, dec).await?,
             (Put, ["v0", "enroll", "token"]) => {
                 self.authenticate_enrollment_token(ctx, dec).await?

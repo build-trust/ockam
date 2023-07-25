@@ -5,10 +5,8 @@ use tracing::log::{error, info};
 use ockam::identity::IdentityIdentifier;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{CliState, SpaceConfig};
-use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::{CreateSpace, Space};
-use ockam_api::cloud::CloudRequestWrapper;
 use ockam_command::enroll::{update_enrolled_identity, Auth0Service};
 use ockam_command::util::api::CloudOpts;
 
@@ -46,15 +44,9 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     // get an Auth0 token
     let token = Auth0Service::default().get_token_with_pkce().await?;
     // enroll the current user using that token on the controller
-    let request = CloudRequestWrapper::new(
-        AuthenticateAuth0Token::new(token),
-        &CloudOpts::route(),
-        None,
-    );
-
     let node_manager = app_state.node_manager.get().read().await;
     node_manager
-        .enroll_auth0(&app_state.context(), request)
+        .enroll_auth0(&app_state.context(), &CloudOpts::route(), token)
         .await
         .into_diagnostic()?;
 
