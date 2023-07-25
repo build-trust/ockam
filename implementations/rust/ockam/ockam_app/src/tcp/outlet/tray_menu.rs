@@ -9,6 +9,10 @@ pub(crate) async fn build_outlets_section(
     app_state: &AppState,
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
+    if !app_state.is_enrolled() {
+        return tray_menu;
+    };
+
     let mut tm = tray_menu
         .add_item(CustomMenuItem::new(TCP_OUTLET_HEADER_MENU_ID, "TCP Outlets").disabled())
         .add_item(CustomMenuItem::new(TCP_OUTLET_CREATE_MENU_ID, "Create..."));

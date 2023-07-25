@@ -9,15 +9,10 @@ use crate::{enroll, options, tcp};
 
 pub async fn build_tray_menu(app_state: &AppState) -> SystemTrayMenu {
     let mut tray_menu = SystemTrayMenu::new();
-    if app_state.is_enrolled() {
-        tray_menu = build_outlets_section(app_state, tray_menu).await;
-        tray_menu = tray_menu.add_native_item(SystemTrayMenuItem::Separator);
-        tray_menu = build_options_section(app_state, tray_menu);
-    } else {
-        tray_menu = build_enroll_section(app_state, tray_menu);
-        tray_menu = tray_menu.add_native_item(SystemTrayMenuItem::Separator);
-        tray_menu = build_options_section(app_state, tray_menu);
-    }
+    tray_menu = build_enroll_section(app_state, tray_menu).await;
+    tray_menu = build_outlets_section(app_state, tray_menu).await;
+    tray_menu = tray_menu.add_native_item(SystemTrayMenuItem::Separator);
+    tray_menu = build_options_section(app_state, tray_menu);
     tray_menu
 }
 

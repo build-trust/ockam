@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
-#[cfg_attr(test, derive(PartialEq, Eq, Clone))]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 #[cbor(transparent)]
 #[serde(transparent)]
 pub struct Token(#[n(0)] pub String);
@@ -25,7 +25,7 @@ mod node {
     use tracing::trace;
 
     use ockam::identity::credential::Attributes;
-    use ockam_core::api::{Request, Response};
+    use ockam_core::api::Request;
     use ockam_core::{self, Result};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
@@ -46,9 +46,8 @@ mod node {
             token: Auth0Token,
         ) -> Result<()> {
             let request = CloudRequestWrapper::new(AuthenticateAuth0Token::new(token), route, None);
-            Response::parse_response_body(
-                self.enroll_auth0_response(ctx, request).await?.as_slice(),
-            )
+            self.enroll_auth0_response(ctx, request).await?;
+            Ok(())
         }
 
         /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
@@ -176,15 +175,15 @@ pub mod auth0 {
         pub error_description: Cow<'a, str>,
     }
 
-    #[derive(serde::Deserialize, Debug)]
-    #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
+    #[derive(serde::Deserialize, Debug, Clone)]
+    #[cfg_attr(test, derive(PartialEq, Eq))]
     pub struct Auth0Token {
         pub token_type: TokenType,
         pub access_token: Token,
     }
 
-    #[derive(serde::Deserialize, Debug)]
-    #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
+    #[derive(serde::Deserialize, Debug, Clone)]
+    #[cfg_attr(test, derive(PartialEq, Eq))]
     pub struct UserInfo {
         pub sub: String,
         pub nickname: String,
@@ -219,8 +218,8 @@ pub mod auth0 {
 
     // Auxiliary types
 
-    #[derive(serde::Deserialize, Encode, Decode, Debug)]
-    #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
+    #[derive(serde::Deserialize, Encode, Decode, Debug, Clone)]
+    #[cfg_attr(test, derive(PartialEq, Eq))]
     #[rustfmt::skip]
     #[cbor(index_only)]
     pub enum TokenType {
