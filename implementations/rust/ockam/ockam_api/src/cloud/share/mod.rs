@@ -4,8 +4,10 @@ use minicbor::{Decode, Encode};
 use ockam_identity::IdentityIdentifier;
 use serde::{Deserialize, Serialize};
 
+mod create;
 mod list;
 
+pub use create::*;
 pub use list::*;
 
 #[derive(Clone, Debug, PartialEq, Decode, Deserialize, Encode, Serialize)]
