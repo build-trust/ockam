@@ -33,7 +33,7 @@ lmdb = ["tokio", "lmdb-rkv"]
 sqlite = ["rusqlite"]
 
 [dependencies]
-either = { version = "1.8.1", default-features = false }
+either = { version = "1.9.0", default-features = false }
 lmdb-rkv = { version = "0.14.0", optional = true }
 minicbor = { version = "0.19.0", features = ["derive", "alloc"] }
 ockam_core = { version = "0.83.0", path = "../ockam_core", default-features = false }
