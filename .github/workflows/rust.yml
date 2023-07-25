@@ -275,11 +275,12 @@ jobs:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - run: rustup default nightly-2023-03-15
-      - run: rustup update nightly
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
+      - run: rustup default nightly
+      - run: rustup update nightly
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
       - run: |
           rustc --version
           RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
@@ -294,11 +295,12 @@ jobs:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - run: rustup default nightly-2023-03-15
-      - run: rustup update nightly
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
+      - run: rustup default nightly
+      - run: rustup update nightly
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build
@@ -313,11 +315,12 @@ jobs:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - run: rustup default nightly-2023-03-15
-      - run: rustup update nightly
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
+      - run: rustup default nightly
+      - run: rustup update nightly
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew test
