@@ -1,10 +1,11 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{CliState, StateDirTrait};
+use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
@@ -15,6 +16,8 @@ use ockam_api::nodes::{NodeManager, NodeManagerWorker};
 use ockam_command::node::util::init_node_state;
 use ockam_command::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use ockam_command::{CommandGlobalOpts, GlobalArgs, Terminal};
+
+use crate::app::model_state::ModelState;
 
 pub const NODE_NAME: &str = "default";
 pub const SPACE_NAME: &str = "default";
@@ -31,6 +34,7 @@ pub struct AppState {
     global_args: GlobalArgs,
     state: CliState,
     pub(crate) node_manager: NodeManagerWorker,
+    model_state: Arc<RwLock<ModelState>>,
 }
 
 impl From<AppState> for CommandGlobalOpts {
@@ -63,6 +67,7 @@ impl AppState {
             global_args: options.global_args,
             state: options.state,
             node_manager: NodeManagerWorker::new(node_manager),
+            model_state: Arc::new(RwLock::new(ModelState::default())),
         }
     }
 
@@ -94,6 +99,16 @@ impl AppState {
     pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
         let node_manager = self.node_manager.get().read().await;
         node_manager.list_outlets().list
+    }
+
+    pub async fn set_user_info(&self, user_info: UserInfo) {
+        let mut model_state = self.model_state.write().unwrap();
+        model_state.set_user_info(user_info);
+    }
+
+    pub async fn get_user_info(&self) -> Option<UserInfo> {
+        let model_state = self.model_state.read().unwrap();
+        model_state.get_user_info()
     }
 }
 

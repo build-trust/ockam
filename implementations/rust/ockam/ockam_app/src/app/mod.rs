@@ -10,6 +10,7 @@ pub use tray_menu::*;
 mod app_state;
 pub(crate) mod events;
 mod logging;
+mod model_state;
 mod process;
 mod tray_menu;
 

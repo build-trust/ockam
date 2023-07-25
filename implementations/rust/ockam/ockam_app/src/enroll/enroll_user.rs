@@ -42,7 +42,14 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
 
 async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     // get an Auth0 token
-    let token = Auth0Service::default().get_token_with_pkce().await?;
+    let auth0_service = Auth0Service::default();
+    let token = auth0_service.get_token_with_pkce().await?;
+
+    // retrieve the user information
+    let user_info = auth0_service.get_user_info(token.clone()).await?;
+    info!("the user info is {user_info:?}");
+    app_state.set_user_info(user_info).await;
+
     // enroll the current user using that token on the controller
     let node_manager = app_state.node_manager.get().read().await;
     node_manager
