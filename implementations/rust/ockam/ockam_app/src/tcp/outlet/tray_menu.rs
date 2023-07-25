@@ -1,17 +1,17 @@
 use crate::app::AppState;
-use crate::tcp::outlet::tcp_outlet_create;
 use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
 
-pub const TCP_OUTLET_HEADER_MENU_ID: &str = "tcp_outlet_header";
-pub const TCP_OUTLET_CREATE_MENU_ID: &str = "tcp_outlet_create";
+pub const SERVICE_HEADER_MENU_ID: &str = "service_outlet_header";
+pub const SERVICE_CREATE_MENU_ID: &str = "service_outlet_create";
+pub const SERVICE_WINDOW_ID: &str = "service_creation";
 
 pub(crate) async fn build_outlets_section(
     app_state: &AppState,
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
     let mut tm = tray_menu
-        .add_item(CustomMenuItem::new(TCP_OUTLET_HEADER_MENU_ID, "TCP Outlets").disabled())
-        .add_item(CustomMenuItem::new(TCP_OUTLET_CREATE_MENU_ID, "Create..."));
+        .add_item(CustomMenuItem::new(SERVICE_HEADER_MENU_ID, "Shared services").disabled())
+        .add_item(CustomMenuItem::new(SERVICE_CREATE_MENU_ID, "Create..."));
     for outlet in app_state.tcp_outlet_list().await {
         let outlet_info = format!(
             "{} to {}",
@@ -26,7 +26,11 @@ pub(crate) async fn build_outlets_section(
 
 /// Event listener for the "Create..." menu item
 pub fn on_create(app: &AppHandle<Wry>) -> tauri::Result<()> {
-    let app = app.clone();
-    tauri::async_runtime::spawn(async move { tcp_outlet_create(&app).await });
+    tauri::WindowBuilder::new(
+        app,
+        SERVICE_WINDOW_ID,
+        tauri::WindowUrl::App("service".into()),
+    )
+    .build()?;
     Ok(())
 }

@@ -26,7 +26,7 @@ pub fn process_system_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
     if let SystemTrayEvent::MenuItemClick { id, .. } = event {
         let result = match id.as_str() {
             enroll::ENROLL_MENU_ID => enroll::on_enroll(app),
-            tcp::outlet::TCP_OUTLET_CREATE_MENU_ID => tcp::outlet::on_create(app),
+            tcp::outlet::SERVICE_CREATE_MENU_ID => tcp::outlet::on_create(app),
             options::RESET_MENU_ID => options::on_reset(app),
             options::QUIT_MENU_ID => options::on_quit(),
             _ => Ok(()),
