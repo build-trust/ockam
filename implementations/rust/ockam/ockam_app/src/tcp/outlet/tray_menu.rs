@@ -1,5 +1,6 @@
 use crate::app::AppState;
 use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
+use tauri_runtime::menu::SystemTrayMenuItem;
 
 pub const SERVICE_HEADER_MENU_ID: &str = "service_outlet_header";
 pub const SERVICE_CREATE_MENU_ID: &str = "service_outlet_create";
@@ -14,6 +15,7 @@ pub(crate) async fn build_outlets_section(
     };
 
     let mut tm = tray_menu
+        .add_native_item(SystemTrayMenuItem::Separator)
         .add_item(CustomMenuItem::new(SERVICE_HEADER_MENU_ID, "Shared services").disabled())
         .add_item(CustomMenuItem::new(SERVICE_CREATE_MENU_ID, "Create..."));
     for outlet in app_state.tcp_outlet_list().await {
