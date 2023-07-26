@@ -1,8 +1,5 @@
 use crate::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
-use crate::{
-    Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation,
-    IdentitiesReader, IdentitiesStorage,
-};
+use crate::{IdentitiesBuilder, IdentitiesCreation, IdentitiesReader, IdentitiesStorage};
 use ockam_core::compat::sync::Arc;
 use ockam_vault::Vault;
 
@@ -42,15 +39,15 @@ impl Identities {
         self.repository().as_identities_reader()
     }
 
-    /// Return the identities credentials service
-    pub fn credentials(&self) -> Arc<dyn Credentials> {
-        Arc::new(self.clone())
-    }
-
-    /// Return the identities credentials server
-    pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
-        Arc::new(CredentialsServerModule::new(self.credentials()))
-    }
+    // /// Return the identities credentials service
+    // pub fn credentials(&self) -> Arc<dyn Credentials> {
+    //     Arc::new(self.clone())
+    // }
+    //
+    // /// Return the identities credentials server
+    // pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
+    //     Arc::new(CredentialsServerModule::new(self.credentials()))
+    // }
 }
 
 impl Identities {

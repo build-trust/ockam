@@ -29,33 +29,35 @@ unused_qualifications
 extern crate core;
 
 #[cfg(feature = "alloc")]
-#[macro_use]
 extern crate alloc;
 
-/// Data types supporting the creation of a credential
-pub mod credential;
+/// On-the-wire data types
+pub mod models;
 
-/// Services for creating and validating credentials
-pub mod credentials;
+// /// Data types supporting the creation of a credential
+// pub mod credential;
+//
+// /// Services for creating and validating credentials
+// pub mod credentials;
 
 /// Service for the management of identities
 pub mod identities;
 
 /// Data types representing an identity
 pub mod identity;
-
-/// Data types supporting the creation of a secure channels
-pub mod secure_channel;
-
-/// Service supporting the creation of secure channel listener and connection to a listener
-pub mod secure_channels;
-
-///
-/// Exports
-///
-pub use credential::*;
-pub use credentials::*;
+//
+// /// Data types supporting the creation of a secure channels
+// pub mod secure_channel;
+//
+// /// Service supporting the creation of secure channel listener and connection to a listener
+// pub mod secure_channels;
+//
+// ///
+// /// Exports
+// ///
+// pub use credential::*;
+// pub use credentials::*;
 pub use identities::*;
 pub use identity::*;
-pub use secure_channel::*;
-pub use secure_channels::*;
+// pub use secure_channel::*;
+// pub use secure_channels::*;

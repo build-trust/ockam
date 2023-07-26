@@ -1,6 +1,5 @@
 use crate::alloc::borrow::ToOwned;
-use crate::credential::Timestamp;
-use crate::identity::IdentityIdentifier;
+use crate::models::{Identifier, TimestampInSeconds};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
@@ -11,9 +10,9 @@ use serde::{Deserialize, Serialize};
 #[cbor(map)]
 pub struct AttributesEntry {
     #[b(1)] attrs: BTreeMap<String, Vec<u8>>,
-    #[n(2)] added: Timestamp,
-    #[n(3)] expires: Option<Timestamp>,
-    #[n(4)] attested_by: Option<IdentityIdentifier>,
+    #[n(2)] added: TimestampInSeconds,
+    #[n(3)] expires: Option<TimestampInSeconds>,
+    #[n(4)] attested_by: Option<Identifier>,
 }
 
 impl AttributesEntry {
@@ -24,9 +23,9 @@ impl AttributesEntry {
     /// Constructor
     pub fn new(
         attrs: BTreeMap<String, Vec<u8>>,
-        added: Timestamp,
-        expires: Option<Timestamp>,
-        attested_by: Option<IdentityIdentifier>,
+        added: TimestampInSeconds,
+        expires: Option<TimestampInSeconds>,
+        attested_by: Option<Identifier>,
     ) -> Self {
         Self {
             attrs,
@@ -42,17 +41,17 @@ impl AttributesEntry {
     }
 
     /// Expiration time for this entry
-    pub fn expires(&self) -> Option<Timestamp> {
+    pub fn expires(&self) -> Option<TimestampInSeconds> {
         self.expires
     }
 
     /// Date that the entry was added
-    pub fn added(&self) -> Timestamp {
+    pub fn added(&self) -> TimestampInSeconds {
         self.added
     }
 
     /// Who attested this attributes for this identity identifier
-    pub fn attested_by(&self) -> Option<IdentityIdentifier> {
+    pub fn attested_by(&self) -> Option<Identifier> {
         self.attested_by.to_owned()
     }
 }

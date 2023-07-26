@@ -7,11 +7,10 @@ use ockam_core::Result;
 use ockam_core::{async_trait, Error};
 
 use crate::alloc::string::ToString;
-use crate::credential::Timestamp;
 use crate::identities::storage::storage::{InMemoryStorage, Storage};
-use crate::identity::IdentityHistoryComparison;
-use crate::identity::{Identity, IdentityChangeConstants, IdentityError, IdentityIdentifier};
-use crate::AttributesEntry;
+use crate::identity::IdentityConstants;
+use crate::models::{now, ChangeHistory, Identifier};
+use crate::{AttributesEntry, ChangeHistoryBinary};
 
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]
@@ -54,13 +53,10 @@ impl IdentitiesRepository for IdentitiesStorage {
 #[async_trait]
 pub trait IdentityAttributesReader: Send + Sync + 'static {
     /// Get the attributes associated with the given identity identifier
-    async fn get_attributes(
-        &self,
-        identity: &IdentityIdentifier,
-    ) -> Result<Option<AttributesEntry>>;
+    async fn get_attributes(&self, identity: &Identifier) -> Result<Option<AttributesEntry>>;
 
     /// List all identities with their attributes
-    async fn list(&self) -> Result<Vec<(IdentityIdentifier, AttributesEntry)>>;
+    async fn list(&self) -> Result<Vec<(Identifier, AttributesEntry)>>;
 }
 
 /// Trait implementing write access to attributes
@@ -68,22 +64,18 @@ pub trait IdentityAttributesReader: Send + Sync + 'static {
 pub trait IdentityAttributesWriter: Send + Sync + 'static {
     /// Set the attributes associated with the given identity identifier.
     /// Previous values gets overridden.
-    async fn put_attributes(
-        &self,
-        identity: &IdentityIdentifier,
-        entry: AttributesEntry,
-    ) -> Result<()>;
+    async fn put_attributes(&self, identity: &Identifier, entry: AttributesEntry) -> Result<()>;
 
     /// Store an attribute name/value pair for a given identity
     async fn put_attribute_value(
         &self,
-        subject: &IdentityIdentifier,
+        subject: &Identifier,
         attribute_name: &str,
         attribute_value: &str,
     ) -> Result<()>;
 
     /// Remove all attributes for a given identity identifier
-    async fn delete(&self, identity: &IdentityIdentifier) -> Result<()>;
+    async fn delete(&self, identity: &Identifier) -> Result<()>;
 }
 
 /// Trait implementing write access to identities
@@ -91,19 +83,26 @@ pub trait IdentityAttributesWriter: Send + Sync + 'static {
 pub trait IdentitiesWriter: Send + Sync + 'static {
     /// Store changes if there are new key changes associated to that identity
     /// Return an error if the current change history conflicts with the persisted one
-    async fn update_identity(&self, identity: &Identity) -> Result<()>;
+    async fn update_identity(
+        &self,
+        identifier: &Identifier,
+        change_history: &ChangeHistoryBinary,
+    ) -> Result<()>;
 }
 
 /// Trait implementing read access to identiets
 #[async_trait]
 pub trait IdentitiesReader: Send + Sync + 'static {
     /// Return a persisted identity
-    async fn retrieve_identity(&self, identifier: &IdentityIdentifier) -> Result<Option<Identity>>;
+    async fn retrieve_identity(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Option<ChangeHistoryBinary>>;
 
     /// Return a persisted identity that is expected to be present and return and Error if this is not the case
-    async fn get_identity(&self, identifier: &IdentityIdentifier) -> Result<Identity> {
+    async fn get_identity(&self, identifier: &Identifier) -> Result<ChangeHistoryBinary> {
         match self.retrieve_identity(identifier).await? {
-            Some(identity) => Ok(identity),
+            Some(change_history) => Ok(change_history),
             None => Err(Error::new(
                 Origin::Core,
                 Kind::NotFound,
@@ -139,12 +138,16 @@ impl IdentitiesStorage {
     }
 
     /// Persist an Identity (overrides it)
-    async fn put_identity(&self, identity: &Identity) -> Result<()> {
+    async fn put_identity(
+        &self,
+        identifier: &Identifier,
+        change_history: &ChangeHistoryBinary,
+    ) -> Result<()> {
         self.storage
             .set(
-                &identity.identifier().to_string(),
-                IdentityChangeConstants::CHANGE_HISTORY_KEY.to_string(),
-                identity.export()?,
+                &identifier.to_string(),
+                IdentityConstants::CHANGE_HISTORY_KEY.to_string(),
+                change_history.0.clone(),
             )
             .await
     }
@@ -152,14 +155,11 @@ impl IdentitiesStorage {
 
 #[async_trait]
 impl IdentityAttributesReader for IdentitiesStorage {
-    async fn get_attributes(
-        &self,
-        identity_id: &IdentityIdentifier,
-    ) -> Result<Option<AttributesEntry>> {
+    async fn get_attributes(&self, identity_id: &Identifier) -> Result<Option<AttributesEntry>> {
         let id = identity_id.to_string();
         let entry = match self
             .storage
-            .get(&id, IdentityChangeConstants::ATTRIBUTES_KEY)
+            .get(&id, IdentityConstants::ATTRIBUTES_KEY)
             .await?
         {
             Some(e) => e,
@@ -168,12 +168,11 @@ impl IdentityAttributesReader for IdentitiesStorage {
 
         let entry: AttributesEntry = minicbor::decode(&entry)?;
 
-        let now = Timestamp::now()
-            .ok_or_else(|| Error::new(Origin::Core, Kind::Internal, "invalid system time"))?;
+        let now = now()?;
         match entry.expires() {
             Some(exp) if exp <= now => {
                 self.storage
-                    .del(&id, IdentityChangeConstants::ATTRIBUTES_KEY)
+                    .del(&id, IdentityConstants::ATTRIBUTES_KEY)
                     .await?;
                 Ok(None)
             }
@@ -181,14 +180,10 @@ impl IdentityAttributesReader for IdentitiesStorage {
         }
     }
 
-    async fn list(&self) -> Result<Vec<(IdentityIdentifier, AttributesEntry)>> {
+    async fn list(&self) -> Result<Vec<(Identifier, AttributesEntry)>> {
         let mut l = Vec::new();
-        for id in self
-            .storage
-            .keys(IdentityChangeConstants::ATTRIBUTES_KEY)
-            .await?
-        {
-            let identity_identifier = IdentityIdentifier::try_from(id)?;
+        for id in self.storage.keys(IdentityConstants::ATTRIBUTES_KEY).await? {
+            let identity_identifier = Identifier::try_from(id)?;
             if let Some(attrs) = self.get_attributes(&identity_identifier).await? {
                 l.push((identity_identifier, attrs))
             }
@@ -199,18 +194,14 @@ impl IdentityAttributesReader for IdentitiesStorage {
 
 #[async_trait]
 impl IdentityAttributesWriter for IdentitiesStorage {
-    async fn put_attributes(
-        &self,
-        sender: &IdentityIdentifier,
-        entry: AttributesEntry,
-    ) -> Result<()> {
+    async fn put_attributes(&self, sender: &Identifier, entry: AttributesEntry) -> Result<()> {
         // TODO: Implement expiration mechanism in Storage
         let entry = minicbor::to_vec(&entry)?;
 
         self.storage
             .set(
                 &sender.to_string(),
-                IdentityChangeConstants::ATTRIBUTES_KEY.to_string(),
+                IdentityConstants::ATTRIBUTES_KEY.to_string(),
                 entry,
             )
             .await?;
@@ -221,7 +212,7 @@ impl IdentityAttributesWriter for IdentitiesStorage {
     /// Store an attribute name/value pair for a given identity
     async fn put_attribute_value(
         &self,
-        subject: &IdentityIdentifier,
+        subject: &Identifier,
         attribute_name: &str,
         attribute_value: &str,
     ) -> Result<()> {
@@ -233,20 +224,15 @@ impl IdentityAttributesWriter for IdentitiesStorage {
             attribute_name.to_string(),
             attribute_value.as_bytes().to_vec(),
         );
-        let entry = AttributesEntry::new(
-            attributes,
-            Timestamp::now().unwrap(),
-            None,
-            Some(subject.clone()),
-        );
+        let entry = AttributesEntry::new(attributes, now()?, None, Some(subject.clone()));
         self.put_attributes(subject, entry).await
     }
 
-    async fn delete(&self, identity: &IdentityIdentifier) -> Result<()> {
+    async fn delete(&self, identity: &Identifier) -> Result<()> {
         self.storage
             .del(
                 identity.to_string().as_str(),
-                IdentityChangeConstants::ATTRIBUTES_KEY,
+                IdentityConstants::ATTRIBUTES_KEY,
             )
             .await
     }
@@ -254,25 +240,31 @@ impl IdentityAttributesWriter for IdentitiesStorage {
 
 #[async_trait]
 impl IdentitiesWriter for IdentitiesStorage {
-    async fn update_identity(&self, identity: &Identity) -> Result<()> {
-        let should_set = if let Some(known) = self.retrieve_identity(&identity.identifier()).await?
-        {
-            match identity.changes().compare(known.changes()) {
-                IdentityHistoryComparison::Equal => false, /* Do nothing */
-                IdentityHistoryComparison::Conflict => {
-                    return Err(IdentityError::ConsistencyError.into());
-                }
-                IdentityHistoryComparison::Newer => true, /* Update */
-                IdentityHistoryComparison::Older => {
-                    return Err(IdentityError::ConsistencyError.into());
-                }
-            }
-        } else {
-            true
-        };
+    async fn update_identity(
+        &self,
+        identifier: &Identifier,
+        change_history: &ChangeHistoryBinary,
+    ) -> Result<()> {
+        // FIXME
+        let should_set = true;
+        // let should_set = if let Some(known) = self.retrieve_identity(&identity.identifier()).await?
+        // {
+        //     match identity.changes().compare(known.changes()) {
+        //         IdentityHistoryComparison::Equal => false, /* Do nothing */
+        //         IdentityHistoryComparison::Conflict => {
+        //             return Err(IdentityError::ConsistencyError.into());
+        //         }
+        //         IdentityHistoryComparison::Newer => true, /* Update */
+        //         IdentityHistoryComparison::Older => {
+        //             return Err(IdentityError::ConsistencyError.into());
+        //         }
+        //     }
+        // } else {
+        //     true
+        // };
 
         if should_set {
-            self.put_identity(identity).await?;
+            self.put_identity(identifier, change_history).await?;
         }
 
         Ok(())
@@ -281,16 +273,19 @@ impl IdentitiesWriter for IdentitiesStorage {
 
 #[async_trait]
 impl IdentitiesReader for IdentitiesStorage {
-    async fn retrieve_identity(&self, identifier: &IdentityIdentifier) -> Result<Option<Identity>> {
+    async fn retrieve_identity(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Option<ChangeHistoryBinary>> {
         if let Some(data) = self
             .storage
             .get(
                 &identifier.to_string(),
-                IdentityChangeConstants::CHANGE_HISTORY_KEY,
+                IdentityConstants::CHANGE_HISTORY_KEY,
             )
             .await?
         {
-            Ok(Some(Identity::import(identifier, &data)?))
+            Ok(Some(ChangeHistoryBinary(data)))
         } else {
             Ok(None)
         }
