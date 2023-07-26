@@ -104,7 +104,6 @@ pub struct NodeManager {
     enable_credential_checks: bool,
     identifier: IdentityIdentifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
-    projects: Arc<BTreeMap<String, ProjectLookup>>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
     medic_handle: MedicHandle,
@@ -272,16 +271,6 @@ impl NodeManagerGeneralOptions {
     }
 }
 
-pub struct NodeManagerProjectsOptions {
-    projects: BTreeMap<String, ProjectLookup>,
-}
-
-impl NodeManagerProjectsOptions {
-    pub fn new(projects: BTreeMap<String, ProjectLookup>) -> Self {
-        Self { projects }
-    }
-}
-
 #[derive(Clone)]
 /// Transport to build connection
 pub struct ApiTransport {
@@ -330,7 +319,6 @@ impl NodeManager {
     pub async fn create(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,
-        projects_options: NodeManagerProjectsOptions,
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,
     ) -> Result<Self> {
@@ -388,7 +376,6 @@ impl NodeManager {
                     .is_ok(),
             identifier: node_state.config().identifier().await?,
             secure_channels,
-            projects: Arc::new(projects_options.projects),
             trust_context: None,
             registry: Default::default(),
             medic_handle,
@@ -513,8 +500,14 @@ impl NodeManager {
         Ok(connection_instance)
     }
 
-    pub(crate) fn resolve_project(&self, name: &str) -> Result<(MultiAddr, IdentityIdentifier)> {
-        if let Some(info) = self.projects.get(name) {
+    pub(crate) async fn resolve_project(
+        &self,
+        name: &str,
+    ) -> Result<(MultiAddr, IdentityIdentifier)> {
+        let projects = ProjectLookup::from_state(self.cli_state.projects.list()?)
+            .await
+            .map_err(|e| ApiError::message(format!("Cannot load projects: {:?}", e)))?;
+        if let Some(info) = projects.get(name) {
             let node_route = info
                 .node_route
                 .as_ref()

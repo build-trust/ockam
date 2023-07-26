@@ -17,6 +17,8 @@ use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
 
+use crate::cli_state::StateDirTrait;
+use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
 use crate::nodes::connection::{Connection, ConnectionInstance};
@@ -247,6 +249,14 @@ impl NodeManagerWorker {
         let resource = req.alias().map(Resource::new).unwrap_or(resources::INLET);
 
         let mut node_manager = self.node_manager.write().await;
+        let projects = node_manager.cli_state.projects.list().map_err(|e| {
+            Response::bad_request(req_id)
+                .body(Error::new_without_path().with_message(e.to_string()))
+        })?;
+        let projects = ProjectLookup::from_state(projects).await.map_err(|e| {
+            Response::bad_request(req_id)
+                .body(Error::new_without_path().with_message(e.to_string()))
+        })?;
         let check_credential = node_manager.enable_credential_checks;
         let project_id = if check_credential {
             let pid = req
@@ -254,7 +264,7 @@ impl NodeManagerWorker {
                 .first()
                 .and_then(|p| {
                     if let Some(p) = p.cast::<Project>() {
-                        node_manager.projects.get(&*p).map(|info| &*info.id)
+                        projects.get(&*p).map(|info| &*info.id)
                     } else {
                         None
                     }

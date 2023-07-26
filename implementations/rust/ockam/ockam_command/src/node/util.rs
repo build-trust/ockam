@@ -8,8 +8,7 @@ use ockam_api::config::lookup::ProjectLookup;
 
 use ockam_api::cli_state::{ProjectConfig, StateDirTrait};
 use ockam_api::nodes::service::{
-    NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
-    NodeManagerTrustOptions,
+    NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_core::env::get_env_with_default;
@@ -63,8 +62,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let options = TcpListenerOptions::new();
     let listener = tcp.listen(&bind, options).await?;
 
-    let projects = ProjectLookup::from_state(opts.state.projects.list()?).await?;
-
     let node_man = NodeManager::create(
         ctx,
         NodeManagerGeneralOptions::new(
@@ -73,7 +70,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
             cmd.launch_config.is_some(),
             None,
         ),
-        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )

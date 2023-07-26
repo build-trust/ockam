@@ -14,7 +14,6 @@ use tokio::try_join;
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::NodeManagerTrustOptions;
@@ -22,9 +21,7 @@ use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{
-        service::{
-            NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
-        },
+        service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
@@ -303,7 +300,6 @@ async fn run_foreground_node(
             ),
     )?;
 
-    let projects = ProjectLookup::from_state(opts.state.projects.list()?).await?;
     let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
 
     let node_man = NodeManager::create(
@@ -314,7 +310,6 @@ async fn run_foreground_node(
             cmd.launch_config.is_some(),
             pre_trusted_identities,
         ),
-        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(
             listener.flow_control_id().clone(),
             tcp.async_try_clone().await.into_diagnostic()?,

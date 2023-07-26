@@ -8,11 +8,9 @@ use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::enroll::auth0::UserInfo;
-use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
-    NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
-    NodeManagerTrustOptions,
+    NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker};
 use ockam_command::node::util::init_node_state;
@@ -181,7 +179,7 @@ fn create_node_manager(ctx: Arc<Context>, opts: CommandGlobalOpts) -> NodeManage
 }
 
 /// Make a node manager with a default node called "default"
-async fn make_node_manager(
+pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
     opts: CommandGlobalOpts,
 ) -> miette::Result<NodeManager> {
@@ -193,9 +191,6 @@ async fn make_node_manager(
         .listen(&"127.0.0.1:0", options)
         .await
         .into_diagnostic()?;
-
-    let projects =
-        ProjectLookup::from_state(opts.state.projects.list().unwrap_or_default()).await?;
     let trust_context_config =
         TrustContextConfigBuilder::new(&opts.state, &TrustContextOpts::default())?
             .with_authority_identity(None)
@@ -205,7 +200,6 @@ async fn make_node_manager(
     let node_manager = NodeManager::create(
         &ctx,
         NodeManagerGeneralOptions::new(opts.state.clone(), NODE_NAME.to_string(), false, None),
-        NodeManagerProjectsOptions::new(projects),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )
