@@ -57,33 +57,6 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     Ok(identifier)
 }
 
-async fn create_default_identity(state: CliState) -> Result<()> {
-    let vault_state = match state.vaults.default() {
-        Err(_) => {
-            info!("creating a default vault");
-            state.create_vault_state(None).await?
-        }
-        Ok(vault_state) => vault_state,
-    };
-    info!("retrieved the vault state");
-
-    let identity = state
-        .get_identities(vault_state.get().await?)
-        .await?
-        .identities_creation()
-        .create_identity()
-        .await
-        .into_diagnostic()?;
-    info!("created a new identity {}", identity.identifier());
-
-    let identity_state = state
-        .create_identity_state(&identity.identifier(), None)
-        .await?;
-    info!("created a new identity state");
-    state.identities.set_default(identity_state.name())?;
-    Ok(())
-}
-
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     info!("retrieving the user space");
     let node_manager = app_state.node_manager.get().read().await;

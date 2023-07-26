@@ -347,8 +347,7 @@ pub mod test_utils {
     use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
-        NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
-        NodeManagerTrustOptions,
+        NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 
@@ -429,7 +428,6 @@ pub mod test_utils {
         let node_manager = NodeManager::create(
             context,
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
-            NodeManagerProjectsOptions::new(Default::default()),
             NodeManagerTransportOptions::new(
                 FlowControls::generate_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,

@@ -63,7 +63,8 @@ impl Instantiator for ProjectInstantiator {
             .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
 
         let mut node_manager = self.node_manager.write().await;
-        let (project_multiaddr, project_identifier) = node_manager.resolve_project(&project)?;
+        let (project_multiaddr, project_identifier) =
+            node_manager.resolve_project(&project).await?;
 
         debug!(addr = %project_multiaddr, "creating secure channel");
         let tcp = multiaddr_to_route(&project_multiaddr, &node_manager.tcp_transport)

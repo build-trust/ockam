@@ -701,7 +701,7 @@ impl NodeManagerWorker {
                     .cast::<ockam_multiaddr::proto::Project>()
                     .map(|p| p.to_string())
             }) {
-                let (_, project_identifier) = node_manager.resolve_project(&project)?;
+                let (_, project_identifier) = node_manager.resolve_project(&project).await?;
                 // if we are using the project we need to allow safe communication based on the
                 // project identifier
                 node_manager
