@@ -1,6 +1,7 @@
-use crate::app::AppState;
 use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
 use tauri_runtime::menu::SystemTrayMenuItem;
+
+use crate::app::AppState;
 
 pub const SERVICE_HEADER_MENU_ID: &str = "service_outlet_header";
 pub const SERVICE_CREATE_MENU_ID: &str = "service_outlet_create";
@@ -10,7 +11,7 @@ pub(crate) async fn build_outlets_section(
     app_state: &AppState,
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
-    if !app_state.is_enrolled() {
+    if !app_state.is_enrolled().await {
         return tray_menu;
     };
 

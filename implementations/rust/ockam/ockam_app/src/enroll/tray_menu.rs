@@ -9,11 +9,11 @@ pub const ENROLL_MENU_HEADER_ID: &str = "enroll-header";
 pub const ENROLL_MENU_ID: &str = "enroll";
 pub const ENROLL_MENU_USER_NAME: &str = "user-name";
 
-pub async fn build_enroll_section(
+pub(crate) async fn build_enroll_section(
     app_state: &AppState,
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
-    if app_state.is_enrolled() {
+    if app_state.is_enrolled().await {
         match app_state.get_user_info().await {
             Some(user_info) => {
                 let item = CustomMenuItem::new(
