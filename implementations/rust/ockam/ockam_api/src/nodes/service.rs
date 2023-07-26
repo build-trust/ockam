@@ -20,11 +20,7 @@ use ockam::{
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
-use ockam_core::compat::{
-    boxed::Box,
-    string::String,
-    sync::{Arc, Mutex},
-};
+use ockam_core::compat::{boxed::Box, string::String, sync::Arc};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
@@ -32,8 +28,6 @@ use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_identity::TrustContext;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
-use ockam_node::tokio;
-use ockam_node::tokio::task::JoinHandle;
 
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
@@ -50,8 +44,8 @@ use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::nodes::registry::KafkaServiceKind;
-use crate::session::sessions::Sessions;
-use crate::session::Medic;
+use crate::session::sessions::{Key, Session};
+use crate::session::MedicHandle;
 use crate::DefaultAddress;
 use crate::RpcProxyService;
 
@@ -113,8 +107,7 @@ pub struct NodeManager {
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
-    sessions: Arc<Mutex<Sessions>>,
-    medic: JoinHandle<Result<(), ockam_core::Error>>,
+    medic_handle: MedicHandle,
     policies: Arc<dyn PolicyStorage>,
 }
 
@@ -182,6 +175,16 @@ impl NodeManagerWorker {
 
     pub fn get_mut(&mut self) -> &mut Arc<RwLock<NodeManager>> {
         &mut self.node_manager
+    }
+
+    pub async fn set_node_manager(&self, node_manager: NodeManager) {
+        let mut nm = self.node_manager.write().await;
+        *nm = node_manager;
+    }
+
+    pub async fn stop(&self, ctx: &Context) -> Result<()> {
+        let nm = self.node_manager.read().await;
+        nm.medic_handle.stop_medic(ctx).await
     }
 }
 
@@ -363,8 +366,7 @@ impl NodeManager {
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
-        let medic = Medic::new();
-        let sessions = medic.sessions();
+        let medic_handle = MedicHandle::start_medic(ctx).await?;
 
         let mut s = Self {
             cli_state,
@@ -385,11 +387,7 @@ impl NodeManager {
             projects: Arc::new(projects_options.projects),
             trust_context: None,
             registry: Default::default(),
-            medic: {
-                let ctx = ctx.async_try_clone().await?;
-                tokio::spawn(medic.start(ctx))
-            },
-            sessions,
+            medic_handle,
             policies,
         };
 
@@ -527,6 +525,10 @@ impl NodeManager {
         } else {
             Err(ApiError::message(format!("project {name} not found")))
         }
+    }
+
+    pub fn add_session(&self, session: Session) -> Key {
+        self.medic_handle.add_session(session)
     }
 }
 
@@ -874,10 +876,9 @@ impl Worker for NodeManagerWorker {
         Ok(())
     }
 
-    async fn shutdown(&mut self, _: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         let node_manager = self.node_manager.read().await;
-        node_manager.medic.abort();
-        Ok(())
+        node_manager.medic_handle.stop_medic(ctx).await
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {

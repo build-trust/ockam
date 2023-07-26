@@ -309,7 +309,7 @@ impl NodeManagerWorker {
                         ctx,
                     );
                     session.set_replacer(repl);
-                    node_manager.sessions.lock().unwrap().add(session);
+                    node_manager.add_session(session);
                 }
 
                 Response::ok(req_id).body(InletStatus::new(
