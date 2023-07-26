@@ -21,9 +21,9 @@ use crate::Result;
 ///  - connects to the Orchestrator with the retrieved token to create a project
 pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     let app_state: State<AppState> = app.state::<AppState>();
-    if app_state.state().identities.default().is_err() {
+    if app_state.state().await.identities.default().is_err() {
         info!("creating a default identity");
-        create_default_identity(app_state.state())
+        create_default_identity(app_state.state().await)
             .await
             .map_err(|e| {
                 error!("{:?}", e);
@@ -59,7 +59,7 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
 
     let space = retrieve_space(app_state).await?;
     let _ = retrieve_project(app_state, &space).await?;
-    let identifier = update_enrolled_identity(&app_state.options(), NODE_NAME)
+    let identifier = update_enrolled_identity(&app_state.options().await, NODE_NAME)
         .await
         .into_diagnostic()?;
     Ok(identifier)
@@ -116,6 +116,7 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     };
     app_state
         .state()
+        .await
         .spaces
         .overwrite(&space.name, SpaceConfig::from(&space))?;
 
@@ -146,6 +147,7 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
     };
     app_state
         .state()
+        .await
         .projects
         .overwrite(&project.name, project.clone())?;
 

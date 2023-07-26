@@ -47,13 +47,24 @@ pub trait StateDirTrait: Sized + Send + Sync {
     }
 
     fn load(root_path: &Path) -> Result<Self> {
+        let dir = Self::create_dirs(root_path)?;
+        Ok(Self::new(dir))
+    }
+
+    /// Recreate all the state directories
+    fn reset(&self, root_path: &Path) -> Result<PathBuf> {
+        Self::create_dirs(root_path)
+    }
+
+    /// Create all the state directories
+    fn create_dirs(root_path: &Path) -> Result<PathBuf> {
         let dir = Self::build_dir(root_path);
         if Self::has_data_dir() {
             std::fs::create_dir_all(dir.join(DATA_DIR_NAME))?;
         } else {
             std::fs::create_dir_all(&dir)?;
-        }
-        Ok(Self::new(dir))
+        };
+        Ok(dir)
     }
 
     fn dir(&self) -> &PathBuf;

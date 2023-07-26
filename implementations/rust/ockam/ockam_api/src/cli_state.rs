@@ -129,6 +129,12 @@ impl CliState {
         Ok(state)
     }
 
+    /// Reset all directories and return a new CliState
+    pub async fn reset(&self) -> Result<CliState> {
+        self.delete(true)?;
+        Self::initialize_cli_state().await
+    }
+
     fn migrate(&self) -> Result<()> {
         // If there is a `config.json` file, migrate its contents to the spaces and project states.
         let legacy_config_path = self.dir.join("config.json");

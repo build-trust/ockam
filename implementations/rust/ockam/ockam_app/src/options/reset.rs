@@ -10,15 +10,8 @@ use crate::Result;
 /// So that the user must enroll again in order to be able to access a project
 pub async fn reset(app: &AppHandle<Wry>) -> Result<()> {
     let app_state = app.state::<AppState>();
-    let state = app_state.state();
-
-    if let Err(e) = state.delete(true) {
-        Err(miette!("{:?}", e).into())
-    } else {
-        info!("Local Ockam configuration deleted");
-        let result = app_state.reset().await;
-        info!("Application state recreated");
-        app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
-        result.map_err(|e| miette!(e).into())
-    }
+    let result = app_state.reset().await;
+    info!("Application state recreated");
+    app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+    result.map_err(|e| miette!(e).into())
 }

@@ -1,8 +1,8 @@
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use miette::{miette, IntoDiagnostic};
-use tauri::async_runtime::{block_on, spawn};
-use tracing::log::info;
+use tauri::async_runtime::{block_on, spawn, RwLock};
+use tracing::log::{error, info};
 
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
@@ -36,16 +36,10 @@ pub const PROJECT_NAME: &str = "default";
 pub struct AppState {
     context: Arc<Context>,
     global_args: GlobalArgs,
-    state: CliState,
+    state: Arc<RwLock<CliState>>,
     pub(crate) node_manager: NodeManagerWorker,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<dyn ModelStateRepository>,
-}
-
-impl From<AppState> for CommandGlobalOpts {
-    fn from(app_state: AppState) -> CommandGlobalOpts {
-        app_state.options()
-    }
 }
 
 impl Default for AppState {
@@ -72,7 +66,7 @@ impl AppState {
         AppState {
             context,
             global_args: options.global_args,
-            state: options.state,
+            state: Arc::new(RwLock::new(options.state)),
             node_manager: NodeManagerWorker::new(node_manager),
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository,
@@ -86,11 +80,23 @@ impl AppState {
             .map_err(|e| miette!(e))?;
         info!("stopped the old node manager");
 
-        let node_manager = make_node_manager(self.context.clone(), self.options()).await?;
+        self.reset_state().await?;
+        info!("reset the cli state");
+
+        let node_manager = make_node_manager(self.context.clone(), self.options().await).await?;
         info!("created a new node manager");
 
         self.node_manager.set_node_manager(node_manager).await;
         info!("set a new node manager");
+        Ok(())
+    }
+
+    async fn reset_state(&self) -> miette::Result<()> {
+        let mut state = self.state.write().await;
+        match state.reset().await {
+            Ok(s) => *state = s,
+            Err(e) => error!("Failed to reset the state {e:?}"),
+        }
         Ok(())
     }
 
@@ -102,15 +108,16 @@ impl AppState {
 
     /// Return the application cli state
     /// This can be used to manage the on-disk state for projects, identities, vaults, etc...
-    pub fn state(&self) -> CliState {
-        self.state.clone()
+    pub async fn state(&self) -> CliState {
+        let state = self.state.read().await;
+        state.clone()
     }
 
     /// Return the global options with a quiet terminal
-    pub fn options(&self) -> CommandGlobalOpts {
+    pub async fn options(&self) -> CommandGlobalOpts {
         CommandGlobalOpts {
             global_args: self.global_args.clone(),
-            state: self.state.clone(),
+            state: self.state().await,
             terminal: Terminal::quiet(),
         }
     }
@@ -118,8 +125,8 @@ impl AppState {
     /// Return true if the user is enrolled
     /// At the moment this check only verifies that there is a default project.
     /// This project should be the project that is created at the end of the enrollment procedure
-    pub fn is_enrolled(&self) -> bool {
-        self.state.projects.default().is_ok()
+    pub async fn is_enrolled(&self) -> bool {
+        self.state().await.projects.default().is_ok()
     }
 
     /// Return the list of currently running outlets
@@ -131,7 +138,7 @@ impl AppState {
     /// Set the retrieved user info on the model state
     pub async fn set_user_info(&self, user_info: UserInfo) -> Result<()> {
         let model_state = {
-            let mut model_state = self.model_state.write().unwrap();
+            let mut model_state = self.model_state.write().await;
             model_state.set_user_info(user_info);
             model_state.clone()
         };
@@ -141,7 +148,7 @@ impl AppState {
 
     /// Return the user information if it has been retrieved
     pub async fn get_user_info(&self) -> Option<UserInfo> {
-        let model_state = self.model_state.read().unwrap();
+        let model_state = self.model_state.read().await;
         model_state.get_user_info()
     }
 }
