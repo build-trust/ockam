@@ -700,7 +700,7 @@ impl NodeManagerWorker {
             (Delete, ["node", "forwarder", remote_address]) => {
                 encode_request_result(self.delete_forwarder(ctx, req, remote_address).await)?
             }
-            (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
+            (Post, ["node", "forwarder"]) => self.create_forwarder_response(ctx, req, dec).await?,
 
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "inlet"]) => self.get_inlets(req).await.to_vec()?,
