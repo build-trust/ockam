@@ -114,19 +114,13 @@ impl AppState {
 
     /// Set the retrieved user info on the model state
     pub async fn set_user_info(&self, user_info: UserInfo) -> Result<()> {
-        {
+        let model_state = {
             let mut model_state = self.model_state.write().unwrap();
             model_state.set_user_info(user_info);
-        }
-
-        let model_state_clone = {
-            let model_state = self.model_state.read().unwrap();
             model_state.clone()
         };
-        self.model_state_repository
-            .store(&model_state_clone)
-            .await?;
-        Ok(())
+
+        self.model_state_repository.store(&model_state).await
     }
 
     /// Return the user information if it has been retrieved
