@@ -84,14 +84,16 @@ async fn create_default_identity(state: CliState) -> Result<()> {
         .into_diagnostic()?;
     info!("created a new identity {}", identity.identifier());
 
-    let _ = state
+    let identity_state = state
         .create_identity_state(&identity.identifier(), None)
         .await?;
     info!("created a new identity state");
+    state.identities.set_default(identity_state.name())?;
     Ok(())
 }
 
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
+    info!("retrieving the user space");
     let node_manager = app_state.node_manager.get().read().await;
     let spaces = {
         node_manager
@@ -121,6 +123,7 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
 }
 
 async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project> {
+    info!("retrieving the user project");
     let node_manager = app_state.node_manager.get().read().await;
     let projects = {
         node_manager

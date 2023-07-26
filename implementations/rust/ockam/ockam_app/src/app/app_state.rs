@@ -1,7 +1,8 @@
 use std::sync::{Arc, RwLock};
 
-use miette::IntoDiagnostic;
+use miette::{miette, IntoDiagnostic};
 use tauri::async_runtime::{block_on, spawn};
+use tracing::log::info;
 
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
@@ -76,6 +77,21 @@ impl AppState {
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository,
         }
+    }
+
+    pub async fn reset(&self) -> miette::Result<()> {
+        self.node_manager
+            .stop(&self.context)
+            .await
+            .map_err(|e| miette!(e))?;
+        info!("stopped the old node manager");
+
+        let node_manager = make_node_manager(self.context.clone(), self.options()).await?;
+        info!("created a new node manager");
+
+        self.node_manager.set_node_manager(node_manager).await;
+        info!("set a new node manager");
+        Ok(())
     }
 
     /// Return the application Context
@@ -155,7 +171,14 @@ async fn make_node_manager(
         .listen(&"127.0.0.1:0", options)
         .await
         .into_diagnostic()?;
-    let projects = ProjectLookup::from_state(opts.state.projects.list()?).await?;
+
+    let projects = ProjectLookup::from_state(
+        opts.state
+            .projects
+            .list()
+            .unwrap_or(std::default::Default::default()),
+    )
+    .await?;
     let trust_context_config =
         TrustContextConfigBuilder::new(&opts.state, &TrustContextOpts::default())?
             .with_authority_identity(None)

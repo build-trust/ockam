@@ -77,7 +77,7 @@ impl NodeManagerWorker {
                 let node_manager = self.node_manager.write().await;
                 let mut session = Session::new(ping_route);
                 session.set_replacer(repl);
-                node_manager.sessions.lock().unwrap().add(session);
+                node_manager.add_session(session);
             }
             result
         };

@@ -1,17 +1,22 @@
-pub(crate) mod sessions;
-
-use crate::session::sessions::{Key, Ping, Sessions, Status};
-use crate::DefaultAddress;
 use minicbor::{Decode, Encode};
+use tokio::task::JoinHandle;
+use tracing as log;
+
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
-use ockam_core::{route, Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
+use ockam_core::{
+    route, Address, AllowAll, AsyncTryClone, Decodable, DenyAll, Encodable, Error, Routed, LOCAL,
+};
 use ockam_node::tokio::sync::mpsc;
 use ockam_node::tokio::task::JoinSet;
 use ockam_node::tokio::time::{sleep, timeout, Duration};
 use ockam_node::Context;
 use ockam_node::{tokio, WorkerBuilder};
-use tracing as log;
+
+use crate::session::sessions::{Key, Ping, Session, Sessions, Status};
+use crate::DefaultAddress;
+
+pub(crate) mod sessions;
 
 const MAX_FAILURES: usize = 3;
 const RETRY_DELAY: Duration = Duration::from_secs(5);
@@ -44,11 +49,10 @@ impl Medic {
         }
     }
 
-    pub fn sessions(&self) -> Arc<Mutex<Sessions>> {
-        self.sessions.clone()
-    }
-
-    pub async fn start(self, ctx: Context) -> Result<(), Error> {
+    pub async fn start(
+        self,
+        ctx: Context,
+    ) -> Result<(JoinHandle<()>, Arc<Mutex<Sessions>>), Error> {
         let ctx = ctx
             .new_detached(Address::random_tagged("Medic.ctx"), DenyAll, AllowAll)
             .await?;
@@ -58,14 +62,20 @@ impl Medic {
             .with_outgoing_access_control(DenyAll)
             .start(&ctx)
             .await?;
-        self.go(ctx, rx).await
+        let sessions = self.sessions.clone();
+        let handle = tokio::spawn(self.go(ctx, rx));
+        Ok((handle, sessions))
+    }
+
+    pub async fn stop(ctx: &Context) -> Result<(), Error> {
+        ctx.stop_worker(Collector::address()).await
     }
 
     /// Continuously check all sessions.
     ///
     /// This method never returns. It will ping all healthy sessions and
     /// trigger replacements for the unhealthy ones.
-    async fn go(mut self, ctx: Context, mut rx: mpsc::Receiver<Message>) -> ! {
+    async fn go(mut self, ctx: Context, mut rx: mpsc::Receiver<Message>) {
         let ctx = Arc::new(ctx);
         loop {
             log::trace!("check sessions");
@@ -117,8 +127,9 @@ impl Medic {
                                 let f = session.replacement(session.ping_route().clone());
                                 session.set_status(Status::Degraded);
                                 log::info!(%key, "replacing session");
+                                let retry_delay = self.retry_delay;
                                 self.replacements.spawn(async move {
-                                    sleep(self.retry_delay).await;
+                                    sleep(retry_delay).await;
                                     (key, f.await)
                                 });
                             }
@@ -232,30 +243,61 @@ impl Worker for Collector {
     }
 }
 
+pub struct MedicHandle {
+    handle: JoinHandle<()>,
+    sessions: Arc<Mutex<Sessions>>,
+}
+
+impl MedicHandle {
+    pub fn new(handle: JoinHandle<()>, sessions: Arc<Mutex<Sessions>>) -> Self {
+        Self { handle, sessions }
+    }
+
+    pub async fn start_medic(ctx: &Context) -> Result<MedicHandle, Error> {
+        let medic = Medic::new();
+        let ctx = ctx.async_try_clone().await?;
+        let (handle, sessions) = medic.start(ctx).await?;
+        let medic_handle = Self::new(handle, sessions);
+        Ok(medic_handle)
+    }
+
+    pub async fn stop_medic(&self, ctx: &Context) -> Result<(), Error> {
+        Medic::stop(ctx).await?;
+        self.handle.abort();
+        Ok(())
+    }
+
+    pub fn add_session(&self, session: Session) -> Key {
+        let mut sessions = self.sessions.lock().unwrap();
+        sessions.add(session)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use core::sync::atomic::{AtomicBool, Ordering};
+
+    use tracing as log;
+
+    use ockam::{route, Address, Context};
+    use ockam_core::compat::sync::Arc;
+    use ockam_core::{AsyncTryClone, Result};
+
     use crate::echoer::Echoer;
     use crate::hop::Hop;
     use crate::session::sessions::Session;
-    use crate::session::sessions::{Sessions, Status};
+    use crate::session::sessions::Status;
     use crate::session::Medic;
-    use core::sync::atomic::{AtomicBool, Ordering};
-    use ockam::{route, Address, Context, Error};
-    use ockam_core::compat::sync::{Arc, Mutex};
-    use ockam_core::{AsyncTryClone, Result};
-    use tracing as log;
 
     #[ockam::test]
     async fn test_session_monitoring(ctx: &mut Context) -> Result<()> {
         // Create a new Medic instance
         let medic = Medic::new();
 
-        let sessions: Arc<Mutex<Sessions>> = medic.sessions();
         // Start the Medic in a separate task
         let new_ctx = ctx.async_try_clone().await?;
 
-        let medic_task: tokio::task::JoinHandle<std::result::Result<(), Error>> =
-            tokio::spawn(medic.start(new_ctx));
+        let (medic_task, sessions) = medic.start(new_ctx).await?;
 
         // Medic relies on echo to verify if a session is alive
         ctx.start_worker(Address::from_string("echo"), Echoer)
