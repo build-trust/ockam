@@ -1,7 +1,7 @@
 use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, info};
 
-use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
+use ockam_api::cloud::share::{AcceptInvitation, InvitationListKind, ListInvitations};
 use ockam_command::util::api::CloudOpts;
 
 use crate::app::AppState;
@@ -12,6 +12,26 @@ use super::{
 };
 
 // At time of writing, tauri::command requires pub not pub(crate)
+
+#[tauri::command]
+pub async fn accept_invitation<R: Runtime>(id: String, app: AppHandle<R>) -> Result<(), String> {
+    info!(?id, "accepting invitation");
+    let state: State<'_, AppState> = app.state();
+    let node_manager_worker = state.node_manager_worker().await;
+    let res = node_manager_worker
+        .accept_invitation(
+            &state.context(),
+            AcceptInvitation { id },
+            &CloudOpts::route(),
+            None,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    debug!(?res);
+    app.trigger_global(super::events::REFRESH_INVITATIONS, None);
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn list_invitations<R: Runtime>(app: AppHandle<R>) -> tauri::Result<InvitationState> {
     let state: State<'_, SyncState> = app.state();
