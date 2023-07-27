@@ -16,7 +16,7 @@ use ockam_core::api::Status;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
-use crate::enroll::auth0_service::Auth0Service;
+use crate::enroll::oidc_service::OidcService;
 use crate::identity::initialize_identity_if_default;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::operation::util::check_for_completion;
@@ -62,7 +62,7 @@ async fn run_impl(
 
     display_parse_logs(&opts);
 
-    let auth0 = Auth0Service::default();
+    let auth0 = OidcService::default();
     let token = auth0.get_token_interactively(&opts).await?;
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;
@@ -124,7 +124,7 @@ pub async fn enroll_with_node(
     opts: &CommandGlobalOpts,
     route: &MultiAddr,
     node_name: &str,
-    token: Auth0Token,
+    token: OidcToken,
 ) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     rpc.request(api::enroll::auth0(route, token)).await?;

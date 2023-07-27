@@ -18,8 +18,8 @@ use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_node::callback::{new_callback, CallbackSender};
 use ockam_vault::Vault;
 
-use crate::enroll::auth0_provider::Auth0Provider;
-use crate::enroll::OckamAuth0Provider;
+use crate::enroll::oidc_provider::OidcProvider;
+use crate::enroll::OckamOidcProvider;
 use crate::terminal::OckamColor;
 use crate::{fmt_err, fmt_log, fmt_para, CommandGlobalOpts, Result};
 
@@ -32,30 +32,30 @@ use crate::{fmt_err, fmt_log, fmt_para, CommandGlobalOpts, Result};
 /// The main purpose of the Auth0Service is to authenticate a user and get
 /// back an Auth0Token allowing the user to connect to the Orchestrator
 ///
-pub struct Auth0Service(Arc<dyn Auth0Provider + Send + Sync + 'static>);
+pub struct OidcService(Arc<dyn OidcProvider + Send + Sync + 'static>);
 
-impl Default for Auth0Service {
+impl Default for OidcService {
     fn default() -> Self {
-        Auth0Service::new(Arc::new(OckamAuth0Provider::default()))
+        OidcService::new(Arc::new(OckamOidcProvider::default()))
     }
 }
 
-impl Auth0Service {
+impl OidcService {
     /// Create an Auth0 service using a specific Auth0 provider
-    pub fn new(provider: Arc<dyn Auth0Provider + Send + Sync + 'static>) -> Self {
+    pub fn new(provider: Arc<dyn OidcProvider + Send + Sync + 'static>) -> Self {
         Self(provider)
     }
 
     /// Create an Auth0 service using the Ockam provider with a specific timeout for redirects
     pub fn default_with_redirect_timeout(timeout: Duration) -> Self {
-        Self::new(Arc::new(OckamAuth0Provider::new(timeout)))
+        Self::new(Arc::new(OckamOidcProvider::new(timeout)))
     }
 
     /// Retrieve a token by having the user copy and paste a device code in their browser
     pub(crate) async fn get_token_interactively(
         &self,
         opts: &CommandGlobalOpts,
-    ) -> Result<Auth0Token> {
+    ) -> Result<OidcToken> {
         let dc = self.device_code().await?;
 
         opts.terminal
@@ -103,7 +103,7 @@ impl Auth0Service {
 
     /// Retrieve a token using the device code get a token from the Auth0 service
     /// The device code is directly pasted to the currently opened browser window
-    pub async fn get_token(&self, opts: &CommandGlobalOpts) -> Result<Auth0Token> {
+    pub async fn get_token(&self, opts: &CommandGlobalOpts) -> Result<OidcToken> {
         let dc = self.device_code().await?;
         let uri = dc.verification_uri_complete.to_string();
         self.get_token_from_browser(opts, dc, uri).await
@@ -111,7 +111,7 @@ impl Auth0Service {
 
     /// Request an authorization token with a PKCE flow
     /// See the full protocol here: https://datatracker.ietf.org/doc/html/rfc7636
-    pub async fn get_token_with_pkce(&self) -> Result<Auth0Token> {
+    pub async fn get_token_with_pkce(&self) -> Result<OidcToken> {
         let code_verifier = self.create_code_verifier();
         let authorization_code = self.authorization_code(&code_verifier).await?;
         self.retrieve_token_with_authorization_code(authorization_code, &code_verifier)
@@ -119,7 +119,7 @@ impl Auth0Service {
     }
 
     /// Return the information about a user once authenticated
-    pub async fn get_user_info(&self, token: Auth0Token) -> Result<UserInfo> {
+    pub async fn get_user_info(&self, token: OidcToken) -> Result<UserInfo> {
         let client = self.provider().build_http_client()?;
         let access_token = token.access_token.0.clone();
         let req = || {
@@ -143,9 +143,9 @@ impl Auth0Service {
 }
 
 /// Implementation methods for the Auth0Service
-impl Auth0Service {
+impl OidcService {
     /// Return the Auth0 provider
-    fn provider(&self) -> Arc<dyn Auth0Provider + Send + Sync + 'static> {
+    fn provider(&self) -> Arc<dyn OidcProvider + Send + Sync + 'static> {
         self.0.clone()
     }
 
@@ -218,7 +218,7 @@ impl Auth0Service {
         &self,
         authorization_code: AuthorizationCode,
         code_verifier: &str,
-    ) -> Result<Auth0Token> {
+    ) -> Result<OidcToken> {
         info!(
             "getting an Auth0 token using the authorization code {}",
             authorization_code.code
@@ -338,7 +338,7 @@ impl Auth0Service {
         opts: &CommandGlobalOpts,
         dc: DeviceCode<'a>,
         uri: String,
-    ) -> Result<Auth0Token> {
+    ) -> Result<OidcToken> {
         if open::that(uri.clone()).is_err() {
             opts.terminal.write_line(&fmt_err!(
                 "Couldn't open activation url automatically [url={}]",
@@ -353,7 +353,7 @@ impl Auth0Service {
         &'a self,
         dc: DeviceCode<'a>,
         opts: &CommandGlobalOpts,
-    ) -> Result<Auth0Token> {
+    ) -> Result<OidcToken> {
         let provider = self.provider();
         let client = provider.build_http_client()?;
         let token;
@@ -378,7 +378,7 @@ impl Auth0Service {
                 .into_diagnostic()?;
             match res.status() {
                 StatusCode::OK => {
-                    token = res.json::<Auth0Token>().await.into_diagnostic()?;
+                    token = res.json::<OidcToken>().await.into_diagnostic()?;
                     debug!(?token, "token response received");
                     if let Some(spinner) = spinner_option.as_ref() {
                         spinner.finish_and_clear();
@@ -457,7 +457,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_user_info() -> Result<()> {
-        let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
+        let auth0_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
         let token = auth0_service.get_token_with_pkce().await?;
         let user_info = auth0_service.get_user_info(token).await;
         assert!(user_info.is_ok());
@@ -467,7 +467,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_get_token_with_pkce() -> Result<()> {
-        let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
+        let auth0_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
         let token = auth0_service.get_token_with_pkce().await;
         assert!(token.is_ok());
         Ok(())
@@ -476,7 +476,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_authorization_code() -> Result<()> {
-        let auth0_service = Auth0Service::default_with_redirect_timeout(Duration::from_secs(15));
+        let auth0_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
         let code_verifier = auth0_service.create_code_verifier();
         let authorization_code = auth0_service
             .authorization_code(code_verifier.as_str())
@@ -487,7 +487,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_wait_for_authorization_code() -> Result<()> {
-        let auth0_service = Auth0Service::default();
+        let auth0_service = OidcService::default();
 
         let (authorization_code_receiver, authorization_code_sender) = new_callback();
         auth0_service
@@ -516,7 +516,7 @@ mod tests {
 
     #[test]
     fn test_parse_path_query_parameters() {
-        let code = Auth0Service::get_code("/callback?code=12345");
+        let code = OidcService::get_code("/callback?code=12345");
         assert!(code.is_ok());
         assert_eq!(code.unwrap(), "12345".to_string())
     }

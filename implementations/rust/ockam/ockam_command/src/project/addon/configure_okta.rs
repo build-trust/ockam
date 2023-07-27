@@ -16,7 +16,7 @@ use ockam_api::cloud::CloudRequestWrapper;
 use ockam_api::minicbor_url::Url;
 use ockam_core::api::Request;
 
-use crate::enroll::{Auth0Service, OktaAuth0Provider};
+use crate::enroll::{OidcService, OktaOidcProvider};
 use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::configure_addon_endpoint;
@@ -122,7 +122,7 @@ async fn run_impl(
     let body = okta_config.clone();
 
     // Validate okta configuration
-    let auth0 = Auth0Service::new(Arc::new(OktaAuth0Provider::new(okta_config.into())));
+    let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config.into())));
     auth0.validate_provider_config().await?;
 
     // Do request
