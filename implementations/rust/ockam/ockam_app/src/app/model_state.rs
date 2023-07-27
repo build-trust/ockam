@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use ockam_api::cloud::enroll::auth0::UserInfo;
+use ockam_api::nodes::models::portal::OutletStatus;
 
 /// The ModelState stores all the data which is not maintained by the NodeManager:
 ///    - user information
@@ -10,17 +11,22 @@ use ockam_api::cloud::enroll::auth0::UserInfo;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ModelState {
     user_info: Option<UserInfo>,
+    #[serde(default = "Vec::new")]
+    pub(crate) tcp_outlets: Vec<OutletStatus>,
 }
 
 impl Default for ModelState {
     fn default() -> Self {
-        ModelState::new(None)
+        ModelState::new(None, vec![])
     }
 }
 
 impl ModelState {
-    pub fn new(user_info: Option<UserInfo>) -> Self {
-        Self { user_info }
+    pub fn new(user_info: Option<UserInfo>, tcp_outlets: Vec<OutletStatus>) -> Self {
+        Self {
+            user_info,
+            tcp_outlets,
+        }
     }
 
     pub fn set_user_info(&mut self, user_info: UserInfo) {

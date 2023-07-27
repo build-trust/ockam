@@ -1,6 +1,7 @@
 use tauri::App;
 
+#[allow(unused_variables)]
 pub fn set_platform_activation_policy(app: &mut App) {
-    // macOS-specific implementation for setting the activation policy
+    #[cfg(target_os = "macos")]
     app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 }
