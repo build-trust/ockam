@@ -2,11 +2,13 @@ use clap::{Args, Subcommand};
 
 use crate::CommandGlobalOpts;
 
+mod accept;
 mod create;
 mod list;
 mod output;
 mod service;
 
+pub use accept::AcceptCommand;
 pub use create::CreateCommand;
 pub use list::ListCommand;
 pub use service::ServiceCreateCommand;
@@ -22,7 +24,7 @@ pub struct ShareCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum ShareSubcommand {
     /// Accept a received sharing invitation
-    Accept,
+    Accept(AcceptCommand),
     /// Create an invitation for another user to join a Space or Project
     Create(CreateCommand),
     /// List sharing invitations you've created or received
@@ -37,7 +39,7 @@ impl ShareCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         use ShareSubcommand::*;
         match self.subcommand {
-            Accept => todo!(),
+            Accept(c) => c.run(options),
             Create(c) => c.run(options),
             List(c) => c.run(options),
             Revoke => todo!(),
