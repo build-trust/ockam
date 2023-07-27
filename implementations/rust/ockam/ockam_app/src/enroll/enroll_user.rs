@@ -3,6 +3,7 @@ use tauri::{AppHandle, Manager, State, Wry};
 use tracing::log::{error, info};
 
 use ockam::identity::IdentityIdentifier;
+use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{CliState, SpaceConfig};
 use ockam_api::cloud::project::Project;
@@ -10,7 +11,7 @@ use ockam_api::cloud::space::{CreateSpace, Space};
 use ockam_command::enroll::{update_enrolled_identity, Auth0Service};
 use ockam_command::util::api::CloudOpts;
 
-use crate::app::{AppState, NODE_NAME, PROJECT_NAME, SPACE_NAME};
+use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::Result;
 
 /// Enroll a user.
@@ -95,24 +96,35 @@ async fn create_default_identity(state: CliState) -> Result<()> {
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     info!("retrieving the user space");
     let node_manager = app_state.node_manager.get().read().await;
+
+    // list the spaces that the user can access
+    // and sort them by name to make sure to get the same space every time
+    // if several spaces are available
     let spaces = {
-        node_manager
+        let mut spaces = node_manager
             .list_spaces(&app_state.context(), &CloudOpts::route())
             .await
-            .map_err(|e| miette!(e))?
+            .map_err(|e| miette!(e))?;
+        spaces.sort_by(|s1, s2| s1.name.cmp(&s2.name));
+        spaces
     };
 
-    let space = match spaces.iter().find(|s| s.name == SPACE_NAME) {
+    // take the first one that is available
+    // otherwise create a space with a random name
+    let space = match spaces.first() {
         Some(space) => space.clone(),
-        None => node_manager
-            .create_space(
-                &app_state.context(),
-                CreateSpace::new(SPACE_NAME.to_string(), vec![]),
-                &CloudOpts::route(),
-                None,
-            )
-            .await
-            .map_err(|e| miette!(e))?,
+        None => {
+            let space_name = cli_state::random_name();
+            node_manager
+                .create_space(
+                    &app_state.context(),
+                    CreateSpace::new(space_name, vec![]),
+                    &CloudOpts::route(),
+                    None,
+                )
+                .await
+                .map_err(|e| miette!(e))?
+        }
     };
     app_state
         .state()

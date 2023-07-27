@@ -24,7 +24,6 @@ use crate::app::model_state_repository::{LmdbModelStateRepository, ModelStateRep
 use crate::Result;
 
 pub const NODE_NAME: &str = "default";
-pub const SPACE_NAME: &str = "default";
 pub const PROJECT_NAME: &str = "default";
 
 /// The AppState struct contains all the state managed by `tauri`.
