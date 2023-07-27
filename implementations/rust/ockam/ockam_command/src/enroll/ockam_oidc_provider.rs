@@ -2,25 +2,25 @@ use miette::Result;
 use std::time::Duration;
 use url::Url;
 
-use crate::enroll::auth0_provider::Auth0Provider;
+use crate::enroll::oidc_provider::OidcProvider;
 
-pub struct OckamAuth0Provider {
+pub struct OckamOidcProvider {
     redirect_timeout: Duration,
 }
 
-impl Default for OckamAuth0Provider {
+impl Default for OckamOidcProvider {
     fn default() -> Self {
-        OckamAuth0Provider::new(Duration::from_secs(30))
+        OckamOidcProvider::new(Duration::from_secs(30))
     }
 }
 
-impl OckamAuth0Provider {
+impl OckamOidcProvider {
     pub fn new(redirect_timeout: Duration) -> Self {
         Self { redirect_timeout }
     }
 }
 
-impl Auth0Provider for OckamAuth0Provider {
+impl OidcProvider for OckamOidcProvider {
     fn client_id(&self) -> String {
         "c1SAhEjrJAqEk6ArWjGjuWX11BD2gK8X".to_string()
     }

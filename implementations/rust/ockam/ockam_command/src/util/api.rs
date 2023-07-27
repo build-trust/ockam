@@ -231,15 +231,15 @@ fn node_service(service_name: &str) -> String {
 
 /// Helpers to create enroll API requests
 pub mod enroll {
-    use ockam_api::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
+    use ockam_api::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
 
     use super::*;
 
     pub fn auth0(
         route: &MultiAddr,
-        token: Auth0Token,
-    ) -> RequestBuilder<CloudRequestWrapper<AuthenticateAuth0Token>> {
-        let token = AuthenticateAuth0Token::new(token);
+        token: OidcToken,
+    ) -> RequestBuilder<CloudRequestWrapper<AuthenticateOidcToken>> {
+        let token = AuthenticateOidcToken::new(token);
         Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token, route, None))
     }
 }

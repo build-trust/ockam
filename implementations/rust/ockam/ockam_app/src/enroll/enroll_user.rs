@@ -8,7 +8,7 @@ use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{CliState, SpaceConfig};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::{CreateSpace, Space};
-use ockam_command::enroll::{update_enrolled_identity, Auth0Service};
+use ockam_command::enroll::{update_enrolled_identity, OidcService};
 use ockam_command::util::api::CloudOpts;
 
 use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
@@ -43,7 +43,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
 
 async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     // get an Auth0 token
-    let auth0_service = Auth0Service::default();
+    let auth0_service = OidcService::default();
     let token = auth0_service.get_token_with_pkce().await?;
 
     // retrieve the user information

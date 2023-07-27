@@ -30,7 +30,7 @@ mod node {
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
-    use crate::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
+    use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
     use crate::cloud::enroll::enrollment_token::{EnrollmentToken, RequestEnrollmentToken};
     use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT};
     use crate::nodes::{NodeManager, NodeManagerWorker};
@@ -43,9 +43,9 @@ mod node {
             &self,
             ctx: &Context,
             route: &MultiAddr,
-            token: Auth0Token,
+            token: OidcToken,
         ) -> Result<()> {
-            let request = CloudRequestWrapper::new(AuthenticateAuth0Token::new(token), route, None);
+            let request = CloudRequestWrapper::new(AuthenticateOidcToken::new(token), route, None);
             self.enroll_auth0_response(ctx, request).await?;
             Ok(())
         }
@@ -54,7 +54,7 @@ mod node {
         pub(crate) async fn enroll_auth0_response(
             &self,
             ctx: &Context,
-            req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token>,
+            req_wrapper: CloudRequestWrapper<AuthenticateOidcToken>,
         ) -> Result<Vec<u8>> {
             let route = req_wrapper.multiaddr()?;
             let req_builder = Request::post("v0/enroll").body(req_wrapper.req);
@@ -81,7 +81,7 @@ mod node {
         pub async fn enroll_auth0_response(
             &self,
             ctx: &Context,
-            req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token>,
+            req_wrapper: CloudRequestWrapper<AuthenticateOidcToken>,
         ) -> Result<Vec<u8>> {
             let node_manager = self.get().read().await;
             node_manager.enroll_auth0_response(ctx, req_wrapper).await
@@ -177,7 +177,7 @@ pub mod auth0 {
 
     #[derive(serde::Deserialize, Debug, Clone)]
     #[cfg_attr(test, derive(PartialEq, Eq))]
-    pub struct Auth0Token {
+    pub struct OidcToken {
         pub token_type: TokenType,
         pub access_token: Token,
     }
@@ -198,15 +198,15 @@ pub mod auth0 {
     #[cfg_attr(test, derive(Clone))]
     #[rustfmt::skip]
     #[cbor(map)]
-    pub struct AuthenticateAuth0Token {
+    pub struct AuthenticateOidcToken {
         #[cfg(feature = "tag")]
         #[n(0)] pub tag: TypeTag<1058055>,
         #[n(1)] pub token_type: TokenType,
         #[n(2)] pub access_token: Token,
     }
 
-    impl AuthenticateAuth0Token {
-        pub fn new(token: Auth0Token) -> Self {
+    impl AuthenticateOidcToken {
+        pub fn new(token: OidcToken) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,

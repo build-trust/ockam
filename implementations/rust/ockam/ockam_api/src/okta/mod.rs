@@ -80,8 +80,7 @@ impl Server {
                     debug!("Checking token for project {:?}", self.project);
                     // TODO: check token_type
                     // TODO: it's AuthenticateAuth0Token or something else?.  Probably rename.
-                    let token: crate::cloud::enroll::auth0::AuthenticateAuth0Token =
-                        dec.decode()?;
+                    let token: crate::cloud::enroll::auth0::AuthenticateOidcToken = dec.decode()?;
                     debug!("device code received: {token:#?}");
                     if let Some(attrs) = self.check_token(&token.access_token.0).await? {
                         //TODO in some future, we will want to track that this entry

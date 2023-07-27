@@ -5,14 +5,14 @@ use url::Url;
 
 use ockam_api::cloud::project::OktaAuth0;
 
-use crate::enroll::auth0_provider::Auth0Provider;
+use crate::enroll::oidc_provider::OidcProvider;
 
-pub struct OktaAuth0Provider {
+pub struct OktaOidcProvider {
     okta: OktaAuth0,
     redirect_timeout: Duration,
 }
 
-impl OktaAuth0Provider {
+impl OktaOidcProvider {
     pub fn new(okta: OktaAuth0) -> Self {
         Self {
             okta,
@@ -21,7 +21,7 @@ impl OktaAuth0Provider {
     }
 }
 
-impl Auth0Provider for OktaAuth0Provider {
+impl OidcProvider for OktaOidcProvider {
     fn client_id(&self) -> String {
         self.okta.client_id.clone()
     }
