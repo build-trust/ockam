@@ -14,7 +14,7 @@ pub(crate) async fn build_enroll_section(
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
     if app_state.is_enrolled().await {
-        match app_state.get_user_info().await {
+        match app_state.model(|m| m.get_user_info()).await {
             Some(user_info) => {
                 let item = CustomMenuItem::new(
                     ENROLL_MENU_USER_NAME,

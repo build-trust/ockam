@@ -7,7 +7,6 @@ use tracing::{error, info};
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{CliState, StateDirTrait};
-use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -56,9 +55,13 @@ impl AppState {
         tauri::async_runtime::set(context.runtime().clone());
         // start the router, it is needed for the node manager creation
         spawn(async move { executor.start_router().await });
-        let node_manager = create_node_manager(context.clone(), options.clone());
+        let mut node_manager = create_node_manager(context.clone(), options.clone());
         let model_state_repository = create_model_state_repository(options.clone().state);
-        let model_state = load_model_state(model_state_repository.clone());
+        let model_state = load_model_state(
+            model_state_repository.clone(),
+            &mut node_manager,
+            context.clone(),
+        );
 
         AppState {
             context,
@@ -144,25 +147,20 @@ impl AppState {
         node_manager.list_outlets().list
     }
 
-    /// Set the retrieved user info on the model state
-    pub async fn set_user_info(&self, user_info: UserInfo) -> Result<()> {
-        let model_state = {
-            let mut model_state = self.model_state.write().await;
-            model_state.set_user_info(user_info);
-            model_state.clone()
-        };
-
+    pub async fn model_mut(&self, f: impl FnOnce(&mut ModelState)) -> Result<()> {
+        let mut model_state = self.model_state.write().await;
+        f(&mut model_state);
         self.model_state_repository
             .read()
             .await
             .store(&model_state)
-            .await
+            .await?;
+        Ok(())
     }
 
-    /// Return the user information if it has been retrieved
-    pub async fn get_user_info(&self) -> Option<UserInfo> {
-        let model_state = self.model_state.read().await;
-        model_state.get_user_info()
+    pub async fn model<T>(&self, f: impl FnOnce(&ModelState) -> T) -> T {
+        let mut model_state = self.model_state.read().await;
+        f(&mut model_state)
     }
 }
 
@@ -221,12 +219,27 @@ fn create_model_state_repository(state: CliState) -> Arc<dyn ModelStateRepositor
 }
 
 /// Load a previously persisted ModelState
-fn load_model_state(model_state_repository: Arc<dyn ModelStateRepository>) -> ModelState {
-    match block_on(model_state_repository.load()) {
-        Ok(model_state) => model_state.unwrap_or(ModelState::default()),
-        Err(e) => {
-            println!("cannot load the model state: {e:?}");
-            panic!("{}", e)
+fn load_model_state(
+    model_state_repository: Arc<dyn ModelStateRepository>,
+    node_manager: &mut NodeManager,
+    context: Arc<Context>,
+) -> ModelState {
+    block_on(async {
+        match model_state_repository.load().await {
+            Ok(model_state) => {
+                let model_state = model_state.unwrap_or(ModelState::default());
+                crate::shared_service::tcp::outlet::model_state::load_model_state(
+                    context.clone(),
+                    node_manager,
+                    &model_state,
+                )
+                .await;
+                model_state
+            }
+            Err(e) => {
+                println!("cannot load the model state: {e:?}");
+                panic!("{}", e)
+            }
         }
-    }
+    })
 }

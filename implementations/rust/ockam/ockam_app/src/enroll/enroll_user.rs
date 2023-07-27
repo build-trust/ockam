@@ -13,6 +13,7 @@ use ockam_command::enroll::{update_enrolled_identity, OidcService};
 use ockam_command::util::api::CloudOpts;
 
 use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
+use crate::shared_service::relay::create::create_relay;
 use crate::Result;
 
 /// Enroll a user.
@@ -40,7 +41,7 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     // retrieve the user information
     let user_info = auth0_service.get_user_info(token.clone()).await?;
     info!("the user info is {user_info:?}");
-    app_state.set_user_info(user_info).await?;
+    app_state.model_mut(|m| m.set_user_info(user_info)).await?;
 
     // enroll the current user using that token on the controller
     let node_manager = app_state.node_manager.get().write().await;
@@ -128,25 +129,4 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
         .overwrite(&project.name, project.clone())?;
 
     Ok(project)
-}
-
-async fn create_relay(_app_state: &AppState) -> Result<()> {
-    // TODO: the relay creation fails because the NodeManagerWorker is initialized before the
-    //       enrollment, hence, it's not initialized with the project/trust-context info.
-    //       We need to figure out how to update the NodeManagerWorker after the enrollment is done.
-    // let project_route = app_state
-    //     .state()
-    //     .projects
-    //     .default()?
-    //     .config()
-    //     .access_route
-    //     .clone();
-    // let project_address = MultiAddr::from_str(&project_route).into_diagnostic()?;
-    // let req = CreateForwarder::at_project(project_address.clone(), None);
-    // app_state
-    //     .node_manager
-    //     .create_forwarder(&app_state.context(), req)
-    //     .await
-    //     .into_diagnostic()?;
-    Ok(())
 }

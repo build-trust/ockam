@@ -4,6 +4,7 @@ use tauri::{App, Manager, SystemTray, Wry};
 
 pub use app_state::*;
 pub use logging::*;
+pub use model_state::*;
 pub use process::*;
 pub use tray_menu::*;
 
