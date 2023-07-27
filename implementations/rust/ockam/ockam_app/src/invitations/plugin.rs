@@ -16,6 +16,7 @@ const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(60);
 pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("sharing")
         .invoke_handler(tauri::generate_handler![
+            accept_invitation,
             list_invitations,
             refresh_invitations
         ])
