@@ -396,6 +396,8 @@ jobs:
       - name: Cleanup Target Cache Only If Cache Exists
         if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
         uses: ./ockam_bats/.github/actions/cargo_target_dir_pre_cache
+        with:
+          ockam_dir: ockam_cli
 
       - name: Build Binary
         shell: bash

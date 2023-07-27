@@ -1,5 +1,5 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{TcpInletOptions, TcpPortalWorker, TcpRegistry};
+use crate::{portal::TcpPortalWorker, TcpInletOptions, TcpRegistry};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, Processor, Result, Route};

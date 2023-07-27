@@ -1,5 +1,5 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor, TcpRegistry};
+use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{
