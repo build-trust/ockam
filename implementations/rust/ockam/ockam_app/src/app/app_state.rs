@@ -39,7 +39,7 @@ pub struct AppState {
     state: Arc<RwLock<CliState>>,
     pub(crate) node_manager: NodeManagerWorker,
     model_state: Arc<RwLock<ModelState>>,
-    model_state_repository: Arc<dyn ModelStateRepository>,
+    model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
 }
 
 impl Default for AppState {
@@ -60,7 +60,7 @@ impl AppState {
         // start the router, it is needed for the node manager creation
         spawn(async move { executor.start_router().await });
         let node_manager = create_node_manager(context.clone(), options.clone());
-        let model_state_repository = create_model_state_repository(options.clone());
+        let model_state_repository = create_model_state_repository(options.clone().state);
         let model_state = load_model_state(model_state_repository.clone());
 
         AppState {
@@ -69,7 +69,7 @@ impl AppState {
             state: Arc::new(RwLock::new(options.state)),
             node_manager: NodeManagerWorker::new(node_manager),
             model_state: Arc::new(RwLock::new(model_state)),
-            model_state_repository,
+            model_state_repository: Arc::new(RwLock::new(model_state_repository)),
         }
     }
 
@@ -88,6 +88,18 @@ impl AppState {
 
         self.node_manager.set_node_manager(node_manager).await;
         info!("set a new node manager");
+
+        // recreate the model state repository since the cli state has changed
+        let identity_path = self
+            .state()
+            .await
+            .identities
+            .identities_repository_path()
+            .unwrap();
+        let new_state_repository = LmdbModelStateRepository::new(identity_path).await?;
+        let mut model_state_repository = self.model_state_repository.write().await;
+        *model_state_repository = Arc::new(new_state_repository);
+
         Ok(())
     }
 
@@ -143,7 +155,11 @@ impl AppState {
             model_state.clone()
         };
 
-        self.model_state_repository.store(&model_state).await
+        self.model_state_repository
+            .read()
+            .await
+            .store(&model_state)
+            .await
     }
 
     /// Return the user information if it has been retrieved
@@ -205,8 +221,8 @@ async fn make_node_manager(
 }
 
 /// Create the repository containing the model state
-fn create_model_state_repository(opts: CommandGlobalOpts) -> Arc<dyn ModelStateRepository> {
-    let identity_path = opts.state.identities.identities_repository_path().unwrap();
+fn create_model_state_repository(state: CliState) -> Arc<dyn ModelStateRepository> {
+    let identity_path = state.identities.identities_repository_path().unwrap();
     match block_on(async move { LmdbModelStateRepository::new(identity_path).await }) {
         Ok(model_state_repository) => Arc::new(model_state_repository),
         Err(e) => {
