@@ -17,7 +17,7 @@ fn print_file(file: &str) {
 fn main() {
     let file: String = std::env::args().nth(1).expect("missing file argument");
 
-    let file = File::open(file).expect("unable to open file");
+    let file = File::open(file.clone()).unwrap_or_else(|_| panic!("unable to open file {file}"));
     let file = BufReader::new(file);
 
     let mut in_example = false;
@@ -25,21 +25,23 @@ fn main() {
     for line in file.lines() {
         match line {
             Ok(line) => {
-                let example_start = line.starts_with("// examples/");
-                let block_end = line.starts_with("```");
+                let example_start = line.starts_with("// ") && line.ends_with(".rs");
+                let block_end = line.eq("```");
 
-                if in_example {
+                if example_start {
+                    println!("{}", line);
+
+                    let example_name = line.strip_prefix("// ").expect("no example filename");
+                    in_example = true;
+                    print_file(example_name);
+                } else {
                     if block_end {
                         in_example = false;
-                        println!("{}", line);
+                    } else if in_example {
+                        continue;
                     }
-                } else {
+
                     println!("{}", line);
-                    if example_start {
-                        in_example = true;
-                        let example_name = line.split('/').last().expect("no example filename");
-                        print_file(example_name);
-                    }
                 }
             }
             _ => break,

@@ -42,6 +42,8 @@ on:
         description: SHA to build Ockam command CLI
       ockam_crate_version_to_test_with_docs_examples:
         description: Ockam crate version to tests docs.ockam.io library examples
+      ockam_docs_ref:
+        description: SHA or branch to run ockam docs test
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -456,3 +458,27 @@ jobs:
       - name: Run Ockam Examples
         working-directory: ockam_examples
         run: cargo test -p hello_ockam
+
+  lint_docs_ockam_io_rust_examples:
+    name: Rust - lint_docs_ockam_io_rust_examples
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68
+
+    steps:
+      - name: Checkout Ockam Repository
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ inputs.commit_sha }}
+          path: ockam
+
+      - name: Checkout Ockam Documentation Repository
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          ref: ${{ inputs.ockam_docs_ref == '' && 'develop' || inputs.ockam_docs_ref }}
+          repository: build-trust/ockam-documentation
+          path: ockam-documentation
+
+      - name: Check Rust Documentation
+        run: |
+          CHECK_MD_DIR="ockam-documentation/reference/libraries/rust" CHECK_MD_DIR_RUST_EXAMPLE="ockam/examples/rust/get_started" OCKAM_HOME="ockam" ockam/tools/docs/check_documentation.sh
