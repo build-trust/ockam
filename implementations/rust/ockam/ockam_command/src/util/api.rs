@@ -332,10 +332,22 @@ pub(crate) mod operation {
 #[cfg(feature = "orchestrator")]
 pub(crate) mod share {
     use ockam_api::cloud::share::{
-        CreateInvitation, CreateServiceInvitation, InvitationListKind, ListInvitations,
+        AcceptInvitation, CreateInvitation, CreateServiceInvitation, InvitationListKind,
+        ListInvitations,
     };
 
     use super::*;
+
+    pub(crate) fn accept(
+        req: AcceptInvitation,
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<CloudRequestWrapper<AcceptInvitation>> {
+        Request::post("v0/accept_invitation".to_string()).body(CloudRequestWrapper::new(
+            req,
+            cloud_route,
+            None,
+        ))
+    }
 
     pub(crate) fn create(
         req: CreateInvitation,
