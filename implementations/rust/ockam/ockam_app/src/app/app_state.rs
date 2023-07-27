@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use miette::{miette, IntoDiagnostic};
 use tauri::async_runtime::{block_on, spawn, RwLock};
-use tracing::log::{error, info};
+use tracing::{error, info};
 
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
