@@ -3,12 +3,18 @@ description: CARGO_TARGET_DIR Cache
 inputs:
   ockam_dir:
     description: Ockam root directory to cache (this should be the directory where the target folder is found)
+
+outputs:
+  cache-hit:
+    description: "Indicate if cache was found"
+    value: ${{ steps.cache-hit.outputs.cache-hit }}
 runs:
   using: composite
   steps:
     - run: rustc --version > rustc_version.txt && cat rustc_version.txt
       shell: bash
     - uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
+      id: cache-hit
       with:
         path: ${{ inputs.ockam_dir != '' && format('{0}/target', inputs.ockam_dir) || 'target' }}
         key: cache-cargo-target-${{ github.workflow }}-${{ github.job }}-ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('./rustc_version.txt') }}

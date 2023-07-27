@@ -1,9 +1,14 @@
 name: CARGO_HOME Cache
 description: CARGO_HOME Cache
+outputs:
+  cache-hit:
+    description: "Indicate if cache was found"
+    value: ${{ steps.cache-hit.outputs.cache-hit }}
 runs:
   using: composite
   steps:
     - uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
+      id: cache-hit
       with:
         path: |
           /usr/rust/cargo/bin
