@@ -1,5 +1,5 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{PortalMessage, TcpOutletOptions, TcpPortalWorker, TcpRegistry};
+use crate::{portal::TcpPortalWorker, PortalMessage, TcpOutletOptions, TcpRegistry};
 use ockam_core::{async_trait, Address, DenyAll, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;

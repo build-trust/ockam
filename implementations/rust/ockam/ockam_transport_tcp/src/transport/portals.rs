@@ -1,6 +1,6 @@
 use crate::portal::TcpInletListenProcessor;
 use crate::transport::common::{parse_socket_addr, resolve_peer};
-use crate::{TcpInletOptions, TcpOutletListenWorker, TcpOutletOptions, TcpTransport};
+use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result, Route};
 
