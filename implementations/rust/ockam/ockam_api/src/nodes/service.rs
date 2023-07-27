@@ -334,7 +334,7 @@ impl NodeManager {
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,
     ) -> Result<Self> {
-        info!("NodeManager::create: create transports");
+        info!("create transports");
         let api_transport_id = random_alias();
         let mut transports = BTreeMap::new();
         transports.insert(
@@ -342,7 +342,7 @@ impl NodeManager {
             transport_options.api_transport_flow_control_id.clone(),
         );
 
-        info!("NodeManager::create: create the identity repository");
+        info!("create the identity repository");
         let cli_state = general_options.cli_state;
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
@@ -361,7 +361,7 @@ impl NodeManager {
                 Some(f) => BootstrapedIdentityStore::new(Arc::new(f), repository.clone()),
             });
 
-        info!("NodeManager::create: create the secure channels service");
+        info!("create the secure channels service");
         let secure_channels = SecureChannels::builder()
             .with_identities_vault(vault)
             .with_identities_repository(identities_repository.clone())
@@ -395,14 +395,14 @@ impl NodeManager {
             policies,
         };
 
-        info!("NodeManager::create: {}", s.node_name);
         if !general_options.skip_defaults {
-            info!("NodeManager::create: starting default services");
+            info!("starting default services");
             if let Some(tc) = trust_options.trust_context_config {
-                info!("NodeManager::create: configuring trust context");
+                info!("configuring trust context");
                 s.configure_trust_context(&tc).await?;
             }
         }
+        info!("created a node manager for the node: {}", s.node_name);
 
         Ok(s)
     }
