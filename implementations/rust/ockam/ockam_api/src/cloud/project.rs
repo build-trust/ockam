@@ -468,6 +468,15 @@ mod node {
                 .await
         }
 
+        pub async fn list_projects(
+            &self,
+            ctx: &Context,
+            route: &MultiAddr,
+        ) -> Result<Vec<Project>> {
+            let node_manager = self.inner().read().await;
+            node_manager.list_projects(ctx, route).await
+        }
+
         pub(crate) async fn list_projects_response(
             &self,
             ctx: &Context,

@@ -9,6 +9,8 @@ mod error;
 mod invitations;
 mod options;
 mod platform;
+#[cfg(feature = "invitations")]
+mod projects;
 mod shared_service;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -27,6 +29,7 @@ pub fn run() {
 
     #[cfg(feature = "invitations")]
     {
+        builder = builder.plugin(projects::plugin::init());
         builder = builder.plugin(invitations::plugin::init());
     }
 
