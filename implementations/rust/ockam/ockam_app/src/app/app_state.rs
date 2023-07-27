@@ -195,13 +195,8 @@ async fn make_node_manager(
         .await
         .into_diagnostic()?;
 
-    let projects = ProjectLookup::from_state(
-        opts.state
-            .projects
-            .list()
-            .unwrap_or(std::default::Default::default()),
-    )
-    .await?;
+    let projects =
+        ProjectLookup::from_state(opts.state.projects.list().unwrap_or_default()).await?;
     let trust_context_config =
         TrustContextConfigBuilder::new(&opts.state, &TrustContextOpts::default())?
             .with_authority_identity(None)
