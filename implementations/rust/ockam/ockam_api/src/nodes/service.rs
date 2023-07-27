@@ -836,6 +836,9 @@ impl NodeManagerWorker {
                 self.create_service_invitation_response(ctx, dec.decode()?)
                     .await?
             }
+            (Post, ["v0", "accept_invitation"]) => {
+                self.accept_invitation_response(ctx, dec.decode()?).await?
+            }
 
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
