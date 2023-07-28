@@ -6,15 +6,21 @@ use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
+pub use parser::ConfigRunner;
 use std::path::PathBuf;
 
 /// Create nodes given a declarative configuration file
 #[derive(Clone, Debug, Args)]
 #[command(hide = docs::hide())]
 pub struct RunCommand {
-    /// Path to the configuration file
+    /// Path to the recipe file
     #[arg(long)]
-    pub config_path: Option<PathBuf>,
+    pub recipe: Option<PathBuf>,
+    /// If true, block until all the created node exits it also
+    /// propagate signals to created nodes.
+    /// To be used with docker or kubernetes.
+    #[arg(long)]
+    pub blocking: bool,
 }
 
 impl RunCommand {
@@ -23,12 +29,12 @@ impl RunCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, RunCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
+async fn rpc(_ctx: Context, (opts, cmd): (CommandGlobalOpts, RunCommand)) -> miette::Result<()> {
+    run_impl(opts, cmd).await
 }
 
-async fn run_impl(_ctx: &Context, opts: CommandGlobalOpts, cmd: RunCommand) -> miette::Result<()> {
-    let path = match cmd.config_path {
+async fn run_impl(opts: CommandGlobalOpts, cmd: RunCommand) -> miette::Result<()> {
+    let path = match cmd.recipe {
         Some(path) => path,
         None => {
             let mut path = std::env::current_dir()
@@ -53,6 +59,5 @@ async fn run_impl(_ctx: &Context, opts: CommandGlobalOpts, cmd: RunCommand) -> m
             path
         }
     };
-    parser::ConfigRunner::go(&opts.state, &path)?;
-    Ok(())
+    ConfigRunner::go(opts, &path, cmd.blocking).await
 }

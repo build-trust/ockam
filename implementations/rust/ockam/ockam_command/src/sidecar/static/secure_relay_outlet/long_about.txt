@@ -1,0 +1,1 @@
+This sidecar starts a TCP outlet connecting to the provided address. It requires a valid enrollment mechanism. The portal will be named and inlet and outlet name must match.

@@ -1,4 +1,3 @@
-use std::io::{self, Read};
 use std::{path::PathBuf, process, str::FromStr};
 
 use clap::Args;
@@ -36,7 +35,7 @@ use crate::util::api::{parse_trust_context, TrustContextConfigBuilder, TrustCont
 use crate::util::{api, parse_node_name, RpcBuilder};
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
-use crate::{docs, identity, CommandGlobalOpts, Result};
+use crate::{docs, identity, shutdown, CommandGlobalOpts, Result};
 use crate::{fmt_log, fmt_ok};
 
 use super::show::is_node_up;
@@ -202,7 +201,7 @@ pub(crate) async fn background_mode(
     let send_req = async {
         let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
         let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-        spawn_background_node(&opts, cmd).await?;
+        spawn_background_node(&opts, cmd.clone()).await?;
         let is_node_up = is_node_up(&mut rpc, true).await?;
         *is_finished.lock().await = true;
         Ok(is_node_up)
@@ -220,7 +219,8 @@ pub(crate) async fn background_mode(
 
     let (_response, _) = try_join!(send_req, progress_output)?;
 
-    opts.terminal
+    opts.clone()
+        .terminal
         .stdout()
         .plain(
             fmt_ok!(
@@ -235,6 +235,7 @@ pub(crate) async fn background_mode(
                 ),
         )
         .write_line()?;
+
     Ok(())
 }
 
@@ -344,46 +345,16 @@ async fn run_foreground_node(
 
     // Create a channel for communicating back to the main thread
     let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+    shutdown::wait(opts.terminal.clone(), cmd.exit_on_eof, false, tx, &mut rx).await?;
 
-    // Register a handler for SIGINT, SIGTERM, SIGHUP
-    let tx_clone = tx.clone();
-    let opts_clone = opts.clone();
-    ctrlc::set_handler(move || {
-        let _ = tx_clone.blocking_send(());
-        let _ = opts_clone
-            .terminal
-            .write_line(format!("{} Ctrl+C signal received", "!".light_yellow()).as_str());
-    })
-    .expect("Error setting Ctrl+C handler");
-
-    // Spawn a thread to monitor STDIN for EOF
-    if cmd.exit_on_eof {
-        let tx_clone = tx.clone();
-        let opts_clone = opts.clone();
-        std::thread::spawn(move || {
-            let mut buffer = Vec::new();
-            let mut handle = io::stdin().lock();
-            handle
-                .read_to_end(&mut buffer)
-                .expect("Error reading from stdin");
-            let _ = tx_clone.blocking_send(());
-            let _ = opts_clone
-                .terminal
-                .write_line(format!("{} EOF received", "!".light_yellow()).as_str());
-        });
+    // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
+    if let Ok(state) = opts.state.nodes.get(&node_name) {
+        let _ = state.kill_process(false);
     }
-
-    // Shutdown on SIGINT, SIGTERM, SIGHUP or EOF
-    if rx.recv().await.is_some() {
-        // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
-        if let Ok(state) = opts.state.nodes.get(&node_name) {
-            let _ = state.kill_process(false);
-        }
-        ctx.stop().await.into_diagnostic()?;
-        opts.terminal
-            .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
-            .unwrap();
-    }
+    ctx.stop().await.into_diagnostic()?;
+    opts.terminal
+        .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
+        .unwrap();
 
     Ok(())
 }

@@ -34,6 +34,8 @@ mod secure_channel;
 mod service;
 #[cfg(feature = "orchestrator")]
 mod share;
+pub mod shutdown;
+mod sidecar;
 mod space;
 mod status;
 mod subscription;
@@ -59,6 +61,7 @@ use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 
 use crate::kafka::direct::KafkaDirectCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
+use crate::sidecar::SidecarCommand;
 use colorful::Colorful;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
@@ -265,6 +268,7 @@ pub enum OckamSubcommand {
     Enroll(EnrollCommand),
     Space(SpaceCommand),
     Project(ProjectCommand),
+    Sidecar(SidecarCommand),
     Admin(AdminCommand),
     #[cfg(feature = "orchestrator")]
     Share(ShareCommand),
@@ -432,6 +436,7 @@ impl OckamCommand {
             OckamSubcommand::Environment(c) => c.run(),
 
             OckamSubcommand::FlowControl(c) => c.run(options),
+            OckamSubcommand::Sidecar(c) => c.run(options),
         }
     }
 

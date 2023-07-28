@@ -1,0 +1,10 @@
+```sh
+# Starts the inlet relay listening in port 5432 with a service called `postgresql-production`
+ockam sidecar secure-relay-inlet --from 127.0.0.1:5432 --enroll-ticket ./ticket postgresql-production
+
+# Prints the recipe without executing any command, can be used with `ockam run`
+ockam sidecar secure-relay-inlet --from 127.0.0.1:5432 --enroll-ticket ./ticket --dry-run postgresql-production
+
+# Starts an inlet relay service called `my-http-service` listening on port 6000 inside a docker container
+docker run --name my-http-service -ti -p 6000:6000 --volume /tmp/ticket_for_docker:/ticket ockam sidecar secure-relay-inlet --from 0.0.0.0:6000 --enroll-ticket /ticket my-http-service
+```
