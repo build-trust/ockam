@@ -1,4 +1,5 @@
 use clap::Args;
+use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use std::sync::Arc;
@@ -23,7 +24,7 @@ use crate::project::util::create_secure_channel_to_authority;
 use crate::project::ProjectInfo;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -36,19 +37,27 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
     #[arg(long = "okta", group = "authentication_method")]
-    okta: bool,
+    pub okta: bool,
 
     #[arg(group = "authentication_method", value_name = "ENROLLMENT TICKET PATH | ENROLLMENT TICKET", value_parser = parse_enroll_ticket)]
-    enroll_ticket: Option<EnrollmentTicket>,
+    pub enroll_ticket: Option<EnrollmentTicket>,
 
     #[command(flatten)]
-    cloud_opts: CloudOpts,
+    pub cloud_opts: CloudOpts,
 
     #[command(flatten)]
-    trust_opts: TrustContextOpts,
+    pub trust_opts: TrustContextOpts,
+
+    /// Name of the new trust context to create, defaults to project name
+    #[arg(long)]
+    pub new_trust_context_name: Option<String>,
+
+    /// Execute enrollment even if the trust context already exists
+    #[arg(long)]
+    pub force: bool,
 }
 
-fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
+pub fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
     let decoded = match std::fs::read_to_string(input) {
         Ok(s) => hex::decode(s)?,
         Err(_) => hex::decode(input)?,
@@ -69,6 +78,16 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, EnrollCommand),
 ) -> miette::Result<()> {
     let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.trust_opts)).await?;
+    let result = project_enroll(&ctx, (opts.clone(), cmd), &node_name).await;
+    delete_embedded_node(&opts, &node_name).await;
+    result.map(|_| ())
+}
+
+pub async fn project_enroll(
+    ctx: &Context,
+    (opts, cmd): (CommandGlobalOpts, EnrollCommand),
+    node_name: &str,
+) -> miette::Result<String> {
     let project_as_string: String;
 
     // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
@@ -103,6 +122,29 @@ async fn run_impl(
 
     let project: Project = (&proj).into();
 
+    let trust_context_name = if let Some(trust_context_name) = &cmd.new_trust_context_name {
+        trust_context_name
+    } else {
+        &project.name
+    };
+
+    if !cmd.force {
+        if let Ok(trust_context) = opts.state.trust_contexts.get(trust_context_name) {
+            return if trust_context.config().id() == project.id {
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("Already enrolled"))
+                    .write_line()?;
+                Ok(project.name)
+            } else {
+                Err(miette!(
+                    "A trust context with the name {} already exists and is associated with a different project. Please choose a different name.",
+                    trust_context_name
+                ))
+            };
+        }
+    }
+
     // Create secure channel to the project's authority node
     // RPC is in embedded mode
     let secure_channel_addr = {
@@ -112,9 +154,9 @@ async fn run_impl(
                 .ok_or_else(|| miette!("Authority details not configured"))?;
         let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
         create_secure_channel_to_authority(
-            &ctx,
+            ctx,
             &opts,
-            &node_name,
+            node_name,
             authority.identity_id().clone(),
             authority.address(),
             Some(identity),
@@ -136,7 +178,7 @@ async fn run_impl(
             ockam_api::local_multiaddr_to_route(&addr).ok_or(miette!("Invalid MultiAddr {addr}"))?
         };
         let client = TokenAcceptorClient::new(
-            RpcClient::new(route![DefaultAddress::RPC_PROXY, token_issuer_route], &ctx)
+            RpcClient::new(route![DefaultAddress::RPC_PROXY, token_issuer_route], ctx)
                 .await
                 .into_diagnostic()?,
         );
@@ -145,8 +187,7 @@ async fn run_impl(
             .await
             .into_diagnostic()?
     } else if cmd.okta {
-        authenticate_through_okta(&ctx, &opts, &node_name, proj, secure_channel_addr.clone())
-            .await?
+        authenticate_through_okta(ctx, &opts, node_name, proj, secure_channel_addr.clone()).await?
     }
 
     let credential_issuer_route = {
@@ -160,7 +201,7 @@ async fn run_impl(
 
     let client2 = CredentialsIssuerClient::new(
         route![DefaultAddress::RPC_PROXY, credential_issuer_route],
-        &ctx,
+        ctx,
     )
     .await
     .into_diagnostic()?;
@@ -168,16 +209,16 @@ async fn run_impl(
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;
+
     opts.state
         .trust_contexts
-        .overwrite(&project.name, project.clone().try_into()?)?;
+        .overwrite(trust_context_name, project.clone().try_into()?)?;
 
     let credential = client2.credential().await.into_diagnostic()?;
     println!("---");
     println!("{credential}");
     println!("---");
-    delete_embedded_node(&opts, &node_name).await;
-    Ok(())
+    Ok(project.name)
 }
 
 async fn authenticate_through_okta(

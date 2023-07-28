@@ -64,7 +64,7 @@ pub struct CreateCommand {
     retry_wait: Duration,
 }
 
-fn default_from_addr() -> SocketAddr {
+pub(crate) fn default_from_addr() -> SocketAddr {
     let port = find_available_port().expect("Failed to find available port");
     SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port)
 }

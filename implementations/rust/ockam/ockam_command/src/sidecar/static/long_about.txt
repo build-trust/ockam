@@ -1,0 +1,3 @@
+This command starts sidecar, every sidecar is thought to be standalone and can be executed locally or within a docker container.
+You can also customize recipes to fit your needs by running the sidecar with `--dry-run` parameter and then editing the generated recipe.
+To execute a recipe, use `ockam run`.

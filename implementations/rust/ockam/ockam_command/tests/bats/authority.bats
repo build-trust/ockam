@@ -60,12 +60,12 @@ teardown() {
   run "$OCKAM" project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --member $m2_identifier --attribute sample_attr=m2_member
   assert_success
 
-  run "$OCKAM" project enroll --project-path "$PROJECT_JSON_PATH" --identity m2
+  run "$OCKAM" project enroll --force --project-path "$PROJECT_JSON_PATH" --identity m2
   assert_success
   assert_output --partial "m2_member"
 
   token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member)
-  run "$OCKAM" project enroll $token --identity m3
+  run "$OCKAM" project enroll --force $token --identity m3
   assert_success
   assert_output --partial "m3_member"
 }
