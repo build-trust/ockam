@@ -462,7 +462,7 @@ mod node {
             req_wrapper: CloudRequestWrapper<CreateProject>,
             space_id: &str,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager
                 .create_project_response(ctx, req_wrapper, space_id)
                 .await
@@ -473,7 +473,7 @@ mod node {
             ctx: &Context,
             req_wrapper: BareCloudRequestWrapper,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager.list_projects_response(ctx, req_wrapper).await
         }
 
@@ -483,7 +483,7 @@ mod node {
             req_wrapper: BareCloudRequestWrapper,
             project_id: &str,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager
                 .get_project_response(ctx, req_wrapper, project_id)
                 .await
@@ -494,7 +494,7 @@ mod node {
             ctx: &Context,
             req_wrapper: BareCloudRequestWrapper,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager
                 .get_project_version_response(ctx, req_wrapper)
                 .await
@@ -507,7 +507,7 @@ mod node {
             space_id: &str,
             project_id: &str,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager
                 .delete_project_response(ctx, req_wrapper, space_id, project_id)
                 .await

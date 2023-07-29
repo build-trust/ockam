@@ -438,7 +438,7 @@ impl NodeManagerWorker {
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
-        let mut node_manager = self.get().write().await;
+        let mut node_manager = self.inner().write().await;
         match node_manager
             .create_outlet(
                 ctx,

@@ -391,13 +391,11 @@ impl TrustContextConfigBuilder {
         })
     }
 
-    // with_authority_identity
     pub fn with_authority_identity(&mut self, authority_identity: Option<&String>) -> &mut Self {
         self.authority_identity = authority_identity.map(|s| s.to_string());
         self
     }
 
-    // with_credential_name
     pub fn with_credential_name(&mut self, credential_name: Option<&String>) -> &mut Self {
         self.credential_name = credential_name.map(|s| s.to_string());
         self

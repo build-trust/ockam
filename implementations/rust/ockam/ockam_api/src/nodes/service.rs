@@ -44,6 +44,7 @@ use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::nodes::registry::KafkaServiceKind;
+use crate::nodes::NODEMANAGER_ADDR;
 use crate::session::sessions::{Key, Session};
 use crate::session::MedicHandle;
 use crate::DefaultAddress;
@@ -168,22 +169,18 @@ impl NodeManagerWorker {
         }
     }
 
-    pub fn get(&self) -> &Arc<RwLock<NodeManager>> {
+    pub fn inner(&self) -> &Arc<RwLock<NodeManager>> {
         &self.node_manager
-    }
-
-    pub fn get_mut(&mut self) -> &mut Arc<RwLock<NodeManager>> {
-        &mut self.node_manager
-    }
-
-    pub async fn set_node_manager(&self, node_manager: NodeManager) {
-        let mut nm = self.node_manager.write().await;
-        *nm = node_manager;
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
         let nm = self.node_manager.read().await;
-        nm.medic_handle.stop_medic(ctx).await
+        nm.medic_handle.stop_medic(ctx).await?;
+        for addr in DefaultAddress::iter() {
+            ctx.stop_worker(addr).await?;
+        }
+        ctx.stop_worker(NODEMANAGER_ADDR).await?;
+        Ok(())
     }
 }
 
@@ -858,7 +855,7 @@ impl Worker for NodeManagerWorker {
         }
 
         // Always start the echoer service as ockam_api::Medic assumes it will be
-        // started unconditionally on every node. It's used for liveness checks.
+        // started unconditionally on every node. It's used for liveliness checks.
         ctx.flow_controls()
             .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
         node_manager

@@ -1,18 +1,19 @@
 use std::sync::Arc;
 
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 use tauri::async_runtime::{block_on, spawn, RwLock};
 use tracing::{error, info};
 
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
-use ockam_api::cli_state::{CliState, StateDirTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::{NodeManager, NodeManagerWorker};
-use ockam_command::node::util::init_node_state;
+use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_command::node::util::{add_project_info_to_node_state, init_node_state};
 use ockam_command::util::api::{TrustContextConfigBuilder, TrustContextOpts};
 use ockam_command::{CommandGlobalOpts, GlobalArgs, Terminal};
 
@@ -20,7 +21,7 @@ use crate::app::model_state::ModelState;
 use crate::app::model_state_repository::{LmdbModelStateRepository, ModelStateRepository};
 use crate::Result;
 
-pub const NODE_NAME: &str = "default";
+pub const NODE_NAME: &str = "ockam_app";
 pub const PROJECT_NAME: &str = "default";
 
 /// The AppState struct contains all the state managed by `tauri`.
@@ -33,7 +34,7 @@ pub struct AppState {
     context: Arc<Context>,
     global_args: GlobalArgs,
     state: Arc<RwLock<CliState>>,
-    pub(crate) node_manager: NodeManagerWorker,
+    node_manager_worker: Arc<RwLock<NodeManagerWorker>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
 }
@@ -55,39 +56,28 @@ impl AppState {
         tauri::async_runtime::set(context.runtime().clone());
         // start the router, it is needed for the node manager creation
         spawn(async move { executor.start_router().await });
-        let mut node_manager = create_node_manager(context.clone(), options.clone());
+        let node_manager_worker = create_node_manager_worker(context.clone(), options.clone());
         let model_state_repository = create_model_state_repository(options.clone().state);
         let model_state = load_model_state(
             model_state_repository.clone(),
-            &mut node_manager,
+            &node_manager_worker,
             context.clone(),
+            &options.state,
         );
 
         AppState {
             context,
             global_args: options.global_args,
             state: Arc::new(RwLock::new(options.state)),
-            node_manager: NodeManagerWorker::new(node_manager),
+            node_manager_worker: Arc::new(RwLock::new(node_manager_worker)),
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository: Arc::new(RwLock::new(model_state_repository)),
         }
     }
 
     pub async fn reset(&self) -> miette::Result<()> {
-        self.node_manager
-            .stop(&self.context)
-            .await
-            .map_err(|e| miette!(e))?;
-        info!("stopped the old node manager");
-
         self.reset_state().await?;
-        info!("reset the cli state");
-
-        let node_manager = make_node_manager(self.context.clone(), self.options().await).await?;
-        info!("created a new node manager");
-
-        self.node_manager.set_node_manager(node_manager).await;
-        info!("set a new node manager");
+        self.reset_node_manager().await?;
 
         // recreate the model state repository since the cli state has changed
         let identity_path = self
@@ -106,9 +96,31 @@ impl AppState {
     async fn reset_state(&self) -> miette::Result<()> {
         let mut state = self.state.write().await;
         match state.reset().await {
-            Ok(s) => *state = s,
+            Ok(s) => {
+                *state = s;
+                info!("reset the cli state");
+            }
             Err(e) => error!("Failed to reset the state {e:?}"),
         }
+        Ok(())
+    }
+
+    /// Recreate a new NodeManagerWorker instance, which will restart the necessary
+    /// child workers as described in its Worker trait implementation.
+    pub async fn reset_node_manager(&self) -> miette::Result<()> {
+        let mut node_manager_worker = self.node_manager_worker.write().await;
+        let _ = node_manager_worker.stop(&self.context).await;
+        info!("stopped the old node manager");
+
+        for w in self.context.list_workers().await.into_diagnostic()? {
+            let _ = self.context.stop_worker(w.address()).await;
+        }
+        info!("stopped all the ctx workers");
+
+        let new_node_manager =
+            make_node_manager_worker(self.context.clone(), self.options().await).await?;
+        *node_manager_worker = new_node_manager;
+        info!("set a new node manager");
         Ok(())
     }
 
@@ -123,6 +135,12 @@ impl AppState {
     pub async fn state(&self) -> CliState {
         let state = self.state.read().await;
         state.clone()
+    }
+
+    /// Return the node manager worker
+    pub async fn node_manager_worker(&self) -> NodeManagerWorker {
+        let node_manager = self.node_manager_worker.read().await;
+        node_manager.clone()
     }
 
     /// Return the global options with a quiet terminal
@@ -143,8 +161,9 @@ impl AppState {
 
     /// Return the list of currently running outlets
     pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
-        let node_manager = self.node_manager.get().read().await;
-        node_manager.list_outlets().list
+        let node_manager = self.node_manager_worker.read().await;
+        let inner = node_manager.inner().read().await;
+        inner.list_outlets().list
     }
 
     pub async fn model_mut(&self, f: impl FnOnce(&mut ModelState)) -> Result<()> {
@@ -164,11 +183,11 @@ impl AppState {
     }
 }
 
-/// Create a node manager
-fn create_node_manager(ctx: Arc<Context>, opts: CommandGlobalOpts) -> NodeManager {
+/// Create a node manager worker
+fn create_node_manager_worker(ctx: Arc<Context>, opts: CommandGlobalOpts) -> NodeManagerWorker {
     let options = opts;
-    match block_on(async { make_node_manager(ctx.clone(), options).await }) {
-        Ok(node_manager) => node_manager,
+    match block_on(async { make_node_manager_worker(ctx.clone(), options).await }) {
+        Ok(w) => w,
         Err(e) => {
             println!("cannot create a node manager: {e:?}");
             panic!("{e}")
@@ -177,10 +196,10 @@ fn create_node_manager(ctx: Arc<Context>, opts: CommandGlobalOpts) -> NodeManage
 }
 
 /// Make a node manager with a default node called "default"
-pub(crate) async fn make_node_manager(
+pub(crate) async fn make_node_manager_worker(
     ctx: Arc<Context>,
     opts: CommandGlobalOpts,
-) -> miette::Result<NodeManager> {
+) -> miette::Result<NodeManagerWorker> {
     init_node_state(&opts, NODE_NAME, None, None).await?;
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
@@ -189,11 +208,23 @@ pub(crate) async fn make_node_manager(
         .listen(&"127.0.0.1:0", options)
         .await
         .into_diagnostic()?;
+
+    let trust_context_opts = default_trust_context_opts(&opts.state);
+    add_project_info_to_node_state(NODE_NAME, &opts, &trust_context_opts).await?;
     let trust_context_config =
-        TrustContextConfigBuilder::new(&opts.state, &TrustContextOpts::default())?
-            .with_authority_identity(None)
-            .with_credential_name(None)
-            .build();
+        TrustContextConfigBuilder::new(&opts.state, &trust_context_opts)?.build();
+
+    let node_state = opts.state.nodes.get(NODE_NAME)?;
+    node_state.set_setup(
+        &node_state.config().setup_mut().set_api_transport(
+            CreateTransportJson::new(
+                TransportType::Tcp,
+                TransportMode::Listen,
+                &listener.socket_address().to_string(),
+            )
+            .into_diagnostic()?,
+        ),
+    )?;
 
     let node_manager = NodeManager::create(
         &ctx,
@@ -203,7 +234,23 @@ pub(crate) async fn make_node_manager(
     )
     .await
     .into_diagnostic()?;
-    Ok(node_manager)
+
+    let node_manager_worker = NodeManagerWorker::new(node_manager);
+    ctx.flow_controls()
+        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+    let _ = ctx
+        .start_worker(NODEMANAGER_ADDR, node_manager_worker.clone())
+        .await
+        .into_diagnostic();
+
+    Ok(node_manager_worker)
+}
+
+pub(crate) fn default_trust_context_opts(state: &CliState) -> TrustContextOpts {
+    TrustContextOpts {
+        project: state.projects.default().ok().map(|p| p.name().to_string()),
+        ..Default::default()
+    }
 }
 
 /// Create the repository containing the model state
@@ -221,17 +268,24 @@ fn create_model_state_repository(state: CliState) -> Arc<dyn ModelStateRepositor
 /// Load a previously persisted ModelState
 fn load_model_state(
     model_state_repository: Arc<dyn ModelStateRepository>,
-    node_manager: &mut NodeManager,
+    node_manager_worker: &NodeManagerWorker,
     context: Arc<Context>,
+    cli_state: &CliState,
 ) -> ModelState {
     block_on(async {
         match model_state_repository.load().await {
             Ok(model_state) => {
                 let model_state = model_state.unwrap_or(ModelState::default());
-                crate::shared_service::tcp::outlet::model_state::load_model_state(
+                crate::shared_service::tcp_outlet::load_model_state(
                     context.clone(),
-                    node_manager,
+                    node_manager_worker,
                     &model_state,
+                )
+                .await;
+                crate::shared_service::relay::load_model_state(
+                    context.clone(),
+                    node_manager_worker,
+                    cli_state,
                 )
                 .await;
                 model_state

@@ -1,6 +1,6 @@
 use crate::app::{configure_tauri_plugin_log, process_application_event, setup_app, AppState};
 use crate::error::Result;
-use shared_service::tcp::outlet::tcp_outlet_create;
+use shared_service::tcp_outlet::tcp_outlet_create;
 
 mod app;
 mod enroll;

@@ -10,11 +10,11 @@ use ockam_api::cli_state::SpaceConfig;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::{CreateSpace, Space};
 use ockam_command::enroll::{update_enrolled_identity, OidcService};
+use ockam_command::node::util::add_project_info_to_node_state;
 use ockam_command::util::api::CloudOpts;
 
-use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
-use crate::shared_service::relay::create::create_relay;
-use crate::Result;
+use crate::app::{default_trust_context_opts, AppState, NODE_NAME, PROJECT_NAME};
+use crate::{shared_service, Result};
 
 /// Enroll a user.
 ///
@@ -28,8 +28,12 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
         .await
         .map(|i| info!("Enrolled a new user with identifier {}", i))
         .unwrap_or_else(|e| error!("{:?}", e));
-    create_relay(&app_state).await?;
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+    // Reset the node manager to include the project's setup, needed to create the relay.
+    // This is necessary because the project data is used in the worker initialization,
+    // which can't be rerun manually once the worker is started.
+    app_state.reset_node_manager().await?;
+    shared_service::relay::create_relay(&app_state).await?;
     Ok(())
 }
 
@@ -44,12 +48,14 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     app_state.model_mut(|m| m.set_user_info(user_info)).await?;
 
     // enroll the current user using that token on the controller
-    let node_manager = app_state.node_manager.get().write().await;
-    node_manager
-        .enroll_auth0(&app_state.context(), &CloudOpts::route(), token)
-        .await
-        .into_diagnostic()?;
-
+    {
+        let node_manager_worker = app_state.node_manager_worker().await;
+        let node_manager = node_manager_worker.inner().read().await;
+        node_manager
+            .enroll_auth0(&app_state.context(), &CloudOpts::route(), token)
+            .await
+            .into_diagnostic()?;
+    }
     let space = retrieve_space(app_state).await?;
     let _ = retrieve_project(app_state, &space).await?;
     let identifier = update_enrolled_identity(&app_state.options().await, NODE_NAME)
@@ -60,7 +66,8 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
 
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     info!("retrieving the user space");
-    let node_manager = app_state.node_manager.get().read().await;
+    let node_manager_worker = app_state.node_manager_worker().await;
+    let node_manager = node_manager_worker.inner().read().await;
 
     // list the spaces that the user can access
     // and sort them by name to make sure to get the same space every time
@@ -102,7 +109,8 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
 
 async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project> {
     info!("retrieving the user project");
-    let node_manager = app_state.node_manager.get().read().await;
+    let node_manager_worker = app_state.node_manager_worker().await;
+    let node_manager = node_manager_worker.inner().read().await;
     let projects = {
         node_manager
             .list_projects(&app_state.context(), &CloudOpts::route())
@@ -122,11 +130,11 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
             .await
             .map_err(|e| miette!(e))?,
     };
-    app_state
-        .state()
-        .await
-        .projects
-        .overwrite(&project.name, project.clone())?;
-
+    add_project_info_to_node_state(
+        NODE_NAME,
+        &app_state.options().await,
+        &default_trust_context_opts(&app_state.state().await),
+    )
+    .await?;
     Ok(project)
 }

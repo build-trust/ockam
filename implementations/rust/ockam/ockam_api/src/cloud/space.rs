@@ -167,7 +167,7 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<CreateSpace>,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager.create_space_response(ctx, req_wrapper).await
         }
 
@@ -176,7 +176,7 @@ mod node {
             ctx: &Context,
             req_wrapper: BareCloudRequestWrapper,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager.list_spaces_response(ctx, req_wrapper).await
         }
 
@@ -186,7 +186,7 @@ mod node {
             req_wrapper: BareCloudRequestWrapper,
             id: &str,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager.get_space_response(ctx, req_wrapper, id).await
         }
 

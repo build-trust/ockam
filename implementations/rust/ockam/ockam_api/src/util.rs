@@ -443,7 +443,7 @@ pub mod test_utils {
         .await?;
 
         let node_manager_worker = NodeManagerWorker::new(node_manager);
-        let node_manager = node_manager_worker.get().clone();
+        let node_manager = node_manager_worker.inner().clone();
         let secure_channels = node_manager.read().await.secure_channels.clone();
 
         // since we re-created secure-channels, we rewrite the identity in the LMDB storage
