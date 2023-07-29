@@ -196,6 +196,30 @@ impl DefaultAddress {
                 | Self::RPC_PROXY
         )
     }
+
+    pub fn iter() -> impl Iterator<Item = &'static str> {
+        [
+            Self::IDENTITY_SERVICE,
+            Self::AUTHENTICATED_SERVICE,
+            Self::FORWARDING_SERVICE,
+            Self::UPPERCASE_SERVICE,
+            Self::ECHO_SERVICE,
+            Self::HOP_SERVICE,
+            Self::CREDENTIALS_SERVICE,
+            Self::SECURE_CHANNEL_LISTENER,
+            Self::DIRECT_AUTHENTICATOR,
+            Self::CREDENTIAL_ISSUER,
+            Self::ENROLLMENT_TOKEN_ISSUER,
+            Self::ENROLLMENT_TOKEN_ACCEPTOR,
+            Self::VERIFIER,
+            Self::OKTA_IDENTITY_PROVIDER,
+            Self::KAFKA_CONSUMER,
+            Self::KAFKA_PRODUCER,
+            Self::RPC_PROXY,
+        ]
+        .iter()
+        .copied()
+    }
 }
 
 pub mod actions {

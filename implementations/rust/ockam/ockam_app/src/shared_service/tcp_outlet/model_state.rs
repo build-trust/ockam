@@ -1,7 +1,7 @@
 use crate::app::ModelState;
 use ockam::Context;
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::nodes::NodeManager;
+use ockam_api::nodes::NodeManagerWorker;
 use std::sync::Arc;
 
 impl ModelState {
@@ -16,9 +16,10 @@ impl ModelState {
 
 pub(crate) async fn load_model_state(
     context: Arc<Context>,
-    node_manager: &mut NodeManager,
+    node_manager_worker: &NodeManagerWorker,
     model_state: &ModelState,
 ) {
+    let mut node_manager = node_manager_worker.inner().write().await;
     for tcp_outlet in model_state.get_tcp_outlets() {
         node_manager
             .create_outlet(

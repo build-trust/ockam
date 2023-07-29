@@ -35,7 +35,8 @@ async fn tcp_outlet_create_impl(
         .into_diagnostic()
         .wrap_err("Invalid IP address")?;
     let worker_addr = extract_address_value(&service).wrap_err("Invalid service address")?;
-    let mut node_manager = app_state.node_manager.get().write().await;
+    let node_manager_worker = app_state.node_manager_worker().await;
+    let mut node_manager = node_manager_worker.inner().write().await;
     match node_manager
         .create_outlet(&app_state.context(), tcp_addr, worker_addr, None, true)
         .await

@@ -83,7 +83,7 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<AuthenticateOidcToken>,
         ) -> Result<Vec<u8>> {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager.enroll_auth0_response(ctx, req_wrapper).await
         }
 

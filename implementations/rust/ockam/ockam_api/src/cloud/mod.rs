@@ -224,7 +224,7 @@ mod node {
         where
             T: Encode<()>,
         {
-            let node_manager = self.get().read().await;
+            let node_manager = self.inner().read().await;
             node_manager
                 .request_controller_with_timeout(
                     ctx,

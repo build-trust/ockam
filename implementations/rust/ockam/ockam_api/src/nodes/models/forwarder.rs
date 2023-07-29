@@ -76,7 +76,7 @@ impl CreateForwarder {
 }
 
 /// Response body when creating a forwarder
-#[derive(Debug, Clone, Decode, Encode, serde::Serialize)]
+#[derive(Debug, Clone, Decode, Encode, serde::Serialize, serde::Deserialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ForwarderInfo {
