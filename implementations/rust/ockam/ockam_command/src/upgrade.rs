@@ -70,7 +70,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: UpgradeCommand) -> miette::Result<()> 
     }
 
     if !cmd.yes {
-        match opts.terminal.confirm(&fmt_info!(
+        match opts.terminal.confirm(fmt_info!(
             "This will upgrade ockam to the latest version. Are you sure?"
         ))? {
             ConfirmResult::Yes => {}

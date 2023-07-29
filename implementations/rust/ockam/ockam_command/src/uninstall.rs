@@ -27,7 +27,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: UninstallCommand) -> miette::Result<()
     if !cmd.yes {
         match opts
             .terminal
-            .confirm(&fmt_info!("Are you sure you wish to uninstall ockam?"))?
+            .confirm(fmt_info!("Are you sure you wish to uninstall ockam?"))?
         {
             ConfirmResult::Yes => {}
             ConfirmResult::No => {
