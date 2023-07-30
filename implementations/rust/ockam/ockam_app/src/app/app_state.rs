@@ -163,8 +163,24 @@ impl AppState {
     /// Return true if the user is enrolled
     /// At the moment this check only verifies that there is a default project.
     /// This project should be the project that is created at the end of the enrollment procedure
-    pub async fn is_enrolled(&self) -> bool {
-        self.state().await.projects.default().is_ok()
+    pub async fn is_enrolled(&self) -> Result<bool> {
+        let identity_state = self.state().await.identities.get_or_default(None)?;
+
+        if !identity_state.is_enrolled() {
+            return Err("User is not enrolled".into());
+        }
+
+        let default_space_exists = self.state().await.spaces.default().is_ok();
+        if !default_space_exists {
+            return Err("Default space has not been set".into());
+        }
+
+        let default_project_exists = self.state().await.projects.default().is_ok();
+        if !default_project_exists {
+            return Err("Default project has not been set".into());
+        }
+
+        Ok(true)
     }
 
     /// Return the list of currently running outlets
