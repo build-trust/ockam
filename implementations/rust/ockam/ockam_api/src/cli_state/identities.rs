@@ -85,6 +85,11 @@ impl IdentityState {
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    pub fn is_enrolled(&self) -> bool {
+        self.config.enrollment_status.map(|s| s.is_enrolled).unwrap_or(false)
+    }
+
 }
 
 impl Display for IdentityState {

@@ -11,6 +11,7 @@ pub const DEV_MENU_ID: &str = "developer";
 pub const REFRESH_MENU_ID: &str = "refresh";
 pub const RESET_MENU_ID: &str = "reset";
 pub const QUIT_MENU_ID: &str = "quit";
+pub const ERROR_MENU_ID: &str = "error";
 
 pub(crate) async fn build_options_section(
     app_state: &AppState,
