@@ -4411,7 +4411,7 @@ dependencies = [
  "fake",
  "hex",
  "home",
- "indexmap 1.9.3",
+ "indexmap 2.0.0",
  "kafka-protocol",
  "lru",
  "miette",
