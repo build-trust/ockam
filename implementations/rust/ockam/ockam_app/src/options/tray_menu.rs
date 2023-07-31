@@ -1,6 +1,7 @@
 #[cfg(all(debug_assertions, feature = "invitations"))]
 use tauri::Manager;
 use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, SystemTraySubmenu, Wry};
+use tauri_runtime::menu::NativeImage;
 
 use crate::app::AppState;
 use crate::options::reset;

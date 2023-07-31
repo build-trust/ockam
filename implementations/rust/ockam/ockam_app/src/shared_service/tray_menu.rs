@@ -14,7 +14,7 @@ pub(crate) async fn build_shared_services_section(
     app_state: &AppState,
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
-    if !app_state.is_enrolled().await {
+    if !app_state.is_enrolled().await.unwrap_or(false) {
         return tray_menu;
     };
 
