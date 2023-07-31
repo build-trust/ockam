@@ -38,6 +38,10 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct EnrollCommand {
     #[arg(global = true, value_name = "IDENTITY_NAME", long)]
     pub identity: Option<String>,
+
+    /// Use PKCE authorization flow
+    #[arg(long)]
+    pub authorization_code_flow: bool,
 }
 
 impl EnrollCommand {
@@ -62,8 +66,12 @@ async fn run_impl(
 
     display_parse_logs(&opts);
 
-    let auth0 = OidcService::default();
-    let token = auth0.get_token_interactively(&opts).await?;
+    let oidc_service = OidcService::default();
+    let token = if _cmd.authorization_code_flow {
+        oidc_service.get_token_with_pkce().await?
+    } else {
+        oidc_service.get_token_interactively(&opts).await?
+    };
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 

@@ -20,7 +20,7 @@ use crate::{shared_service, Result};
 ///
 /// This function:
 ///  - creates a default node, with a default identity if it doesn't exist
-///  - connects to the Auth0 service to authenticate the user of the Ockam application to retrieve a token
+///  - connects to the OIDC service to authenticate the user of the Ockam application to retrieve a token
 ///  - connects to the Orchestrator with the retrieved token to create a project
 pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     let app_state: State<AppState> = app.state::<AppState>();
@@ -38,12 +38,12 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
 }
 
 async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
-    // get an Auth0 token
-    let auth0_service = OidcService::default();
-    let token = auth0_service.get_token_with_pkce().await?;
+    // get an OIDC token
+    let oidc_service = OidcService::default();
+    let token = oidc_service.get_token_with_pkce().await?;
 
     // retrieve the user information
-    let user_info = auth0_service.get_user_info(token.clone()).await?;
+    let user_info = oidc_service.get_user_info(token.clone()).await?;
     info!("the user info is {user_info:?}");
     app_state.model_mut(|m| m.set_user_info(user_info)).await?;
 
