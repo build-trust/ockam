@@ -23,14 +23,14 @@ use crate::enroll::OckamOidcProvider;
 use crate::terminal::OckamColor;
 use crate::{fmt_err, fmt_log, fmt_para, CommandGlobalOpts, Result};
 
-/// This service supports various flows of authentication with Auth0
+/// This service supports various flows of authentication with an OIDC Provider
 ///
-/// The Auth0Provider trait is currently implemented for:
+/// The OidcProvider trait is currently implemented for:
 ///   - Ockam: uses Github and account creation with an email
 ///   - Okta
 ///
-/// The main purpose of the Auth0Service is to authenticate a user and get
-/// back an Auth0Token allowing the user to connect to the Orchestrator
+/// The main purpose of the OidcService is to authenticate a user and get
+/// back an OidcToken allowing the user to connect to the Orchestrator
 ///
 pub struct OidcService(Arc<dyn OidcProvider + Send + Sync + 'static>);
 
@@ -41,12 +41,12 @@ impl Default for OidcService {
 }
 
 impl OidcService {
-    /// Create an Auth0 service using a specific Auth0 provider
+    /// Create an OIDC service using a specific OIDC provider
     pub fn new(provider: Arc<dyn OidcProvider + Send + Sync + 'static>) -> Self {
         Self(provider)
     }
 
-    /// Create an Auth0 service using the Ockam provider with a specific timeout for redirects
+    /// Create an OIDC service using the Ockam provider with a specific timeout for redirects
     pub fn default_with_redirect_timeout(timeout: Duration) -> Self {
         Self::new(Arc::new(OckamOidcProvider::new(timeout)))
     }
@@ -101,7 +101,7 @@ impl OidcService {
         self.get_token_from_browser(opts, dc, uri).await
     }
 
-    /// Retrieve a token using the device code get a token from the Auth0 service
+    /// Retrieve a token using the device code get a token from the OIDC service
     /// The device code is directly pasted to the currently opened browser window
     pub async fn get_token(&self, opts: &CommandGlobalOpts) -> Result<OidcToken> {
         let dc = self.device_code().await?;
@@ -142,9 +142,9 @@ impl OidcService {
     }
 }
 
-/// Implementation methods for the Auth0Service
+/// Implementation methods for the OidcService
 impl OidcService {
-    /// Return the Auth0 provider
+    /// Return the OIDC provider
     fn provider(&self) -> Arc<dyn OidcProvider + Send + Sync + 'static> {
         self.0.clone()
     }
@@ -158,7 +158,7 @@ impl OidcService {
         .await
     }
 
-    /// Request an authorization code for the PKCE Auth0 flow
+    /// Request an authorization code for the PKCE OIDC flow
     async fn authorization_code(&self, code_verifier: &str) -> Result<AuthorizationCode> {
         // Hash and base64 encode the random bytes
         // to obtain a code challenge
@@ -220,7 +220,7 @@ impl OidcService {
         code_verifier: &str,
     ) -> Result<OidcToken> {
         info!(
-            "getting an Auth0 token using the authorization code {}",
+            "getting an OIDC token using the authorization code {}",
             authorization_code.code
         );
         self.request_code(
@@ -236,7 +236,7 @@ impl OidcService {
         .await
     }
 
-    /// Request a code from a given Auth0 URL
+    /// Request a code from a given OIDC Provider URL
     /// This code can be a device code or an authorization code depending on the URL
     /// and the query parameters
     async fn request_code<T: DeserializeOwned + Debug>(
@@ -332,7 +332,7 @@ impl OidcService {
     }
 
     /// Open a browser from one of the URIs returned by a device code
-    /// in order to authenticate and poll the Auth0 token url to get a token back
+    /// in order to authenticate and poll the OIDC token url to get a token back
     async fn get_token_from_browser<'a>(
         &self,
         opts: &CommandGlobalOpts,
@@ -348,7 +348,7 @@ impl OidcService {
         self.poll_token(dc, opts).await
     }
 
-    /// Poll for an Auth0Token until it's ready
+    /// Poll for an OidcToken until it's ready
     async fn poll_token<'a>(
         &'a self,
         dc: DeviceCode<'a>,
@@ -457,9 +457,9 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_user_info() -> Result<()> {
-        let auth0_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
-        let token = auth0_service.get_token_with_pkce().await?;
-        let user_info = auth0_service.get_user_info(token).await;
+        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
+        let token = oidc_service.get_token_with_pkce().await?;
+        let user_info = oidc_service.get_user_info(token).await;
         assert!(user_info.is_ok());
         Ok(())
     }
@@ -467,8 +467,8 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_get_token_with_pkce() -> Result<()> {
-        let auth0_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
-        let token = auth0_service.get_token_with_pkce().await;
+        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
+        let token = oidc_service.get_token_with_pkce().await;
         assert!(token.is_ok());
         Ok(())
     }
@@ -476,9 +476,9 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_authorization_code() -> Result<()> {
-        let auth0_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
-        let code_verifier = auth0_service.create_code_verifier();
-        let authorization_code = auth0_service
+        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
+        let code_verifier = oidc_service.create_code_verifier();
+        let authorization_code = oidc_service
             .authorization_code(code_verifier.as_str())
             .await;
         assert!(authorization_code.is_ok());
@@ -487,17 +487,17 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_wait_for_authorization_code() -> Result<()> {
-        let auth0_service = OidcService::default();
+        let oidc_service = OidcService::default();
 
         let (authorization_code_receiver, authorization_code_sender) = new_callback();
-        auth0_service
+        oidc_service
             .wait_for_authorization_code(authorization_code_sender)
             .await?;
 
         let client_thread = tokio::spawn(async move {
             let client = reqwest::ClientBuilder::new().build().unwrap();
             client
-                .get(auth0_service.provider().redirect_url().as_str())
+                .get(oidc_service.provider().redirect_url().as_str())
                 .query(&[("code", "12345")])
                 .send()
                 .await
