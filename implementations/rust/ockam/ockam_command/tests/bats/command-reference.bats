@@ -198,7 +198,7 @@ teardown() {
 
   output=$("$OCKAM" secure-channel create \
     --from n1 --to /node/n2/service/l \
-    --identity i1 --authorized $(cat /tmp/i1.identifier) \
+    --identity i1 --authorized $(cat /tmp/i2.identifier) \
       | "$OCKAM" message send hello --from n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
