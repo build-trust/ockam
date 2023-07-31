@@ -49,11 +49,9 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - uses: ./.github/actions/cargo_target_dir_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - uses: ./.github/actions/elixir_cache
       - run: ./gradlew build -Pmode=release
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   list_gradle_tasks:
     name: Gradle - list_gradle_tasks

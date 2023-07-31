@@ -106,15 +106,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_clippy
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   lint_cargo_deny:
     name: Rust - lint_cargo_deny
@@ -140,15 +135,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build_docs
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build:
     name: Rust - build
@@ -160,15 +150,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build_examples:
     name: Rust - build_examples
@@ -180,15 +165,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build_examples
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   test:
     name: Rust - test
@@ -205,15 +185,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew test
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_no_std:
     name: Rust - check_no_std
@@ -225,11 +200,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: |
           rustc --version
           rustup target add thumbv7em-none-eabihf
@@ -245,8 +216,6 @@ jobs:
           # RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="atsame54"
           # RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="stm32f4"
 
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
-
   check_tag:
     name: Rust - check_tag
     runs-on: ubuntu-20.04
@@ -257,15 +226,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: |
           rustc --version
           RUSTFLAGS='-Dwarnings' cargo check --features tag
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_cargo_update:
     name: Rust - check_cargo_update
@@ -277,18 +241,13 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: |
           rustc --version
           cd examples/rust/get_started
           rm -rf Cargo.lock
           cargo update
           RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_nightly:
     name: Rust - check_nightly
@@ -300,17 +259,12 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: rustup default nightly
       - run: rustup update nightly
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit == 'true' }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
       - run: |
           rustc --version
           RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build_nightly:
     name: Rust - build_nightly
@@ -322,17 +276,12 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: rustup default nightly
       - run: rustup update nightly
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit == 'true' }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   test_nightly:
     name: Rust - test_nightly
@@ -344,19 +293,14 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - id: cargo_target_dir_cache
-        uses: ./.github/actions/cargo_target_dir_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
       - run: rustup default nightly
       - run: rustup update nightly
-      - if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit == 'true' }}
-        uses: ./.github/actions/cargo_target_dir_pre_cache
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew test
         env:
           NIGHTLY_CI: 1
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   test_ockam_command:
     name: Rust - test_ockam_command
@@ -385,19 +329,9 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           path: ockam_bats
 
-      - name: Use cache cargo_home
-        uses: ./ockam_bats/.github/actions/cargo_home_cache
-      - name: Download Target Cache
-        id: cargo_target_dir_cache
-        uses: ./ockam_bats/.github/actions/cargo_target_dir_cache
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
         with:
-          ockam_dir: ockam_cli
-
-      - name: Cleanup Target Cache Only If Cache Exists
-        if: ${{ steps.cargo_target_dir_cache.outputs.cache-hit }}
-        uses: ./ockam_bats/.github/actions/cargo_target_dir_pre_cache
-        with:
-          ockam_dir: ockam_cli
+          workspaces: "ockam_cli -> target"
 
       - name: Build Binary
         shell: bash
@@ -417,11 +351,6 @@ jobs:
           bats implementations/rust/ockam/ockam_command/tests/bats;
         env:
           OCKAM_DISABLE_UPGRADE_CHECK: 1
-
-      - name: Prep cache cargo_target before persisting
-        uses: ./ockam_bats/.github/actions/cargo_target_dir_pre_cache
-        with:
-          ockam_dir: ockam_cli
 
   ockam_command_cross_build:
     name: Rust - ockam_command_cross_build
@@ -491,6 +420,10 @@ jobs:
         with:
           ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
           path: ockam_library
+
+      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
+        with:
+          workspaces: "ockam_examples -> target"
 
       - name: Move Implementation Directory From Ockam Library To Ockam Examples
         run: |
