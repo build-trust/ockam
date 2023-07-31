@@ -8,7 +8,7 @@ setup() {
   load_bats_ext
   setup_home_dir
   skip_if_orchestrator_tests_not_enabled
-  copy_local_orchestrator_data
+  # copy_local_orchestrator_data
 }
 
 teardown() {
@@ -173,12 +173,13 @@ teardown() {
   run_success "$OCKAM" identity create a
   run_success "$OCKAM" identity create b
 
-  id=$(ockam identity show b --full --encoding hex)
+  id_a=$("$OCKAM" identity show a --full --encoding hex)
+  id_b=$("$OCKAM" identity show b --full --encoding hex)
 
-  "$OCKAM" credential issue --as a --for ${id} --encoding hex > /tmp/b.credential
+  "$OCKAM" credential issue --as a --for ${id_b} --encoding hex > /tmp/b.credential
 
-  run_success "$OCKAM" credential verify --issuer ${id} --credential-path /tmp/b.credential
-  run_success "$OCKAM" credential store c1 --issuer ${id} --credential-path /tmp/b.credential
+  run_success "$OCKAM" credential verify --issuer ${id_a} --credential-path /tmp/b.credential
+  run_success "$OCKAM" credential store c1 --issuer ${id_a} --credential-path /tmp/b.credential
 }
 
 @test "trust anchors" {
