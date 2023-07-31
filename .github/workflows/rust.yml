@@ -63,11 +63,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - name: Install Dprint
-        run: npm install -g dprint
+        run: npm install -g dprint@0.39.1
       - name: Check Formatting
         run: |
-          echo "disable this check until it is fixed - **/Cargo.toml retrieves no files"
-          # dprint check --config tools/dprint/dprint.json
+          dprint check --config tools/dprint/dprint.json
 
   lint_cargo_fmt_check:
     name: Rust - lint_cargo_fmt_check
