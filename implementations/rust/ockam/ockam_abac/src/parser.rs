@@ -1,6 +1,7 @@
 use crate::expr::Expr;
 use crate::{error::ParseError, EvalError};
 use core::str;
+use core::str::FromStr;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
@@ -9,7 +10,8 @@ use once_cell::race::OnceBox;
 use regex::Regex;
 
 #[cfg(feature = "std")]
-use wast::lexer::{FloatVal, Lexer, Token};
+use wast::lexer::Lexer;
+use wast::lexer::{FloatKind, TokenKind};
 
 /// Allowed identifier patterns.
 fn ident_pattern() -> &'static Regex {
@@ -32,7 +34,7 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
         SeqEnd,
     }
 
-    let mut lx = Lexer::new(s);
+    let lx = Lexer::new(s);
 
     // Control stack.
     let mut ctrl: Vec<Op> = Vec::new();
@@ -43,69 +45,87 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
     // Start by parsing the next expression.
     ctrl.push(Op::Next);
 
+    let mut parse_position = 0;
     while let Some(e) = ctrl.pop() {
         match e {
-            Op::Next => match lx.parse()? {
+            Op::Next => match lx.parse(&mut parse_position)? {
                 None => continue,
-                Some(Token::Whitespace(_) | Token::LineComment(_) | Token::BlockComment(_)) =>
-                    ctrl.push(Op::Next),
-                Some(Token::Integer(i)) => {
-                    let (s, r) = i.val();
-                    let x = i64::from_str_radix(s, r)?;
-                    ctrl.push(Op::Value(Expr::Int(x)));
-                    ctrl.push(Op::Next)
-                }
-                Some(Token::Float(v)) => {
-                    match v.val() {
-                        FloatVal::Inf { negative: true } =>
-                            ctrl.push(Op::Value(Expr::Float(f64::NEG_INFINITY))),
-                        FloatVal::Inf { negative: false } =>
-                            ctrl.push(Op::Value(Expr::Float(f64::INFINITY))),
-                        FloatVal::Nan { .. } =>
-                            ctrl.push(Op::Value(Expr::Float(f64::NAN))),
-                        FloatVal::Val { .. } => {
-                            let x: f64 = v.src().parse()?;
-                            ctrl.push(Op::Value(Expr::Float(x)))
+                Some(token) => {
+                    match token.kind {
+                        TokenKind::Whitespace | TokenKind::LineComment | TokenKind::BlockComment =>
+                            ctrl.push(Op::Next),
+                        TokenKind::Integer(integer_kind) => {
+                            let integer = token.integer(s, integer_kind);
+                            let (s, r) = integer.val();
+                            let x = i64::from_str_radix(s, r)?;
+                            ctrl.push(Op::Value(Expr::Int(x)));
+                            ctrl.push(Op::Next)
                         }
-                    }
-                    ctrl.push(Op::Next)
-                }
-                Some(Token::String(s)) => {
-                    ctrl.push(Op::Value(Expr::Str(str::from_utf8(s.val())?.to_string())));
-                    ctrl.push(Op::Next)
-                }
-                Some(Token::LParen(_)) => {
-                    ctrl.push(Op::ListStart);
-                    ctrl.push(Op::Next)
-                }
-                Some(Token::RParen(_)) => {
-                    ctrl.push(Op::ListEnd)
-                }
-                Some(Token::Reserved("]")) => {
-                    ctrl.push(Op::SeqEnd)
-                }
-                Some(Token::Reserved("[")) => {
-                    ctrl.push(Op::SeqStart);
-                    ctrl.push(Op::Next)
-                }
-                Some(Token::Keyword("true")) => {
-                    ctrl.push(Op::Value(Expr::Bool(true)));
-                    ctrl.push(Op::Next)
-                }
-                Some(Token::Keyword("false")) => {
-                    ctrl.push(Op::Value(Expr::Bool(false)));
-                    ctrl.push(Op::Next)
-                }
-                Some(Token::Id(v)) => {
-                    ctrl.push(Op::Value(Expr::Ident(v.to_string())));
-                    ctrl.push(Op::Next)
-                }
-                Some(Token::Keyword(v) | Token::Reserved(v)) => {
-                    if ident_pattern().is_match(v) {
-                        ctrl.push(Op::Value(Expr::Ident(v.to_string())));
-                        ctrl.push(Op::Next)
-                    } else {
-                        return Err(ParseError::message(format!("invalid token '{v}'")))
+                        TokenKind::Float(float_kind) => {
+                            match float_kind {
+                                FloatKind::Inf { negative: true } =>
+                                    ctrl.push(Op::Value(Expr::Float(f64::NEG_INFINITY))),
+                                FloatKind::Inf { negative: false } =>
+                                    ctrl.push(Op::Value(Expr::Float(f64::INFINITY))),
+                                FloatKind::Nan { .. } =>
+                                    ctrl.push(Op::Value(Expr::Float(f64::NAN))),
+                                FloatKind::NanVal { .. } =>
+                                    ctrl.push(Op::Value(Expr::Float(f64::NAN))),
+                                FloatKind::Normal { .. } => {
+                                    let float: f64 = FromStr::from_str(token.src(s))?;
+                                    ctrl.push(Op::Value(Expr::Float(float)))
+                                }
+                            }
+                            ctrl.push(Op::Next)
+                        }
+                        TokenKind::String => {
+                            ctrl.push(Op::Value(Expr::Str(str::from_utf8(&token.string(s))?.to_string())));
+                            ctrl.push(Op::Next)
+                        }
+                        TokenKind::LParen => {
+                            ctrl.push(Op::ListStart);
+                            ctrl.push(Op::Next)
+                        }
+                        TokenKind::RParen => {
+                            ctrl.push(Op::ListEnd)
+                        }
+                        TokenKind::Reserved if token.reserved(s) == "]" => {
+                            ctrl.push(Op::SeqEnd)
+                        }
+                        TokenKind::Reserved if token.reserved(s) == "[" => {
+                            ctrl.push(Op::SeqStart);
+                            ctrl.push(Op::Next)
+                        }
+                        TokenKind::Keyword if token.keyword(s) == "true" => {
+                            ctrl.push(Op::Value(Expr::Bool(true)));
+                            ctrl.push(Op::Next)
+                        }
+                        TokenKind::Keyword if token.keyword(s) == "false" => {
+                            ctrl.push(Op::Value(Expr::Bool(false)));
+                            ctrl.push(Op::Next)
+                        }
+                        TokenKind::Id => {
+                            ctrl.push(Op::Value(Expr::Ident(token.id(s).to_string())));
+                            ctrl.push(Op::Next)
+                        }
+                        TokenKind::Keyword => {
+                            let keyword = token.keyword(s);
+                            if ident_pattern().is_match(keyword) {
+                                ctrl.push(Op::Value(Expr::Ident(keyword.to_string())));
+                                ctrl.push(Op::Next)
+                            } else {
+                                return Err(ParseError::message(format!("invalid keyword token '{keyword}'")))
+                            }
+                        }
+                        TokenKind::Reserved  => {
+                            let reserved = token.reserved(s);
+                            if ident_pattern().is_match(reserved) {
+                                ctrl.push(Op::Value(Expr::Ident(reserved.to_string())));
+                                ctrl.push(Op::Next)
+                            } else {
+                                return Err(ParseError::message(format!("invalid reserved token '{reserved}'")))
+                            }
+                        }
                     }
                 }
             }
