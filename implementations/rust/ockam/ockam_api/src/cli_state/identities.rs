@@ -87,7 +87,7 @@ impl IdentityState {
     }
 
     pub fn is_enrolled(&self) -> bool {
-        self.config.enrollment_status.map(|s| s.is_enrolled).unwrap_or(false)
+        self.config.enrollment_status.as_ref().map(|s| s.is_enrolled).unwrap_or(false)
     }
 
 }

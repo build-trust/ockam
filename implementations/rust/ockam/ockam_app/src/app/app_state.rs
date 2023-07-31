@@ -167,17 +167,17 @@ impl AppState {
         let identity_state = self.state().await.identities.get_or_default(None)?;
 
         if !identity_state.is_enrolled() {
-            return Err("User is not enrolled".into());
+            return Ok(false);
         }
 
         let default_space_exists = self.state().await.spaces.default().is_ok();
         if !default_space_exists {
-            return Err("Default space has not been set".into());
+            return Ok(false);
         }
 
         let default_project_exists = self.state().await.projects.default().is_ok();
         if !default_project_exists {
-            return Err("Default project has not been set".into());
+            return Ok(false);
         }
 
         Ok(true)
