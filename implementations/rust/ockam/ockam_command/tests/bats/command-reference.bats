@@ -7,8 +7,11 @@ setup() {
   load load/orchestrator.bash
   load_bats_ext
   setup_home_dir
+}
+
+setup_orchestrator_test() {
   skip_if_orchestrator_tests_not_enabled
-  # copy_local_orchestrator_data
+  copy_local_orchestrator_data
 }
 
 teardown() {
@@ -42,10 +45,14 @@ teardown() {
 }
 
 @test "projects - list" {
+  setup_orchestrator_test
+
   run_success "$OCKAM" project list
 }
 
 @test "space - list" {
+  setup_orchestrator_test
+
   run_success "$OCKAM" space list
 }
 
@@ -145,6 +152,8 @@ teardown() {
 }
 
 @test "elastic encrypted relays" {
+  setup_orchestrator_test
+
   "$OCKAM" project information --output json > /tmp/project.json
 
   run_success "$OCKAM" node create a --project-path /tmp/project.json
@@ -235,6 +244,8 @@ teardown() {
 }
 
 @test "managed authorities" {
+  setup_orchestrator_test
+
   "$OCKAM" project information --output json > /tmp/project.json
 
   run_success "$OCKAM" node create a --project-path /tmp/project.json
