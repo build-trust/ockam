@@ -1065,13 +1065,11 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier());
 
     let identity_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
-    let bob_listener = secure_channels
+    let _bob_listener = secure_channels
         .create_secure_channel_listener(ctx, &bob.identifier(), "bob_listener", identity_options)
         .await?;
 
-    let initial_workers = ctx.list_workers().await?;
-
-    let sc = {
+    let _alice_sc = {
         let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
         secure_channels
             .create_secure_channel(
@@ -1083,44 +1081,53 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
             .await?
     };
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    ctx.sleep(Duration::from_millis(100)).await;
 
-    ctx.flow_controls()
-        .add_consumer("child", bob_listener.flow_control_id());
+    let sc_list = secure_channels.secure_channel_registry().get_channel_list();
+    assert_eq!(sc_list.len(), 2);
 
-    child_ctx
-        .send(
-            route![sc.clone(), child_ctx.address()],
-            "Hello, Bob!".to_string(),
-        )
-        .await?;
-
-    let msg = child_ctx.receive::<String>().await?;
-
-    let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-    assert_eq!(local_info.their_identity_id(), alice.identifier());
-    assert_eq!("Hello, Bob!", msg.body());
-
-    let mut additional_workers = ctx.list_workers().await?;
-
-    additional_workers.retain(|w| !initial_workers.contains(w));
-    let works_count = additional_workers.len();
+    let channel1 = sc_list[0].clone();
+    let channel2 = sc_list[1].clone();
 
     secure_channels
-        .stop_secure_channel(ctx, sc.encryptor_address())
+        .stop_secure_channel(ctx, channel1.encryptor_messaging_address())
         .await?;
 
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    ctx.sleep(Duration::from_millis(100)).await;
 
-    additional_workers = ctx.list_workers().await?;
+    assert_eq!(
+        secure_channels
+            .secure_channel_registry()
+            .get_channel_list()
+            .len(),
+        1
+    );
 
-    additional_workers.retain(|w| !initial_workers.contains(w));
-    assert_eq!(additional_workers.len(), (works_count - 2));
+    let workers = ctx.list_workers().await?;
+    assert!(!workers.contains(channel1.decryptor_messaging_address()));
+    assert!(!workers.contains(channel1.encryptor_messaging_address()));
+    assert!(workers.contains(channel2.decryptor_messaging_address()));
+    assert!(workers.contains(channel2.encryptor_messaging_address()));
+
+    secure_channels
+        .stop_secure_channel(ctx, channel2.encryptor_messaging_address())
+        .await?;
+
+    ctx.sleep(Duration::from_millis(100)).await;
+
+    assert_eq!(
+        secure_channels
+            .secure_channel_registry()
+            .get_channel_list()
+            .len(),
+        0
+    );
+
+    let workers = ctx.list_workers().await?;
+    assert!(!workers.contains(channel1.decryptor_messaging_address()));
+    assert!(!workers.contains(channel1.encryptor_messaging_address()));
+    assert!(!workers.contains(channel2.decryptor_messaging_address()));
+    assert!(!workers.contains(channel2.encryptor_messaging_address()));
+
     ctx.stop().await
 }
