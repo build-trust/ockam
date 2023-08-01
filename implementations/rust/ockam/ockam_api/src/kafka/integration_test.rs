@@ -43,7 +43,8 @@ mod test {
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
     use crate::kafka::secure_channel_map::ForwarderCreator;
     use crate::kafka::{
-        KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
+        ConsumerNodeAddr, KafkaInletController, KafkaPortalListener,
+        KafkaSecureChannelControllerImpl,
     };
     use crate::test_utils::NodeManagerHandle;
 
@@ -72,8 +73,8 @@ mod test {
     ) -> ockam::Result<u16> {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handler.secure_channels.clone(),
-            MultiAddr::try_from("/service/api")?,
-            HopForwarderCreator {},
+            ConsumerNodeAddr::Relay(MultiAddr::try_from("/service/api")?),
+            Some(HopForwarderCreator {}),
             "test_trust_context_id".to_string(),
         );
 

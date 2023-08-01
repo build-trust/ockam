@@ -4,6 +4,7 @@ use ockam_api::{port_range::PortRange, DefaultAddress};
 use ockam_multiaddr::MultiAddr;
 
 pub(crate) mod consumer;
+pub(crate) mod direct;
 pub(crate) mod outlet;
 pub(crate) mod producer;
 pub(crate) mod util;
@@ -21,6 +22,10 @@ fn kafka_default_outlet_addr() -> String {
 
 fn kafka_consumer_default_addr() -> String {
     DefaultAddress::KAFKA_CONSUMER.to_string()
+}
+
+fn kafka_direct_default_addr() -> String {
+    DefaultAddress::KAFKA_DIRECT.to_string()
 }
 
 fn kafka_producer_default_addr() -> String {

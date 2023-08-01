@@ -659,6 +659,10 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
                 self.start_kafka_outlet_service(ctx, req, dec).await?
             }
+            (Delete, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_request_result(
+                self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Outlet)
+                    .await,
+            )?,
             (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
                 self.start_kafka_consumer_service(ctx, req, dec).await?
             }
@@ -677,6 +681,13 @@ impl NodeManagerWorker {
                         .await,
                 )?
             }
+            (Post, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => {
+                self.start_kafka_direct_service(ctx, req, dec).await?
+            }
+            (Delete, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => encode_request_result(
+                self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Direct)
+                    .await,
+            )?,
             (Get, ["node", "services"]) => self.list_services(req).await?,
             (Get, ["node", "services", service_type]) => {
                 self.list_services_of_type(req, service_type).await?

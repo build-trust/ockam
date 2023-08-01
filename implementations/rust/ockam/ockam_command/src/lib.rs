@@ -57,6 +57,7 @@ pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 
+use crate::kafka::direct::KafkaDirectCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
 use colorful::Colorful;
 use completion::CompletionCommand;
@@ -282,6 +283,7 @@ pub enum OckamSubcommand {
 
     KafkaOutlet(KafkaOutletCommand),
     KafkaConsumer(KafkaConsumerCommand),
+    KafkaDirect(KafkaDirectCommand),
     KafkaProducer(KafkaProducerCommand),
 
     SecureChannelListener(SecureChannelListenerCommand),
@@ -405,6 +407,7 @@ impl OckamCommand {
 
             OckamSubcommand::KafkaConsumer(c) => c.run(options),
             OckamSubcommand::KafkaProducer(c) => c.run(options),
+            OckamSubcommand::KafkaDirect(c) => c.run(options),
 
             OckamSubcommand::SecureChannelListener(c) => c.run(options),
             OckamSubcommand::SecureChannel(c) => c.run(options),

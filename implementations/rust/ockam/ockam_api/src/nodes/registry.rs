@@ -117,6 +117,8 @@ pub(crate) struct AuthenticatorServiceInfo {}
 pub(crate) enum KafkaServiceKind {
     Consumer,
     Producer,
+    Outlet,
+    Direct,
 }
 
 impl Display for KafkaServiceKind {
@@ -124,6 +126,8 @@ impl Display for KafkaServiceKind {
         match self {
             KafkaServiceKind::Consumer => write!(f, "consumer"),
             KafkaServiceKind::Producer => write!(f, "producer"),
+            KafkaServiceKind::Outlet => write!(f, "outlet"),
+            KafkaServiceKind::Direct => write!(f, "direct"),
         }
     }
 }

@@ -20,7 +20,7 @@ use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::identity::IdentityService;
 use crate::kafka::{
-    KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
+    ConsumerNodeAddr, KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
     KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
 use crate::kafka::{OutletManagerService, PrefixForwarderService};
@@ -29,8 +29,9 @@ use crate::nodes::models::services::{
     DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
     StartAuthenticatorRequest, StartCredentialsService, StartEchoerServiceRequest,
     StartHopServiceRequest, StartIdentityServiceRequest, StartKafkaConsumerRequest,
-    StartKafkaOutletRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
-    StartServiceRequest, StartUppercaseServiceRequest, StartVerifierService,
+    StartKafkaDirectRequest, StartKafkaOutletRequest, StartKafkaProducerRequest,
+    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
+    StartVerifierService,
 };
 use crate::nodes::registry::{
     AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
@@ -609,7 +610,151 @@ impl NodeManagerWorker {
             return Ok(e.to_vec()?);
         };
 
+        {
+            let mut node_manager = self.node_manager.write().await;
+            node_manager.registry.kafka_services.insert(
+                body.address().into(),
+                KafkaServiceInfo::new(KafkaServiceKind::Outlet),
+            );
+        }
+
         Ok(Response::ok(request.id()).to_vec()?)
+    }
+
+    pub(super) async fn start_kafka_direct_service(
+        &mut self,
+        context: &Context,
+        req: &Request,
+        dec: &mut Decoder<'_>,
+    ) -> Result<Vec<u8>> {
+        let body: StartServiceRequest<StartKafkaDirectRequest> = dec.decode()?;
+        let listener_address: Address = body.address().into();
+        let body_req = body.request();
+
+        let consumer_route: Option<MultiAddr> =
+            if let Some(consumer_route) = body_req.consumer_route() {
+                Some(consumer_route.parse()?)
+            } else {
+                None
+            };
+
+        if let Err(e) = self
+            .start_direct_kafka_service_impl(
+                context,
+                req,
+                listener_address,
+                body_req.bind_address().ip(),
+                body_req.bind_address().port(),
+                body_req.brokers_port_range(),
+                body_req.bootstrap_server_addr().to_string(),
+                consumer_route,
+            )
+            .await
+        {
+            return Ok(e.to_vec()?);
+        };
+
+        Ok(Response::ok(req.id()).to_vec()?)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) async fn start_direct_kafka_service_impl(
+        &mut self,
+        context: &Context,
+        request: &Request,
+        local_interceptor_address: Address,
+        bind_ip: IpAddr,
+        server_bootstrap_port: u16,
+        brokers_port_range: (u16, u16),
+        bootstrap_server_addr: String,
+        consumer_route: Option<MultiAddr>,
+    ) -> Result<(), ResponseBuilder<Error>> {
+        let default_secure_channel_listener_flow_control_id = context
+            .flow_controls()
+            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+            .ok_or_else(|| {
+                ApiError::generic("Unable to get flow control for secure channel listener")
+            })?;
+
+        {
+            let node_manager = self.node_manager.write().await;
+            OutletManagerService::create(
+                context,
+                node_manager.secure_channels.clone(),
+                node_manager.trust_context()?.id(),
+                default_secure_channel_listener_flow_control_id,
+            )
+            .await?;
+        }
+
+        self.create_outlet_impl(
+            context,
+            request.id(),
+            bootstrap_server_addr,
+            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
+            Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
+            false,
+        )
+        .await?;
+
+        let trust_context_id;
+        let secure_channels;
+        {
+            let node_manager = self.node_manager.read().await;
+            trust_context_id = node_manager.trust_context()?.id().to_string();
+            secure_channels = node_manager.secure_channels.clone();
+        }
+
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            secure_channels,
+            ConsumerNodeAddr::Direct(consumer_route.clone()),
+            trust_context_id,
+        );
+
+        let inlet_controller = KafkaInletController::new(
+            "/secure/api".parse().unwrap(),
+            route![local_interceptor_address.clone()],
+            route![KAFKA_OUTLET_INTERCEPTOR_ADDRESS],
+            bind_ip,
+            PortRange::try_from(brokers_port_range)
+                .map_err(|_| ApiError::message("invalid port range"))?,
+        );
+
+        // since we cannot call APIs of node manager via message due to the read/write lock
+        // we need to call it directly
+        self.create_inlet_impl(
+            request.id(),
+            CreateInlet::to_node(
+                SocketAddr::new(bind_ip, server_bootstrap_port),
+                "/secure/api".parse().unwrap(),
+                route![local_interceptor_address.clone()],
+                route![
+                    KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
+                    KAFKA_OUTLET_BOOTSTRAP_ADDRESS
+                ],
+                None,
+            ),
+            context,
+        )
+        .await?;
+
+        KafkaPortalListener::create(
+            context,
+            inlet_controller,
+            secure_channel_controller.into_trait(),
+            local_interceptor_address.clone(),
+        )
+        .await?;
+
+        {
+            let mut node_manager = self.node_manager.write().await;
+            node_manager.registry.kafka_services.insert(
+                local_interceptor_address,
+                KafkaServiceInfo::new(KafkaServiceKind::Direct),
+            );
+        }
+
+        Ok(())
     }
 
     pub(super) async fn start_kafka_consumer_service(
@@ -717,7 +862,7 @@ impl NodeManagerWorker {
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
-            outlet_node_multiaddr.clone(),
+            ConsumerNodeAddr::Relay(outlet_node_multiaddr.clone()),
             trust_context_id,
         );
 
@@ -881,8 +1026,10 @@ impl NodeManagerWorker {
             list.push(ServiceStatus::new(
                 address.address(),
                 match info.kind() {
-                    KafkaServiceKind::Consumer => "kafka-consumer",
-                    KafkaServiceKind::Producer => "kafka-producer",
+                    KafkaServiceKind::Consumer => DefaultAddress::KAFKA_CONSUMER,
+                    KafkaServiceKind::Producer => DefaultAddress::KAFKA_PRODUCER,
+                    KafkaServiceKind::Outlet => DefaultAddress::KAFKA_OUTLET,
+                    KafkaServiceKind::Direct => DefaultAddress::KAFKA_DIRECT,
                 },
             ))
         });

@@ -172,6 +172,7 @@ impl DefaultAddress {
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
     pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
+    pub const KAFKA_DIRECT: &'static str = "kafka_direct";
     pub const RPC_PROXY: &'static str = "rpc_proxy_service";
 
     pub fn is_valid(name: &str) -> bool {
@@ -193,6 +194,8 @@ impl DefaultAddress {
                 | Self::OKTA_IDENTITY_PROVIDER
                 | Self::KAFKA_CONSUMER
                 | Self::KAFKA_PRODUCER
+                | Self::KAFKA_OUTLET
+                | Self::KAFKA_DIRECT
                 | Self::RPC_PROXY
         )
     }
@@ -215,6 +218,8 @@ impl DefaultAddress {
             Self::OKTA_IDENTITY_PROVIDER,
             Self::KAFKA_CONSUMER,
             Self::KAFKA_PRODUCER,
+            Self::KAFKA_OUTLET,
+            Self::KAFKA_DIRECT,
             Self::RPC_PROXY,
         ]
         .iter()

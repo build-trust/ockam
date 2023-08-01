@@ -155,14 +155,23 @@ impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     }
 }
 
+/// Describe to reach the consumer node:
+/// either directly or through a relay with a forwarder
+#[derive(Clone)]
+pub(crate) enum ConsumerNodeAddr {
+    Direct(Option<MultiAddr>),
+    Relay(MultiAddr),
+}
+
 type TopicPartition = (String, i32);
 struct InnerSecureChannelControllerImpl<F: ForwarderCreator> {
     // we identity the secure channel instance by using the decryptor of the consumer
     // which is known to both parties
     topic_encryptor_map: HashMap<TopicPartition, Address>,
-    outlet_node_multiaddr: MultiAddr,
+    // describes how to reach the consumer node
+    consumer_node_multiaddr: ConsumerNodeAddr,
     topic_forwarder_set: HashSet<TopicPartition>,
-    forwarder_creator: F,
+    forwarder_creator: Option<F>,
     secure_channels: Arc<SecureChannels>,
     access_control: AbacAccessControl,
 }
@@ -170,19 +179,24 @@ struct InnerSecureChannelControllerImpl<F: ForwarderCreator> {
 impl KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
     pub(crate) fn new(
         secure_channels: Arc<SecureChannels>,
-        outlet_node_multiaddr: MultiAddr,
+        consumer_node_multiaddr: ConsumerNodeAddr,
         trust_context_id: String,
     ) -> KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
-        let mut orchestrator_multiaddr = outlet_node_multiaddr.clone();
-        orchestrator_multiaddr
-            .push_back(Service::new(KAFKA_OUTLET_CONSUMERS))
-            .unwrap();
+        let forwarder_creator = match consumer_node_multiaddr.clone() {
+            ConsumerNodeAddr::Direct(_) => None,
+            ConsumerNodeAddr::Relay(mut orchestrator_multiaddr) => {
+                orchestrator_multiaddr
+                    .push_back(Service::new(KAFKA_OUTLET_CONSUMERS))
+                    .unwrap();
+                Some(NodeManagerForwarderCreator {
+                    orchestrator_multiaddr,
+                })
+            }
+        };
         Self::new_extended(
             secure_channels,
-            outlet_node_multiaddr,
-            NodeManagerForwarderCreator {
-                orchestrator_multiaddr,
-            },
+            consumer_node_multiaddr,
+            forwarder_creator,
             trust_context_id,
         )
     }
@@ -192,8 +206,8 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     /// to manually specify `ForwarderCreator`, for testing purposes
     pub(crate) fn new_extended(
         secure_channels: Arc<SecureChannels>,
-        outlet_node_multiaddr: MultiAddr,
-        forwarder_creator: F,
+        consumer_node_multiaddr: ConsumerNodeAddr,
+        forwarder_creator: Option<F>,
         trust_context_id: String,
     ) -> KafkaSecureChannelControllerImpl<F> {
         let access_control = AbacAccessControl::create(
@@ -208,7 +222,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                 topic_forwarder_set: Default::default(),
                 secure_channels,
                 forwarder_creator,
-                outlet_node_multiaddr,
+                consumer_node_multiaddr,
                 access_control,
             })),
         }
@@ -308,21 +322,49 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         // here we should have the orchestrator address and expect forwarders to be
         // present in the orchestrator with the format "consumer__{topic_name}_{partition}"
 
-        let topic_partition_key = (topic_name.to_string(), partition);
-        //consumer__ prefix is added by the orchestrator
-        let topic_partition_address = format!("consumer__{topic_name}_{partition}");
-
         let mut inner = self.inner.lock().await;
+
+        // when we are using direct mode, there is only one consumer, and use the same secure
+        // channel for all topics
+        let topic_partition_key = match &inner.consumer_node_multiaddr {
+            ConsumerNodeAddr::Direct(_) => ("".to_string(), 0i32),
+            ConsumerNodeAddr::Relay(_) => (topic_name.to_string(), partition),
+        };
 
         let encryptor_address = {
             if let Some(encryptor_address) = inner.topic_encryptor_map.get(&topic_partition_key) {
                 encryptor_address.clone()
             } else {
-                debug!("creating new secure channel to {topic_partition_address}");
+                let destination = match inner.consumer_node_multiaddr.clone() {
+                    ConsumerNodeAddr::Direct(destination) => {
+                        if let Some(mut destination) = destination {
+                            debug!("creating new direct secure channel to consumer");
+                            destination
+                                .push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
+                            destination
+                        } else {
+                            return Err(Error::new(
+                                Origin::Transport,
+                                Kind::Invalid,
+                                "cannot encrypt messages when consumer is not specified",
+                            ));
+                        }
+                    }
 
-                let mut destination = inner.outlet_node_multiaddr.clone();
-                destination.push_back(Service::new(topic_partition_address.clone()))?;
-                destination.push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
+                    ConsumerNodeAddr::Relay(mut destination) => {
+                        //consumer__ prefix is added by the orchestrator
+                        let topic_partition_address = format!("consumer__{topic_name}_{partition}");
+
+                        debug!(
+                            "creating new secure channel via relay to {topic_partition_address}"
+                        );
+
+                        destination.push_back(Service::new(topic_partition_address))?;
+                        destination
+                            .push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
+                        destination
+                    }
+                };
 
                 let producer_encryptor_address =
                     Self::request_secure_channel_creation(context, destination).await?;
@@ -341,7 +383,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                     .topic_encryptor_map
                     .insert(topic_partition_key, producer_encryptor_address.clone());
 
-                debug!("created secure channel to {topic_partition_address}");
+                debug!("created secure channel");
                 producer_encryptor_address
             }
         };
@@ -503,6 +545,10 @@ impl<F: ForwarderCreator> KafkaSecureChannelController for KafkaSecureChannelCon
         partitions: Vec<i32>,
     ) -> Result<()> {
         let mut inner = self.inner.lock().await;
+        // when using direct mode there is no need to create a forwarder
+        if inner.forwarder_creator.is_none() {
+            return Ok(());
+        }
 
         for partition in partitions {
             let topic_key: TopicPartition = (topic_name.to_string(), partition);
@@ -512,11 +558,12 @@ impl<F: ForwarderCreator> KafkaSecureChannelController for KafkaSecureChannelCon
             let alias = format!("{topic_name}_{partition}");
             inner
                 .forwarder_creator
+                .as_ref()
+                .unwrap()
                 .create_forwarder(context, alias)
                 .await?;
             inner.topic_forwarder_set.insert(topic_key);
         }
-
         Ok(())
     }
 }

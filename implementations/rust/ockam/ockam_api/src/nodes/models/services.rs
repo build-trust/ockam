@@ -145,6 +145,45 @@ impl StartKafkaProducerRequest {
     }
 }
 
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartKafkaDirectRequest {
+    #[n(1)] bind_address: SocketAddr,
+    #[n(2)] bootstrap_server_addr: String,
+    #[n(3)] brokers_port_range: (u16, u16),
+    #[n(4)] consumer_route: Option<String>,
+}
+
+impl StartKafkaDirectRequest {
+    pub fn new(
+        bind_address: SocketAddr,
+        bootstrap_server_addr: String,
+        brokers_port_range: impl Into<(u16, u16)>,
+        consumer_route: Option<MultiAddr>,
+    ) -> Self {
+        Self {
+            bind_address,
+            bootstrap_server_addr,
+            brokers_port_range: brokers_port_range.into(),
+            consumer_route: consumer_route.map(|a| a.to_string()),
+        }
+    }
+
+    pub fn bind_address(&self) -> SocketAddr {
+        self.bind_address
+    }
+    pub fn bootstrap_server_addr(&self) -> &str {
+        &self.bootstrap_server_addr
+    }
+    pub fn brokers_port_range(&self) -> (u16, u16) {
+        self.brokers_port_range
+    }
+    pub fn consumer_route(&self) -> Option<String> {
+        self.consumer_route.clone()
+    }
+}
+
 /// Request body when instructing a node to start an Identity service
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
