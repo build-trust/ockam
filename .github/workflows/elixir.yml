@@ -274,7 +274,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@9de8f90afbf8a9579dbb292c650653e5b7178ead
+      - uses: Swatinem/rust-cache@b00faf5858a4ec277e1c5ebdb0c0f13e2ed045ca
       - run: cd implementations/elixir && ../../gradlew test_ockam_vault_software
 
   test_ockam:
