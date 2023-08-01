@@ -8,9 +8,12 @@ use crate::secure_channel::{
 };
 use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder};
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::sync::{AtomicBool, Ordering};
+use ockam_core::AsyncTryClone;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
-use ockam_node::Context;
+use ockam_node::compat::tokio::time::sleep;
+use ockam_node::{spawn, Context};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -91,9 +94,10 @@ impl SecureChannels {
         let addresses = Addresses::generate(Role::Initiator);
         let options = options.into();
         let flow_control_id = options.flow_control_id.clone();
-
         let route = route.into();
         let next = route.next()?;
+        let is_idle = Arc::new(AtomicBool::new(true));
+        let maximum_idle_time = options.maximum_idle_time;
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
 
@@ -108,9 +112,31 @@ impl SecureChannels {
             options.trust_context,
             Some(route),
             Some(options.timeout),
+            Some(Arc::clone(&is_idle)),
             Role::Initiator,
         )
         .await?;
+
+        let self_clone = self.clone();
+        let ctx_clone = ctx.async_try_clone().await?;
+        let addr = addresses.encryptor.clone();
+
+        // start a background thread to observe the connection activity
+        // If a message is received before maximum_idle_time has passed then the connection is
+        // active. Otherwise, we close the secure channel
+        spawn(async move {
+            loop {
+                sleep(maximum_idle_time).await;
+                if is_idle.load(Ordering::Relaxed) {
+                    self_clone
+                        .stop_secure_channel(&ctx_clone, &addr)
+                        .await
+                        .unwrap();
+                    break;
+                }
+                is_idle.store(true, Ordering::Relaxed);
+            }
+        });
 
         Ok(SecureChannel::new(
             addresses.encryptor,

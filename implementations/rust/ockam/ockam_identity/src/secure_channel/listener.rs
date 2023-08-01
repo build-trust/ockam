@@ -87,7 +87,6 @@ impl Worker for IdentityChannelListener {
             .create_access_control(ctx.flow_controls(), flow_control_id);
 
         let credentials = self.get_credentials(ctx).await?;
-
         HandshakeWorker::create(
             ctx,
             self.secure_channels.clone(),
@@ -97,6 +96,7 @@ impl Worker for IdentityChannelListener {
             access_control.decryptor_outgoing_access_control,
             credentials,
             self.options.trust_context.clone(),
+            None,
             None,
             None,
             Role::Responder,

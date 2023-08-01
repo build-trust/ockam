@@ -18,6 +18,7 @@ use crate::{
 };
 use alloc::sync::Arc;
 use core::time::Duration;
+use ockam_core::compat::sync::{AtomicBool, Ordering};
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
@@ -40,6 +41,9 @@ pub(crate) struct HandshakeWorker {
     role: Role,
     remote_route: Option<Route>,
     decryptor_handler: Option<DecryptorHandler>,
+    /// This boolean tracks the activity on the initiator side of the connection
+    /// It is set to false if the connection is inactive after a while
+    is_idle: Option<Arc<AtomicBool>>,
 }
 
 #[ockam_core::worker]
@@ -79,6 +83,12 @@ impl Worker for HandshakeWorker {
         context: &mut Self::Context,
         message: Routed<Self::Message>,
     ) -> Result<()> {
+        // We just received a message. This means that the connection
+        // is still active, so we mark it as such
+        if let Some(is_idle) = self.is_idle.as_ref() {
+            is_idle.store(false, Ordering::Relaxed);
+        };
+
         // Once the decryptor has been initialized, let it handle messages
         // Some messages can come from other systems using the remote address
         // and some messages can come from the current node when the decryptor
@@ -159,6 +169,7 @@ impl HandshakeWorker {
         trust_context: Option<TrustContext>,
         remote_route: Option<Route>,
         timeout: Option<Duration>,
+        is_idle: Option<Arc<AtomicBool>>,
         role: Role,
     ) -> Result<()> {
         let vault = to_xx_vault(secure_channels.vault());
@@ -205,6 +216,7 @@ impl HandshakeWorker {
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
+            is_idle,
         };
 
         WorkerBuilder::new(worker)
