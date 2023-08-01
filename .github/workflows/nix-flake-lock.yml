@@ -1,0 +1,31 @@
+name: Update Nix flake.lock
+on:
+  workflow_dispatch:
+  schedule:
+    # weekly on Sunday at 2:05am UTC
+    # https://crontab.guru/#5_2_*_*_0
+    - cron: '5 2 * * 0'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - name: Install Nix
+        # https://github.com/DeterminateSystems/nix-installer-action/releases/tag/v4
+        uses: DeterminateSystems/nix-installer-action@65d7c888b2778e8cf30a07a88422ccb23499bfb8
+      - name: Update flake.lock
+        # https://github.com/DeterminateSystems/update-flake-lock/releases/tag/v19
+        uses: DeterminateSystems/update-flake-lock@dec3bc3c9b11c3b9d547f47dfb579b91a6051603
+        with:
+          git-author-name: 'ockam[bot]'
+          git-author-email: 'ockam[bot]@users.noreply.ockam.io'
+          git-committer-name: 'ockam[bot]'
+          git-committer-email: 'ockam[bot]@users.noreply.ockam.io'
+          path-to-flake-dir: 'tools/nix'
+          pr-title: 'chore: Update tools/nix/flake.lock'
