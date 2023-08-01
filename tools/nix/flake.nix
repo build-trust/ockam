@@ -4,6 +4,7 @@
   inputs = {
     beam-flakes.url = "github:shanesveller/nix-beam-flakes";
     beam-flakes.inputs.flake-parts.follows = "flake-parts";
+    beam-flakes.inputs.nixpkgs.follows = "nixpkgs";
     flake-parts.url = "github:hercules-ci/flake-parts";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
