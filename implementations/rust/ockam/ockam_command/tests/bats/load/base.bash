@@ -80,8 +80,8 @@ teardown_home_dir() {
       echo "Failed test dir: $OCKAM_HOME" >&3
       cp -a "$OCKAM_HOME" "$HOME/.bats-tests"
     fi
-    $OCKAM node delete --all --force --yes
-    $OCKAM reset -y
+    run $OCKAM node delete --all --force --yes
+    run $OCKAM reset -y
   done
 }
 

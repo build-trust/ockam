@@ -33,8 +33,8 @@ teardown() {
 
   run_success "$OCKAM" node start n1
 
-  run_success "$OCKAM" node delete n1 --yes
-  run_success "$OCKAM" node delete --all --yes
+  run "$OCKAM" node delete n1 --yes
+  run "$OCKAM" node delete --all --yes
 }
 
 @test "workers and services" {
