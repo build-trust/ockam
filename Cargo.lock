@@ -4047,11 +4047,11 @@ dependencies = [
 
 [[package]]
 name = "muda"
-version = "0.6.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0b141f55dd7831b7c1c0e9551165f6eee87021a356a437c00f3bdc2aeafc3ec"
+checksum = "f0b6051ce42a7648b11a3613c0d0718f5ac155f262d9f59d5a51501418afaef5"
 dependencies = [
- "cocoa 0.24.1",
+ "cocoa 0.25.0",
  "crossbeam-channel",
  "gdk",
  "gdk-pixbuf",
