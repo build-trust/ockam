@@ -91,6 +91,7 @@ pub async fn add_project_info_to_node_state(
     opts: &CommandGlobalOpts,
     project_opts: &TrustContextOpts,
 ) -> Result<Option<String>> {
+    debug!(name=%node_name, "Adding project info to state");
     let proj_path = if let Some(path) = project_opts.project_path.clone() {
         Some(path)
     } else if let Ok(proj) = opts.state.projects.default() {
@@ -101,6 +102,7 @@ pub async fn add_project_info_to_node_state(
 
     match &proj_path {
         Some(path) => {
+            debug!(path=%path.display(), "Reading project info from path");
             let s = tokio::fs::read_to_string(path).await?;
             let proj_info: ProjectInfo = serde_json::from_str(&s)?;
             let proj_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
@@ -112,7 +114,10 @@ pub async fn add_project_info_to_node_state(
                 .overwrite(proj_lookup.name, proj_config)?;
             Ok(Some(proj_lookup.id))
         }
-        None => Ok(None),
+        None => {
+            debug!("No project info used");
+            Ok(None)
+        }
     }
 }
 
