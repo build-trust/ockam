@@ -16,6 +16,7 @@ use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::length_delimited::{length_encode, KafkaMessageDecoder};
 use crate::kafka::protocol_aware::{InletInterceptorImpl, KafkaMessageInterceptor, TopicUuidMap};
 use crate::kafka::secure_channel_map::KafkaSecureChannelController;
+use crate::kafka::KAFKA_OUTLET_BOOTSTRAP_ADDRESS;
 
 ///by default kafka supports up to 1MB messages, 16MB is the maximum suggested
 pub(crate) const MAX_KAFKA_MESSAGE_SIZE: u32 = 16 * 1024 * 1024;
@@ -428,9 +429,9 @@ impl KafkaPortalWorker {
             .await?;
 
         if let Some(flow_control_id) = flow_control_id {
-            context
-                .flow_controls()
-                .add_consumer(responses_worker_address.clone(), &flow_control_id);
+            let flow_controls = context.flow_controls();
+            flow_controls.add_consumer(responses_worker_address.clone(), &flow_control_id);
+            flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
         }
         context
             .start_worker(responses_worker_address, response_worker)
@@ -464,6 +465,7 @@ mod test {
     use crate::kafka::inlet_controller::KafkaInletController;
     use crate::kafka::portal_worker::KafkaPortalWorker;
     use crate::kafka::secure_channel_map::KafkaSecureChannelControllerImpl;
+    use crate::kafka::ConsumerNodeAddr;
     use crate::port_range::PortRange;
     use ockam::MessageReceiveOptions;
 
@@ -742,7 +744,7 @@ mod test {
         let secure_channels = secure_channels();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
-            MultiAddr::default(),
+            ConsumerNodeAddr::Relay(MultiAddr::default()),
             "test_trust_context_id".to_string(),
         )
         .into_trait();
@@ -797,7 +799,7 @@ mod test {
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handler.secure_channels.clone(),
-            MultiAddr::default(),
+            ConsumerNodeAddr::Relay(MultiAddr::default()),
             "test_trust_context_id".to_string(),
         )
         .into_trait();

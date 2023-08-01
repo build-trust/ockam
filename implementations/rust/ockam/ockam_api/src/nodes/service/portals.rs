@@ -59,21 +59,6 @@ impl NodeManager {
             ));
         }
 
-        // Check that there is no entry in the registry with the same tcp address
-        if self
-            .registry
-            .outlets
-            .values()
-            .any(|outlet| outlet.tcp_addr == tcp_addr)
-        {
-            let message = format!("A TCP outlet with tcp address '{tcp_addr}' already exists",);
-            return Err(ockam_core::Error::new(
-                Origin::Node,
-                Kind::AlreadyExists,
-                message,
-            ));
-        }
-
         let worker_addr = Address::from_string(&worker_addr);
 
         let check_credential = self.enable_credential_checks;
