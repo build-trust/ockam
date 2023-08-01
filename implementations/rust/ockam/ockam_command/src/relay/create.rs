@@ -114,7 +114,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     let output_messages = vec![
         format!(
-            "Creating relay forwarding service at {}...",
+            "Creating relay at {}...",
             &cmd.at
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
