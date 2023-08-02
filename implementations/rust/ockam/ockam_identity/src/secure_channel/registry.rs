@@ -1,4 +1,5 @@
-use crate::identity::{IdentityError, IdentityIdentifier};
+use crate::identity::IdentityIdentifier;
+use crate::IdentityError;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;

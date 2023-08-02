@@ -1,12 +1,13 @@
 use crate::alloc::string::ToString;
 use crate::identities::IdentitiesVault;
 use crate::identity::IdentityChange::{CreateKey, RotateKey};
-use crate::identity::IdentityError::InvalidInternalState;
 use crate::identity::{
     ChangeIdentifier, CreateKeyChangeData, Identity, IdentityChangeConstants,
-    IdentityChangeHistory, IdentityError, IdentitySignedChange, KeyAttributes, RotateKeyChangeData,
-    Signature, SignatureType,
+    IdentityChangeHistory, IdentitySignedChange, KeyAttributes, RotateKeyChangeData, Signature,
+    SignatureType,
 };
+use crate::IdentityError;
+use crate::IdentityError::InvalidInternalState;
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Encodable, Result};

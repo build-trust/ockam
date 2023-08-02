@@ -50,11 +50,15 @@ pub mod secure_channel;
 /// Service supporting the creation of secure channel listener and connection to a listener
 pub mod secure_channels;
 
+/// Errors
+mod error;
+
 ///
 /// Exports
 ///
 pub use credential::*;
 pub use credentials::*;
+pub use error::*;
 pub use identities::*;
 pub use identity::*;
 pub use secure_channel::*;

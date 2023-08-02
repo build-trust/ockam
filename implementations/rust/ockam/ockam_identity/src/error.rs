@@ -8,8 +8,6 @@ use ockam_core::{
 pub enum IdentityError {
     /// Bare serialization error
     BareError = 1,
-    /// `IdentityChangeHistory` verification failed
-    VerifyFailed,
     /// Invalid internal state of the `Identity`
     InvalidInternalState,
     /// Consistency check failed
@@ -18,32 +16,22 @@ pub enum IdentityError {
     SecureChannelVerificationFailed,
     /// SecureChannel `TrustPolicy` check failed
     SecureChannelTrustCheckFailed,
-    /// Custom payload wasn't provided where required
-    NoCustomPayload,
     /// Unknown channel message destination
     UnknownChannelMsgDestination,
     /// Invalid `LocalInfo` type
     InvalidLocalInfoType,
-    /// Internal Secure Channel error
-    InvalidSecureChannelInternalState,
     /// `Identity` verification error
     IdentityVerificationFailed,
     /// Invalid `IdentityIdentifier` format
     InvalidIdentityId,
-    /// Invalid `Credential` format
-    InvalidCredentialFormat,
     /// Unknown Authority
     UnknownAuthority,
-    /// `Credential` verification failed
-    CredentialVerificationFailed,
     /// SecureChannel with this address already exists
     DuplicateSecureChannel,
     /// Invalid nonce format
     InvalidNonce,
     /// Nonce overflow
     NonceOverflow,
-    /// SecureChannel was not found in the Registry
-    SecureChannelNotFound,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

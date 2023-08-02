@@ -3,7 +3,7 @@ use crate::identity::identity_change::IdentityChange::CreateKey;
 use crate::identity::identity_change::{
     ChangeIdentifier, IdentityChangeConstants, IdentitySignedChange,
 };
-use crate::identity::IdentityError;
+use crate::IdentityError;
 use core::cmp::Ordering;
 use core::fmt;
 use minicbor::{Decode, Encode};

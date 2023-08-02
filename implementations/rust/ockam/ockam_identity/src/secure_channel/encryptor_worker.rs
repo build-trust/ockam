@@ -1,7 +1,7 @@
-use crate::identity::IdentityError;
 use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::Encryptor;
+use crate::IdentityError;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, Decodable, Encodable, Route};
 use ockam_core::{Any, Result, Routed, TransportMessage, Worker};

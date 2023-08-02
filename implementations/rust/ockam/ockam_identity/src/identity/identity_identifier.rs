@@ -1,4 +1,4 @@
-use crate::identity::IdentityError;
+use crate::IdentityError;
 use core::fmt::{Display, Formatter};
 use core::str::FromStr;
 use minicbor::decode::{self, Decoder};

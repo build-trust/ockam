@@ -4,7 +4,7 @@ use ockam_core::Result;
 use ockam_vault::{KeyId, Secret, SecretAttributes};
 
 use crate::alloc::string::ToString;
-use crate::identity::IdentityError;
+use crate::IdentityError;
 use crate::{
     IdentitiesKeys, IdentitiesRepository, IdentitiesVault, Identity, IdentityChangeConstants,
     IdentityChangeHistory, IdentityIdentifier, KeyAttributes,
