@@ -1,0 +1,190 @@
+use super::super::identities::IdentitiesVault;
+use super::super::identity::Identity;
+use super::super::models::{
+    Change, ChangeData, ChangeHash, ChangeHistory, ChangeSignature, Ed25519PublicKey,
+    Ed25519Signature, PrimaryPublicKey, VersionedData,
+};
+use super::super::utils::now;
+use super::super::IdentityError;
+use ockam_core::compat::sync::Arc;
+use ockam_core::Result;
+use ockam_vault::{KeyId, SecretAttributes, Vault};
+
+/// This module supports the key operations related to identities
+pub struct IdentitiesKeys {
+    vault: Arc<dyn IdentitiesVault>,
+}
+
+impl IdentitiesKeys {
+    pub(crate) async fn create_initial_key(&self, key_id: Option<&KeyId>) -> Result<Identity> {
+        let change = self.make_change(key_id, None).await?;
+        let change_history = ChangeHistory(vec![change]);
+
+        let identity =
+            Identity::import_from_change_history(change_history, self.vault.clone()).await?;
+
+        Ok(identity)
+    }
+}
+
+/// Public functions
+impl IdentitiesKeys {
+    /// Create a new identities keys module
+    pub fn new(vault: Arc<dyn IdentitiesVault>) -> Self {
+        Self { vault }
+    }
+
+    /// Rotate an existing key with a given label
+    pub async fn rotate_key(&self, identity: Identity) -> Result<Identity> {
+        let last_change = match identity.changes().last() {
+            Some(last_change) => last_change,
+            None => return Err(IdentityError::EmptyIdentity.into()),
+        };
+        let last_secret_key = self.get_secret_key(&identity).await?;
+
+        let change = self
+            .make_change(
+                None,
+                Some((last_change.change_hash().clone(), last_secret_key)),
+            )
+            .await?;
+
+        identity.add_change(change, self.vault.clone()).await
+    }
+
+    /// Return the secret key of an identity
+    pub async fn get_secret_key(&self, identity: &Identity) -> Result<KeyId> {
+        if let Some(last_change) = identity.changes().last() {
+            self.vault
+                .get_key_id(last_change.primary_public_key())
+                .await
+        } else {
+            Err(IdentityError::EmptyIdentity.into())
+        }
+    }
+}
+
+/// Private  functions
+impl IdentitiesKeys {
+    /// Create a new key
+    async fn make_change(
+        &self,
+        secret: Option<&KeyId>,
+        previous: Option<(ChangeHash, KeyId)>,
+    ) -> Result<Change> {
+        let secret_key = self.generate_key_if_needed(secret).await?;
+        let public_key = self.vault.get_public_key(&secret_key).await?;
+
+        let public_key = Ed25519PublicKey(public_key.data().try_into().unwrap()); // FIXME
+
+        let created_at = now()?;
+        let expires_at = now()?; // FIXME
+
+        let change_data = ChangeData {
+            previous_change: previous.as_ref().map(|x| x.0.clone()),
+            primary_public_key: PrimaryPublicKey::Ed25519PublicKey(public_key),
+            revoke_all_purpose_keys: false, // FIXME
+            created_at,
+            expires_at,
+        };
+
+        let change_data = minicbor::to_vec(&change_data)?;
+
+        let versioned_data = VersionedData {
+            version: 1,
+            data: change_data,
+        };
+
+        let versioned_data = minicbor::to_vec(&versioned_data)?;
+
+        let hash = Vault::sha256(&versioned_data);
+
+        let self_signature = self.vault.sign(&secret_key, hash.as_ref()).await?;
+        let self_signature = Ed25519Signature(self_signature.as_ref().try_into().unwrap()); // FIXME
+        let self_signature = ChangeSignature::Ed25519Signature(self_signature);
+
+        // If we have previous_key passed we should sign using it
+        // If there is no previous_key - we're creating new identity, so we just generated the key
+        let previous_signature = match previous.map(|x| x.1) {
+            Some(previous_key) => {
+                let previous_signature = self.vault.sign(&previous_key, hash.as_ref()).await?;
+                let previous_signature =
+                    Ed25519Signature(previous_signature.as_ref().try_into().unwrap()); // FIXME
+                let previous_signature = ChangeSignature::Ed25519Signature(previous_signature);
+
+                Some(previous_signature)
+            }
+            None => None,
+        };
+
+        let change = Change {
+            data: versioned_data,
+            signature: self_signature,
+            previous_signature,
+        };
+
+        Ok(change)
+    }
+
+    async fn generate_key_if_needed(&self, secret: Option<&KeyId>) -> Result<KeyId> {
+        if let Some(s) = secret {
+            Ok(s.clone())
+        } else {
+            self.vault
+                .create_persistent_secret(SecretAttributes::Ed25519 /* FIXME */)
+                .await
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::super::identities;
+    use super::*;
+    use ockam_core::errcode::{Kind, Origin};
+    use ockam_core::Error;
+    use ockam_node::Context;
+
+    fn test_error<S: Into<String>>(error: S) -> Result<()> {
+        Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
+    }
+
+    #[ockam_macros::test]
+    async fn test_basic_identity_key_ops(ctx: &mut Context) -> Result<()> {
+        let identities = identities();
+        let identity_keys = identities.identities_keys();
+        let identity = identities.identities_creation().create_identity().await?;
+
+        // Check if verification succeeds
+        let _ = Identity::import_from_change_history(
+            identity.change_history().clone(),
+            identities.vault(),
+        )
+        .await?;
+
+        let secret1 = identity_keys.get_secret_key(&identity).await?;
+        let public1 = identity.get_public_key()?;
+
+        let identity = identity_keys.rotate_key(identity).await?;
+
+        // Check if verification succeeds
+        let _ = Identity::import_from_change_history(
+            identity.change_history().clone(),
+            identities.vault(),
+        )
+        .await?;
+
+        let secret2 = identity_keys.get_secret_key(&identity).await?;
+        let public2 = identity.get_public_key()?;
+
+        if secret1 == secret2 {
+            return test_error("secret did not change after rotate_key");
+        }
+
+        if public1 == public2 {
+            return test_error("public did not change after rotate_key");
+        }
+
+        ctx.stop().await
+    }
+}

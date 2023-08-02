@@ -5,7 +5,16 @@ use ockam_core::{
 
 /// Identity crate error
 #[derive(Clone, Copy, Debug)]
-pub enum IdentityError {}
+pub enum IdentityError {
+    /// Invalid key type
+    InvalidKeyType = 1,
+    /// Identity Change History is empty
+    EmptyIdentity,
+    /// Identity Verification Failed
+    IdentityVerificationFailed,
+    /// Error occurred while getting current UTC Timestamp
+    UnknownTimestamp,
+}
 
 impl ockam_core::compat::error::Error for IdentityError {}
 impl core::fmt::Display for IdentityError {
