@@ -89,7 +89,7 @@ impl TryFrom<&[u8]> for Identifier {
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         if let Ok(value) = <[u8; 20]>::try_from(value) {
-            Ok(Self(value.into()))
+            Ok(Self(value))
         } else {
             Err(IdentityError::InvalidIdentityId.into())
         }
@@ -210,7 +210,7 @@ impl TryFrom<&[u8]> for ChangeHash {
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         if let Ok(value) = <[u8; 20]>::try_from(value) {
-            Ok(Self(value.into()))
+            Ok(Self(value))
         } else {
             Err(IdentityError::InvalidIdentityId.into())
         }
