@@ -1,0 +1,39 @@
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Courier
+skinparam roundCorner 0
+skinparam wrapWidth 400
+
+class Project {
+  id: ProjectId
+}
+
+class User {
+  name: String
+  email: Email
+  identity: IdentityIdentifier
+  is_enrolled: true
+}
+
+class Service {
+  name: String
+  route: MultiAddr
+}
+
+Service --> Relay: uses
+Service --> TcpOutlet: uses
+User --> Service: shares
+User --> Project: is enrolled in
+
+class Relay {
+  name: String
+  route: MultiAddr
+}
+
+class TcpOutlet {
+  route: MultiAddr
+}
+
+Project --> "n" Relay: supports
+Relay --> "1" TcpOutlet: redirects to
+@enduml
