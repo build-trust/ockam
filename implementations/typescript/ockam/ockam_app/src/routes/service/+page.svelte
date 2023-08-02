@@ -2,4 +2,4 @@
   import ServiceCreate from './ServiceCreate.svelte'
 </script>
 
-<ServiceCreate />
+<ServiceCreate/>

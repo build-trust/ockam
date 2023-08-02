@@ -4,3 +4,5 @@
   import '../assets/fonts/Inter-Regular.ttf'
   import '../assets/fonts/Inter-Thin.ttf'
 </script>
+
+<slot/>
