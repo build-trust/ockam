@@ -20,9 +20,8 @@ mod tray_menu;
 ///
 /// Create the initial version of the system tray menu and the event listeners to update it.
 pub fn setup_app(app: &mut App<Wry>) -> Result<(), Box<dyn Error>> {
-    let app_state = app.state::<AppState>();
     let moved_app = app.handle();
-    let tray_menu = tauri::async_runtime::block_on(build_tray_menu(&app_state));
+    let tray_menu = tauri::async_runtime::block_on(build_tray_menu(&moved_app));
 
     SystemTray::new()
         .with_menu(tray_menu)
@@ -35,10 +34,9 @@ pub fn setup_app(app: &mut App<Wry>) -> Result<(), Box<dyn Error>> {
     app.listen_global(events::SYSTEM_TRAY_ON_UPDATE, move |_event| {
         let moved_app = moved_app.clone();
         tauri::async_runtime::spawn(async move {
-            let app_state = moved_app.state::<AppState>();
             moved_app
                 .tray_handle()
-                .set_menu(build_tray_menu(&app_state).await)
+                .set_menu(build_tray_menu(&moved_app).await)
         });
     });
     Ok(())

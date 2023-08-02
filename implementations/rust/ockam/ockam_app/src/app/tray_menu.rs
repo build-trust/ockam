@@ -1,4 +1,4 @@
-use tauri::{AppHandle, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, Wry};
+use tauri::{AppHandle, Manager, State, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, Wry};
 use tracing::error;
 
 use crate::app::AppState;
@@ -9,16 +9,17 @@ use crate::options::build_options_section;
 use crate::shared_service::build_shared_services_section;
 use crate::{enroll, options, shared_service};
 
-pub async fn build_tray_menu(app_state: &AppState) -> SystemTrayMenu {
+pub async fn build_tray_menu(app_handle: &AppHandle) -> SystemTrayMenu {
+    let app_state: State<'_, AppState> = app_handle.state();
     let mut tray_menu = SystemTrayMenu::new();
-    tray_menu = build_enroll_section(app_state, tray_menu).await;
-    tray_menu = build_shared_services_section(app_state, tray_menu).await;
+    tray_menu = build_enroll_section(&app_state, tray_menu).await;
+    tray_menu = build_shared_services_section(&app_state, tray_menu).await;
     #[cfg(feature = "invitations")]
     {
-        tray_menu = build_invitations_section(app_state, tray_menu).await;
+        tray_menu = build_invitations_section(app_handle, tray_menu).await;
     }
     tray_menu = tray_menu.add_native_item(SystemTrayMenuItem::Separator);
-    tray_menu = build_options_section(app_state, tray_menu).await;
+    tray_menu = build_options_section(&app_state, tray_menu).await;
     tray_menu
 }
 
