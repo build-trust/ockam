@@ -1,5 +1,5 @@
 use minicbor::{Decode, Encode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use ockam_identity::IdentityIdentifier;
 
@@ -17,7 +17,7 @@ pub struct CreateInvitation {
     #[n(6)] pub target_id: String,
 }
 
-#[derive(Clone, Debug, Decode, Encode, Serialize)]
+#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct CreateServiceInvitation {

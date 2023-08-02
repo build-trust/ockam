@@ -17,6 +17,7 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("sharing")
         .invoke_handler(tauri::generate_handler![
             accept_invitation,
+            create_service_invitation,
             list_invitations,
             refresh_invitations
         ])
