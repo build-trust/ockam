@@ -10,7 +10,7 @@ pub struct OckamOidcProvider {
 
 impl Default for OckamOidcProvider {
     fn default() -> Self {
-        OckamOidcProvider::new(Duration::from_secs(30))
+        OckamOidcProvider::new(Duration::from_secs(120))
     }
 }
 

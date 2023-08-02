@@ -16,7 +16,7 @@ impl OktaOidcProvider {
     pub fn new(okta: OktaAuth0) -> Self {
         Self {
             okta,
-            redirect_timeout: Duration::from_secs(60),
+            redirect_timeout: Duration::from_secs(120),
         }
     }
 }
