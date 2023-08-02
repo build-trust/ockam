@@ -1,0 +1,35 @@
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Courier
+skinparam roundCorner 0
+skinparam wrapWidth 400
+
+class User {
+  name: String
+  nickname: String
+  email: String
+  identity: IdentityIdentifier
+  is_enrolled: bool
+}
+
+User --> "1" Project: uses
+
+class Space {
+  id: SpaceId
+}
+
+class Project {
+  id: ProjectId
+}
+Project "n" --> "1" Space: belongs to
+
+class Node {
+  identity: IdentityIdentifier
+  route: MultiAddr
+}
+
+Project --> "1" Node: project node
+Project --> "1" Node: authority node
+
+
+@enduml

@@ -1,0 +1,48 @@
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Courier
+skinparam roundCorner 0
+skinparam wrapWidth 400
+
+class Invitation {
+  token: InvitationToken
+  expires_at: Timestamp
+  status: InvitationStatus
+  to: Email
+}
+
+Invitation --> "1" Service: shared service
+Service --> "1" User: owner
+
+class Project {
+  id: ProjectId
+}
+
+class User {
+  name: String
+  email: Email
+  identity: IdentityIdentifier
+}
+
+class Service {
+  name: String
+  route: MultiAddr
+}
+
+Service --> "1" Project: belongs to
+
+class Node {
+  identity: IdentityIdentifier
+  route: MultiAddr
+}
+
+Project --> "1" Node: project node
+Project --> "1" Node: authority node
+
+enum InvitationStatus {
+  Sent
+  {field} Received(remaining uses: Int)
+  Accepted
+}
+
+@enduml
