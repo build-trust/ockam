@@ -1,30 +1,50 @@
 <script>
-  import { invoke } from '@tauri-apps/api/tauri';
+  import {invoke} from '@tauri-apps/api/tauri';
 
   let service = "/service/outlet";
   let port = "10000";
+  let error_message = "";
 
   async function submit() {
-    await invoke('tcp_outlet_create', {service: service, port: port});
+    error_message = "";
+    await invoke('tcp_outlet_create', {service: service, port: port}).then(() => {
+      invoke('tcp_outlet_close_window');
+    }).catch((error) => {
+      error_message = error;
+    });
+  }
+
+  function cancel() {
+    invoke('tcp_outlet_close_window');
   }
 </script>
 
-<div>
-  <h1>Service details</h1>
-  <div>
-    <label for="name">Service that you want to share:</label>
-    <div>
-      <input id="name" placeholder="{service}" bind:value="{service}" />
+<div class="border-b mb-4 pb-2 font-bold text-xl">Service details</div>
+<div class="grid gap-4">
+  <div class="flex items-start">
+    <div class="flex-1">
+      <div class="font-bold">Name</div>
+      <p class="text-sm text-gray-500">Name of the service you want to share</p>
+    </div>
+    <div class="flex-1">
+      <input type="text" class="w-full px-4 bg-transparent border-none focus:outline-none text-right" placeholder="{service}" bind:value="{service}"/>
     </div>
   </div>
-  <div>
-    <label for="name">Service port:</label>
-    <div>
-      <input id="port" placeholder="{port}" bind:value="{port}" />
+  <div class="flex items-start">
+    <div class="flex-1">
+      <div class="font-bold">Port</div>
+      <p class="text-sm text-gray-500">Choose a port for the service</p>
+    </div>
+    <div class="flex-1">
+      <input type="text" class="w-full px-4 bg-transparent border-none focus:outline-none text-right" placeholder="{port}" bind:value="{port}"/>
     </div>
   </div>
-  <button on:click="{submit}">Create</button>
 </div>
-
-<style>
-</style>
+<hr class="my-4">
+{#if error_message}
+  <div class="mb-2 text-red-500 text-sm">{error_message}</div>
+{/if}
+<div class="flex justify-end">
+  <button class="px-2 py-1 mr-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400" on:click="{cancel}">Cancel</button>
+  <button class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" on:click="{submit}">Create</button>
+</div>

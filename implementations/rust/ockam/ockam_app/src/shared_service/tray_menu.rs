@@ -1,4 +1,5 @@
-use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
+use tauri::{AppHandle, CustomMenuItem, Manager, SystemTrayMenu, Wry};
+use tauri_plugin_positioner::{Position, WindowExt};
 use tauri_runtime::menu::SystemTrayMenuItem;
 
 use crate::app::AppState;
@@ -36,11 +37,25 @@ pub(crate) async fn build_shared_services_section(
 
 /// Event listener for the "Create..." menu item
 pub fn on_create(app: &AppHandle<Wry>) -> tauri::Result<()> {
-    tauri::WindowBuilder::new(
-        app,
-        SHARED_SERVICE_WINDOW_ID,
-        tauri::WindowUrl::App("service".into()),
-    )
-    .build()?;
+    match app.get_window(SHARED_SERVICE_WINDOW_ID) {
+        None => {
+            let w = tauri::WindowBuilder::new(
+                app,
+                SHARED_SERVICE_WINDOW_ID,
+                tauri::WindowUrl::App("service".into()),
+            )
+            .always_on_top(true)
+            .visible(false)
+            .title("Share a service")
+            .max_inner_size(400.0, 400.0)
+            .resizable(false)
+            .minimizable(false)
+            .build()?;
+            // TODO: ideally we should use Position::TrayCenter, but it's broken on the latest alpha
+            let _ = w.move_window(Position::TopRight);
+            w.show()?;
+        }
+        Some(w) => w.show()?,
+    }
     Ok(())
 }
