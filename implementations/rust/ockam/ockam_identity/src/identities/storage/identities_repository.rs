@@ -10,8 +10,8 @@ use crate::alloc::string::ToString;
 use crate::credential::Timestamp;
 use crate::identities::storage::storage::{InMemoryStorage, Storage};
 use crate::identity::IdentityHistoryComparison;
-use crate::identity::{Identity, IdentityChangeConstants, IdentityError, IdentityIdentifier};
-use crate::AttributesEntry;
+use crate::identity::{Identity, IdentityChangeConstants, IdentityIdentifier};
+use crate::{AttributesEntry, IdentityError};
 
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]

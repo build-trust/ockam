@@ -1,4 +1,4 @@
-use crate::identity::IdentityError;
+use crate::IdentityError;
 use crate::XXInitializedVault;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;

@@ -1,6 +1,7 @@
 use crate::credential::{Credential, CredentialData, Timestamp, Verified};
 use crate::identities::{AttributesEntry, Identities};
-use crate::identity::{Identity, IdentityError, IdentityIdentifier};
+use crate::identity::{Identity, IdentityIdentifier};
+use crate::IdentityError;
 use async_trait::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::errcode::{Kind, Origin};
