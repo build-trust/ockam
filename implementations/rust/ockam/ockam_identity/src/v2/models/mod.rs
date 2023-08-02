@@ -1,5 +1,3 @@
-#![allow(missing_docs)]
-
 mod change_history;
 mod credential;
 mod identifiers;
