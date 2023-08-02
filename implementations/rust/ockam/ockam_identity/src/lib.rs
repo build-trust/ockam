@@ -63,3 +63,6 @@ pub use identities::*;
 pub use identity::*;
 pub use secure_channel::*;
 pub use secure_channels::*;
+
+/// New version of Identity implementation meant to replace the current one when ready
+pub mod v2;
