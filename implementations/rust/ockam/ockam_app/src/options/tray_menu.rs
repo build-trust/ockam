@@ -15,7 +15,7 @@ pub(crate) async fn build_options_section(
     } else {
         tray_menu
     };
-    tm.add_item(CustomMenuItem::new(QUIT_MENU_ID, "Quit").accelerator("cmd+q"))
+    tm.add_item(CustomMenuItem::new(QUIT_MENU_ID, "Quit Ockam").accelerator("cmd+q"))
 }
 
 /// Event listener for the "Reset" menu item
