@@ -30,6 +30,7 @@ use crate::{node::util::start_embedded_node, EncodeFormat};
 use crate::{CommandGlobalOpts, OutputFormat, Result};
 
 pub mod api;
+pub mod duration;
 pub mod exitcode;
 pub mod orchestrator_api;
 pub mod parsers;
