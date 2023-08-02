@@ -2,6 +2,7 @@ use crate::node::{get_node_name, initialize_node_if_default};
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
+use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{
     find_available_port, node_rpc, parse_node_name, port_is_free_guard, process_nodes_multiaddr,
@@ -54,13 +55,13 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
     alias: Option<String>,
 
-    /// Time to wait for the outlet to be available (ms).
-    #[arg(long, display_order = 900, id = "WAIT", default_value = "5000")]
-    connection_wait_ms: u64,
+    /// Time to wait for the outlet to be available.
+    #[arg(long, display_order = 900, id = "WAIT", default_value = "5s", value_parser = duration_parser)]
+    connection_wait: Duration,
 
-    /// Time to wait before retrying to connect to outlet (ms).
-    #[arg(long, display_order = 900, id = "RETRY", default_value = "20000")]
-    retry_wait_ms: u64,
+    /// Time to wait before retrying to connect to outlet.
+    #[arg(long, display_order = 900, id = "RETRY", default_value = "20s", value_parser = duration_parser)]
+    retry_wait: Duration,
 }
 
 fn default_from_addr() -> SocketAddr {
@@ -144,7 +145,7 @@ async fn rpc(
                 if let Some(a) = cmd.alias.as_ref() {
                     payload.set_alias(a)
                 }
-                payload.set_wait_ms(cmd.connection_wait_ms);
+                payload.set_wait_ms(cmd.connection_wait.as_millis() as u64);
 
                 Request::post("/node/inlet").body(payload)
             };
@@ -165,7 +166,7 @@ async fn rpc(
                                 .color(OckamColor::PrimaryResource.color())
                         ));
                     }
-                    sleep(Duration::from_millis(cmd.retry_wait_ms))
+                    sleep(cmd.retry_wait)
                 }
             }
         };

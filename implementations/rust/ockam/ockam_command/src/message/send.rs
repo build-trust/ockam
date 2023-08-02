@@ -11,6 +11,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
 use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::duration::duration_parser;
 use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
 
 use crate::{docs, CommandGlobalOpts};
@@ -38,9 +39,9 @@ pub struct SendCommand {
     #[arg(long)]
     pub hex: bool,
 
-    /// Override default timeout (in seconds)
-    #[arg(long, value_name = "TIMEOUT", default_value = "10")]
-    pub timeout: u64,
+    /// Override default timeout
+    #[arg(long, value_name = "TIMEOUT", default_value = "10s", value_parser = duration_parser)]
+    pub timeout: Duration,
 
     pub message: String,
 
@@ -113,7 +114,7 @@ async fn rpc(
             cmd.message.as_bytes().to_vec()
         };
 
-        rpc.request_with_timeout(req(&to, msg_bytes), Duration::from_secs(cmd.timeout))
+        rpc.request_with_timeout(req(&to, msg_bytes), cmd.timeout)
             .await?;
         let res = {
             let res = rpc.parse_response_body::<Vec<u8>>()?;
