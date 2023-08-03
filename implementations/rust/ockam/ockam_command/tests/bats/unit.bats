@@ -404,7 +404,7 @@ teardown() {
   run $OCKAM relay create red --at /node/n1 --to /node/n2
   assert_success
 
-  run $OCKAM relay list --at /node/n2
+  run $OCKAM relay list --to /node/n2
   assert_output --partial "\"remote_address\": \"forward_to_blue\""
   assert_output --partial "\"remote_address\": \"forward_to_red\""
   assert_success
