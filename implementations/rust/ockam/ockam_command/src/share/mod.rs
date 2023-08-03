@@ -7,11 +7,13 @@ mod create;
 mod list;
 mod output;
 mod service;
+mod show;
 
 pub use accept::AcceptCommand;
 pub use create::CreateCommand;
 pub use list::ListCommand;
 pub use service::ServiceCreateCommand;
+pub use show::ShowCommand;
 
 /// Manage sharing invitations in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
@@ -33,6 +35,8 @@ pub enum ShareSubcommand {
     Revoke,
     /// Create a sharing invitation for a single service
     Service(ServiceCreateCommand),
+    /// Show information about a single invitation you own or received, including service access details
+    Show(ShowCommand),
 }
 
 impl ShareCommand {
@@ -44,6 +48,7 @@ impl ShareCommand {
             List(c) => c.run(options),
             Revoke => todo!(),
             Service(c) => c.run(options),
+            Show(c) => c.run(options),
         }
     }
 }
