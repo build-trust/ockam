@@ -33,6 +33,11 @@ impl Identity {
     fn get_change_details(change: &Change) -> Result<ChangeDetails> {
         let change_hash = Self::compute_change_hash_from_data(&change.data);
         let versioned_data: VersionedData = minicbor::decode(&change.data)?;
+
+        if versioned_data.version != 1 {
+            return Err(IdentityError::UnknownIdentityVersion.into());
+        }
+
         let change_data: ChangeData = minicbor::decode(&versioned_data.data)?;
 
         Ok(ChangeDetails {
@@ -139,6 +144,10 @@ impl Identity {
         let hash = Vault::sha256(&new_change.data);
 
         let versioned_data: VersionedData = minicbor::decode(&new_change.data)?;
+
+        if versioned_data.version != 1 {
+            return Err(IdentityError::UnknownIdentityVersion.into());
+        }
 
         let change_data: ChangeData = minicbor::decode(&versioned_data.data)?;
 

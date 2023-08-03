@@ -58,7 +58,6 @@ mod tests {
 
         let identity = creation.create_identity().await?;
         let actual = repository.get_identity(identity.identifier()).await?;
-        println!("{}", hex::encode(actual.export()?));
 
         let actual = Identity::import_from_change_history(actual, identities.vault()).await?;
         assert_eq!(

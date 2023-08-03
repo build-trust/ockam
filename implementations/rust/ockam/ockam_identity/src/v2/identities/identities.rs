@@ -1,6 +1,7 @@
 use super::super::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
 use super::super::{
-    IdentitiesBuilder, IdentitiesCreation, IdentitiesReader, IdentitiesStorage, PurposeKeys,
+    Credentials, IdentitiesBuilder, IdentitiesCreation, IdentitiesReader, IdentitiesStorage,
+    PurposeKeys,
 };
 use ockam_core::compat::sync::Arc;
 use ockam_vault::Vault;
@@ -8,8 +9,8 @@ use ockam_vault::Vault;
 /// This struct supports all the services related to identities
 #[derive(Clone)]
 pub struct Identities {
-    pub(crate) vault: Arc<dyn IdentitiesVault>,
-    pub(crate) identities_repository: Arc<dyn IdentitiesRepository>,
+    vault: Arc<dyn IdentitiesVault>,
+    identities_repository: Arc<dyn IdentitiesRepository>,
 }
 
 impl Identities {
@@ -24,7 +25,11 @@ impl Identities {
     }
 
     pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
-        Arc::new(PurposeKeys::new(self.vault.clone(), self.identities_keys()))
+        Arc::new(PurposeKeys::new(
+            self.vault.clone(),
+            self.identities_repository.as_identities_reader(),
+            self.identities_keys(),
+        ))
     }
 
     /// Return the identities keys management service
@@ -45,10 +50,14 @@ impl Identities {
         self.repository().as_identities_reader()
     }
 
-    // /// Return the identities credentials service
-    // pub fn credentials(&self) -> Arc<dyn Credentials> {
-    //     Arc::new(self.clone())
-    // }
+    /// Return the identities credentials service
+    pub fn credentials(&self) -> Arc<Credentials> {
+        Arc::new(Credentials::new(
+            self.vault(),
+            self.purpose_keys(),
+            self.identities_repository.clone(),
+        ))
+    }
     //
     // /// Return the identities credentials server
     // pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
