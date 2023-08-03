@@ -382,6 +382,14 @@ pub(crate) mod share {
             None,
         ))
     }
+
+    pub(crate) fn show(
+        invitation_id: String,
+        cloud_route: &MultiAddr,
+    ) -> RequestBuilder<BareCloudRequestWrapper> {
+        Request::get(format!("v0/invitations/{invitation_id}"))
+            .body(CloudRequestWrapper::bare(cloud_route))
+    }
 }
 
 ////////////// !== parsers
