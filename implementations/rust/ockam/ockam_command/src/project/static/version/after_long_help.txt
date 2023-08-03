@@ -1,0 +1,4 @@
+```sh
+# To retrieve the version of the projects
+$ ockam project version
+```

@@ -306,6 +306,10 @@ pub(crate) mod project {
         Request::get(format!("v0/projects/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 
+    pub(crate) fn version(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
+        Request::get("v0/projects/version_info").body(CloudRequestWrapper::bare(cloud_route))
+    }
+
     pub(crate) fn delete(
         space_id: &str,
         project_id: &str,

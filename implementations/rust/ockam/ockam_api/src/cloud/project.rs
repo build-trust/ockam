@@ -95,7 +95,7 @@ impl Project {
     }
 }
 
-#[derive(Decode, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
+#[derive(Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
 pub struct ProjectVersion {
     #[cfg(feature = "tag")]
@@ -103,9 +103,11 @@ pub struct ProjectVersion {
     #[cbor(n(0))]
     pub tag: TypeTag<9116532>,
 
+    /// The version of the Orchestrator Controller
     #[cbor(n(1))]
     pub version: Option<String>,
 
+    /// The version of the Projects
     #[cbor(n(2))]
     pub project_version: Option<String>,
 }

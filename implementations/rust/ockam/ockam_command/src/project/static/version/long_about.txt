@@ -1,0 +1,1 @@
+This command will return the version of the projects.
