@@ -38,8 +38,13 @@ pub struct CredentialData {
 
 #[derive(Clone, Debug, Encode, Decode)]
 #[rustfmt::skip]
+#[cbor(transparent)]
+pub struct SchemaId(#[n(0)] pub u64);
+
+#[derive(Clone, Debug, Encode, Decode)]
+#[rustfmt::skip]
 #[cbor(map)]
 pub struct Attributes {
-    #[n(1)] pub schema: u64,
+    #[n(1)] pub schema: SchemaId,
     #[n(2)] pub map: BTreeMap<Vec<u8>, Vec<u8>>,
 }

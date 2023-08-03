@@ -1,7 +1,7 @@
 use super::super::super::models::{Identifier, TimestampInSeconds};
-use crate::alloc::borrow::ToOwned;
 use minicbor::{Decode, Encode};
-use ockam_core::compat::{collections::BTreeMap, string::String, vec::Vec};
+use ockam_core::compat::borrow::ToOwned;
+use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use serde::{Deserialize, Serialize};
 
 /// An entry on the AuthenticatedIdentities table.
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AttributesEntry {
-    #[b(1)] attrs: BTreeMap<String, Vec<u8>>,
+    #[b(1)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
     #[n(2)] added: TimestampInSeconds,
     #[n(3)] expires: Option<TimestampInSeconds>,
     #[n(4)] attested_by: Option<Identifier>,
@@ -22,7 +22,7 @@ impl AttributesEntry {
 
     /// Constructor
     pub fn new(
-        attrs: BTreeMap<String, Vec<u8>>,
+        attrs: BTreeMap<Vec<u8>, Vec<u8>>,
         added: TimestampInSeconds,
         expires: Option<TimestampInSeconds>,
         attested_by: Option<Identifier>,
@@ -36,7 +36,7 @@ impl AttributesEntry {
     }
 
     /// The entry attributes
-    pub fn attrs(&self) -> &BTreeMap<String, Vec<u8>> {
+    pub fn attrs(&self) -> &BTreeMap<Vec<u8>, Vec<u8>> {
         &self.attrs
     }
 

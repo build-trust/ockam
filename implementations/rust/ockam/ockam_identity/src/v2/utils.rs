@@ -16,3 +16,7 @@ pub fn now() -> Result<TimestampInSeconds> {
 pub fn now() -> Result<TimestampInSeconds> {
     Err(super::IdentityError::UnknownTimestamp.into())
 }
+
+pub(crate) fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInSeconds {
+    TimestampInSeconds::new(timestamp.saturating_add(seconds))
+}

@@ -21,9 +21,13 @@ pub mod purpose_keys;
 /// Purpose key
 pub mod purpose_key;
 
+/// Services for creating and validating credentials
+pub mod credentials;
+
 ///
 /// Exports
 ///
+pub use credentials::*;
 pub use error::*;
 pub use identities::*;
 pub use identity::*;
