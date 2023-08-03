@@ -7,10 +7,12 @@ use serde::{Deserialize, Serialize};
 mod accept;
 mod create;
 mod list;
+mod show;
 
 pub use accept::*;
 pub use create::*;
 pub use list::*;
+pub use show::*;
 
 #[derive(Clone, Debug, PartialEq, Decode, Deserialize, Encode, Serialize)]
 #[cbor(index_only)]
