@@ -1,4 +1,3 @@
-use crate::IdentityError;
 use core::fmt::{Display, Formatter};
 use core::ops::Deref;
 use core::str::FromStr;
@@ -10,9 +9,34 @@ use ockam_core::env::FromString;
 use ockam_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 
+use super::super::IdentityError;
+use crate::IdentityIdentifier;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Identifier([u8; 20]);
+
+// FIXME: Remove
+impl From<Identifier> for IdentityIdentifier {
+    fn from(value: Identifier) -> Self {
+        Self::from_str(&format!(
+            "P{}{}",
+            hex::encode(value.0),
+            "000000000000000000000000"
+        ))
+        .unwrap()
+    }
+}
+
+// FIXME: Remove
+impl From<IdentityIdentifier> for Identifier {
+    fn from(value: IdentityIdentifier) -> Self {
+        let str = value.to_string();
+        let str = &str[1..64];
+        let data = hex::decode(str).unwrap();
+        Self(data.try_into().unwrap())
+    }
+}
 
 impl<C> Encode<C> for Identifier {
     fn encode<W: Write>(
@@ -76,10 +100,10 @@ impl TryFrom<&str> for Identifier {
             if let Ok(data) = hex::decode(value) {
                 data.try_into()
             } else {
-                Err(IdentityError::InvalidIdentityId.into())
+                Err(IdentityError::InvalidIdentifier.into())
             }
         } else {
-            Err(IdentityError::InvalidIdentityId.into())
+            Err(IdentityError::InvalidIdentifier.into())
         }
     }
 }
@@ -91,7 +115,7 @@ impl TryFrom<&[u8]> for Identifier {
         if let Ok(value) = <[u8; 20]>::try_from(value) {
             Ok(Self(value))
         } else {
-            Err(IdentityError::InvalidIdentityId.into())
+            Err(IdentityError::InvalidIdentifier.into())
         }
     }
 }
@@ -200,7 +224,7 @@ impl TryFrom<&str> for ChangeHash {
         if let Ok(data) = hex::decode(value) {
             data.try_into()
         } else {
-            Err(IdentityError::InvalidIdentityId.into())
+            Err(IdentityError::InvalidIdentifier.into())
         }
     }
 }
@@ -212,7 +236,7 @@ impl TryFrom<&[u8]> for ChangeHash {
         if let Ok(value) = <[u8; 20]>::try_from(value) {
             Ok(Self(value))
         } else {
-            Err(IdentityError::InvalidIdentityId.into())
+            Err(IdentityError::InvalidIdentifier.into())
         }
     }
 }

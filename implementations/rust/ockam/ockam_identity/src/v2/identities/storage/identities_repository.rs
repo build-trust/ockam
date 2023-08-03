@@ -11,7 +11,7 @@ use super::super::super::identity::IdentityConstants;
 use super::super::super::models::{ChangeHistory, Identifier};
 use super::super::super::utils::now;
 use super::super::AttributesEntry;
-use crate::alloc::string::ToString;
+use ockam_core::compat::string::ToString;
 
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]
@@ -71,8 +71,8 @@ pub trait IdentityAttributesWriter: Send + Sync + 'static {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: &str,
-        attribute_value: &str,
+        attribute_name: Vec<u8>,
+        attribute_value: Vec<u8>,
     ) -> Result<()>;
 
     /// Remove all attributes for a given identity identifier
@@ -211,17 +211,14 @@ impl IdentityAttributesWriter for IdentitiesStorage {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: &str,
-        attribute_value: &str,
+        attribute_name: Vec<u8>,
+        attribute_value: Vec<u8>,
     ) -> Result<()> {
         let mut attributes = match self.get_attributes(subject).await? {
             Some(entry) => (*entry.attrs()).clone(),
             None => BTreeMap::new(),
         };
-        attributes.insert(
-            attribute_name.to_string(),
-            attribute_value.as_bytes().to_vec(),
-        );
+        attributes.insert(attribute_name, attribute_value);
         let entry = AttributesEntry::new(attributes, now()?, None, Some(subject.clone()));
         self.put_attributes(subject, entry).await
     }
