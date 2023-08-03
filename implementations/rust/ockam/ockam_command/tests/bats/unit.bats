@@ -410,7 +410,7 @@ teardown() {
   assert_success
 
   # Test listing node with no relays
-  run $OCKAM relay list --at /node/n1
+  run $OCKAM relay list --to /node/n1
   assert_output --partial "[]"
   assert_success
 }
