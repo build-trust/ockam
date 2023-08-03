@@ -25,9 +25,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {
-    /// Node to list relays from
+    ///  List all the relays relaying traffic to the specified node
     #[arg(global = true, long, value_name = "NODE")]
-    pub at: Option<String>,
+    pub to: Option<String>,
 }
 
 impl ListCommand {
@@ -40,8 +40,8 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.at);
-    let node_name = extract_address_value(&at)?;
+    let to = get_node_name(&opts.state, &cmd.to);
+    let node_name = extract_address_value(&to)?;
 
     if !opts.state.nodes.get(&node_name)?.is_running() {
         return Err(miette!("The node '{}' is not running", node_name));
