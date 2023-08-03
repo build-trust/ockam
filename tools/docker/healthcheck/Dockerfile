@@ -1,5 +1,5 @@
 # Stage 1 - Build elixir release of ockam_healthcheck elixir app
-FROM ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135ed1340c6ae44b762b1c8bbec31d5c68 as elixir-app-release-build
+FROM ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b as elixir-app-release-build
 COPY . /work
 RUN set -xe; \
     cd implementations/elixir; \
@@ -10,7 +10,7 @@ RUN set -xe; \
 
 # TODO: Use distroless container after https://github.com/elixir-lang/elixir/issues/11942 is closed
 # Stage 2 - Create container and copy executables in above step
-FROM debian:11.1-slim@sha256:312218c8dae688bae4e9d12926704fa9af6f7307a6edb4f66e479702a9af5a0c
+FROM debian:12.1-slim@sha256:5bbfcb9f36a506f9c9c2fb53205f15f6e9d1f0e032939378ddc049a2d26d651e
 
 COPY --from=elixir-app-release-build /work/implementations/elixir/ockam/ockam_healthcheck/_build/prod/rel/ockam_healthcheck /opt/ockam_healthcheck
 
