@@ -198,7 +198,7 @@ teardown() {
   run_success "$OCKAM" identity create "$a"
   run_success "$OCKAM" identity create "$b"
 
-  id=$("$OCKAM" identity show "$b" --full --encoding hex)
+  id=$("$OCKAM" identity show "$b")
 
   run_success "$OCKAM" credential issue --as "$a" --for ${id}
   run_success "$OCKAM" credential issue --as "$a" --for ${id} --attribute location=Chicago --attribute department=Operations
@@ -212,11 +212,12 @@ teardown() {
   run_success "$OCKAM" identity create "$b"
 
   id_a=$("$OCKAM" identity show "$a" --full --encoding hex)
-  id_b=$("$OCKAM" identity show "$b" --full --encoding hex)
+  id_a_short=$("$OCKAM" identity show "$a")
+  id_b_short=$("$OCKAM" identity show "$b")
 
-  "$OCKAM" credential issue --as "$a" --for ${id_b} --encoding hex >/${BATS_TEST_TMPDIR}/b.credential
+  "$OCKAM" credential issue --as "$a" --for ${id_b_short} --encoding hex >/${BATS_TEST_TMPDIR}/b.credential
 
-  run_success "$OCKAM" credential verify --issuer ${id_a} --credential-path /${BATS_TEST_TMPDIR}/b.credential
+  run_success "$OCKAM" credential verify --issuer ${id_a_short} --credential-path /${BATS_TEST_TMPDIR}/b.credential
   run_success "$OCKAM" credential store c1 --issuer ${id_a} --credential-path /${BATS_TEST_TMPDIR}/b.credential
 }
 
@@ -262,13 +263,13 @@ teardown() {
 
   run_success "$OCKAM" identity create "$i1"
 
-  "$OCKAM" identity show "$i1" --full --encoding hex >/${BATS_TEST_TMPDIR}/i1
+  "$OCKAM" identity show "$i1" >/${BATS_TEST_TMPDIR}/i1
   "$OCKAM" credential issue --as "$authority" --for $(cat /${BATS_TEST_TMPDIR}/i1) --attribute city="New York" --encoding hex >/${BATS_TEST_TMPDIR}/i1.credential
 
   run_success "$OCKAM" credential store c1 --issuer $(cat $authority_exported) --credential-path /${BATS_TEST_TMPDIR}/i1.credential
   run_success "$OCKAM" identity create "$i2"
 
-  "$OCKAM" identity show "$i2" --full --encoding hex >/${BATS_TEST_TMPDIR}/i2
+  "$OCKAM" identity show "$i2" >/${BATS_TEST_TMPDIR}/i2
   "$OCKAM" credential issue --as "$authority" \
     --for $(cat /${BATS_TEST_TMPDIR}/i2) --attribute city="San Francisco" \
     --encoding hex >/${BATS_TEST_TMPDIR}/i2.credential

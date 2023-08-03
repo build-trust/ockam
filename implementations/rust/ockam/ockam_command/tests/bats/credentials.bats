@@ -18,15 +18,17 @@ teardown() {
   run "$OCKAM" identity create i1
   assert_success
   idt1=$($OCKAM identity show i1 --full --encoding hex)
+  idt1_short=$($OCKAM identity show i1)
 
   run "$OCKAM" identity create i2
   assert_success
   idt2=$($OCKAM identity show i2 --full --encoding hex)
+  idt2_short=$($OCKAM identity show i2)
 
   # No "run" here since it won't redirect the output to a file if we do so.
-  "$OCKAM" credential issue --as i1 --for "$idt2" --attribute application="Smart Factory" --attribute city="New York" --encoding hex >"$OCKAM_HOME/credential"
+  "$OCKAM" credential issue --as i1 --for "$idt2_short" --attribute application="Smart Factory" --attribute city="New York" --encoding hex >"$OCKAM_HOME/credential"
 
-  run "$OCKAM" credential verify --issuer "$idt1" --credential-path "$OCKAM_HOME/credential"
+  run "$OCKAM" credential verify --issuer "$idt1_short" --credential-path "$OCKAM_HOME/credential"
   assert_success
   assert_output --partial "true"
 
@@ -48,11 +50,12 @@ teardown() {
   run "$OCKAM" identity create i1
   assert_success
   idt1=$($OCKAM identity show i1 --full --encoding hex)
+  idt1_short=$($OCKAM identity show i1)
 
   # create an invalid credential
   echo "FOOBAR" >"$OCKAM_HOME/bad_credential"
 
-  run "$OCKAM" credential verify --issuer "$idt1" --credential-path "$OCKAM_HOME/bad_credential"
+  run "$OCKAM" credential verify --issuer "$idt1_short" --credential-path "$OCKAM_HOME/bad_credential"
   assert_success
   assert_output --partial "false"
 

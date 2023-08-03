@@ -2,7 +2,7 @@ use ockam_core::compat::collections::HashMap;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::{
-    util::{node_rpc, print_encodable},
+    util::{node_rpc, parsers::identity_identifier_parser, print_encodable},
     vault::default_vault_name,
     CommandGlobalOpts, EncodeFormat, Result,
 };
@@ -12,15 +12,15 @@ use miette::{miette, IntoDiagnostic};
 use ockam::identity::CredentialData;
 use ockam::Context;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_identity::{identities, Identity};
+use ockam_identity::IdentityIdentifier;
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
     #[arg(long = "as")]
     pub as_identity: Option<String>,
 
-    #[arg(long = "for", value_name = "IDENTITY_ID")]
-    pub for_identity: String,
+    #[arg(long = "for", value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
+    pub identity_identifier: IdentityIdentifier,
 
     /// Attributes in `key=value` format to be attached to the member
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
@@ -51,17 +51,8 @@ impl IssueCommand {
         Ok(attributes)
     }
 
-    pub async fn identity(&self) -> Result<Identity> {
-        let identity_as_bytes = match hex::decode(&self.for_identity) {
-            Ok(b) => b,
-            Err(e) => return Err(miette!(e).into()),
-        };
-
-        let identity = identities()
-            .identities_creation()
-            .decode_identity(&identity_as_bytes)
-            .await?;
-        Ok(identity)
+    pub fn identity_identifier(&self) -> IdentityIdentifier {
+        self.identity_identifier.clone()
     }
 }
 
@@ -92,7 +83,7 @@ async fn run_impl(
     let issuer = ident_state.identifier();
 
     let credential_data =
-        CredentialData::from_attributes(cmd.identity().await?.identifier(), issuer.clone(), attrs)
+        CredentialData::from_attributes(cmd.identity_identifier(), issuer.clone(), attrs)
             .into_diagnostic()?;
     let credential = identities
         .credentials()

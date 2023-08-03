@@ -1,22 +1,24 @@
 use std::path::PathBuf;
 
 use crate::{
-    fmt_err, fmt_log, fmt_ok, util::node_rpc, vault::default_vault_name, CommandGlobalOpts, Result,
+    fmt_err, fmt_log, fmt_ok, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
 };
 use miette::miette;
 
 use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
-use ockam_identity::{identities, Identity};
+use ockam_identity::IdentityIdentifier;
 use tokio::{sync::Mutex, try_join};
+
+use crate::util::parsers::identity_identifier_parser;
 
 use super::validate_encoded_cred;
 
 #[derive(Clone, Debug, Args)]
 pub struct VerifyCommand {
-    #[arg(long = "issuer")]
-    pub issuer: String,
+    #[arg(long = "issuer", value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
+    pub issuer: IdentityIdentifier,
 
     #[arg(group = "credential_value", value_name = "CREDENTIAL_STRING", long)]
     pub credential: Option<String>,
@@ -33,16 +35,8 @@ impl VerifyCommand {
         node_rpc(run_impl, (opts, self));
     }
 
-    pub async fn issuer(&self) -> Result<Identity> {
-        let identity_as_bytes = match hex::decode(&self.issuer) {
-            Ok(b) => b,
-            Err(e) => return Err(miette!(e).into()),
-        };
-        let identity = identities()
-            .identities_creation()
-            .decode_identity(&identity_as_bytes)
-            .await?;
-        Ok(identity)
+    pub fn issuer(&self) -> IdentityIdentifier {
+        self.issuer.clone()
     }
 }
 
@@ -72,14 +66,7 @@ async fn run_impl(
             .clone()
             .unwrap_or_else(|| default_vault_name(&opts.state));
 
-        let issuer = match &cmd.issuer().await {
-            Ok(i) => i,
-            Err(_) => {
-                *is_finished.lock().await = true;
-                return Ok((false, "Issuer is invalid".to_string()));
-            }
-        }
-        .identifier();
+        let issuer = cmd.issuer();
 
         let is_valid = match validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await
         {
