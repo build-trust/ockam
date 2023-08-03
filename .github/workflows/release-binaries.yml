@@ -319,22 +319,12 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Install QEMU
-        if: matrix.build == 'linux_arm'
-        run: |
-          sudo apt-get update
-          sudo apt-get install qemu binfmt-support qemu-user-static
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
       - name: Build Rust Asset
         if: matrix.build != 'macos'
-        uses: docker://ghcr.io/build-trust/ockam-builder@sha256:4327749693be365d590cd210ef89729b95488005ecff2c9fe7a0fcd8b4c61f87
-        with:
-          args: |
-            bash -c "export PRIVATE_KEY='${{ secrets.COSIGN_PRIVATE_KEY }}' && export COSIGN_PASSWORD='${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}';
-            rustup target add ${{ matrix.target }};
-            set -xe && pwd && uname -a && ls && cargo clean && cargo build --release --package ockam-ffi --target ${{ matrix.target }};
-            rm -rf target/release && mv target/${{ matrix.target }}/release target
+        run: |
+          cargo install --version 0.1.16 cross
+          cross build --release --package ockam-ffi --target ${{ matrix.target }}
+          rm -rf target/release && mv target/${{ matrix.target }}/release target
 
       - name: Build NIF For Linux
         if: matrix.build != 'macos'
