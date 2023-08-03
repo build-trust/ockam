@@ -11,8 +11,7 @@ use ockam_node::{Context, WorkerBuilder};
 use super::super::credentials::credentials_server_worker::CredentialsServerWorker;
 use super::super::credentials::Credentials;
 use super::super::models::{Credential, CredentialAndPurposeKey, Identifier};
-use super::super::TrustContext;
-use crate::IdentitySecureChannelLocalInfo;
+use super::super::{IdentitySecureChannelLocalInfo, TrustContext};
 
 /// This trait allows an identity to send its credential to another identity
 /// located at the end of a secure channel route
@@ -100,7 +99,7 @@ impl CredentialsServer for CredentialsServerModule {
         let credential_and_purpose_key: CredentialAndPurposeKey = dec.decode()?;
         self.credentials
             .receive_presented_credential(
-                &their_id.into(),
+                &their_id,
                 authorities,
                 &credential_and_purpose_key.purpose_key_attestation,
                 &credential_and_purpose_key.credential,

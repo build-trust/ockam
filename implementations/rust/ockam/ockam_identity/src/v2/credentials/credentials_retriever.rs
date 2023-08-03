@@ -7,8 +7,8 @@ use ockam_core::{async_trait, route, Address, Result, Route};
 use ockam_node::Context;
 
 use super::super::models::{CredentialAndPurposeKey, Identifier};
-use super::super::CredentialsIssuerClient;
-use crate::{SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy};
+use super::super::{CredentialsIssuerClient, PurposeKey};
+use super::super::{SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy};
 
 /// Trait for retrieving a credential for a given identity
 #[async_trait]
@@ -50,6 +50,7 @@ impl CredentialsRetriever for CredentialsMemoryRetriever {
 /// Credentials retriever for credentials located on a different node
 pub struct RemoteCredentialsRetriever {
     secure_channels: Arc<SecureChannels>,
+    purpose_key: PurposeKey,
     issuer: RemoteCredentialsRetrieverInfo,
 }
 
@@ -57,10 +58,12 @@ impl RemoteCredentialsRetriever {
     /// Create a new remote credential retriever
     pub fn new(
         secure_channels: Arc<SecureChannels>,
+        purpose_key: PurposeKey,
         issuer: RemoteCredentialsRetrieverInfo,
     ) -> Self {
         Self {
             secure_channels,
+            purpose_key,
             issuer,
         }
     }
@@ -82,7 +85,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
             resolved_route.clone()
         );
 
-        let allowed = vec![self.issuer.identifier.clone().into()];
+        let allowed = vec![self.issuer.identifier.clone()];
         debug!("Create secure channel to authority");
 
         let options = SecureChannelOptions::new()
@@ -92,7 +95,8 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
             .secure_channels
             .create_secure_channel(
                 ctx,
-                &for_identity.clone().into(),
+                for_identity,
+                self.purpose_key.clone(),
                 resolved_route.clone(),
                 options,
             )
