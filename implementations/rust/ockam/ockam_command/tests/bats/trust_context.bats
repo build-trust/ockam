@@ -85,12 +85,13 @@ teardown() {
   port="$(random_port)"
   # Create two identities
   run "$OCKAM" identity create alice
-  alice_identity=$($OCKAM identity show alice --full --encoding hex)
+  alice_identity=$($OCKAM identity show alice)
 
   run "$OCKAM" identity create bob
-  bob_identity=$($OCKAM identity show bob --full --encoding hex)
+  bob_identity=$($OCKAM identity show bob)
 
   $OCKAM identity create attacker
+  attacker_identity=$($OCKAM identity show attacker)
 
   # Create an identity that both alice and bob will trust
   run "$OCKAM" identity create authority
@@ -116,7 +117,7 @@ teardown() {
   assert_failure
 
   # Fail, attacker will present an invalid credential (self signed rather than signed by authority)
-  $OCKAM credential issue --as attacker --for $($OCKAM identity show attacker --full --encoding hex) --encoding hex >"$OCKAM_HOME/attacker.cred"
+  $OCKAM credential issue --as attacker --for $attacker_identity --encoding hex >"$OCKAM_HOME/attacker.cred"
   run $OCKAM credential store att-cred --issuer $authority_identity --credential-path $OCKAM_HOME/attacker.cred
   assert_failure
 
