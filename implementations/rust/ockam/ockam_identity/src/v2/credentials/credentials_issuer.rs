@@ -1,20 +1,22 @@
+use core::time::Duration;
 use minicbor::Decoder;
-use std::collections::BTreeMap;
-use std::time::Duration;
 use tracing::trace;
 
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::boxed::Box;
+use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::string::String;
+use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{api, Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
-use super::super::models::{Attributes, Credential, Identifier, SchemaId};
-use super::super::{Credentials, IdentitiesRepository, Purpose, PurposeKey, PurposeKeys};
-use crate::v2::models::CredentialAndPurposeKey;
-use crate::IdentitySecureChannelLocalInfo;
+use super::super::models::{Attributes, Credential, CredentialAndPurposeKey, Identifier, SchemaId};
+use super::super::{
+    Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo, Purpose, PurposeKey,
+    PurposeKeys,
+};
 
 /// Name of the attribute identifying the trust context for that attribute, meaning
 /// from which set of trusted authorities the attribute comes from
@@ -99,7 +101,7 @@ impl Worker for CredentialsIssuer {
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
         if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
-            let from: Identifier = i.their_identity_id().into();
+            let from = i.their_identity_id();
             let mut dec = Decoder::new(m.as_body());
             let req: Request = dec.decode()?;
             trace! {

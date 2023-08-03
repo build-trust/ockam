@@ -9,10 +9,8 @@ use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 
 use super::super::credentials::Credentials;
-use super::super::models::Identifier;
-use super::super::TrustContext;
-use crate::v2::models::CredentialAndPurposeKey;
-use crate::IdentitySecureChannelLocalInfo;
+use super::super::models::{CredentialAndPurposeKey, Identifier};
+use super::super::{IdentitySecureChannelLocalInfo, TrustContext};
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 
@@ -188,10 +186,7 @@ impl Worker for CredentialsServerWorker {
         let sender =
             IdentitySecureChannelLocalInfo::find_info(msg.local_message())?.their_identity_id();
 
-        let r = match self
-            .handle_request(ctx, &req, sender.into(), &mut dec)
-            .await
-        {
+        let r = match self.handle_request(ctx, &req, sender, &mut dec).await {
             Ok(r) => r,
             // If an error occurs, send a response with the error code so the listener can
             // fail fast instead of failing silently here and force the listener to timeout.

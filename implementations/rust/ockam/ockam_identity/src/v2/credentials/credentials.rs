@@ -12,6 +12,7 @@ use super::super::{
 
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::{PublicKey, SecretType, Signature, Vault};
 
