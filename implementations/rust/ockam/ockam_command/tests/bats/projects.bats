@@ -20,6 +20,10 @@ teardown() {
 }
 
 # ===== TESTS
+@test "projects - version" {
+  run_success "$OCKAM" project version
+}
+
 @test "projects - enrollment" {
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
