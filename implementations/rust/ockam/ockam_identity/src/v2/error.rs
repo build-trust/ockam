@@ -38,6 +38,13 @@ pub enum IdentityError {
     UnknownPurposeKeyVersion,
     /// Unknown version of the Identity
     UnknownIdentityVersion,
+    SecureChannelVerificationFailed,
+    SecureChannelTrustCheckFailed,
+    InvalidNonce,
+    NonceOverflow,
+    UnknownChannelMsgDestination,
+    InvalidLocalInfoType,
+    DuplicateSecureChannel,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

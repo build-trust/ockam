@@ -10,33 +10,10 @@ use ockam_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 use super::super::IdentityError;
-use crate::IdentityIdentifier;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Identifier([u8; 20]);
-
-// FIXME: Remove
-impl From<Identifier> for IdentityIdentifier {
-    fn from(value: Identifier) -> Self {
-        Self::from_str(&format!(
-            "P{}{}",
-            hex::encode(value.0),
-            "000000000000000000000000"
-        ))
-        .unwrap()
-    }
-}
-
-// FIXME: Remove
-impl From<IdentityIdentifier> for Identifier {
-    fn from(value: IdentityIdentifier) -> Self {
-        let str = value.to_string();
-        let str = &str[1..64];
-        let data = hex::decode(str).unwrap();
-        Self(data.try_into().unwrap())
-    }
-}
 
 impl<C> Encode<C> for Identifier {
     fn encode<W: Write>(
@@ -59,7 +36,7 @@ impl<'b, C> Decode<'b, C> for Identifier {
 impl Identifier {
     const PREFIX: &'static str = "I";
 
-    fn ct_eq(&self, o: &Self) -> subtle::Choice {
+    pub(crate) fn ct_eq(&self, o: &Self) -> subtle::Choice {
         use subtle::ConstantTimeEq;
         self.0.as_ref().ct_eq(o.0.as_ref())
     }
