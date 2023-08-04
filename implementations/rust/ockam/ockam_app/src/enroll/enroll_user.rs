@@ -43,7 +43,9 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     let token = oidc_service.get_token_with_pkce().await?;
 
     // retrieve the user information
-    let user_info = oidc_service.get_user_info(token.clone()).await?;
+    let user_info = oidc_service
+        .wait_for_email_verification(&token, &app_state.options().await)
+        .await?;
     info!("the user info is {user_info:?}");
     app_state.model_mut(|m| m.set_user_info(user_info)).await?;
 
