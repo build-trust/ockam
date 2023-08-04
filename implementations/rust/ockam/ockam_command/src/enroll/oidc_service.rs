@@ -119,7 +119,7 @@ impl OidcService {
     }
 
     /// Return the information about a user once authenticated
-    pub async fn get_user_info(&self, token: OidcToken) -> Result<UserInfo> {
+    pub async fn get_user_info(&self, token: &OidcToken) -> Result<UserInfo> {
         let client = self.provider().build_http_client()?;
         let access_token = token.access_token.0.clone();
         let req = || {
@@ -132,6 +132,33 @@ impl OidcService {
             .await
             .into_diagnostic()?;
         res.json().await.map_err(|e| miette!(e).into())
+    }
+
+    pub async fn wait_for_email_verification(
+        &self,
+        token: &OidcToken,
+        opts: &CommandGlobalOpts,
+    ) -> Result<UserInfo> {
+        let spinner_option = opts.terminal.progress_spinner();
+        loop {
+            let user_info = self.get_user_info(token).await?;
+            if user_info.email_verified {
+                if let Some(spinner) = spinner_option.as_ref() {
+                    spinner.finish_and_clear();
+                }
+                opts.terminal
+                    .write_line(&fmt_para!("Email <{}> verified\n", user_info.email))?;
+                return Ok(user_info);
+            } else {
+                if let Some(spinner) = spinner_option.as_ref() {
+                    spinner.set_message(format!(
+                        "Email <{}> pending verification. Please check your inbox...",
+                        user_info.email
+                    ))
+                }
+                sleep(Duration::from_secs(5)).await;
+            }
+        }
     }
 
     pub(crate) async fn validate_provider_config(&self) -> miette::Result<()> {
@@ -459,7 +486,7 @@ mod tests {
     async fn test_user_info() -> Result<()> {
         let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
         let token = oidc_service.get_token_with_pkce().await?;
-        let user_info = oidc_service.get_user_info(token).await;
+        let user_info = oidc_service.get_user_info(&token).await;
         assert!(user_info.is_ok());
         Ok(())
     }
