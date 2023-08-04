@@ -4,7 +4,7 @@ use tracing::error;
 use crate::app::AppState;
 use crate::enroll::build_enroll_section;
 #[cfg(feature = "invitations")]
-use crate::invitations::build_invitations_section;
+use crate::invitations::{self, build_invitations_section};
 use crate::options::build_options_section;
 use crate::shared_service::build_shared_services_section;
 use crate::{enroll, options, shared_service};
@@ -31,10 +31,24 @@ pub fn process_system_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
             shared_service::SHARED_SERVICE_CREATE_MENU_ID => shared_service::on_create(app),
             options::RESET_MENU_ID => options::on_reset(app),
             options::QUIT_MENU_ID => options::on_quit(),
-            _ => Ok(()),
+            id => fallback_for_id(app, id),
         };
         if let Err(e) = result {
             error!("{:?}", e)
         }
     }
+}
+
+#[cfg(feature = "invitations")]
+fn fallback_for_id(app: &AppHandle<Wry>, s: &str) -> tauri::Result<()> {
+    if s.starts_with("invitation-") {
+        invitations::dispatch_click_event(app, s)
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(not(feature = "invitations"))]
+fn fallback_for_id(_app: &AppHandle<Wry>, _s: &str) -> tauri::Result<()> {
+    Ok(())
 }
