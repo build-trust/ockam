@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use crate::error::ApiError;
-use ockam_identity::{identities, IdentityIdentifier};
+use ockam_identity::identities;
 
 use super::{RoleInShare, SentInvitation, ShareScope};
 
@@ -29,11 +29,11 @@ pub struct CreateServiceInvitation {
     #[n(3)] pub recipient_email: String,
 
     // TODO: Should route be a MultiAddr?
-    #[n(4)] pub project_identity: IdentityIdentifier,
+    #[n(4)] pub project_identity: String,
     #[n(5)] pub project_route: String,
-    #[n(6)] pub project_authority_identity: IdentityIdentifier,
+    #[n(6)] pub project_authority_identity: String,
     #[n(7)] pub project_authority_route: String,
-    #[n(8)] pub shared_node_identity: IdentityIdentifier,
+    #[n(8)] pub shared_node_identity: String,
     #[n(9)] pub shared_node_route: String,
 }
 
@@ -70,11 +70,12 @@ impl CreateServiceInvitation {
             recipient_email: recipient_email.as_ref().to_string(),
             project_identity: project
                 .identity
-                .ok_or(ApiError::generic("Project identity is missing"))?,
+                .ok_or(ApiError::generic("Project identity is missing"))?
+                .to_string(),
             project_route: project.access_route,
-            project_authority_identity: project_authority_identifier,
+            project_authority_identity: project_authority_identifier.to_string(),
             project_authority_route,
-            shared_node_identity: node_identifier,
+            shared_node_identity: node_identifier.to_string(),
             shared_node_route: service_route.as_ref().to_string(),
         })
     }
