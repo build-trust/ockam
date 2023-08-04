@@ -73,6 +73,10 @@ async fn run_impl(
         oidc_service.get_token_interactively(&opts).await?
     };
 
+    let user_info = oidc_service
+        .wait_for_email_verification(&token, &opts)
+        .await?;
+
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     enroll_with_node(ctx, &opts, &CloudOpts::route(), &node_name, token)
@@ -83,10 +87,11 @@ async fn run_impl(
     delete_embedded_node(&opts, &node_name).await;
 
     opts.terminal.write_line(&fmt_ok!(
-        "Enrolled {} as one of the Ockam identities of your Orchestrator account.",
+        "Enrolled {} as one of the Ockam identities of your Orchestrator account {}.",
         identifier
             .to_string()
-            .color(OckamColor::PrimaryResource.color())
+            .color(OckamColor::PrimaryResource.color()),
+        user_info.email
     ))?;
     Ok(())
 }
