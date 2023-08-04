@@ -1,8 +1,8 @@
 use tauri::{
     AppHandle, CustomMenuItem, Manager, State, SystemTrayMenu, SystemTrayMenuItem,
-    SystemTraySubmenu,
+    SystemTraySubmenu, Wry,
 };
-use tracing::debug;
+use tracing::{debug, trace, warn};
 
 use ockam_api::cloud::share::{InvitationWithAccess, ReceivedInvitation, SentInvitation};
 
@@ -177,4 +177,48 @@ fn accepted_invite_menu(invitation: &InvitationWithAccess) -> SystemTraySubmenu 
         );
 
     SystemTraySubmenu::new(id, submenu)
+}
+
+pub(crate) fn dispatch_click_event(app: &AppHandle<Wry>, id: &str) -> tauri::Result<()> {
+    let segments = id
+        .splitn(4, '-')
+        .skip_while(|segment| segment == &"invitation")
+        .collect::<Vec<&str>>();
+    match segments.as_slice() {
+        ["accepted", "connect", id] => on_connect(app, id),
+        ["received", "accept", id] => on_accept(app, id),
+        ["received", "decline", id] => on_decline(app, id),
+        ["sent", "cancel", id] => on_cancel(app, id),
+        other => {
+            warn!(?other, "unexpected menu ID");
+            Ok(())
+        }
+    }
+}
+
+fn on_accept(app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {
+    trace!(?invite_id, "accepting invite via spawn");
+
+    let app_handle = app.clone();
+    let invite_id = invite_id.to_string();
+    tauri::async_runtime::spawn(async move {
+        super::commands::accept_invitation(invite_id, app_handle).await
+    });
+
+    Ok(())
+}
+
+fn on_cancel(_app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {
+    trace!(?invite_id, "canceling invite via spawn");
+    todo!()
+}
+
+fn on_connect(_app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {
+    trace!(?invite_id, "connecting to service via spawn");
+    todo!()
+}
+
+fn on_decline(_app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {
+    trace!(?invite_id, "declining invite via spawn");
+    todo!()
 }
