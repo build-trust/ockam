@@ -7,7 +7,6 @@ use tracing::debug;
 
 use ockam::Context;
 use ockam_api::cloud::share::{CreateServiceInvitation, SentInvitation};
-use ockam_identity::IdentityIdentifier;
 
 use crate::node::util::delete_embedded_node;
 use crate::util::api::{self, CloudOpts};
@@ -26,11 +25,11 @@ pub struct ServiceCreateCommand {
     pub project_id: String,
     pub recipient_email: String,
 
-    pub project_identity: IdentityIdentifier,
+    pub project_identity: String,
     pub project_route: String,
-    pub project_authority_identity: IdentityIdentifier,
+    pub project_authority_identity: String,
     pub project_authority_route: String,
-    pub shared_node_identity: IdentityIdentifier,
+    pub shared_node_identity: String,
     pub shared_node_route: String,
 
     #[arg(long, short = 'x')]
