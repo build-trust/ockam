@@ -1,0 +1,6 @@
+```sh
+# export an existing identity to use as an authority
+$ authority_id=$(ockam identity show <IDENTITY NAME> --full --encoding hex)
+
+$ ockam trust-context add-trusted-authority $authority_id
+```

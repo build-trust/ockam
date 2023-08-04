@@ -1,14 +1,16 @@
-use crate::{
-    Credential, Credentials, Identities, Identity, IdentityError, IdentityIdentifier,
-    SecureChannelTrustInfo, TrustContext, TrustPolicy, XXVault,
-};
+use serde::{Deserialize, Serialize};
+use tracing::info;
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error, Message, Result};
 use ockam_vault::{KeyId, PublicKey, SecretAttributes, Signature};
-use serde::{Deserialize, Serialize};
-use tracing::info;
+
+use crate::{
+    Credential, Credentials, Identities, Identity, IdentityError, IdentityIdentifier,
+    SecureChannelTrustInfo, TrustContext, TrustPolicy, XXVault,
+};
 
 /// Interface for a state machine in a key exchange protocol
 #[async_trait]
@@ -210,7 +212,7 @@ impl CommonStateMachine {
                     .identities
                     .receive_presented_credential(
                         &their_identity.identifier,
-                        &[trust_context.authority()?.identity().await?],
+                        &trust_context.authorities().await?,
                         credential,
                     )
                     .await;

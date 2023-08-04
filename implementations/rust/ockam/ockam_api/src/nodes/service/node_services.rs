@@ -554,6 +554,7 @@ impl NodeManagerWorker {
                 i.identifier(),
                 None,
             )),
+            vec![],
         );
 
         node_manager

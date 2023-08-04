@@ -12,12 +12,23 @@ pub struct TrustContext {
     id: String,
     /// Authority capable of retrieving credentials
     authority: Option<AuthorityService>,
+    /// List of authorities which can be used to verify credentials in addition to the authority
+    /// issuing credentials above
+    trusted_authorities: Vec<Identity>,
 }
 
 impl TrustContext {
     /// Create a new Trust Context
-    pub fn new(id: String, authority: Option<AuthorityService>) -> Self {
-        Self { id, authority }
+    pub fn new(
+        id: String,
+        authority: Option<AuthorityService>,
+        trusted_authorities: Vec<Identity>,
+    ) -> Self {
+        Self {
+            id,
+            authority,
+            trusted_authorities,
+        }
     }
 
     /// Return the ID of the Trust Context
@@ -34,6 +45,8 @@ impl TrustContext {
 
     /// Return the authority identities attached to this trust context
     pub async fn authorities(&self) -> Result<Vec<Identity>> {
-        Ok(vec![self.authority()?.identity().await?])
+        let mut result = self.trusted_authorities.clone();
+        result.push(self.authority()?.identity().await?);
+        Ok(result)
     }
 }

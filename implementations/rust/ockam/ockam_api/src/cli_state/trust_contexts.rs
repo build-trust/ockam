@@ -1,7 +1,12 @@
-use super::Result;
-use crate::config::cli::TrustContextConfig;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
+
+use ockam_identity::{Identity, IdentityIdentifier};
+
+use crate::cli_state::StateItemTrait;
+use crate::config::cli::TrustContextConfig;
+
+use super::Result;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TrustContextsState {
@@ -19,6 +24,23 @@ impl TrustContextState {
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    pub fn id(&self) -> &str {
+        &self.config.id()
+    }
+
+    pub fn add_trusted_authority(&mut self, authority_identity: Identity) -> Result<()> {
+        self.config.add_trusted_authority(authority_identity);
+        self.persist()
+    }
+
+    pub fn authority_identity(&self) -> Result<&str> {
+        Ok(self.config.authority()?.identity_str())
+    }
+
+    pub fn trusted_authorities(&self) -> Vec<IdentityIdentifier> {
+        self.config.trusted_authorities()
+    }
 }
 
 impl Display for TrustContextState {
@@ -29,10 +51,12 @@ impl Display for TrustContextState {
 }
 
 mod traits {
-    use super::*;
+    use ockam_core::async_trait;
+
     use crate::cli_state::file_stem;
     use crate::cli_state::traits::*;
-    use ockam_core::async_trait;
+
+    use super::*;
 
     #[async_trait]
     impl StateDirTrait for TrustContextsState {

@@ -1,10 +1,11 @@
 //! Configuration files used by the ockam CLI
 
-use crate::cli_state::{CliStateError, CredentialState, StateItemTrait};
-use crate::cloud::project::Project;
-use crate::config::{lookup::ConfigLookup, ConfigValues};
-use crate::error::ApiError;
-use crate::{cli_state, multiaddr_to_transport_route, DefaultAddress, HexByteVec};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Result, Route};
 use ockam_identity::credential::Credential;
@@ -15,10 +16,12 @@ use ockam_identity::{
 };
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpTransport;
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::path::PathBuf;
-use std::str::FromStr;
+
+use crate::cli_state::{CliStateError, CredentialState, StateItemTrait};
+use crate::cloud::project::Project;
+use crate::config::{lookup::ConfigLookup, ConfigValues};
+use crate::error::ApiError;
+use crate::{cli_state, multiaddr_to_transport_route, DefaultAddress, HexByteVec};
 
 use super::lookup::ProjectLookup;
 
@@ -80,14 +83,24 @@ impl LegacyCliConfig {
 pub struct TrustContextConfig {
     id: String,
     authority: Option<TrustAuthorityConfig>,
+    trusted_authorities: Option<Vec<Identity>>,
     path: Option<PathBuf>,
 }
 
 impl TrustContextConfig {
-    pub fn new(id: String, authority: Option<TrustAuthorityConfig>) -> Self {
+    pub fn new(
+        id: String,
+        authority: Option<TrustAuthorityConfig>,
+        trusted_authorities: Vec<Identity>,
+    ) -> Self {
         Self {
             id,
             authority,
+            trusted_authorities: if trusted_authorities.is_empty() {
+                None
+            } else {
+                Some(trusted_authorities)
+            },
             path: None,
         }
     }
@@ -108,6 +121,24 @@ impl TrustContextConfig {
         self.authority
             .as_ref()
             .ok_or_else(|| ApiError::generic("Missing authority on trust context config"))
+    }
+
+    pub fn trusted_authorities(&self) -> Vec<IdentityIdentifier> {
+        self.trusted_authorities
+            .clone()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|a| a.identifier())
+            .collect()
+    }
+
+    pub fn add_trusted_authority(&mut self, authority_identity: Identity) {
+        if let Some(mut authorities) = self.trusted_authorities.clone() {
+            authorities.push(authority_identity);
+            self.trusted_authorities = Some(authorities);
+        } else {
+            self.trusted_authorities = Some(vec![authority_identity]);
+        }
     }
 
     pub async fn to_trust_context(
@@ -138,7 +169,11 @@ impl TrustContextConfig {
             None
         };
 
-        Ok(TrustContext::new(self.id.clone(), authority))
+        Ok(TrustContext::new(
+            self.id.clone(),
+            authority,
+            self.trusted_authorities.clone().unwrap_or_default(),
+        ))
     }
 
     pub fn from_authority_identity(
@@ -152,6 +187,7 @@ impl TrustContextConfig {
                 authority_identity.to_string(),
                 own_cred,
             )),
+            vec![],
         );
 
         Ok(trust_context)
@@ -169,6 +205,7 @@ impl TryFrom<CredentialState> for TrustContextConfig {
         Ok(TrustContextConfig::new(
             issuer.identifier().to_string(),
             Some(authority),
+            vec![],
         ))
     }
 }
@@ -193,7 +230,7 @@ impl TryFrom<Project> for TrustContextConfig {
             _ => None,
         };
 
-        Ok(TrustContextConfig::new(project_info.id, authority))
+        Ok(TrustContextConfig::new(project_info.id, authority, vec![]))
     }
 }
 
@@ -219,6 +256,7 @@ impl TryFrom<ProjectLookup> for TrustContextConfig {
         Ok(TrustContextConfig::new(
             project_lookup.id.clone(),
             authority,
+            vec![],
         ))
     }
 }

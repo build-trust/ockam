@@ -1,0 +1,2 @@
+A trusted authority identity can be added to a TrustContext with the add-trusted-authority command.
+This authority will be used when receiving a credential from another party during the creation of a secure channel.

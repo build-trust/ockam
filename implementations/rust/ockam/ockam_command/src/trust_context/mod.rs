@@ -1,3 +1,4 @@
+mod add_trusted_authority;
 mod create;
 mod default;
 mod delete;
@@ -8,6 +9,7 @@ use clap::{Args, Subcommand};
 
 use crate::{docs, CommandGlobalOpts};
 
+use crate::trust_context::add_trusted_authority::AddTrustedAuthorityCommand;
 use crate::trust_context::default::DefaultCommand;
 use crate::trust_context::delete::DeleteCommand;
 use crate::trust_context::list::ListCommand;
@@ -31,6 +33,7 @@ pub struct TrustContextCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum TrustContextSubcommand {
     Create(CreateCommand),
+    AddTrustedAuthority(AddTrustedAuthorityCommand),
     Show(ShowCommand),
     Delete(DeleteCommand),
     List(ListCommand),
@@ -41,6 +44,7 @@ impl TrustContextCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         match self.subcommand {
             TrustContextSubcommand::Create(c) => c.run(opts),
+            TrustContextSubcommand::AddTrustedAuthority(c) => c.run(opts),
             TrustContextSubcommand::Show(cmd) => cmd.run(opts),
             TrustContextSubcommand::List(cmd) => cmd.run(opts),
             TrustContextSubcommand::Delete(cmd) => cmd.run(opts),
