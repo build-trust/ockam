@@ -4539,6 +4539,7 @@ dependencies = [
  "tauri-plugin-positioner",
  "tauri-runtime",
  "thiserror",
+ "tokio",
  "tracing",
 ]
 
