@@ -1,13 +1,15 @@
-use crate::common::{
+use crate::v2_common::{
     message_should_not_pass, message_should_not_pass_with_ctx, message_should_pass_with_ctx,
 };
 use ockam_core::{route, AllowAll, Result};
-use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
+use ockam_identity::v2::{
+    secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions,
+};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use std::time::Duration;
 
-mod common;
+mod v2_common;
 
 // Alice: Secure Channel
 // Bob: Secure Channel listener
@@ -21,16 +23,28 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
+    let alice_key = alice_secure_channels
+        .identities()
+        .purpose_keys()
+        .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
+        .await?;
+
     let bob = bob_secure_channels
         .identities()
         .identities_creation()
         .create_identity()
         .await?;
+    let bob_key = bob_secure_channels
+        .identities()
+        .purpose_keys()
+        .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
+        .await?;
 
     let bob_listener = bob_secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob.identifier(),
+            bob.identifier(),
+            bob_key,
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -39,7 +53,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
-            &alice.identifier(),
+            alice.identifier(),
+            alice_key,
             route!["listener"],
             SecureChannelOptions::new(),
         )
@@ -101,21 +116,33 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
+    let alice_key = alice_secure_channels
+        .identities()
+        .purpose_keys()
+        .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
+        .await?;
+
     let bob = bob_secure_channels
         .identities()
         .identities_creation()
         .create_identity()
         .await?;
+    let bob_key = bob_secure_channels
+        .identities()
+        .purpose_keys()
+        .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
+        .await?;
 
     let bob_options = SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id());
     let bob_listener = bob_secure_channels
-        .create_secure_channel_listener(ctx, &bob.identifier(), "listener", bob_options)
+        .create_secure_channel_listener(ctx, bob.identifier(), bob_key, "listener", bob_options)
         .await?;
 
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
-            &alice.identifier(),
+            alice.identifier(),
+            alice_key,
             route![connection_to_bob, "listener"],
             SecureChannelOptions::new(),
         )

@@ -4,8 +4,9 @@ use rand::random;
 
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, AllowAll, Result, Route};
+use ockam_identity::v2::models::Identifier;
 use ockam_identity::v2::{
-    secure_channels, IdentityIdentifier, SecureChannelListenerOptions, SecureChannelOptions,
+    secure_channels, Purpose, PurposeKey, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannels,
 };
 use ockam_node::{Context, MessageReceiveOptions};
@@ -90,7 +91,7 @@ async fn check_message_flow_with_ctx(
 
 #[allow(dead_code)]
 pub struct SecureChannelListenerInfo {
-    pub identifier: IdentityIdentifier,
+    pub identifier: Identifier,
     pub secure_channels: Arc<SecureChannels>,
     pub flow_control_id: FlowControlId,
 }
@@ -117,11 +118,15 @@ pub async fn create_secure_channel_listener(
     let identities_creation = secure_channels.identities().identities_creation();
 
     let identity = identities_creation.create_identity().await?;
-
-    let identifier = identity.identifier();
+    let identifier = identity.identifier().clone();
+    let key = secure_channels
+        .identities()
+        .purpose_keys()
+        .create_purpose_key(&identifier, Purpose::SecureChannel)
+        .await?;
     let options = SecureChannelListenerOptions::new().as_consumer(flow_control_id);
     let listener = secure_channels
-        .create_secure_channel_listener(ctx, &identifier, "listener", options)
+        .create_secure_channel_listener(ctx, &identifier, key, "listener", options)
         .await?;
 
     let info = SecureChannelListenerInfo {
@@ -136,7 +141,8 @@ pub async fn create_secure_channel_listener(
 #[allow(dead_code)]
 pub struct SecureChannelInfo {
     pub secure_channels: Arc<SecureChannels>,
-    pub identifier: IdentityIdentifier,
+    pub identifier: Identifier,
+    pub key: PurposeKey,
     pub address: Address,
 }
 
@@ -149,12 +155,17 @@ pub async fn create_secure_channel(
     let identities_creation = secure_channels.identities().identities_creation();
 
     let identity = identities_creation.create_identity().await?;
-
-    let identifier = identity.identifier();
+    let identifier = identity.identifier().clone();
+    let key = secure_channels
+        .identities()
+        .purpose_keys()
+        .create_purpose_key(&identifier, Purpose::SecureChannel)
+        .await?;
     let address = secure_channels
         .create_secure_channel(
             ctx,
             &identifier,
+            key.clone(),
             route![connection.clone(), "listener"],
             SecureChannelOptions::new(),
         )
@@ -165,6 +176,7 @@ pub async fn create_secure_channel(
     let info = SecureChannelInfo {
         secure_channels,
         identifier,
+        key,
         address,
     };
 

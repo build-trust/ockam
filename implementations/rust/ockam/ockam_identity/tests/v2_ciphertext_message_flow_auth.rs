@@ -1,15 +1,15 @@
 use core::time::Duration;
 
 use ockam_core::{route, Result};
-use ockam_identity::SecureChannelOptions;
+use ockam_identity::v2::SecureChannelOptions;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 
-use crate::common::{
+use crate::v2_common::{
     create_secure_channel, create_secure_channel_listener, message_should_not_pass,
 };
 
-mod common;
+mod v2_common;
 
 // Alice: TCP connection + Secure Channel
 // Bob: TCP listener + Secure Channel listener
@@ -50,6 +50,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             ctx,
             &channel_to_bob.identifier,
+            channel_to_bob.key,
             route![connection_to_bob.clone(), "listener"],
             SecureChannelOptions::new().with_timeout(Duration::from_secs(1)),
         )

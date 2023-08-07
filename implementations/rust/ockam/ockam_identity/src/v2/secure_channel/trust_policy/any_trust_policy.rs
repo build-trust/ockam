@@ -30,8 +30,8 @@ impl<F: TrustPolicy, S: TrustPolicy> TrustPolicy for AnyTrustPolicy<F, S> {
 
 #[cfg(test)]
 mod test {
-    use crate::identity::IdentityIdentifier;
-    use crate::secure_channel::{SecureChannelTrustInfo, TrustPolicy};
+    use super::super::super::super::models::Identifier;
+    use super::super::super::super::secure_channel::{SecureChannelTrustInfo, TrustPolicy};
     use ockam_core::async_trait;
     use ockam_core::Result;
 
@@ -47,7 +47,7 @@ mod test {
             }
         }
 
-        let id = IdentityIdentifier::random();
+        let id = Identifier::try_from("Iabababababababababababababababababababab").unwrap();
         let trust_info = SecureChannelTrustInfo::new(id);
 
         assert!(TrustPolicyStub(true)
