@@ -10,7 +10,7 @@ use ockam_node::{Context, WorkerBuilder};
 
 use super::super::credentials::credentials_server_worker::CredentialsServerWorker;
 use super::super::credentials::Credentials;
-use super::super::models::{Credential, CredentialAndPurposeKey, Identifier};
+use super::super::models::{CredentialAndPurposeKey, Identifier};
 use super::super::{IdentitySecureChannelLocalInfo, TrustContext};
 
 /// This trait allows an identity to send its credential to another identity
@@ -25,7 +25,7 @@ pub trait CredentialsServer: Send + Sync {
         ctx: &Context,
         route: Route,
         authorities: &[Identifier],
-        credential: Credential,
+        credential: CredentialAndPurposeKey,
     ) -> Result<()>;
 
     /// Present credential to other party, route shall use secure channel
@@ -33,7 +33,7 @@ pub trait CredentialsServer: Send + Sync {
         &self,
         ctx: &Context,
         route: Route,
-        credential: Credential,
+        credential: CredentialAndPurposeKey,
     ) -> Result<()>;
 
     /// Start this service as a worker
@@ -61,7 +61,7 @@ impl CredentialsServer for CredentialsServerModule {
         ctx: &Context,
         route: Route,
         authorities: &[Identifier],
-        credential: Credential,
+        credential: CredentialAndPurposeKey,
     ) -> Result<()> {
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
@@ -98,12 +98,7 @@ impl CredentialsServer for CredentialsServerModule {
 
         let credential_and_purpose_key: CredentialAndPurposeKey = dec.decode()?;
         self.credentials
-            .receive_presented_credential(
-                &their_id,
-                authorities,
-                &credential_and_purpose_key.purpose_key_attestation,
-                &credential_and_purpose_key.credential,
-            )
+            .receive_presented_credential(&their_id, authorities, &credential_and_purpose_key)
             .await?;
 
         Ok(())
@@ -114,7 +109,7 @@ impl CredentialsServer for CredentialsServerModule {
         &self,
         ctx: &Context,
         route: Route,
-        credential: Credential,
+        credential: CredentialAndPurposeKey,
     ) -> Result<()> {
         let buf = request(
             ctx,

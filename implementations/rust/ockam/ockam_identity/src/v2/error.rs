@@ -45,6 +45,7 @@ pub enum IdentityError {
     UnknownChannelMsgDestination,
     InvalidLocalInfoType,
     DuplicateSecureChannel,
+    ConsistencyError,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

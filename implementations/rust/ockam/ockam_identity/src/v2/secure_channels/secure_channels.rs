@@ -60,7 +60,7 @@ impl SecureChannels {
     pub async fn create_secure_channel_listener(
         &self,
         ctx: &Context,
-        identifier: &Identifier,
+        identifier: &Identifier, // FIXME: Remove
         purpose_key: PurposeKey,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
@@ -86,7 +86,7 @@ impl SecureChannels {
     pub async fn create_secure_channel(
         &self,
         ctx: &Context,
-        identifier: &Identifier,
+        identifier: &Identifier, // FIXME: Remove
         purpose_key: PurposeKey,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,

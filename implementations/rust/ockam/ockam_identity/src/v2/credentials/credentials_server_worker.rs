@@ -80,8 +80,7 @@ impl CredentialsServerWorker {
                     .receive_presented_credential(
                         &sender,
                         self.trust_context.authorities().await?.as_slice(),
-                        &credential_and_purpose_key.purpose_key_attestation,
-                        &credential_and_purpose_key.credential,
+                        &credential_and_purpose_key,
                     )
                     .await;
 
@@ -112,8 +111,7 @@ impl CredentialsServerWorker {
                     .receive_presented_credential(
                         &sender,
                         self.trust_context.authorities().await?.as_slice(),
-                        &credential_and_purpose_key.purpose_key_attestation,
-                        &credential_and_purpose_key.credential,
+                        &credential_and_purpose_key,
                     )
                     .await;
 

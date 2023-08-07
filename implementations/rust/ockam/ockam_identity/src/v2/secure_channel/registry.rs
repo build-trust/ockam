@@ -70,13 +70,13 @@ impl SecureChannelRegistryEntry {
     }
 
     /// Our `IdentityIdentifier`
-    pub fn my_id(&self) -> Identifier {
-        self.my_id.clone()
+    pub fn my_id(&self) -> &Identifier {
+        &self.my_id
     }
 
     /// Their `IdentityIdentifier`
-    pub fn their_id(&self) -> Identifier {
-        self.their_id.clone()
+    pub fn their_id(&self) -> &Identifier {
+        &self.their_id
     }
 
     /// Their `Decryptor` address

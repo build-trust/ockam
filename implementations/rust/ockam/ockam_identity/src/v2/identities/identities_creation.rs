@@ -35,9 +35,7 @@ impl IdentitiesCreation {
     async fn make_and_persist_identity(&self, key_id: Option<&KeyId>) -> Result<Identity> {
         let identity_keys = IdentitiesKeys::new(self.vault.clone());
         let identity = identity_keys.create_initial_key(key_id).await?;
-        self.repository
-            .update_identity(identity.identifier(), identity.change_history())
-            .await?;
+        self.repository.update_identity(&identity).await?;
         Ok(identity)
     }
 }

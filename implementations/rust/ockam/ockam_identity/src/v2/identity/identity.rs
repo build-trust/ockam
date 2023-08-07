@@ -2,6 +2,8 @@ use super::super::models::{Change, ChangeHash, ChangeHistory, Identifier};
 use super::super::IdentitiesVault;
 use super::super::IdentityError;
 use super::verified_change::VerifiedChange;
+use super::IdentityHistoryComparison;
+use core::cmp::Ordering;
 use core::fmt;
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::sync::Arc;
@@ -121,11 +123,20 @@ impl Identity {
         Self::import_from_change_history(change_history, vault).await
     }
 
-    //
-    // /// Compare to a previously known state of the same `Identity`
-    // pub fn compare(&self, known: &Self) -> IdentityHistoryComparison {
-    //     self.change_history.compare(&known.change_history)
-    // }
+    /// Compare to a previously known state of the same `Identity`
+    pub fn compare(&self, known: &Self) -> IdentityHistoryComparison {
+        for change_pair in self.changes.iter().zip(known.changes.iter()) {
+            if change_pair.0.change_hash() != change_pair.1.change_hash() {
+                return IdentityHistoryComparison::Conflict;
+            }
+        }
+
+        match self.changes.len().cmp(&known.changes.len()) {
+            Ordering::Less => IdentityHistoryComparison::Older,
+            Ordering::Equal => IdentityHistoryComparison::Equal,
+            Ordering::Greater => IdentityHistoryComparison::Newer,
+        }
+    }
 }
 
 impl Display for Identity {
@@ -157,4 +168,6 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
 "#;
         assert_eq!(actual, expected)
     }
+
+    // TODO: Compare test
 }

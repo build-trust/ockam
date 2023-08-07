@@ -1,8 +1,8 @@
 use super::super::identities::AttributesEntry;
 use super::super::models::{
-    Attributes, Credential, CredentialData, CredentialSignature, CredentialSigningKey,
-    Ed25519Signature, Identifier, PurposeKeyAttestation, PurposeKeyAttestationData,
-    PurposePublicKey, VersionedData,
+    Attributes, Credential, CredentialAndPurposeKey, CredentialAndPurposeKeyData, CredentialData,
+    CredentialSignature, CredentialSigningKey, Ed25519Signature, Identifier, PurposePublicKey,
+    VersionedData,
 };
 use super::super::utils::{add_seconds, now};
 use super::super::{
@@ -27,12 +27,11 @@ impl Credentials {
         &self,
         subject: &Identifier,
         authorities: &[Identifier],
-        purpose_key_attestation: &PurposeKeyAttestation,
-        credential: &Credential,
-    ) -> Result<(CredentialData, PurposeKeyAttestationData)> {
+        credential_and_purpose_key: &CredentialAndPurposeKey,
+    ) -> Result<CredentialAndPurposeKeyData> {
         let purpose_key_data = self
             .purpose_keys
-            .verify_purpose_key_attestation(purpose_key_attestation)
+            .verify_purpose_key_attestation(&credential_and_purpose_key.purpose_key_attestation)
             .await?;
 
         if !authorities.contains(&purpose_key_data.subject) {
@@ -56,9 +55,9 @@ impl Credentials {
 
         let purpose_key = PublicKey::new(purpose_key.0.to_vec(), SecretType::Ed25519);
 
-        let versioned_data_hash = Vault::sha256(&credential.data);
+        let versioned_data_hash = Vault::sha256(&credential_and_purpose_key.credential.data);
 
-        let signature = match &credential.signature {
+        let signature = match &credential_and_purpose_key.credential.signature {
             CredentialSignature::Ed25519Signature(signature) => {
                 Signature::new(signature.0.to_vec())
             }
@@ -75,7 +74,8 @@ impl Credentials {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        let versioned_data: VersionedData = minicbor::decode(&credential.data)?;
+        let versioned_data: VersionedData =
+            minicbor::decode(&credential_and_purpose_key.credential.data)?;
         if versioned_data.version != 1 {
             return Err(IdentityError::UnknownCredentialVersion.into());
         }
@@ -108,7 +108,10 @@ impl Credentials {
         // FIXME: Verify if given authority is allowed to issue credentials with given Schema
         // FIXME: Verify if Schema aligns with Attributes
 
-        Ok((credential_data, purpose_key_data))
+        Ok(CredentialAndPurposeKeyData {
+            credential_data,
+            purpose_key_data,
+        })
     }
 
     /// Create a signed credential based on the given values.
@@ -118,7 +121,7 @@ impl Credentials {
         issuer_purpose_key: &PurposeKey,
         subject_attributes: Attributes,
         ttl: Duration,
-    ) -> Result<Credential> {
+    ) -> Result<CredentialAndPurposeKey> {
         let subject_change_history = self.identities_repository.get_identity(subject).await?;
         let subject_identity =
             Identity::import_from_change_history(subject_change_history, self.vault.clone())
@@ -160,31 +163,37 @@ impl Credentials {
         let signature = Ed25519Signature(signature.try_into().unwrap());
         let signature = CredentialSignature::Ed25519Signature(signature);
 
-        Ok(Credential {
-            data: vec![],
+        let credential = Credential {
+            data: versioned_data,
             signature,
-        })
+        };
+
+        let res = CredentialAndPurposeKey {
+            credential,
+            purpose_key_attestation: issuer_purpose_key.attestation().clone(),
+        };
+
+        Ok(res)
     }
 
     pub async fn receive_presented_credential(
         &self,
         subject: &Identifier,
         authorities: &[Identifier],
-        purpose_key_attestation: &PurposeKeyAttestation,
-        credential: &Credential,
+        credential_and_purpose_key_attestation: &CredentialAndPurposeKey,
     ) -> Result<()> {
-        let (credential_data, purpose_key_data) = self
-            .verify_credential(subject, authorities, purpose_key_attestation, credential)
+        let credential_data = self
+            .verify_credential(subject, authorities, credential_and_purpose_key_attestation)
             .await?;
 
         self.identities_repository
             .put_attributes(
                 subject,
                 AttributesEntry::new(
-                    credential_data.subject_attributes.map,
+                    credential_data.credential_data.subject_attributes.map,
                     now()?,
-                    Some(credential_data.expires_at),
-                    Some(purpose_key_data.subject),
+                    Some(credential_data.credential_data.expires_at),
+                    Some(credential_data.purpose_key_data.subject),
                 ),
             )
             .await?;
@@ -236,12 +245,20 @@ mod tests {
             map,
         };
 
-        let _credential = credentials
+        let credential = credentials
             .issue_credential(
                 subject.identifier(),
                 &credentials_key,
                 subject_attributes,
                 Duration::from_secs(60),
+            )
+            .await?;
+
+        let _res = credentials
+            .verify_credential(
+                subject.identifier(),
+                &[issuer.identifier().clone()],
+                &credential,
             )
             .await?;
 

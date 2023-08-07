@@ -123,10 +123,16 @@ impl CommonStateMachine {
         peer: IdentityAndCredentials,
         peer_public_key: &PublicKey,
     ) -> Result<()> {
-        // FIXME: Make sure that updates the repository
-        let identity =
-            Identity::import_from_change_history(peer.change_history, self.identities.vault())
-                .await?;
+        let identity = Identity::import_from_change_history(
+            peer.change_history.clone(),
+            self.identities.vault(),
+        )
+        .await?;
+
+        self.identities
+            .repository()
+            .update_identity(&identity)
+            .await?;
 
         let purpose_key_data = self
             .identities
@@ -181,8 +187,7 @@ impl CommonStateMachine {
                     .receive_presented_credential(
                         their_identity.identifier(),
                         &[trust_context.authority()?.identifier().clone()],
-                        &credential.purpose_key_attestation,
-                        &credential.credential,
+                        &credential,
                     )
                     .await;
 

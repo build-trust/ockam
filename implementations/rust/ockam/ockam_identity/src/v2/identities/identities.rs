@@ -1,8 +1,9 @@
 use super::super::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
 use super::super::{
-    Credentials, IdentitiesBuilder, IdentitiesCreation, IdentitiesReader, IdentitiesStorage,
-    PurposeKeys,
+    Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation,
+    IdentitiesReader, IdentitiesStorage, PurposeKeys,
 };
+
 use ockam_core::compat::sync::Arc;
 use ockam_vault::Vault;
 
@@ -58,11 +59,11 @@ impl Identities {
             self.identities_repository.clone(),
         ))
     }
-    //
-    // /// Return the identities credentials server
-    // pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
-    //     Arc::new(CredentialsServerModule::new(self.credentials()))
-    // }
+
+    /// Return the identities credentials server
+    pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
+        Arc::new(CredentialsServerModule::new(self.credentials()))
+    }
 }
 
 impl Identities {
@@ -79,9 +80,10 @@ impl Identities {
 
     /// Return a default builder for identities
     pub fn builder() -> IdentitiesBuilder {
+        let vault = Vault::create();
         IdentitiesBuilder {
-            vault: Vault::create(),
-            repository: IdentitiesStorage::create(),
+            vault: vault.clone(),
+            repository: IdentitiesStorage::create(vault),
         }
     }
 }

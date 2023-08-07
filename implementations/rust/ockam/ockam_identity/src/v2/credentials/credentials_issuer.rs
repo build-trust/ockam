@@ -12,7 +12,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{api, Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
-use super::super::models::{Attributes, Credential, CredentialAndPurposeKey, Identifier, SchemaId};
+use super::super::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
 use super::super::{
     Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo, Purpose, PurposeKey,
     PurposeKeys,
@@ -64,7 +64,10 @@ impl CredentialsIssuer {
         })
     }
 
-    async fn issue_credential(&self, subject: &Identifier) -> Result<Option<Credential>> {
+    async fn issue_credential(
+        &self,
+        subject: &Identifier,
+    ) -> Result<Option<CredentialAndPurposeKey>> {
         let entry = match self
             .identities_repository
             .as_attributes_reader()
