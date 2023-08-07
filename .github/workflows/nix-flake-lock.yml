@@ -23,9 +23,12 @@ jobs:
         # https://github.com/DeterminateSystems/update-flake-lock/releases/tag/v19
         uses: DeterminateSystems/update-flake-lock@dec3bc3c9b11c3b9d547f47dfb579b91a6051603
         with:
-          git-author-name: 'ockam[bot]'
-          git-author-email: 'ockam[bot]@users.noreply.ockam.io'
-          git-committer-name: 'ockam[bot]'
-          git-committer-email: 'ockam[bot]@users.noreply.ockam.io'
+          git-author-name: '${{ secrets.GPG_USER_NAME }}'
+          git-author-email: '${{ secrets.GPG_EMAIL }}'
+          git-committer-name: '${{ secrets.GPG_USER_NAME }}'
+          git-committer-email: '${{ secrets.GPG_EMAIL }}'
+          gpg-passphrase: '${{ secrets.GPG_PASSPHRASE }}'
+          gpg-private-key: '${{ secrets.GPG_PRIVATE_KEY }}'
           path-to-flake-dir: 'tools/nix'
           pr-title: 'chore: Update tools/nix/flake.lock'
+          sign-commits: true
