@@ -6,7 +6,7 @@ use crate::Address;
 pub struct ConsumersInfo(pub(super) BTreeSet<Address>);
 
 impl ConsumersInfo {
-    /// Get [`FlowControlPolicy`] for the given [`Address`]
+    /// Check if given [`Address`] is a consumer
     pub fn contains(&self, address: &Address) -> bool {
         self.0.contains(address)
     }
