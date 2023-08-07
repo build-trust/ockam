@@ -30,5 +30,7 @@ jobs:
           gpg-passphrase: '${{ secrets.GPG_PASSPHRASE }}'
           gpg-private-key: '${{ secrets.GPG_PRIVATE_KEY }}'
           path-to-flake-dir: 'tools/nix'
+          pr-labels: |
+            Type: Dependencies
           pr-title: 'chore: Update tools/nix/flake.lock'
           sign-commits: true
