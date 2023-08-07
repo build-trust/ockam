@@ -30,6 +30,10 @@ jobs:
           gpg-passphrase: '${{ secrets.GPG_PASSPHRASE }}'
           gpg-private-key: '${{ secrets.GPG_PRIVATE_KEY }}'
           path-to-flake-dir: 'tools/nix'
+          pr-assignees: shanesveller
+          pr-reviewers: |
+            etorreborre
+            shanesveller
           pr-labels: |
             Type: Dependencies
           pr-title: 'chore: Update tools/nix/flake.lock'
