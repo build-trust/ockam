@@ -208,7 +208,7 @@ impl Handshake {
         });
         // now remove the ephemeral keys which are not useful anymore
         self.state = state;
-        self.delete_handshake_keys().await?;
+        self.delete_ephemeral_keys().await?;
         Ok(())
     }
 
@@ -344,10 +344,12 @@ impl Handshake {
         Ok(result)
     }
 
-    async fn delete_handshake_keys(&mut self) -> Result<()> {
-        for key_id in vec![self.state.take_s()?, self.state.take_e()?] {
-            self.vault.delete_ephemeral_secret(key_id).await?;
-        }
+    async fn delete_ephemeral_keys(&mut self) -> Result<()> {
+        _ = self
+            .vault
+            .delete_ephemeral_secret(self.state.take_e()?)
+            .await?;
+
         Ok(())
     }
 }

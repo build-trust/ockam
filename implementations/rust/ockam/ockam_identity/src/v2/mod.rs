@@ -1,7 +1,7 @@
 #![allow(missing_docs, dead_code)]
 
 /// Utilities
-mod utils;
+pub mod utils;
 
 /// Errors
 mod error;

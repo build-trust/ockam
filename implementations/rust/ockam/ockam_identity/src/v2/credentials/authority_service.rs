@@ -63,20 +63,15 @@ impl AuthorityService {
             .ok_or(IdentityError::UnknownAuthority)?;
         let credential = retriever.retrieve(ctx, for_identity).await?;
 
-        let (credential_data, _purpose_key_attestation_data) = self
+        let credential_data = self
             .credentials
-            .verify_credential(
-                for_identity,
-                &[self.identifier.clone()],
-                &credential.purpose_key_attestation,
-                &credential.credential,
-            )
+            .verify_credential(for_identity, &[self.identifier.clone()], &credential)
             .await?;
 
         let mut guard = self.inner_cache.write().unwrap();
         *guard = Some(CachedCredential {
             credential: credential.clone(),
-            valid_until: credential_data.expires_at,
+            valid_until: credential_data.credential_data.expires_at,
         });
 
         Ok(credential)
