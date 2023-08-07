@@ -39,3 +39,22 @@ jobs:
             Type: Dependencies
           pr-title: 'chore: Update tools/nix/flake.lock'
           sign-commits: true
+          # see also: /.github/PULL_REQUEST_TEMPLATE.md
+          pr-body: |
+            ## Current behavior
+
+            N/A
+
+            ## Proposed changes
+
+            This is an automated change that has performed the equivalent of
+            `nix flake update --commit-lock-file` against `/tools/nix`. An Ockam
+            employee familiar with Nix should exercise the local Nix content,
+            such as `devShells`, using this branch.
+
+            ## Checks
+
+            - [X] All commits in this Pull Request are [signed](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits) and Verified by Github.
+            - [X] All commits in this Pull Request follow the Ockam [commit message convention](https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#commit-messages).
+            - [X] I accept the Ockam Community [Code of Conduct](https://github.com/build-trust/.github/blob/main/CODE_OF_CONDUCT.md).
+            - [X] I have accepted the Ockam [Contributor License Agreement](https://github.com/build-trust/ockam-contributors/blob/main/CLA.md) by adding my Git/Github details in a row at the end of the [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv) file in a separate pull request to the [build-trust/ockam-contributors](https://github.com/build-trust/ockam-contributors) repository. The easiest way to do this is to [edit the CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/edit/main/CONTRIBUTORS.csv) file in the github web UI and create a PR, this will mark the commit as verified.
