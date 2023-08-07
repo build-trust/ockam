@@ -23,6 +23,7 @@ jobs:
         # https://github.com/DeterminateSystems/update-flake-lock/releases/tag/v19
         uses: DeterminateSystems/update-flake-lock@dec3bc3c9b11c3b9d547f47dfb579b91a6051603
         with:
+          commit-msg: "build: update tools/nix/flake.lock"
           git-author-name: '${{ secrets.GPG_USER_NAME }}'
           git-author-email: '${{ secrets.GPG_EMAIL }}'
           git-committer-name: '${{ secrets.GPG_USER_NAME }}'
