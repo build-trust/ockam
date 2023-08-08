@@ -25,12 +25,11 @@ pub struct CreateCommand {
     #[arg(value_parser = clap::value_parser!(ShareScope))]
     pub scope: ShareScope,
     pub target_id: String,
+    pub recipient_email: String,
     #[arg(default_value_t = RoleInShare::Admin, long, short = 'R', value_parser = clap::value_parser!(RoleInShare))]
     pub grant_role: RoleInShare,
     #[arg(long, short = 'x')]
     pub expires_at: Option<String>,
-    #[arg(long, short = 'e')]
-    pub recipient_email: Option<String>,
     #[arg(default_value = "3", long, short = 'u')]
     pub remaining_uses: Option<usize>,
 }
@@ -101,16 +100,13 @@ async fn run_impl(
     delete_embedded_node(&opts, rpc.node_name()).await;
 
     let plain = fmt_ok!(
-        "Invite {} to {} {} created, with {} remaining uses and expiring at {}.{}",
+        "Invite {} to {} {} created, with {} remaining uses and expiring at {}. {} will be notified via email.",
         sent.id,
         sent.scope,
         sent.target_id,
         sent.remaining_uses,
         sent.expires_at,
         sent.recipient_email
-            .as_ref()
-            .map(|e| format!(" {e} will be notified via email."))
-            .unwrap_or("".to_string())
     );
     let json = serde_json::to_string_pretty(&sent).into_diagnostic()?;
     opts.terminal
