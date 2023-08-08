@@ -1,6 +1,7 @@
 use super::super::identities::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault,
 };
+use super::super::purpose_keys::storage::PurposeKeysRepository;
 use super::super::storage::Storage;
 
 use ockam_core::compat::sync::Arc;
@@ -11,6 +12,7 @@ use ockam_vault::{Vault, VaultStorage};
 pub struct IdentitiesBuilder {
     pub(crate) vault: Arc<dyn IdentitiesVault>,
     pub(crate) repository: Arc<dyn IdentitiesRepository>,
+    pub(crate) purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
 }
 
 /// Return a default identities
@@ -55,8 +57,17 @@ impl IdentitiesBuilder {
         self.repository.clone()
     }
 
+    // TODO: Extend possibilities to create that repository
+    fn purpose_keys_repository(&self) -> Arc<dyn PurposeKeysRepository> {
+        self.purpose_keys_repository.clone()
+    }
+
     /// Build identities
     pub fn build(&self) -> Arc<Identities> {
-        Arc::new(Identities::new(self.vault(), self.repository()))
+        Arc::new(Identities::new(
+            self.vault(),
+            self.repository(),
+            self.purpose_keys_repository(),
+        ))
     }
 }

@@ -6,6 +6,7 @@ use super::super::utils::{add_seconds, now};
 use super::super::{
     IdentitiesKeys, IdentitiesReader, IdentitiesVault, Identity, IdentityError, Purpose, PurposeKey,
 };
+use super::storage::PurposeKeysRepository;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
@@ -17,6 +18,7 @@ pub struct PurposeKeys {
     vault: Arc<dyn IdentitiesVault>,
     identities_reader: Arc<dyn IdentitiesReader>,
     identity_keys: Arc<IdentitiesKeys>,
+    repository: Arc<dyn PurposeKeysRepository>,
 }
 
 impl PurposeKeys {
@@ -32,12 +34,18 @@ impl PurposeKeys {
         vault: Arc<dyn IdentitiesVault>,
         identities_reader: Arc<dyn IdentitiesReader>,
         identity_keys: Arc<IdentitiesKeys>,
+        repository: Arc<dyn PurposeKeysRepository>,
     ) -> Self {
         Self {
             vault,
             identities_reader,
             identity_keys,
+            repository,
         }
+    }
+
+    pub fn repository(&self) -> Arc<dyn PurposeKeysRepository> {
+        self.repository.clone()
     }
 }
 
@@ -47,6 +55,8 @@ impl PurposeKeys {
         identifier: &Identifier,
         purpose: Purpose,
     ) -> Result<PurposeKey> {
+        // TODO: Check if such key already exists and rewrite it correctly (also delete from the Vault)
+
         let identity_change_history = self.identities_reader.get_identity(identifier).await?;
         let identity =
             Identity::import_from_change_history(identity_change_history, self.vault()).await?;
@@ -83,11 +93,11 @@ impl PurposeKeys {
             expires_at,
         };
 
-        let purpose_key_attestation_data = minicbor::to_vec(&purpose_key_attestation_data)?;
+        let purpose_key_attestation_data_binary = minicbor::to_vec(&purpose_key_attestation_data)?;
 
         let versioned_data = VersionedData {
             version: 1,
-            data: purpose_key_attestation_data,
+            data: purpose_key_attestation_data_binary,
         };
         let versioned_data = minicbor::to_vec(&versioned_data)?;
 
@@ -103,22 +113,29 @@ impl PurposeKeys {
             signature,
         };
 
-        Ok(PurposeKey::new(
+        self.repository
+            .set_purpose_key(identifier, purpose, &attestation)
+            .await?;
+
+        let purpose_key = PurposeKey::new(
             identifier.clone(),
             secret_key,
             SecretType::Ed25519,
             purpose,
+            purpose_key_attestation_data,
             attestation,
-        ))
+        );
+
+        Ok(purpose_key)
     }
 
     pub async fn verify_purpose_key_attestation(
         &self,
-        purpose_key_attestation: &PurposeKeyAttestation,
-    ) -> Result<PurposeKeyAttestationData> {
-        let versioned_data_hash = Vault::sha256(&purpose_key_attestation.data);
+        attestation: &PurposeKeyAttestation,
+    ) -> Result<PurposeKey> {
+        let versioned_data_hash = Vault::sha256(&attestation.data);
 
-        let versioned_data: VersionedData = minicbor::decode(&purpose_key_attestation.data)?;
+        let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
 
         if versioned_data.version != 1 {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
@@ -135,7 +152,7 @@ impl PurposeKeys {
         let public_key = identity.get_public_key()?;
 
         let signature = if let PurposeKeyAttestationSignature::Ed25519Signature(signature) =
-            &purpose_key_attestation.signature
+            &attestation.signature
         {
             Signature::new(signature.0.to_vec())
         } else {
@@ -162,7 +179,27 @@ impl PurposeKeys {
 
         // FIXME: purpose_key_data.subject_latest_change_hash
 
-        Ok(purpose_key_data)
+        let (purpose, public_key) = match purpose_key_data.public_key.clone() {
+            PurposePublicKey::SecureChannelAuthenticationKey(public_key) => {
+                (Purpose::SecureChannel, public_key.into())
+            }
+            PurposePublicKey::CredentialSigningKey(public_key) => {
+                (Purpose::Credentials, public_key.into())
+            }
+        };
+
+        let key_id = self.vault.get_key_id(&public_key).await?;
+
+        let purpose_key = PurposeKey::new(
+            purpose_key_data.subject.clone(),
+            key_id,
+            SecretType::Ed25519,
+            purpose,
+            purpose_key_data,
+            attestation.clone(),
+        );
+
+        Ok(purpose_key)
     }
 }
 
@@ -185,15 +222,82 @@ mod tests {
             .create_purpose_key(identity.identifier(), Purpose::SecureChannel)
             .await?;
 
-        let credentials_key_data = purpose_keys
+        let credentials_key = purpose_keys
             .verify_purpose_key_attestation(credentials_key.attestation())
             .await?;
-        let secure_channel_key_data = purpose_keys
+        let secure_channel_key = purpose_keys
             .verify_purpose_key_attestation(secure_channel_key.attestation())
             .await?;
 
-        assert_eq!(identity.identifier(), &credentials_key_data.subject);
-        assert_eq!(identity.identifier(), &secure_channel_key_data.subject);
+        assert_eq!(identity.identifier(), credentials_key.subject());
+        assert_eq!(identity.identifier(), secure_channel_key.subject());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_purpose_keys_are_persisted() -> Result<()> {
+        let identities = identities();
+        let identities_creation = identities.identities_creation();
+        let purpose_keys = identities.purpose_keys();
+
+        let identity = identities_creation.create_identity().await?;
+
+        let credentials_key = purpose_keys
+            .create_purpose_key(identity.identifier(), Purpose::Credentials)
+            .await?;
+
+        assert!(purpose_keys
+            .repository()
+            .retrieve_purpose_key(identity.identifier(), Purpose::Credentials)
+            .await?
+            .is_some());
+        assert!(purpose_keys
+            .repository()
+            .retrieve_purpose_key(identity.identifier(), Purpose::SecureChannel)
+            .await?
+            .is_none());
+
+        let secure_channel_key = purpose_keys
+            .create_purpose_key(identity.identifier(), Purpose::SecureChannel)
+            .await?;
+
+        let key = purpose_keys
+            .repository()
+            .retrieve_purpose_key(identity.identifier(), Purpose::Credentials)
+            .await?
+            .unwrap();
+        purpose_keys
+            .verify_purpose_key_attestation(&key)
+            .await
+            .unwrap();
+        assert_eq!(&key, credentials_key.attestation());
+
+        let key = purpose_keys
+            .repository()
+            .retrieve_purpose_key(identity.identifier(), Purpose::SecureChannel)
+            .await?
+            .unwrap();
+        purpose_keys
+            .verify_purpose_key_attestation(&key)
+            .await
+            .unwrap();
+        assert_eq!(&key, secure_channel_key.attestation());
+
+        let credentials_key2 = purpose_keys
+            .create_purpose_key(identity.identifier(), Purpose::Credentials)
+            .await?;
+
+        let key = purpose_keys
+            .repository()
+            .retrieve_purpose_key(identity.identifier(), Purpose::Credentials)
+            .await?
+            .unwrap();
+        purpose_keys
+            .verify_purpose_key_attestation(&key)
+            .await
+            .unwrap();
+        assert_eq!(&key, credentials_key2.attestation());
 
         Ok(())
     }
