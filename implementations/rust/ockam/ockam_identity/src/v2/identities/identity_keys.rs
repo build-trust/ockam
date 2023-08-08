@@ -4,8 +4,9 @@ use super::super::models::{
     Change, ChangeData, ChangeHash, ChangeHistory, ChangeSignature, Ed25519PublicKey,
     Ed25519Signature, PrimaryPublicKey, VersionedData,
 };
-use super::super::utils::now;
+use super::super::utils::{add_seconds, now};
 use super::super::IdentityError;
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::{KeyId, SecretAttributes, Vault};
@@ -40,6 +41,8 @@ impl IdentitiesKeys {
             Some(last_change) => last_change,
             None => return Err(IdentityError::EmptyIdentity.into()),
         };
+
+        // TODO: Delete the previous key from the Vault
         let last_secret_key = self.get_secret_key(&identity).await?;
 
         let change = self
@@ -78,7 +81,7 @@ impl IdentitiesKeys {
         let public_key = Ed25519PublicKey(public_key.data().try_into().unwrap()); // FIXME
 
         let created_at = now()?;
-        let expires_at = now()?; // FIXME
+        let expires_at = add_seconds(&created_at, 120);
 
         let change_data = ChangeData {
             previous_change: previous.as_ref().map(|x| x.0.clone()),
