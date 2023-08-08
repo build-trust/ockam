@@ -3,6 +3,7 @@ use super::super::IdentitiesVault;
 use super::super::IdentityError;
 use super::verified_change::VerifiedChange;
 use super::IdentityHistoryComparison;
+
 use core::cmp::Ordering;
 use core::fmt;
 use core::fmt::{Display, Formatter};
@@ -152,6 +153,7 @@ impl Display for Identity {
 #[cfg(test)]
 mod tests {
     use super::super::super::identities;
+    use super::*;
 
     #[tokio::test]
     async fn test_display() {
@@ -169,5 +171,46 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
         assert_eq!(actual, expected)
     }
 
-    // TODO: Compare test
+    #[tokio::test]
+    async fn test_compare() -> Result<()> {
+        let identities = identities();
+        let identity1 = identities.identities_creation().create_identity().await?;
+
+        let identity2 = identities
+            .identities_keys()
+            .rotate_key(identity1.clone())
+            .await?;
+
+        let identity3 = identities
+            .identities_keys()
+            .rotate_key(identity1.clone())
+            .await?;
+
+        assert_eq!(
+            identity1.compare(&identity1),
+            IdentityHistoryComparison::Equal
+        );
+        assert_eq!(
+            identity2.compare(&identity2),
+            IdentityHistoryComparison::Equal
+        );
+        assert_eq!(
+            identity3.compare(&identity3),
+            IdentityHistoryComparison::Equal
+        );
+        assert_eq!(
+            identity1.compare(&identity2),
+            IdentityHistoryComparison::Older
+        );
+        assert_eq!(
+            identity2.compare(&identity1),
+            IdentityHistoryComparison::Newer
+        );
+        assert_eq!(
+            identity2.compare(&identity3),
+            IdentityHistoryComparison::Conflict
+        );
+
+        Ok(())
+    }
 }
