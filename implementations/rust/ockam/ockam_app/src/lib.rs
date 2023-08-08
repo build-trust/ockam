@@ -1,4 +1,8 @@
-use crate::app::{configure_tauri_plugin_log, process_application_event, setup_app, AppState};
+#[cfg(feature = "log")]
+use crate::app::configure_tauri_plugin_log;
+#[cfg(feature = "tracing")]
+use crate::app::configure_tracing_log;
+use crate::app::{process_application_event, setup_app, AppState};
 use crate::error::Result;
 use shared_service::tcp_outlet::tcp_outlet_create;
 
@@ -18,12 +22,16 @@ pub fn run() {
     // For now, the application only consists of a system tray with several menu items
     #[cfg_attr(not(feature = "invitations"), allow(unused_mut))]
     let mut builder = tauri::Builder::default()
-        .plugin(configure_tauri_plugin_log())
         .plugin(tauri_plugin_window::init())
         .plugin(tauri_plugin_positioner::init())
         .setup(move |app| setup_app(app))
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![tcp_outlet_create]);
+
+    #[cfg(feature = "log")]
+    {
+        builder = builder.plugin(configure_tauri_plugin_log());
+    }
 
     #[cfg(feature = "invitations")]
     {
