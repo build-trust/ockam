@@ -4,7 +4,7 @@ use super::super::models::{
 use minicbor::{Decode, Encode};
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Credential {
@@ -23,7 +23,7 @@ pub enum CredentialSignature {
     #[n(2)] P256ECDSASignature(#[n(0)] P256ECDSASignature),
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CredentialData {
@@ -36,12 +36,12 @@ pub struct CredentialData {
     #[n(5)] pub expires_at: TimestampInSeconds,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(transparent)]
 pub struct SchemaId(#[n(0)] pub u64);
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Attributes {

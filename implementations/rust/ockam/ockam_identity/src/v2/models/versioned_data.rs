@@ -1,7 +1,7 @@
 use minicbor::{Decode, Encode};
 use ockam_core::compat::vec::Vec;
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct VersionedData {
