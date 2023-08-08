@@ -23,21 +23,21 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let credentials_service = identities.credentials_server();
 
     let authority = identities_creation.create_identity().await?;
-    let authority_key = secure_channels
+    let _authority_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(authority.identifier(), Purpose::Credentials)
         .await?;
 
     let server = identities_creation.create_identity().await?;
-    let server_key = secure_channels
+    let _server_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(server.identifier(), Purpose::SecureChannel)
         .await?;
 
     let client = identities_creation.create_identity().await?;
-    let client_key = secure_channels
+    let _client_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(client.identifier(), Purpose::SecureChannel)
@@ -47,7 +47,6 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_listener(
             ctx,
             server.identifier(),
-            server_key,
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -78,7 +77,6 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             ctx,
             client.identifier(),
-            client_key,
             route!["listener"],
             SecureChannelOptions::new()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
@@ -87,8 +85,8 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
     let credential = credentials
         .issue_credential(
+            authority.identifier(),
             client.identifier(),
-            &authority_key,
             AttributesBuilder::with_schema(SchemaId(0))
                 .with_attribute("is_superuser", "true")
                 .build(),
@@ -122,21 +120,21 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let credentials_service = identities.credentials_server();
 
     let authority = identities_creation.create_identity().await?;
-    let authority_key = secure_channels
+    let _authority_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(authority.identifier(), Purpose::Credentials)
         .await?;
 
     let client1 = identities_creation.create_identity().await?;
-    let client1_key = secure_channels
+    let _client1_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(client1.identifier(), Purpose::SecureChannel)
         .await?;
 
     let client2 = identities_creation.create_identity().await?;
-    let client2_key = secure_channels
+    let _client2_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(client2.identifier(), Purpose::SecureChannel)
@@ -144,8 +142,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
 
     let credential = credentials
         .issue_credential(
+            authority.identifier(),
             client1.identifier(),
-            &authority_key,
             AttributesBuilder::with_schema(SchemaId(0))
                 .with_attribute("is_admin", "true")
                 .build(),
@@ -157,7 +155,6 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_listener(
             ctx,
             client1.identifier(),
-            client1_key,
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -185,8 +182,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
 
     let credential = credentials
         .issue_credential(
+            authority.identifier(),
             client2.identifier(),
-            &authority_key,
             AttributesBuilder::with_schema(SchemaId(0))
                 .with_attribute("is_user", "true")
                 .build(),
@@ -198,7 +195,6 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             ctx,
             client2.identifier(),
-            client2_key,
             route!["listener"],
             SecureChannelOptions::new(),
         )
@@ -250,21 +246,21 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let credentials_service = identities.credentials_server();
 
     let authority = identities_creation.create_identity().await?;
-    let authority_key = secure_channels
+    let _authority_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(authority.identifier(), Purpose::Credentials)
         .await?;
 
     let server = identities_creation.create_identity().await?;
-    let server_key = secure_channels
+    let _server_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(server.identifier(), Purpose::SecureChannel)
         .await?;
 
     let client = identities_creation.create_identity().await?;
-    let client_key = secure_channels
+    let _client_key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(client.identifier(), Purpose::SecureChannel)
@@ -272,7 +268,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     let options = SecureChannelListenerOptions::new();
     let listener = secure_channels
-        .create_secure_channel_listener(ctx, server.identifier(), server_key, "listener", options)
+        .create_secure_channel_listener(ctx, server.identifier(), "listener", options)
         .await?;
 
     let trust_context = TrustContext::new(
@@ -301,7 +297,6 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             ctx,
             client.identifier(),
-            client_key,
             route!["listener"],
             SecureChannelOptions::new()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
@@ -310,8 +305,8 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     let credential = credentials
         .issue_credential(
+            authority.identifier(),
             client.identifier(),
-            &authority_key,
             AttributesBuilder::with_schema(SchemaId(0))
                 .with_attribute("is_superuser", "true")
                 .build(),

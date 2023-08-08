@@ -134,7 +134,7 @@ impl CommonStateMachine {
             .update_identity(&identity)
             .await?;
 
-        let purpose_key_data = self
+        let purpose_key = self
             .identities
             .purpose_keys()
             .verify_purpose_key_attestation(&peer.purpose_key_attestation)
@@ -144,7 +144,7 @@ impl CommonStateMachine {
             return Err(IdentityError::InvalidKeyType.into());
         }
 
-        match purpose_key_data.public_key {
+        match &purpose_key.data().public_key {
             PurposePublicKey::SecureChannelAuthenticationKey(public_key) => {
                 if public_key.0 != peer_public_key.data() {
                     return Err(IdentityError::InvalidKeyType.into());

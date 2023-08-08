@@ -73,8 +73,11 @@ impl SecureChannelsBuilder {
     /// Return the vault used by this builder
     /// Build secure channels
     pub fn build(&self) -> Arc<SecureChannels> {
+        let identities = self.identities_builder.build();
+        let purpose_keys = identities.purpose_keys();
         Arc::new(SecureChannels::new(
-            self.identities_builder.build(),
+            identities,
+            purpose_keys,
             self.registry.clone(),
         ))
     }

@@ -10,12 +10,15 @@ use super::super::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannelRegistry,
 };
-use super::super::{PurposeKey, SecureChannel, SecureChannelListener, SecureChannelsBuilder};
+use super::super::{
+    Purpose, PurposeKeys, SecureChannel, SecureChannelListener, SecureChannelsBuilder,
+};
 
 /// Identity implementation
 #[derive(Clone)]
 pub struct SecureChannels {
     pub(crate) identities: Arc<Identities>,
+    pub(crate) purpose_keys: Arc<PurposeKeys>,
     pub(crate) secure_channel_registry: SecureChannelRegistry,
 }
 
@@ -23,10 +26,12 @@ impl SecureChannels {
     /// Constructor
     pub(crate) fn new(
         identities: Arc<Identities>,
+        purpose_keys: Arc<PurposeKeys>,
         secure_channel_registry: SecureChannelRegistry,
     ) -> Self {
         Self {
             identities,
+            purpose_keys,
             secure_channel_registry,
         }
     }
@@ -60,8 +65,7 @@ impl SecureChannels {
     pub async fn create_secure_channel_listener(
         &self,
         ctx: &Context,
-        identifier: &Identifier, // FIXME: Remove
-        purpose_key: PurposeKey,
+        identifier: &Identifier,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
     ) -> Result<SecureChannelListener> {
@@ -73,7 +77,6 @@ impl SecureChannels {
             ctx,
             Arc::new(self.clone()),
             identifier,
-            purpose_key,
             address.clone(),
             options,
         )
@@ -86,8 +89,7 @@ impl SecureChannels {
     pub async fn create_secure_channel(
         &self,
         ctx: &Context,
-        identifier: &Identifier, // FIXME: Remove
-        purpose_key: PurposeKey,
+        identifier: &Identifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
     ) -> Result<SecureChannel> {
@@ -99,6 +101,17 @@ impl SecureChannels {
         let next = route.next()?;
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
+
+        let purpose_key = self
+            .purpose_keys
+            .repository()
+            .get_purpose_key(identifier, Purpose::SecureChannel)
+            .await?;
+
+        let purpose_key = self
+            .purpose_keys
+            .verify_purpose_key_attestation(&purpose_key)
+            .await?;
 
         HandshakeWorker::create(
             ctx,
