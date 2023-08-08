@@ -11,7 +11,7 @@ use super::{RoleInShare, SentInvitation, ShareScope};
 pub struct CreateInvitation {
     #[n(1)] pub expires_at: Option<String>,
     #[n(2)] pub grant_role: RoleInShare,
-    #[n(3)] pub recipient_email: Option<String>,
+    #[n(3)] pub recipient_email: String,
     #[n(4)] pub remaining_uses: Option<usize>,
     #[n(5)] pub scope: ShareScope,
     #[n(6)] pub target_id: String,

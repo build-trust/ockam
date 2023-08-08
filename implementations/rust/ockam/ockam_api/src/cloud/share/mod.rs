@@ -106,7 +106,7 @@ pub struct SentInvitation {
     #[n(2)] pub expires_at: String,
     #[n(3)] pub grant_role: RoleInShare,
     #[n(4)] pub owner_id: usize,
-    #[n(5)] pub recipient_email: Option<String>,
+    #[n(5)] pub recipient_email: String,
     #[n(6)] pub remaining_uses: usize,
     #[n(7)] pub scope: ShareScope,
     #[n(8)] pub target_id: String,
