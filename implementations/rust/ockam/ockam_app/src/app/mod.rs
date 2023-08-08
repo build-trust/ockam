@@ -3,13 +3,15 @@ use std::error::Error;
 use tauri::{App, Manager, SystemTray, Wry};
 
 pub use app_state::*;
-pub use logging::*;
+#[cfg(feature = "log")]
+pub use logging::configure_tauri_plugin_log;
 pub use model_state::*;
 pub use process::*;
 pub use tray_menu::*;
 
 mod app_state;
 pub(crate) mod events;
+#[cfg(feature = "log")]
 mod logging;
 mod model_state;
 mod model_state_repository;
