@@ -6,8 +6,7 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::v2::models::Identifier;
 use ockam_identity::v2::{
-    secure_channels, Purpose, PurposeKey, SecureChannelListenerOptions, SecureChannelOptions,
-    SecureChannels,
+    secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
 };
 use ockam_node::{Context, MessageReceiveOptions};
 
@@ -119,14 +118,14 @@ pub async fn create_secure_channel_listener(
 
     let identity = identities_creation.create_identity().await?;
     let identifier = identity.identifier().clone();
-    let key = secure_channels
+    let _key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(&identifier, Purpose::SecureChannel)
         .await?;
     let options = SecureChannelListenerOptions::new().as_consumer(flow_control_id);
     let listener = secure_channels
-        .create_secure_channel_listener(ctx, &identifier, key, "listener", options)
+        .create_secure_channel_listener(ctx, &identifier, "listener", options)
         .await?;
 
     let info = SecureChannelListenerInfo {
@@ -142,7 +141,6 @@ pub async fn create_secure_channel_listener(
 pub struct SecureChannelInfo {
     pub secure_channels: Arc<SecureChannels>,
     pub identifier: Identifier,
-    pub key: PurposeKey,
     pub address: Address,
 }
 
@@ -156,7 +154,7 @@ pub async fn create_secure_channel(
 
     let identity = identities_creation.create_identity().await?;
     let identifier = identity.identifier().clone();
-    let key = secure_channels
+    let _key = secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(&identifier, Purpose::SecureChannel)
@@ -165,7 +163,6 @@ pub async fn create_secure_channel(
         .create_secure_channel(
             ctx,
             &identifier,
-            key.clone(),
             route![connection.clone(), "listener"],
             SecureChannelOptions::new(),
         )
@@ -176,7 +173,6 @@ pub async fn create_secure_channel(
     let info = SecureChannelInfo {
         secure_channels,
         identifier,
-        key,
         address,
     };
 

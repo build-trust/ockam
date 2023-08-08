@@ -23,7 +23,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let alice_key = alice_secure_channels
+    let _alice_key = alice_secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
@@ -34,7 +34,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let bob_key = bob_secure_channels
+    let _bob_key = bob_secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
@@ -44,7 +44,6 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_listener(
             ctx,
             bob.identifier(),
-            bob_key,
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -54,7 +53,6 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             ctx,
             alice.identifier(),
-            alice_key,
             route!["listener"],
             SecureChannelOptions::new(),
         )
@@ -116,7 +114,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let alice_key = alice_secure_channels
+    let _alice_key = alice_secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
@@ -127,7 +125,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let bob_key = bob_secure_channels
+    let _bob_key = bob_secure_channels
         .identities()
         .purpose_keys()
         .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
@@ -135,14 +133,13 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let bob_options = SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id());
     let bob_listener = bob_secure_channels
-        .create_secure_channel_listener(ctx, bob.identifier(), bob_key, "listener", bob_options)
+        .create_secure_channel_listener(ctx, bob.identifier(), "listener", bob_options)
         .await?;
 
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
             alice.identifier(),
-            alice_key,
             route![connection_to_bob, "listener"],
             SecureChannelOptions::new(),
         )

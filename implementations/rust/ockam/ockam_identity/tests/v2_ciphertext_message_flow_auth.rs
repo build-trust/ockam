@@ -50,7 +50,6 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(
             ctx,
             &channel_to_bob.identifier,
-            channel_to_bob.key,
             route![connection_to_bob.clone(), "listener"],
             SecureChannelOptions::new().with_timeout(Duration::from_secs(1)),
         )

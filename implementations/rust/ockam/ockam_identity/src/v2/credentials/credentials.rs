@@ -1,20 +1,18 @@
 use super::super::identities::AttributesEntry;
 use super::super::models::{
     Attributes, Credential, CredentialAndPurposeKey, CredentialAndPurposeKeyData, CredentialData,
-    CredentialSignature, CredentialSigningKey, Ed25519Signature, Identifier, PurposePublicKey,
-    VersionedData,
+    CredentialSignature, Ed25519Signature, Identifier, PurposePublicKey, VersionedData,
 };
 use super::super::utils::{add_seconds, now};
 use super::super::{
-    IdentitiesRepository, IdentitiesVault, Identity, IdentityError, Purpose, PurposeKey,
-    PurposeKeys,
+    IdentitiesRepository, IdentitiesVault, Identity, IdentityError, Purpose, PurposeKeys,
 };
 
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::{PublicKey, SecretType, Signature, Vault};
+use ockam_vault::{SecretType, Signature, Vault};
 
 pub struct Credentials {
     vault: Arc<dyn IdentitiesVault>,
@@ -29,31 +27,24 @@ impl Credentials {
         authorities: &[Identifier],
         credential_and_purpose_key: &CredentialAndPurposeKey,
     ) -> Result<CredentialAndPurposeKeyData> {
-        let purpose_key_data = self
+        let purpose_key = self
             .purpose_keys
             .verify_purpose_key_attestation(&credential_and_purpose_key.purpose_key_attestation)
             .await?;
 
-        if !authorities.contains(&purpose_key_data.subject) {
+        if !authorities.contains(purpose_key.subject()) {
             return Err(IdentityError::UnknownAuthority.into());
         }
 
-        let purpose_key = match &purpose_key_data.public_key {
+        let public_key = match purpose_key.data().public_key.clone() {
             PurposePublicKey::SecureChannelAuthenticationKey(_) => {
                 return Err(IdentityError::InvalidKeyType.into())
             }
 
-            PurposePublicKey::CredentialSigningKey(key) => key,
+            PurposePublicKey::CredentialSigningKey(public_key) => public_key,
         };
 
-        let purpose_key = match purpose_key {
-            CredentialSigningKey::Ed25519PublicKey(key) => key,
-            CredentialSigningKey::P256ECDSAPublicKey(_) => {
-                return Err(IdentityError::InvalidKeyType.into())
-            }
-        };
-
-        let purpose_key = PublicKey::new(purpose_key.0.to_vec(), SecretType::Ed25519);
+        let public_key = public_key.into();
 
         let versioned_data_hash = Vault::sha256(&credential_and_purpose_key.credential.data);
 
@@ -68,7 +59,7 @@ impl Credentials {
 
         if !self
             .vault
-            .verify(&purpose_key, &versioned_data_hash, &signature)
+            .verify(&public_key, &versioned_data_hash, &signature)
             .await?
         {
             return Err(IdentityError::CredentialVerificationFailed.into());
@@ -86,11 +77,11 @@ impl Credentials {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        if credential_data.created_at < purpose_key_data.created_at {
+        if credential_data.created_at < purpose_key.data().created_at {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        if credential_data.expires_at > purpose_key_data.expires_at {
+        if credential_data.expires_at > purpose_key.data().expires_at {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
@@ -110,18 +101,29 @@ impl Credentials {
 
         Ok(CredentialAndPurposeKeyData {
             credential_data,
-            purpose_key_data,
+            purpose_key_data: purpose_key.data().clone(),
         })
     }
 
     /// Create a signed credential based on the given values.
     pub async fn issue_credential(
         &self,
+        issuer: &Identifier,
         subject: &Identifier,
-        issuer_purpose_key: &PurposeKey,
         subject_attributes: Attributes,
         ttl: Duration,
     ) -> Result<CredentialAndPurposeKey> {
+        let issuer_purpose_key = self
+            .purpose_keys
+            .repository()
+            .get_purpose_key(issuer, Purpose::Credentials)
+            .await?;
+
+        let issuer_purpose_key = self
+            .purpose_keys
+            .verify_purpose_key_attestation(&issuer_purpose_key)
+            .await?;
+
         let subject_change_history = self.identities_repository.get_identity(subject).await?;
         let subject_identity =
             Identity::import_from_change_history(subject_change_history, self.vault.clone())
@@ -231,7 +233,7 @@ mod tests {
         let issuer = creation.create_identity().await?;
         let subject = creation.create_identity().await?;
 
-        let credentials_key = identities
+        let _credentials_key = identities
             .purpose_keys()
             .create_purpose_key(issuer.identifier(), Purpose::Credentials)
             .await?;
@@ -247,8 +249,8 @@ mod tests {
 
         let credential = credentials
             .issue_credential(
+                issuer.identifier(),
                 subject.identifier(),
-                &credentials_key,
                 subject_attributes,
                 Duration::from_secs(60),
             )

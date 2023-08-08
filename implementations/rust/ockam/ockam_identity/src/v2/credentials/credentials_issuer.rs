@@ -13,10 +13,7 @@ use ockam_core::{api, Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
 use super::super::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
-use super::super::{
-    Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo, Purpose, PurposeKey,
-    PurposeKeys,
-};
+use super::super::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
 /// Name of the attribute identifying the trust context for that attribute, meaning
 /// from which set of trusted authorities the attribute comes from
@@ -31,7 +28,6 @@ pub struct CredentialsIssuer {
     credentials: Arc<Credentials>,
     issuer: Identifier,
     subject_attributes: Attributes,
-    purpose_key: PurposeKey,
 }
 
 impl CredentialsIssuer {
@@ -41,7 +37,6 @@ impl CredentialsIssuer {
         credentials: Arc<Credentials>,
         issuer: &Identifier,
         trust_context: String,
-        purpose_keys: &PurposeKeys,
     ) -> Result<Self> {
         let mut subject_attributes: BTreeMap<Vec<u8>, Vec<u8>> = Default::default();
         subject_attributes.insert(TRUST_CONTEXT_ID.to_vec(), trust_context.as_bytes().to_vec());
@@ -50,17 +45,11 @@ impl CredentialsIssuer {
             map: subject_attributes,
         };
 
-        // FIXME: Reuse the key
-        let purpose_key = purpose_keys
-            .create_purpose_key(issuer, Purpose::Credentials)
-            .await?;
-
         Ok(Self {
             identities_repository,
             credentials,
             issuer: issuer.clone(),
             subject_attributes,
-            purpose_key,
         })
     }
 
@@ -87,7 +76,7 @@ impl CredentialsIssuer {
             .credentials
             .issue_credential(
                 subject,
-                &self.purpose_key,
+                &self.issuer,
                 subject_attributes,
                 Duration::from_secs(120), /* FIXME */
             )

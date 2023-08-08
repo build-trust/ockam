@@ -1,3 +1,4 @@
+use crate::v2::Purpose;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -10,13 +11,10 @@ use super::super::secure_channel::handshake_worker::HandshakeWorker;
 use super::super::secure_channel::options::SecureChannelListenerOptions;
 use super::super::secure_channel::role::Role;
 use super::super::secure_channels::secure_channels::SecureChannels;
-use super::super::PurposeKey;
 
 pub(crate) struct IdentityChannelListener {
     secure_channels: Arc<SecureChannels>,
     identifier: Identifier,
-    // FIXME: Implement storage in PurposeKeys
-    purpose_key: PurposeKey,
     options: SecureChannelListenerOptions,
 }
 
@@ -24,13 +22,11 @@ impl IdentityChannelListener {
     fn new(
         secure_channels: Arc<SecureChannels>,
         identifier: Identifier,
-        purpose_key: PurposeKey,
         options: SecureChannelListenerOptions,
     ) -> Self {
         Self {
             secure_channels,
             identifier,
-            purpose_key,
             options,
         }
     }
@@ -39,18 +35,12 @@ impl IdentityChannelListener {
         ctx: &Context,
         secure_channels: Arc<SecureChannels>,
         identifier: &Identifier,
-        purpose_key: PurposeKey,
         address: Address,
         options: SecureChannelListenerOptions,
     ) -> Result<()> {
         options.setup_flow_control_for_listener(ctx.flow_controls(), &address);
 
-        let listener = Self::new(
-            secure_channels.clone(),
-            identifier.clone(),
-            purpose_key,
-            options,
-        );
+        let listener = Self::new(secure_channels.clone(), identifier.clone(), options);
 
         ctx.start_worker(address, listener).await?;
 
@@ -100,12 +90,25 @@ impl Worker for IdentityChannelListener {
 
         let credentials = self.get_credentials(ctx).await?;
 
+        let purpose_key = self
+            .secure_channels
+            .purpose_keys
+            .repository()
+            .get_purpose_key(&self.identifier, Purpose::SecureChannel)
+            .await?;
+
+        let purpose_key = self
+            .secure_channels
+            .purpose_keys
+            .verify_purpose_key_attestation(&purpose_key)
+            .await?;
+
         HandshakeWorker::create(
             ctx,
             self.secure_channels.clone(),
             addresses.clone(),
             self.identifier.clone(),
-            self.purpose_key.clone(),
+            purpose_key,
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             credentials,
