@@ -1,9 +1,11 @@
 use super::super::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
+use super::super::purpose_keys::storage::PurposeKeysRepository;
 use super::super::{
     Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation,
     IdentitiesReader, IdentitiesStorage, PurposeKeys,
 };
 
+use crate::v2::purpose_keys::storage::PurposeKeysStorage;
 use ockam_core::compat::sync::Arc;
 use ockam_vault::Vault;
 
@@ -12,6 +14,7 @@ use ockam_vault::Vault;
 pub struct Identities {
     vault: Arc<dyn IdentitiesVault>,
     identities_repository: Arc<dyn IdentitiesRepository>,
+    purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
 }
 
 impl Identities {
@@ -30,6 +33,7 @@ impl Identities {
             self.vault.clone(),
             self.identities_repository.as_identities_reader(),
             self.identities_keys(),
+            self.purpose_keys_repository.clone(),
         ))
     }
 
@@ -71,10 +75,12 @@ impl Identities {
     pub(crate) fn new(
         vault: Arc<dyn IdentitiesVault>,
         identities_repository: Arc<dyn IdentitiesRepository>,
+        purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
     ) -> Identities {
         Identities {
             vault,
             identities_repository,
+            purpose_keys_repository,
         }
     }
 
@@ -84,6 +90,7 @@ impl Identities {
         IdentitiesBuilder {
             vault: vault.clone(),
             repository: IdentitiesStorage::create(vault),
+            purpose_keys_repository: PurposeKeysStorage::create(),
         }
     }
 }

@@ -1,4 +1,4 @@
-use super::super::models::{Identifier, PurposeKeyAttestation};
+use super::super::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData};
 use super::super::Purpose;
 use ockam_vault::{KeyId, SecretType};
 
@@ -9,6 +9,7 @@ pub struct PurposeKey {
     key_id: KeyId,
     stype: SecretType,
     purpose: Purpose,
+    data: PurposeKeyAttestationData,
     attestation: PurposeKeyAttestation,
 }
 
@@ -18,6 +19,7 @@ impl PurposeKey {
         key_id: KeyId,
         stype: SecretType,
         purpose: Purpose,
+        data: PurposeKeyAttestationData,
         attestation: PurposeKeyAttestation,
     ) -> Self {
         Self {
@@ -25,6 +27,7 @@ impl PurposeKey {
             key_id,
             stype,
             purpose,
+            data,
             attestation,
         }
     }
@@ -42,5 +45,8 @@ impl PurposeKey {
     }
     pub fn stype(&self) -> SecretType {
         self.stype
+    }
+    pub fn data(&self) -> &PurposeKeyAttestationData {
+        &self.data
     }
 }
