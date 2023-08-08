@@ -1,6 +1,9 @@
-use super::super::models::{Change, ChangeData, ChangeHash, ChangeSignature, VersionedData};
+use super::super::models::{
+    Change, ChangeData, ChangeHash, ChangeSignature, VersionedData, CHANGE_HASH_LEN,
+};
 use super::super::verified_change::VerifiedChange;
 use super::super::{IdentitiesVault, Identity, IdentityError};
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
@@ -19,7 +22,7 @@ impl Identity {
     }
 
     pub(crate) fn compute_change_hash_from_hash(hash: [u8; 32]) -> ChangeHash {
-        let change_hash = hash[0..20].try_into().unwrap();
+        let change_hash = hash[0..CHANGE_HASH_LEN].try_into().unwrap();
         ChangeHash::new(change_hash)
     }
 
