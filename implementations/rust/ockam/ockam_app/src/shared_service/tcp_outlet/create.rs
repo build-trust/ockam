@@ -6,7 +6,6 @@ use tracing::{debug, error, info};
 
 use crate::app::AppState;
 use crate::error::Error;
-use crate::invitations::build_args_for_create_service_invitation;
 use crate::invitations::commands::create_service_invitation;
 
 /// Create a TCP outlet within the default node.
@@ -61,9 +60,7 @@ async fn tcp_outlet_create_impl(
         Err(_) => Err(Error::Generic("Failed to create outlet".to_string())),
     }?;
     if let Some(email) = email {
-        let invite_args =
-            build_args_for_create_service_invitation(&app, &tcp_addr.to_string(), &email).await?;
-        create_service_invitation(invite_args, app)
+        create_service_invitation(email, tcp_addr.to_string(), app)
             .await
             .map_err(Error::Generic)?;
     }
