@@ -16,7 +16,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_node::tokio::task::{self, JoinError};
 
-use super::super::Storage;
+use super::Storage;
 
 /// Storage using the LMDB database
 #[derive(Clone)]

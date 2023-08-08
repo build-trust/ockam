@@ -1,9 +1,10 @@
 use ockam_core::compat::sync::Arc;
 use ockam_vault::VaultStorage;
 
-use super::super::identities::{Identities, IdentitiesRepository, Storage};
+use super::super::identities::{Identities, IdentitiesRepository};
 use super::super::secure_channel::SecureChannelRegistry;
 use super::super::secure_channels::SecureChannels;
+use super::super::storage::Storage;
 use super::super::{IdentitiesBuilder, IdentitiesVault};
 
 /// This struct supports all the services related to secure channels

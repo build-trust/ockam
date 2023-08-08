@@ -1,6 +1,8 @@
 use super::super::identities::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Storage,
+    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault,
 };
+use super::super::storage::Storage;
+
 use ockam_core::compat::sync::Arc;
 use ockam_vault::{Vault, VaultStorage};
 
