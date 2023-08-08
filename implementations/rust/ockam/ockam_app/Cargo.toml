@@ -55,6 +55,7 @@ tauri-runtime = { version = "0.13.0-alpha.6", features = ["system-tray"] }
 thiserror = "1.0.46"
 tokio = { version = "1.31.0", features = ["time"] }
 tracing = "0.1"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"], optional = true }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
@@ -64,3 +65,4 @@ custom-protocol = ["tauri/custom-protocol"]
 default = ["invitations", "log"]
 invitations = []
 log = ["dep:log", "dep:tauri-plugin-log", "log/release_max_level_info", "tracing/log"]
+tracing = ["dep:tracing-subscriber", "tracing/log", "tracing/release_max_level_info"]

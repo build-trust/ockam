@@ -1,6 +1,6 @@
 #[cfg(feature = "log")]
 use crate::app::configure_tauri_plugin_log;
-#[cfg(feature = "tracing")]
+#[cfg(all(not(feature = "log"), feature = "tracing"))]
 use crate::app::configure_tracing_log;
 use crate::app::{process_application_event, setup_app, AppState};
 use crate::error::Result;
@@ -19,6 +19,9 @@ mod shared_service;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(all(feature = "tracing", not(feature = "log")))]
+    configure_tracing_log();
+
     // For now, the application only consists of a system tray with several menu items
     #[cfg_attr(not(feature = "invitations"), allow(unused_mut))]
     let mut builder = tauri::Builder::default()

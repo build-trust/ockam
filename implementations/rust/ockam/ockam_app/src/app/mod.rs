@@ -2,6 +2,8 @@ use std::error::Error;
 
 use tauri::{App, Manager, SystemTray, Wry};
 
+#[cfg(all(not(feature = "log"), feature = "tracing"))]
+pub use self::tracing::configure_tracing_log;
 pub use app_state::*;
 #[cfg(feature = "log")]
 pub use logging::configure_tauri_plugin_log;
@@ -16,6 +18,8 @@ mod logging;
 mod model_state;
 mod model_state_repository;
 mod process;
+#[cfg(all(not(feature = "log"), feature = "tracing"))]
+mod tracing;
 mod tray_menu;
 
 /// Set up the Tauri application. This function is called once when the application starts.
