@@ -19,6 +19,8 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             accept_invitation,
             create_service_invitation,
             list_invitations,
+            // TODO: move into shared_service module tree
+            list_outlets,
             refresh_invitations
         ])
         .setup(|app, _api| {
