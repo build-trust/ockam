@@ -1,7 +1,9 @@
+use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
 use tauri::{
     AppHandle, CustomMenuItem, Manager, State, SystemTrayMenu, SystemTrayMenuItem,
     SystemTraySubmenu, Wry,
 };
+use tauri_plugin_positioner::{Position, WindowExt};
 use tracing::{debug, trace, warn};
 
 use ockam_api::cloud::share::{
@@ -15,6 +17,19 @@ pub const INVITATIONS_PENDING_HEADER_MENU_ID: &str = "sent_invitations_header";
 pub const INVITATIONS_RECEIVED_HEADER_MENU_ID: &str = "received_invitations_header";
 pub const INVITATIONS_ACCEPTED_HEADER_MENU_ID: &str = "accepted_invitations_header";
 pub const INVITATIONS_MANAGE_MENU_ID: &str = "invitations_manage";
+pub const INVITATIONS_WINDOW_ID: &str = "invitations_creation";
+
+// https://url.spec.whatwg.org/#path-percent-encode-set
+const PATH_ENCODING_SET: AsciiSet = CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'#')
+    .add(b'<')
+    .add(b'>')
+    .add(b'?')
+    .add(b'`')
+    .add(b'{')
+    .add(b'}');
 
 pub(crate) async fn build_invitations_section(
     app_handle: &AppHandle,
@@ -204,8 +219,8 @@ pub(crate) fn dispatch_click_event(app: &AppHandle<Wry>, id: &str) -> tauri::Res
         .skip_while(|segment| segment == &"invitation")
         .collect::<Vec<&str>>();
     match segments.as_slice() {
-        ["create", "for", outlet_tcp_addr] => on_create(app, outlet_tcp_addr),
         ["accepted", "connect", id] => on_connect(app, id),
+        ["create", "for", outlet_tcp_addr] => on_create(app, outlet_tcp_addr),
         ["received", "accept", id] => on_accept(app, id),
         ["received", "decline", id] => on_decline(app, id),
         ["sent", "cancel", id] => on_cancel(app, id),
@@ -214,11 +229,6 @@ pub(crate) fn dispatch_click_event(app: &AppHandle<Wry>, id: &str) -> tauri::Res
             Ok(())
         }
     }
-}
-
-fn on_create(_app: &AppHandle<Wry>, outlet_tcp_addr: &str) -> tauri::Result<()> {
-    trace!(?outlet_tcp_addr, "create service invitation");
-    todo!("open window to ask the user for the recipient email address");
 }
 
 fn on_accept(app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {
@@ -236,6 +246,37 @@ fn on_accept(app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {
 fn on_cancel(_app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {
     trace!(?invite_id, "canceling invite via spawn");
     todo!()
+}
+
+fn on_create(app: &AppHandle<Wry>, outlet_tcp_addr: &str) -> tauri::Result<()> {
+    debug!(?outlet_tcp_addr, "creating invite via menu");
+
+    match app.get_window(INVITATIONS_WINDOW_ID) {
+        None => {
+            let url_path = percent_encode(
+                format!("invite/{outlet_tcp_addr}").as_bytes(),
+                &PATH_ENCODING_SET,
+            )
+            .to_string();
+            let w = tauri::WindowBuilder::new(
+                app,
+                INVITATIONS_WINDOW_ID,
+                tauri::WindowUrl::App(url_path.into()),
+            )
+            .always_on_top(true)
+            .visible(false)
+            .title("Invite To Share")
+            .max_inner_size(640.0, 480.0)
+            .resizable(true)
+            .minimizable(false)
+            .build()?;
+            // TODO: ideally we should use Position::TrayCenter, but it's broken on the latest alpha
+            let _ = w.move_window(Position::TopRight);
+            w.show()?;
+        }
+        Some(w) => w.show()?,
+    }
+    Ok(())
 }
 
 fn on_connect(_app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {

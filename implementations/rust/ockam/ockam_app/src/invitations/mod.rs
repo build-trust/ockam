@@ -10,10 +10,10 @@ use crate::app::{AppState, NODE_NAME};
 use crate::error::Error;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::cloud::share::CreateServiceInvitation;
-use tauri::{AppHandle, Manager, State, Wry};
+use tauri::{AppHandle, Manager, Runtime, State};
 
-pub(crate) async fn build_args_for_create_service_invitation(
-    app_handle: &AppHandle<Wry>,
+pub(crate) async fn build_args_for_create_service_invitation<R: Runtime>(
+    app_handle: &AppHandle<R>,
     outlet_tcp_addr: &str,
     recipient_email: &str,
 ) -> crate::Result<CreateServiceInvitation> {

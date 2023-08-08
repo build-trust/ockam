@@ -2,9 +2,7 @@ use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, info};
 
 use ockam_api::{
-    cloud::share::{
-        AcceptInvitation, CreateServiceInvitation, InvitationListKind, ListInvitations,
-    },
+    cloud::share::{AcceptInvitation, InvitationListKind, ListInvitations},
     nodes::models::portal::OutletStatus,
 };
 use ockam_command::util::api::CloudOpts;
@@ -39,12 +37,23 @@ pub async fn accept_invitation<R: Runtime>(id: String, app: AppHandle<R>) -> Res
 
 #[tauri::command]
 pub async fn create_service_invitation<R: Runtime>(
-    invite_args: CreateServiceInvitation,
+    recipient_email: String,
+    outlet_addr: String,
     app: AppHandle<R>,
 ) -> Result<(), String> {
-    info!(?invite_args, "creating service invitation");
+    info!(
+        ?recipient_email,
+        ?outlet_addr,
+        "creating service invitation"
+    );
+    let invite_args =
+        super::build_args_for_create_service_invitation(&app, &outlet_addr, &recipient_email)
+            .await
+            .map_err(|e| e.to_string())?;
+
     let state: State<'_, AppState> = app.state();
     let node_manager_worker = state.node_manager_worker().await;
+
     let res = node_manager_worker
         .create_service_invitation(&state.context(), invite_args, &CloudOpts::route(), None)
         .await
