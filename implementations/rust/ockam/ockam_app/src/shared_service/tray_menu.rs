@@ -1,6 +1,8 @@
-use tauri::{AppHandle, CustomMenuItem, Manager, SystemTrayMenu, Wry};
+use tauri::{AppHandle, CustomMenuItem, Manager, SystemTrayMenu, SystemTraySubmenu, Wry};
 use tauri_plugin_positioner::{Position, WindowExt};
 use tauri_runtime::menu::SystemTrayMenuItem;
+
+use ockam_api::nodes::models::portal::OutletStatus;
 
 use crate::app::AppState;
 
@@ -16,23 +18,50 @@ pub(crate) async fn build_shared_services_section(
         return tray_menu;
     };
 
-    let mut tm = tray_menu
+    let tm = tray_menu
         .add_native_item(SystemTrayMenuItem::Separator)
         .add_item(CustomMenuItem::new(SHARED_SERVICE_HEADER_MENU_ID, "Shared").disabled())
         .add_item(CustomMenuItem::new(
             SHARED_SERVICE_CREATE_MENU_ID,
             "Create...",
         ));
-    for outlet in app_state.tcp_outlet_list().await {
-        let outlet_info = format!(
-            "{} to {}",
-            outlet.worker_address().unwrap(),
-            outlet.tcp_addr
+    app_state
+        .tcp_outlet_list()
+        .await
+        .iter()
+        .map(shared_service_submenu)
+        .fold(tm, |menu, submenu| menu.add_submenu(submenu))
+}
+
+fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
+    let worker_address = outlet.worker_address().unwrap();
+
+    let submenu = SystemTrayMenu::new()
+        .add_item(
+            CustomMenuItem::new(
+                "outlet-tcp-address".to_string(),
+                format!("TCP Address: {}", outlet.tcp_addr),
+            )
+            .disabled(),
+        )
+        .add_item(
+            CustomMenuItem::new(
+                "outlet-worker-address".to_string(),
+                format!("Worker Address: {}", worker_address),
+            )
+            .disabled(),
+        )
+        .add_item(
+            CustomMenuItem::new(
+                "outlet-worker-status".to_string(),
+                format!("Status: {}", "unknown"),
+            )
+            .disabled(),
         );
-        let item = CustomMenuItem::new(outlet_info.clone(), outlet_info);
-        tm = tm.add_item(item);
-    }
-    tm
+
+    let outlet_info = format!("{} to {}", worker_address, outlet.tcp_addr);
+
+    SystemTraySubmenu::new(outlet_info, submenu)
 }
 
 /// Event listener for the "Create..." menu item
