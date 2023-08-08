@@ -3,7 +3,7 @@ use super::super::models::{
 };
 use minicbor::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CredentialAndPurposeKey {
@@ -11,7 +11,7 @@ pub struct CredentialAndPurposeKey {
     #[n(2)] pub purpose_key_attestation: PurposeKeyAttestation,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CredentialAndPurposeKeyData {

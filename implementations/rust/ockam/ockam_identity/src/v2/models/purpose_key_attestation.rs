@@ -8,7 +8,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{Error, Result};
 use ockam_vault::{PublicKey, SecretType};
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct PurposeKeyAttestation {
@@ -27,7 +27,7 @@ pub enum PurposeKeyAttestationSignature {
     #[n(2)] P256ECDSASignature(#[n(0)] P256ECDSASignature),
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct PurposeKeyAttestationData {
@@ -40,14 +40,14 @@ pub struct PurposeKeyAttestationData {
     #[n(5)] pub expires_at: TimestampInSeconds,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 pub enum PurposePublicKey {
     #[n(1)] SecureChannelAuthenticationKey(#[n(0)] X25519PublicKey),
     #[n(2)] CredentialSigningKey(#[n(0)] CredentialSigningKey),
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 pub enum CredentialSigningKey {
     #[n(1)] Ed25519PublicKey(#[n(0)] Ed25519PublicKey),
