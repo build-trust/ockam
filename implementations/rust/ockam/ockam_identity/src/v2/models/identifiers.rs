@@ -11,9 +11,15 @@ use serde::{Deserialize, Serialize};
 
 use super::super::IdentityError;
 
+/// Identifier length
+pub const IDENTIFIER_LEN: usize = 20;
+
+/// ChangeHash length
+pub const CHANGE_HASH_LEN: usize = 20;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct Identifier([u8; 20]);
+pub struct Identifier([u8; IDENTIFIER_LEN]);
 
 impl<C> Encode<C> for Identifier {
     fn encode<W: Write>(
@@ -27,7 +33,7 @@ impl<C> Encode<C> for Identifier {
 
 impl<'b, C> Decode<'b, C> for Identifier {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
-        let data = ByteArray::<20>::decode(d, ctx)?;
+        let data = ByteArray::<IDENTIFIER_LEN>::decode(d, ctx)?;
 
         Ok(Self(*data.deref()))
     }
@@ -89,7 +95,7 @@ impl TryFrom<&[u8]> for Identifier {
     type Error = Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        if let Ok(value) = <[u8; 20]>::try_from(value) {
+        if let Ok(value) = <[u8; IDENTIFIER_LEN]>::try_from(value) {
             Ok(Self(value))
         } else {
             Err(IdentityError::InvalidIdentifier.into())
@@ -136,7 +142,7 @@ impl From<ChangeHash> for Identifier {
 // sha256 hash of CBOR serialized Change
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct ChangeHash([u8; 20]);
+pub struct ChangeHash([u8; CHANGE_HASH_LEN]);
 
 impl<C> Encode<C> for ChangeHash {
     fn encode<W: Write>(
@@ -150,14 +156,14 @@ impl<C> Encode<C> for ChangeHash {
 
 impl<'b, C> Decode<'b, C> for ChangeHash {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
-        let data = ByteArray::<20>::decode(d, ctx)?;
+        let data = ByteArray::<CHANGE_HASH_LEN>::decode(d, ctx)?;
 
         Ok(Self(*data.deref()))
     }
 }
 
 impl ChangeHash {
-    pub(crate) fn new(hash: [u8; 20]) -> Self {
+    pub(crate) fn new(hash: [u8; CHANGE_HASH_LEN]) -> Self {
         Self(hash)
     }
 
@@ -210,7 +216,7 @@ impl TryFrom<&[u8]> for ChangeHash {
     type Error = Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        if let Ok(value) = <[u8; 20]>::try_from(value) {
+        if let Ok(value) = <[u8; CHANGE_HASH_LEN]>::try_from(value) {
             Ok(Self(value))
         } else {
             Err(IdentityError::InvalidIdentifier.into())
@@ -251,5 +257,52 @@ impl FromString for ChangeHash {
 impl AsRef<[u8]> for ChangeHash {
     fn as_ref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{quickcheck, Arbitrary, Gen};
+
+    impl Arbitrary for Identifier {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut data = [0u8; IDENTIFIER_LEN];
+            for i in data.iter_mut() {
+                *i = u8::arbitrary(g);
+            }
+
+            Self(data)
+        }
+    }
+
+    quickcheck! {
+        fn check_from_string(id: Identifier) -> bool {
+            id == Identifier::try_from(id.to_string()).unwrap()
+        }
+
+        fn check_from_str(id: Identifier) -> bool {
+            id == Identifier::try_from(id.to_string().as_str()).unwrap()
+        }
+
+        fn check_from_slice(id: Identifier) -> bool {
+            id == Identifier::try_from(id.0.as_slice()).unwrap()
+        }
+
+        fn check_from_vec(id: Identifier) -> bool {
+            id == Identifier::try_from(id.0.to_vec()).unwrap()
+        }
+
+        fn check_encode_decode(id: Identifier) -> bool {
+            id == minicbor::decode(&minicbor::to_vec(&id).unwrap()).unwrap()
+        }
+
+        fn check_serialize_deserialize(id: Identifier) -> bool {
+            id == serde_bare::from_slice(&serde_bare::to_vec(&id).unwrap()).unwrap()
+        }
+
+        fn prop_prefix(id: Identifier) -> bool {
+            id.to_string().starts_with(Identifier::PREFIX)
+        }
     }
 }
