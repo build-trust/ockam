@@ -19,6 +19,7 @@ pub fn run() {
     #[cfg_attr(not(feature = "invitations"), allow(unused_mut))]
     let mut builder = tauri::Builder::default()
         .plugin(configure_tauri_plugin_log())
+        .plugin(tauri_plugin_window::init())
         .plugin(tauri_plugin_positioner::init())
         .setup(move |app| setup_app(app))
         .manage(AppState::new())
