@@ -1,4 +1,3 @@
-use super::super::Storage;
 use core::str;
 use ockam_core::async_trait;
 use ockam_core::compat::sync::{Arc, Mutex};
@@ -12,6 +11,8 @@ use std::path::Path;
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
 use tracing::debug;
+
+use super::Storage;
 
 /// Storage using the Sqlite database
 #[derive(Clone)]
