@@ -25,6 +25,7 @@ impl IdentitiesCreation {
 
     /// Create an Identity
     pub async fn create_identity(&self) -> Result<Identity> {
+        // TODO: Consider creating PurposeKeys by default
         self.make_and_persist_identity(None).await
     }
 }
