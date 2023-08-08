@@ -104,6 +104,7 @@ impl PurposeKeys {
         };
 
         Ok(PurposeKey::new(
+            identifier.clone(),
             secret_key,
             SecretType::Ed25519,
             purpose,
