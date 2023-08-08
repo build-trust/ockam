@@ -1,8 +1,11 @@
 use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, info};
 
-use ockam_api::cloud::share::{
-    AcceptInvitation, CreateServiceInvitation, InvitationListKind, ListInvitations,
+use ockam_api::{
+    cloud::share::{
+        AcceptInvitation, CreateServiceInvitation, InvitationListKind, ListInvitations,
+    },
+    nodes::models::portal::OutletStatus,
 };
 use ockam_command::util::api::CloudOpts;
 
@@ -56,6 +59,15 @@ pub async fn list_invitations<R: Runtime>(app: AppHandle<R>) -> tauri::Result<In
     let state: State<'_, SyncState> = app.state();
     let reader = state.read().await;
     Ok((*reader).clone())
+}
+
+// TODO: move into shared_service module tree
+#[tauri::command]
+pub async fn list_outlets<R: Runtime>(app: AppHandle<R>) -> tauri::Result<Vec<OutletStatus>> {
+    let state: State<'_, AppState> = app.state();
+    let outlets = state.tcp_outlet_list().await;
+    debug!(?outlets);
+    Ok(outlets)
 }
 
 #[tauri::command]
