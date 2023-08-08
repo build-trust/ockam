@@ -1,4 +1,5 @@
 <script>
+  import { getCurrent } from "@tauri-apps/plugin-window";
   import { invoke } from "@tauri-apps/api/tauri";
 
   let service = "/service/outlet";
@@ -8,16 +9,18 @@
   async function submit() {
     error_message = "";
     await invoke("tcp_outlet_create", { service: service, port: port })
-      .then(() => {
-        invoke("tcp_outlet_close_window");
-      })
+      .then(close)
       .catch((error) => {
         error_message = error;
       });
   }
 
   function cancel() {
-    invoke("tcp_outlet_close_window");
+    close();
+  }
+
+  function close() {
+    getCurrent().close();
   }
 </script>
 
