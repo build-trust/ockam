@@ -30,8 +30,6 @@ pub struct CreateCommand {
     pub grant_role: RoleInShare,
     #[arg(long, short = 'x')]
     pub expires_at: Option<String>,
-    #[arg(default_value = "3", long, short = 'u')]
-    pub remaining_uses: Option<usize>,
 }
 
 impl CreateCommand {
@@ -46,7 +44,6 @@ impl From<CreateCommand> for CreateInvitation {
             expires_at,
             grant_role,
             recipient_email,
-            remaining_uses,
             scope,
             target_id,
             ..
@@ -55,7 +52,7 @@ impl From<CreateCommand> for CreateInvitation {
             expires_at,
             grant_role,
             recipient_email,
-            remaining_uses,
+            remaining_uses: None,
             scope,
             target_id,
         }
@@ -100,11 +97,10 @@ async fn run_impl(
     delete_embedded_node(&opts, rpc.node_name()).await;
 
     let plain = fmt_ok!(
-        "Invite {} to {} {} created, with {} remaining uses and expiring at {}. {} will be notified via email.",
+        "Invite {} to {} {} created, expiring at {}. {} will be notified via email.",
         sent.id,
         sent.scope,
         sent.target_id,
-        sent.remaining_uses,
         sent.expires_at,
         sent.recipient_email
     );
