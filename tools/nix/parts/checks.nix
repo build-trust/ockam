@@ -30,6 +30,8 @@
               excludes = ["^examples/elixir"];
             };
 
+            rustfmt.enable = true;
+
             statix.enable = true;
           };
 
