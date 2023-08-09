@@ -1,5 +1,5 @@
 <script>
-  import ServiceCreate from './ServiceCreate.svelte'
+  import ServiceCreate from "./ServiceCreate.svelte";
 </script>
 
-<ServiceCreate/>
+<ServiceCreate />
