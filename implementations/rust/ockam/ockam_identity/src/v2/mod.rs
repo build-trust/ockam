@@ -1,5 +1,3 @@
-#![allow(missing_docs, dead_code)]
-
 /// Utilities
 pub mod utils;
 
@@ -9,16 +7,16 @@ mod error;
 /// On-the-wire data types
 pub mod models;
 
-/// Service for the management of identities
+/// Service for the management of Identities
 pub mod identities;
 
-/// Data types representing an identity
+/// Data types representing a verified Identity
 pub mod identity;
 
-/// Purpose keys
+/// Service for the management of Purpose keys
 pub mod purpose_keys;
 
-/// Purpose key
+/// Data types representing a verified Purpose Key
 pub mod purpose_key;
 
 /// Services for creating and validating credentials

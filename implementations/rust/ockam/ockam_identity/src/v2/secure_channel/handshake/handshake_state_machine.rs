@@ -9,7 +9,7 @@ use super::super::super::models::{
     ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
 };
 use super::super::super::{
-    Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy, XXVault,
+    Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
 };
 
 /// Interface for a state machine in a key exchange protocol
@@ -61,7 +61,6 @@ pub(super) struct HandshakeResults {
 
 /// This struct implements functions common to both initiator and the responder state machines
 pub(super) struct CommonStateMachine {
-    pub(super) vault: Arc<dyn XXVault>,
     pub(super) identities: Arc<Identities>,
     pub(super) identifier: Identifier,
     pub(super) purpose_key_attestation: PurposeKeyAttestation,
@@ -73,7 +72,6 @@ pub(super) struct CommonStateMachine {
 
 impl CommonStateMachine {
     pub(super) fn new(
-        vault: Arc<dyn XXVault>,
         identities: Arc<Identities>,
         identifier: Identifier,
         purpose_key_attestation: PurposeKeyAttestation,
@@ -82,7 +80,6 @@ impl CommonStateMachine {
         trust_context: Option<TrustContext>,
     ) -> Self {
         Self {
-            vault,
             identities,
             identifier,
             purpose_key_attestation,
@@ -96,9 +93,9 @@ impl CommonStateMachine {
     /// Prepare a payload containing the identity of the current party and serialize it.
     /// That payload contains:
     ///
-    ///  - the current identity
-    ///  - a signature of the static key used during the handshake
-    ///  - the identity credentials
+    ///  - the current Identity Change History
+    ///  - the current Secure Channel Purpose Key Attestation
+    ///  - the Identity Credentials and corresponding Credentials Purpose Key Attestations
     ///
     pub(super) async fn make_identity_payload(&self) -> Result<Vec<u8>> {
         // prepare the payload that will be sent either in message 2 or message 3
@@ -115,7 +112,7 @@ impl CommonStateMachine {
         Ok(minicbor::to_vec(payload)?)
     }
 
-    /// Verify the identity sent by the other party: the signature and the credentials must be valid
+    /// Verify the identity sent by the other party: the Purpose Key and the credentials must be valid
     /// If everything is valid, store the identity identifier which will used to make the
     /// final state machine result
     pub(super) async fn verify_identity(
@@ -145,7 +142,7 @@ impl CommonStateMachine {
         }
 
         match &purpose_key.data().public_key {
-            PurposePublicKey::SecureChannelAuthenticationKey(public_key) => {
+            PurposePublicKey::SecureChannelStaticKey(public_key) => {
                 if public_key.0 != peer_public_key.data() {
                     return Err(IdentityError::InvalidKeyType.into());
                 }
@@ -228,10 +225,11 @@ impl CommonStateMachine {
 pub(super) struct IdentityAndCredentials {
     /// Exported identity
     #[n(1)] pub(super) change_history: ChangeHistory,
-    /// The signature guarantees that the other end has access to the private key of the identity
-    /// The signature refers to the static key of the noise ('x') and is made with the static
+    /// The Purpose Key guarantees that the other end has access to the private key of the identity
+    /// The Purpose Key here is also the static key of the noise ('x') and is issued with the static
     /// key of the identity
     #[n(2)] pub(super) purpose_key_attestation: PurposeKeyAttestation,
-    /// Credentials associated to the identity
+    /// Credentials associated to the identity along with corresponding Credentials Purpose Keys
+    /// to verify those Credentials
     #[n(3)] pub(super) credentials: Vec<CredentialAndPurposeKey>,
 }

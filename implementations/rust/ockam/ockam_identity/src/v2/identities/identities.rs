@@ -28,6 +28,7 @@ impl Identities {
         self.identities_repository.clone()
     }
 
+    /// Return the [`PurposeKeys`] instance
     pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
         Arc::new(PurposeKeys::new(
             self.vault.clone(),

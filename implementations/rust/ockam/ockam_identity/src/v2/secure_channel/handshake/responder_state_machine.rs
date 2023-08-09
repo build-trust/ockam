@@ -108,7 +108,6 @@ impl ResponderStateMachine {
         trust_context: Option<TrustContext>,
     ) -> Result<ResponderStateMachine> {
         let common = CommonStateMachine::new(
-            vault.clone(),
             identities,
             identifier,
             purpose_key.attestation().clone(),
@@ -120,7 +119,7 @@ impl ResponderStateMachine {
 
         Ok(ResponderStateMachine {
             common,
-            handshake: Handshake::new(vault.clone(), purpose_key.key_id().clone()).await?,
+            handshake: Handshake::new(vault, purpose_key.key_id().clone()).await?,
             identity_payload: Some(identity_payload),
         })
     }
