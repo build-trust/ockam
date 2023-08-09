@@ -32,6 +32,13 @@
 
             rustfmt.enable = true;
 
+            shellcheck.enable = true;
+            shellcheck.excludes = [
+              "^demos/"
+              "^gradlew$"
+              "^implementations/rust/ockam/ockam_command/tests/bats/.+\.(bats|bash)$"
+            ];
+
             statix.enable = true;
           };
 
