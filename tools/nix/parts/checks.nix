@@ -24,6 +24,12 @@
               types = [];
             };
 
+            mix-format = {
+              enable = true;
+              entry = lib.mkForce "${config.packages.elixir}/bin/mix format";
+              excludes = ["^examples/elixir"];
+            };
+
             statix.enable = true;
           };
 

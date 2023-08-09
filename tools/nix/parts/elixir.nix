@@ -46,6 +46,8 @@ in {
         inherit (config.devShells.rust) OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS RUST_SRC_PATH;
         inherit (config.devShells.tooling) BATS_LIB;
       };
+
+      packages = {inherit (pkgset) elixir erlang;};
     };
   };
 }
