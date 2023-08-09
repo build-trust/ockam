@@ -8,7 +8,7 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "prettier": "prettier --plugin prettier-plugin-svelte --write src/"
+    "prettier": "prettier --plugin prettier-plugin-svelte --plugin prettier-plugin-tailwindcss --write src/"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "2.0.3",
