@@ -47,6 +47,12 @@ importers:
       postcss:
         specifier: ^8.4.27
         version: 8.4.27
+      prettier:
+        specifier: ^3.0.1
+        version: 3.0.1
+      prettier-plugin-svelte:
+        specifier: ^3.0.3
+        version: 3.0.3(prettier@3.0.1)(svelte@4.1.2)
       svelte:
         specifier: ^4.1.2
         version: 4.1.2
@@ -2830,6 +2836,16 @@ packages:
       nanoid: 3.3.6
       picocolors: 1.0.0
       source-map-js: 1.0.2
+    dev: true
+
+  /prettier-plugin-svelte@3.0.3(prettier@3.0.1)(svelte@4.1.2):
+    resolution: {integrity: sha512-dLhieh4obJEK1hnZ6koxF+tMUrZbV5YGvRpf2+OADyanjya5j0z1Llo8iGwiHmFWZVG/hLEw/AJD5chXd9r3XA==}
+    peerDependencies:
+      prettier: ^3.0.0
+      svelte: ^3.2.0 || ^4.0.0-next.0
+    dependencies:
+      prettier: 3.0.1
+      svelte: 4.1.2
     dev: true
 
   /prettier@3.0.1:
