@@ -1,6 +1,7 @@
 {
   imports = [
     ./overlays.nix
+    ./checks.nix
     ./elixir.nix
     ./examples.nix
     ./rust.nix

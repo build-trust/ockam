@@ -20,3 +20,5 @@ vendor
 # nix build
 /result*
 .home
+# managed via nix flake
+/.pre-commit-config.yaml
