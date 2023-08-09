@@ -31,9 +31,8 @@ in {
 
       packages = {
         nodejs =
-          if pkgs ? "nodejs-${cfg.nodeVersion}"
-          then pkgs."nodejs-${cfg.nodeVersion}"
-          else throw "unsupported nodejs version for nixpkgs: ${cfg.nodeVersion}";
+          pkgs."nodejs-${cfg.nodeVersion}"
+          or (throw "unsupported nodejs version for nixpkgs: ${cfg.nodeVersion}");
         pnpm = pkgs.nodePackages.pnpm.override {
           node = config.packages.nodejs;
         };
