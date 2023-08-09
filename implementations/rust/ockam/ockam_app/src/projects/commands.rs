@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tauri::{async_runtime::RwLock, AppHandle, Manager, Runtime, State};
 use tracing::{debug, info};
 
-use ockam_api::cloud::project::Project;
+use ockam_api::{cli_state::StateDirTrait, cloud::project::Project};
 use ockam_command::util::api::CloudOpts;
 
 use super::State as ProjectState;
@@ -30,11 +30,18 @@ pub async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<(), Strin
         .await
         .map_err(|e| e.to_string())?;
     debug!(?projects);
-    {
-        let project_state: State<'_, SyncState> = app.state();
-        let mut writer = project_state.write().await;
-        *writer = projects;
+
+    let cli_projects = state.state().await.projects;
+    for project in &projects {
+        cli_projects
+            .overwrite(&project.name, project.clone())
+            .map_err(|e| format!("could not save project in cli state: {e}"))?;
     }
+
+    let project_state: State<'_, SyncState> = app.state();
+    let mut writer = project_state.write().await;
+    *writer = projects;
+
     app.trigger_global(super::events::REFRESHED_PROJECTS, None);
     Ok(())
 }
