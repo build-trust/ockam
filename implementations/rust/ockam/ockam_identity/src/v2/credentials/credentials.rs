@@ -1,7 +1,7 @@
 use super::super::identities::AttributesEntry;
 use super::super::models::{
-    Attributes, Credential, CredentialAndPurposeKey, CredentialAndPurposeKeyData, CredentialData,
-    CredentialSignature, Ed25519Signature, Identifier, PurposePublicKey, VersionedData,
+    Attributes, Credential, CredentialAndPurposeKey, CredentialData, CredentialSignature,
+    Ed25519Signature, Identifier, PurposeKeyAttestationData, PurposePublicKey, VersionedData,
 };
 use super::super::utils::{add_seconds, now};
 use super::super::{
@@ -14,6 +14,17 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::{SecretType, Signature, Vault};
 
+/// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
+/// after parsing and verifying corresponding [`Credential`] and [`super::super::models::PurposeKeyAttestation`]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CredentialAndPurposeKeyData {
+    /// [`CredentialData`]
+    pub credential_data: CredentialData,
+    /// [`PurposeKeyAttestationData`]
+    pub purpose_key_data: PurposeKeyAttestationData,
+}
+
+/// Service for managing [`Credential`]s
 pub struct Credentials {
     vault: Arc<dyn IdentitiesVault>,
     purpose_keys: Arc<PurposeKeys>,
@@ -21,6 +32,37 @@ pub struct Credentials {
 }
 
 impl Credentials {
+    ///Constructor
+    pub fn new(
+        vault: Arc<dyn IdentitiesVault>,
+        purpose_keys: Arc<PurposeKeys>,
+        identities_repository: Arc<dyn IdentitiesRepository>,
+    ) -> Self {
+        Self {
+            vault,
+            purpose_keys,
+            identities_repository,
+        }
+    }
+
+    /// Vault
+    pub fn vault(&self) -> Arc<dyn IdentitiesVault> {
+        self.vault.clone()
+    }
+
+    /// [`PurposeKeys`]
+    pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
+        self.purpose_keys.clone()
+    }
+
+    /// [`IdentitiesRepository`]
+    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
+        self.identities_repository.clone()
+    }
+}
+
+impl Credentials {
+    /// Verify a [`Credential`]
     pub async fn verify_credential(
         &self,
         subject: &Identifier,
@@ -37,7 +79,7 @@ impl Credentials {
         }
 
         let public_key = match purpose_key.data().public_key.clone() {
-            PurposePublicKey::SecureChannelAuthenticationKey(_) => {
+            PurposePublicKey::SecureChannelStaticKey(_) => {
                 return Err(IdentityError::InvalidKeyType.into())
             }
 
@@ -105,7 +147,7 @@ impl Credentials {
         })
     }
 
-    /// Create a signed credential based on the given values.
+    /// Issue a [`Credential`]
     pub async fn issue_credential(
         &self,
         issuer: &Identifier,
@@ -178,6 +220,7 @@ impl Credentials {
         Ok(res)
     }
 
+    /// Receive someone's [`Credential`]: verify and put attributes from it to the storage
     pub async fn receive_presented_credential(
         &self,
         subject: &Identifier,
@@ -201,20 +244,6 @@ impl Credentials {
             .await?;
 
         Ok(())
-    }
-    pub fn new(
-        vault: Arc<dyn IdentitiesVault>,
-        purpose_keys: Arc<PurposeKeys>,
-        identities_repository: Arc<dyn IdentitiesRepository>,
-    ) -> Self {
-        Self {
-            vault,
-            purpose_keys,
-            identities_repository,
-        }
-    }
-    pub fn vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.vault.clone()
     }
 }
 

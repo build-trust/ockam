@@ -44,12 +44,14 @@ impl PurposeKeys {
         }
     }
 
+    /// Return [`PurposeKeysRepository`] instance
     pub fn repository(&self) -> Arc<dyn PurposeKeysRepository> {
         self.repository.clone()
     }
 }
 
 impl PurposeKeys {
+    /// Create a [`PurposeKey`]
     pub async fn create_purpose_key(
         &self,
         identifier: &Identifier,
@@ -75,7 +77,7 @@ impl PurposeKeys {
 
         let public_key = match &purpose {
             Purpose::SecureChannel => {
-                PurposePublicKey::SecureChannelAuthenticationKey(public_key.try_into().unwrap())
+                PurposePublicKey::SecureChannelStaticKey(public_key.try_into().unwrap())
             }
             Purpose::Credentials => {
                 PurposePublicKey::CredentialSigningKey(public_key.try_into().unwrap())
@@ -129,10 +131,12 @@ impl PurposeKeys {
         Ok(purpose_key)
     }
 
+    /// Verify a [`PurposeKeyAttestation`]
     pub async fn verify_purpose_key_attestation(
         &self,
         attestation: &PurposeKeyAttestation,
     ) -> Result<PurposeKey> {
+        // TODO: Split this into two versions: verifying our own PurposeKey and someone's else
         let versioned_data_hash = Vault::sha256(&attestation.data);
 
         let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
@@ -180,7 +184,7 @@ impl PurposeKeys {
         // FIXME: purpose_key_data.subject_latest_change_hash
 
         let (purpose, public_key) = match purpose_key_data.public_key.clone() {
-            PurposePublicKey::SecureChannelAuthenticationKey(public_key) => {
+            PurposePublicKey::SecureChannelStaticKey(public_key) => {
                 (Purpose::SecureChannel, public_key.into())
             }
             PurposePublicKey::CredentialSigningKey(public_key) => {

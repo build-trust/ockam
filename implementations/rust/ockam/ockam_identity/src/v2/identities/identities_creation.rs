@@ -19,6 +19,7 @@ impl IdentitiesCreation {
         IdentitiesCreation { repository, vault }
     }
 
+    /// Import and verify identity from its binary format
     pub async fn import(&self, data: &[u8]) -> Result<Identity> {
         Identity::import(data, self.vault.clone()).await
     }

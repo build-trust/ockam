@@ -20,16 +20,19 @@ pub fn now() -> Result<TimestampInSeconds> {
     Err(super::IdentityError::UnknownTimestamp.into())
 }
 
-pub(crate) fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInSeconds {
+/// Add a number of seconds to the [`TimestampInSeconds`]
+pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInSeconds {
     TimestampInSeconds::new(timestamp.saturating_add(seconds))
 }
 
+/// Convenient builder for the [`Attributes`] struct
 pub struct AttributesBuilder {
     schema_id: SchemaId,
     map: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 impl AttributesBuilder {
+    /// Create an empty [`Attributes`] struct with a given [`SchemaId`]
     pub fn with_schema(schema_id: SchemaId) -> Self {
         Self {
             schema_id,
@@ -37,12 +40,14 @@ impl AttributesBuilder {
         }
     }
 
+    /// Add an attributes to the [`Attributes`]
     pub fn with_attribute(mut self, key: impl Into<Vec<u8>>, value: impl Into<Vec<u8>>) -> Self {
         self.map.insert(key.into(), value.into());
 
         self
     }
 
+    /// Build the corresponding [`Attributes`]
     pub fn build(self) -> Attributes {
         Attributes {
             schema: self.schema_id,

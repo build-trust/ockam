@@ -105,7 +105,6 @@ impl InitiatorStateMachine {
         trust_context: Option<TrustContext>,
     ) -> Result<InitiatorStateMachine> {
         let common = CommonStateMachine::new(
-            vault.clone(),
             identities,
             identifier,
             purpose_key.attestation().clone(),
@@ -117,7 +116,7 @@ impl InitiatorStateMachine {
 
         Ok(InitiatorStateMachine {
             common,
-            handshake: Handshake::new(vault.clone(), purpose_key.key_id().clone()).await?,
+            handshake: Handshake::new(vault, purpose_key.key_id().clone()).await?,
             identity_payload: Some(identity_payload),
         })
     }

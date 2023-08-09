@@ -38,13 +38,21 @@ pub enum IdentityError {
     UnknownPurposeKeyVersion,
     /// Unknown version of the Identity
     UnknownIdentityVersion,
+    /// SecureChannelVerificationFailed
     SecureChannelVerificationFailed,
+    /// SecureChannelTrustCheckFailed
     SecureChannelTrustCheckFailed,
+    /// Invalid Nonce value
     InvalidNonce,
+    /// Nonce overflow
     NonceOverflow,
+    /// Unknown message destination
     UnknownChannelMsgDestination,
+    /// Invalid LocalInfo type
     InvalidLocalInfoType,
+    /// Duplicate Secure Channel
     DuplicateSecureChannel,
+    /// Consistency Error
     ConsistencyError,
 }
 

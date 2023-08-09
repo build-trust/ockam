@@ -76,6 +76,8 @@ impl AuthorityService {
 
         Ok(credential)
     }
+
+    /// Issuer [`Identifier`]
     pub fn identifier(&self) -> &Identifier {
         &self.identifier
     }

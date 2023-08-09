@@ -10,6 +10,7 @@ use super::super::super::storage::{InMemoryStorage, Storage};
 use super::super::super::Purpose;
 use super::{PurposeKeysReader, PurposeKeysRepository, PurposeKeysWriter};
 
+/// Storage for own [`super::super::super::purpose_key::PurposeKey`]s
 #[derive(Clone)]
 pub struct PurposeKeysStorage {
     storage: Arc<dyn Storage>,
@@ -27,10 +28,12 @@ impl PurposeKeysRepository for PurposeKeysStorage {
 }
 
 impl PurposeKeysStorage {
+    /// Create a new Storage
     pub fn new(storage: Arc<dyn Storage>) -> Self {
         Self { storage }
     }
 
+    /// Create a new in-memory Storage
     pub fn create() -> Arc<Self> {
         Arc::new(Self::new(InMemoryStorage::create()))
     }

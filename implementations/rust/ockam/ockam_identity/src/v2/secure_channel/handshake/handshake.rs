@@ -489,16 +489,6 @@ impl HandshakeState {
         *array_ref![digest, 0, 32]
     }
 
-    pub(super) fn take_s(&mut self) -> Result<KeyId> {
-        self.s.take().ok_or_else(|| {
-            Error::new(
-                Origin::KeyExchange,
-                Kind::Invalid,
-                "key id s should have been set",
-            )
-        })
-    }
-
     pub(super) fn take_e(&mut self) -> Result<KeyId> {
         self.e.take().ok_or_else(|| {
             Error::new(

@@ -2,6 +2,7 @@ use core::ops::Deref;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
+/// Timestamp in seconds (UTC)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encode, Decode, Serialize, Deserialize)]
 #[rustfmt::skip]
 #[cbor(transparent)]
@@ -9,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct TimestampInSeconds(#[n(0)] u64);
 
 impl TimestampInSeconds {
+    /// Create a new [`TimestampInSeconds`]
     pub fn new(timestamp: u64) -> Self {
         Self(timestamp)
     }
