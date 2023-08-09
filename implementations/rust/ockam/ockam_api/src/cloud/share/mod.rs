@@ -14,7 +14,7 @@ pub use create::*;
 pub use list::*;
 pub use show::*;
 
-#[derive(Clone, Debug, PartialEq, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Decode, Deserialize, Encode, Serialize)]
 #[cbor(index_only)]
 #[rustfmt::skip]
 pub enum RoleInShare {

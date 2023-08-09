@@ -48,7 +48,8 @@ project = {
     7: space_id,
     ?8: project_node_identity, ; optional, it can be missing if the cloud node hasn't started yet
     ?9: authority_access_route, ; optional, it can be missing if the authority hasn't started yet
-    ?10: authority_identity ; optional, hex encoded authority identity
+    ?10: authority_identity, ; optional, hex encoded authority identity
+    16: [* project_user_role]
 }
 
 project_node_identity = identity_id
@@ -68,6 +69,15 @@ project_id   = text
 project_name = text
 service_name = text
 access_route = text
+
+project_user_role = {
+  1: user_email,
+  2: user_id,
+  3: role_in_share
+}
+role_in_share = 0..2 ; admin, guest, service_user
+user_email = text
+user_id = uint
 
 ;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

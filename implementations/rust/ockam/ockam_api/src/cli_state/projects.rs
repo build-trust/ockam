@@ -45,6 +45,7 @@ impl From<ProjectLookup> for Project {
             version: None,
             running: None,
             operation_id: None,
+            user_roles: vec![],
         }
     }
 }
