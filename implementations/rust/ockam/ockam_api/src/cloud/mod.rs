@@ -1,4 +1,5 @@
 use minicbor::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 
 use ockam_core::compat::str::FromStr;
 #[cfg(feature = "tag")]
@@ -7,6 +8,8 @@ use ockam_core::{CowStr, Result};
 use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
+
+use self::share::RoleInShare;
 
 pub mod addon;
 pub mod enroll;
@@ -31,6 +34,15 @@ pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
 pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
 
 pub type ProjectAddress = CowStr<'static>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Decode, Deserialize, Encode, Serialize)]
+#[cbor(map)]
+#[rustfmt::skip]
+pub struct ProjectUserRole {
+    #[n(1)] pub email: String,
+    #[n(2)] pub id: usize,
+    #[n(3)] pub role: RoleInShare,
+}
 
 /// A wrapper around a cloud request with extra fields.
 #[derive(Encode, Decode, Debug)]

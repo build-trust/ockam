@@ -14,6 +14,8 @@ use crate::cloud::addon::ConfluentConfigResponse;
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
 
+use super::ProjectUserRole;
+
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
 pub struct Project {
@@ -65,6 +67,9 @@ pub struct Project {
 
     #[cbor(n(15))]
     pub operation_id: Option<String>,
+
+    #[cbor(n(16))]
+    pub user_roles: Vec<ProjectUserRole>,
 }
 
 impl Project {
@@ -556,6 +561,7 @@ mod tests {
                 version: None,
                 running: None,
                 operation_id: None,
+                user_roles: vec![],
             })
         }
     }
