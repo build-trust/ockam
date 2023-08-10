@@ -40,7 +40,7 @@ in {
         ];
 
         nightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
-        toolchain = pkgs.rust-bin.stable.${cfg.version}.default;
+        toolchain = pkgs.rust-bin.fromRustupToolchainFile ../../../rust-toolchain.toml;
 
         nativeLibs = with pkgs;
           [(lib.getDev openssl)]
