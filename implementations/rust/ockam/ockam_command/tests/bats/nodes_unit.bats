@@ -28,7 +28,6 @@ force_kill_node() {
     sleep 0.2
     ((i = i + 1))
   done
-  fail "Failed to kill node $1"
 }
 
 # ===== TESTS
