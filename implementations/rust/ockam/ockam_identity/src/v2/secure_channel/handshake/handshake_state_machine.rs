@@ -166,7 +166,7 @@ impl CommonStateMachine {
             return Err(IdentityError::InvalidKeyType.into());
         }
 
-        match &purpose_key.data().public_key {
+        match &purpose_key.public_key {
             PurposePublicKey::SecureChannelStaticKey(public_key) => {
                 if public_key.0 != peer_public_key.data() {
                     return Err(IdentityError::InvalidKeyType.into());
