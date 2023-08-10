@@ -10,8 +10,6 @@ use super::super::super::identity::IdentityConstants;
 use super::super::super::models::{ChangeHistory, Identifier};
 use super::super::super::storage::{InMemoryStorage, Storage};
 use super::super::super::utils::now;
-use super::super::super::{Identity, IdentityError, IdentityHistoryComparison};
-use super::super::IdentitiesVault;
 use super::{
     AttributesEntry, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
     IdentityAttributesReader, IdentityAttributesWriter,
@@ -21,7 +19,6 @@ use super::{
 #[derive(Clone)]
 pub struct IdentitiesStorage {
     storage: Arc<dyn Storage>,
-    vault: Arc<dyn IdentitiesVault>, // TODO: Reconsider Vault dependency
 }
 
 #[async_trait]
@@ -45,51 +42,13 @@ impl IdentitiesRepository for IdentitiesStorage {
 
 impl IdentitiesStorage {
     /// Create a new storage for attributes
-    pub fn new(storage: Arc<dyn Storage>, vault: Arc<dyn IdentitiesVault>) -> Self {
-        Self { storage, vault }
+    pub fn new(storage: Arc<dyn Storage>) -> Self {
+        Self { storage }
     }
 
     /// Create a new storage for attributes
-    pub fn create(vault: Arc<dyn IdentitiesVault>) -> Arc<Self> {
-        Arc::new(Self::new(InMemoryStorage::create(), vault))
-    }
-
-    /// Persist an Identity (overrides it)
-    async fn put_identity(
-        &self,
-        identifier: &Identifier,
-        change_history: &ChangeHistory,
-    ) -> Result<()> {
-        self.storage
-            .set(
-                &identifier.to_string(),
-                IdentityConstants::CHANGE_HISTORY_KEY.to_string(),
-                minicbor::to_vec(change_history)?,
-            )
-            .await
-    }
-
-    async fn should_set(&self, identity: &Identity) -> Result<bool> {
-        let known = if let Some(known) = self.retrieve_identity(identity.identifier()).await? {
-            known
-        } else {
-            return Ok(true);
-        };
-
-        let known = Identity::import_from_change_history(known, self.vault.clone()).await?;
-
-        let res = match identity.compare(&known) {
-            IdentityHistoryComparison::Equal => false, /* Do nothing */
-            IdentityHistoryComparison::Conflict => {
-                return Err(IdentityError::ConsistencyError.into());
-            }
-            IdentityHistoryComparison::Newer => true, /* Update */
-            IdentityHistoryComparison::Older => {
-                return Err(IdentityError::ConsistencyError.into());
-            }
-        };
-
-        Ok(res)
+    pub fn create() -> Arc<Self> {
+        Arc::new(Self::new(InMemoryStorage::create()))
     }
 }
 
@@ -177,15 +136,18 @@ impl IdentityAttributesWriter for IdentitiesStorage {
 
 #[async_trait]
 impl IdentitiesWriter for IdentitiesStorage {
-    async fn update_identity(&self, identity: &Identity) -> Result<()> {
-        let should_set = self.should_set(identity).await?;
-
-        if should_set {
-            self.put_identity(identity.identifier(), identity.change_history())
-                .await?;
-        }
-
-        Ok(())
+    async fn update_identity(
+        &self,
+        identifier: &Identifier,
+        change_history: &ChangeHistory,
+    ) -> Result<()> {
+        self.storage
+            .set(
+                &identifier.to_string(),
+                IdentityConstants::CHANGE_HISTORY_KEY.to_string(),
+                minicbor::to_vec(change_history)?,
+            )
+            .await
     }
 }
 

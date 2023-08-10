@@ -1,11 +1,10 @@
 use super::super::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
-use super::super::purpose_keys::storage::PurposeKeysRepository;
+use super::super::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
 use super::super::{
     Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation,
     IdentitiesReader, IdentitiesStorage, PurposeKeys,
 };
 
-use crate::v2::purpose_keys::storage::PurposeKeysStorage;
 use ockam_core::compat::sync::Arc;
 use ockam_vault::Vault;
 
@@ -87,10 +86,9 @@ impl Identities {
 
     /// Return a default builder for identities
     pub fn builder() -> IdentitiesBuilder {
-        let vault = Vault::create();
         IdentitiesBuilder {
-            vault: vault.clone(),
-            repository: IdentitiesStorage::create(vault),
+            vault: Vault::create(),
+            repository: IdentitiesStorage::create(),
             purpose_keys_repository: PurposeKeysStorage::create(),
         }
     }

@@ -1,4 +1,3 @@
-use crate::v2::Purpose;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -11,6 +10,7 @@ use super::super::secure_channel::handshake_worker::HandshakeWorker;
 use super::super::secure_channel::options::SecureChannelListenerOptions;
 use super::super::secure_channel::role::Role;
 use super::super::secure_channels::secure_channels::SecureChannels;
+use super::super::Purpose;
 
 pub(crate) struct IdentityChannelListener {
     secure_channels: Arc<SecureChannels>,

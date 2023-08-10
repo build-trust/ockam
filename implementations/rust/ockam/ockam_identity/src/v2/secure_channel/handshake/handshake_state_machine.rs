@@ -9,7 +9,8 @@ use super::super::super::models::{
     ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
 };
 use super::super::super::{
-    Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
+    Identities, Identity, IdentityError, IdentityHistoryComparison, SecureChannelTrustInfo,
+    TrustContext, TrustPolicy,
 };
 
 /// Interface for a state machine in a key exchange protocol
@@ -126,10 +127,34 @@ impl CommonStateMachine {
         )
         .await?;
 
-        self.identities
+        if let Some(known_identity) = self
+            .identities
             .repository()
-            .update_identity(&identity)
-            .await?;
+            .retrieve_identity(identity.identifier())
+            .await?
+        {
+            let known_identity =
+                Identity::import_from_change_history(known_identity, self.identities.vault())
+                    .await?;
+
+            match identity.compare(&known_identity) {
+                IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
+                    return Err(IdentityError::ConsistencyError.into());
+                }
+                IdentityHistoryComparison::Newer => {
+                    self.identities
+                        .repository()
+                        .update_identity(identity.identifier(), identity.change_history())
+                        .await?;
+                }
+                IdentityHistoryComparison::Equal => {}
+            }
+        } else {
+            self.identities
+                .repository()
+                .update_identity(identity.identifier(), identity.change_history())
+                .await?;
+        }
 
         let purpose_key = self
             .identities
