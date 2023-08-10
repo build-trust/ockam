@@ -1,7 +1,6 @@
 FROM gcc:13.1.0-bookworm@sha256:02046172695139f68f584e6f13b889cf95a04dc2096ab7148b5cba43a2f22af2
 
 ARG RUSTUP_INIT_VERSION=1.25.2
-ARG RUST_VERSION=1.71.1
 ARG ERLANG_VERSION=24.1.7-1~debian~buster
 ARG ELIXIR_VERSION=1.13.0-1~debian~buster
 ARG NODEJS_VERSION=16.14.2
@@ -21,6 +20,8 @@ ENV RUSTUP_HOME=/opt/rust/rustup \
     NODEJS_HOME=/opt/nodejs \
     GH_CLI_HOME=/opt/gh \
     MOLD_HOME=/opt/mold
+
+COPY rust-toolchain.toml /rust-toolchain.toml
 
 RUN set -xe; \
     case $(dpkg --print-architecture) in \
@@ -93,14 +94,13 @@ RUN set -xe; \
       "https://static.rust-lang.org/rustup/archive/${RUSTUP_INIT_VERSION}/${OS}/rustup-init"; \
     echo "${RUSTUP_INIT_SHA256}  rustup-init" | sha256sum -c -; \
     chmod +x rustup-init; \
-    ./rustup-init -y --no-modify-path --profile minimal \
-      --default-toolchain "$RUST_VERSION" --default-host ${OS}; \
+    ./rustup-init -y --no-modify-path --default-host ${OS}; \
     rm rustup-init; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
-    PATH="${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:$PATH"; \
-    rustup component add rustfmt; \
+    PATH="${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:$PATH";\
+    # Update rust to specified toolchain file
+    rustup show; \
     rustup install nightly; \
-    rustup component add clippy; \
     cargo install --locked cargo-deny; \
     cargo install --locked cargo-nextest; \
     cargo install --locked cargo-readme; \
