@@ -34,10 +34,7 @@ impl IdentitiesBuilder {
 
     /// Set a specific storage for identities
     pub fn with_identities_storage(&mut self, storage: Arc<dyn Storage>) -> IdentitiesBuilder {
-        self.with_identities_repository(Arc::new(IdentitiesStorage::new(
-            storage,
-            self.vault.clone(),
-        )))
+        self.with_identities_repository(Arc::new(IdentitiesStorage::new(storage)))
     }
 
     /// Set a specific repository

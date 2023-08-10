@@ -6,7 +6,6 @@ use ockam_core::Result;
 use ockam_core::{async_trait, Error};
 
 use super::super::super::models::{ChangeHistory, Identifier};
-use super::super::super::Identity;
 use super::AttributesEntry;
 
 /// Repository for data related to identities: key changes and attributes
@@ -60,8 +59,11 @@ pub trait IdentityAttributesWriter: Send + Sync + 'static {
 #[async_trait]
 pub trait IdentitiesWriter: Send + Sync + 'static {
     /// Store changes if there are new key changes associated to that identity
-    /// Return an error if the current change history conflicts with the persisted one
-    async fn update_identity(&self, identity: &Identity) -> Result<()>;
+    async fn update_identity(
+        &self,
+        identifier: &Identifier,
+        change_history: &ChangeHistory,
+    ) -> Result<()>;
 }
 
 /// Trait implementing read access to identiets
