@@ -108,10 +108,7 @@ impl SecureChannels {
             .get_purpose_key(identifier, Purpose::SecureChannel)
             .await?;
 
-        let purpose_key = self
-            .purpose_keys
-            .verify_purpose_key_attestation(&purpose_key)
-            .await?;
+        let purpose_key = self.purpose_keys.import_purpose_key(&purpose_key).await?;
 
         HandshakeWorker::create(
             ctx,

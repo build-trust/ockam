@@ -100,7 +100,7 @@ impl Worker for IdentityChannelListener {
         let purpose_key = self
             .secure_channels
             .purpose_keys
-            .verify_purpose_key_attestation(&purpose_key)
+            .import_purpose_key(&purpose_key)
             .await?;
 
         HandshakeWorker::create(

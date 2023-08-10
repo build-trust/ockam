@@ -69,16 +69,16 @@ impl Credentials {
         authorities: &[Identifier],
         credential_and_purpose_key: &CredentialAndPurposeKey,
     ) -> Result<CredentialAndPurposeKeyData> {
-        let purpose_key = self
+        let purpose_key_data = self
             .purpose_keys
             .verify_purpose_key_attestation(&credential_and_purpose_key.purpose_key_attestation)
             .await?;
 
-        if !authorities.contains(purpose_key.subject()) {
+        if !authorities.contains(&purpose_key_data.subject) {
             return Err(IdentityError::UnknownAuthority.into());
         }
 
-        let public_key = match purpose_key.data().public_key.clone() {
+        let public_key = match purpose_key_data.public_key.clone() {
             PurposePublicKey::SecureChannelStaticKey(_) => {
                 return Err(IdentityError::InvalidKeyType.into())
             }
@@ -119,11 +119,11 @@ impl Credentials {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        if credential_data.created_at < purpose_key.data().created_at {
+        if credential_data.created_at < purpose_key_data.created_at {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        if credential_data.expires_at > purpose_key.data().expires_at {
+        if credential_data.expires_at > purpose_key_data.expires_at {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
@@ -143,7 +143,7 @@ impl Credentials {
 
         Ok(CredentialAndPurposeKeyData {
             credential_data,
-            purpose_key_data: purpose_key.data().clone(),
+            purpose_key_data,
         })
     }
 
@@ -163,7 +163,7 @@ impl Credentials {
 
         let issuer_purpose_key = self
             .purpose_keys
-            .verify_purpose_key_attestation(&issuer_purpose_key)
+            .import_purpose_key(&issuer_purpose_key)
             .await?;
 
         let subject_change_history = self.identities_repository.get_identity(subject).await?;

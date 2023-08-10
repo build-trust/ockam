@@ -135,8 +135,7 @@ impl PurposeKeys {
     pub async fn verify_purpose_key_attestation(
         &self,
         attestation: &PurposeKeyAttestation,
-    ) -> Result<PurposeKey> {
-        // TODO: Split this into two versions: verifying our own PurposeKey and someone's else
+    ) -> Result<PurposeKeyAttestationData> {
         let versioned_data_hash = Vault::sha256(&attestation.data);
 
         let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
@@ -181,7 +180,18 @@ impl PurposeKeys {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
         }
 
-        // FIXME: purpose_key_data.subject_latest_change_hash
+        // FIXME: purpose_key_data.subject_latest_change_hash;
+
+        Ok(purpose_key_data)
+    }
+
+    /// Import own [`PurposeKey`] from its [`PurposeKeyAttestation`]
+    /// It's assumed that the corresponding secret exists in the Vault
+    pub async fn import_purpose_key(
+        &self,
+        attestation: &PurposeKeyAttestation,
+    ) -> Result<PurposeKey> {
+        let purpose_key_data = self.verify_purpose_key_attestation(attestation).await?;
 
         let (purpose, public_key) = match purpose_key_data.public_key.clone() {
             PurposePublicKey::SecureChannelStaticKey(public_key) => {
@@ -233,8 +243,8 @@ mod tests {
             .verify_purpose_key_attestation(secure_channel_key.attestation())
             .await?;
 
-        assert_eq!(identity.identifier(), credentials_key.subject());
-        assert_eq!(identity.identifier(), secure_channel_key.subject());
+        assert_eq!(identity.identifier(), &credentials_key.subject);
+        assert_eq!(identity.identifier(), &secure_channel_key.subject);
 
         Ok(())
     }
