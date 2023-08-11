@@ -63,8 +63,8 @@ importers:
         specifier: ^4.1.2
         version: 4.1.2
       svelte-check:
-        specifier: ^3.4.6
-        version: 3.4.6(@babel/core@7.21.8)(postcss@8.4.27)(svelte@4.1.2)
+        specifier: ^3.5.0
+        version: 3.5.0(@babel/core@7.21.8)(postcss@8.4.27)(svelte@4.1.2)
       tailwindcss:
         specifier: ^3.3.3
         version: 3.3.3
@@ -3236,8 +3236,8 @@ packages:
     engines: {node: '>= 0.4'}
     dev: true
 
-  /svelte-check@3.4.6(@babel/core@7.21.8)(postcss@8.4.27)(svelte@4.1.2):
-    resolution: {integrity: sha512-OBlY8866Zh1zHQTkBMPS6psPi7o2umTUyj6JWm4SacnIHXpWFm658pG32m3dKvKFL49V4ntAkfFHKo4ztH07og==}
+  /svelte-check@3.5.0(@babel/core@7.21.8)(postcss@8.4.27)(svelte@4.1.2):
+    resolution: {integrity: sha512-KHujbn4k17xKYLmtCwv0sKKM7uiHTYcQvXnvrCcNU6a7hcszh99zFTIoiu/Sp/ewAw5aJmillJ1Cs8gKLmcX4A==}
     hasBin: true
     peerDependencies:
       svelte: ^3.55.0 || ^4.0.0-next.0 || ^4.0.0
