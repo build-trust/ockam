@@ -18,6 +18,7 @@ defmodule Ockam.Transport.Portal.OutletWorker do
 
     ssl = Keyword.get(options, :ssl, false)
     ssl_options = Keyword.get(options, :ssl_options, [])
+    tcp_wrapper = Keyword.get(options, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
 
     Logger.info(
       "Starting outlet worker to #{target_host}:#{target_port}.  peer: #{inspect(msg.return_route)}"
@@ -27,6 +28,7 @@ defmodule Ockam.Transport.Portal.OutletWorker do
     timeout = :infinity
 
     with {:ok, :ping} <- TunnelProtocol.decode(msg.payload),
+         # TODO: wrap TCP connect?
          {:ok, socket} <-
            :gen_tcp.connect(target_host, target_port, [{:active, :once}, :binary], timeout),
          {:ok, socket} <- maybe_upgrade_to_ssl(socket, ssl, ssl_options, timeout) do
@@ -59,7 +61,8 @@ defmodule Ockam.Transport.Portal.OutletWorker do
        |> Map.put(:socket, socket)
        |> Map.put(:protocol, protocol)
        |> Map.put(:peer, msg.return_route)
-       |> Map.put(:connected, true)}
+       |> Map.put(:connected, true)
+       |> Map.put(:tcp_wrapper, tcp_wrapper)}
     else
       error ->
         Logger.error("Error starting outlet: #{inspect(options)} : #{inspect(error)}")
@@ -128,8 +131,12 @@ defmodule Ockam.Transport.Portal.OutletWorker do
   defp handle_protocol_msg(state, :disconnect),
     do: {:stop, :normal, Map.put(state, :connected, false)}
 
-  defp handle_protocol_msg(%{protocol: %{send_mod: send_mod}} = state, {:payload, data}) do
-    :ok = send_mod.send(state.socket, data)
+  defp handle_protocol_msg(
+         %{protocol: %{send_mod: send_mod}, socket: socket, tcp_wrapper: tcp_wrapper} = state,
+         {:payload, data}
+       ) do
+    :ok = tcp_wrapper.wrap_tcp_call(send_mod, :send, [socket, data])
+
     {:ok, state}
   end
 
