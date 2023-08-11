@@ -4,7 +4,6 @@ use tracing::trace;
 
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::string::String;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
@@ -13,6 +12,7 @@ use ockam_core::{api, Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
 use super::super::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
+use super::super::utils::AttributesBuilder;
 use super::super::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
 /// Name of the attribute identifying the trust context for that attribute, meaning
@@ -21,6 +21,9 @@ pub const TRUST_CONTEXT_ID: &[u8] = b"trust_context_id";
 
 /// Identifier for the schema of a project credential
 pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
+
+/// Maximum duration for a valid credential in seconds (30 days)
+pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 3600);
 
 /// This struct runs as a Worker to issue credentials based on a request/response protocol
 pub struct CredentialsIssuer {
@@ -38,12 +41,9 @@ impl CredentialsIssuer {
         issuer: &Identifier,
         trust_context: String,
     ) -> Result<Self> {
-        let mut subject_attributes: BTreeMap<Vec<u8>, Vec<u8>> = Default::default();
-        subject_attributes.insert(TRUST_CONTEXT_ID.to_vec(), trust_context.as_bytes().to_vec());
-        let subject_attributes = Attributes {
-            schema: PROJECT_MEMBER_SCHEMA,
-            map: subject_attributes,
-        };
+        let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
+            .with_attribute(TRUST_CONTEXT_ID.to_vec(), trust_context.as_bytes().to_vec())
+            .build();
 
         Ok(Self {
             identities_repository,
@@ -78,7 +78,7 @@ impl CredentialsIssuer {
                 subject,
                 &self.issuer,
                 subject_attributes,
-                Duration::from_secs(120), /* FIXME */
+                MAX_CREDENTIAL_VALIDITY,
             )
             .await?;
 

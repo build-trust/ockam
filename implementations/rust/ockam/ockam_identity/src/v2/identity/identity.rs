@@ -96,6 +96,10 @@ impl Identity {
             }
         }
 
+        // TODO: Should we check any timestamps here?
+        // e.g., if the creation of the new key is before the expiration of the previous?
+        // or if the latest key is not expired?
+
         let identity = Self::new(identifier, verified_changes, change_history);
 
         Ok(identity)
