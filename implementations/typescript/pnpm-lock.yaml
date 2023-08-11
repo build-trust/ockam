@@ -40,10 +40,10 @@ importers:
     devDependencies:
       '@sveltejs/adapter-static':
         specifier: 2.0.3
-        version: 2.0.3(@sveltejs/kit@1.22.4)
+        version: 2.0.3(@sveltejs/kit@1.22.5)
       '@sveltejs/kit':
-        specifier: ^1.22.4
-        version: 1.22.4(svelte@4.1.2)(vite@4.4.9)
+        specifier: ^1.22.5
+        version: 1.22.5(svelte@4.1.2)(vite@4.4.9)
       autoprefixer:
         specifier: ^10.4.14
         version: 10.4.14(postcss@8.4.27)
@@ -943,16 +943,16 @@ packages:
       '@sinonjs/commons': 3.0.0
     dev: true
 
-  /@sveltejs/adapter-static@2.0.3(@sveltejs/kit@1.22.4):
+  /@sveltejs/adapter-static@2.0.3(@sveltejs/kit@1.22.5):
     resolution: {integrity: sha512-VUqTfXsxYGugCpMqQv1U0LIdbR3S5nBkMMDmpjGVJyM6Q2jHVMFtdWJCkeHMySc6mZxJ+0eZK3T7IgmUCDrcUQ==}
     peerDependencies:
       '@sveltejs/kit': ^1.5.0
     dependencies:
-      '@sveltejs/kit': 1.22.4(svelte@4.1.2)(vite@4.4.9)
+      '@sveltejs/kit': 1.22.5(svelte@4.1.2)(vite@4.4.9)
     dev: true
 
-  /@sveltejs/kit@1.22.4(svelte@4.1.2)(vite@4.4.9):
-    resolution: {integrity: sha512-Opkqw1QXk4Cc25b/heJP2D7mX+OUBFAq4MXKfET58svTTxdeiHFKzmnuRsSF3nmxESqrLjqPAgHpib+knNGzRw==}
+  /@sveltejs/kit@1.22.5(svelte@4.1.2)(vite@4.4.9):
+    resolution: {integrity: sha512-LHq+ECucoT6c6/tkrxIQtD8KVNhPFV4QQ+xOKTwBAs/Qdtff8P5gAzsIZiwEaaO6J6sYZoy5RP2VR6m8PSCgLA==}
     engines: {node: ^16.14 || >=18}
     hasBin: true
     requiresBuild: true
@@ -972,7 +972,7 @@ packages:
       set-cookie-parser: 2.6.0
       sirv: 2.0.3
       svelte: 4.1.2
-      undici: 5.22.1
+      undici: 5.23.0
       vite: 4.4.9
     transitivePeerDependencies:
       - supports-color
@@ -3472,8 +3472,8 @@ packages:
     hasBin: true
     dev: true
 
-  /undici@5.22.1:
-    resolution: {integrity: sha512-Ji2IJhFXZY0x/0tVBXeQwgPlLWw13GVzpsWPQ3rV50IFMMof2I55PZZxtm4P6iNq+L5znYN9nSTAq0ZyE6lSJw==}
+  /undici@5.23.0:
+    resolution: {integrity: sha512-1D7w+fvRsqlQ9GscLBwcAJinqcZGHUKjbOmXdlE/v8BvEGXjeWAax+341q44EuTcHXXnfyKNbKRq4Lg7OzhMmg==}
     engines: {node: '>=14.0'}
     dependencies:
       busboy: 1.6.0
