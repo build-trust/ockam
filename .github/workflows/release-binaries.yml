@@ -324,7 +324,7 @@ jobs:
         run: |
           cargo install --version 0.1.16 cross
           cross build --release --package ockam-ffi --target ${{ matrix.target }}
-          rm -rf target/release && mv target/${{ matrix.target }}/release target
+          rm -rf target/release && mv target/${{ matrix.target }}/release target/
 
       - name: Build NIF For Linux
         if: matrix.build != 'macos'
