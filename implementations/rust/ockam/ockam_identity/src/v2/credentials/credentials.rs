@@ -167,9 +167,12 @@ impl Credentials {
             .await?;
 
         let subject_change_history = self.identities_repository.get_identity(subject).await?;
-        let subject_identity =
-            Identity::import_from_change_history(subject_change_history, self.vault.clone())
-                .await?;
+        let subject_identity = Identity::import_from_change_history(
+            Some(subject),
+            subject_change_history,
+            self.vault.clone(),
+        )
+        .await?;
 
         let created_at = now()?;
         let expires_at = add_seconds(&created_at, ttl.as_secs());

@@ -77,6 +77,7 @@ impl Identity {
 
     /// Import and verify Identity from the ChangeHistory
     pub async fn import_from_change_history(
+        expected_identifier: Option<&Identifier>,
         change_history: ChangeHistory,
         vault: Arc<dyn IdentitiesVault>,
     ) -> Result<Identity> {
@@ -89,16 +90,26 @@ impl Identity {
             return Err(IdentityError::IdentityVerificationFailed.into());
         };
 
+        if let Some(expected_identifier) = expected_identifier {
+            if &identifier != expected_identifier {
+                return Err(IdentityError::IdentityVerificationFailed.into());
+            }
+        }
+
         let identity = Self::new(identifier, verified_changes, change_history);
 
         Ok(identity)
     }
 
     /// Create an Identity from serialized data
-    pub async fn import(data: &[u8], vault: Arc<dyn IdentitiesVault>) -> Result<Identity> {
+    pub async fn import(
+        expected_identifier: Option<&Identifier>,
+        data: &[u8],
+        vault: Arc<dyn IdentitiesVault>,
+    ) -> Result<Identity> {
         let change_history = ChangeHistory::import(data)?;
 
-        Self::import_from_change_history(change_history, vault).await
+        Self::import_from_change_history(expected_identifier, change_history, vault).await
     }
 }
 
@@ -121,7 +132,7 @@ impl Identity {
         let mut change_history = self.change_history;
         change_history.0.push(change);
 
-        Self::import_from_change_history(change_history, vault).await
+        Self::import_from_change_history(None, change_history, vault).await
     }
 
     /// Compare to a previously known state of the same `Identity`
@@ -154,13 +165,17 @@ impl Display for Identity {
 mod tests {
     use super::super::super::identities;
     use super::*;
+    use core::str::FromStr;
 
     #[tokio::test]
     async fn test_display() {
         let data = hex::decode("81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820b23304f9473622847ca80dfda0d10f12eebc03f4041a64c956a9051a64c956a9028201815840c1598a6f85215c118a4744310bebfae71ec19353e1ede1582787592013d65a70c80aa4a4855d16d9b696a887be9bd97b2271245124857d67c07e0203564c3706").unwrap();
         let identity = identities()
             .identities_creation()
-            .import(&data)
+            .import(
+                Some(&Identifier::from_str("Ie2424922b4194cd4ab57f952ef04c44e5e70ab2f").unwrap()),
+                &data,
+            )
             .await
             .unwrap();
 

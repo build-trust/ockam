@@ -2,6 +2,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::KeyId;
 
+use super::super::models::Identifier;
 use super::super::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault, Identity};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
@@ -20,8 +21,12 @@ impl IdentitiesCreation {
     }
 
     /// Import and verify identity from its binary format
-    pub async fn import(&self, data: &[u8]) -> Result<Identity> {
-        Identity::import(data, self.vault.clone()).await
+    pub async fn import(
+        &self,
+        expected_identifier: Option<&Identifier>,
+        data: &[u8],
+    ) -> Result<Identity> {
+        Identity::import(expected_identifier, data, self.vault.clone()).await
     }
 
     /// Create an Identity
@@ -61,7 +66,12 @@ mod tests {
         let identity = creation.create_identity().await?;
         let actual = repository.get_identity(identity.identifier()).await?;
 
-        let actual = Identity::import_from_change_history(actual, identities.vault()).await?;
+        let actual = Identity::import_from_change_history(
+            Some(identity.identifier()),
+            actual,
+            identities.vault(),
+        )
+        .await?;
         assert_eq!(
             actual, identity,
             "the identity can be retrieved from the repository"
@@ -69,8 +79,12 @@ mod tests {
 
         let actual = repository.retrieve_identity(identity.identifier()).await?;
         assert!(actual.is_some());
-        let actual =
-            Identity::import_from_change_history(actual.unwrap(), identities.vault()).await?;
+        let actual = Identity::import_from_change_history(
+            Some(identity.identifier()),
+            actual.unwrap(),
+            identities.vault(),
+        )
+        .await?;
         assert_eq!(
             actual, identity,
             "the identity can be retrieved from the repository as an Option"
