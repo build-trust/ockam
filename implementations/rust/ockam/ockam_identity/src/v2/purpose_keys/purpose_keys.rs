@@ -60,8 +60,12 @@ impl PurposeKeys {
         // TODO: Check if such key already exists and rewrite it correctly (also delete from the Vault)
 
         let identity_change_history = self.identities_reader.get_identity(identifier).await?;
-        let identity =
-            Identity::import_from_change_history(identity_change_history, self.vault()).await?;
+        let identity = Identity::import_from_change_history(
+            Some(identifier),
+            identity_change_history,
+            self.vault(),
+        )
+        .await?;
 
         // FIXME
         let secret_attributes = match &purpose {
@@ -150,8 +154,13 @@ impl PurposeKeys {
             .identities_reader
             .get_identity(&purpose_key_data.subject)
             .await?;
-        let identity =
-            Identity::import_from_change_history(change_history, self.vault.clone()).await?;
+        let identity = Identity::import_from_change_history(
+            Some(&purpose_key_data.subject),
+            change_history,
+            self.vault.clone(),
+        )
+        .await?;
+
         let public_key = identity.get_public_key()?;
 
         let signature = if let PurposeKeyAttestationSignature::Ed25519Signature(signature) =

@@ -122,6 +122,7 @@ impl CommonStateMachine {
         peer_public_key: &PublicKey,
     ) -> Result<()> {
         let identity = Identity::import_from_change_history(
+            None,
             peer.change_history.clone(),
             self.identities.vault(),
         )
@@ -133,9 +134,12 @@ impl CommonStateMachine {
             .retrieve_identity(identity.identifier())
             .await?
         {
-            let known_identity =
-                Identity::import_from_change_history(known_identity, self.identities.vault())
-                    .await?;
+            let known_identity = Identity::import_from_change_history(
+                Some(identity.identifier()),
+                known_identity,
+                self.identities.vault(),
+            )
+            .await?;
 
             match identity.compare(&known_identity) {
                 IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {

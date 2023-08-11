@@ -50,7 +50,12 @@ async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
 
 /// This function simulates an identity import to check its history
 async fn check_identity(identity: &Identity) -> Result<Identity> {
-    Identity::import(&identity.export()?, Vault::create()).await
+    Identity::import(
+        Some(identity.identifier()),
+        &identity.export()?,
+        Vault::create(),
+    )
+    .await
 }
 
 #[ockam_macros::test]
@@ -68,7 +73,8 @@ async fn test_eject_signatures(ctx: &mut Context) -> Result<()> {
         assert!(res.is_ok());
 
         let change_history = eject_random_signature(&identity)?;
-        let res = Identity::import_from_change_history(change_history, identities.vault()).await;
+        let res =
+            Identity::import_from_change_history(None, change_history, identities.vault()).await;
         assert!(res.is_err());
     }
 

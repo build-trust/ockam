@@ -22,7 +22,7 @@ impl IdentitiesKeys {
         let change_history = ChangeHistory(vec![change]);
 
         let identity =
-            Identity::import_from_change_history(change_history, self.vault.clone()).await?;
+            Identity::import_from_change_history(None, change_history, self.vault.clone()).await?;
 
         Ok(identity)
     }
@@ -142,8 +142,10 @@ impl IdentitiesKeys {
 
 #[cfg(test)]
 mod test {
+    use super::super::super::models::Identifier;
     use super::super::identities;
     use super::*;
+    use core::str::FromStr;
     use ockam_core::errcode::{Kind, Origin};
     use ockam_core::Error;
     use ockam_node::Context;
@@ -158,8 +160,18 @@ mod test {
         let identity_keys = identities.identities_keys();
         let identity = identities.identities_creation().create_identity().await?;
 
+        // Identifier should not match
+        let res = Identity::import_from_change_history(
+            Some(&Identifier::from_str("Iabababababababababababababababababababab").unwrap()),
+            identity.change_history().clone(),
+            identities.vault(),
+        )
+        .await;
+        assert!(res.is_err());
+
         // Check if verification succeeds
         let _ = Identity::import_from_change_history(
+            Some(identity.identifier()),
             identity.change_history().clone(),
             identities.vault(),
         )
@@ -172,6 +184,7 @@ mod test {
 
         // Check if verification succeeds
         let _ = Identity::import_from_change_history(
+            Some(identity.identifier()),
             identity.change_history().clone(),
             identities.vault(),
         )
