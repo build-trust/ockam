@@ -34,6 +34,7 @@ pub enum OckamError {
     SystemInvalidConfiguration,
     UnknownForwarderDestinationAddress,
     UnknownForwarderNextHopAddress,
+    InvalidHex,
 }
 
 impl ockam_core::compat::error::Error for OckamError {}
