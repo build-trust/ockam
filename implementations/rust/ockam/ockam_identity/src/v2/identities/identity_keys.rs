@@ -81,12 +81,13 @@ impl IdentitiesKeys {
         let public_key = Ed25519PublicKey(public_key.data().try_into().unwrap()); // FIXME
 
         let created_at = now()?;
-        let expires_at = add_seconds(&created_at, 120);
+        let ten_years = 10 * 365 * 24 * 60 * 60; // TODO: Allow to customize
+        let expires_at = add_seconds(&created_at, ten_years);
 
         let change_data = ChangeData {
             previous_change: previous.as_ref().map(|x| x.0.clone()),
             primary_public_key: PrimaryPublicKey::Ed25519PublicKey(public_key),
-            revoke_all_purpose_keys: false, // FIXME
+            revoke_all_purpose_keys: false, // TODO: Allow to choose
             created_at,
             expires_at,
         };

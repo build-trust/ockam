@@ -89,7 +89,10 @@ impl PurposeKeys {
         };
 
         let created_at = now()?;
-        let expires_at = add_seconds(&created_at, 60); // FIXME
+        // TODO: allow customizing ttl
+        // TODO: check if expiration is before the purpose key expiration
+        let five_years = 5 * 365 * 24 * 60 * 60;
+        let expires_at = add_seconds(&created_at, five_years);
 
         let purpose_key_attestation_data = PurposeKeyAttestationData {
             subject: identity.identifier().clone(),
@@ -161,6 +164,8 @@ impl PurposeKeys {
         )
         .await?;
 
+        // TODO: We might accept a signature from previous key
+        // TODO: Check if purpose key expiration is before the corresponding Identity public key expiration
         let public_key = identity.get_public_key()?;
 
         let signature = if let PurposeKeyAttestationSignature::Ed25519Signature(signature) =
