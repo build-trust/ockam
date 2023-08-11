@@ -6,6 +6,8 @@ use tracing::{debug, error, info};
 
 use crate::app::AppState;
 use crate::error::Error;
+use crate::invitations::build_args_for_create_service_invitation;
+use crate::invitations::commands::create_service_invitation;
 
 /// Create a TCP outlet within the default node.
 #[tauri::command]
@@ -13,8 +15,10 @@ pub async fn tcp_outlet_create(
     app: AppHandle<Wry>,
     service: String,
     port: String,
+    email: String,
 ) -> Result<(), String> {
-    tcp_outlet_create_impl(app, service, port)
+    let email = if email.is_empty() { None } else { Some(email) };
+    tcp_outlet_create_impl(app, service, port, email)
         .await
         .map_err(|e| {
             error!("{:?}", e);
@@ -27,6 +31,7 @@ async fn tcp_outlet_create_impl(
     app: AppHandle<Wry>,
     service: String,
     port: String,
+    email: Option<String>,
 ) -> crate::Result<()> {
     debug!(%service, %port, "Creating an outlet");
     let app_state = app.state::<AppState>();
@@ -54,5 +59,13 @@ async fn tcp_outlet_create_impl(
             Ok(())
         }
         Err(_) => Err(Error::Generic("Failed to create outlet".to_string())),
+    }?;
+    if let Some(email) = email {
+        let invite_args =
+            build_args_for_create_service_invitation(&app, &tcp_addr.to_string(), &email).await?;
+        create_service_invitation(invite_args, app)
+            .await
+            .map_err(Error::Generic)?;
     }
+    Ok(())
 }

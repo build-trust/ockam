@@ -44,7 +44,7 @@ fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
         // NOTE: Event handler for dynamic ID is defined in crate::invitations::tray_menu module,
         // and reached via crate::app::tray_menu::fallback_for_id
         submenu = submenu.add_item(CustomMenuItem::new(
-            format!("invitation-create-for-{}", outlet.alias),
+            format!("invitation-create-for-{}", outlet.tcp_addr),
             "Share".to_string(),
         ));
     }
@@ -89,7 +89,7 @@ pub fn on_create(app: &AppHandle<Wry>) -> tauri::Result<()> {
             .always_on_top(true)
             .visible(false)
             .title("Share a service")
-            .max_inner_size(400.0, 400.0)
+            .max_inner_size(450.0, 350.0)
             .resizable(false)
             .minimizable(false)
             .build()?;

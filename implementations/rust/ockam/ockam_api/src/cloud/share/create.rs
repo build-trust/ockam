@@ -1,7 +1,10 @@
 use minicbor::{Decode, Encode};
+use ockam_core::Result;
 use serde::{Deserialize, Serialize};
 
-use ockam_identity::IdentityIdentifier;
+use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use crate::error::ApiError;
+use ockam_identity::{identities, IdentityIdentifier};
 
 use super::{RoleInShare, SentInvitation, ShareScope};
 
@@ -34,9 +37,52 @@ pub struct CreateServiceInvitation {
     #[n(9)] pub shared_node_route: String,
 }
 
+impl CreateServiceInvitation {
+    pub async fn new<S: AsRef<str>>(
+        cli_state: &CliState,
+        expires_at: Option<String>,
+        project_name: S,
+        recipient_email: S,
+        node_name: S,
+        service_route: S,
+    ) -> Result<Self> {
+        let node_identifier = cli_state.nodes.get(node_name)?.config().identifier()?;
+        let project = cli_state.projects.get(&project_name)?.config().clone();
+        let project_authority_route = project
+            .authority_access_route
+            .ok_or(ApiError::generic("Project authority route is missing"))?;
+        let project_authority_identifier = {
+            let identity = project
+                .authority_identity
+                .ok_or(ApiError::generic("Project authority identifier is missing"))?;
+            let as_hex = hex::decode(identity.as_str()).map_err(|_| {
+                ApiError::generic("Project authority identifier is not a valid hex string")
+            })?;
+            identities()
+                .identities_creation()
+                .decode_identity(&as_hex)
+                .await?
+                .identifier()
+        };
+        Ok(CreateServiceInvitation {
+            expires_at,
+            project_id: project.id.to_string(),
+            recipient_email: recipient_email.as_ref().to_string(),
+            project_identity: project
+                .identity
+                .ok_or(ApiError::generic("Project identity is missing"))?,
+            project_route: project.access_route,
+            project_authority_identity: project_authority_identifier,
+            project_authority_route,
+            shared_node_identity: node_identifier,
+            shared_node_route: service_route.as_ref().to_string(),
+        })
+    }
+}
+
 mod node {
     use ockam_core::api::{Request, Response};
-    use ockam_core::{self, Result};
+    use ockam_core::{self};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
     use tracing::trace;

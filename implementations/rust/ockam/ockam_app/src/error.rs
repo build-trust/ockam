@@ -9,6 +9,9 @@ pub enum Error {
     Generic(String),
 
     #[error(transparent)]
+    Ockam(#[from] ockam_core::Error),
+
+    #[error(transparent)]
     Command(#[from] ockam_command::error::Error),
 
     #[error(transparent)]
@@ -26,6 +29,12 @@ pub enum Error {
 
 impl From<miette::Report> for Error {
     fn from(e: miette::Report) -> Self {
+        Error::Generic(e.to_string())
+    }
+}
+
+impl From<&str> for Error {
+    fn from(e: &str) -> Self {
         Error::Generic(e.to_string())
     }
 }
