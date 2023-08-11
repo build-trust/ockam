@@ -32,7 +32,7 @@ pub fn run() {
         //if we can connect to the socket then the app is already running
         //if it's not running yet the arguments will be checked upon startup
         if !args.is_empty() && args[0].starts_with("ockam:") {
-            if let Ok(mut stream) = UnixStream::connect(linux_url_plugin::OCKAM_OPEN_URL_SOCK) {
+            if let Ok(mut stream) = UnixStream::connect(linux_url_plugin::open_url_sock_path()) {
                 stream.write_all(args[0].as_bytes()).unwrap();
                 stream.flush().unwrap();
                 return;

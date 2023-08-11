@@ -1,7 +1,5 @@
 use log::{info, warn};
-use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
-use std::os::unix::net::UnixListener;
 use std::time::Duration;
 
 use tauri::{
@@ -9,24 +7,30 @@ use tauri::{
     plugin::{Builder, TauriPlugin},
     Manager, Runtime,
 };
+use tokio::io::AsyncReadExt;
+use tokio::net::UnixListener;
 use tokio::time::sleep;
 
-pub(crate) const OCKAM_OPEN_URL_SOCK: &str = "/tmp/.ockam-open-url-sock";
+pub(crate) fn open_url_sock_path() -> String {
+    let runtime_directory = std::env::var("XDG_RUNTIME_DIR").unwrap_or("/tmp".to_string());
+    format!("{runtime_directory}/ockam-open-url-sock")
+}
 const ONLY_WRITE_FROM_USER_PERMISSIONS: u32 = 0o200;
 
 pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("linux-url")
         .setup(|app, _api| {
+            let sock_path = &open_url_sock_path();
             //bind fails if the file already exists
-            let _ = std::fs::remove_file(OCKAM_OPEN_URL_SOCK);
-            let listener = UnixListener::bind(OCKAM_OPEN_URL_SOCK)
-                .unwrap_or_else(|_| panic!("cannot listener on {OCKAM_OPEN_URL_SOCK}"));
+            let _ = std::fs::remove_file(sock_path);
+            let listener = UnixListener::bind(sock_path)
+                .unwrap_or_else(|_| panic!("cannot listener on {sock_path}"));
             //only allow the current user to write to the socket
             std::fs::set_permissions(
-                OCKAM_OPEN_URL_SOCK,
+                sock_path,
                 std::fs::Permissions::from_mode(ONLY_WRITE_FROM_USER_PERMISSIONS),
             )
-            .unwrap_or_else(|_| panic!("cannot set permissions on {OCKAM_OPEN_URL_SOCK}"));
+            .unwrap_or_else(|_| panic!("cannot set permissions on {sock_path}"));
 
             let handle = app.clone();
             spawn(async move {
@@ -43,18 +47,20 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
                     }
                 }
 
-                for stream in listener.incoming().flatten() {
-                    let mut stream = stream;
+                while let Ok((mut stream, _)) = listener.accept().await {
                     let mut buffer = [0; 4096];
-                    let read_bytes = stream.read(&mut buffer).unwrap();
-                    if let Ok(url) = String::from_utf8(buffer[..read_bytes].to_vec()) {
-                        if url.starts_with("ockam:") {
-                            info!("received url: {}", url);
-                            handle.trigger_global(crate::app::events::URL_OPEN, Some(url));
-                        } else {
-                            warn!("ignored url: {}", url);
+                    if let Ok(read_bytes) = stream.read(&mut buffer).await {
+                        if let Ok(url) = String::from_utf8(buffer[..read_bytes].to_vec()) {
+                            if url.starts_with("ockam:") {
+                                info!("received url: {}", url);
+                                handle.trigger_global(crate::app::events::URL_OPEN, Some(url));
+                            } else {
+                                warn!("ignored url: {}", url);
+                            }
                         }
                     }
+                    //every connection is used only once
+                    drop(stream);
                 }
             });
             Ok(())
