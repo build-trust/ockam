@@ -5,12 +5,14 @@ use ockam_core::{
     Address, IncomingAccessControl, Message, OutgoingAccessControl, Processor, Result, Route,
     Routed, Worker,
 };
-use ockam_identity::{
+use ockam_identity::v2::models::Identifier;
+use ockam_identity::v2::storage::Storage;
+use ockam_identity::v2::{
     secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, IdentityIdentifier, SecureChannel, SecureChannelListener,
-    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder, Storage,
+    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
+    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
 };
-use ockam_identity::{
+use ockam_identity::v2::{
     IdentitiesVault, Identity, SecureChannelListenerOptions, SecureChannelOptions,
 };
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
@@ -18,6 +20,7 @@ use ockam_vault::VaultStorage;
 
 use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use crate::stream::Stream;
+use crate::OckamError;
 
 /// This struct supports all the ockam services for managing identities
 /// and creating secure channels
@@ -99,35 +102,29 @@ impl Node {
     }
 
     /// Create an Identity
-    pub async fn create_identity(&self) -> Result<IdentityIdentifier> {
+    pub async fn create_identity(&self) -> Result<Identifier> {
         Ok(self
             .identities_creation()
             .create_identity()
             .await?
-            .identifier())
-    }
-
-    /// Import an Identity given its private key and change history
-    /// Note: the data is not persisted!
-    pub async fn import_private_identity(
-        &self,
-        identity_history: &str,
-        secret: &str,
-    ) -> Result<Identity> {
-        self.identities_creation()
-            .import_private_identity(identity_history, secret)
-            .await
+            .identifier()
+            .clone())
     }
 
     /// Import an Identity given that was exported as a hex-encoded string
     pub async fn import_identity_hex(&self, data: &str) -> Result<Identity> {
-        self.identities_creation().decode_identity_hex(data).await
+        self.identities_creation()
+            .import(
+                None,
+                &hex::decode(data).map_err(|_| OckamError::InvalidHex)?,
+            )
+            .await
     }
 
     /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerOptions`]
     pub async fn create_secure_channel_listener(
         &self,
-        identifier: &IdentityIdentifier,
+        identifier: &Identifier,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
     ) -> Result<SecureChannelListener> {
@@ -139,7 +136,7 @@ impl Node {
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
     pub async fn create_secure_channel(
         &self,
-        identifier: &IdentityIdentifier,
+        identifier: &Identifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
     ) -> Result<SecureChannel> {
@@ -270,7 +267,7 @@ impl Node {
     }
 
     /// Return services to manage credentials
-    pub fn credentials(&self) -> Arc<dyn Credentials> {
+    pub fn credentials(&self) -> Arc<Credentials> {
         self.identities().credentials()
     }
 

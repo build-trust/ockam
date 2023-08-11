@@ -89,9 +89,9 @@ pub mod workers;
 
 #[cfg(feature = "std")]
 pub use ockam_abac as abac;
-pub use ockam_identity as identity;
+pub use ockam_identity::v2 as identity;
 #[cfg(feature = "std")]
-pub use ockam_identity::storage::lmdb_storage::*;
+pub use ockam_identity::v2::storage::lmdb_storage::*;
 
 pub use ockam_core::{
     allow, deny, errcode, route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage,
@@ -102,7 +102,7 @@ pub use ockam_core::{
 /// Access Control
 pub mod access_control {
     pub use ockam_core::access_control::*;
-    pub use ockam_identity::secure_channel::access_control::*;
+    pub use ockam_identity::v2::secure_channel::access_control::*;
 }
 
 /// Flow Controls
