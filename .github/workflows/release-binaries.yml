@@ -238,11 +238,27 @@ jobs:
         target: ${{ matrix.target }}
         platform_operating_system: ${{ matrix.os }}
 
-    - name: Build archive
+    - name: Copy Artifacts
       run: |
         set -x
         cp target/${{ matrix.target }}/release/ockam ockam.${{ matrix.target }}
-        echo "ASSET=ockam.${{ matrix.target }}" >> $GITHUB_ENV
+        echo "ASSET_OCKAM_CLI=ockam.${{ matrix.target }}" >> $GITHUB_ENV
+        
+        if [ -e "target/${{ matrix.target }}/release/bundle/dmg/Ockam Desktop*dmg" ]; then
+          cp "target/${{ matrix.target }}/release/bundle/dmg/Ockam Desktop*dmg" "Ockam Desktop ${{ matrix.target }}.dmg"
+          echo "ASSET_OCKAM_DESKTOP_DMG="Ockam Desktop ${{ matrix.target }}.dmg" >> $GITHUB_ENV
+        fi
+        
+        if [ -e "target/${{ matrix.target }}/release/bundle/ockam-desktop*.deb" ]; then
+          cp target/${{ matrix.target }}/release/bundle/ockam-desktop*.deb "ockam-desktop-${{ matrix.target }}.deb"
+          echo "ASSET_OCKAM_DESKTOP_DEB=ockam-desktop-${{ matrix.target }}.deb" >> $GITHUB_ENV
+        fi
+        
+        if [ -e "target/${{ matrix.target }}/release/bundle/ockam-desktop*.AppImage" ]; then
+          cp "target/${{ matrix.target }}/release/bundle/ockam-desktop*.AppImage" "Ockam Desktop ${{ matrix.target }}.AppImage"
+          echo "ASSET_OCKAM_DESKTOP_APPIMAGE=Ockam Desktop ${{ matrix.target }}.AppImage" >> $GITHUB_ENV
+        fi
+        
         ls $GITHUB_WORKSPACE
 
     - name: Install Cosign
@@ -255,26 +271,59 @@ jobs:
         PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
         COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
       run: |
-        cosign sign-blob --yes --key env://PRIVATE_KEY ${{ env.ASSET }} > ${{ env.ASSET }}.sig
+        cosign sign-blob --yes --key env://PRIVATE_KEY ${{ env.ASSET_OCKAM_CLI }} > ${{ env.ASSET_OCKAM_CLI }}.sig
 
-    - name: Upload release archive
+    - name: Upload CLI release archive
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET }}
-        asset_name: ${{ env.ASSET }}
+        asset_path: ${{ env.ASSET_OCKAM_CLI }}
+        asset_name: ${{ env.ASSET_OCKAM_CLI }}
         asset_content_type: application/octet-stream
 
-    - name: Upload Signature
+    - name: Upload CLI Signature
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET }}.sig
-        asset_name: ${{ env.ASSET }}.sig
+        asset_path: ${{ env.ASSET_OCKAM_CLI }}.sig
+        asset_name: ${{ env.ASSET_OCKAM_CLI }}.sig
+        asset_content_type: application/octet-stream
+
+    - name: Upload MacOS Desktop App release
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_DESKTOP_DMG }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_DESKTOP_DMG }}
+        asset_name: ${{ env.ASSET_OCKAM_DESKTOP_DMG }}
+        asset_content_type: application/octet-stream
+
+    - name: Upload Debian Desktop App Package
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_DESKTOP_DEB }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_DESKTOP_DEB }}
+        asset_name: ${{ env.ASSET_OCKAM_DESKTOP_DEB }}
+        asset_content_type: application/octet-stream
+
+    - name: Upload Linux AppImage Desktop App
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_DESKTOP_APPIMAGE }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_DESKTOP_APPIMAGE }}
+        asset_name: ${{ env.ASSET_OCKAM_DESKTOP_APPIMAGE }}
         asset_content_type: application/octet-stream
 
   build_elixir_nifs:

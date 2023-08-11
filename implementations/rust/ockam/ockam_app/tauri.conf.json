@@ -12,21 +12,21 @@
     "distDir": "../../../typescript/ockam/ockam_app/build"
   },
   "package": {
-    "productName": "Ockam",
-    "version": "0.1.0"
+    "productName": "Ockam Desktop"
   },
   "tauri": {
     "systemTray": {
       "iconPath": "icons/icon.png",
       "iconAsTemplate": true
     },
+    "security": {
+      "csp": null
+    },
     "bundle": {
       "active": true,
       "category": "DeveloperTool",
-      "copyright": "",
-      "deb": {
-        "depends": []
-      },
+      "identifier": "io.ockam.app",
+      "publisher": "Ockam",
       "externalBin": [],
       "icon": [
         "icons/32x32.png",
@@ -35,8 +35,14 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "io.ockam.app",
-      "longDescription": "",
+      "resources": [],
+      "shortDescription": "Ockam Desktop",
+      "longDescription": "End-to-end encryption and mutual authentication for distributed applications.",
+      "targets": [
+        "deb",
+        "appimage",
+        "dmg"
+      ],
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
@@ -44,18 +50,16 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [],
-      "shortDescription": "",
-      "targets": "all",
+      "deb": {
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      },
       "windows": {
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
         "timestampUrl": ""
       }
-    },
-    "security": {
-      "csp": null
-    },
-    "windows": []
+    }
   }
 }
