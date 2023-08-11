@@ -18,23 +18,22 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
 
   require Logger
 
-  def start_link([outlet_prefix, ssl, ssl_options], name \\ __MODULE__) do
-    GenServer.start_link(
-      __MODULE__,
-      [outlet_prefix, ssl, ssl_options],
-      name: name
-    )
+  def start_link(options) do
+    {name, options} = Keyword.pop(options, :name, __MODULE__)
+
+    GenServer.start_link(__MODULE__, options, name: name)
   end
 
   @impl true
-  def init([outlet_prefix, ssl, ssl_options]) do
+  def init(options) do
     Process.flag(:trap_exit, true)
 
     {:ok,
      %{
-       outlet_prefix: outlet_prefix,
-       ssl: ssl,
-       ssl_options: ssl_options
+       outlet_prefix: Keyword.fetch!(options, :outlet_prefix),
+       ssl: Keyword.fetch!(options, :ssl),
+       ssl_options: Keyword.fetch!(options, :ssl_options),
+       tcp_wrapper: Keyword.get(options, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
      }}
   end
 
@@ -150,7 +149,7 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
            target_host: target_host,
            target_port: target_port
          },
-         %{ssl: ssl, ssl_options: ssl_options}
+         %{ssl: ssl, ssl_options: ssl_options, tcp_wrapper: tcp_wrapper}
        ) do
     address = outlet_address(node_id, outlet_prefix)
     ## We crash on failures because error handling would be too complex
@@ -164,7 +163,8 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
           target_host: target_host,
           target_port: target_port,
           ssl: ssl,
-          ssl_options: ssl_options
+          ssl_options: ssl_options,
+          tcp_wrapper: tcp_wrapper
         ]
       )
   end

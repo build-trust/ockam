@@ -1,4 +1,6 @@
 defmodule Ockam.Services.Kafka.Provider do
+  # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
+
   @moduledoc """
   Implementation for Ockam.Services.Provider
   providing kafka stream services, :stream_kafka and :stream_kafka_index
@@ -190,6 +192,7 @@ defmodule Ockam.Services.Kafka.Provider do
 
     ssl = Keyword.get(outlet_args, :ssl, false)
     ssl_options = Keyword.get(outlet_args, :ssl_options, [])
+    tcp_wrapper = Keyword.get(outlet_args, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
 
     [
       {Ockam.Session.Spawner,
@@ -203,11 +206,18 @@ defmodule Ockam.Services.Kafka.Provider do
            ssl_options: ssl_options,
            authorization: authorization,
            ## It doesn't make sense to restart the outlet worker
-           restart_type: :temporary
+           restart_type: :temporary,
+           tcp_wrapper: tcp_wrapper
          ],
          authorization: authorization
        ]},
-      {Ockam.Kafka.Interceptor.OutletManager, [outlet_prefix, ssl, ssl_options]}
+      {Ockam.Kafka.Interceptor.OutletManager,
+       [
+         outlet_prefix: outlet_prefix,
+         ssl: ssl,
+         ssl_options: ssl_options,
+         tcp_wrapper: tcp_wrapper
+       ]}
     ]
   end
 
@@ -224,6 +234,7 @@ defmodule Ockam.Services.Kafka.Provider do
     bootstrap_port = Keyword.get(inlet_args, :bootstrap_port, 9000)
     base_port = Keyword.get(inlet_args, :base_port, 9001)
     allowed_ports = Keyword.get(inlet_args, :allowed_ports, 20)
+    tcp_wrapper = Keyword.get(inlet_args, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
 
     outlet_route =
       Keyword.get(inlet_args, :outlet_route, [
@@ -236,11 +247,17 @@ defmodule Ockam.Services.Kafka.Provider do
     [
       {
         Ockam.Transport.Portal.InletListener,
-        [port: bootstrap_port, peer_route: bootstrap_route]
+        [port: bootstrap_port, peer_route: bootstrap_route, tcp_wrapper: tcp_wrapper]
       },
       {
         Ockam.Kafka.Interceptor.InletManager,
-        [base_port, allowed_ports, base_route, outlet_prefix]
+        [
+          base_port: base_port,
+          allowed_ports: allowed_ports,
+          base_route: base_route,
+          outlet_prefix: outlet_prefix,
+          tcp_wrapper: tcp_wrapper
+        ]
       }
     ]
   end

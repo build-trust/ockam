@@ -9,7 +9,15 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     base_route = ["outlets"]
     outlet_prefix = "outlet_"
 
-    start_supervised!({InletManager, [base_port, allowed_ports, base_route, outlet_prefix]})
+    start_supervised!(
+      {InletManager,
+       [
+         base_port: base_port,
+         allowed_ports: allowed_ports,
+         base_route: base_route,
+         outlet_prefix: outlet_prefix
+       ]}
+    )
 
     inlets = InletManager.list_inlets()
 
@@ -38,7 +46,15 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     base_route = ["outlets"]
     outlet_prefix = "outlet_"
 
-    start_supervised!({InletManager, [base_port, allowed_ports, base_route, outlet_prefix]})
+    start_supervised!(
+      {InletManager,
+       [
+         base_port: base_port,
+         allowed_ports: allowed_ports,
+         base_route: base_route,
+         outlet_prefix: outlet_prefix
+       ]}
+    )
 
     :ok = InletManager.set_inlets([1])
     inlets = InletManager.list_inlets()

@@ -21,8 +21,11 @@ defmodule Ockam.Transport.Portal.InletWorker do
   @impl true
   def setup(options, state) do
     peer_route = options[:peer_route]
+    tcp_wrapper = Keyword.get(options, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
     Logger.info("Starting inlet worker.  Outlet peer: #{inspect(peer_route)}")
-    {:ok, Map.merge(state, %{peer_route: peer_route, stage: :wait_for_socket})}
+
+    {:ok,
+     Map.merge(state, %{peer_route: peer_route, stage: :wait_for_socket, tcp_wrapper: tcp_wrapper})}
   end
 
   @impl true
@@ -84,11 +87,11 @@ defmodule Ockam.Transport.Portal.InletWorker do
   end
 
   defp handle_protocol_msg(
-         %{stage: :connected, socket: socket} = state,
+         %{socket: socket, stage: :connected, tcp_wrapper: tcp_wrapper} = state,
          {:payload, data},
          _return_route
        ) do
-    :ok = :gen_tcp.send(socket, data)
+    :ok = tcp_wrapper.wrap_tcp_call(:gen_tcp, :send, [socket, data])
     {:ok, state}
   end
 

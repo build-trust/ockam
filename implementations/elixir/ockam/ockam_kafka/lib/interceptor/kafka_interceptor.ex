@@ -73,7 +73,7 @@ defmodule Ockam.Kafka.Interceptor do
 
   defp process_kafka_packet(type, packet, %{read_buffer: <<>>} = state, replies) do
     case packet do
-      <<size::signed-big-integer-size(32), data::binary-size(size), rest::binary()>> ->
+      <<size::signed-big-integer-size(32), data::binary-size(size), rest::binary>> ->
         ## There is enough data in the packet to read the message
         case process_kafka_message(type, data, state) do
           {:ok, new_data, state} ->
@@ -94,7 +94,7 @@ defmodule Ockam.Kafka.Interceptor do
         ## We finished reading the packet
         {:ok, replies, state}
 
-      <<_size::signed-big-integer-size(32), _rest::binary()>> ->
+      <<_size::signed-big-integer-size(32), _rest::binary>> ->
         ## There is not enough data in the packed
         ## return replies and wait for the next packet
         {:ok, replies, %{state | read_buffer: packet}}

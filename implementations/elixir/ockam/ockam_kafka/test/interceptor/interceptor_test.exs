@@ -133,14 +133,16 @@ defmodule Ockam.Kafka.Interceptor.Test do
     start_supervised!(
       {InletManager,
        [
-         base_port,
-         allowed_ports,
-         outlet_route,
-         outlet_prefix
+         base_port: base_port,
+         allowed_ports: allowed_ports,
+         base_route: outlet_route,
+         outlet_prefix: outlet_prefix
        ]}
     )
 
-    start_supervised!({OutletManager, [outlet_prefix, false, []]})
+    start_supervised!(
+      {OutletManager, [outlet_prefix: outlet_prefix, ssl: false, ssl_options: []]}
+    )
 
     {:ok, _pid, "kafka_interceptor"} =
       Ockam.Transport.Portal.Interceptor.start_link(

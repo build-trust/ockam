@@ -10,7 +10,9 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
     ssl = false
     ssl_options = []
 
-    start_supervised!({OutletManager, [outlet_prefix, ssl, ssl_options]})
+    start_supervised!(
+      {OutletManager, [outlet_prefix: outlet_prefix, ssl: ssl, ssl_options: ssl_options]}
+    )
 
     [] = OutletManager.get_existing_outlets(outlet_prefix)
     [] = OutletManager.get_outlets()
@@ -42,7 +44,9 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
     ssl = true
     ssl_options = []
 
-    start_supervised!({OutletManager, [outlet_prefix, ssl, ssl_options]})
+    start_supervised!(
+      {OutletManager, [outlet_prefix: outlet_prefix, ssl: ssl, ssl_options: ssl_options]}
+    )
 
     to_create = [
       %Outlet{
@@ -71,8 +75,19 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
     allowed_ports = 10
     base_route = []
 
-    start_supervised!({InletManager, [base_port, allowed_ports, base_route, outlet_prefix]})
-    start_supervised!({OutletManager, [outlet_prefix, ssl, ssl_options]})
+    start_supervised!(
+      {InletManager,
+       [
+         base_port: base_port,
+         allowed_ports: allowed_ports,
+         base_route: base_route,
+         outlet_prefix: outlet_prefix
+       ]}
+    )
+
+    start_supervised!(
+      {OutletManager, [outlet_prefix: outlet_prefix, ssl: ssl, ssl_options: ssl_options]}
+    )
 
     Ockam.Transport.TCP.start(listen: [port: 12_000])
 

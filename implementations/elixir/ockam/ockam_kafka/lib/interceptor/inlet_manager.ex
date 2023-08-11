@@ -9,26 +9,25 @@ defmodule Ockam.Kafka.Interceptor.InletManager do
 
   require Logger
 
-  def start_link([base_port, allowed_ports, base_route, outlet_prefix], name \\ __MODULE__) do
-    GenServer.start_link(
-      __MODULE__,
-      [base_port, allowed_ports, base_route, outlet_prefix],
-      ## TODO: make this optional
-      name: name
-    )
+  def start_link(options) do
+    {name, options} = Keyword.pop(options, :name, __MODULE__)
+
+    ## TODO: make name optional
+    GenServer.start_link(__MODULE__, options, name: name)
   end
 
   @impl true
-  def init([base_port, allowed_ports, base_route, outlet_prefix]) do
+  def init(options) do
     Process.flag(:trap_exit, true)
 
     {:ok,
      %{
-       base_port: base_port,
-       allowed_ports: allowed_ports,
-       base_route: base_route,
-       outlet_prefix: outlet_prefix,
-       inlets: %{}
+       base_port: Keyword.fetch!(options, :base_port),
+       allowed_ports: Keyword.fetch!(options, :allowed_ports),
+       base_route: Keyword.fetch!(options, :base_route),
+       outlet_prefix: Keyword.fetch!(options, :outlet_prefix),
+       inlets: %{},
+       tcp_wrapper: Keyword.get(options, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
      }}
   end
 
@@ -125,11 +124,15 @@ defmodule Ockam.Kafka.Interceptor.InletManager do
     end
   end
 
-  defp start_inlet(port_offset, %{inlets: inlets} = state) do
+  defp start_inlet(port_offset, %{inlets: inlets, tcp_wrapper: tcp_wrapper} = state) do
     port = inlet_port(port_offset, state)
     peer_route = peer_route(port_offset, state)
 
-    case Ockam.Transport.Portal.InletListener.start_link(port: port, peer_route: peer_route) do
+    case Ockam.Transport.Portal.InletListener.start_link(
+           port: port,
+           peer_route: peer_route,
+           tcp_wrapper: tcp_wrapper
+         ) do
       {:ok, pid} ->
         {:ok, %{state | inlets: Map.put(inlets, port_offset, pid)}}
 
