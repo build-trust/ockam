@@ -6,9 +6,8 @@ use tracing::{debug, trace, warn};
 
 use ockam_api::cloud::share::{InvitationWithAccess, ReceivedInvitation, SentInvitation};
 
-use crate::app::AppState;
-
 use super::state::SyncState;
+use crate::app::AppState;
 
 pub const INVITATIONS_PENDING_HEADER_MENU_ID: &str = "sent_invitations_header";
 pub const INVITATIONS_RECEIVED_HEADER_MENU_ID: &str = "received_invitations_header";
@@ -185,6 +184,7 @@ pub(crate) fn dispatch_click_event(app: &AppHandle<Wry>, id: &str) -> tauri::Res
         .skip_while(|segment| segment == &"invitation")
         .collect::<Vec<&str>>();
     match segments.as_slice() {
+        ["create", "for", outlet_tcp_addr] => on_create(app, outlet_tcp_addr),
         ["accepted", "connect", id] => on_connect(app, id),
         ["received", "accept", id] => on_accept(app, id),
         ["received", "decline", id] => on_decline(app, id),
@@ -194,6 +194,11 @@ pub(crate) fn dispatch_click_event(app: &AppHandle<Wry>, id: &str) -> tauri::Res
             Ok(())
         }
     }
+}
+
+fn on_create(_app: &AppHandle<Wry>, outlet_tcp_addr: &str) -> tauri::Result<()> {
+    trace!(?outlet_tcp_addr, "create service invitation");
+    todo!("open window to ask the user for the recipient email address");
 }
 
 fn on_accept(app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {

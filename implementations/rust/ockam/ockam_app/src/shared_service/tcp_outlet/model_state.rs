@@ -3,6 +3,7 @@ use ockam::Context;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::NodeManagerWorker;
 use std::sync::Arc;
+use tracing::error;
 
 impl ModelState {
     pub fn add_tcp_outlet(&mut self, status: OutletStatus) {
@@ -21,7 +22,7 @@ pub(crate) async fn load_model_state(
 ) {
     let mut node_manager = node_manager_worker.inner().write().await;
     for tcp_outlet in model_state.get_tcp_outlets() {
-        node_manager
+        let _ = node_manager
             .create_outlet(
                 &context,
                 tcp_outlet.tcp_addr.clone(),
@@ -30,11 +31,11 @@ pub(crate) async fn load_model_state(
                 true,
             )
             .await
-            .unwrap_or_else(|_| {
-                panic!(
-                    "failed to create outlet with tcp addr {}",
-                    tcp_outlet.tcp_addr
-                )
+            .map_err(|e| {
+                error!(
+                    ?e,
+                    "failed to create outlet with tcp addr {}", tcp_outlet.tcp_addr
+                );
             });
     }
 }

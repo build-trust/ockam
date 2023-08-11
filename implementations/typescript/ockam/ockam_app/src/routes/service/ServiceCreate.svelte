@@ -4,11 +4,16 @@
 
   let service = "/service/outlet";
   let port = "10000";
+  let email = "";
   let error_message = "";
 
   async function submit() {
     error_message = "";
-    await invoke("tcp_outlet_create", { service: service, port: port })
+    await invoke("tcp_outlet_create", {
+      service: service,
+      port: port,
+      email: email,
+    })
       .then(close)
       .catch((error) => {
         error_message = error;
@@ -34,7 +39,7 @@
     <div class="flex-1">
       <input
         type="text"
-        class="w-full px-4 bg-transparent border-none focus:outline-none text-right"
+        class="w-full px-4 text-base bg-transparent border-none focus:outline-none text-right"
         placeholder={service}
         bind:value={service}
       />
@@ -48,9 +53,25 @@
     <div class="flex-1">
       <input
         type="text"
-        class="w-full px-4 bg-transparent border-none focus:outline-none text-right"
+        class="w-full px-4 text-base bg-transparent border-none focus:outline-none text-right"
         placeholder={port}
         bind:value={port}
+      />
+    </div>
+  </div>
+  <div class="flex items-start">
+    <div class="flex-1">
+      <div class="font-bold">Share</div>
+      <p class="text-sm text-gray-500">
+        Optionally, send an invitation to share this service
+      </p>
+    </div>
+    <div class="flex-1 min-w-[60%]">
+      <input
+        type="email"
+        class="w-full px-4 text-base bg-transparent border-none focus:outline-none text-right"
+        placeholder="recipient@mail.com"
+        bind:value={email}
       />
     </div>
   </div>
@@ -61,11 +82,11 @@
 {/if}
 <div class="flex justify-end">
   <button
-    class="px-2 py-1 mr-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+    class="px-2 py-1 text-base mr-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
     on:click={cancel}>Cancel</button
   >
   <button
-    class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+    class="px-2 py-1 text-base bg-blue-500 text-white rounded hover:bg-blue-600"
     on:click={submit}>Create</button
   >
 </div>

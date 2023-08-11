@@ -348,7 +348,7 @@ pub async fn update_enrolled_identity(
     let identities = opts.state.identities.list()?;
 
     let node_state = opts.state.nodes.get(node_name)?;
-    let node_identifier = node_state.config().identifier().await?;
+    let node_identifier = node_state.config().identifier()?;
 
     for mut identity in identities {
         if node_identifier == identity.config().identifier() {

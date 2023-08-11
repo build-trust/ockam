@@ -42,14 +42,14 @@ pub async fn create_service_invitation<R: Runtime>(
     invite_args: CreateServiceInvitation,
     app: AppHandle<R>,
 ) -> Result<(), String> {
-    info!("creating service invitation");
+    info!(?invite_args, "creating service invitation");
     let state: State<'_, AppState> = app.state();
     let node_manager_worker = state.node_manager_worker().await;
     let res = node_manager_worker
         .create_service_invitation(&state.context(), invite_args, &CloudOpts::route(), None)
         .await
         .map_err(|e| e.to_string())?;
-    debug!(?res);
+    debug!(?res, "invitation sent");
     app.trigger_global(super::events::REFRESH_INVITATIONS, None);
     Ok(())
 }

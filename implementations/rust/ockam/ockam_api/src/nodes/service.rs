@@ -371,7 +371,7 @@ impl NodeManager {
                     .unwrap()
                     .authority()
                     .is_ok(),
-            identifier: node_state.config().identifier().await?,
+            identifier: node_state.config().identifier()?,
             secure_channels,
             trust_context: None,
             registry: Default::default(),
