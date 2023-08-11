@@ -309,7 +309,7 @@ async fn default_project(
         for project in &available_projects {
             opts.state
                 .projects
-                .overwrite(&project.name, project.clone())?;
+                .overwrite(&project.id, project.clone())?;
         }
         let p = match available_projects.iter().find(|ns| ns.name == "default") {
             None => available_projects
@@ -334,10 +334,10 @@ async fn default_project(
 
     opts.state
         .projects
-        .overwrite(&project.name, project.clone())?;
+        .overwrite(&project.id, project.clone())?;
     opts.state
         .trust_contexts
-        .overwrite(&project.name, project.clone().try_into()?)?;
+        .overwrite(&project.id, project.clone().try_into()?)?;
     Ok(project)
 }
 
@@ -348,7 +348,7 @@ pub async fn update_enrolled_identity(
     let identities = opts.state.identities.list()?;
 
     let node_state = opts.state.nodes.get(node_name)?;
-    let node_identifier = node_state.config().identifier().await?;
+    let node_identifier = node_state.config().identifier()?;
 
     for mut identity in identities {
         if node_identifier == identity.config().identifier() {

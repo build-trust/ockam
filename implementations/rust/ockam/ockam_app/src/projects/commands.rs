@@ -34,7 +34,7 @@ pub async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<(), Strin
     let cli_projects = state.state().await.projects;
     for project in &projects {
         cli_projects
-            .overwrite(&project.name, project.clone())
+            .overwrite(&project.id, project.clone())
             .map_err(|e| format!("could not save project in cli state: {e}"))?;
     }
 

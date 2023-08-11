@@ -180,7 +180,7 @@ pub async fn check_project_readiness(
     // Persist project config prior to checking readiness which might take a while
     opts.state
         .projects
-        .overwrite(&project.name, project.clone())?;
+        .overwrite(&project.id, project.clone())?;
 
     let spinner_option = opts.terminal.progress_spinner();
     if let Some(spinner) = spinner_option.as_ref() {
@@ -303,7 +303,7 @@ pub async fn check_project_readiness(
     // Persist project config with all its fields
     opts.state
         .projects
-        .overwrite(&project.name, project.clone())?;
+        .overwrite(&project.id, project.clone())?;
     Ok(project)
 }
 
@@ -320,7 +320,7 @@ pub async fn refresh_projects(
     for project in projects {
         opts.state
             .projects
-            .overwrite(&project.name, project.clone())?;
+            .overwrite(&project.id, project.clone())?;
     }
     Ok(())
 }

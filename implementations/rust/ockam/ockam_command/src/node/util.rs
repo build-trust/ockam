@@ -111,7 +111,7 @@ pub async fn add_project_info_to_node_state(
             state.set_setup(state.config().setup_mut().set_project(proj_lookup.clone()))?;
             opts.state
                 .projects
-                .overwrite(proj_lookup.name, proj_config)?;
+                .overwrite(&proj_lookup.id, proj_config)?;
             Ok(Some(proj_lookup.id))
         }
         None => {

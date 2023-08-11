@@ -134,7 +134,7 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
         .state()
         .await
         .projects
-        .overwrite(&project.name, project.clone())?;
+        .overwrite(&project.id, project.clone())?;
     add_project_info_to_node_state(
         NODE_NAME,
         &app_state.options().await,

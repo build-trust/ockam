@@ -167,10 +167,10 @@ async fn run_impl(
 
     opts.state
         .projects
-        .overwrite(&project.name, project.clone())?;
+        .overwrite(&project.id, project.clone())?;
     opts.state
         .trust_contexts
-        .overwrite(&project.name, project.clone().try_into()?)?;
+        .overwrite(&project.id, project.clone().try_into()?)?;
 
     let credential = client2.credential().await.into_diagnostic()?;
     println!("---");

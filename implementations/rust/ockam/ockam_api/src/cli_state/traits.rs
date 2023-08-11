@@ -72,41 +72,41 @@ pub trait StateDirTrait: Sized + Send + Sync {
         self.dir().to_string_lossy().to_string()
     }
 
-    fn path(&self, name: impl AsRef<str>) -> PathBuf {
-        self.dir().join(format!("{}.json", name.as_ref()))
+    fn path(&self, key: impl AsRef<str>) -> PathBuf {
+        self.dir().join(format!("{}.json", key.as_ref()))
     }
 
     fn overwrite(
         &self,
-        name: impl AsRef<str>,
+        key: impl AsRef<str>,
         config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
     ) -> Result<Self::Item> {
-        let path = self.path(&name);
+        let path = self.path(&key);
         let state = Self::Item::new(path, config)?;
         if !self.default_path()?.exists() {
-            self.set_default(&name)?;
+            self.set_default(&key)?;
         }
         Ok(state)
     }
 
     fn create(
         &self,
-        name: impl AsRef<str>,
+        key: impl AsRef<str>,
         config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
     ) -> Result<Self::Item> {
-        debug!(name = %name.as_ref(), "Creating new config resource");
-        if self.exists(&name) {
+        debug!(key = %key.as_ref(), "Creating new config resource");
+        if self.exists(&key) {
             return Err(CliStateError::AlreadyExists {
                 resource: Self::default_filename().to_string(),
-                name: name.as_ref().to_string(),
+                name: key.as_ref().to_string(),
             });
         }
-        trace!(name = %name.as_ref(), "Creating config resource instance");
-        let state = Self::Item::new(self.path(&name), config)?;
+        trace!(key = %key.as_ref(), "Creating config resource instance");
+        let state = Self::Item::new(self.path(&key), config)?;
         if !self.default_path()?.exists() {
-            self.set_default(&name)?;
+            self.set_default(&key)?;
         }
-        info!(name = %name.as_ref(), "Created new config resource");
+        info!(name = %key.as_ref(), "Created new config resource");
         Ok(state)
     }
 
@@ -163,9 +163,9 @@ pub trait StateDirTrait: Sized + Send + Sync {
     }
 
     // TODO: move to StateItemTrait
-    fn delete(&self, name: impl AsRef<str>) -> Result<()> {
+    fn delete(&self, key: impl AsRef<str>) -> Result<()> {
         // Retrieve state. If doesn't exist do nothing.
-        let s = match self.get(&name) {
+        let s = match self.get(&key) {
             Ok(project) => project,
             Err(CliStateError::ResourceNotFound { .. }) => return Ok(()),
             Err(e) => return Err(e),
@@ -190,15 +190,15 @@ pub trait StateDirTrait: Sized + Send + Sync {
         Self::Item::load(path)
     }
 
-    fn set_default(&self, name: impl AsRef<str>) -> Result<()> {
-        debug!(name = %name.as_ref(), "Setting default item");
-        if !self.exists(&name) {
+    fn set_default(&self, key: impl AsRef<str>) -> Result<()> {
+        debug!(key = %key.as_ref(), "Setting default item");
+        if !self.exists(&key) {
             return Err(CliStateError::ResourceNotFound {
                 resource: Self::default_filename().to_string(),
-                name: name.as_ref().to_string(),
+                name: key.as_ref().to_string(),
             });
         }
-        let original = self.path(&name);
+        let original = self.path(&key);
         let link = self.default_path()?;
         info!("removing link {:?}", link);
         // Remove link if it exists
@@ -208,19 +208,19 @@ pub trait StateDirTrait: Sized + Send + Sync {
         std::fs::create_dir_all(link.parent().unwrap())
             .map_err(|e| Error::new(Origin::Node, Kind::Io, e))?;
         std::os::unix::fs::symlink(original, link)?;
-        info!(name = %name.as_ref(), "Set default item");
+        info!(name = %key.as_ref(), "Set default item");
         Ok(())
     }
 
-    fn is_default(&self, name: impl AsRef<str>) -> Result<bool> {
-        if !self.exists(&name) {
+    fn is_default(&self, key: impl AsRef<str>) -> Result<bool> {
+        if !self.exists(&key) {
             return Ok(false);
         }
-        let default_name = {
+        let default_key = {
             let path = std::fs::canonicalize(self.default_path()?)?;
             file_stem(&path)?
         };
-        Ok(default_name.eq(name.as_ref()))
+        Ok(default_key.eq(key.as_ref()))
     }
 
     fn is_empty(&self) -> Result<bool> {
@@ -233,8 +233,8 @@ pub trait StateDirTrait: Sized + Send + Sync {
         Ok(true)
     }
 
-    fn exists(&self, name: impl AsRef<str>) -> bool {
-        self.path(&name).exists()
+    fn exists(&self, key: impl AsRef<str>) -> bool {
+        self.path(&key).exists()
     }
 }
 

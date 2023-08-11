@@ -204,7 +204,7 @@ impl NodeConfig {
         Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 
-    pub async fn identifier(&self) -> Result<IdentityIdentifier> {
+    pub fn identifier(&self) -> Result<IdentityIdentifier> {
         let state_path = std::fs::canonicalize(&self.default_identity)?;
         let state = IdentityState::load(state_path)?;
         Ok(state.identifier())

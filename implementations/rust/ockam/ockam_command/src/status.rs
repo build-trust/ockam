@@ -69,7 +69,7 @@ async fn get_nodes_details(
 
     for node_state in &node_states {
         let node_infos = NodeDetails {
-            identifier: node_state.config().identifier().await?,
+            identifier: node_state.config().identifier()?,
             state: node_state.clone(),
             status: get_node_status(ctx, opts, node_state, tcp).await?,
         };

@@ -73,7 +73,7 @@ async fn run_impl(
     for project in &projects {
         opts.state
             .projects
-            .overwrite(&project.name, project.clone())?;
+            .overwrite(&project.id, project.clone())?;
     }
     delete_embedded_node(&opts, rpc.node_name()).await;
 

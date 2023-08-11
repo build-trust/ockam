@@ -68,10 +68,10 @@ async fn run_impl(
     let project = check_project_readiness(ctx, &opts, &node_name, None, project).await?;
     opts.state
         .projects
-        .overwrite(&project.name, project.clone())?;
+        .overwrite(&project.id, project.clone())?;
     opts.state
         .trust_contexts
-        .overwrite(&project.name, project.clone().try_into()?)?;
+        .overwrite(&project.id, project.clone().try_into()?)?;
     rpc.print_response(project)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
