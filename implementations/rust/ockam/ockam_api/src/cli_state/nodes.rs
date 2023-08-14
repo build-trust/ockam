@@ -8,9 +8,10 @@ use crate::nodes::models::transport::CreateTransportJson;
 use backwards_compatibility::*;
 use miette::{IntoDiagnostic, WrapErr};
 use nix::errno::Errno;
+use ockam::identity::Identifier;
+use ockam::LmdbStorage;
 use ockam_core::compat::collections::HashSet;
 use ockam_core::compat::sync::Arc;
-use ockam_identity::{IdentityIdentifier, LmdbStorage};
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -205,7 +206,7 @@ impl NodeConfig {
         Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 
-    pub fn identifier(&self) -> Result<IdentityIdentifier> {
+    pub fn identifier(&self) -> Result<Identifier> {
         let state_path = std::fs::canonicalize(&self.default_identity)?;
         let state = IdentityState::load(state_path)?;
         Ok(state.identifier())
@@ -643,10 +644,7 @@ pub async fn add_project_info_to_node_state(
     }
 }
 
-pub async fn update_enrolled_identity(
-    cli_state: &CliState,
-    node_name: &str,
-) -> Result<IdentityIdentifier> {
+pub async fn update_enrolled_identity(cli_state: &CliState, node_name: &str) -> Result<Identifier> {
     let identities = cli_state.identities.list()?;
 
     let node_state = cli_state.nodes.get(node_name)?;

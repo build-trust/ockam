@@ -75,8 +75,8 @@ impl CredentialsIssuer {
         let credential = self
             .credentials
             .issue_credential(
-                subject,
                 &self.issuer,
+                subject,
                 subject_attributes,
                 MAX_CREDENTIAL_VALIDITY,
             )

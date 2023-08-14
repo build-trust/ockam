@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use ockam_identity::IdentitiesVault;
+use ockam::identity::IdentitiesVault;
 use ockam_vault::Vault;
 use ockam_vault_aws::{AwsKmsConfig, AwsSecurityModule};
 
