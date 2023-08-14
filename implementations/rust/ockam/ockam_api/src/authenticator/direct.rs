@@ -308,12 +308,15 @@ impl EnrollmentTokenIssuer {
         &self,
         enroller: &IdentityIdentifier,
         attrs: HashMap<String, String>,
+        token_duration: Option<Duration>,
     ) -> Result<OneTimeCode> {
         let otc = OneTimeCode::new();
+        let max_token_duration = token_duration.unwrap_or(MAX_TOKEN_DURATION);
         let tkn = Token {
             attrs,
             generated_by: enroller.clone(),
             time: Instant::now(),
+            max_token_duration,
         };
         self.0
             .tokens
@@ -354,7 +357,11 @@ impl Worker for EnrollmentTokenIssuer {
             let res = match (req.method(), req.path()) {
                 (Some(Method::Post), "/") | (Some(Method::Post), "/tokens") => {
                     let att: CreateToken = dec.decode()?;
-                    match self.issue_token(&from, att.into_owned_attributes()).await {
+                    let duration = att.token_duration();
+                    match self
+                        .issue_token(&from, att.into_owned_attributes(), duration)
+                        .await
+                    {
                         Ok(otc) => Response::ok(req.id()).body(&otc).to_vec()?,
                         Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
                     }
@@ -394,7 +401,7 @@ impl Worker for EnrollmentTokenAcceptor {
                     let token = match self.0.tokens.write() {
                         Ok(mut r) => {
                             if let Some(tkn) = r.pop(otc.code()) {
-                                if tkn.time.elapsed() > MAX_TOKEN_DURATION {
+                                if tkn.time.elapsed() > tkn.max_token_duration {
                                     Err(api::forbidden(&req, "expired token"))
                                 } else {
                                     Ok(tkn)
@@ -449,6 +456,7 @@ struct Token {
     attrs: HashMap<String, String>,
     generated_by: IdentityIdentifier,
     time: Instant,
+    max_token_duration: Duration,
 }
 
 pub struct DirectAuthenticatorClient(RpcClient);
@@ -492,9 +500,19 @@ impl TokenIssuerClient {
         TokenIssuerClient(client)
     }
 
-    pub async fn create_token(&self, attributes: HashMap<&str, &str>) -> Result<OneTimeCode> {
+    pub async fn create_token(
+        &self,
+        attributes: HashMap<&str, &str>,
+        duration: Option<Duration>,
+    ) -> Result<OneTimeCode> {
         self.0
-            .request(&Request::post("/").body(CreateToken::new().with_attributes(attributes)))
+            .request(
+                &Request::post("/").body(
+                    CreateToken::new()
+                        .with_attributes(attributes)
+                        .with_duration(duration),
+                ),
+            )
             .await
     }
 }

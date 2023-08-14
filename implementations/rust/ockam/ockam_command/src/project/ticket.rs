@@ -40,7 +40,7 @@ pub struct TicketCommand {
     #[command(flatten)]
     trust_opts: TrustContextOpts,
 
-    #[arg(long, short)]
+    #[arg(long, short, conflicts_with = "ticket_ttl")]
     member: Option<IdentityIdentifier>,
 
     #[arg(long, short, default_value = "/project/default")]
@@ -49,6 +49,9 @@ pub struct TicketCommand {
     /// Attributes in `key=value` format to be attached to the member
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
+
+    #[arg(long = "ticket-ttl", value_name = "SECS", conflicts_with = "member")]
+    ticket_ttl: Option<u64>,
 }
 
 impl TicketCommand {
@@ -193,7 +196,10 @@ impl Runner {
                 .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
             );
             let token = client
-                .create_token(self.cmd.attributes()?)
+                .create_token(
+                    self.cmd.attributes()?,
+                    self.cmd.ticket_ttl.map(Duration::from_secs),
+                )
                 .await
                 .into_diagnostic()?;
 

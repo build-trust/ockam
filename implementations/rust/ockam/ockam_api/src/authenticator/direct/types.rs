@@ -2,6 +2,7 @@ use minicbor::{Decode, Encode};
 use ockam::identity::IdentityIdentifier;
 use ockam_core::CowStr;
 use std::collections::HashMap;
+use std::time::Duration;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -50,6 +51,7 @@ pub struct CreateToken<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2502742>,
     #[b(1)] attributes: HashMap<CowStr<'a>, CowStr<'a>>,
+    #[b(2)] token_duration_secs: Option<u64>
 }
 
 impl<'a> CreateToken<'a> {
@@ -59,6 +61,7 @@ impl<'a> CreateToken<'a> {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             attributes: HashMap::new(),
+            token_duration_secs: None,
         }
     }
 
@@ -70,10 +73,19 @@ impl<'a> CreateToken<'a> {
         self
     }
 
+    pub fn with_duration(mut self, token_duration: Option<Duration>) -> Self {
+        self.token_duration_secs = token_duration.map(|d| d.as_secs());
+        self
+    }
+
     pub fn into_owned_attributes(self) -> HashMap<String, String> {
         self.attributes
             .into_iter()
             .map(|(k, v)| (k.into_owned(), v.into_owned()))
             .collect()
+    }
+
+    pub fn token_duration(&self) -> Option<Duration> {
+        self.token_duration_secs.map(Duration::from_secs)
     }
 }
