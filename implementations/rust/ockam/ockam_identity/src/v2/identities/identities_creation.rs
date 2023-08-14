@@ -2,7 +2,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::KeyId;
 
-use super::super::models::Identifier;
+use super::super::models::{ChangeHistory, Identifier};
 use super::super::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault, Identity};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
@@ -29,10 +29,30 @@ impl IdentitiesCreation {
         Identity::import(expected_identifier, data, self.vault.clone()).await
     }
 
-    /// Create an Identity
+    /// Import and verify identity from its Change History
+    pub async fn import_from_change_history(
+        &self,
+        expected_identifier: Option<&Identifier>,
+        change_history: ChangeHistory,
+    ) -> Result<Identity> {
+        Identity::import_from_change_history(
+            expected_identifier,
+            change_history,
+            self.vault.clone(),
+        )
+        .await
+    }
+
+    /// Create an `Identity`
     pub async fn create_identity(&self) -> Result<Identity> {
         // TODO: Consider creating PurposeKeys by default
         self.make_and_persist_identity(None).await
+    }
+
+    /// Create an `Identity` with a key previously created in the Vault
+    pub async fn create_identity_with_existing_key(&self, kid: &KeyId) -> Result<Identity> {
+        // TODO: Consider creating PurposeKeys by default
+        self.make_and_persist_identity(Some(kid)).await
     }
 }
 
