@@ -1,7 +1,7 @@
 use super::super::identities::{
     Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault,
 };
-use super::super::purpose_keys::storage::PurposeKeysRepository;
+use super::super::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
 use super::super::storage::Storage;
 
 use ockam_core::compat::sync::Arc;
@@ -37,7 +37,7 @@ impl IdentitiesBuilder {
         self.with_identities_repository(Arc::new(IdentitiesStorage::new(storage)))
     }
 
-    /// Set a specific repository
+    /// Set a specific repository for identities
     pub fn with_identities_repository(
         &mut self,
         repository: Arc<dyn IdentitiesRepository>,
@@ -46,25 +46,26 @@ impl IdentitiesBuilder {
         self.clone()
     }
 
-    fn vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.vault.clone()
+    /// Set a specific storage for Purpose Keys
+    pub fn with_purpose_keys_storage(&mut self, storage: Arc<dyn Storage>) -> IdentitiesBuilder {
+        self.with_purpose_keys_repository(Arc::new(PurposeKeysStorage::new(storage)))
     }
 
-    fn repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.repository.clone()
-    }
-
-    // TODO: Extend possibilities to create that repository
-    fn purpose_keys_repository(&self) -> Arc<dyn PurposeKeysRepository> {
-        self.purpose_keys_repository.clone()
+    /// Set a specific repository for Purpose Keys
+    pub fn with_purpose_keys_repository(
+        &mut self,
+        repository: Arc<dyn PurposeKeysRepository>,
+    ) -> IdentitiesBuilder {
+        self.purpose_keys_repository = repository;
+        self.clone()
     }
 
     /// Build identities
-    pub fn build(&self) -> Arc<Identities> {
+    pub fn build(self) -> Arc<Identities> {
         Arc::new(Identities::new(
-            self.vault(),
-            self.repository(),
-            self.purpose_keys_repository(),
+            self.vault,
+            self.repository,
+            self.purpose_keys_repository,
         ))
     }
 }
