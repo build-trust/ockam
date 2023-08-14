@@ -106,7 +106,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew lint_cargo_clippy
@@ -135,7 +135,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build_docs
@@ -150,7 +150,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build
@@ -165,7 +165,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew build_examples
@@ -185,7 +185,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: |
           rustc --version
           cd implementations/rust && ../../gradlew test
@@ -200,7 +200,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: |
           rustc --version
           rustup target add thumbv7em-none-eabihf
@@ -226,7 +226,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: |
           rustc --version
           RUSTFLAGS='-Dwarnings' cargo check --features tag
@@ -241,7 +241,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: |
           rustc --version
           cd examples/rust/get_started
@@ -259,7 +259,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: rustup default nightly
       - run: rustup update nightly
       - run: |
@@ -276,7 +276,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: rustup default nightly
       - run: rustup update nightly
       - run: |
@@ -293,7 +293,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
       - run: rustup default nightly
       - run: rustup update nightly
       - run: |
@@ -329,7 +329,7 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           path: ockam_bats
 
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
         with:
           workspaces: "ockam_cli -> target"
 
@@ -421,7 +421,7 @@ jobs:
           ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
           path: ockam_library
 
-      - uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+      - uses: Swatinem/rust-cache@578b235f6e5f613f7727f1c17bd3305b4d4d4e1f
         with:
           workspaces: "ockam_examples -> target"
 
