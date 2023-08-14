@@ -42,3 +42,5 @@ pub use purpose_key::*;
 pub use purpose_keys::*;
 pub use secure_channel::*;
 pub use secure_channels::*;
+
+pub use models::{Attributes, Credential, Identifier, TimestampInSeconds};
