@@ -2,9 +2,11 @@ use std::path::Path;
 
 use tracing::info;
 
+use ockam::identity::storage::LmdbStorage;
 use ockam::identity::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, IdentityAttributesReader,
-    IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+    CredentialsIssuer, Identifier, Identities, IdentitiesRepository, IdentitiesStorage,
+    IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
+    SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
 };
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
@@ -12,7 +14,6 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result, Worker};
-use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 use ockam_vault::Vault;
@@ -32,7 +33,7 @@ use crate::{actions, DefaultAddress};
 //   - an enrollment token issuer
 //   - an enrollment token acceptor
 pub struct Authority {
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     secure_channels: Arc<SecureChannels>,
 }
 
@@ -41,7 +42,7 @@ pub struct Authority {
 ///   - start services
 impl Authority {
     /// Return the identity identifier for this authority
-    pub fn identifier(&self) -> IdentityIdentifier {
+    pub fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }
 
@@ -186,8 +187,9 @@ impl Authority {
     ) -> Result<()> {
         // create and start a credential issuer worker
         let issuer = CredentialsIssuer::new(
-            self.identities(),
-            self.identifier(),
+            self.secure_channels.identities().repository(),
+            self.secure_channels.identities().credentials(),
+            &self.identifier,
             configuration.trust_context_identifier(),
         )
         .await?;

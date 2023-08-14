@@ -7,21 +7,22 @@ use crate::nodes::models::secure_channel::{
 use crate::nodes::NODEMANAGER_ADDR;
 use crate::DefaultAddress;
 use minicbor::Decoder;
+use ockam::identity::{
+    DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
+    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID,
+};
 use ockam_abac::AbacAccessControl;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, route, Address, Error, Result};
-use ockam_identity::{
-    DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID,
-};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::compat::tokio::sync::MutexGuard;
 use ockam_node::Context;
+use std::str::from_utf8;
 
 pub(crate) struct KafkaEncryptedContent {
     /// The encrypted content
@@ -212,7 +213,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     ) -> KafkaSecureChannelControllerImpl<F> {
         let access_control = AbacAccessControl::create(
             secure_channels.identities().repository(),
-            TRUST_CONTEXT_ID,
+            from_utf8(TRUST_CONTEXT_ID).unwrap(),
             &trust_context_id,
         );
 
@@ -413,7 +414,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         if let Some(entry) = record {
             let authorized = inner
                 .access_control
-                .is_identity_authorized(entry.their_id())
+                .is_identity_authorized(entry.their_id().clone())
                 .await?;
 
             if authorized {
@@ -457,7 +458,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
 
         let authorized = inner
             .access_control
-            .is_identity_authorized(entry.their_id())
+            .is_identity_authorized(entry.their_id().clone())
             .await?;
 
         if authorized {

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use either::Either;
 use minicbor::Decoder;
 
-use ockam::identity::Credential;
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_multiaddr::MultiAddr;
@@ -23,7 +23,7 @@ impl NodeManagerWorker {
         req: &Request,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<Either<ResponseBuilder<Error>, ResponseBuilder<Credential>>> {
+    ) -> Result<Either<ResponseBuilder<Error>, ResponseBuilder<CredentialAndPurposeKey>>> {
         let node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 

@@ -329,14 +329,14 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 
 #[cfg(test)]
 pub mod test_utils {
-    use ockam::identity::SecureChannels;
+    use ockam::identity::storage::InMemoryStorage;
+    use ockam::identity::utils::AttributesBuilder;
+    use ockam::identity::{Identifier, Identity, Purpose, MAX_CREDENTIAL_VALIDITY};
+    use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
-    use ockam_identity::{
-        CredentialData, Credentials, Identity, IdentityIdentifier, InMemoryStorage, KeyAttributes,
-    };
     use ockam_node::compat::asynchronous::RwLock;
     use ockam_node::{Context, InMemoryKeyValueStorage};
     use ockam_transport_tcp::TcpTransport;
@@ -359,7 +359,7 @@ pub mod test_utils {
         pub node_manager: Arc<RwLock<NodeManager>>,
         pub tcp: TcpTransport,
         pub secure_channels: Arc<SecureChannels>,
-        pub identifier: IdentityIdentifier,
+        pub identifier: Identifier,
     }
 
     impl Drop for NodeManagerHandle {
@@ -402,14 +402,18 @@ pub mod test_utils {
 
         let identity = create_identity_zero(&secure_channels).await?;
 
+        let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
+            .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
+            .build();
+
         let credential = secure_channels
             .identities()
+            .credentials()
             .issue_credential(
-                &identity.identifier(),
-                CredentialData::builder(identity.identifier(), identity.identifier())
-                    .with_attribute("trust_context_id", b"test_trust_context_id")
-                    .build()
-                    .unwrap(),
+                identity.identifier(),
+                identity.identifier(),
+                attributes,
+                MAX_CREDENTIAL_VALIDITY,
             )
             .await
             .unwrap();
@@ -433,8 +437,10 @@ pub mod test_utils {
             NodeManagerTrustOptions::new(Some(TrustContextConfig::new(
                 "test_trust_context".to_string(),
                 Some(TrustAuthorityConfig::new(
-                    identity.export_hex().unwrap(),
-                    Some(CredentialRetrieverConfig::FromMemory(credential)),
+                    hex::encode(&identity.export().unwrap()),
+                    Some(CredentialRetrieverConfig::FromMemory(minicbor::to_vec(
+                        &credential,
+                    )?)),
                 )),
             ))),
         )
@@ -456,11 +462,13 @@ pub mod test_utils {
             node_manager,
             tcp: tcp.async_try_clone().await?,
             secure_channels: secure_channels.clone(),
-            identifier: identity.identifier(),
+            identifier: identity.identifier().clone(),
         })
     }
 
     async fn create_identity_zero(secure_channels: &Arc<SecureChannels>) -> Result<Identity> {
+        // FIXME: Zero secrets are bad, generate a value randomly and use it from there, or seed
+        // the rng with a fixed value
         let identity_key_id = secure_channels
             .vault()
             .import_ephemeral_secret(Secret::new([0u8; 32].to_vec()), SecretAttributes::Ed25519)
@@ -469,12 +477,24 @@ pub mod test_utils {
         let identity = secure_channels
             .identities()
             .identities_creation()
-            .create_identity_with_existing_key(
-                &identity_key_id,
-                KeyAttributes::new("OCKAM_RK".to_string(), SecretAttributes::Ed25519),
-            )
+            .create_identity_with_existing_key(&identity_key_id)
             .await
             .unwrap();
+
+        // FIXME: Should it use predefined secret?
+        secure_channels
+            .identities()
+            .purpose_keys()
+            .create_purpose_key(identity.identifier(), Purpose::Credentials)
+            .await?;
+
+        // FIXME: Should it use predefined secret?
+        secure_channels
+            .identities()
+            .purpose_keys()
+            .create_purpose_key(identity.identifier(), Purpose::SecureChannel)
+            .await?;
+
         Ok(identity)
     }
 }

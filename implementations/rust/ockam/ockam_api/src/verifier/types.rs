@@ -1,6 +1,6 @@
 use minicbor::{Decode, Encode};
-use ockam::identity::credential::{Attributes, Timestamp};
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
+use ockam::identity::{Attributes, TimestampInSeconds};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::CowBytes;
 use std::collections::BTreeMap;
@@ -15,8 +15,8 @@ pub struct VerifyRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4592146>,
     #[b(1)] cred: CowBytes<'a>,
-    #[n(2)] subj: IdentityIdentifier,
-    #[b(3)] auth: BTreeMap<IdentityIdentifier, CowBytes<'a>>
+    #[n(2)] subj: Identifier,
+    #[b(3)] auth: BTreeMap<Identifier, CowBytes<'a>>
 }
 
 #[derive(Debug, Decode, Encode)]
@@ -26,11 +26,11 @@ pub struct VerifyResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6845123>,
     #[b(1)] attrs: Attributes,
-    #[n(2)] expires: Timestamp
+    #[n(2)] expires: TimestampInSeconds
 }
 
 impl<'a> VerifyRequest<'a> {
-    pub fn new<C: Into<Cow<'a, [u8]>>>(cred: C, subj: IdentityIdentifier) -> Self {
+    pub fn new<C: Into<Cow<'a, [u8]>>>(cred: C, subj: Identifier) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -40,7 +40,7 @@ impl<'a> VerifyRequest<'a> {
         }
     }
 
-    pub fn with_authority<T>(mut self, id: IdentityIdentifier, identity: T) -> Self
+    pub fn with_authority<T>(mut self, id: Identifier, identity: T) -> Self
     where
         T: Into<Cow<'a, [u8]>>,
     {
@@ -52,21 +52,21 @@ impl<'a> VerifyRequest<'a> {
         &self.cred
     }
 
-    pub fn subject(&self) -> &IdentityIdentifier {
+    pub fn subject(&self) -> &Identifier {
         &self.subj
     }
 
-    pub fn authorities(&self) -> &BTreeMap<IdentityIdentifier, CowBytes<'a>> {
+    pub fn authorities(&self) -> &BTreeMap<Identifier, CowBytes<'a>> {
         &self.auth
     }
 
-    pub fn authority(&self, id: &IdentityIdentifier) -> Option<&CowBytes<'a>> {
+    pub fn authority(&self, id: &Identifier) -> Option<&CowBytes<'a>> {
         self.auth.get(id)
     }
 }
 
 impl VerifyResponse {
-    pub fn new(attrs: Attributes, expires: Timestamp) -> Self {
+    pub fn new(attrs: Attributes, expires: TimestampInSeconds) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -79,7 +79,7 @@ impl VerifyResponse {
         &self.attrs
     }
 
-    pub fn expires_at(&self) -> Timestamp {
+    pub fn expires_at(&self) -> TimestampInSeconds {
         self.expires
     }
 }

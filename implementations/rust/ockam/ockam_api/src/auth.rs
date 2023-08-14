@@ -2,7 +2,7 @@ pub mod types;
 
 use core::fmt;
 use minicbor::Decoder;
-use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityIdentifier};
+use ockam::identity::{AttributesEntry, Identifier, IdentityAttributesReader};
 use ockam_core::api::{decode_option, Error};
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
@@ -55,7 +55,7 @@ impl Server {
                     .body(self.store.list().await?)
                     .to_vec()?,
                 [id] => {
-                    let identifier = IdentityIdentifier::try_from(id.to_string())?;
+                    let identifier = Identifier::try_from(id.to_string())?;
                     if let Some(a) = self.store.get_attributes(&identifier).await? {
                         Response::ok(req.id()).body(a).to_vec()?
                     } else {
@@ -110,11 +110,11 @@ impl Client {
         self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
         decode_option(label, "attribute", &self.buf)
     }
-    pub async fn list(&mut self) -> ockam_core::Result<Vec<(IdentityIdentifier, AttributesEntry)>> {
+    pub async fn list(&mut self) -> ockam_core::Result<Vec<(Identifier, AttributesEntry)>> {
         let label = "list known identities";
         let req = Request::get("/");
         self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
-        let a: Option<Vec<(IdentityIdentifier, AttributesEntry)>> =
+        let a: Option<Vec<(Identifier, AttributesEntry)>> =
             decode_option(label, "attribute", &self.buf)?;
         Ok(a.unwrap())
     }

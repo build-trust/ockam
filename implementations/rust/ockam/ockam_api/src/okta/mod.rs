@@ -1,15 +1,15 @@
 use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
-use ockam::identity::credential::Timestamp;
+use ockam::identity::utils::now;
+use ockam::identity::TRUST_CONTEXT_ID;
 use ockam::identity::{
-    AttributesEntry, IdentityAttributesWriter, IdentityIdentifier, IdentitySecureChannelLocalInfo,
+    AttributesEntry, Identifier, IdentityAttributesWriter, IdentitySecureChannelLocalInfo,
 };
 use ockam_core::api;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
-use ockam_identity::{LEGACY_ID, TRUST_CONTEXT_ID};
 use ockam_node::Context;
 use reqwest::StatusCode;
 use std::collections::HashMap;
@@ -60,7 +60,7 @@ impl Server {
         })
     }
 
-    async fn on_request(&mut self, from: &IdentityIdentifier, data: &[u8]) -> Result<Vec<u8>> {
+    async fn on_request(&mut self, from: &Identifier, data: &[u8]) -> Result<Vec<u8>> {
         let mut dec = Decoder::new(data);
         let req: Request = dec.decode()?;
 
@@ -90,19 +90,16 @@ impl Server {
                         let entry = AttributesEntry::new(
                             attrs
                                 .into_iter()
-                                .map(|(k, v)| (k, v.as_bytes().to_vec()))
+                                .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
                                 .chain(
-                                    [
-                                        (LEGACY_ID.to_owned(), self.project.as_bytes().to_vec()),
-                                        (
-                                            TRUST_CONTEXT_ID.to_owned(),
-                                            self.project.as_bytes().to_vec(),
-                                        ),
-                                    ]
+                                    [(
+                                        TRUST_CONTEXT_ID.to_owned(),
+                                        self.project.as_bytes().to_vec(),
+                                    )]
                                     .into_iter(),
                                 )
                                 .collect(),
-                            Timestamp::now().unwrap(),
+                            now().unwrap(),
                             None,
                             None,
                         );

@@ -5,7 +5,7 @@ use std::time::Duration;
 use minicbor::Decoder;
 
 use ockam::compat::tokio::time::timeout;
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder};
@@ -526,7 +526,7 @@ fn replacer(
     addr: MultiAddr,
     prefix_route: Route,
     suffix_route: Route,
-    auth: Option<IdentityIdentifier>,
+    auth: Option<Identifier>,
     access: Arc<dyn IncomingAccessControl>,
     ctx: Arc<Context>,
 ) -> Replacer {

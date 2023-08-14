@@ -7,7 +7,6 @@ use ockam_api::identity::models::*;
 use ockam_api::identity::IdentityService;
 use ockam_api::nodes::service::NodeIdentities;
 use ockam_core::api::{Request, Response, Status};
-use ockam_core::compat::rand::random;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AsyncTryClone, Error, Result};
 use ockam_node::Context;
@@ -93,67 +92,6 @@ async fn compare_identity_change_history(
     Ok(res)
 }
 
-async fn create_signature(
-    ctx: &mut Context,
-    identity: &[u8],
-    data: &[u8],
-    service_address: &str,
-) -> Result<Vec<u8>> {
-    let body = CreateSignatureRequest::new(identity, data);
-    let req = Request::post("actions/create_signature")
-        .body(body)
-        .to_vec()?;
-
-    let receiving_buf: Vec<u8> = ctx.send_and_receive(route![service_address], req).await?;
-    let mut dec = Decoder::new(&receiving_buf);
-
-    let res: Response = dec.decode()?;
-
-    if let Some(Status::Ok) = res.status() {
-    } else {
-        return Err(Error::new(
-            Origin::Identity,
-            Kind::Other,
-            "consistency error",
-        ));
-    }
-
-    let res: CreateSignatureResponse = dec.decode()?;
-
-    Ok(res.signature().to_vec())
-}
-
-async fn verify_signature(
-    ctx: &mut Context,
-    signer_identity: &[u8],
-    data: &[u8],
-    signature: &[u8],
-    service_address: &str,
-) -> Result<bool> {
-    let body = VerifySignatureRequest::new(signer_identity, data, signature);
-    let req = Request::post("actions/verify_signature")
-        .body(body)
-        .to_vec()?;
-
-    let receiving_buf: Vec<u8> = ctx.send_and_receive(route![service_address], req).await?;
-    let mut dec = Decoder::new(&receiving_buf);
-
-    let res: Response = dec.decode()?;
-
-    if let Some(Status::Ok) = res.status() {
-    } else {
-        return Err(Error::new(
-            Origin::Identity,
-            Kind::Other,
-            "consistency error",
-        ));
-    }
-
-    let res: VerifySignatureResponse = dec.decode()?;
-
-    Ok(res.verified())
-}
-
 #[ockam_macros::test]
 async fn full_flow(ctx: &mut Context) -> Result<()> {
     let cli_state = CliState::test().unwrap();
@@ -184,17 +122,6 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
 
     assert_eq!(comparison1, IdentityHistoryComparison::Newer);
     assert_eq!(comparison2, IdentityHistoryComparison::Newer);
-
-    let state: [u8; 32] = random();
-
-    let proof1 = create_signature(ctx, &identity1, &state, "1").await?;
-    let proof2 = create_signature(ctx, &identity2, &state, "2").await?;
-
-    let verified1 = verify_signature(ctx, &identity1, &state, &proof1, "2").await?;
-    let verified2 = verify_signature(ctx, &identity2, &state, &proof2, "1").await?;
-
-    assert!(verified1);
-    assert!(verified2);
 
     ctx.stop().await?;
 

@@ -3,7 +3,7 @@ use std::time::Duration;
 use minicbor::{Decode, Encode};
 use serde::Serialize;
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_core::flow_control::FlowControlId;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -41,7 +41,7 @@ pub struct CreateSecureChannelRequest {
 impl CreateSecureChannelRequest {
     pub fn new(
         addr: &MultiAddr,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        authorized_identifiers: Option<Vec<Identifier>>,
         credential_exchange_mode: CredentialExchangeMode,
         identity_name: Option<String>,
         credential_name: Option<String>,
@@ -107,7 +107,7 @@ pub struct CreateSecureChannelListenerRequest {
 impl CreateSecureChannelListenerRequest {
     pub fn new(
         addr: &Address,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        authorized_identifiers: Option<Vec<Identifier>>,
         vault: Option<String>,
         identity: Option<String>,
     ) -> Self {
