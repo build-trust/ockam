@@ -132,10 +132,15 @@ async fn rpc(
         let inlet = loop {
             let req = {
                 let mut payload = if via_project {
-                    CreateInlet::via_project(cmd.from, cmd.to.clone(), route![], route![])
+                    CreateInlet::via_project(
+                        cmd.from.to_string(),
+                        cmd.to.clone(),
+                        route![],
+                        route![],
+                    )
                 } else {
                     CreateInlet::to_node(
-                        cmd.from,
+                        cmd.from.to_string(),
                         cmd.to.clone(),
                         route![],
                         route![],

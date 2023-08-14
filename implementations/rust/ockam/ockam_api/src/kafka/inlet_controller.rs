@@ -119,7 +119,7 @@ impl KafkaInletController {
                 route![NODEMANAGER_ADDR],
                 Request::post("/node/inlet")
                     .body(CreateInlet::to_node(
-                        socket_address,
+                        socket_address.to_string(),
                         to,
                         prefix,
                         suffix,
