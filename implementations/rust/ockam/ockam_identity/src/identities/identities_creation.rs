@@ -1,159 +1,199 @@
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::{KeyId, Secret, SecretAttributes};
+use ockam_vault::{KeyId, SigningVault, VerifyingVault};
 
-use crate::alloc::string::ToString;
-use crate::IdentityError;
-use crate::{
-    IdentitiesKeys, IdentitiesRepository, IdentitiesVault, Identity, IdentityChangeConstants,
-    IdentityChangeHistory, IdentityIdentifier, KeyAttributes,
-};
+use crate::identities::identity_builder::IdentityBuilder;
+use crate::models::{ChangeHistory, Identifier};
+use crate::{IdentitiesKeys, IdentitiesRepository, Identity, IdentityError};
+use crate::{IdentityHistoryComparison, IdentityOptions};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
-    repository: Arc<dyn IdentitiesRepository>,
-    vault: Arc<dyn IdentitiesVault>,
+    pub(super) repository: Arc<dyn IdentitiesRepository>,
+    pub(super) identity_vault: Arc<dyn SigningVault>,
+    pub(super) verifying_vault: Arc<dyn VerifyingVault>,
 }
 
 impl IdentitiesCreation {
     /// Create a new identities import module
     pub fn new(
         repository: Arc<dyn IdentitiesRepository>,
-        vault: Arc<dyn IdentitiesVault>,
-    ) -> IdentitiesCreation {
-        IdentitiesCreation { repository, vault }
+        identity_vault: Arc<dyn SigningVault>,
+        verifying_vault: Arc<dyn VerifyingVault>,
+    ) -> Self {
+        Self {
+            repository,
+            identity_vault,
+            verifying_vault,
+        }
     }
 
-    /// Import and verify an `Identity` from its change history in a hex format
-    pub async fn decode_identity_hex(&self, data: &str) -> Result<Identity> {
-        self.decode_identity(
-            hex::decode(data)
-                .map_err(|_| IdentityError::ConsistencyError)?
-                .as_slice(),
-        )
-        .await
+    /// Return the identities keys management service
+    pub fn identities_keys(&self) -> Arc<IdentitiesKeys> {
+        Arc::new(IdentitiesKeys::new(
+            self.identity_vault.clone(),
+            self.verifying_vault.clone(),
+        ))
     }
 
-    /// Import and verify an `Identity` from its change history in a binary format
-    pub async fn decode_identity(&self, data: &[u8]) -> Result<Identity> {
-        let change_history = IdentityChangeHistory::import(data)?;
-        let identity_keys = IdentitiesKeys::new(self.vault.clone());
-        identity_keys
-            .verify_all_existing_changes(&change_history)
-            .await?;
-
-        let identifier = self.compute_identity_identifier(&change_history).await?;
-        Ok(Identity::new(identifier, change_history))
-    }
-
-    /// Create an identity with a vault initialized with a secret key
-    /// encoded as a hex string.
-    /// Such a key can be obtained by running vault.secret_export and then encoding
-    /// the exported secret as a hex string
-    /// Note: the data is not persisted!
-    pub async fn import_private_identity(
+    /// Import and verify identity from its binary format
+    /// This action persists the Identity in the storage, use `Identity::import` to avoid that
+    pub async fn import(
         &self,
-        identity_history: &str,
-        secret: &str,
+        expected_identifier: Option<&Identifier>,
+        data: &[u8],
     ) -> Result<Identity> {
-        let secret = Secret::new(hex::decode(secret).unwrap());
-        let key_attributes = KeyAttributes::default_with_label(IdentityChangeConstants::ROOT_LABEL);
-        self.vault
-            .import_ephemeral_secret(secret, key_attributes.secret_attributes())
-            .await?;
-        let identity_history_data: Vec<u8> =
-            hex::decode(identity_history).map_err(|_| IdentityError::InvalidInternalState)?;
-        let identity = self
-            .decode_identity(identity_history_data.as_slice())
-            .await?;
-        self.repository.update_identity(&identity).await?;
+        let identity =
+            Identity::import(expected_identifier, data, self.verifying_vault.clone()).await?;
+
+        self.update_identity(&identity).await?;
+
         Ok(identity)
     }
 
-    /// Cryptographically compute `IdentityIdentifier`
-    pub(super) async fn compute_identity_identifier(
+    /// Import and verify identity from its Change History
+    /// This action persists the Identity in the storage, use `Identity::import` to avoid that
+    pub async fn import_from_change_history(
         &self,
-        change_history: &IdentityChangeHistory,
-    ) -> Result<IdentityIdentifier> {
-        let root_public_key = change_history.get_first_root_public_key()?;
-        Ok(IdentityIdentifier::from_public_key(&root_public_key))
-    }
-
-    /// Create an `Identity` with a key previously created in the Vault. Extended version
-    pub async fn create_identity_with_existing_key(
-        &self,
-        kid: &KeyId,
-        attrs: KeyAttributes,
+        expected_identifier: Option<&Identifier>,
+        change_history: ChangeHistory,
     ) -> Result<Identity> {
-        self.make_and_persist_identity(Some(kid), attrs).await
+        let identity = Identity::import_from_change_history(
+            expected_identifier,
+            change_history,
+            self.verifying_vault.clone(),
+        )
+        .await?;
+
+        self.update_identity(&identity).await?;
+
+        Ok(identity)
     }
 
-    /// Create an Identity
+    /// Get an instance of [`IdentityBuilder`]
+    pub fn identity_builder(&self) -> IdentityBuilder {
+        IdentityBuilder::new(Arc::new(Self::new(
+            self.repository.clone(),
+            self.identity_vault.clone(),
+            self.verifying_vault.clone(),
+        )))
+    }
+
+    /// Create an `Identity` and store it
     pub async fn create_identity(&self) -> Result<Identity> {
-        let attrs = KeyAttributes::new(
-            IdentityChangeConstants::ROOT_LABEL.to_string(),
-            SecretAttributes::Ed25519,
-        );
-        self.make_and_persist_identity(None, attrs).await
+        let builder = self.identity_builder();
+        builder.build().await
+    }
+
+    /// Create an `Identity` and store it
+    pub async fn create_identity_with_options(&self, options: IdentityOptions) -> Result<Identity> {
+        let identity = self.identities_keys().create_initial_key(options).await?;
+        self.repository
+            .update_identity(identity.identifier(), identity.change_history())
+            .await?;
+        Ok(identity)
+    }
+
+    /// Rotate an existing `Identity` and update the stored version
+    pub async fn rotate_identity(&self, identifier: &Identifier) -> Result<()> {
+        let builder = self.identity_builder();
+        let options = builder.build_options().await?;
+
+        self.rotate_identity_with_options(identifier, options).await
+    }
+
+    /// Rotate an existing `Identity` and update the stored version
+    pub async fn rotate_identity_with_options(
+        &self,
+        identifier: &Identifier,
+        options: IdentityOptions,
+    ) -> Result<()> {
+        let change_history = self.repository.get_identity(identifier).await?;
+
+        let identity = Identity::import_from_change_history(
+            Some(identifier),
+            change_history,
+            self.verifying_vault.clone(),
+        )
+        .await?;
+
+        let identity = self
+            .identities_keys()
+            .rotate_key_with_options(identity, options)
+            .await?;
+
+        self.repository
+            .update_identity(identity.identifier(), identity.change_history())
+            .await?;
+
+        Ok(())
+    }
+
+    /// Import an existing Identity from its binary format
+    /// Its secret is expected to exist in the Vault (either generated there, or some Vault
+    /// implementations may allow importing a secret)
+    pub async fn import_private_identity(
+        &self,
+        identity_change_history: &[u8],
+        key_id: &KeyId,
+    ) -> Result<Identity> {
+        let identity = self.import(None, identity_change_history).await?;
+        if identity.get_latest_public_key()? != self.identity_vault.get_public_key(key_id).await? {
+            return Err(IdentityError::WrongSecretKey.into());
+        }
+
+        self.repository
+            .update_identity(identity.identifier(), identity.change_history())
+            .await?;
+        Ok(identity)
+    }
+
+    /// [`SigningVault`]
+    pub fn identity_vault(&self) -> Arc<dyn SigningVault> {
+        self.identity_vault.clone()
+    }
+
+    /// [`VerifyingVault`]
+    pub fn verifying_vault(&self) -> Arc<dyn VerifyingVault> {
+        self.verifying_vault.clone()
     }
 }
 
 impl IdentitiesCreation {
-    /// Make a new identity with its key and attributes
-    /// and persist it
-    async fn make_and_persist_identity(
-        &self,
-        key_id: Option<&KeyId>,
-        key_attributes: KeyAttributes,
-    ) -> Result<Identity> {
-        let identity_keys = IdentitiesKeys::new(self.vault.clone());
-        let change_history = identity_keys
-            .create_initial_key(key_id, key_attributes.clone())
+    /// Compare Identity that was received by any side-channel (e.g., Secure Channel) to the
+    /// version we have observed and stored before.
+    ///   - Do nothing if they're equal
+    ///   - Throw an error if the received version has conflict or is older that previously observed
+    ///   - Update stored Identity if the received version is newer
+    pub async fn update_identity(&self, identity: &Identity) -> Result<()> {
+        if let Some(known_identity) = self
+            .repository
+            .retrieve_identity(identity.identifier())
+            .await?
+        {
+            let known_identity = Identity::import_from_change_history(
+                Some(identity.identifier()),
+                known_identity,
+                self.verifying_vault.clone(),
+            )
             .await?;
-        let identifier = self.compute_identity_identifier(&change_history).await?;
-        let identity = Identity::new(identifier, change_history);
-        self.repository.update_identity(&identity).await?;
-        Ok(identity)
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::identities;
-
-    #[tokio::test]
-    async fn test_identity_creation() -> Result<()> {
-        let identities = identities();
-        let creation = identities.identities_creation();
-        let repository = identities.repository();
-        let keys = identities.identities_keys();
-
-        let identity = creation.create_identity().await?;
-        let actual = repository.get_identity(&identity.identifier()).await?;
-        assert_eq!(
-            actual,
-            identity.clone(),
-            "the identity can be retrieved from the repository"
-        );
-
-        let actual = repository.retrieve_identity(&identity.identifier()).await?;
-        assert_eq!(
-            actual,
-            Some(identity.clone()),
-            "the identity can be retrieved from the repository as an Option"
-        );
-
-        let missing = repository
-            .retrieve_identity(&IdentityIdentifier::from_hex(
-                "e92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638",
-            ))
-            .await?;
-        assert_eq!(missing, None, "a missing identity returns None");
-
-        let root_key = keys.get_secret_key(&identity, None).await;
-        assert!(root_key.is_ok(), "there is a key for the created identity");
+            match identity.compare(&known_identity) {
+                IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
+                    return Err(IdentityError::ConsistencyError.into());
+                }
+                IdentityHistoryComparison::Newer => {
+                    self.repository
+                        .update_identity(identity.identifier(), identity.change_history())
+                        .await?;
+                }
+                IdentityHistoryComparison::Equal => {}
+            }
+        } else {
+            self.repository
+                .update_identity(identity.identifier(), identity.change_history())
+                .await?;
+        }
 
         Ok(())
     }

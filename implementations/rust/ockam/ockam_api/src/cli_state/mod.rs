@@ -19,12 +19,12 @@ use crate::cli_state::user_info::UsersInfoState;
 pub use crate::cli_state::vaults::*;
 use crate::config::cli::LegacyCliConfig;
 use miette::Diagnostic;
+use ockam::identity::Identifier;
 use ockam::identity::Identities;
+use ockam::identity::Vault;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
-use ockam_identity::IdentityIdentifier;
 use ockam_node::Executor;
-use ockam_vault::Vault;
 use rand::random;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -256,7 +256,7 @@ impl CliState {
 
     pub async fn create_identity_state(
         &self,
-        identifier: &IdentityIdentifier,
+        identifier: &Identifier,
         identity_name: Option<&str>,
     ) -> Result<IdentityState> {
         if let Ok(identity) = self.identities.get_or_default(identity_name) {
@@ -268,7 +268,7 @@ impl CliState {
 
     async fn make_identity_state(
         &self,
-        identifier: &IdentityIdentifier,
+        identifier: &Identifier,
         name: Option<&str>,
     ) -> Result<IdentityState> {
         let identity_config = IdentityConfig::new(identifier).await;
@@ -278,16 +278,16 @@ impl CliState {
         self.identities.create(identity_name, identity_config)
     }
 
-    pub async fn get_identities(&self, vault: Arc<Vault>) -> Result<Arc<Identities>> {
+    pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
         Ok(Identities::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
     }
 
     pub async fn default_identities(&self) -> Result<Arc<Identities>> {
         Ok(Identities::builder()
-            .with_identities_vault(self.vaults.default()?.identities_vault().await?)
+            .with_vault(self.vaults.default()?.vault().await?)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
     }
@@ -392,14 +392,13 @@ mod tests {
     use crate::cloud::enroll::auth0::UserInfo;
     use crate::config::cli::TrustContextConfig;
     use crate::config::lookup::{ConfigLookup, LookupValue, ProjectLookup, SpaceLookup};
-    use ockam_identity::IdentitiesVault;
     use ockam_multiaddr::MultiAddr;
     use std::str::FromStr;
 
     #[tokio::test]
     async fn test_create_default_identity_state() {
         let state = CliState::test().unwrap();
-        let identifier = "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638"
+        let identifier = "Ie92f183eb4c324804ef4d62962dea94cf095a265"
             .try_into()
             .unwrap();
         let identity1 = state
@@ -422,7 +421,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_named_identity_state() {
         let state = CliState::test().unwrap();
-        let alice = "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638"
+        let alice = "Ie92f183eb4c324804ef4d62962dea94cf095a265"
             .try_into()
             .unwrap();
         let identity1 = state
@@ -461,10 +460,7 @@ mod tests {
             id: "pid".to_string(),
             name: "pname".to_string(),
             identity_id: Some(
-                IdentityIdentifier::from_str(
-                    "Pbb37445cacb3ca7a20040a9b36469e321a57d2cdd8c9e24fd1002897a012a610",
-                )
-                .unwrap(),
+                Identifier::from_str("Ibb37445cacb3ca7a20040a9b36469e321a57d2cd").unwrap(),
             ),
             authority: None,
             okta: None,
@@ -527,9 +523,9 @@ mod tests {
         let identity_name = {
             let name = hex::encode(random::<[u8; 4]>());
             let vault_state = sut.vaults.get(&vault_name).unwrap();
-            let vault: Arc<dyn IdentitiesVault> = vault_state.get().await.unwrap();
+            let vault: Vault = vault_state.get().await.unwrap();
             let identities = Identities::builder()
-                .with_identities_vault(vault)
+                .with_vault(vault)
                 .with_identities_repository(sut.identities.identities_repository().await?)
                 .build();
             let identity = identities
@@ -537,7 +533,7 @@ mod tests {
                 .create_identity()
                 .await
                 .unwrap();
-            let config = IdentityConfig::new(&identity.identifier()).await;
+            let config = IdentityConfig::new(identity.identifier()).await;
 
             let state = sut.identities.create(&name, config).unwrap();
             let got = sut.identities.get(&name).unwrap();

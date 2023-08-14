@@ -1,11 +1,20 @@
+use core::fmt;
 use core::fmt::Write;
+use std::fmt::Formatter;
 
 use cli_table::{Cell, Style, Table};
 use colorful::Colorful;
 use miette::miette;
 use miette::IntoDiagnostic;
+use minicbor::Encode;
+use ockam::identity::models::{
+    CredentialAndPurposeKey, CredentialData, CredentialSigningKey, Ed25519PublicKey,
+    P256ECDSAPublicKey, PurposeKeyAttestation, PurposeKeyAttestationData, PurposePublicKey,
+    X25519PublicKey,
+};
+use ockam::identity::{Credential, Identifier, Identity, TimestampInSeconds};
+use serde::{Serialize, Serializer};
 
-use ockam::identity::credential::Credential;
 use ockam_api::cli_state::{ProjectConfigCompact, StateItemTrait, VaultState};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
@@ -55,6 +64,18 @@ pub trait Output {
 impl<O: Output> Output for &O {
     fn output(&self) -> Result<String> {
         (*self).output()
+    }
+}
+
+impl Output for String {
+    fn output(&self) -> Result<String> {
+        Ok(self.clone())
+    }
+}
+
+impl Output for &str {
+    fn output(&self) -> Result<String> {
+        Ok(self.to_string())
     }
 }
 
@@ -282,12 +303,6 @@ From {} to {}"#,
     }
 }
 
-impl Output for Credential {
-    fn output(&self) -> Result<String> {
-        Ok(self.to_string())
-    }
-}
-
 impl Output for Vec<u8> {
     fn output(&self) -> Result<String> {
         Ok(hex::encode(self))
@@ -376,5 +391,303 @@ impl Output for VaultState {
             .color(OckamColor::PrimaryResource.color())
         )?;
         Ok(output)
+    }
+}
+
+fn human_readable_time(time: TimestampInSeconds) -> String {
+    use time::format_description::well_known::iso8601::*;
+    use time::Error::Format;
+    use time::OffsetDateTime;
+
+    match OffsetDateTime::from_unix_timestamp(*time as i64) {
+        Ok(time) => {
+            match time.format(
+                &Iso8601::<
+                    {
+                        Config::DEFAULT
+                            .set_time_precision(TimePrecision::Second {
+                                decimal_digits: None,
+                            })
+                            .encode()
+                    },
+                >,
+            ) {
+                Ok(now_iso) => now_iso,
+                Err(_) => {
+                    Format(time::error::Format::InvalidComponent("timestamp error")).to_string()
+                }
+            }
+        }
+        Err(_) => Format(time::error::Format::InvalidComponent(
+            "unix time is invalid",
+        ))
+        .to_string(),
+    }
+}
+
+pub struct X25519PublicKeyDisplay(pub X25519PublicKey);
+
+impl fmt::Display for X25519PublicKeyDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "X25519: {}", hex::encode(self.0 .0))
+    }
+}
+
+pub struct Ed25519PublicKeyDisplay(pub Ed25519PublicKey);
+
+impl fmt::Display for Ed25519PublicKeyDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Ed25519: {}", hex::encode(self.0 .0))
+    }
+}
+
+pub struct P256PublicKeyDisplay(pub P256ECDSAPublicKey);
+
+impl fmt::Display for P256PublicKeyDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "P256: {}", hex::encode(self.0 .0))
+    }
+}
+
+pub struct PurposePublicKeyDisplay(pub PurposePublicKey);
+
+impl fmt::Display for PurposePublicKeyDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            PurposePublicKey::SecureChannelStaticKey(key) => {
+                writeln!(
+                    f,
+                    "Secure Channel Key -> {}",
+                    X25519PublicKeyDisplay(key.clone())
+                )?;
+            }
+            PurposePublicKey::CredentialSigningKey(key) => match key {
+                CredentialSigningKey::Ed25519PublicKey(key) => {
+                    writeln!(
+                        f,
+                        "Credentials Key -> {}",
+                        Ed25519PublicKeyDisplay(key.clone())
+                    )?;
+                }
+                CredentialSigningKey::P256ECDSAPublicKey(key) => {
+                    writeln!(
+                        f,
+                        "Credentials Key -> {}",
+                        P256PublicKeyDisplay(key.clone())
+                    )?;
+                }
+            },
+        }
+
+        Ok(())
+    }
+}
+
+pub struct CredentialDisplay(pub Credential);
+
+impl fmt::Display for CredentialDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let versioned_data = match self.0.get_versioned_data() {
+            Ok(versioned_data) => versioned_data,
+            Err(_) => {
+                writeln!(f, "Invalid VersionedData")?;
+                return Ok(());
+            }
+        };
+
+        writeln!(f, "Version:                    {}", versioned_data.version)?;
+
+        let credential_data = match CredentialData::get_data(&versioned_data) {
+            Ok(credential_data) => credential_data,
+            Err(_) => {
+                writeln!(f, "Invalid CredentialData")?;
+                return Ok(());
+            }
+        };
+
+        if let Some(subject) = &credential_data.subject {
+            writeln!(f, "Subject:                    {}", subject)?;
+        }
+
+        if let Some(subject_latest_change_hash) = &credential_data.subject_latest_change_hash {
+            writeln!(
+                f,
+                "Subject Latest Change Hash: {}",
+                subject_latest_change_hash
+            )?;
+        }
+
+        writeln!(
+            f,
+            "Created:                    {}",
+            human_readable_time(credential_data.created_at)
+        )?;
+        writeln!(
+            f,
+            "Expires:                    {}",
+            human_readable_time(credential_data.expires_at)
+        )?;
+
+        writeln!(f, "Attributes: ")?;
+
+        write!(
+            f,
+            "  Schema: {}; ",
+            credential_data.subject_attributes.schema.0
+        )?;
+
+        f.debug_map()
+            .entries(credential_data.subject_attributes.map.iter().map(|(k, v)| {
+                (
+                    std::str::from_utf8(k).unwrap_or("**binary**"),
+                    std::str::from_utf8(v).unwrap_or("**binary**"),
+                )
+            }))
+            .finish()?;
+
+        Ok(())
+    }
+}
+
+pub struct PurposeKeyDisplay(pub PurposeKeyAttestation);
+
+impl fmt::Display for PurposeKeyDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let versioned_data = match self.0.get_versioned_data() {
+            Ok(versioned_data) => versioned_data,
+            Err(_) => {
+                writeln!(f, "Invalid VersionedData")?;
+                return Ok(());
+            }
+        };
+
+        writeln!(f, "Version:                    {}", versioned_data.version)?;
+
+        let purpose_key_attestation_data =
+            match PurposeKeyAttestationData::get_data(&versioned_data) {
+                Ok(purpose_key_attestation_data) => purpose_key_attestation_data,
+                Err(_) => {
+                    writeln!(f, "Invalid PurposeKeyAttestationData")?;
+                    return Ok(());
+                }
+            };
+
+        writeln!(
+            f,
+            "Subject:                    {}",
+            purpose_key_attestation_data.subject
+        )?;
+
+        writeln!(
+            f,
+            "Subject Latest Change Hash: {}",
+            purpose_key_attestation_data.subject_latest_change_hash
+        )?;
+
+        writeln!(
+            f,
+            "Created:                    {}",
+            human_readable_time(purpose_key_attestation_data.created_at)
+        )?;
+        writeln!(
+            f,
+            "Expires:                    {}",
+            human_readable_time(purpose_key_attestation_data.expires_at)
+        )?;
+
+        writeln!(
+            f,
+            "Public Key -> {}",
+            PurposePublicKeyDisplay(purpose_key_attestation_data.public_key.clone())
+        )?;
+
+        Ok(())
+    }
+}
+
+#[derive(Encode)]
+#[cbor(transparent)]
+pub struct CredentialAndPurposeKeyDisplay(#[n(0)] pub CredentialAndPurposeKey);
+
+impl Output for CredentialAndPurposeKeyDisplay {
+    fn output(&self) -> Result<String> {
+        Ok(format!("{}", self))
+    }
+}
+
+impl fmt::Display for CredentialAndPurposeKeyDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        // TODO: Could borrow using a lifetime
+        writeln!(f, "Credential:")?;
+        writeln!(f, "{}", CredentialDisplay(self.0.credential.clone()))?;
+        writeln!(f)?;
+        writeln!(f, "Purpose key:")?;
+        writeln!(
+            f,
+            "{}",
+            PurposeKeyDisplay(self.0.purpose_key_attestation.clone())
+        )?;
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize)]
+#[serde(transparent)]
+pub struct IdentifierDisplay(pub Identifier);
+
+impl fmt::Display for IdentifierDisplay {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Output for IdentifierDisplay {
+    fn output(&self) -> Result<String> {
+        Ok(self.to_string())
+    }
+}
+
+pub struct IdentityDisplay(pub Identity);
+
+impl Serialize for IdentityDisplay {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::Error;
+        serializer.serialize_bytes(&self.0.export().map_err(Error::custom)?)
+    }
+}
+
+impl fmt::Display for IdentityDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Identifier: {}", self.0.identifier())?;
+        for (i_num, change) in self.0.changes().iter().enumerate() {
+            writeln!(f, "  Change[{}]:", i_num)?;
+            writeln!(
+                f,
+                "    identifier:              {}",
+                hex::encode(change.change_hash())
+            )?;
+            writeln!(
+                f,
+                "    primary_public_key:      {}",
+                change.primary_public_key()
+            )?;
+            writeln!(
+                f,
+                "    revoke_all_purpose_keys: {}",
+                change.data().revoke_all_purpose_keys
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Output for IdentityDisplay {
+    fn output(&self) -> Result<String> {
+        Ok(format!("{}", self))
     }
 }

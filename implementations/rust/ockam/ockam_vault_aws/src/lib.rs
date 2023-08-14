@@ -10,13 +10,17 @@
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod vault;
-
-pub use vault::*;
-
 #[cfg(feature = "std")]
 extern crate core;
 
 #[cfg(feature = "alloc")]
 #[macro_use]
 extern crate alloc;
+
+mod aws_kms_client;
+mod aws_signing_vault;
+mod error;
+
+pub use aws_kms_client::*;
+pub use aws_signing_vault::*;
+pub use error::*;

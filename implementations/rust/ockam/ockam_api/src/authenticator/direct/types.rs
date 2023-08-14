@@ -1,5 +1,5 @@
 use minicbor::{Decode, Encode};
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_core::CowStr;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -13,12 +13,12 @@ use ockam_core::TypeTag;
 pub struct AddMember<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2820828>,
-    #[n(1)] member: IdentityIdentifier,
+    #[n(1)] member: Identifier,
     #[b(2)] attributes: HashMap<CowStr<'a>, CowStr<'a>>,
 }
 
 impl<'a> AddMember<'a> {
-    pub fn new(member: IdentityIdentifier) -> Self {
+    pub fn new(member: Identifier) -> Self {
         AddMember {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -35,7 +35,7 @@ impl<'a> AddMember<'a> {
         self
     }
 
-    pub fn member(&self) -> &IdentityIdentifier {
+    pub fn member(&self) -> &Identifier {
         &self.member
     }
 

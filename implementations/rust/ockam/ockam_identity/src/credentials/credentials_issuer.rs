@@ -1,75 +1,94 @@
-use minicbor::Decoder;
-use tracing::trace;
+use crate::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
+use crate::utils::AttributesBuilder;
+use crate::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
+use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{api, Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
-use crate::alloc::string::ToString;
-use crate::credential::Credential;
-use crate::identity::IdentityIdentifier;
-use crate::{CredentialData, Identities, IdentitySecureChannelLocalInfo, PROJECT_MEMBER_SCHEMA};
+use core::time::Duration;
+use minicbor::Decoder;
+use tracing::trace;
 
-/// Legacy id for a trust context, it used to be 'project_id', not it is the more general 'trust_context_id'
-/// TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-pub const LEGACY_ID: &str = "project_id";
 /// Name of the attribute identifying the trust context for that attribute, meaning
 /// from which set of trusted authorities the attribute comes from
-pub const TRUST_CONTEXT_ID: &str = "trust_context_id";
+pub const TRUST_CONTEXT_ID: &[u8] = b"trust_context_id";
+
+/// The same as above but in string format
+pub const TRUST_CONTEXT_ID_UTF8: &str = "trust_context_id";
+
+/// Identifier for the schema of a project credential
+pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
+
+/// Maximum duration for a valid credential in seconds (30 days)
+pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 3600);
 
 /// This struct runs as a Worker to issue credentials based on a request/response protocol
 pub struct CredentialsIssuer {
-    identities: Arc<Identities>,
-    issuer: IdentityIdentifier,
-    trust_context: String,
+    identities_repository: Arc<dyn IdentitiesRepository>,
+    credentials: Arc<Credentials>,
+    issuer: Identifier,
+    subject_attributes: Attributes,
 }
 
 impl CredentialsIssuer {
     /// Create a new credentials issuer
     pub async fn new(
-        identities: Arc<Identities>,
-        issuer: IdentityIdentifier,
+        identities_repository: Arc<dyn IdentitiesRepository>,
+        credentials: Arc<Credentials>,
+        issuer: &Identifier,
         trust_context: String,
     ) -> Result<Self> {
+        let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
+            .with_attribute(TRUST_CONTEXT_ID.to_vec(), trust_context.as_bytes().to_vec())
+            .build();
+
         Ok(Self {
-            identities,
-            issuer,
-            trust_context,
+            identities_repository,
+            credentials,
+            issuer: issuer.clone(),
+            subject_attributes,
         })
     }
 
-    async fn issue_credential(&self, from: &IdentityIdentifier) -> Result<Option<Credential>> {
-        match self
-            .identities
-            .repository()
+    async fn issue_credential(
+        &self,
+        subject: &Identifier,
+    ) -> Result<Option<CredentialAndPurposeKey>> {
+        let entry = match self
+            .identities_repository
             .as_attributes_reader()
-            .get_attributes(from)
+            .get_attributes(subject)
             .await?
         {
-            Some(entry) => {
-                let crd = entry
-                    .attrs()
-                    .iter()
-                    .fold(
-                        CredentialData::builder(from.clone(), self.issuer.clone())
-                            .with_schema(PROJECT_MEMBER_SCHEMA),
-                        |crd, (a, v)| crd.with_attribute(a, v),
-                    )
-                    .with_attribute(LEGACY_ID, self.trust_context.as_bytes()) // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                    .with_attribute(TRUST_CONTEXT_ID, self.trust_context.as_bytes());
-                Ok(Some(
-                    self.identities
-                        .credentials()
-                        .issue_credential(&self.issuer, crd.build()?)
-                        .await?,
-                ))
-            }
-            None => Ok(None),
+            Some(entry) => entry,
+            None => return Ok(None),
+        };
+
+        let mut subject_attributes = self.subject_attributes.clone();
+        for (key, value) in entry.attrs().iter() {
+            subject_attributes
+                .map
+                .insert(key.clone().into(), value.clone().into());
         }
+
+        let credential = self
+            .credentials
+            .credentials_creation()
+            .issue_credential(
+                &self.issuer,
+                subject,
+                subject_attributes,
+                MAX_CREDENTIAL_VALIDITY,
+            )
+            .await?;
+
+        Ok(Some(credential))
     }
 }
 
@@ -140,7 +159,7 @@ impl CredentialsIssuerClient {
     }
 
     /// Return a credential for the identity which initiated the secure channel
-    pub async fn credential(&self) -> Result<Credential> {
+    pub async fn credential(&self) -> Result<CredentialAndPurposeKey> {
         self.client.request(&Request::post("/")).await
     }
 }

@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::log::trace;
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -54,7 +54,7 @@ pub struct CreateCommand {
 
     /// Authorized identity for secure channel connection
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
-    authorized: Option<IdentityIdentifier>,
+    authorized: Option<Identifier>,
 
     /// Assign a name to this inlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]

@@ -2,9 +2,12 @@ use std::path::Path;
 
 use tracing::info;
 
+use ockam::identity::storage::LmdbStorage;
+use ockam::identity::Vault;
 use ockam::identity::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, IdentityAttributesReader,
-    IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+    CredentialsIssuer, Identifier, Identities, IdentitiesRepository, IdentitiesStorage,
+    IdentityAttributesReader, IdentityAttributesWriter, SecureChannelListenerOptions,
+    SecureChannels, TrustEveryonePolicy,
 };
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
@@ -12,10 +15,8 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result, Worker};
-use ockam_identity::{CredentialsIssuer, IdentityIdentifier, LmdbStorage};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
-use ockam_vault::Vault;
 
 use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
@@ -32,7 +33,7 @@ use crate::{actions, DefaultAddress};
 //   - an enrollment token issuer
 //   - an enrollment token acceptor
 pub struct Authority {
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     secure_channels: Arc<SecureChannels>,
 }
 
@@ -41,7 +42,7 @@ pub struct Authority {
 ///   - start services
 impl Authority {
     /// Return the identity identifier for this authority
-    pub fn identifier(&self) -> IdentityIdentifier {
+    pub fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }
 
@@ -53,7 +54,7 @@ impl Authority {
         let vault = Self::create_secure_channels_vault(configuration).await?;
         let repository = Self::create_identities_repository(configuration).await?;
         let secure_channels = SecureChannels::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(repository)
             .build();
 
@@ -186,8 +187,9 @@ impl Authority {
     ) -> Result<()> {
         // create and start a credential issuer worker
         let issuer = CredentialsIssuer::new(
-            self.identities(),
-            self.identifier(),
+            self.secure_channels.identities().repository(),
+            self.secure_channels.identities().credentials(),
+            &self.identifier,
             configuration.trust_context_identifier(),
         )
         .await?;
@@ -265,9 +267,7 @@ impl Authority {
     }
 
     /// Create an identity vault backed by a FileStorage
-    async fn create_secure_channels_vault(
-        configuration: &Configuration,
-    ) -> Result<Arc<dyn IdentitiesVault>> {
+    async fn create_secure_channels_vault(configuration: &Configuration) -> Result<Vault> {
         let vault_path = &configuration.vault_path;
         Self::create_ockam_directory_if_necessary(vault_path)?;
         let vault = Vault::create_with_persistent_storage_path(vault_path).await?;
@@ -345,7 +345,6 @@ impl Authority {
         // the same project id as the authority
         let rule = if enroller_check == EnrollerOnly {
             and([
-                eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
                 eq([
                     ident("resource.trust_context_id"),
                     ident("subject.trust_context_id"),
@@ -353,21 +352,14 @@ impl Authority {
                 eq([ident("subject.ockam-role"), str("enroller")]),
             ])
         } else {
-            and([
-                eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                eq([
-                    ident("resource.trust_context_id"),
-                    ident("subject.trust_context_id"),
-                ]),
+            eq([
+                ident("resource.trust_context_id"),
+                ident("subject.trust_context_id"),
             ])
         };
         let mut env = Env::new();
         env.put("resource.id", str(address.as_str()));
         env.put("action.id", str(actions::HANDLE_MESSAGE.as_str()));
-        env.put(
-            "resource.project_id",
-            str(configuration.clone().project_identifier),
-        );
         env.put(
             "resource.trust_context_id",
             str(configuration.clone().trust_context_identifier),

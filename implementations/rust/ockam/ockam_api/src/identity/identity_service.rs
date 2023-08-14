@@ -2,15 +2,17 @@ use core::convert::Infallible;
 
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
+use ockam::identity::IdentityHistoryComparison;
 use tracing::trace;
 
-use ockam::identity::IdentityHistoryComparison;
+use crate::identity::models::{
+    CompareIdentityChangeHistoryRequest, CreateResponse, ValidateIdentityChangeHistoryRequest,
+    ValidateIdentityChangeHistoryResponse,
+};
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
-use ockam_vault::Signature;
 
-use crate::identity::models::*;
 use crate::nodes::service::NodeIdentities;
 
 /// Vault Service Worker
@@ -109,7 +111,7 @@ impl IdentityService {
                         Some(identity) => {
                             let body = CreateResponse::new(
                                 identity.export()?,
-                                identity.identifier().to_string(),
+                                identity.identifier().clone(),
                             );
                             Self::ok_response(req, Some(body), enc)
                         }
@@ -127,7 +129,7 @@ impl IdentityService {
                         .create_identity()
                         .await?;
                     let body =
-                        CreateResponse::new(identity.export()?, identity.identifier().to_string());
+                        CreateResponse::new(identity.export()?, identity.identifier().clone());
 
                     Self::ok_response(req, Some(body), enc)
                 }
@@ -141,63 +143,10 @@ impl IdentityService {
                         .node_identities
                         .get_default_identities_creation()
                         .await?;
-                    let identity = identities_creation.decode_identity(args.identity()).await?;
+                    let identity = identities_creation.import(None, args.identity()).await?;
 
-                    let body = ValidateIdentityChangeHistoryResponse::new(String::from(
-                        identity.identifier(),
-                    ));
-
-                    Self::ok_response(req, Some(body), enc)
-                }
-                ["actions", "create_signature"] => {
-                    if !req.has_body() {
-                        return Self::response_for_bad_request(req, "empty body", enc);
-                    }
-
-                    let args = dec.decode::<CreateSignatureRequest>()?;
-                    let identities_creation = self
-                        .node_identities
-                        .get_identities_creation(args.vault_name())
-                        .await?;
-                    let identity = identities_creation.decode_identity(args.identity()).await?;
-                    let identities_keys = self
-                        .node_identities
-                        .get_identities_keys(args.vault_name())
-                        .await?;
-                    let signature = identities_keys
-                        .create_signature(&identity, args.data(), None)
-                        .await?;
-
-                    let body = CreateSignatureResponse::new(signature.as_ref());
-
-                    Self::ok_response(req, Some(body), enc)
-                }
-                ["actions", "verify_signature"] => {
-                    if !req.has_body() {
-                        return Self::response_for_bad_request(req, "empty body", enc);
-                    }
-
-                    let args = dec.decode::<VerifySignatureRequest>()?;
-                    let identities_creation = self
-                        .node_identities
-                        .get_default_identities_creation()
-                        .await?;
-                    let peer_identity = identities_creation
-                        .decode_identity(args.signer_identity())
-                        .await?;
-
-                    let identities_keys =
-                        self.node_identities.get_default_identities_keys().await?;
-                    let verified = identities_keys
-                        .verify_signature(
-                            &peer_identity,
-                            &Signature::new(args.signature().to_vec()),
-                            args.data(),
-                            None,
-                        )
-                        .await?;
-
-                    let body = VerifySignatureResponse::new(verified);
+                    let body =
+                        ValidateIdentityChangeHistoryResponse::new(identity.identifier().clone());
 
                     Self::ok_response(req, Some(body), enc)
                 }
@@ -214,14 +163,14 @@ impl IdentityService {
                         .await?;
 
                     let current_identity = identities_creation
-                        .decode_identity(args.current_identity())
+                        .import(None, args.current_identity())
                         .await?;
 
                     let body = if args.known_identity().is_empty() {
                         IdentityHistoryComparison::Newer
                     } else {
                         let known_identity = identities_creation
-                            .decode_identity(args.known_identity())
+                            .import(Some(current_identity.identifier()), args.known_identity())
                             .await?;
                         current_identity.compare(&known_identity)
                     };

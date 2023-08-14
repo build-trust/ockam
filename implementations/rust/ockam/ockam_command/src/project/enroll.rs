@@ -4,6 +4,7 @@ use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 
+use ockam::identity::CredentialsIssuerClient;
 use ockam::Context;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
@@ -14,7 +15,6 @@ use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::identity::EnrollmentTicket;
 use ockam_api::DefaultAddress;
 use ockam_core::route;
-use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::RpcClient;
@@ -22,6 +22,7 @@ use ockam_node::RpcClient;
 use crate::enroll::{enroll_with_node, OidcServiceExt};
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::delete_embedded_node;
+use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{node_rpc, Rpc};
@@ -218,7 +219,7 @@ pub async fn project_enroll<'a>(
     opts.terminal
         .clone()
         .stdout()
-        .plain(credential)
+        .plain(CredentialAndPurposeKeyDisplay(credential))
         .write_line()?;
     Ok(project.name)
 }

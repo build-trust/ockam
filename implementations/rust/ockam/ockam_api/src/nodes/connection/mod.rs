@@ -2,10 +2,10 @@ mod plain_tcp;
 mod project;
 mod secure;
 
+use ockam::identity::Identifier;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{async_trait, route, Address, CowStr, Route, LOCAL};
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
@@ -22,7 +22,7 @@ pub struct Connection<'a> {
     pub addr: &'a MultiAddr,
     pub identity_name: Option<CowStr<'a>>,
     pub credential_name: Option<CowStr<'a>>,
-    pub authorized_identities: Option<Vec<IdentityIdentifier>>,
+    pub authorized_identities: Option<Vec<Identifier>>,
     pub timeout: Option<Duration>,
     pub add_default_consumers: bool,
 }
@@ -46,7 +46,7 @@ impl<'a> Connection<'a> {
         self
     }
 
-    pub fn with_authorized_identity<T: Into<Option<IdentityIdentifier>>>(
+    pub fn with_authorized_identity<T: Into<Option<Identifier>>>(
         mut self,
         authorized_identity: T,
     ) -> Self {

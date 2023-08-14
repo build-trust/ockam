@@ -1,8 +1,8 @@
+use ockam::identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::workers::Echoer;
 use ockam::{ForwardingService, ForwardingServiceOptions};
 use ockam_core::{route, AllowAll, Result};
-use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use std::time::Duration;
@@ -172,7 +172,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &cloud_identity.identifier(),
+            cloud_identity.identifier(),
             "cloud_listener",
             cloud_secure_channel_listener_options,
         )
@@ -202,7 +202,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_server_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &server_identity.identifier(),
+            server_identity.identifier(),
             route![cloud_server_connection, "cloud_listener"],
             server_secure_channel_options,
         )
@@ -210,7 +210,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &server_identity.identifier(),
+            server_identity.identifier(),
             "server_listener",
             server_secure_channel_listener_options,
         )
@@ -232,7 +232,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_client_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &client_identity.identifier(),
+            client_identity.identifier(),
             route![cloud_client_connection, "cloud_listener"],
             SecureChannelOptions::new(),
         )
@@ -241,7 +241,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let tunnel_channel = secure_channels
         .create_secure_channel(
             ctx,
-            &client_identity.identifier(),
+            client_identity.identifier(),
             route![
                 cloud_client_channel,
                 remote_info.remote_address(),

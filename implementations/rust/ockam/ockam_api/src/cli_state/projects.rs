@@ -2,7 +2,7 @@ use super::Result;
 use crate::cloud::project::{OktaConfig, Project};
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
-use ockam_identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -61,7 +61,7 @@ impl From<ProjectLookup> for Project {
 pub struct ProjectConfigCompact {
     pub id: String,
     pub name: String,
-    pub identity: Option<IdentityIdentifier>,
+    pub identity: Option<Identifier>,
     pub access_route: String,
     pub authority_access_route: Option<String>,
     pub authority_identity: Option<String>,

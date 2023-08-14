@@ -5,26 +5,26 @@ use ockam_core::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::identity::IdentityIdentifier;
+use crate::models::Identifier;
 use crate::secure_channel::trust_policy::{AllTrustPolicy, AnyTrustPolicy};
 
 /// Authenticated data of the newly created SecureChannel to perform `TrustPolicy` check
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SecureChannelTrustInfo {
     /// identity of the other end of the secure channel
-    pub their_identity_id: IdentityIdentifier,
+    pub their_identity_id: Identifier,
 }
 
 impl SecureChannelTrustInfo {
     /// `IdentityIdentifier` of the other participant
-    pub fn their_identity_id(&self) -> &IdentityIdentifier {
+    pub fn their_identity_id(&self) -> &Identifier {
         &self.their_identity_id
     }
 }
 
 impl SecureChannelTrustInfo {
     /// Constructor
-    pub fn new(their_identity_id: IdentityIdentifier) -> Self {
+    pub fn new(their_identity_id: Identifier) -> Self {
         Self { their_identity_id }
     }
 }

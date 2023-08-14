@@ -18,12 +18,12 @@ teardown() {
   i=$(random_str)
   run_success "$OCKAM" identity create "${i}"
   run_success "$OCKAM" identity show "${i}"
-  assert_output --regexp '^P'
+  assert_output --regexp '^I'
 
   run_success "$OCKAM" identity show "${i}" --full
-  assert_output --partial "Change History"
-  assert_output --partial "identifier"
-  assert_output --partial "signatures"
+  assert_output --partial "Change[0]:"
+  assert_output --partial "Identifier: "
+  assert_output --partial "primary_public_key: "
 }
 
 @test "identity - CRUD" {

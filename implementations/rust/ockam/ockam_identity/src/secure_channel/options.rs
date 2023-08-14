@@ -1,12 +1,15 @@
-use crate::secure_channel::Addresses;
-use crate::{Credential, TrustContext, TrustEveryonePolicy, TrustPolicy};
-use core::fmt;
-use core::fmt::Formatter;
-use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{Address, OutgoingAccessControl, Result};
+
+use crate::models::CredentialAndPurposeKey;
+use crate::secure_channel::Addresses;
+use crate::{TrustContext, TrustEveryonePolicy, TrustPolicy};
+
+use core::fmt;
+use core::fmt::Formatter;
+use core::time::Duration;
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
@@ -15,7 +18,7 @@ pub struct SecureChannelOptions {
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     pub(crate) trust_context: Option<TrustContext>,
-    pub(crate) credentials: Vec<Credential>,
+    pub(crate) credentials: Vec<CredentialAndPurposeKey>,
     pub(crate) timeout: Duration,
 }
 
@@ -49,13 +52,13 @@ impl SecureChannelOptions {
     }
 
     /// Adds provided credentials
-    pub fn with_credentials(mut self, credentials: Vec<Credential>) -> Self {
+    pub fn with_credentials(mut self, credentials: Vec<CredentialAndPurposeKey>) -> Self {
         self.credentials.extend(credentials);
         self
     }
 
     /// Adds a single credential
-    pub fn with_credential(mut self, credential: Credential) -> Self {
+    pub fn with_credential(mut self, credential: CredentialAndPurposeKey) -> Self {
         self.credentials.push(credential);
         self
     }
@@ -125,7 +128,7 @@ pub struct SecureChannelListenerOptions {
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     pub(crate) trust_context: Option<TrustContext>,
-    pub(crate) credentials: Vec<Credential>,
+    pub(crate) credentials: Vec<CredentialAndPurposeKey>,
 }
 
 impl fmt::Debug for SecureChannelListenerOptions {
@@ -159,13 +162,13 @@ impl SecureChannelListenerOptions {
     }
 
     /// Adds provided credentials
-    pub fn with_credentials(mut self, credentials: Vec<Credential>) -> Self {
+    pub fn with_credentials(mut self, credentials: Vec<CredentialAndPurposeKey>) -> Self {
         self.credentials.extend(credentials);
         self
     }
 
     /// Adds a single credential
-    pub fn with_credential(mut self, credential: Credential) -> Self {
+    pub fn with_credential(mut self, credential: CredentialAndPurposeKey) -> Self {
         self.credentials.push(credential);
         self
     }

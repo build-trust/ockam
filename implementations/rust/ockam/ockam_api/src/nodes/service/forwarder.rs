@@ -3,7 +3,7 @@ use std::sync::Arc;
 use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::sync::Mutex;
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
@@ -216,7 +216,7 @@ fn replacer(
     connection_instance: ConnectionInstance,
     addr: MultiAddr,
     alias: Option<String>,
-    auth: Option<IdentityIdentifier>,
+    auth: Option<Identifier>,
 ) -> Replacer {
     let connection_instance_arc = Arc::new(Mutex::new(connection_instance));
     Box::new(move |prev_route| {

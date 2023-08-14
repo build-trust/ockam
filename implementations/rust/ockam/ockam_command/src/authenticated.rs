@@ -6,7 +6,7 @@ use clap::{Args, Subcommand};
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::compat::collections::HashMap;
-use ockam::identity::{AttributesEntry, IdentityIdentifier};
+use ockam::identity::{AttributesEntry, Identifier};
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
 use ockam_api::is_local_node;
@@ -69,7 +69,7 @@ async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> miette::Result<
             is_local_node(addr).context("The address must point to a local node")?;
             let mut c = client(&ctx, &tcp, addr).await?;
             if let Some(entry) = c.get(id).await.into_diagnostic()? {
-                print_entries(&[(IdentityIdentifier::try_from(id.to_string()).unwrap(), entry)]);
+                print_entries(&[(Identifier::try_from(id.to_string()).unwrap(), entry)]);
             } else {
                 println!("Not found");
             }
@@ -84,7 +84,7 @@ async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> miette::Result<
     Ok(())
 }
 
-fn print_entries(entries: &[(IdentityIdentifier, AttributesEntry)]) {
+fn print_entries(entries: &[(Identifier, AttributesEntry)]) {
     let template = TextTemplate::from(LIST_VIEW);
     let model: Vec<_> = entries
         .iter()
@@ -92,15 +92,20 @@ fn print_entries(entries: &[(IdentityIdentifier, AttributesEntry)]) {
             let attrs: HashMap<String, String> = entry
                 .attrs()
                 .iter()
-                .map(|(k, v)| (k.to_string(), String::from_utf8(v.clone()).unwrap()))
+                .map(|(k, v)| {
+                    (
+                        String::from_utf8(k.clone()).unwrap(),
+                        String::from_utf8(v.clone()).unwrap(),
+                    )
+                })
                 .collect();
             (
                 String::from(identifier),
                 serde_json::to_string(&attrs).unwrap(),
-                format!("{:?}", entry.added().unix_time()),
+                format!("{:?}", entry.added()),
                 entry
                     .expires()
-                    .map_or("-".to_string(), |t| format!("{:?}", t.unix_time())),
+                    .map_or("-".to_string(), |t| format!("{:?}", t)),
                 entry.attested_by().map_or("-".to_string(), String::from),
             )
         })

@@ -1,13 +1,16 @@
-use crate::constants::NISTP256_SECRET_LENGTH_U32;
+use crate::constants::{AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32};
 use crate::constants::{
-    AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32, CURVE25519_SECRET_LENGTH_U32,
+    ED25519_SECRET_LENGTH_U32, NIST_P256_SECRET_LENGTH_U32, X25519_SECRET_LENGTH_U32,
 };
+use crate::VaultError;
 use core::fmt;
 use core::fmt::{Display, Formatter};
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+// TODO: Remove in favor of SecretType
+// TODO: Has room for better type-safety
 /// Attributes for secrets
 ///   - a type indicating how the secret is generated: Aes, Ed25519
 ///   - an expected length corresponding to the type
@@ -28,10 +31,9 @@ pub enum SecretAttributes {
     NistP256,
 }
 
-impl SecretAttributes {
-    /// Return the type of a secret
-    pub fn secret_type(&self) -> SecretType {
-        match self {
+impl From<SecretAttributes> for SecretType {
+    fn from(value: SecretAttributes) -> Self {
+        match value {
             SecretAttributes::Buffer(_) => SecretType::Buffer,
             SecretAttributes::Aes128 => SecretType::Aes,
             SecretAttributes::Aes256 => SecretType::Aes,
@@ -40,6 +42,26 @@ impl SecretAttributes {
             SecretAttributes::NistP256 => SecretType::NistP256,
         }
     }
+}
+
+impl TryFrom<SecretType> for SecretAttributes {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: SecretType) -> Result<Self, Self::Error> {
+        match value {
+            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            SecretType::X25519 => Ok(SecretAttributes::X25519),
+            SecretType::Ed25519 => Ok(SecretAttributes::Ed25519),
+            SecretType::NistP256 => Ok(SecretAttributes::NistP256),
+        }
+    }
+}
+
+impl SecretAttributes {
+    /// Return the type of a secret
+    pub fn secret_type(&self) -> SecretType {
+        (*self).into()
+    }
 
     /// Return the length of a secret
     pub fn length(&self) -> u32 {
@@ -47,9 +69,9 @@ impl SecretAttributes {
             SecretAttributes::Buffer(s) => *s,
             SecretAttributes::Aes128 => AES128_SECRET_LENGTH_U32,
             SecretAttributes::Aes256 => AES256_SECRET_LENGTH_U32,
-            SecretAttributes::Ed25519 => CURVE25519_SECRET_LENGTH_U32,
-            SecretAttributes::X25519 => CURVE25519_SECRET_LENGTH_U32,
-            SecretAttributes::NistP256 => NISTP256_SECRET_LENGTH_U32,
+            SecretAttributes::Ed25519 => ED25519_SECRET_LENGTH_U32,
+            SecretAttributes::X25519 => X25519_SECRET_LENGTH_U32,
+            SecretAttributes::NistP256 => NIST_P256_SECRET_LENGTH_U32,
         }
     }
 }

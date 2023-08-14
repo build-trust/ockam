@@ -5,10 +5,11 @@ use crate::{
 };
 use miette::miette;
 
+use crate::credential::identities;
 use clap::Args;
 use colorful::Colorful;
+use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_identity::IdentityIdentifier;
 use tokio::{sync::Mutex, try_join};
 
 use crate::util::parsers::identity_identifier_parser;
@@ -18,7 +19,7 @@ use super::validate_encoded_cred;
 #[derive(Clone, Debug, Args)]
 pub struct VerifyCommand {
     #[arg(long = "issuer", value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
-    pub issuer: IdentityIdentifier,
+    pub issuer: Identifier,
 
     #[arg(group = "credential_value", value_name = "CREDENTIAL_STRING", long)]
     pub credential: Option<String>,
@@ -35,8 +36,8 @@ impl VerifyCommand {
         node_rpc(run_impl, (opts, self));
     }
 
-    pub fn issuer(&self) -> IdentityIdentifier {
-        self.issuer.clone()
+    pub fn issuer(&self) -> &Identifier {
+        &self.issuer
     }
 }
 
@@ -51,7 +52,10 @@ async fn run_impl(
 
     let send_req = async {
         let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
-            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
+            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path)
+                .await?
+                .trim()
+                .to_string(),
             (Some(credential), _) => credential.clone(),
             _ => {
                 *is_finished.lock().await = true;
@@ -68,8 +72,16 @@ async fn run_impl(
 
         let issuer = cmd.issuer();
 
-        let is_valid = match validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await
-        {
+        let identities = match identities(&vault_name, &opts).await {
+            Ok(i) => i,
+            Err(_) => {
+                *is_finished.lock().await = true;
+                return Err(miette!("Invalid state").into());
+            }
+        };
+
+        let cred = hex::decode(&cred_as_str)?;
+        let is_valid = match validate_encoded_cred(&cred, identities, issuer).await {
             Ok(_) => (true, String::new()),
             Err(e) => (false, e.to_string()),
         };

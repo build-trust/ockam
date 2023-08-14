@@ -1,4 +1,17 @@
-use crate::credential::Credential;
+use alloc::sync::Arc;
+use core::time::Duration;
+use ockam_core::compat::{boxed::Box, vec::Vec};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{
+    AllowAll, Any, Decodable, DenyAll, Error, Mailbox, Mailboxes, OutgoingAccessControl, Route,
+    Routed,
+};
+use ockam_core::{AllowOnwardAddress, Result, Worker};
+use ockam_node::callback::CallbackSender;
+use ockam_node::{Context, WorkerBuilder};
+use tracing::{debug, info};
+
+use crate::models::{CredentialAndPurposeKey, Identifier};
 use crate::secure_channel::decryptor::DecryptorHandler;
 use crate::secure_channel::encryptor::Encryptor;
 use crate::secure_channel::encryptor_worker::EncryptorWorker;
@@ -13,21 +26,9 @@ use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMac
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    to_xx_initialized, to_xx_vault, IdentityError, IdentityIdentifier, SecureChannelRegistryEntry,
-    SecureChannels, TrustContext, TrustPolicy,
+    IdentityError, PurposeKey, SecureChannelRegistryEntry, SecureChannels, TrustContext,
+    TrustPolicy,
 };
-use alloc::sync::Arc;
-use core::time::Duration;
-use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{
-    AllowAll, Any, Decodable, DenyAll, Error, Mailbox, Mailboxes, OutgoingAccessControl, Route,
-    Routed,
-};
-use ockam_core::{AllowOnwardAddress, Result, Worker};
-use ockam_node::callback::CallbackSender;
-use ockam_node::{Context, WorkerBuilder};
-use tracing::{debug, info};
 
 /// This struct implements a Worker receiving and sending messages
 /// on one side of the secure channel creation as specified with its role: INITIATOR or REPSONDER
@@ -35,7 +36,7 @@ pub(crate) struct HandshakeWorker {
     secure_channels: Arc<SecureChannels>,
     callback_sender: Option<CallbackSender<()>>,
     state_machine: Box<dyn StateMachine>,
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     addresses: Addresses,
     role: Role,
     remote_route: Option<Route>,
@@ -52,7 +53,7 @@ impl Worker for HandshakeWorker {
     async fn initialize(&mut self, context: &mut Self::Context) -> Result<()> {
         match self.state_machine.on_event(Initialize).await? {
             SendMessage(message) => {
-                info!(
+                debug!(
                     "remote route {:?}, decryptor remote {:?}",
                     self.remote_route.clone(),
                     self.addresses.decryptor_remote.clone()
@@ -152,16 +153,17 @@ impl HandshakeWorker {
         context: &Context,
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
+        purpose_key: PurposeKey,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        credentials: Vec<Credential>,
+        credentials: Vec<CredentialAndPurposeKey>,
         trust_context: Option<TrustContext>,
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
     ) -> Result<()> {
-        let vault = to_xx_vault(secure_channels.vault());
+        let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
         let state_machine: Box<dyn StateMachine> = if role.is_initiator() {
             Box::new(
@@ -169,6 +171,7 @@ impl HandshakeWorker {
                     vault,
                     identities,
                     identifier.clone(),
+                    purpose_key,
                     credentials,
                     trust_policy,
                     trust_context,
@@ -181,6 +184,7 @@ impl HandshakeWorker {
                     vault,
                     identities,
                     identifier.clone(),
+                    purpose_key,
                     credentials,
                     trust_policy,
                     trust_context,
@@ -289,7 +293,7 @@ impl HandshakeWorker {
             self.role.str(),
             self.addresses.clone(),
             handshake_results.handshake_keys.decryption_key,
-            to_xx_initialized(self.secure_channels.identities.vault()),
+            self.secure_channels.identities.vault().secure_channel_vault,
             handshake_results.their_identifier.clone(),
         );
 
@@ -302,7 +306,7 @@ impl HandshakeWorker {
                 Encryptor::new(
                     handshake_results.handshake_keys.encryption_key,
                     0,
-                    to_xx_initialized(self.secure_channels.identities.vault()),
+                    self.secure_channels.identities.vault().secure_channel_vault,
                 ),
             );
 

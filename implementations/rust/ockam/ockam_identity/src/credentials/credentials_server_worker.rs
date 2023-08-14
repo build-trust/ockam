@@ -1,6 +1,3 @@
-use minicbor::Decoder;
-use tracing::{debug, error, info, trace, warn};
-
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
@@ -8,27 +5,28 @@ use ockam_core::compat::{string::ToString, sync::Arc, vec::Vec};
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 
-use crate::credential::Credential;
 use crate::credentials::Credentials;
-use crate::identity::IdentityIdentifier;
-use crate::secure_channel::IdentitySecureChannelLocalInfo;
-use crate::TrustContext;
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::{IdentitySecureChannelLocalInfo, TrustContext};
+
+use minicbor::Decoder;
+use tracing::{debug, error, info, trace, warn};
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 
 /// Worker responsible for receiving and verifying other party's credential
 pub struct CredentialsServerWorker {
-    credentials: Arc<dyn Credentials>,
+    credentials: Arc<Credentials>,
     trust_context: TrustContext,
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     present_back: bool,
 }
 
 impl CredentialsServerWorker {
     pub fn new(
-        credentials: Arc<dyn Credentials>,
+        credentials: Arc<Credentials>,
         trust_context: TrustContext,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
         present_back: bool,
     ) -> Self {
         Self {
@@ -45,7 +43,7 @@ impl CredentialsServerWorker {
         &mut self,
         ctx: &mut Context,
         req: &Request,
-        sender: IdentityIdentifier,
+        sender: Identifier,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         trace! {
@@ -75,14 +73,15 @@ impl CredentialsServerWorker {
                     "Received one-way credential presentation request from {}",
                     sender
                 );
-                let credential: Credential = dec.decode()?;
+                let credential_and_purpose_key: CredentialAndPurposeKey = dec.decode()?;
 
                 let res = self
                     .credentials
+                    .credentials_verification()
                     .receive_presented_credential(
                         &sender,
                         self.trust_context.authorities().await?.as_slice(),
-                        credential,
+                        &credential_and_purpose_key,
                     )
                     .await;
 
@@ -105,15 +104,16 @@ impl CredentialsServerWorker {
                     "Received mutual credential presentation request from {}",
                     sender
                 );
-                let credential: Credential = dec.decode()?;
+                let credential_and_purpose_key: CredentialAndPurposeKey = dec.decode()?;
 
-                info!("presented credential {}", credential);
+                // FIXME info!("presented credential {}", credential);
                 let res = self
                     .credentials
+                    .credentials_verification()
                     .receive_presented_credential(
                         &sender,
                         self.trust_context.authorities().await?.as_slice(),
-                        credential,
+                        &credential_and_purpose_key,
                     )
                     .await;
 

@@ -1,13 +1,11 @@
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::output::{EncodeFormat, Output};
+use crate::output::{EncodeFormat, IdentifierDisplay, IdentityDisplay};
 use crate::util::node_rpc;
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
-use core::fmt::Write;
 use miette::IntoDiagnostic;
-use ockam::identity::identity::IdentityChangeHistory;
+use ockam::identity::{Identity, Vault};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -49,46 +47,35 @@ impl ShowCommand {
         let (opts, cmd) = options;
         let name = get_identity_name(&opts.state, &cmd.name);
         let state = opts.state.identities.get(&name)?;
+        let identifier = state.config().identifier();
         if cmd.full {
-            let identifier = state.config().identifier();
-            let identity = opts
+            let change_history = opts
                 .state
                 .identities
                 .identities_repository()
                 .await?
                 .get_identity(&identifier)
                 .await
-                .into_diagnostic()?
-                .export()
                 .into_diagnostic()?;
 
             if Some(EncodeFormat::Hex) == cmd.encoding {
-                opts.println(&identity)?;
+                opts.println(&hex::encode(change_history.export().into_diagnostic()?))?;
             } else {
-                let output = LongIdentityResponse::new(identity);
-                opts.println(&output)?;
+                let identity = Identity::import_from_change_history(
+                    Some(&identifier),
+                    change_history,
+                    Vault::create_verifying_vault(),
+                )
+                .await
+                .into_diagnostic()?;
+
+                let identity_display = IdentityDisplay(identity);
+                opts.println(&identity_display)?;
             }
         } else {
-            let output = ShortIdentityResponse::new(state.config().identifier().to_string());
-            opts.println(&output)?;
+            let identifier_display = IdentifierDisplay(identifier);
+            opts.println(&identifier_display)?;
         }
         Ok(())
-    }
-}
-
-impl Output for LongIdentityResponse<'_> {
-    fn output(&self) -> Result<String> {
-        let mut w = String::new();
-        let id: IdentityChangeHistory = serde_bare::from_slice(self.identity.0.as_ref())?;
-        write!(w, "{id}")?;
-        Ok(w)
-    }
-}
-
-impl Output for ShortIdentityResponse<'_> {
-    fn output(&self) -> Result<String> {
-        let mut w = String::new();
-        write!(w, "{}", self.identity_id)?;
-        Ok(w)
     }
 }
