@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
 use ockam_api::nodes::NODEMANAGER_ADDR;
@@ -32,7 +32,7 @@ pub struct CreateCommand {
 
     /// Authorized Identifiers of secure channel initiators
     #[arg(short, long, value_name = "IDENTIFIERS")]
-    authorized: Option<Vec<IdentityIdentifier>>,
+    authorized: Option<Vec<Identifier>>,
 
     #[arg(value_name = "VAULT", long, requires = "identity")]
     vault: Option<String>,
@@ -99,7 +99,7 @@ async fn run_impl(
 pub async fn create_listener(
     ctx: &Context,
     addr: Address,
-    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    authorized_identifiers: Option<Vec<Identifier>>,
     identity: Option<String>,
     mut base_route: Route,
 ) -> miette::Result<()> {

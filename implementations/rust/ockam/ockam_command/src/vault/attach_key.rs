@@ -6,9 +6,6 @@ use ockam_api::cli_state;
 use ockam_api::cli_state::identities::IdentityConfig;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 
-use ockam_identity::{IdentityChangeConstants, KeyAttributes};
-use ockam_vault::SecretAttributes;
-
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
 
@@ -44,18 +41,16 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
     }
     let vault = v_state.get().await?;
     let idt = {
-        let attrs = SecretAttributes::NistP256;
-        let key_attrs = KeyAttributes::new(IdentityChangeConstants::ROOT_LABEL.to_string(), attrs);
         opts.state
             .get_identities(vault)
             .await?
             .identities_creation()
-            .create_identity_with_existing_key(&cmd.key_id, key_attrs)
+            .create_identity_with_existing_key(&cmd.key_id)
             .await
             .into_diagnostic()?
     };
     let idt_name = cli_state::random_name();
-    let idt_config = IdentityConfig::new(&idt.identifier()).await;
+    let idt_config = IdentityConfig::new(idt.identifier()).await;
     opts.state.identities.create(&idt_name, idt_config)?;
     println!("Identity attached to vault: {idt_name}");
     Ok(())
@@ -63,10 +58,9 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use ockam::identity::Identities;
     use ockam_core::Result;
-    use ockam_identity::Identities;
-    use ockam_vault::{PersistentSecretsStore, Vault};
+    use ockam_vault::{PersistentSecretsStore, SecretAttributes, Vault};
     use ockam_vault_aws::AwsSecurityModule;
     use std::sync::Arc;
 
@@ -87,14 +81,10 @@ mod tests {
         let key_id = vault
             .create_persistent_secret(SecretAttributes::NistP256)
             .await?;
-        let key_attrs = KeyAttributes::new(
-            IdentityChangeConstants::ROOT_LABEL.to_string(),
-            SecretAttributes::NistP256,
-        );
 
         let identity = identities
             .identities_creation()
-            .create_identity_with_existing_key(&key_id, key_attrs)
+            .create_identity_with_existing_key(&key_id)
             .await;
         assert!(identity.is_ok());
 

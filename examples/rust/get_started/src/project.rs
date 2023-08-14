@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use serde_json::{Map, Value};
 
-use ockam::identity::{Identities, Identity, IdentityIdentifier};
+use ockam::identity::{Identifier, Identities, Identity};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
@@ -14,7 +14,7 @@ use ockam_multiaddr::MultiAddr;
 /// This struct contains the json data exported
 /// when running `ockam project information > project.json`
 pub struct Project {
-    pub project_identifier: IdentityIdentifier,
+    pub project_identifier: Identifier,
     pub authority_identity: Identity,
     pub authority_route: MultiAddr,
     pub project_route: MultiAddr,
@@ -23,7 +23,7 @@ pub struct Project {
 /// Accessors for a Project
 impl Project {
     /// Return the identity identifier of the project
-    pub fn identifier(&self) -> IdentityIdentifier {
+    pub fn identifier(&self) -> Identifier {
         self.project_identifier.clone()
     }
 
@@ -33,8 +33,8 @@ impl Project {
     }
 
     /// Return the identifier of the authority
-    pub fn authority_identifier(&self) -> IdentityIdentifier {
-        self.authority_identity.identifier()
+    pub fn authority_identifier(&self) -> Identifier {
+        self.authority_identity.identifier().clone()
     }
 
     /// Return the authority route
@@ -53,12 +53,12 @@ impl Project {
 pub async fn import_project(path: &str, identities: Arc<Identities>) -> Result<Project> {
     match read_json(path)? {
         Value::Object(values) => {
-            let project_identifier = IdentityIdentifier::from_str(get_field_as_str(&values, "identity")?.as_str())?;
+            let project_identifier = Identifier::from_str(get_field_as_str(&values, "identity")?.as_str())?;
 
             let authority_identity = get_field_as_str(&values, "authority_identity")?;
             let identities_creation = identities.identities_creation();
             let authority_public_identity = identities_creation
-                .decode_identity(&hex::decode(authority_identity).unwrap())
+                .import(None, &hex::decode(authority_identity).unwrap())
                 .await?;
 
             let authority_access_route = get_field_as_str(&values, "authority_access_route")?;

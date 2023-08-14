@@ -3,7 +3,7 @@ use std::path::Path;
 use miette::{Context as _, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_api::DefaultAddress;
 
 use crate::Result;
@@ -23,7 +23,7 @@ pub struct SecureChannelListenerConfig {
     pub(crate) address: String,
 
     #[serde(default)]
-    pub(crate) authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    pub(crate) authorized_identifiers: Option<Vec<Identifier>>,
 
     #[serde(default)]
     pub(crate) disabled: bool,

@@ -7,8 +7,8 @@ use miette::miette;
 
 use clap::Args;
 use colorful::Colorful;
+use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_identity::IdentityIdentifier;
 use tokio::{sync::Mutex, try_join};
 
 use crate::util::parsers::identity_identifier_parser;
@@ -18,7 +18,7 @@ use super::validate_encoded_cred;
 #[derive(Clone, Debug, Args)]
 pub struct VerifyCommand {
     #[arg(long = "issuer", value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
-    pub issuer: IdentityIdentifier,
+    pub issuer: Identifier,
 
     #[arg(group = "credential_value", value_name = "CREDENTIAL_STRING", long)]
     pub credential: Option<String>,
@@ -35,8 +35,8 @@ impl VerifyCommand {
         node_rpc(run_impl, (opts, self));
     }
 
-    pub fn issuer(&self) -> IdentityIdentifier {
-        self.issuer.clone()
+    pub fn issuer(&self) -> &Identifier {
+        &self.issuer
     }
 }
 
@@ -68,8 +68,8 @@ async fn run_impl(
 
         let issuer = cmd.issuer();
 
-        let is_valid = match validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await
-        {
+        let cred = hex::decode(&cred_as_str)?;
+        let is_valid = match validate_encoded_cred(&cred, issuer, &vault_name, &opts).await {
             Ok(_) => (true, String::new()),
             Err(e) => (false, e.to_string()),
         };

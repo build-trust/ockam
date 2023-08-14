@@ -10,9 +10,7 @@ use colorful::Colorful;
 pub(crate) use get::GetCommand;
 pub(crate) use issue::IssueCommand;
 pub(crate) use list::ListCommand;
-use miette::miette;
-use ockam::identity::credential::{Credential, CredentialData, Unverified};
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_api::cli_state::{CredentialState, StateItemTrait};
 pub(crate) use present::PresentCommand;
 pub(crate) use show::ShowCommand;
@@ -22,6 +20,7 @@ pub(crate) use verify::VerifyCommand;
 use crate::output::Output;
 use crate::{CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam_api::cli_state::traits::StateDirTrait;
 
 /// Manage Credentials
@@ -59,25 +58,19 @@ impl CredentialCommand {
 }
 
 pub async fn validate_encoded_cred(
-    encoded_cred: &str,
-    issuer: &IdentityIdentifier,
+    encoded_cred: &[u8],
+    issuer: &Identifier,
     vault: &str,
     opts: &CommandGlobalOpts,
 ) -> Result<()> {
     let vault = opts.state.vaults.get(vault)?.get().await?;
     let identities = opts.state.get_identities(vault).await?;
-    let identity = identities.repository().get_identity(issuer).await?;
 
-    let bytes = match hex::decode(encoded_cred) {
-        Ok(b) => b,
-        Err(e) => return Err(miette!(e).into()),
-    };
-    let cred: Credential = minicbor::decode(&bytes)?;
-    let cred_data: CredentialData<Unverified> = minicbor::decode(cred.unverified_data())?;
+    let cred: CredentialAndPurposeKey = minicbor::decode(encoded_cred)?;
 
     identities
         .credentials()
-        .verify_credential(cred_data.unverified_subject(), &[identity], cred)
+        .verify_credential(None, &[issuer.clone()], &cred)
         .await?;
 
     Ok(())
@@ -98,17 +91,19 @@ impl CredentialOutput {
         let config = state.config();
         let is_verified = validate_encoded_cred(
             &config.encoded_credential,
-            &config.issuer.identifier(),
+            &config.issuer_identifier,
             vault_name,
             opts,
         )
         .await
         .is_ok();
 
+        let credential = config.credential()?;
+        let credential = hex::encode(minicbor::to_vec(credential)?);
+
         let output = Self {
             name: state.name().to_string(),
-
-            credential: config.credential()?.to_string(),
+            credential,
             is_verified,
         };
 

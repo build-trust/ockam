@@ -5,6 +5,7 @@ use clap::Args;
 use miette::miette;
 use minicbor::{Decode, Decoder, Encode};
 
+use ockam::identity::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
 use ockam::{Context, Node, TcpConnectionOptions, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -13,7 +14,6 @@ use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
 use ockam_api::nodes::NodeManager;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::route;
-use ockam_identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
 use ockam_node::MessageSendReceiveOptions;
 
 use crate::util::api::CloudOpts;
@@ -270,7 +270,7 @@ struct NodeStatus {
 }
 
 struct NodeDetails {
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     state: NodeState,
     status: String,
 }

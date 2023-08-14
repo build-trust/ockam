@@ -12,9 +12,9 @@ use colorful::Colorful;
 use miette::miette;
 
 use clap::Args;
+use ockam::identity::{identities, Identity};
 use ockam::Context;
 use ockam_api::cli_state::{CredentialConfig, StateDirTrait};
-use ockam_identity::{identities, Identity};
 use tokio::{sync::Mutex, try_join};
 
 #[derive(Clone, Debug, Args)]
@@ -47,7 +47,7 @@ impl StoreCommand {
         };
         let identity = identities()
             .identities_creation()
-            .decode_identity(&identity_as_bytes)
+            .import(None, &identity_as_bytes)
             .await?;
         Ok(identity)
     }
@@ -81,16 +81,17 @@ async fn run_impl(
             .clone()
             .unwrap_or_else(|| default_vault_name(&opts.state));
 
-        let issuer = match &cmd.identity().await {
+        let issuer = match cmd.identity().await {
             Ok(i) => i,
             Err(_) => {
                 *is_finished.lock().await = true;
                 return Err(miette!("Issuer is invalid").into());
             }
-        }
-        .identifier();
+        };
 
-        if let Err(e) = validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await {
+        let cred = hex::decode(&cred_as_str)?;
+        if let Err(e) = validate_encoded_cred(&cred, issuer.identifier(), &vault_name, &opts).await
+        {
             *is_finished.lock().await = true;
             return Err(miette!("Credential is invalid\n{}", e).into());
         }
@@ -98,7 +99,7 @@ async fn run_impl(
         // store
         opts.state.credentials.create(
             &cmd.credential_name,
-            CredentialConfig::new(cmd.identity().await?, cred_as_str.clone())?,
+            CredentialConfig::new(issuer.identifier().clone(), issuer.export()?, cred)?,
         )?;
 
         *is_finished.lock().await = true;

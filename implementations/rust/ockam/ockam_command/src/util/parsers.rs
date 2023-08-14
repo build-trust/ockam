@@ -1,6 +1,6 @@
 use crate::Result;
 use miette::miette;
-use ockam_identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_transport_tcp::resolve_peer;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -23,9 +23,8 @@ pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
 
 /// Helper fn for parsing an identity from user input by using
 /// [`ockam_identity::IdentityIdentifier::from_str()`]
-pub(crate) fn identity_identifier_parser(input: &str) -> Result<IdentityIdentifier> {
-    IdentityIdentifier::from_str(input)
-        .map_err(|_| miette!("Invalid identity identifier: {input}").into())
+pub(crate) fn identity_identifier_parser(input: &str) -> Result<Identifier> {
+    Identifier::from_str(input).map_err(|_| miette!("Invalid identity identifier: {input}").into())
 }
 
 #[cfg(test)]
