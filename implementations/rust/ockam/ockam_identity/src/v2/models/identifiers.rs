@@ -24,6 +24,13 @@ pub const CHANGE_HASH_LEN: usize = 20;
 #[serde(transparent)]
 pub struct Identifier([u8; IDENTIFIER_LEN]);
 
+impl Identifier {
+    /// Constructor
+    pub fn new(hash: [u8; IDENTIFIER_LEN]) -> Self {
+        Self(hash)
+    }
+}
+
 impl<C> Encode<C> for Identifier {
     fn encode<W: Write>(
         &self,
@@ -167,7 +174,8 @@ impl<'b, C> Decode<'b, C> for ChangeHash {
 }
 
 impl ChangeHash {
-    pub(crate) fn new(hash: [u8; CHANGE_HASH_LEN]) -> Self {
+    /// Constructor
+    pub fn new(hash: [u8; CHANGE_HASH_LEN]) -> Self {
         Self(hash)
     }
 
