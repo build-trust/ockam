@@ -10,6 +10,7 @@ use super::super::{IdentitiesBuilder, IdentitiesVault};
 /// This struct supports all the services related to secure channels
 #[derive(Clone)]
 pub struct SecureChannelsBuilder {
+    // FIXME: This is very strange dependency
     pub(crate) identities_builder: IdentitiesBuilder,
     pub(crate) registry: SecureChannelRegistry,
 }
@@ -57,7 +58,8 @@ impl SecureChannelsBuilder {
         self.identities_builder = self
             .identities_builder
             .with_identities_repository(identities.repository())
-            .with_identities_vault(identities.vault());
+            .with_identities_vault(identities.vault())
+            .with_purpose_keys_repository(identities.purpose_keys_repository());
         self.clone()
     }
 
@@ -72,7 +74,7 @@ impl SecureChannelsBuilder {
 
     /// Return the vault used by this builder
     /// Build secure channels
-    pub fn build(&self) -> Arc<SecureChannels> {
+    pub fn build(self) -> Arc<SecureChannels> {
         let identities = self.identities_builder.build();
         let purpose_keys = identities.purpose_keys();
         Arc::new(SecureChannels::new(
