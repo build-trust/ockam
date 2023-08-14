@@ -69,3 +69,43 @@ teardown() {
   assert_success
   assert_output --partial "m3_member"
 }
+
+@test "authority - enrollment ticket ttl" {
+  port="$(random_port)"
+  PROJECT_JSON_PATH="$OCKAM_HOME/project-authority.json"
+
+  run "$OCKAM" identity create authority
+  run "$OCKAM" identity create enroller
+  #m3 will be added through enrollment token
+  run "$OCKAM" identity create m3
+
+  unset OCKAM_LOG
+  enroller_identifier=$($OCKAM identity show enroller)
+  authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
+
+  # Start the authority node.
+  trusted="{\"$enroller_identifier\": {\"project_id\": \"1\", \"trust_context_id\": \"1\", \"ockam-role\": \"enroller\"}}"
+  run "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
+  assert_success
+  sleep 1 # wait for authority to start TCP listener
+
+  echo "{\"id\": \"1\",
+  \"name\" : \"default\",
+  \"identity\" : \"P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94\",
+  \"access_route\" : \"/dnsaddr/127.0.0.1/tcp/4000/service/api\",
+  \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/$port/service/api\",
+  \"authority_identity\" : \"$authority_identity_full\"}" >"$PROJECT_JSON_PATH"
+
+
+  # Enrollment ticket expired by the time it's used
+  token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member --ticket-ttl 1)
+  sleep 2
+  run "$OCKAM" project enroll $token --identity m3
+  assert_failure
+
+  # Enrollment ticket with enough ttl
+  token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member --ticket-ttl 30)
+  run "$OCKAM" project enroll $token --identity m3
+  assert_success
+  assert_output --partial "m3_member"
+}
