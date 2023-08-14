@@ -163,7 +163,7 @@ impl NodeManagerWorker {
     ) -> Result<ResponseBuilder<InletStatus>, ResponseBuilder<Error>> {
         info!("Handling request to create inlet portal");
 
-        let listen_addr = req.listen_addr().to_string();
+        let listen_addr = req.listen_addr();
         let alias = req
             .alias()
             .map(|a| a.to_string())

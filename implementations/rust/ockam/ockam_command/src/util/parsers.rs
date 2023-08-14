@@ -1,32 +1,76 @@
-use crate::Result;
+use crate::{exitcode::SOFTWARE, Result};
 use miette::miette;
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
+use url::Host;
 
 /// Helper fn for parsing ip and port from user input
 /// It can parse a string containing either an `ip:port` pair or just a `port`
-/// into a valid SocketAddr instance.
+/// into a valid SocketAddr instance. Uses the host_parser fn to initially parse
+/// the input as a HostPort and further validates non-Domain type hosts.
 pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
+    host_parser(input).and_then(|hp| hp.try_into())
+}
+
+/// Helper fn for parsing command user inputs and validating for Ipv4 or Domain
+/// hosts with a provided port, e.g. `host:port` or just a `port`.
+pub(crate) fn host_parser(input: &str) -> Result<HostPort> {
     let addr: Vec<&str> = input.split(':').collect();
+
     match addr.len() {
         // Only the port is available
         1 => {
             let port: u16 = addr[0]
                 .parse()
                 .map_err(|_| miette!("Invalid port number"))?;
-            let ip: Ipv4Addr = [127, 0, 0, 1].into();
-            Ok(SocketAddr::new(ip.into(), port))
+            let host = Host::Ipv4([127, 0, 0, 1].into());
+            Ok(HostPort { host, port })
         }
         // Both the ip and port are available
         2 => {
             let port: u16 = addr[1]
                 .parse()
                 .map_err(|_| miette!("Invalid port number"))?;
-            let ip = addr[0]
-                .parse::<Ipv4Addr>()
-                .map_err(|_| miette!("Invalid IP address"))?;
-            Ok(SocketAddr::new(ip.into(), port))
+            let host = Host::parse(addr[0])
+                .map_err(|_| miette!("Invalid IP address or hostname"))
+                .and_then(|value| match value {
+                    Host::Ipv6(_) => Err(miette!("Ipv6 is not supported")),
+                    _ => Ok(value),
+                })?;
+
+            Ok(HostPort { host, port })
         }
         _ => Err(miette!("Argument {} is an invalid IP Address or Port", input).into()),
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct HostPort {
+    host: Host,
+    port: u16,
+}
+
+impl TryFrom<HostPort> for SocketAddr {
+    type Error = crate::Error;
+
+    fn try_from(value: HostPort) -> std::result::Result<Self, Self::Error> {
+        match value.host {
+            Host::Domain(_) => Err(Self::Error::new(
+                SOFTWARE,
+                // DNS resolution occurs at the node
+                miette!("Domains can not be converted to SocketAddrs"),
+            )),
+            Host::Ipv6(_) => Err(Self::Error::new(
+                SOFTWARE,
+                miette!("Ipv6 addresses are not supported"),
+            )),
+            Host::Ipv4(addr) => Ok(SocketAddr::new(addr.into(), value.port)),
+        }
+    }
+}
+
+impl std::fmt::Display for HostPort {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.host, self.port)
     }
 }
 
@@ -34,7 +78,7 @@ pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
 mod tests {
     use ockam_core::compat::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-    use crate::util::parsers::socket_addr_parser;
+    use crate::util::parsers::*;
 
     #[test]
     fn test_parse_bootstrap_server() {
@@ -71,5 +115,23 @@ mod tests {
         assert!(socket_addr_parser(invalid_input).is_err());
         let invalid_input = "192,166,0.1:9999";
         assert!(socket_addr_parser(invalid_input).is_err());
+    }
+
+    #[test]
+    fn test_host_parser() {
+        let input = "localhost:9000";
+
+        let result = host_parser(input);
+        assert!(result.is_ok());
+
+        if let Ok(host_port) = result {
+            assert_eq!(
+                HostPort {
+                    host: Host::Domain("localhost".into()),
+                    port: 9000
+                },
+                host_port
+            );
+        }
     }
 }

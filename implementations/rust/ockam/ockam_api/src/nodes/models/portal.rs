@@ -1,6 +1,5 @@
 //! Inlets and outlet request/response types
 
-use std::net::SocketAddr;
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
@@ -25,7 +24,7 @@ pub struct CreateInlet<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<1407961>,
     /// The address the portal should listen at.
-    #[n(1)] listen_addr: SocketAddr,
+    #[n(1)] listen_addr: String,
     /// The peer address.
     /// This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
@@ -48,7 +47,7 @@ pub struct CreateInlet<'a> {
 
 impl<'a> CreateInlet<'a> {
     pub fn via_project(
-        listen: SocketAddr,
+        listen: String,
         to: MultiAddr,
         prefix_route: Route,
         suffix_route: Route,
@@ -67,7 +66,7 @@ impl<'a> CreateInlet<'a> {
     }
 
     pub fn to_node(
-        listen: SocketAddr,
+        listen: String,
         to: MultiAddr,
         prefix_route: Route,
         suffix_route: Route,
@@ -94,8 +93,8 @@ impl<'a> CreateInlet<'a> {
         self.wait_for_outlet_duration = Some(Duration::from_millis(ms))
     }
 
-    pub fn listen_addr(&self) -> SocketAddr {
-        self.listen_addr
+    pub fn listen_addr(&self) -> String {
+        self.listen_addr.clone()
     }
 
     pub fn outlet_addr(&self) -> &MultiAddr {

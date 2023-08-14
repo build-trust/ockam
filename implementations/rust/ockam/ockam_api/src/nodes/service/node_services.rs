@@ -725,7 +725,7 @@ impl NodeManagerWorker {
         self.create_inlet_impl(
             request.id(),
             CreateInlet::to_node(
-                SocketAddr::new(bind_ip, server_bootstrap_port),
+                SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
                 "/secure/api".parse().unwrap(),
                 route![local_interceptor_address.clone()],
                 route![
@@ -880,7 +880,7 @@ impl NodeManagerWorker {
         self.create_inlet_impl(
             request.id(),
             CreateInlet::to_node(
-                SocketAddr::new(bind_ip, server_bootstrap_port),
+                SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
                 outlet_node_multiaddr,
                 route![local_interceptor_address.clone()],
                 route![

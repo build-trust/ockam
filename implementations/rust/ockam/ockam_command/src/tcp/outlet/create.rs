@@ -3,7 +3,7 @@ use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 
-use crate::util::parsers::socket_addr_parser;
+use crate::util::parsers::{host_parser, HostPort};
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{display_parse_logs, fmt_log};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -16,7 +16,6 @@ use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_core::api::Request;
-use std::net::SocketAddr;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -35,8 +34,8 @@ pub struct CreateCommand {
     from: String,
 
     /// TCP address to send raw tcp traffic.
-    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS", value_parser = socket_addr_parser)]
-    to: SocketAddr,
+    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS", value_parser = host_parser)]
+    to: HostPort,
 
     /// Assign a name to this outlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
