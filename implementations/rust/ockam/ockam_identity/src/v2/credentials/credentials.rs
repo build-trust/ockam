@@ -65,7 +65,7 @@ impl Credentials {
     /// Verify a [`Credential`]
     pub async fn verify_credential(
         &self,
-        subject: &Identifier,
+        expected_subject: Option<&Identifier>,
         authorities: &[Identifier],
         credential_and_purpose_key: &CredentialAndPurposeKey,
     ) -> Result<CredentialAndPurposeKeyData> {
@@ -115,7 +115,12 @@ impl Credentials {
 
         let credential_data: CredentialData = minicbor::decode(&versioned_data.data)?;
 
-        if credential_data.subject.as_ref() != Some(subject) {
+        if credential_data.subject.is_none() && credential_data.subject_latest_change_hash.is_none()
+        {
+            return Err(IdentityError::CredentialVerificationFailed.into());
+        }
+
+        if credential_data.subject.as_ref() != expected_subject {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
@@ -231,7 +236,11 @@ impl Credentials {
         credential_and_purpose_key_attestation: &CredentialAndPurposeKey,
     ) -> Result<()> {
         let credential_data = self
-            .verify_credential(subject, authorities, credential_and_purpose_key_attestation)
+            .verify_credential(
+                Some(subject),
+                authorities,
+                credential_and_purpose_key_attestation,
+            )
             .await?;
 
         self.identities_repository
@@ -290,7 +299,7 @@ mod tests {
 
         let _res = credentials
             .verify_credential(
-                subject.identifier(),
+                Some(subject.identifier()),
                 &[issuer.identifier().clone()],
                 &credential,
             )
