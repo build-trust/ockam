@@ -6,6 +6,7 @@ use crate::{docs, identity, CommandGlobalOpts, Result};
 use clap::{ArgGroup, Args};
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -15,7 +16,6 @@ use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, Tr
 use ockam_api::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
-use ockam_identity::{AttributesEntry, IdentityIdentifier};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
@@ -209,7 +209,7 @@ impl CreateCommand {
     /// or an explicit list of identities passed on the command line
     pub(crate) fn trusted_identities(
         &self,
-        authority_identifier: &IdentityIdentifier,
+        authority_identifier: &Identifier,
     ) -> Result<PreTrustedIdentities> {
         match (
             &self.reload_from_trusted_identities_file,
@@ -364,41 +364,35 @@ fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam::identity::Identifier;
     use ockam_core::compat::collections::HashMap;
-    use ockam_identity::IdentityIdentifier;
 
     #[test]
     fn test_parse_trusted_identities() {
-        let identity1 = IdentityIdentifier::from_hex(
-            "e86be15e83d1c93e24dd1967010b01b6df491b459725fd9ae0bebfd7c1bf8ea3",
-        );
-        let identity2 = IdentityIdentifier::from_hex(
-            "6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94",
-        );
+        let identity1 = Identifier::try_from("Ie86be15e83d1c93e24dd1967010b01b6df491b45").unwrap();
+        let identity2 = Identifier::try_from("I6c20e814b56579306f55c64e8747e6c1b4a53d9a").unwrap();
 
-        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"project_id\": \"1\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"project_id\" : \"1\", \"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
+        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
 
         let attributes1 = HashMap::from([
             ("name".into(), "value".into()),
-            ("project_id".into(), "1".into()),
             ("trust_context_id".into(), "1".into()),
         ]);
         let attributes2 = HashMap::from([
-            ("project_id".into(), "1".into()),
             ("trust_context_id".into(), "1".into()),
             ("ockam-role".into(), "enroller".into()),
         ]);
         let expected = vec![
-            TrustedIdentity::new(&identity1, &attributes1),
             TrustedIdentity::new(&identity2, &attributes2),
+            TrustedIdentity::new(&identity1, &attributes1),
         ];
         assert_eq!(actual.trusted_identities(), expected);
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
-struct TrustedIdentities(HashMap<IdentityIdentifier, HashMap<String, String>>);
+struct TrustedIdentities(HashMap<Identifier, HashMap<String, String>>);
 
 impl TrustedIdentities {
     pub fn trusted_identities(&self) -> Vec<TrustedIdentity> {
@@ -408,14 +402,14 @@ impl TrustedIdentities {
             .collect()
     }
 
-    /// Return a map from IdentityIdentifier to AttributesEntry and:
+    /// Return a map from Identifier to AttributesEntry and:
     ///   - add the project identifier as an attribute
     ///   - use the authority identifier an the attributes issuer
     pub(crate) fn to_map(
         &self,
         project_identifier: String,
-        authority_identifier: &IdentityIdentifier,
-    ) -> HashMap<IdentityIdentifier, AttributesEntry> {
+        authority_identifier: &Identifier,
+    ) -> HashMap<Identifier, AttributesEntry> {
         HashMap::from_iter(self.trusted_identities().iter().map(|t| {
             (
                 t.identifier(),

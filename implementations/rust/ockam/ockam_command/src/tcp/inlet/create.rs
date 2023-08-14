@@ -12,7 +12,7 @@ use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::{Context, TcpTransport};
 use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -49,7 +49,7 @@ pub struct CreateCommand {
 
     /// Authorized identity for secure channel connection
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
-    authorized: Option<IdentityIdentifier>,
+    authorized: Option<Identifier>,
 
     /// Assign a name to this inlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]

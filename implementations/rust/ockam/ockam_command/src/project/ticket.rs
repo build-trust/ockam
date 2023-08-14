@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use miette::{miette, IntoDiagnostic};
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::{DirectAuthenticatorClient, TokenIssuerClient};
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
@@ -41,7 +41,7 @@ pub struct TicketCommand {
     trust_opts: TrustContextOpts,
 
     #[arg(long, short, conflicts_with = "ticket_ttl")]
-    member: Option<IdentityIdentifier>,
+    member: Option<Identifier>,
 
     #[arg(long, short, default_value = "/project/default")]
     to: MultiAddr,

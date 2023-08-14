@@ -3,6 +3,7 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use std::sync::Arc;
 
+use ockam::identity::CredentialsIssuerClient;
 use ockam::Context;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -11,7 +12,6 @@ use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::identity::EnrollmentTicket;
 use ockam_api::DefaultAddress;
 use ockam_core::route;
-use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::RpcClient;
@@ -23,6 +23,7 @@ use crate::project::util::create_secure_channel_to_authority;
 use crate::project::ProjectInfo;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
+use crate::util::output::Output;
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
@@ -209,7 +210,7 @@ pub async fn project_enroll(
 
     let credential = client2.credential().await.into_diagnostic()?;
     println!("---");
-    println!("{credential}");
+    println!("{}", credential.output()?);
     println!("---");
     Ok(project.name)
 }

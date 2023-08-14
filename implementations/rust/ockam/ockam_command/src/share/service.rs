@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::debug;
 
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cloud::share::{CreateServiceInvitation, SentInvitation};
 
@@ -25,11 +26,11 @@ pub struct ServiceCreateCommand {
     pub project_id: String,
     pub recipient_email: String,
 
-    pub project_identity: String,
+    pub project_identity: Identifier,
     pub project_route: String,
-    pub project_authority_identity: String,
+    pub project_authority_identity: Identifier,
     pub project_authority_route: String,
-    pub shared_node_identity: String,
+    pub shared_node_identity: Identifier,
     pub shared_node_route: String,
 
     pub enrollment_ticket: String,

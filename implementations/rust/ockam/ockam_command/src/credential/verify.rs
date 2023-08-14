@@ -7,8 +7,8 @@ use miette::miette;
 
 use clap::Args;
 use colorful::Colorful;
+use ockam::identity::{identities, Identity};
 use ockam::Context;
-use ockam_identity::{identities, Identity};
 use tokio::{sync::Mutex, try_join};
 
 use super::validate_encoded_cred;
@@ -40,7 +40,7 @@ impl VerifyCommand {
         };
         let identity = identities()
             .identities_creation()
-            .decode_identity(&identity_as_bytes)
+            .import(None, &identity_as_bytes)
             .await?;
         Ok(identity)
     }
@@ -72,20 +72,20 @@ async fn run_impl(
             .clone()
             .unwrap_or_else(|| default_vault_name(&opts.state));
 
-        let issuer = match &cmd.issuer().await {
+        let issuer = match cmd.issuer().await {
             Ok(i) => i,
             Err(_) => {
                 *is_finished.lock().await = true;
                 return Ok((false, "Issuer is invalid".to_string()));
             }
-        }
-        .identifier();
-
-        let is_valid = match validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await
-        {
-            Ok(_) => (true, String::new()),
-            Err(e) => (false, e.to_string()),
         };
+
+        let cred = hex::decode(&cred_as_str)?;
+        let is_valid =
+            match validate_encoded_cred(&cred, issuer.identifier(), &vault_name, &opts).await {
+                Ok(_) => (true, String::new()),
+                Err(e) => (false, e.to_string()),
+            };
 
         *is_finished.lock().await = true;
         Ok(is_valid)

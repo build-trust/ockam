@@ -9,10 +9,12 @@ use crate::{
 use clap::Args;
 
 use miette::{miette, IntoDiagnostic};
-use ockam::identity::CredentialData;
+use ockam::identity::utils::AttributesBuilder;
+use ockam::identity::{
+    identities, Identity, MAX_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID,
+};
 use ockam::Context;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_identity::{identities, Identity};
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
@@ -59,7 +61,7 @@ impl IssueCommand {
 
         let identity = identities()
             .identities_creation()
-            .decode_identity(&identity_as_bytes)
+            .import(None, &identity_as_bytes)
             .await?;
         Ok(identity)
     }
@@ -73,16 +75,6 @@ async fn run_impl(
     let ident_state = opts.state.identities.get(&identity_name)?;
     let auth_identity_identifier = ident_state.config().identifier().clone();
 
-    let mut attrs = cmd.attributes()?;
-    attrs.insert(
-        "project_id".to_string(), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-        auth_identity_identifier.to_string(),
-    );
-    attrs.insert(
-        "trust_context_id".to_string(),
-        auth_identity_identifier.to_string(),
-    );
-
     let vault_name = cmd
         .vault
         .clone()
@@ -91,12 +83,24 @@ async fn run_impl(
     let identities = opts.state.get_identities(vault).await?;
     let issuer = ident_state.identifier();
 
-    let credential_data =
-        CredentialData::from_attributes(cmd.identity().await?.identifier(), issuer.clone(), attrs)
-            .into_diagnostic()?;
+    let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
+        .with_attribute(
+            TRUST_CONTEXT_ID.to_vec(),
+            auth_identity_identifier.to_string(),
+        );
+    for (key, value) in cmd.attributes()? {
+        attributes_builder =
+            attributes_builder.with_attribute(key.as_bytes().to_vec(), value.as_bytes().to_vec());
+    }
+
     let credential = identities
         .credentials()
-        .issue_credential(&issuer, credential_data)
+        .issue_credential(
+            &issuer,
+            cmd.identity().await?.identifier(),
+            attributes_builder.build(),
+            MAX_CREDENTIAL_VALIDITY,
+        )
         .await
         .into_diagnostic()?;
 

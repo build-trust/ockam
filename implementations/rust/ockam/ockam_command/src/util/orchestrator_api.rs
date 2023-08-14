@@ -5,7 +5,9 @@ use miette::miette;
 use minicbor::{Decode, Encode};
 use tracing::info;
 
-use ockam::identity::credential::{Credential, OneTimeCode};
+use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::CredentialsIssuerClient;
+use ockam::identity::OneTimeCode;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::{
@@ -14,7 +16,6 @@ use ockam_api::{
 };
 use ockam_core::api::RequestBuilder;
 use ockam_core::route;
-use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 
@@ -146,7 +147,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
         self
     }
 
-    pub async fn authenticate(&self) -> Result<Credential> {
+    pub async fn authenticate(&self) -> Result<CredentialAndPurposeKey> {
         let sc_addr = self
             .secure_channel_to(&OrchestratorEndpoint::Authenticator)
             .await?;

@@ -1,7 +1,7 @@
 use clap::Args;
 use miette::miette;
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::project::Project;
@@ -38,7 +38,7 @@ pub struct ProjectInfo<'a> {
     pub id: CowStr<'a>,
     #[serde(borrow)]
     pub name: CowStr<'a>,
-    pub identity: Option<IdentityIdentifier>,
+    pub identity: Option<Identifier>,
     #[serde(borrow)]
     pub access_route: CowStr<'a>,
     #[serde(borrow)]

@@ -144,7 +144,7 @@ pub async fn init_node_state(
 
     let identity_state = opts
         .state
-        .create_identity_state(&identity.identifier(), identity_name)
+        .create_identity_state(identity.identifier(), identity_name)
         .await?;
 
     // Create the node with the given vault and identity
