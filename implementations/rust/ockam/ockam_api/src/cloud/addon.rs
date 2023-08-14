@@ -62,6 +62,17 @@ impl ConfluentConfigResponse {
     }
 }
 
+#[cfg(test)]
+impl quickcheck::Arbitrary for ConfluentConfigResponse {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: Default::default(),
+            bootstrap_server: String::arbitrary(g),
+        }
+    }
+}
+
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[rustfmt::skip]
 #[cbor(map)]
