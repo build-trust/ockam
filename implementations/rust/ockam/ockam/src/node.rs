@@ -359,7 +359,7 @@ impl NodeBuilder {
     }
 
     /// Build top level services
-    pub async fn build(&self, ctx: Context) -> Result<Node> {
+    pub async fn build(self, ctx: Context) -> Result<Node> {
         Ok(Node {
             context: ctx,
             secure_channels: self.builder.build(),
