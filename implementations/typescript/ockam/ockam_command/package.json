@@ -13,6 +13,6 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@types/node": "^20.4.9"
+    "@types/node": "^20.5.0"
   }
 }
