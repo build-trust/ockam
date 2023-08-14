@@ -4527,6 +4527,7 @@ dependencies = [
  "ockam_core",
  "ockam_multiaddr",
  "open",
+ "percent-encoding",
  "serde",
  "serde_json",
  "tauri",
