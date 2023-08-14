@@ -1,6 +1,7 @@
 use super::Result;
 use crate::cli_state::CliStateError;
-use ockam_identity::{Credential, Identity, IdentityHistoryComparison};
+use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -22,35 +23,28 @@ impl CredentialState {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CredentialConfig {
-    pub issuer: Identity,
-    pub encoded_credential: String,
+    pub issuer_identifier: Identifier,
+    pub encoded_issuer_change_history: Vec<u8>,
+    pub encoded_credential: Vec<u8>,
 }
-
-impl PartialEq for CredentialConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.encoded_credential == other.encoded_credential
-            && self.issuer.compare(&other.issuer) == IdentityHistoryComparison::Equal
-    }
-}
-
-impl Eq for CredentialConfig {}
 
 impl CredentialConfig {
-    pub fn new(issuer: Identity, encoded_credential: String) -> Result<Self> {
+    pub fn new(
+        issuer_identifier: Identifier,
+        encoded_issuer_change_history: Vec<u8>,
+        encoded_credential: Vec<u8>,
+    ) -> Result<Self> {
         Ok(Self {
-            issuer,
+            issuer_identifier,
+            encoded_issuer_change_history,
             encoded_credential,
         })
     }
 
-    pub fn credential(&self) -> Result<Credential> {
-        let bytes = hex::decode(&self.encoded_credential).map_err(|e| {
-            error!(%e, "Unable to hex-decode credential");
-            CliStateError::InvalidOperation("Unable to hex-decode credential".to_string())
-        })?;
-        minicbor::decode::<Credential>(&bytes).map_err(|e| {
+    pub fn credential(&self) -> Result<CredentialAndPurposeKey> {
+        minicbor::decode(&self.encoded_credential).map_err(|e| {
             error!(%e, "Unable to decode credential");
             CliStateError::InvalidOperation("Unable to decode credential".to_string())
         })

@@ -4647,7 +4647,6 @@ dependencies = [
  "ockam_abac",
  "ockam_api",
  "ockam_core",
- "ockam_identity",
  "ockam_macros",
  "ockam_multiaddr",
  "ockam_node",
