@@ -1,3 +1,4 @@
+use core::str::from_utf8;
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::fmt;
@@ -15,7 +16,7 @@ use crate::{eval, Env, Expr};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
-use ockam_identity::{IdentitiesRepository, IdentityIdentifier, IdentitySecureChannelLocalInfo};
+use ockam_identity::v2::{Identifier, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
 /// This AccessControl uses a storage for authenticated attributes in order
 /// to verify if a policy expression is valid
@@ -68,12 +69,23 @@ where {
 
 impl AbacAccessControl {
     /// Returns true if the identity is authorized
-    pub async fn is_identity_authorized(&self, id: IdentityIdentifier) -> Result<bool> {
+    pub async fn is_identity_authorized(&self, id: Identifier) -> Result<bool> {
         let mut environment = self.environment.clone();
 
         // Get identity attributes and populate the environment:
         if let Some(attrs) = self.repository.get_attributes(&id).await? {
             for (key, value) in attrs.attrs() {
+                let key = match from_utf8(&key) {
+                    Ok(key) => key,
+                    Err(_) => {
+                        log::warn! {
+                            policy = %self.expression,
+                            id     = %id,
+                            "attribute key is not utf-8"
+                        }
+                        continue;
+                    }
+                };
                 if key.find(|c: char| c.is_whitespace()).is_some() {
                     log::warn! {
                         policy = %self.expression,

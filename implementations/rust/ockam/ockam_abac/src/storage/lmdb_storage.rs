@@ -7,7 +7,7 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_identity::LmdbStorage;
+use ockam_identity::v2::storage::LmdbStorage;
 use std::borrow::Cow;
 use tracing as log;
 
