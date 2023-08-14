@@ -42,7 +42,7 @@ impl AuthorityService {
     pub async fn credential(
         &self,
         ctx: &Context,
-        for_identity: &Identifier,
+        subject: &Identifier,
     ) -> Result<CredentialAndPurposeKey> {
         {
             // check if we have a valid cached credential
@@ -61,11 +61,11 @@ impl AuthorityService {
             .own_credential
             .clone()
             .ok_or(IdentityError::UnknownAuthority)?;
-        let credential = retriever.retrieve(ctx, for_identity).await?;
+        let credential = retriever.retrieve(ctx, subject).await?;
 
         let credential_data = self
             .credentials
-            .verify_credential(for_identity, &[self.identifier.clone()], &credential)
+            .verify_credential(Some(subject), &[self.identifier.clone()], &credential)
             .await?;
 
         let mut guard = self.inner_cache.write().unwrap();
