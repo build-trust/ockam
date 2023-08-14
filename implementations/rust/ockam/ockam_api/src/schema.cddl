@@ -49,6 +49,11 @@ project = {
     ?8: project_node_identity, ; optional, it can be missing if the cloud node hasn't started yet
     ?9: authority_access_route, ; optional, it can be missing if the authority hasn't started yet
     ?10: authority_identity, ; optional, hex encoded authority identity
+    ?11: project_okta_config,
+    ?12: project_confluent_config,
+    ?13: project_version,
+    ?14: project_running,
+    ?15: project_operation_id,
     16: [* project_user_role]
 }
 
@@ -70,6 +75,10 @@ project_name = text
 service_name = text
 access_route = text
 
+project_operation_id = text
+project_running      = bool
+project_version      = text
+
 project_user_role = {
   1: user_email,
   2: user_id,
@@ -78,6 +87,28 @@ project_user_role = {
 role_in_share = 0..2 ; admin, guest, service_user
 user_email = text
 user_id = uint
+
+;;; Project Addons ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+project_okta_config = {
+  ?0: 6434814,
+  1: okta_tenant_base_url,
+  2: okta_certificate,
+  3: okta_client_id,
+  4: okta_attributes
+}
+
+okta_attributes      = [* text]
+okta_certificate     = text
+okta_client_id       = text
+okta_tenant_base_url = text
+
+project_confluent_config = {
+  ?0: 6434816,
+  1: confluent_bootstrap_server
+}
+
+confluent_bootstrap_server = text
 
 ;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
