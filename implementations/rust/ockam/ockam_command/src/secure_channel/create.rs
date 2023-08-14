@@ -17,7 +17,7 @@ use crate::docs;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, RpcBuilder};
-use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
+use ockam::{identity::Identifier, route, Context, TcpTransport};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::secure_channel::{
@@ -47,7 +47,7 @@ pub struct CreateCommand {
 
     /// Identifiers authorized to be presented by the listener
     #[arg(value_name = "IDENTIFIER", long, short, display_order = 801)]
-    pub authorized: Option<Vec<IdentityIdentifier>>,
+    pub authorized: Option<Vec<Identifier>>,
 
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]

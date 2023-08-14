@@ -5,7 +5,7 @@ use colorful::Colorful;
 use miette::miette;
 use miette::IntoDiagnostic;
 
-use ockam::identity::credential::Credential;
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam_api::cli_state::{ProjectConfigCompact, StateItemTrait, VaultState};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
@@ -282,9 +282,11 @@ From {} to {}"#,
     }
 }
 
-impl Output for Credential {
+impl Output for CredentialAndPurposeKey {
     fn output(&self) -> Result<String> {
-        Ok(self.to_string())
+        let s = minicbor::to_vec(self)?;
+        let s = hex::encode(s);
+        Ok(s)
     }
 }
 

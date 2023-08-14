@@ -4,7 +4,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_multiaddr::proto::Project;
 
 use ockam::{Context, TcpTransport};
@@ -46,7 +46,7 @@ pub struct CreateCommand {
 
     /// Authorized identity for secure channel connection
     #[arg(long, id = "AUTHORIZED", display_order = 900)]
-    authorized: Option<IdentityIdentifier>,
+    authorized: Option<Identifier>,
 }
 
 impl CreateCommand {

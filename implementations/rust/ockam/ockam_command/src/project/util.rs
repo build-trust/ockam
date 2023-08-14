@@ -6,7 +6,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
@@ -110,7 +110,7 @@ pub async fn create_secure_channel_to_project(
     credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
-    let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
+    let authorized_identifier = vec![Identifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
 
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
@@ -131,7 +131,7 @@ pub async fn create_secure_channel_to_authority(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
-    authority: IdentityIdentifier,
+    authority: Identifier,
     addr: &MultiAddr,
     identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
