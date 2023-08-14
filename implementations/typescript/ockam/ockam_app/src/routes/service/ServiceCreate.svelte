@@ -29,7 +29,7 @@
   }
 </script>
 
-<div class="border-b mb-4 pb-2 font-bold text-xl">Service details</div>
+<div class="mb-4 border-b pb-2 text-xl font-bold">Service details</div>
 <div class="grid gap-4">
   <div class="flex items-start">
     <div class="flex-1">
@@ -39,7 +39,7 @@
     <div class="flex-1">
       <input
         type="text"
-        class="w-full px-4 text-base bg-transparent border-none focus:outline-none text-right"
+        class="w-full border-none bg-transparent px-4 text-right text-base focus:outline-none"
         placeholder={service}
         bind:value={service}
       />
@@ -53,7 +53,7 @@
     <div class="flex-1">
       <input
         type="text"
-        class="w-full px-4 text-base bg-transparent border-none focus:outline-none text-right"
+        class="w-full border-none bg-transparent px-4 text-right text-base focus:outline-none"
         placeholder={port}
         bind:value={port}
       />
@@ -66,10 +66,10 @@
         Optionally, send an invitation to share this service
       </p>
     </div>
-    <div class="flex-1 min-w-[60%]">
+    <div class="min-w-[60%] flex-1">
       <input
         type="email"
-        class="w-full px-4 text-base bg-transparent border-none focus:outline-none text-right"
+        class="w-full border-none bg-transparent px-4 text-right text-base focus:outline-none"
         placeholder="recipient@mail.com"
         bind:value={email}
       />
@@ -78,15 +78,15 @@
 </div>
 <hr class="my-4" />
 {#if error_message}
-  <div class="mb-2 text-red-500 text-sm">{error_message}</div>
+  <div class="mb-2 text-sm text-red-500">{error_message}</div>
 {/if}
 <div class="flex justify-end">
   <button
-    class="px-2 py-1 text-base mr-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+    class="mr-2 rounded bg-gray-300 px-2 py-1 text-base text-gray-700 hover:bg-gray-400"
     on:click={cancel}>Cancel</button
   >
   <button
-    class="px-2 py-1 text-base bg-blue-500 text-white rounded hover:bg-blue-600"
+    class="rounded bg-blue-500 px-2 py-1 text-base text-white hover:bg-blue-600"
     on:click={submit}>Create</button
   >
 </div>
