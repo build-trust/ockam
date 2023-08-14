@@ -9,7 +9,7 @@ use ockam_core::compat::format;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, RelayMessage};
 use ockam_core::{IncomingAccessControl, Result};
-use ockam_identity::IdentitiesRepository;
+use ockam_identity::v2::IdentitiesRepository;
 use tracing as log;
 
 /// Evaluates a policy expression against an environment of attributes.
