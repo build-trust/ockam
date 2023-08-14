@@ -7,7 +7,7 @@ use minicbor::{Decode, Decoder, Encode, Encoder};
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::env::FromString;
 use ockam_core::{Error, Result};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use super::super::IdentityError;
 
@@ -20,9 +20,28 @@ pub const CHANGE_HASH_LEN: usize = 20;
 /// Unique identifier for an [`super::super::identity::Identity`]
 /// Equals to the [`ChangeHash`] of the first [`super::Change`] in the [`super::ChangeHistory`]
 /// Computed as truncated SHA256 of the first [`super::ChangeData`] CBOR binary
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, Ord, PartialOrd)]
-#[serde(transparent)]
+#[derive(Clone, Debug, Hash, Ord, PartialOrd)]
 pub struct Identifier([u8; IDENTIFIER_LEN]);
+
+impl Serialize for Identifier {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&String::from(self))
+    }
+}
+
+impl<'de> Deserialize<'de> for Identifier {
+    fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let str: String = Deserialize::deserialize(deserializer)?;
+
+        Self::try_from(str).map_err(de::Error::custom)
+    }
+}
 
 impl Identifier {
     /// Constructor
