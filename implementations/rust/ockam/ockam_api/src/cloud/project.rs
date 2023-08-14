@@ -537,6 +537,19 @@ mod tests {
 
     use super::*;
 
+    impl Arbitrary for OktaConfig {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                #[cfg(feature = "tag")]
+                tag: Default::default(),
+                tenant_base_url: Url::new(url::Url::parse("http://example.com/").unwrap()),
+                certificate: String::arbitrary(g),
+                client_id: String::arbitrary(g),
+                attributes: Vec::arbitrary(g),
+            }
+        }
+    }
+
     #[derive(Debug, Clone)]
     struct Pr(Project);
 
@@ -556,11 +569,11 @@ mod tests {
                 authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g)),
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g))),
-                okta_config: None,
-                confluent_config: None,
-                version: None,
-                running: None,
-                operation_id: None,
+                okta_config: bool::arbitrary(g).then(|| OktaConfig::arbitrary(g)),
+                confluent_config: bool::arbitrary(g).then(|| ConfluentConfigResponse::arbitrary(g)),
+                version: Some(String::arbitrary(g)),
+                running: bool::arbitrary(g).then(|| bool::arbitrary(g)),
+                operation_id: bool::arbitrary(g).then(|| String::arbitrary(g)),
                 user_roles: vec![],
             })
         }
