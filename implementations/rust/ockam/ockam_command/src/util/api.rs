@@ -8,7 +8,7 @@ use miette::miette;
 use minicbor::Decoder;
 use regex::Regex;
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_api::address::controller_route;
 use ockam_api::cli_state::CliState;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
@@ -93,7 +93,7 @@ pub(crate) fn show_secure_channel(
 /// Construct a request to create Secure Channel Listeners
 pub(crate) fn create_secure_channel_listener(
     addr: &Address,
-    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    authorized_identifiers: Option<Vec<Identifier>>,
     identity: Option<String>,
 ) -> Result<Vec<u8>> {
     let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(

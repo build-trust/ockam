@@ -3,9 +3,9 @@ use crate::util::node_rpc;
 use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_identity::IdentityIdentifier;
 use rand::prelude::random;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -44,10 +44,7 @@ impl CreateCommand {
         cmd.create_identity(options).await.map(|_| ())
     }
 
-    pub async fn create_identity(
-        &self,
-        opts: CommandGlobalOpts,
-    ) -> miette::Result<IdentityIdentifier> {
+    pub async fn create_identity(&self, opts: CommandGlobalOpts) -> miette::Result<Identifier> {
         opts.terminal.write_line(&fmt_log!(
             "Creating identity {}...\n",
             &self
@@ -83,10 +80,10 @@ impl CreateCommand {
                 .await?;
 
             opts.state
-                .create_identity_state(&identity.identifier(), Some(&self.name))
+                .create_identity_state(identity.identifier(), Some(&self.name))
                 .await?;
 
-            let identifier = identity.identifier();
+            let identifier = identity.identifier().clone();
 
             *is_finished.lock().await = true;
             Ok(identifier)
@@ -119,6 +116,6 @@ impl CreateCommand {
             .machine(identifier.clone())
             .json(serde_json::json!({ "identity": { "identifier": &identifier } }))
             .write_line()?;
-        Ok(identifier)
+        Ok(identifier.clone())
     }
 }

@@ -5,7 +5,6 @@ use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
 use core::fmt::Write;
 use miette::IntoDiagnostic;
-use ockam::identity::identity::IdentityChangeHistory;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_node::Context;
@@ -69,23 +68,22 @@ impl ShowCommand {
                 opts.println(&output)?;
             }
         } else {
-            let output = ShortIdentityResponse::new(state.config().identifier().to_string());
+            let output = ShortIdentityResponse::new(state.config().identifier());
             opts.println(&output)?;
         }
         Ok(())
     }
 }
 
-impl Output for LongIdentityResponse<'_> {
+impl Output for LongIdentityResponse {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
-        let id: IdentityChangeHistory = serde_bare::from_slice(self.identity.0.as_ref())?;
-        write!(w, "{id}")?;
+        write!(w, "{}", hex::encode(&self.identity_change_history))?;
         Ok(w)
     }
 }
 
-impl Output for ShortIdentityResponse<'_> {
+impl Output for ShortIdentityResponse {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "{}", self.identity_id)?;

@@ -6,6 +6,7 @@ use tokio::try_join;
 use tracing::info;
 use tracing::log::warn;
 
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{update_enrolled_identity, SpaceConfig};
@@ -14,7 +15,6 @@ use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_core::api::Status;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
 use crate::enroll::OidcServiceExt;
@@ -103,7 +103,7 @@ async fn run_impl(
 pub async fn retrieve_user_project<'a>(
     opts: &CommandGlobalOpts,
     rpc: &mut Rpc,
-) -> Result<IdentityIdentifier> {
+) -> Result<Identifier> {
     let space = default_space(opts, rpc)
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
@@ -127,7 +127,7 @@ pub async fn retrieve_user_project<'a>(
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
-    info!("Enrolled a user with the IdentityIdentifier {}", identifier);
+    info!("Enrolled a user with the Identifier {}", identifier);
 
     Ok(identifier)
 }

@@ -7,7 +7,7 @@ use miette::{miette, IntoDiagnostic};
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
@@ -46,7 +46,7 @@ pub struct CreateCommand {
 
     /// Authorized identity for secure channel connection
     #[arg(long, id = "AUTHORIZED", display_order = 900)]
-    authorized: Option<IdentityIdentifier>,
+    authorized: Option<Identifier>,
 }
 
 impl CreateCommand {

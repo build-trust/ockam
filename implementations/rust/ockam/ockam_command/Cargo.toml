@@ -80,7 +80,6 @@ ockam = { path = "../ockam", version = "^0.92.0", features = ["software_vault"] 
 ockam_abac = { path = "../ockam_abac", version = "0.26.0", features = ["std"] }
 ockam_api = { path = "../ockam_api", version = "0.35.0", features = ["std", "authenticators"] }
 ockam_core = { path = "../ockam_core", version = "^0.85.0" }
-ockam_identity = { path = "../ockam_identity", version = "^0.80.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.26.0", features = ["std"] }
 ockam_node = { path = "../ockam_node", version = "^0.88.0" }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.86.0" }

@@ -3,7 +3,7 @@ use std::path::Path;
 use miette::miette;
 
 use crate::app::state::model::ModelState;
-use ockam::identity::Storage;
+use ockam::identity::storage::Storage;
 use ockam::LmdbStorage;
 use ockam_core::async_trait;
 
