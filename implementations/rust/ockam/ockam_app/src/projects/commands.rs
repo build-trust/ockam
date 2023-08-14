@@ -17,6 +17,7 @@ type SyncState = Arc<RwLock<ProjectState>>;
 pub async fn list_projects<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Project>, String> {
     let state: State<'_, SyncState> = app.state();
     let reader = state.read().await;
+    debug!(projects = ?reader);
     Ok((*reader).clone())
 }
 
