@@ -2,7 +2,7 @@ use crate::cli_state::{ProjectState, StateItemTrait};
 use crate::cloud::project::{OktaAuth0, Project};
 use bytes::Bytes;
 use miette::{miette, IntoDiagnostic, WrapErr};
-use ockam::identity::{identities, IdentityIdentifier};
+use ockam::identity::{identities, Identifier};
 use ockam_core::compat::collections::VecDeque;
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
@@ -218,7 +218,7 @@ pub struct ProjectLookup {
     /// Name of this project within
     pub name: String,
     /// Identifier of the IDENTITY of the project (for secure-channel)
-    pub identity_id: Option<IdentityIdentifier>,
+    pub identity_id: Option<Identifier>,
     /// Project authority information.
     pub authority: Option<ProjectAuthority>,
     /// OktaAuth0 information.
@@ -272,13 +272,13 @@ impl ProjectLookup {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct ProjectAuthority {
-    id: IdentityIdentifier,
+    id: Identifier,
     address: MultiAddr,
     identity: Bytes,
 }
 
 impl ProjectAuthority {
-    pub fn new(id: IdentityIdentifier, addr: MultiAddr, identity: Vec<u8>) -> Self {
+    pub fn new(id: Identifier, addr: MultiAddr, identity: Vec<u8>) -> Self {
         Self {
             id,
             address: addr,
@@ -299,10 +299,10 @@ impl ProjectAuthority {
             let a = hex::decode(a.as_str()).map_err(|_| miette!("Invalid project authority"))?;
             let p = identities()
                 .identities_creation()
-                .decode_identity(&a)
+                .import(None, &a)
                 .await
                 .into_diagnostic()?;
-            Ok(Some(ProjectAuthority::new(p.identifier(), rte, a)))
+            Ok(Some(ProjectAuthority::new(p.identifier().clone(), rte, a)))
         } else {
             Ok(None)
         }
@@ -312,7 +312,7 @@ impl ProjectAuthority {
         &self.identity
     }
 
-    pub fn identity_id(&self) -> &IdentityIdentifier {
+    pub fn identity_id(&self) -> &Identifier {
         &self.id
     }
 

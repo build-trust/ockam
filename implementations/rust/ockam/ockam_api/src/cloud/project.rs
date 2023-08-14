@@ -3,7 +3,7 @@ use std::str::FromStr;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_core::Result;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -44,7 +44,7 @@ pub struct Project {
     pub space_id: String,
 
     #[cbor(n(8))]
-    pub identity: Option<IdentityIdentifier>,
+    pub identity: Option<Identifier>,
 
     #[cbor(n(9))]
     pub authority_access_route: Option<String>,
@@ -584,6 +584,7 @@ mod node {
 
 #[cfg(test)]
 mod tests {
+    use ockam::identity::models::IDENTIFIER_LEN;
     use quickcheck::{Arbitrary, Gen};
 
     use super::*;
@@ -601,12 +602,12 @@ mod tests {
         }
     }
 
-    #[derive(Debug, Clone)]
-    struct Pr(Project);
-
-    impl Arbitrary for Pr {
+    impl Arbitrary for Project {
         fn arbitrary(g: &mut Gen) -> Self {
-            Pr(Project {
+            let identifier = [0u8; IDENTIFIER_LEN];
+            identifier.map(|_| <u8>::arbitrary(g));
+
+            Project {
                 #[cfg(feature = "tag")]
                 tag: Default::default(),
                 id: String::arbitrary(g),
@@ -615,8 +616,7 @@ mod tests {
                 access_route: String::arbitrary(g),
                 users: vec![String::arbitrary(g), String::arbitrary(g)],
                 space_id: String::arbitrary(g),
-                identity: bool::arbitrary(g)
-                    .then(|| IdentityIdentifier::from_hex(&String::arbitrary(g))),
+                identity: bool::arbitrary(g).then(|| Identifier::new(identifier)),
                 authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g)),
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g))),
@@ -626,21 +626,18 @@ mod tests {
                 running: bool::arbitrary(g).then(|| bool::arbitrary(g)),
                 operation_id: bool::arbitrary(g).then(|| String::arbitrary(g)),
                 user_roles: vec![],
-            })
+            }
         }
     }
 
-    #[derive(Debug, Clone)]
-    struct CPr(CreateProject);
-
-    impl Arbitrary for CPr {
+    impl Arbitrary for CreateProject {
         fn arbitrary(g: &mut Gen) -> Self {
-            CPr(CreateProject {
+            CreateProject {
                 #[cfg(feature = "tag")]
                 tag: Default::default(),
                 name: String::arbitrary(g),
                 users: vec![String::arbitrary(g), String::arbitrary(g)],
-            })
+            }
         }
     }
 
@@ -653,15 +650,15 @@ mod tests {
         use super::*;
 
         quickcheck! {
-            fn project(o: Pr) -> TestResult {
-                let cbor = minicbor::to_vec(o.0).unwrap();
+            fn project(o: Project) -> TestResult {
+                let cbor = minicbor::to_vec(o).unwrap();
                 if let Err(e) = validate_cbor_bytes("project", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
                 TestResult::passed()
             }
 
-            fn projects(o: Vec<Pr>) -> TestResult {
+            fn projects(o: Vec<Project>) -> TestResult {
                 let empty: Vec<Project> = vec![];
                 let cbor = minicbor::to_vec(empty).unwrap();
                 if let Err(e) = validate_cbor_bytes("projects", SCHEMA, &cbor) {
@@ -669,7 +666,6 @@ mod tests {
                 }
                 TestResult::passed();
 
-                let o: Vec<Project> = o.into_iter().map(|p| p.0).collect();
                 let cbor = minicbor::to_vec(o).unwrap();
                 if let Err(e) = validate_cbor_bytes("projects", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
@@ -677,8 +673,8 @@ mod tests {
                 TestResult::passed()
             }
 
-            fn create_project(o: CPr) -> TestResult {
-                let cbor = minicbor::to_vec(o.0).unwrap();
+            fn create_project(o: CreateProject) -> TestResult {
+                let cbor = minicbor::to_vec(o).unwrap();
                 if let Err(e) = validate_cbor_bytes("create_project", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
@@ -690,7 +686,7 @@ mod tests {
     #[test]
     fn convert_access_route_to_socket_addr() {
         let mut g = Gen::new(100);
-        let mut p = Pr::arbitrary(&mut g).0;
+        let mut p = Project::arbitrary(&mut g);
         p.access_route = "/dnsaddr/node.dnsaddr.com/tcp/4000/service/api".into();
 
         let socket_addr = p.access_route_socket_addr().unwrap();

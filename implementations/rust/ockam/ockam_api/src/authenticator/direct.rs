@@ -3,14 +3,15 @@ pub mod types;
 use core::str;
 use lru::LruCache;
 use minicbor::Decoder;
+use ockam::identity::utils::now;
+use ockam::identity::OneTimeCode;
+use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
 use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityAttributesWriter};
-use ockam::identity::{IdentityIdentifier, IdentitySecureChannelLocalInfo};
-use ockam::identity::{OneTimeCode, Timestamp};
+use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{self, Method, Request, Response, Status};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, CowStr, Result, Routed, Worker};
-use ockam_identity::{secure_channel_required, LEGACY_ID, TRUST_CONTEXT_ID};
 use ockam_node::{Context, RpcClient};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
@@ -167,37 +168,29 @@ impl DirectAuthenticator {
 
     async fn add_member<'a>(
         &self,
-        enroller: &IdentityIdentifier,
-        id: &IdentityIdentifier,
+        enroller: &Identifier,
+        id: &Identifier,
         attrs: &HashMap<CowStr<'a>, CowStr<'a>>,
     ) -> Result<()> {
         let auth_attrs = attrs
             .iter()
-            .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+            .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
             .chain(
-                [
-                    (LEGACY_ID.to_owned(), self.trust_context.as_bytes().to_vec()),
-                    (
-                        TRUST_CONTEXT_ID.to_owned(),
-                        self.trust_context.as_bytes().to_vec(),
-                    ),
-                ]
+                [(
+                    TRUST_CONTEXT_ID.to_owned(),
+                    self.trust_context.as_bytes().to_vec(),
+                )]
                 .into_iter(),
             )
             .collect();
-        let entry = AttributesEntry::new(
-            auth_attrs,
-            Timestamp::now().unwrap(),
-            None,
-            Some(enroller.clone()),
-        );
+        let entry = AttributesEntry::new(auth_attrs, now()?, None, Some(enroller.clone()));
         self.attributes_writer.put_attributes(id, entry).await
     }
 
     async fn list_members(
         &self,
-        enroller: &IdentityIdentifier,
-    ) -> Result<HashMap<IdentityIdentifier, AttributesEntry>> {
+        enroller: &Identifier,
+    ) -> Result<HashMap<Identifier, AttributesEntry>> {
         // TODO: move filter to `list` function
         let all_attributes = self.attributes_reader.list().await?;
         let attested_by_me = all_attributes
@@ -239,7 +232,7 @@ impl Worker for DirectAuthenticator {
                 }
                 (Some(Method::Get), ["member_ids"]) => {
                     let entries = self.list_members(&from).await?;
-                    let ids: Vec<IdentityIdentifier> = entries.into_keys().collect();
+                    let ids: Vec<Identifier> = entries.into_keys().collect();
                     Response::ok(req.id()).body(ids).to_vec()?
                 }
                 // List members attested by our identity (enroller)
@@ -250,7 +243,7 @@ impl Worker for DirectAuthenticator {
                 }
                 // Delete member if they were attested by our identity (enroller)
                 (Some(Method::Delete), [id]) | (Some(Method::Delete), ["members", id]) => {
-                    let identifier = IdentityIdentifier::try_from(id.to_string())?;
+                    let identifier = Identifier::try_from(id.to_string())?;
                     if let Some(entry) = self.attributes_reader.get_attributes(&identifier).await? {
                         if entry.attested_by() == Some(from) {
                             self.attributes_writer.delete(&identifier).await?;
@@ -306,7 +299,7 @@ impl EnrollmentTokenAuthenticator {
 impl EnrollmentTokenIssuer {
     async fn issue_token(
         &self,
-        enroller: &IdentityIdentifier,
+        enroller: &Identifier,
         attrs: HashMap<String, String>,
         token_duration: Option<Duration>,
     ) -> Result<OneTimeCode> {
@@ -422,21 +415,11 @@ impl Worker for EnrollmentTokenAcceptor {
                             let attrs = tkn
                                 .attrs
                                 .iter()
-                                .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
-                                .chain(
-                                    [
-                                        (LEGACY_ID.to_owned(), trust_context.clone()),
-                                        (TRUST_CONTEXT_ID.to_owned(), trust_context),
-                                    ]
-                                    .into_iter(),
-                                )
+                                .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
+                                .chain([(TRUST_CONTEXT_ID.to_owned(), trust_context)].into_iter())
                                 .collect();
-                            let entry = AttributesEntry::new(
-                                attrs,
-                                Timestamp::now().unwrap(),
-                                None,
-                                Some(tkn.generated_by),
-                            );
+                            let entry =
+                                AttributesEntry::new(attrs, now()?, None, Some(tkn.generated_by));
                             self.1.put_attributes(&from, entry).await?;
                             Response::ok(req.id()).to_vec()?
                         }
@@ -454,7 +437,7 @@ impl Worker for EnrollmentTokenAcceptor {
 
 struct Token {
     attrs: HashMap<String, String>,
-    generated_by: IdentityIdentifier,
+    generated_by: Identifier,
     time: Instant,
     max_token_duration: Duration,
 }
@@ -466,11 +449,7 @@ impl DirectAuthenticatorClient {
         DirectAuthenticatorClient(client)
     }
 
-    pub async fn add_member(
-        &self,
-        id: IdentityIdentifier,
-        attributes: HashMap<&str, &str>,
-    ) -> Result<()> {
+    pub async fn add_member(&self, id: Identifier, attributes: HashMap<&str, &str>) -> Result<()> {
         self.0
             .request_no_resp_body(
                 &Request::post("/").body(AddMember::new(id).with_attributes(attributes)),
@@ -478,15 +457,15 @@ impl DirectAuthenticatorClient {
             .await
     }
 
-    pub async fn list_member_ids(&self) -> Result<Vec<IdentityIdentifier>> {
+    pub async fn list_member_ids(&self) -> Result<Vec<Identifier>> {
         self.0.request(&Request::get("/member_ids")).await
     }
 
-    pub async fn list_members(&self) -> Result<HashMap<IdentityIdentifier, AttributesEntry>> {
+    pub async fn list_members(&self) -> Result<HashMap<Identifier, AttributesEntry>> {
         self.0.request(&Request::get("/")).await
     }
 
-    pub async fn delete_member(&self, id: IdentityIdentifier) -> Result<()> {
+    pub async fn delete_member(&self, id: Identifier) -> Result<()> {
         self.0
             .request_no_resp_body(&Request::delete(format!("/{id}")))
             .await

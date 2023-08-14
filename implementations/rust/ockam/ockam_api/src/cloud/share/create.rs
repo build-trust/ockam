@@ -1,11 +1,11 @@
 use minicbor::{Decode, Encode};
 use ockam_core::Result;
-use ockam_identity::identities;
 use serde::{Deserialize, Serialize};
 
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use crate::error::ApiError;
 use crate::identity::EnrollmentTicket;
+use ockam::identity::{identities, Identifier};
 
 use super::{RoleInShare, SentInvitation, ShareScope};
 
@@ -30,11 +30,11 @@ pub struct CreateServiceInvitation {
     #[n(3)] pub recipient_email: String,
 
     // TODO: Should route be a MultiAddr?
-    #[n(4)] pub project_identity: String,
+    #[n(4)] pub project_identity: Identifier,
     #[n(5)] pub project_route: String,
-    #[n(6)] pub project_authority_identity: String,
+    #[n(6)] pub project_authority_identity: Identifier,
     #[n(7)] pub project_authority_route: String,
-    #[n(8)] pub shared_node_identity: String,
+    #[n(8)] pub shared_node_identity: Identifier,
     #[n(9)] pub shared_node_route: String,
     #[n(10)] pub enrollment_ticket: String,
 }
@@ -63,9 +63,10 @@ impl CreateServiceInvitation {
             })?;
             identities()
                 .identities_creation()
-                .decode_identity(&as_hex)
+                .import(None, &as_hex)
                 .await?
                 .identifier()
+                .clone()
         };
         // see also: ockam_command::project::ticket
         let enrollment_ticket = hex::encode(
@@ -79,12 +80,11 @@ impl CreateServiceInvitation {
             recipient_email: recipient_email.as_ref().to_string(),
             project_identity: project
                 .identity
-                .ok_or(ApiError::generic("Project identity is missing"))?
-                .to_string(),
+                .ok_or(ApiError::generic("Project identity is missing"))?,
             project_route: project.access_route,
-            project_authority_identity: project_authority_identifier.to_string(),
+            project_authority_identity: project_authority_identifier,
             project_authority_route,
-            shared_node_identity: node_identifier.to_string(),
+            shared_node_identity: node_identifier,
             shared_node_route: service_route.as_ref().to_string(),
         })
     }

@@ -5,8 +5,8 @@ use crate::nodes::NodeManager;
 use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 
 use ockam::compat::tokio::sync::RwLock;
+use ockam::identity::Identifier;
 use ockam_core::{async_trait, route, Error};
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Secure;
 use ockam_multiaddr::{Match, Protocol};
 use ockam_node::Context;
@@ -19,7 +19,7 @@ pub(crate) struct SecureChannelInstantiator {
     node_manager: Arc<RwLock<NodeManager>>,
     timeout: Option<Duration>,
     context: Arc<Context>,
-    authorized_identities: Option<Vec<IdentityIdentifier>>,
+    authorized_identities: Option<Vec<Identifier>>,
 }
 
 impl SecureChannelInstantiator {
@@ -27,7 +27,7 @@ impl SecureChannelInstantiator {
         context: Arc<Context>,
         node_manager: Arc<RwLock<NodeManager>>,
         timeout: Option<Duration>,
-        authorized_identities: Option<Vec<IdentityIdentifier>>,
+        authorized_identities: Option<Vec<Identifier>>,
     ) -> Self {
         Self {
             authorized_identities,

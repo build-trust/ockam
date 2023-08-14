@@ -1,9 +1,9 @@
 use crate::nodes::service::Alias;
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
+use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
-use ockam_identity::{SecureChannel, SecureChannelListener};
 use std::fmt::Display;
 
 #[derive(Default)]
@@ -22,7 +22,7 @@ impl SecureChannelRegistry {
         &mut self,
         route: Route,
         sc: SecureChannel,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        authorized_identifiers: Option<Vec<Identifier>>,
     ) {
         self.channels
             .push(SecureChannelInfo::new(route, sc, authorized_identifiers))
@@ -42,14 +42,14 @@ pub struct SecureChannelInfo {
     // Target route of the channel
     route: Route,
     sc: SecureChannel,
-    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    authorized_identifiers: Option<Vec<Identifier>>,
 }
 
 impl SecureChannelInfo {
     pub fn new(
         route: Route,
         sc: SecureChannel,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        authorized_identifiers: Option<Vec<Identifier>>,
     ) -> Self {
         Self {
             route,
@@ -66,7 +66,7 @@ impl SecureChannelInfo {
         &self.sc
     }
 
-    pub fn authorized_identifiers(&self) -> Option<&Vec<IdentityIdentifier>> {
+    pub fn authorized_identifiers(&self) -> Option<&Vec<Identifier>> {
         self.authorized_identifiers.as_ref()
     }
 }

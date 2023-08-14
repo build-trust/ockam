@@ -24,7 +24,7 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
-    use ockam::identity::credential::Attributes;
+    use ockam::identity::Attributes;
     use ockam_core::api::Request;
     use ockam_core::{self, Result};
     use ockam_multiaddr::MultiAddr;
@@ -230,7 +230,7 @@ pub mod auth0 {
 pub mod enrollment_token {
     use serde::Serialize;
 
-    use ockam::identity::credential::Attributes;
+    use ockam::identity::Attributes;
 
     use super::*;
 

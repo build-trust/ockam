@@ -95,7 +95,7 @@ mod node {
 
     use minicbor::Encode;
 
-    use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
+    use ockam::identity::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_core::api::RequestBuilder;
     use ockam_core::compat::str::FromStr;
     use ockam_core::env::get_env;
@@ -113,16 +113,16 @@ mod node {
         ///
         /// If the env var `OCKAM_CONTROLLER_IDENTITY_ID` is set, that will be used to
         /// load the identifier instead of the file.
-        pub fn load_controller_identifier() -> Result<IdentityIdentifier> {
-            if let Ok(Some(idt)) = get_env::<IdentityIdentifier>(OCKAM_CONTROLLER_IDENTITY_ID) {
+        pub fn load_controller_identifier() -> Result<Identifier> {
+            if let Ok(Some(idt)) = get_env::<Identifier>(OCKAM_CONTROLLER_IDENTITY_ID) {
                 trace!(idt = %idt, "Read controller identifier from env");
                 return Ok(idt);
             }
-            IdentityIdentifier::from_str(include_str!("../../static/controller.id"))
+            Identifier::from_str(include_str!("../../static/controller.id"))
         }
 
         /// Return controller identity's identifier.
-        pub fn controller_identifier(&self) -> IdentityIdentifier {
+        pub fn controller_identifier(&self) -> Identifier {
             self.controller_identity_id.clone()
         }
 

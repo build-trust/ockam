@@ -3,12 +3,12 @@
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
+use ockam::identity::Identifier;
 use ockam::route;
 use ockam_core::compat::borrow::Cow;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{CowStr, Route};
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,7 @@ pub struct CreateInlet<'a> {
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(4)] authorized: Option<IdentityIdentifier>,
+    #[n(4)] authorized: Option<Identifier>,
     /// A prefix route that will be applied before outlet_addr, and won't be used
     /// to monitor the state of the connection
     #[n(5)] prefix_route: Route,
@@ -69,7 +69,7 @@ impl<'a> CreateInlet<'a> {
         to: MultiAddr,
         prefix_route: Route,
         suffix_route: Route,
-        auth: Option<IdentityIdentifier>,
+        auth: Option<Identifier>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -100,7 +100,7 @@ impl<'a> CreateInlet<'a> {
         &self.outlet_addr
     }
 
-    pub fn authorized(&self) -> Option<IdentityIdentifier> {
+    pub fn authorized(&self) -> Option<Identifier> {
         self.authorized.clone()
     }
 

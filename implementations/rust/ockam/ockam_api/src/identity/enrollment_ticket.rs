@@ -1,4 +1,4 @@
-use ockam_identity::credential::OneTimeCode;
+use ockam::identity::OneTimeCode;
 use serde::{Deserialize, Serialize};
 
 use crate::config::{cli::TrustContextConfig, lookup::ProjectLookup};

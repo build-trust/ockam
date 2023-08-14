@@ -8,11 +8,12 @@ use std::path::PathBuf;
 use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
+use ockam::identity::TrustContext;
 use ockam::identity::{
     Credentials, CredentialsServer, CredentialsServerModule, Identities, IdentitiesRepository,
     IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
 };
-use ockam::identity::{IdentityIdentifier, SecureChannels};
+use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, ForwardingService, ForwardingServiceOptions, Result, Routed, TcpTransport,
     Worker,
@@ -25,7 +26,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
-use ockam_identity::TrustContext;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
 
@@ -100,10 +100,10 @@ pub struct NodeManager {
     node_name: String,
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
-    pub(crate) controller_identity_id: IdentityIdentifier,
+    pub(crate) controller_identity_id: Identifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
@@ -112,7 +112,7 @@ pub struct NodeManager {
 }
 
 impl NodeManager {
-    pub(super) fn identifier(&self) -> IdentityIdentifier {
+    pub(super) fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }
 
@@ -132,7 +132,7 @@ impl NodeManager {
         self.identities_repository().as_attributes_reader()
     }
 
-    pub(super) fn credentials(&self) -> Arc<dyn Credentials> {
+    pub(super) fn credentials(&self) -> Arc<Credentials> {
         self.identities().credentials()
     }
 
@@ -497,10 +497,7 @@ impl NodeManager {
         Ok(connection_instance)
     }
 
-    pub(crate) async fn resolve_project(
-        &self,
-        name: &str,
-    ) -> Result<(MultiAddr, IdentityIdentifier)> {
+    pub(crate) async fn resolve_project(&self, name: &str) -> Result<(MultiAddr, Identifier)> {
         let projects = ProjectLookup::from_state(self.cli_state.projects.list()?)
             .await
             .map_err(|e| ApiError::message(format!("Cannot load projects: {:?}", e)))?;

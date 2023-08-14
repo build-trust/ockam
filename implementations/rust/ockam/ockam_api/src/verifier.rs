@@ -1,17 +1,16 @@
 pub mod types;
 
+use crate::verifier::types::{VerifyRequest, VerifyResponse};
 use either::Either;
 use minicbor::Decoder;
-use ockam::identity::credential::{Credential, CredentialData, Verified};
-use ockam::identity::Identities;
-use ockam_core::api::{self, Id, ResponseBuilder};
-use ockam_core::api::{Error, Method, Request, Response};
+use ockam::identity::models::{CredentialAndPurposeKey, PurposeKeyAttestationData, VersionedData};
+use ockam::identity::{CredentialAndPurposeKeyData, Identities};
+use ockam_core::api::{Error, Request, Response, ResponseBuilder};
+use ockam_core::api::{Id, Method};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{self, Result, Routed, Worker};
+use ockam_core::{self, api, Result, Routed, Worker};
 use ockam_node::Context;
 use tracing::trace;
-
-use self::types::{VerifyRequest, VerifyResponse};
 
 pub struct Verifier {
     identities: Arc<Identities>,
@@ -57,13 +56,16 @@ impl Verifier {
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
                 ["verify"] => {
                     let vr: VerifyRequest = dec.decode()?;
-                    let cr: Credential = minicbor::decode(vr.credential())?;
+                    let cr: CredentialAndPurposeKey = minicbor::decode(vr.credential())?;
                     match self.verify(req.id(), &vr, &cr).await {
                         Ok(Either::Left(err)) => err.to_vec()?,
                         Ok(Either::Right(dat)) => {
-                            let exp = dat.expires_at();
+                            let exp = dat.credential_data.expires_at;
                             Response::ok(req.id())
-                                .body(VerifyResponse::new(dat.into_attributes(), exp))
+                                .body(VerifyResponse::new(
+                                    dat.credential_data.subject_attributes,
+                                    exp,
+                                ))
                                 .to_vec()?
                         }
                         Err(err) => {
@@ -85,15 +87,20 @@ impl Verifier {
         &self,
         id: Id,
         req: &'a VerifyRequest<'a>,
-        cre: &Credential,
-    ) -> Result<Either<ResponseBuilder<Error>, CredentialData<Verified>>> {
-        let data = CredentialData::try_from(cre.data.as_slice())?;
+        cre: &CredentialAndPurposeKey,
+    ) -> Result<Either<ResponseBuilder<Error>, CredentialAndPurposeKeyData>> {
+        let versioned_data: VersionedData =
+            minicbor::decode(cre.purpose_key_attestation.data.as_slice())?;
+        let data: PurposeKeyAttestationData = minicbor::decode(&versioned_data.data)?;
 
-        let authority = if let Some(ident) = req.authority(data.unverified_issuer()) {
+        let authority = if let Some(ident) = req.authority(&data.subject) {
+            // FIXME: Put Authority separately to avoid decoding the data manually here
             self.identities
                 .identities_creation()
-                .decode_identity(ident)
+                .import(Some(&data.subject), ident)
                 .await?
+                .identifier()
+                .clone()
         } else {
             let err = Error::new("/verify").with_message("unauthorised issuer");
             return Ok(Either::Left(Response::unauthorized(id).body(err)));
@@ -102,7 +109,7 @@ impl Verifier {
         let data = match self
             .identities
             .credentials()
-            .verify_credential(req.subject(), &[authority], cre.clone())
+            .verify_credential(Some(req.subject()), &[authority], &cre)
             .await
         {
             Ok(data) => data,

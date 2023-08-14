@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use minicbor::{Decode, Encode};
+use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
 
 mod accept;
@@ -125,11 +126,11 @@ pub struct SentInvitation {
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ServiceAccessDetails {
-    #[n(1)] pub project_identity: String,
+    #[n(1)] pub project_identity: Identifier,
     #[n(2)] pub project_route: String,
-    #[n(3)] pub project_authority_identity: String,
+    #[n(3)] pub project_authority_identity: Identifier,
     #[n(4)] pub project_authority_route: String,
-    #[n(5)] pub shared_node_identity: String,
+    #[n(5)] pub shared_node_identity: Identifier,
     #[n(6)] pub shared_node_route: String,
     #[n(7)] pub enrollment_ticket: String, // hex-encoded as with CLI output/input
 }
