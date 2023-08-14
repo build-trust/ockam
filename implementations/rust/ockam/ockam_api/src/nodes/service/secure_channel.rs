@@ -3,16 +3,17 @@ use std::time::Duration;
 
 use minicbor::Decoder;
 
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::TrustEveryonePolicy;
+use ockam::identity::Vault;
 use ockam::identity::{
-    Identities, IdentitiesVault, IdentityIdentifier, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy,
+    Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    TrustMultiIdentifiersPolicy,
 };
+use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
-use ockam_identity::Credential;
-use ockam_identity::{SecureChannel, SecureChannelListener};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -37,12 +38,12 @@ use super::NodeManagerWorker;
 impl NodeManager {
     pub(crate) async fn create_secure_channel_internal(
         &mut self,
-        identifier: &IdentityIdentifier,
+        identifier: &Identifier,
         ctx: &Context,
         sc_route: Route,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        authorized_identifiers: Option<Vec<Identifier>>,
         timeout: Option<Duration>,
-        credential: Option<Credential>,
+        credential: Option<CredentialAndPurposeKey>,
     ) -> Result<SecureChannel> {
         debug!(%sc_route, "Creating secure channel");
         let options = SecureChannelOptions::new();
@@ -87,7 +88,7 @@ impl NodeManager {
     pub(crate) async fn create_secure_channel_impl(
         &mut self,
         sc_route: Route,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        authorized_identifiers: Option<Vec<Identifier>>,
         credential_exchange_mode: CredentialExchangeMode,
         timeout: Option<Duration>,
         identity_name: Option<String>,
@@ -154,7 +155,7 @@ impl NodeManager {
     pub(super) async fn create_secure_channel_listener_impl(
         &mut self,
         address: Address,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        authorized_identifiers: Option<Vec<Identifier>>,
         vault_name: Option<String>,
         identity_name: Option<String>,
         ctx: &Context,
@@ -221,7 +222,7 @@ impl NodeManager {
         let identities = self.get_identities(vault_name).await?;
         let registry = self.secure_channels.secure_channel_registry();
         Ok(SecureChannels::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities(identities)
             .with_secure_channels_registry(registry)
             .build())
@@ -231,10 +232,7 @@ impl NodeManager {
         NodeIdentities::new(self.identities(), self.cli_state.clone())
     }
 
-    pub(crate) async fn get_identifier(
-        &self,
-        identity_name: Option<String>,
-    ) -> Result<IdentityIdentifier> {
+    pub(crate) async fn get_identifier(&self, identity_name: Option<String>) -> Result<Identifier> {
         if let Some(name) = identity_name {
             self.node_identities().get_identifier(name.clone()).await
         } else {
@@ -246,10 +244,7 @@ impl NodeManager {
         self.node_identities().get_identities(vault_name).await
     }
 
-    async fn get_secure_channels_vault(
-        &mut self,
-        vault_name: Option<String>,
-    ) -> Result<Arc<dyn IdentitiesVault>> {
+    async fn get_secure_channels_vault(&mut self, vault_name: Option<String>) -> Result<Vault> {
         if let Some(vault) = vault_name {
             let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
             Ok(existing_vault)
@@ -333,8 +328,8 @@ impl NodeManagerWorker {
             Some(ids) => {
                 let ids = ids
                     .into_iter()
-                    .map(IdentityIdentifier::try_from)
-                    .collect::<Result<Vec<IdentityIdentifier>>>()?;
+                    .map(Identifier::try_from)
+                    .collect::<Result<Vec<Identifier>>>()?;
 
                 Some(ids)
             }
@@ -444,8 +439,8 @@ impl NodeManagerWorker {
             Some(ids) => {
                 let ids = ids
                     .into_iter()
-                    .map(IdentityIdentifier::try_from)
-                    .collect::<Result<Vec<IdentityIdentifier>>>()?;
+                    .map(Identifier::try_from)
+                    .collect::<Result<Vec<Identifier>>>()?;
 
                 Some(ids)
             }

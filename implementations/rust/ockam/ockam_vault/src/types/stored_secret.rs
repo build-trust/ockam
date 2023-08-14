@@ -31,11 +31,15 @@ impl StoredSecret {
         &self.secret
     }
 
+    /// Get the secret part of this stored secret
+    pub fn take_secret(self) -> Secret {
+        self.secret
+    }
+
     /// Check if the length of the secret is the same as the length prescribed by the attributes
     fn check(secret: &Secret, attributes: &SecretAttributes) -> Result<()> {
-        // the secret must be at least the length mentioned in the attributes
-        // In the case of a NistP256 secret it might contain additional metadata (algorithm, version, etc...)
-        if secret.length() < attributes.length() as usize {
+        // the secret must be equal to length mentioned in the attributes
+        if secret.length() != attributes.length() as usize {
             Err(VaultError::InvalidSecretLength(
                 attributes.secret_type(),
                 secret.length(),

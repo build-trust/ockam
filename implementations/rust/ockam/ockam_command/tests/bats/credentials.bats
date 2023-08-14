@@ -33,11 +33,11 @@ teardown() {
 
   run_success "$OCKAM" credential show smart_nyc_cred
   assert_output --partial "Credential: smart_nyc_cred"
-  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\""
+  assert_output --partial "{\"application\": \"Smart Factory\", \"city\": \"New York\""
 
   run_success "$OCKAM" credential list
   assert_output --partial "Credential: smart_nyc_cred"
-  assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\""
+  assert_output --partial "{\"application\": \"Smart Factory\", \"city\": \"New York\""
 }
 
 @test "credential - verify and store reject invalid credentials" {
@@ -46,7 +46,7 @@ teardown() {
   idt1_short=$($OCKAM identity show i1)
 
   # create an invalid credential
-  echo "FOOBAR" >"$OCKAM_HOME/bad_credential"
+  echo "aabbcc" >"$OCKAM_HOME/bad_credential"
 
   run_success "$OCKAM" credential verify --issuer "$idt1_short" --credential-path "$OCKAM_HOME/bad_credential"
   assert_output --partial "false"

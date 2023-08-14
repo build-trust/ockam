@@ -30,8 +30,10 @@ pub use trust_policy::*;
 #[cfg(test)]
 mod tests {
     use crate::secure_channel::{decryptor::Decryptor, encryptor::Encryptor};
+    use crate::Vault;
+    use ockam_core::compat::rand::RngCore;
     use ockam_core::Result;
-    use ockam_vault::{EphemeralSecretsStore, SecretAttributes, Vault};
+    use ockam_vault::{Secret, SecretAttributes};
     use rand::seq::SliceRandom;
     use rand::thread_rng;
 
@@ -131,18 +133,21 @@ mod tests {
     }
 
     async fn create_encryptor_decryptor() -> Result<(Encryptor, Decryptor)> {
-        let vault1 = Vault::create();
-        let vault2 = Vault::create();
+        let vault1 = Vault::create_secure_channel_vault();
+        let vault2 = Vault::create_secure_channel_vault();
+
+        let mut rng = thread_rng();
+        let mut key = [0u8; 32];
+        rng.fill_bytes(&mut key);
 
         let secret_attrs = SecretAttributes::Aes256;
-        let key_on_v1 = vault1.create_ephemeral_secret(secret_attrs).await.unwrap();
-        let secret = vault1
-            .get_ephemeral_secret(&key_on_v1, "secret")
+        let key_on_v1 = vault1
+            .import_ephemeral_secret(Secret::new(key.to_vec()), secret_attrs)
             .await
             .unwrap();
 
         let key_on_v2 = vault2
-            .import_ephemeral_secret(secret.secret().clone(), secret_attrs)
+            .import_ephemeral_secret(Secret::new(key.to_vec()), secret_attrs)
             .await
             .unwrap();
 

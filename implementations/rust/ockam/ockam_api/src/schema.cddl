@@ -161,9 +161,9 @@ identity         = bytes
 current_identity = bytes
 known_identity   = bytes
 signer_identity  = bytes
-identity_id      = text
+identity_id      = bytes
 signature        = bytes
-peer_identity_id = text
+peer_identity_id = bytes
 data             = bytes
 verified         = bool
 

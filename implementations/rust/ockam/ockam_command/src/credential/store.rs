@@ -6,15 +6,15 @@ use crate::{
     terminal::OckamColor,
     util::{node_rpc, random_name},
     vault::default_vault_name,
-    CommandGlobalOpts, Result,
+    CommandGlobalOpts,
 };
 use colorful::Colorful;
 use miette::miette;
 
+use crate::credential::{identities, identity};
 use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::{CredentialConfig, StateDirTrait};
-use ockam_identity::{identities, Identity};
 use tokio::{sync::Mutex, try_join};
 
 #[derive(Clone, Debug, Args)]
@@ -39,18 +39,6 @@ impl StoreCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(run_impl, (opts, self));
     }
-
-    pub async fn identity(&self) -> Result<Identity> {
-        let identity_as_bytes = match hex::decode(&self.issuer) {
-            Ok(b) => b,
-            Err(e) => return Err(miette!(e).into()),
-        };
-        let identity = identities()
-            .identities_creation()
-            .decode_identity(&identity_as_bytes)
-            .await?;
-        Ok(identity)
-    }
 }
 
 async fn run_impl(
@@ -66,7 +54,10 @@ async fn run_impl(
 
     let send_req = async {
         let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
-            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
+            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path)
+                .await?
+                .trim()
+                .to_string(),
             (Some(credential), _) => credential.to_string(),
             _ => {
                 *is_finished.lock().await = true;
@@ -81,16 +72,24 @@ async fn run_impl(
             .clone()
             .unwrap_or_else(|| default_vault_name(&opts.state));
 
-        let issuer = match &cmd.identity().await {
+        let identities = match identities(&vault_name, &opts).await {
+            Ok(i) => i,
+            Err(_) => {
+                *is_finished.lock().await = true;
+                return Err(miette!("Invalid state").into());
+            }
+        };
+
+        let issuer = match identity(&cmd.issuer, identities.clone()).await {
             Ok(i) => i,
             Err(_) => {
                 *is_finished.lock().await = true;
                 return Err(miette!("Issuer is invalid").into());
             }
-        }
-        .identifier();
+        };
 
-        if let Err(e) = validate_encoded_cred(&cred_as_str, &issuer, &vault_name, &opts).await {
+        let cred = hex::decode(&cred_as_str)?;
+        if let Err(e) = validate_encoded_cred(&cred, identities, issuer.identifier()).await {
             *is_finished.lock().await = true;
             return Err(miette!("Credential is invalid\n{}", e).into());
         }
@@ -98,7 +97,7 @@ async fn run_impl(
         // store
         opts.state.credentials.create(
             &cmd.credential_name,
-            CredentialConfig::new(cmd.identity().await?, cred_as_str.clone())?,
+            CredentialConfig::new(issuer.identifier().clone(), issuer.export()?, cred)?,
         )?;
 
         *is_finished.lock().await = true;

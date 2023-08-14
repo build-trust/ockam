@@ -1,40 +1,36 @@
 use crate::credentials::credentials_retriever::CredentialsRetriever;
-use crate::{
-    Credential, Credentials, IdentitiesReader, Identity, IdentityError, IdentityIdentifier,
-    Timestamp,
-};
+use crate::models::{CredentialAndPurposeKey, Identifier, TimestampInSeconds};
+use crate::utils::{add_seconds, now};
+use crate::{Credentials, IdentityError};
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::sync::RwLock;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Error, Result};
+use ockam_core::Result;
 use ockam_node::Context;
 
 /// An AuthorityService represents an authority which issued credentials
 #[derive(Clone)]
 pub struct AuthorityService {
-    identities_reader: Arc<dyn IdentitiesReader>,
-    credentials: Arc<dyn Credentials>,
-    identifier: IdentityIdentifier,
+    credentials: Arc<Credentials>,
+    identifier: Identifier,
     own_credential: Option<Arc<dyn CredentialsRetriever>>,
     inner_cache: Arc<RwLock<Option<CachedCredential>>>,
 }
 
 #[derive(Clone)]
 struct CachedCredential {
-    credential: Credential,
-    valid_until: Timestamp,
+    credential: CredentialAndPurposeKey,
+    valid_until: TimestampInSeconds,
 }
 
 impl AuthorityService {
     /// Create a new authority service
     pub fn new(
-        identities_reader: Arc<dyn IdentitiesReader>,
-        credentials: Arc<dyn Credentials>,
-        identifier: IdentityIdentifier,
+        credentials: Arc<Credentials>,
+        identifier: Identifier,
         own_credential: Option<Arc<dyn CredentialsRetriever>>,
     ) -> Self {
         Self {
-            identities_reader,
             credentials,
             identifier,
             own_credential,
@@ -42,26 +38,19 @@ impl AuthorityService {
         }
     }
 
-    /// Return the Public Identity of the Authority
-    pub async fn identity(&self) -> Result<Identity> {
-        self.identities_reader.get_identity(&self.identifier).await
-    }
-
     /// Retrieve the credential for an identity within this authority
     pub async fn credential(
         &self,
         ctx: &Context,
-        for_identity: &IdentityIdentifier,
-    ) -> Result<Credential> {
+        subject: &Identifier,
+    ) -> Result<CredentialAndPurposeKey> {
         {
             // check if we have a valid cached credential
             let guard = self.inner_cache.read().unwrap();
-            let now = Timestamp::now().ok_or_else(|| {
-                Error::new(Origin::Application, Kind::Invalid, "invalid system time")
-            })?;
+            let now = now()?;
             if let Some(cache) = guard.as_ref() {
                 // add an extra minute to have a bit of leeway for clock skew
-                if cache.valid_until > now.add_seconds(60) {
+                if cache.valid_until > add_seconds(&now, 60) {
                     return Ok(cache.credential.clone());
                 }
             }
@@ -72,19 +61,25 @@ impl AuthorityService {
             .own_credential
             .clone()
             .ok_or(IdentityError::UnknownAuthority)?;
-        let credential = retriever.retrieve(ctx, for_identity).await?;
+        let credential = retriever.retrieve(ctx, subject).await?;
 
         let credential_data = self
             .credentials
-            .verify_credential(for_identity, &[self.identity().await?], credential.clone())
+            .credentials_verification()
+            .verify_credential(Some(subject), &[self.identifier.clone()], &credential)
             .await?;
 
         let mut guard = self.inner_cache.write().unwrap();
         *guard = Some(CachedCredential {
             credential: credential.clone(),
-            valid_until: credential_data.expires,
+            valid_until: credential_data.credential_data.expires_at,
         });
 
         Ok(credential)
+    }
+
+    /// Issuer [`Identifier`]
+    pub fn identifier(&self) -> &Identifier {
+        &self.identifier
     }
 }

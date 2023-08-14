@@ -1,7 +1,8 @@
-use crate::secure_channel::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{allow, Result};
+
+use crate::secure_channel::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
 
 /// Trust any participant
 #[derive(Clone)]

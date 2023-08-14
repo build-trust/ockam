@@ -10,18 +10,19 @@ use colorful::Colorful;
 pub(crate) use get::GetCommand;
 pub(crate) use issue::IssueCommand;
 pub(crate) use list::ListCommand;
-use miette::miette;
-use ockam::identity::credential::{Credential, CredentialData, Unverified};
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::{Identifier, Identities, Identity};
 use ockam_api::cli_state::{CredentialState, StateItemTrait};
 pub(crate) use present::PresentCommand;
 pub(crate) use show::ShowCommand;
+use std::sync::Arc;
 pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
-use crate::output::Output;
+use crate::output::{CredentialAndPurposeKeyDisplay, Output};
 use crate::{CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
+use miette::IntoDiagnostic;
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam_api::cli_state::traits::StateDirTrait;
 
 /// Manage Credentials
@@ -58,26 +59,35 @@ impl CredentialCommand {
     }
 }
 
-pub async fn validate_encoded_cred(
-    encoded_cred: &str,
-    issuer: &IdentityIdentifier,
-    vault: &str,
-    opts: &CommandGlobalOpts,
-) -> Result<()> {
-    let vault = opts.state.vaults.get(vault)?.get().await?;
+pub async fn identities(vault_name: &str, opts: &CommandGlobalOpts) -> Result<Arc<Identities>> {
+    let vault = opts.state.vaults.get(vault_name)?.get().await?;
     let identities = opts.state.get_identities(vault).await?;
-    let identity = identities.repository().get_identity(issuer).await?;
 
-    let bytes = match hex::decode(encoded_cred) {
-        Ok(b) => b,
-        Err(e) => return Err(miette!(e).into()),
-    };
-    let cred: Credential = minicbor::decode(&bytes)?;
-    let cred_data: CredentialData<Unverified> = minicbor::decode(cred.unverified_data())?;
+    Ok(identities)
+}
+
+pub async fn identity(identity: &str, identities: Arc<Identities>) -> Result<Identity> {
+    let identity_as_bytes = hex::decode(identity)?;
+
+    let identity = identities
+        .identities_creation()
+        .import(None, &identity_as_bytes)
+        .await?;
+
+    Ok(identity)
+}
+
+pub async fn validate_encoded_cred(
+    encoded_cred: &[u8],
+    identities: Arc<Identities>,
+    issuer: &Identifier,
+) -> Result<()> {
+    let cred: CredentialAndPurposeKey = minicbor::decode(encoded_cred)?;
 
     identities
         .credentials()
-        .verify_credential(cred_data.unverified_subject(), &[identity], cred)
+        .credentials_verification()
+        .verify_credential(None, &[issuer.clone()], &cred)
         .await?;
 
     Ok(())
@@ -96,19 +106,23 @@ impl CredentialOutput {
         vault_name: &str,
     ) -> Result<Self> {
         let config = state.config();
+
+        let identities = identities(vault_name, opts).await.into_diagnostic()?;
+
         let is_verified = validate_encoded_cred(
             &config.encoded_credential,
-            &config.issuer.identifier(),
-            vault_name,
-            opts,
+            identities,
+            &config.issuer_identifier,
         )
         .await
         .is_ok();
 
+        let credential = config.credential()?;
+        let credential = format!("{}", CredentialAndPurposeKeyDisplay(credential));
+
         let output = Self {
             name: state.name().to_string(),
-
-            credential: config.credential()?.to_string(),
+            credential,
             is_verified,
         };
 

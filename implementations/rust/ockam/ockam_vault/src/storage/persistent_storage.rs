@@ -1,10 +1,12 @@
 use crate::{constants, KeyId, Secret, SecretAttributes, SecretType, StoredSecret};
+
 use ockam_core::compat::boxed::Box;
+use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Result};
 use ockam_node::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueStorage};
+
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Storage for a Vault data backed by a file
@@ -219,7 +221,7 @@ impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::{Secret, SecretType, VaultSecurityModule};
+    use crate::Secret;
     use ockam_core::compat::rand::RngCore;
     use rand::thread_rng;
     use std::fs::File;
@@ -234,7 +236,7 @@ pub(crate) mod tests {
         // create and retrieve a persistent secret
         let secret = Secret::new(vec![1; 32]);
         let attributes = SecretAttributes::Ed25519;
-        let key_id = VaultSecurityModule::compute_key_id(&secret, &attributes).await?;
+        let key_id = "34750f98bd59fcfc946da45aaabe933be154a4b5094e1c4abf42866505f3c97e".to_string();
         let stored_secret = StoredSecret::new(secret.clone(), attributes);
         storage.put(key_id.clone(), stored_secret.clone()).await?;
 

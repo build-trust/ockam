@@ -8,23 +8,24 @@ use std::path::PathBuf;
 use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
+use ockam::identity::TrustContext;
+use ockam::identity::Vault;
 use ockam::identity::{
     Credentials, CredentialsServer, CredentialsServerModule, Identities, IdentitiesRepository,
-    IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
+    IdentityAttributesReader, IdentityAttributesWriter,
 };
-use ockam::identity::{IdentityIdentifier, SecureChannels};
+use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, ForwardingService, ForwardingServiceOptions, Result, Routed, TcpTransport,
     Worker,
 };
-use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
-use ockam_identity::TrustContext;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
 
@@ -89,10 +90,10 @@ pub struct NodeManager {
     node_name: String,
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
-    pub(crate) controller_identity_id: IdentityIdentifier,
+    pub(crate) controller_identity_id: Identifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
@@ -101,7 +102,7 @@ pub struct NodeManager {
 }
 
 impl NodeManager {
-    pub(super) fn identifier(&self) -> IdentityIdentifier {
+    pub(super) fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }
 
@@ -121,7 +122,7 @@ impl NodeManager {
         self.identities_repository().as_attributes_reader()
     }
 
-    pub(super) fn credentials(&self) -> Arc<dyn Credentials> {
+    pub(super) fn credentials(&self) -> Arc<Credentials> {
         self.identities().credentials()
     }
 
@@ -129,8 +130,8 @@ impl NodeManager {
         Arc::new(CredentialsServerModule::new(self.credentials()))
     }
 
-    pub(super) fn secure_channels_vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.secure_channels.vault().clone()
+    pub(super) fn secure_channels_vault(&self) -> Vault {
+        self.secure_channels.identities().vault()
     }
 
     pub(super) fn list_outlets(&self) -> OutletList {
@@ -191,7 +192,6 @@ impl NodeManager {
             let mut env = Env::new();
             env.put("resource.id", str(r.as_str()));
             env.put("action.id", str(a.as_str()));
-            env.put("resource.project_id", str(tcid.to_string()));
             env.put("resource.trust_context_id", str(tcid));
 
             // Check if a policy exists for (resource, action) and if not, then
@@ -199,17 +199,9 @@ impl NodeManager {
             if self.policies.get_policy(r, a).await?.is_none() {
                 let fallback = match custom_default {
                     Some(e) => e.clone(),
-                    None => and([
-                        eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                                                                                         /*
-                                                                                         * TODO: replace the project_id check for trust_context_id.  For now the
-                                                                                         * existing authority deployed doesn't know about trust_context so this is to
-                                                                                         * be done after updating deployed authorities.
-                                                                                         eq([
-                                                                                             ident("resource.trust_context_id"),
-                                                                                             ident("subject.trust_context_id"),
-                                                                                         ]),
-                                                                                         */
+                    None => eq([
+                        ident("resource.trust_context_id"),
+                        ident("subject.trust_context_id"),
                     ]),
                 };
                 self.policies.set_policy(r, a, &fallback).await?
@@ -325,7 +317,7 @@ impl NodeManager {
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
-        let vault: Arc<dyn IdentitiesVault> = node_state.config().vault().await?;
+        let vault: Vault = node_state.config().vault().await?;
         let identities_repository: Arc<dyn IdentitiesRepository> =
             Arc::new(match general_options.pre_trusted_identities {
                 None => BootstrapedIdentityStore::new(
@@ -337,7 +329,7 @@ impl NodeManager {
 
         debug!("create the secure channels service");
         let secure_channels = SecureChannels::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(identities_repository.clone())
             .build();
 
@@ -486,10 +478,7 @@ impl NodeManager {
         Ok(connection_instance)
     }
 
-    pub(crate) async fn resolve_project(
-        &self,
-        name: &str,
-    ) -> Result<(MultiAddr, IdentityIdentifier)> {
+    pub(crate) async fn resolve_project(&self, name: &str) -> Result<(MultiAddr, Identifier)> {
         let projects = ProjectLookup::from_state(self.cli_state.projects.list()?)
             .await
             .map_err(|e| ApiError::core(format!("Cannot load projects: {:?}", e)))?;

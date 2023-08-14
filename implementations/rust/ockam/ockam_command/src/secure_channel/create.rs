@@ -4,7 +4,7 @@ use miette::{miette, IntoDiagnostic, WrapErr};
 use serde_json::json;
 use tokio::{sync::Mutex, try_join};
 
-use ockam::{identity::IdentityIdentifier, route, Context};
+use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::secure_channel::{
@@ -47,7 +47,7 @@ pub struct CreateCommand {
 
     /// Identifiers authorized to be presented by the listener
     #[arg(value_name = "IDENTIFIER", long, short, display_order = 801)]
-    pub authorized: Option<Vec<IdentityIdentifier>>,
+    pub authorized: Option<Vec<Identifier>>,
 
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]

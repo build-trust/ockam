@@ -1,7 +1,8 @@
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::DefaultAddress;
-use ockam::identity::credential::Timestamp;
-use ockam::identity::{AttributesEntry, IdentityIdentifier};
+
+use ockam::identity::utils::now;
+use ockam::identity::{AttributesEntry, Identifier, TRUST_CONTEXT_ID};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::{Display, Formatter};
@@ -13,7 +14,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
     /// Authority identity or identity associated with the newly created node
-    pub identifier: IdentityIdentifier,
+    pub identifier: Identifier,
 
     /// path where the storage for identity attributes should be persisted
     pub storage_path: PathBuf,
@@ -54,7 +55,7 @@ pub struct Configuration {
 /// Local and private functions for the authority configuration
 impl Configuration {
     /// Return the authority identity identifier
-    pub(crate) fn identifier(&self) -> IdentityIdentifier {
+    pub(crate) fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }
 
@@ -120,7 +121,7 @@ impl OktaConfiguration {
 /// as having all its attributes fully authenticated
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct TrustedIdentity {
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     attributes: HashMap<String, String>,
 }
 
@@ -135,44 +136,34 @@ impl Display for TrustedIdentity {
 }
 
 impl TrustedIdentity {
-    pub fn new(
-        identifier: &IdentityIdentifier,
-        attributes: &HashMap<String, String>,
-    ) -> TrustedIdentity {
+    pub fn new(identifier: &Identifier, attributes: &HashMap<String, String>) -> TrustedIdentity {
         TrustedIdentity {
             identifier: identifier.clone(),
             attributes: attributes.clone(),
         }
     }
 
-    pub fn identifier(&self) -> IdentityIdentifier {
+    pub fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }
 
     pub fn attributes_entry(
         &self,
         project_identifier: String,
-        authority_identifier: &IdentityIdentifier,
+        authority_identifier: &Identifier,
     ) -> AttributesEntry {
-        let mut map: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+        let mut map: BTreeMap<Vec<u8>, Vec<u8>> = BTreeMap::new();
         for (name, value) in self.attributes.clone().iter() {
-            map.insert(name.clone(), value.as_bytes().to_vec());
+            map.insert(name.as_bytes().to_vec(), value.as_bytes().to_vec());
         }
 
-        // Since the authority node is started for a given project
-        // add the project_id attribute to the trusted identities
         map.insert(
-            "project_id".to_string(), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-            project_identifier.as_bytes().to_vec(),
-        );
-
-        map.insert(
-            "trust_context_id".to_string(),
+            TRUST_CONTEXT_ID.to_vec(),
             project_identifier.as_bytes().to_vec(),
         );
         AttributesEntry::new(
             map,
-            Timestamp::now().unwrap(),
+            now().unwrap(),
             None,
             Some(authority_identifier.clone()),
         )

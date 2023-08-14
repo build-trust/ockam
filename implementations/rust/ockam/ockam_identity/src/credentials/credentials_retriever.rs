@@ -6,10 +6,9 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, route, Address, Result, Route};
 use ockam_node::Context;
 
-use crate::{
-    Credential, CredentialsIssuerClient, IdentityIdentifier, SecureChannelOptions, SecureChannels,
-    TrustMultiIdentifiersPolicy,
-};
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::CredentialsIssuerClient;
+use crate::{SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy};
 
 /// Trait for retrieving a credential for a given identity
 #[async_trait]
@@ -18,19 +17,21 @@ pub trait CredentialsRetriever: Send + Sync + 'static {
     async fn retrieve(
         &self,
         ctx: &Context,
-        for_identity: &IdentityIdentifier,
-    ) -> Result<Credential>;
+        for_identity: &Identifier,
+    ) -> Result<CredentialAndPurposeKey>;
 }
 
 /// Credentials retriever that retrieves a credential from memory
 pub struct CredentialsMemoryRetriever {
-    credential: Credential,
+    credential_and_purpose_key: CredentialAndPurposeKey,
 }
 
 impl CredentialsMemoryRetriever {
     /// Create a new CredentialsMemoryRetriever
-    pub fn new(credential: Credential) -> Self {
-        Self { credential }
+    pub fn new(credential_and_purpose_key: CredentialAndPurposeKey) -> Self {
+        Self {
+            credential_and_purpose_key,
+        }
     }
 }
 
@@ -40,9 +41,9 @@ impl CredentialsRetriever for CredentialsMemoryRetriever {
     async fn retrieve(
         &self,
         _ctx: &Context,
-        _for_identity: &IdentityIdentifier,
-    ) -> Result<Credential> {
-        Ok(self.credential.clone())
+        _for_identity: &Identifier,
+    ) -> Result<CredentialAndPurposeKey> {
+        Ok(self.credential_and_purpose_key.clone())
     }
 }
 
@@ -70,8 +71,8 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
     async fn retrieve(
         &self,
         ctx: &Context,
-        for_identity: &IdentityIdentifier,
-    ) -> Result<Credential> {
+        for_identity: &Identifier,
+    ) -> Result<CredentialAndPurposeKey> {
         debug!("Getting credential from : {}", &self.issuer.route);
         let resolved_route = ctx
             .resolve_transport_route(self.issuer.route.clone())
@@ -107,7 +108,7 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RemoteCredentialsRetrieverInfo {
     /// Issuer identity, used to validate retrieved credentials
-    pub identifier: IdentityIdentifier,
+    pub identifier: Identifier,
     /// Route used to establish a secure channel to the remote node
     pub route: Route,
     /// Address of the credentials service on the remote node
@@ -116,7 +117,7 @@ pub struct RemoteCredentialsRetrieverInfo {
 
 impl RemoteCredentialsRetrieverInfo {
     /// Create new information for a credential retriever
-    pub fn new(identifier: IdentityIdentifier, route: Route, service_address: Address) -> Self {
+    pub fn new(identifier: Identifier, route: Route, service_address: Address) -> Self {
         Self {
             identifier,
             route,

@@ -1,118 +1,117 @@
-use crate::credential::{Credential, CredentialData, Timestamp, Verified};
-use crate::identities::{AttributesEntry, Identities};
-use crate::identity::{Identity, IdentityIdentifier};
-use crate::IdentityError;
-use async_trait::async_trait;
-use ockam_core::compat::boxed::Box;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Error, Result};
-use ockam_vault::SignatureVec;
+use crate::models::{CredentialData, PurposeKeyAttestationData};
+use crate::{CredentialsCreation, CredentialsVerification, IdentitiesRepository, PurposeKeys};
 
-/// This trait provides functions to issue, accept and verify credentials
-#[async_trait]
-pub trait Credentials: Send + Sync + 'static {
-    /// Issue a credential for by having the issuer sign the serialized credential data
-    async fn issue_credential(
-        &self,
-        issuer: &IdentityIdentifier,
-        credential_data: CredentialData<Verified>,
-    ) -> Result<Credential>;
+use ockam_core::compat::sync::Arc;
+use ockam_vault::{SigningVault, VerifyingVault};
 
-    /// Verify that a credential has been signed by one of the authorities
-    async fn verify_credential(
-        &self,
-        subject: &IdentityIdentifier,
-        authorities: &[Identity],
-        credential: Credential,
-    ) -> Result<CredentialData<Verified>>;
-
-    /// Verify and store a credential sent by a specific identity
-    async fn receive_presented_credential(
-        &self,
-        sender: &IdentityIdentifier,
-        authorities: &[Identity],
-        credential: Credential,
-    ) -> Result<()>;
+/// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
+/// after parsing and verifying corresponding [`Credential`] and [`super::super::models::PurposeKeyAttestation`]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CredentialAndPurposeKeyData {
+    /// [`CredentialData`]
+    pub credential_data: CredentialData,
+    /// [`PurposeKeyAttestationData`]
+    pub purpose_key_data: PurposeKeyAttestationData,
 }
 
-#[async_trait]
-impl Credentials for Identities {
-    async fn verify_credential(
-        &self,
-        subject: &IdentityIdentifier,
-        authorities: &[Identity],
-        credential: Credential,
-    ) -> Result<CredentialData<Verified>> {
-        let credential_data = CredentialData::try_from(credential.data.as_slice())?;
+/// Service for managing [`Credential`]s
+pub struct Credentials {
+    credential_vault: Arc<dyn SigningVault>,
+    verifying_vault: Arc<dyn VerifyingVault>,
+    purpose_keys: Arc<PurposeKeys>,
+    identities_repository: Arc<dyn IdentitiesRepository>,
+}
 
-        let issuer = authorities
-            .iter()
-            .find(|&x| x.identifier() == credential_data.issuer);
-        let issuer = match issuer {
-            Some(i) => i,
-            None => return Err(IdentityError::UnknownAuthority.into()),
+impl Credentials {
+    ///Constructor
+    pub fn new(
+        credential_vault: Arc<dyn SigningVault>,
+        verifying_vault: Arc<dyn VerifyingVault>,
+        purpose_keys: Arc<PurposeKeys>,
+        identities_repository: Arc<dyn IdentitiesRepository>,
+    ) -> Self {
+        Self {
+            credential_vault,
+            verifying_vault,
+            purpose_keys,
+            identities_repository,
+        }
+    }
+
+    /// [`PurposeKeys`]
+    pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
+        self.purpose_keys.clone()
+    }
+
+    /// [`IdentitiesRepository`]
+    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
+        self.identities_repository.clone()
+    }
+
+    /// Return [`CredentialsCreation`]
+    pub fn credentials_creation(&self) -> Arc<CredentialsCreation> {
+        Arc::new(CredentialsCreation::new(
+            self.purpose_keys.purpose_keys_creation(),
+            self.credential_vault.clone(),
+            self.verifying_vault.clone(),
+            self.identities_repository.clone(),
+        ))
+    }
+
+    /// Return [`CredentialsVerification`]
+    pub fn credentials_verification(&self) -> Arc<CredentialsVerification> {
+        Arc::new(CredentialsVerification::new(
+            self.purpose_keys.purpose_keys_verification(),
+            self.verifying_vault.clone(),
+            self.identities_repository.clone(),
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::identities::identities;
+    use crate::models::SchemaId;
+    use crate::Attributes;
+    use minicbor::bytes::ByteVec;
+    use ockam_core::compat::collections::BTreeMap;
+    use ockam_core::Result;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn test_issue_credential() -> Result<()> {
+        let identities = identities();
+        let creation = identities.identities_creation();
+
+        let issuer = creation.create_identity().await?;
+        let subject = creation.create_identity().await?;
+        let credentials = identities.credentials();
+
+        let mut map: BTreeMap<ByteVec, ByteVec> = Default::default();
+        map.insert(b"key".to_vec().into(), b"value".to_vec().into());
+        let subject_attributes = Attributes {
+            schema: SchemaId(1),
+            map,
         };
 
-        let now = Timestamp::now()
-            .ok_or_else(|| Error::new(Origin::Application, Kind::Invalid, "invalid system time"))?;
-
-        credential_data.verify(subject, &issuer.identifier(), now)?;
-
-        let sig = ockam_vault::Signature::new(credential.signature().to_vec());
-
-        if !self
-            .identities_keys()
-            .verify_signature(
-                issuer,
-                &sig,
-                credential.unverified_data(),
-                Some(credential_data.clone().unverified_key_label()),
+        let credential = credentials
+            .credentials_creation()
+            .issue_credential(
+                issuer.identifier(),
+                subject.identifier(),
+                subject_attributes,
+                Duration::from_secs(60),
             )
-            .await?
-        {
-            return Err(Error::new(
-                Origin::Application,
-                Kind::Invalid,
-                "invalid signature",
-            ));
-        }
-        Ok(credential_data.into_verified())
-    }
-
-    /// Create a signed credential based on the given values.
-    async fn issue_credential(
-        &self,
-        issuer: &IdentityIdentifier,
-        credential_data: CredentialData<Verified>,
-    ) -> Result<Credential> {
-        let bytes = minicbor::to_vec(credential_data)?;
-        let issuer_identity = self.repository().get_identity(issuer).await?;
-        let sig = self
-            .identities_keys()
-            .create_signature(&issuer_identity, &bytes, None)
-            .await?;
-        Ok(Credential::new(bytes, SignatureVec::from(sig)))
-    }
-
-    async fn receive_presented_credential(
-        &self,
-        sender: &IdentityIdentifier,
-        authorities: &[Identity],
-        credential: Credential,
-    ) -> Result<()> {
-        let credential_data = self
-            .verify_credential(sender, authorities, credential)
             .await?;
 
-        self.identities_repository
-            .put_attributes(
-                sender,
-                AttributesEntry::new(
-                    credential_data.attributes.as_map_vec_u8(),
-                    Timestamp::now().unwrap(),
-                    Some(credential_data.expires),
-                    Some(credential_data.issuer),
-                ),
+        println!("{}", hex::encode(minicbor::to_vec(&credential)?));
+
+        let _res = credentials
+            .credentials_verification()
+            .verify_credential(
+                Some(subject.identifier()),
+                &[issuer.identifier().clone()],
+                &credential,
             )
             .await?;
 

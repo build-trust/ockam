@@ -1,8 +1,9 @@
 use ockam::compat::sync::Arc;
-use ockam::identity::{Identities, IdentitiesCreation, IdentitiesKeys};
-use ockam::identity::{IdentitiesVault, Identity};
+use ockam::identity::Identity;
+use ockam::identity::Vault;
+use ockam::identity::{Identifier, IdentitiesRepository};
+use ockam::identity::{Identities, IdentitiesCreation};
 use ockam::Result;
-use ockam_identity::{IdentitiesRepository, IdentityIdentifier};
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::CliState;
@@ -22,7 +23,7 @@ impl NodeIdentities {
         }
     }
 
-    pub(super) fn identities_vault(&self) -> Arc<dyn IdentitiesVault> {
+    pub(super) fn identities_vault(&self) -> Vault {
         self.identities.vault()
     }
 
@@ -33,14 +34,31 @@ impl NodeIdentities {
     /// Return an identity if it has been created with that name before
     pub(crate) async fn get_identity(&self, identity_name: String) -> Result<Option<Identity>> {
         let repository = self.identities_repository();
-        if let Ok(idt_state) = self.cli_state.identities.get(identity_name.as_str()) {
-            Ok(repository.get_identity(&idt_state.identifier()).await.ok())
+
+        let idt_state = if let Ok(idt_state) = self.cli_state.identities.get(identity_name.as_str())
+        {
+            idt_state
         } else {
-            Ok(None)
-        }
+            return Ok(None);
+        };
+
+        let change_history =
+            if let Ok(change_history) = repository.get_identity(&idt_state.identifier()).await {
+                change_history
+            } else {
+                return Ok(None);
+            };
+
+        let identity = self
+            .identities
+            .identities_creation()
+            .import_from_change_history(Some(&idt_state.identifier()), change_history)
+            .await?;
+
+        Ok(Some(identity))
     }
 
-    pub(crate) async fn get_identifier(&self, identity_name: String) -> Result<IdentityIdentifier> {
+    pub(crate) async fn get_identifier(&self, identity_name: String) -> Result<Identifier> {
         let identity_state = self.cli_state.identities.get(identity_name.as_str())?;
         Ok(identity_state.identifier())
     }
@@ -48,14 +66,6 @@ impl NodeIdentities {
     /// Return an identities creation service backed up by the default vault
     pub(crate) async fn get_default_identities_creation(&self) -> Result<Arc<IdentitiesCreation>> {
         Ok(Arc::new(self.get_identities_creation(None).await?))
-    }
-
-    /// Return an identities keys service backed up by the default vault
-    pub(crate) async fn get_default_identities_keys(&self) -> Result<Arc<IdentitiesKeys>> {
-        Ok(Identities::builder()
-            .with_identities_vault(self.identities_vault())
-            .build()
-            .identities_keys())
     }
 
     /// Return an identities service, possibly backed by a specific vault
@@ -66,7 +76,7 @@ impl NodeIdentities {
         let vault = self.get_identities_vault(vault_name).await?;
         let repository = self.cli_state.identities.identities_repository().await?;
         Ok(Identities::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(repository)
             .build())
     }
@@ -77,29 +87,20 @@ impl NodeIdentities {
         vault_name: Option<String>,
     ) -> Result<IdentitiesCreation> {
         let vault = self.get_identities_vault(vault_name).await?;
-        Ok(IdentitiesCreation::new(self.identities_repository(), vault))
+        Ok(IdentitiesCreation::new(
+            self.identities_repository(),
+            vault.identity_vault,
+            vault.verifying_vault,
+        ))
     }
 
     /// Return either the default vault or a specific one
-    pub(crate) async fn get_identities_vault(
-        &self,
-        vault_name: Option<String>,
-    ) -> Result<Arc<dyn IdentitiesVault>> {
+    pub(crate) async fn get_identities_vault(&self, vault_name: Option<String>) -> Result<Vault> {
         if let Some(vault) = vault_name {
             let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
             Ok(existing_vault)
         } else {
             Ok(self.identities_vault())
         }
-    }
-
-    /// Return a service to perform key operations
-    pub(crate) async fn get_identities_keys(
-        &self,
-        vault_name: Option<String>,
-    ) -> Result<Arc<IdentitiesKeys>> {
-        Ok(Arc::new(IdentitiesKeys::new(
-            self.get_identities_vault(vault_name).await?,
-        )))
     }
 }

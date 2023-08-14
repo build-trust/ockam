@@ -34,15 +34,20 @@ extern crate alloc;
 #[cfg(feature = "storage")]
 pub mod storage;
 
-/// Traits and types defining the behaviour of a Vault
-pub mod traits;
-/// Default Vault implementation
-pub mod vault;
+/// Errors
+mod error;
+
+/// Traits
+mod traits;
+
+/// Software implementation of Vault traits
+mod software;
 
 /// Main vault types: PublicKey, Secret, SecretAttributes etc...
 mod types;
 
 pub use constants;
+pub use error::*;
+pub use software::*;
 pub use traits::*;
 pub use types::*;
-pub use vault::*;

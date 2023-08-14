@@ -4,27 +4,40 @@ use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::identity::{
-    AuthorityService, CredentialsIssuerClient, SecureChannelListenerOptions, SecureChannelOptions, TrustContext,
+    AuthorityService, CredentialsIssuerClient, SecureChannelListenerOptions, SecureChannelOptions, TrustContext, Vault,
 };
-use ockam::TcpTransportExtension;
-use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpListenerOptions};
+use ockam::vault::{Secret, SecretAttributes, SoftwareSigningVault};
+use ockam::{route, Context, Result, TcpConnectionOptions, TcpListenerOptions};
+use ockam::{Node, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Create a node with default implementations
-    let node = node(ctx);
+    let identity_vault = SoftwareSigningVault::create();
+    // Import the signing secret key to the Vault
+    let secret = identity_vault
+        .import_key(
+            Secret::new(hex::decode("5FB3663DF8405379981462BABED7507E3D53A8D061188105E3ADBD70E0A74B8A").unwrap()),
+            SecretAttributes::Ed25519,
+        )
+        .await?;
+
+    // Create a default Vault but use the signing vault with our secret in it
+    let mut vault = Vault::create();
+    vault.identity_vault = identity_vault;
+
+    let node = Node::builder().with_vault(vault).build(ctx).await?;
+
     // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity representing the server
     // Load an identity corresponding to the following public identifier
-    // Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638
+    // I2c3b0ef15c12fe43d405497fcfc46318da46d0f5
     //
     // We're hard coding this specific identity because its public identifier is known
     // to the credential issuer as a member of the production cluster.
-    let change_history = "01ed8a5b1303f975c1296c990d1bd3c1946cfef328de20531e3511ec5604ce0dd9000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e8c328bc0cc07a374762091d037e69c36fdd4d2e1a651abd4d43a1362d3f800503010140a349968063d7337d0c965969fa9c640824c01a6d37fe130d4ab963b0271b9d5bbf0923faa5e27f15359554f94f08676df01b99d997944e4feaf0caaa1189480e";
-    let secret = "5b2b3f2abbd1787704d8f8b363529f8e2d8f423b6dd4b96a2c462e4f0e04ee18";
-    let server = node.import_private_identity(change_history, secret).await?;
+    let change_history = hex::decode("81a201583ba20101025835a40282018158201d387ce453816d91159740a55e9a62ad3b58be9ecf7ef08760c42c0d885b6c2e03f4041a64dd4074051a77a9437402820181584053de69d82c9c4b12476c889b437be1d9d33bd0041655c4836a3a57ac5a67703e7f500af5bacaed291cfd6783d255fe0f0606638577d087a5612bfb4671f2b70a").unwrap();
+    let server = node.import_private_identity(&change_history, &secret).await?;
 
     // Connect with the credential issuer and authenticate using the latest private
     // key of this program's hardcoded identity.
@@ -35,7 +48,7 @@ async fn main(ctx: Context) -> Result<()> {
     let issuer_connection = tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?;
     let issuer_channel = node
         .create_secure_channel(
-            &server.identifier(),
+            server.identifier(),
             route![issuer_connection, "secure"],
             SecureChannelOptions::new(),
         )
@@ -43,24 +56,23 @@ async fn main(ctx: Context) -> Result<()> {
 
     let issuer_client = CredentialsIssuerClient::new(route![issuer_channel, "issuer"], node.context()).await?;
     let credential = issuer_client.credential().await?;
-    println!("Credential:\n{credential}");
 
     // Verify that the received credential has indeed be signed by the issuer.
     // The issuer identity must be provided out-of-band from a trusted source
     // and match the identity used to start the issuer node
-    let issuer_identity = "0180370b91c5d0aa4af34580a9ab4b8fb2a28351bed061525c96b4f07e75c0ee18000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020236f79490d3f683e0c3bf458a7381c366c99a8f2b2ac406db1ef8c130111f12703010140b23fddceb11cea25602aa681b6ef6abda036722c27a6dee291f1d6b2234a127af21cc79de2252201f27e7e34e0bf5064adbf3d01eb355aff4bf5c90b8f1fd80a";
+    let issuer_identity = "81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805";
     let issuer = node.import_identity_hex(issuer_identity).await?;
     node.credentials()
-        .verify_credential(&server.identifier(), &[issuer.clone()], credential.clone())
+        .credentials_verification()
+        .verify_credential(Some(server.identifier()), &[issuer.identifier().clone()], &credential)
         .await?;
 
     // Create a trust context that will be used to authenticate credential exchanges
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
         Some(AuthorityService::new(
-            node.identities().identities_reader(),
             node.credentials(),
-            issuer.identifier(),
+            issuer.identifier().clone(),
             None,
         )),
     );
@@ -77,13 +89,13 @@ async fn main(ctx: Context) -> Result<()> {
 
     node.flow_controls()
         .add_consumer("echoer", &sc_listener_options.spawner_flow_control_id());
-    let allow_production = AbacAccessControl::create(node.repository(), "cluster", "production");
+    let allow_production = AbacAccessControl::create(node.identities_repository(), "cluster", "production");
     node.start_worker_with_access_control("echoer", Echoer, allow_production, AllowAll)
         .await?;
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
-    node.create_secure_channel_listener(&server.identifier(), "secure", sc_listener_options)
+    node.create_secure_channel_listener(server.identifier(), "secure", sc_listener_options)
         .await?;
 
     // Create a TCP listener and wait for incoming connections

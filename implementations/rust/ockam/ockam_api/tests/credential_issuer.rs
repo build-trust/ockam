@@ -1,14 +1,15 @@
-use ockam::identity::credential::Timestamp;
+use minicbor::bytes::ByteSlice;
+use ockam::identity::utils::now;
 use ockam::identity::{identities, AttributesEntry};
+use ockam::identity::{
+    CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels,
+};
 use ockam::route;
 use ockam_api::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
 use ockam_core::compat::collections::{BTreeMap, HashMap};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
-use ockam_identity::{
-    CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannels,
-};
 use ockam_node::Context;
 
 #[ockam_macros::test]
@@ -21,12 +22,12 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let auth_identity = identities.identities_creation().create_identity().await?;
     let member_identity = identities.identities_creation().create_identity().await?;
 
-    let now = Timestamp::now().unwrap();
+    let now = now().unwrap();
 
     let pre_trusted = HashMap::from([(
-        member_identity.identifier(),
+        member_identity.identifier().clone(),
         AttributesEntry::new(
-            BTreeMap::from([("attr".to_string(), "value".as_bytes().to_vec())]),
+            BTreeMap::from([(b"attr".to_vec(), b"value".to_vec())]),
             now,
             None,
             None,
@@ -43,7 +44,8 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     // and the repository containing the trusted identities
     let identities = Identities::builder()
         .with_identities_repository(Arc::new(bootstrapped))
-        .with_identities_vault(identities.clone().vault())
+        .with_vault(identities.vault())
+        .with_purpose_keys_repository(identities.purpose_keys_repository())
         .build();
     let secure_channels = SecureChannels::builder()
         .with_identities(identities.clone())
@@ -56,7 +58,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &auth_identity.identifier(),
+            auth_identity.identifier(),
             api_worker_addr.clone(),
             options,
         )
@@ -64,7 +66,8 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     ctx.flow_controls()
         .add_consumer(auth_worker_addr.clone(), &sc_flow_control_id);
     let auth = CredentialsIssuer::new(
-        identities.clone(),
+        identities.repository(),
+        identities.credentials(),
         auth_identity.identifier(),
         "project42".into(),
     )
@@ -75,7 +78,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let e2a = secure_channels
         .create_secure_channel(
             ctx,
-            &member_identity.identifier(),
+            member_identity.identifier(),
             api_worker_addr,
             SecureChannelOptions::new(),
         )
@@ -87,17 +90,31 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let exported = member_identity.export()?;
 
     let imported = identities_creation
-        .decode_identity(&exported)
+        .import(Some(member_identity.identifier()), &exported)
         .await
         .unwrap();
     let data = identities
         .credentials()
-        .verify_credential(&imported.identifier(), &[auth_identity], credential)
+        .credentials_verification()
+        .verify_credential(
+            Some(imported.identifier()),
+            &[auth_identity.identifier().clone()],
+            &credential,
+        )
         .await?;
     assert_eq!(
-        Some(b"project42".as_slice()),
-        data.attributes().get("project_id")
+        Some(&b"project42".to_vec().into()),
+        data.credential_data
+            .subject_attributes
+            .map
+            .get::<ByteSlice>(b"trust_context_id".as_slice().into())
     );
-    assert_eq!(Some(b"value".as_slice()), data.attributes().get("attr"));
+    assert_eq!(
+        Some(&b"value".to_vec().into()),
+        data.credential_data
+            .subject_attributes
+            .map
+            .get::<ByteSlice>(b"attr".as_slice().into())
+    );
     ctx.stop().await
 }

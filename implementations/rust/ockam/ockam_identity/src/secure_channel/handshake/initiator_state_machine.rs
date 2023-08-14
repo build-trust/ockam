@@ -1,21 +1,23 @@
-use crate::secure_channel::handshake::error::XXError;
-use crate::secure_channel::handshake::handshake::Handshake;
-use crate::secure_channel::handshake::handshake_state_machine::{
-    Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
-    StateMachine, Status,
-};
-use crate::{Credential, Identities, IdentityIdentifier, Role, TrustContext, TrustPolicy, XXVault};
 use delegate::delegate;
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::PublicKey;
+use ockam_vault::{PublicKey, SecureChannelVault};
 use Action::*;
 use Event::*;
 use Role::*;
 use Status::*;
+
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::secure_channel::handshake::error::XXError;
+use crate::secure_channel::handshake::handshake::Handshake;
+use crate::secure_channel::handshake::handshake_state_machine::{
+    Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
+    StateMachine, Status,
+};
+use crate::{Identities, PurposeKey, Role, TrustContext, TrustPolicy};
 
 /// Implementation of a state machine for the key exchange on the initiator side
 #[async_trait]
@@ -35,8 +37,8 @@ impl StateMachine for InitiatorStateMachine {
             // Process message 2 and send message 3
             (WaitingForMessage2, ReceivedMessage(message)) => {
                 let message2_payload = self.decode_message2(&message).await?;
-                let their_identity_payload =
-                    CommonStateMachine::deserialize_payload(message2_payload)?;
+                let their_identity_payload: IdentityAndCredentials =
+                    minicbor::decode(&message2_payload)?;
                 self.verify_identity(their_identity_payload, &self.handshake.state.rs()?.clone())
                     .await?;
                 let identity_payload = self
@@ -94,27 +96,27 @@ impl InitiatorStateMachine {
 
 impl InitiatorStateMachine {
     pub async fn new(
-        vault: Arc<dyn XXVault>,
+        vault: Arc<dyn SecureChannelVault>,
         identities: Arc<Identities>,
-        identifier: IdentityIdentifier,
-        credentials: Vec<Credential>,
+        identifier: Identifier,
+        purpose_key: PurposeKey,
+        credentials: Vec<CredentialAndPurposeKey>,
         trust_policy: Arc<dyn TrustPolicy>,
         trust_context: Option<TrustContext>,
     ) -> Result<InitiatorStateMachine> {
         let common = CommonStateMachine::new(
-            vault.clone(),
             identities,
             identifier,
+            purpose_key.attestation().clone(),
             credentials,
             trust_policy,
             trust_context,
         );
-        let static_key = common.get_static_key().await?;
-        let identity_payload = common.make_identity_payload(&static_key).await?;
+        let identity_payload = common.make_identity_payload().await?;
 
         Ok(InitiatorStateMachine {
             common,
-            handshake: Handshake::new(vault.clone(), static_key).await?,
+            handshake: Handshake::new(vault, purpose_key.key_id().clone()).await?,
             identity_payload: Some(identity_payload),
         })
     }

@@ -1,4 +1,4 @@
-use crate::common::{
+use crate::common::message_flow_auth::{
     message_should_not_pass, message_should_not_pass_with_ctx, message_should_pass_with_ctx,
 };
 use ockam_core::{route, AllowAll, Result};
@@ -21,6 +21,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
+
     let bob = bob_secure_channels
         .identities()
         .identities_creation()
@@ -30,7 +31,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     let bob_listener = bob_secure_channels
         .create_secure_channel_listener(
             ctx,
-            &bob.identifier(),
+            bob.identifier(),
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -39,7 +40,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
-            &alice.identifier(),
+            alice.identifier(),
             route!["listener"],
             SecureChannelOptions::new(),
         )
@@ -101,6 +102,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
+
     let bob = bob_secure_channels
         .identities()
         .identities_creation()
@@ -109,13 +111,13 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let bob_options = SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id());
     let bob_listener = bob_secure_channels
-        .create_secure_channel_listener(ctx, &bob.identifier(), "listener", bob_options)
+        .create_secure_channel_listener(ctx, bob.identifier(), "listener", bob_options)
         .await?;
 
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
-            &alice.identifier(),
+            alice.identifier(),
             route![connection_to_bob, "listener"],
             SecureChannelOptions::new(),
         )

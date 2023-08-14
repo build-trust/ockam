@@ -1,6 +1,6 @@
 use minicbor::{Decode, Encode};
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam::remote::RemoteForwarderInfo;
 use ockam::route;
 use ockam_core::flow_control::FlowControlId;
@@ -27,7 +27,7 @@ pub struct CreateForwarder {
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(4)] authorized: Option<IdentityIdentifier>,
+    #[n(4)] authorized: Option<Identifier>,
 }
 
 impl CreateForwarder {
@@ -46,7 +46,7 @@ impl CreateForwarder {
         address: MultiAddr,
         alias: Option<String>,
         at_rust_node: bool,
-        auth: Option<IdentityIdentifier>,
+        auth: Option<Identifier>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -70,7 +70,7 @@ impl CreateForwarder {
         self.at_rust_node
     }
 
-    pub fn authorized(&self) -> Option<IdentityIdentifier> {
+    pub fn authorized(&self) -> Option<Identifier> {
         self.authorized.clone()
     }
 }
