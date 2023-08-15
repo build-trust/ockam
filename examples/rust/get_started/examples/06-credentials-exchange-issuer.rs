@@ -2,24 +2,36 @@ use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::CredentialsIssuer;
 use ockam::identity::SecureChannelListenerOptions;
-use ockam::TcpTransportExtension;
-use ockam::{node, Context, Result, TcpListenerOptions};
+use ockam::vault::{Secret, SecretAttributes, SoftwareSigningVault, Vault};
+use ockam::{Context, Result, TcpListenerOptions};
+use ockam::{Node, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Create a node with default implementations
-    let node = node(ctx);
+    let signing_vault = SoftwareSigningVault::create();
+    // Import the signing secret key to the Vault
+    let secret = signing_vault
+        .import_key(
+            Secret::new(hex::decode("0127359911708ef4de9adaaf27c357501473c4a10a5326a69c1f7f874a0cd82e").unwrap()),
+            SecretAttributes::Ed25519,
+        )
+        .await?;
 
-    let issuer_identity = "0180370b91c5d0aa4af34580a9ab4b8fb2a28351bed061525c96b4f07e75c0ee18000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020236f79490d3f683e0c3bf458a7381c366c99a8f2b2ac406db1ef8c130111f12703010140b23fddceb11cea25602aa681b6ef6abda036722c27a6dee291f1d6b2234a127af21cc79de2252201f27e7e34e0bf5064adbf3d01eb355aff4bf5c90b8f1fd80a";
-    let secret = "9278735d525efceef16bfd9143d3534759f3d388e460e6002134b9541e06489f";
-    let issuer = node.import_private_identity(issuer_identity, secret).await?;
+    // Create a default Vault but use the signing vault with our secret in it
+    let mut vault = Vault::create();
+    vault.signing_vault = signing_vault;
+
+    let node = Node::builder().with_vault(vault).build(ctx).await?;
+
+    let issuer_identity = hex::decode("81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805").unwrap();
+    let issuer = node.import_private_identity(&issuer_identity, &secret).await?;
     println!("issuer identifier {}", issuer.identifier());
 
     // Tell the credential issuer about a set of public identifiers that are
     // known, in advance, to be members of the production cluster.
     let known_identifiers = vec![
-        "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638".try_into()?,
-        "Pada09e0f96e56580f6a0cb54f55ecbde6c973db6732e30dfb39b178760aed041".try_into()?,
+        "I6342c580429b9a0733880bea4fa18f8055871130".try_into()?, // Client Identifier
+        "I2c3b0ef15c12fe43d405497fcfc46318da46d0f5".try_into()?, // Server Identifier
     ];
 
     // Tell this credential issuer about the attributes to include in credentials
@@ -32,12 +44,17 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // For a different application this attested attribute set can be different and
     // distinct for each identifier, but for this example we'll keep things simple.
-    let credential_issuer =
-        CredentialsIssuer::new(node.identities(), issuer.identifier(), "trust_context".into()).await?;
+    let credential_issuer = CredentialsIssuer::new(
+        node.identities().repository(),
+        node.credentials(),
+        issuer.identifier(),
+        "trust_context".into(),
+    )
+    .await?;
     for identifier in known_identifiers.iter() {
         node.identities()
             .repository()
-            .put_attribute_value(identifier, "cluster", "production")
+            .put_attribute_value(identifier, b"cluster".to_vec(), b"production".to_vec())
             .await?;
     }
 
@@ -49,7 +66,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a secure channel listener that only allows channels where the identity
     // at the other end of the channel can authenticate with the latest private key
     // corresponding to one of the above known public identifiers.
-    node.create_secure_channel_listener(&issuer.identifier(), "secure", sc_listener_options)
+    node.create_secure_channel_listener(issuer.identifier(), "secure", sc_listener_options)
         .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from
