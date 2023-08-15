@@ -111,6 +111,18 @@ impl Node {
             .clone())
     }
 
+    /// Import an Identity given its private key and change history
+    /// Note: the data is not persisted!
+    pub async fn import_private_identity(
+        &self,
+        identity_history: &str,
+        secret: &str,
+    ) -> Result<Identity> {
+        self.identities_creation()
+            .import_private_identity(identity_history, secret)
+            .await
+    }
+
     /// Import an Identity given that was exported as a hex-encoded string
     pub async fn import_identity_hex(&self, data: &str) -> Result<Identity> {
         self.identities_creation()
