@@ -41,13 +41,12 @@ impl NodeIdentities {
             return Ok(None);
         };
 
-        let change_history = if let Some(change_history) =
-            repository.get_identity(&idt_state.identifier()).await.ok()
-        {
-            change_history
-        } else {
-            return Ok(None);
-        };
+        let change_history =
+            if let Ok(change_history) = repository.get_identity(&idt_state.identifier()).await {
+                change_history
+            } else {
+                return Ok(None);
+            };
 
         let identity = self
             .identities

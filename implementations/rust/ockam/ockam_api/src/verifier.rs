@@ -109,7 +109,7 @@ impl Verifier {
         let data = match self
             .identities
             .credentials()
-            .verify_credential(Some(req.subject()), &[authority], &cre)
+            .verify_credential(Some(req.subject()), &[authority], cre)
             .await
         {
             Ok(data) => data,
