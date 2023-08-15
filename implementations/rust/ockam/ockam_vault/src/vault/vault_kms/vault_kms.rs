@@ -143,11 +143,12 @@ impl VaultSecurityModule {
         let attributes = stored_secret.attributes();
         match attributes.secret_type() {
             SecretType::X25519 => {
-                let sk = x25519_dalek::StaticSecret::from(*array_ref![
+                let secret = *array_ref![
                     stored_secret.secret().as_ref(),
                     0,
                     CURVE25519_SECRET_LENGTH_U32 as usize
-                ]);
+                ];
+                let sk = x25519_dalek::StaticSecret::from(secret);
                 let pk = x25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::X25519))
             }
@@ -197,14 +198,9 @@ impl VaultSecurityModule {
     ) -> Result<KeyId> {
         Ok(match attributes.secret_type() {
             SecretType::X25519 => {
-                let secret = secret.as_ref();
-                let sk = x25519_dalek::StaticSecret::from(*array_ref![
-                    secret,
-                    0,
-                    CURVE25519_SECRET_LENGTH_U32 as usize
-                ]);
+                let secret = *array_ref![secret.as_ref(), 0, CURVE25519_SECRET_LENGTH_U32 as usize];
+                let sk = x25519_dalek::StaticSecret::from(secret);
                 let public = x25519_dalek::PublicKey::from(&sk);
-
                 Self::compute_key_id_for_public_key(&PublicKey::new(
                     public.as_bytes().to_vec(),
                     SecretType::X25519,
@@ -216,7 +212,6 @@ impl VaultSecurityModule {
                 let secret = array_ref![secret.as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = SigningKey::from_bytes(secret);
                 let pk = sk.verifying_key();
-
                 Self::compute_key_id_for_public_key(&PublicKey::new(
                     pk.as_bytes().to_vec(),
                     SecretType::Ed25519,
