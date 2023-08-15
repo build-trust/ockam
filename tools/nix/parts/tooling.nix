@@ -8,9 +8,9 @@ _: {
   }: {
     devShells.tooling = pkgs.mkShell {
       packages = with pkgs; [
-        curl
         commitlint
         config.packages.bats
+        curl
         git
         gradle_7
         graphviz

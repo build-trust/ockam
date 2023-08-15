@@ -20,4 +20,4 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@8a218f9e264e9c3803c9a1ee1c30d8e4ab55be63
 
       - name: Setup Ockam Nix Environment
-        run:  nix develop ./tools/nix#rust --extra-experimental-features nix-command --extra-experimental-features flakes --command cargo build
+        run:  nix develop ./tools/nix#rust --command cargo build

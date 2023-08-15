@@ -17,10 +17,13 @@ test_%:
 	@if [ "$(CI)" = "true" ]; then \
 		$(MAKE) test_nextest; \
 	else \
-		cargo --locked test; \
+		cargo --locked test --package $*; \
 	fi
 test_nextest:
 	cargo --locked nextest --config-file tools/nextest/.config/nextest.toml run
+	cargo --locked test --doc
+test_nextest_%:
+	cargo --locked nextest --config-file tools/nextest/.config/nextest.toml -p $* run
 	cargo --locked test --doc
 
 lint: lint_format lint_cargo_deny lint_cargo_clippy
@@ -28,10 +31,30 @@ lint_format:
 	cargo fmt --all -- --check
 lint_cargo_deny:
 	cargo deny --all-features \
-		--manifest-path=../../Cargo.toml check \
-		--config=tools/cargo-deny/deny.toml licenses advisories
+		check licenses advisories\
+		--config=tools/cargo-deny/deny.toml
 lint_cargo_clippy:
 	cargo clippy --no-deps --all-targets -- -D warnings
+
+lint_cargo_readme:
+	@set -e;	\
+	for dir in implementations/rust/ockam/*; do \
+		if [ -d "$$dir" ]; then	\
+			$(MAKE) -f $(MAKEFILE_LIST) lint_cargo_readme_$$(basename $$dir); \
+		fi \
+	done
+
+lint_cargo_readme_%:
+	@set -e; \
+	crate=$*; \
+	cargo readme --project-root implementations/rust/ockam/$$crate --template ../README.tpl -o README-updated.md; \
+	cmp -s implementations/rust/ockam/$$crate/README.md implementations/rust/ockam/$$crate/README-updated.md; \
+	retval=$$?; \
+	rm -f implementations/rust/ockam/$$crate/README-updated.md; \
+	if [ $$retval -ne 0 ] ; then \
+		echo "Readme defined in $$crate directory is not up to update";	\
+		exit 1;	\
+	fi
 
 clean:
 	cargo clean
