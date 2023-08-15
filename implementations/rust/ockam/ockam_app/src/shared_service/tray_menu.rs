@@ -63,13 +63,6 @@ fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
                 format!("Worker Address: {}", worker_address),
             )
             .disabled(),
-        )
-        .add_item(
-            CustomMenuItem::new(
-                "outlet-worker-status".to_string(),
-                format!("Status: {}", "unknown"),
-            )
-            .disabled(),
         );
 
     let outlet_info = format!("{} to {}", worker_address, outlet.tcp_addr);
