@@ -46,11 +46,11 @@ ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.24.0", features = 
 open = "5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tauri = { version = "2.0.0-alpha.10", features = ["system-tray"] }
-tauri-plugin-log = "2.0.0-alpha.0"
-tauri-plugin-positioner = { version = "2.0.0-alpha.0", features = ["system-tray"] }
-tauri-plugin-window = "2.0.0-alpha.0"
-tauri-runtime = { version = "0.13.0-alpha.6", features = ["system-tray"] }
+tauri = { version = "2.0.0-alpha.11", features = ["tray-icon"] }
+tauri-plugin-log = "2.0.0-alpha.1"
+tauri-plugin-positioner = { version = "2.0.0-alpha.1", features = ["tray-icon"]}
+tauri-plugin-window = "2.0.0-alpha.1"
+tauri-runtime = "1.0.0-alpha.0"
 thiserror = "1.0.40"
 tokio = { version = "1.30.0", features = ["time"] }
 tracing = "0.1"
