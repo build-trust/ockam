@@ -76,15 +76,18 @@ impl SecurityModule for VaultSecurityModule {
     ) -> Result<bool> {
         match public_key.stype() {
             SecretType::Ed25519 => {
+                use ed25519_dalek::{ed25519::Signature, Verifier, VerifyingKey};
                 if public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
-                    || signature.as_ref().len() != 64
+                    || signature.as_ref().len() != Signature::BYTE_SIZE
                 {
                     return Err(VaultError::InvalidPublicKey.into());
                 }
-                use ed25519_dalek::Verifier;
-
-                let signature = ed25519_dalek::Signature::from_bytes(signature.as_ref()).unwrap();
-                let public_key = ed25519_dalek::PublicKey::from_bytes(public_key.data()).unwrap();
+                let signature_bytes = array_ref![signature.as_ref(), 0, Signature::BYTE_SIZE];
+                let signature = Signature::from_bytes(signature_bytes);
+                let public_key_bytes =
+                    array_ref![public_key.data(), 0, CURVE25519_PUBLIC_LENGTH_USIZE];
+                let public_key = VerifyingKey::from_bytes(public_key_bytes)
+                    .map_err(|_| VaultError::InvalidPublicKey)?;
                 Ok(public_key.verify(data.as_ref(), &signature).is_ok())
             }
             SecretType::NistP256 => {
@@ -149,9 +152,10 @@ impl VaultSecurityModule {
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::X25519))
             }
             SecretType::Ed25519 => {
-                let sk = ed25519_dalek::SecretKey::from_bytes(stored_secret.secret().as_ref())
-                    .map_err(|_| VaultError::InvalidEd25519Secret)?;
-                let pk = ed25519_dalek::PublicKey::from(&sk);
+                use ed25519_dalek::SECRET_KEY_LENGTH;
+                let secret = array_ref![stored_secret.secret().as_ref(), 0, SECRET_KEY_LENGTH];
+                let sk = ed25519_dalek::SigningKey::from_bytes(secret);
+                let pk = sk.verifying_key();
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::Ed25519))
             }
             SecretType::NistP256 => Self::public_key(stored_secret.secret().as_ref()),
@@ -166,25 +170,17 @@ impl VaultSecurityModule {
         let attributes = stored_secret.attributes();
         match attributes.secret_type() {
             SecretType::Ed25519 => {
-                use ed25519_dalek::Signer;
-                let key = stored_secret.secret().as_ref();
-                let sk = ed25519_dalek::SecretKey::from_bytes(key).unwrap();
-                let pk = ed25519_dalek::PublicKey::from(&sk);
-
-                let kp = ed25519_dalek::Keypair {
-                    public: pk,
-                    secret: sk,
-                };
-
-                let sig = kp.sign(data.as_ref());
+                use ed25519_dalek::{Signer, SigningKey, SECRET_KEY_LENGTH};
+                let secret = array_ref![stored_secret.secret().as_ref(), 0, SECRET_KEY_LENGTH];
+                let sk = SigningKey::from_bytes(secret);
+                let sig = sk.sign(data.as_ref());
                 Ok(Signature::new(sig.to_bytes().to_vec()))
             }
             SecretType::NistP256 => {
-                let key = stored_secret.secret().as_ref();
                 use p256::ecdsa::signature::Signer;
                 use p256::pkcs8::DecodePrivateKey;
+                let key = stored_secret.secret().as_ref();
                 let sec = p256::ecdsa::SigningKey::from_pkcs8_der(key).map_err(Self::from_pkcs8)?;
-
                 let sig: p256::ecdsa::Signature = sec.sign(data);
                 Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
             }
@@ -216,12 +212,13 @@ impl VaultSecurityModule {
                 .await?
             }
             SecretType::Ed25519 => {
-                let sk = ed25519_dalek::SecretKey::from_bytes(secret.as_ref())
-                    .map_err(|_| VaultError::InvalidEd25519Secret)?;
-                let public = ed25519_dalek::PublicKey::from(&sk);
+                use ed25519_dalek::{SigningKey, SECRET_KEY_LENGTH};
+                let secret = array_ref![secret.as_ref(), 0, SECRET_KEY_LENGTH];
+                let sk = SigningKey::from_bytes(secret);
+                let pk = sk.verifying_key();
 
                 Self::compute_key_id_for_public_key(&PublicKey::new(
-                    public.as_bytes().to_vec(),
+                    pk.as_bytes().to_vec(),
                     SecretType::Ed25519,
                 ))
                 .await?

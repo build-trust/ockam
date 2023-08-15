@@ -1731,6 +1731,7 @@ dependencies = [
  "platforms",
  "rustc_version 0.4.0",
  "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -2107,6 +2108,7 @@ version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fb04eee5d9d907f29e80ee6b0e78f7e2c82342c63e3580d8c4f69d9d5aad963"
 dependencies = [
+ "pkcs8",
  "signature",
 ]
 
@@ -2118,7 +2120,9 @@ checksum = "7277392b266383ef8396db7fdeb1e77b6c52fed775f5df15bb24f35b72156980"
 dependencies = [
  "curve25519-dalek 4.0.0",
  "ed25519",
+ "serde",
  "sha2",
+ "zeroize",
 ]
 
 [[package]]
@@ -4858,7 +4862,6 @@ dependencies = [
  "aes-gcm",
  "arrayref",
  "cfg-if",
- "curve25519-dalek 4.0.0",
  "data-encoding",
  "ed25519-dalek",
  "hex",
