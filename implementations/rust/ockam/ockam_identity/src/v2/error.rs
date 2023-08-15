@@ -42,6 +42,8 @@ pub enum IdentityError {
     DuplicateSecureChannel,
     /// Consistency Error
     ConsistencyError,
+    /// Invalid Hex
+    InvalidHex,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}
