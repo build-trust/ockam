@@ -42,7 +42,7 @@ fn add_pending_menu(tray_menu: SystemTrayMenu, sent: &[SentInvitation]) -> Syste
     } else {
         "Pending Invitations"
     };
-    sent.iter().map(sent_invitation_menu).fold(
+    sent.iter().map(pending_invitation_menu).fold(
         tray_menu.add_item(
             CustomMenuItem::new(INVITATIONS_PENDING_HEADER_MENU_ID, header_text).disabled(),
         ),
@@ -50,7 +50,7 @@ fn add_pending_menu(tray_menu: SystemTrayMenu, sent: &[SentInvitation]) -> Syste
     )
 }
 
-fn sent_invitation_menu(invitation: &SentInvitation) -> SystemTraySubmenu {
+fn pending_invitation_menu(invitation: &SentInvitation) -> SystemTraySubmenu {
     let id = invitation.id.to_owned();
     let submenu = SystemTrayMenu::new()
         .add_item(CustomMenuItem::new(id.clone(), id.clone()).disabled())
