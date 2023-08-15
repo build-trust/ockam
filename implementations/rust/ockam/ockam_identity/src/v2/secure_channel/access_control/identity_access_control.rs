@@ -53,14 +53,6 @@ impl IdentityIdAccessControl {
     pub fn new(identity_ids: Vec<Identifier>) -> Self {
         Self { identity_ids }
     }
-
-    fn contains(&self, their_id: &Identifier) -> bool {
-        let mut found = subtle::Choice::from(0);
-        for trusted_id in &self.identity_ids {
-            found |= trusted_id.ct_eq(their_id);
-        }
-        found.into()
-    }
 }
 
 #[async_trait]
@@ -69,7 +61,9 @@ impl IncomingAccessControl for IdentityIdAccessControl {
         if let Ok(msg_identity_id) =
             IdentitySecureChannelLocalInfo::find_info(relay_msg.local_message())
         {
-            Ok(self.contains(&msg_identity_id.their_identity_id()))
+            Ok(self
+                .identity_ids
+                .contains(&msg_identity_id.their_identity_id()))
         } else {
             Ok(false)
         }
