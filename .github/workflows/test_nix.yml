@@ -1,0 +1,23 @@
+name: Test Nix
+permissions:
+  contents: read
+
+on: [push]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-20.04
+    # container:
+    #   image: nixos/nix
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@65d7c888b2778e8cf30a07a88422ccb23499bfb8
+
+      - name: Cache Nix Store Incrementally
+        uses: DeterminateSystems/magic-nix-cache-action@8a218f9e264e9c3803c9a1ee1c30d8e4ab55be63
+
+      - name: Setup Ockam Nix Environment
+        run:  nix develop ./tools/nix#rust --extra-experimental-features nix-command --extra-experimental-features flakes --command cargo build

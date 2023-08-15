@@ -46,6 +46,7 @@ in {
           [(lib.getDev openssl)]
           ++ lib.optionals stdenv.isLinux [
             dbus
+            webkitgtk_4_1
             (lib.getDev systemd)
           ]
           ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
