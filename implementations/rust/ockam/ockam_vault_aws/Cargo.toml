@@ -66,4 +66,4 @@ tracing = { version = "0.1", default-features = false, features = ["attributes"]
 [dev-dependencies]
 aws-credential-types = { version = "0.56.0", default-features = false, features = ["test-util"] }
 hex = { version = "0.4", default-features = false }
-tokio = { version = "1.30", features = ["full"] }
+tokio = { version = "1.31", features = ["full"] }

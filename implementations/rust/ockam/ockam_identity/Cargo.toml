@@ -95,5 +95,5 @@ quickcheck_macros = "1.0.0"
 rand_xorshift = "0"
 serde_json = "1.0"
 tempfile = { version = "3.7.1" }
-tokio = { version = "1.30.0", features = ["full"] }
+tokio = { version = "1.31.0", features = ["full"] }
 zeroize = { version = "1.4.2" }

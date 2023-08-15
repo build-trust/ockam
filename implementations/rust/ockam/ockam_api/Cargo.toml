@@ -109,5 +109,5 @@ ockam_api = { path = ".", features = ["std", "authenticators"] }
 ockam_macros = { version = "0.30.0", path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { version = "0.84.0", path = "../ockam_transport_tcp" }
 quickcheck = "1.0.1"
-tokio = { version = "1.30.0", features = ["full"] }
+tokio = { version = "1.31.0", features = ["full"] }
 uuid = "1.4.1"
