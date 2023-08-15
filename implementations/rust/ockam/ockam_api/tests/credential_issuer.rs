@@ -69,7 +69,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            &auth_identity.identifier(),
+            auth_identity.identifier(),
             api_worker_addr.clone(),
             options,
         )
