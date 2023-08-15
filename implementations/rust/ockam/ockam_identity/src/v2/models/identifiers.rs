@@ -20,7 +20,7 @@ pub const CHANGE_HASH_LEN: usize = 20;
 /// Unique identifier for an [`super::super::identity::Identity`]
 /// Equals to the [`ChangeHash`] of the first [`super::Change`] in the [`super::ChangeHistory`]
 /// Computed as truncated SHA256 of the first [`super::ChangeData`] CBOR binary
-#[derive(Clone, Debug, Hash, Ord, PartialOrd)]
+#[derive(Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Identifier([u8; IDENTIFIER_LEN]);
 
 impl Serialize for Identifier {
@@ -70,19 +70,6 @@ impl<'b, C> Decode<'b, C> for Identifier {
 
 impl Identifier {
     const PREFIX: &'static str = "I";
-
-    pub(crate) fn ct_eq(&self, o: &Self) -> subtle::Choice {
-        use subtle::ConstantTimeEq;
-        self.0.as_ref().ct_eq(o.0.as_ref())
-    }
-}
-
-impl Eq for Identifier {}
-
-impl PartialEq for Identifier {
-    fn eq(&self, o: &Self) -> bool {
-        self.ct_eq(o).into()
-    }
 }
 
 impl Display for Identifier {
