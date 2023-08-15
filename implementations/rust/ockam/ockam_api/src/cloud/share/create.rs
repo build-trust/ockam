@@ -1,10 +1,11 @@
 use minicbor::{Decode, Encode};
 use ockam_core::Result;
+use ockam_identity::identities;
 use serde::{Deserialize, Serialize};
 
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use crate::error::ApiError;
-use ockam_identity::identities;
+use crate::identity::EnrollmentTicket;
 
 use super::{RoleInShare, SentInvitation, ShareScope};
 
@@ -35,6 +36,7 @@ pub struct CreateServiceInvitation {
     #[n(7)] pub project_authority_route: String,
     #[n(8)] pub shared_node_identity: String,
     #[n(9)] pub shared_node_route: String,
+    #[n(10)] pub enrollment_ticket: String,
 }
 
 impl CreateServiceInvitation {
@@ -45,6 +47,7 @@ impl CreateServiceInvitation {
         recipient_email: S,
         node_name: S,
         service_route: S,
+        enrollment_ticket: EnrollmentTicket,
     ) -> Result<Self> {
         let node_identifier = cli_state.nodes.get(node_name)?.config().identifier()?;
         let project = cli_state.projects.get(&project_name)?.config().clone();
@@ -64,7 +67,13 @@ impl CreateServiceInvitation {
                 .await?
                 .identifier()
         };
+        // see also: ockam_command::project::ticket
+        let enrollment_ticket = hex::encode(
+            serde_json::to_vec(&enrollment_ticket)
+                .map_err(|_| ApiError::generic("Could not encode enrollment ticket"))?,
+        );
         Ok(CreateServiceInvitation {
+            enrollment_ticket,
             expires_at,
             project_id: project.id.to_string(),
             recipient_email: recipient_email.as_ref().to_string(),
