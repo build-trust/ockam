@@ -2,7 +2,7 @@ use std::path::Path;
 
 use miette::miette;
 
-use ockam::identity::Storage;
+use ockam::identity::storage::Storage;
 use ockam::LmdbStorage;
 use ockam_core::async_trait;
 

@@ -3,7 +3,7 @@ use miette::{miette, IntoDiagnostic, WrapErr};
 use tauri::{AppHandle, Manager, State, Wry};
 use tracing::{error, info};
 
-use ockam::identity::IdentityIdentifier;
+use ockam::identity::Identifier;
 use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::SpaceConfig;
@@ -43,10 +43,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     Ok(())
 }
 
-async fn enroll_with_token(
-    app: &AppHandle<Wry>,
-    app_state: &AppState,
-) -> Result<IdentityIdentifier> {
+async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result<Identifier> {
     system_tray_on_update_with_enroll_status(app, "Waiting for token...")?;
     // get an OIDC token
     let oidc_service = OidcService::default();
