@@ -4,7 +4,9 @@ use tauri::{
 };
 use tracing::{debug, trace, warn};
 
-use ockam_api::cloud::share::{InvitationWithAccess, ReceivedInvitation, SentInvitation};
+use ockam_api::cloud::share::{
+    InvitationWithAccess, ReceivedInvitation, SentInvitation, ShareScope,
+};
 
 use super::state::SyncState;
 use crate::app::AppState;
@@ -52,9 +54,27 @@ fn add_pending_menu(tray_menu: SystemTrayMenu, sent: &[SentInvitation]) -> Syste
 
 fn pending_invitation_menu(invitation: &SentInvitation) -> SystemTraySubmenu {
     let id = invitation.id.to_owned();
+    let target_label = match invitation.scope {
+        ShareScope::Project => "Project",
+        ShareScope::Service => "Project",
+        ShareScope::Space => "Space",
+    };
     let submenu = SystemTrayMenu::new()
         .add_item(CustomMenuItem::new(id.clone(), id.clone()).disabled())
-        .add_item(CustomMenuItem::new(id.clone(), invitation.recipient_email.to_owned()).disabled())
+        .add_item(
+            CustomMenuItem::new(
+                id.clone(),
+                format!("Sent to: {}", invitation.recipient_email),
+            )
+            .disabled(),
+        )
+        .add_item(
+            CustomMenuItem::new(
+                id.clone(),
+                format!("{}: {}", target_label, invitation.target_id),
+            )
+            .disabled(),
+        )
         .add_item(
             CustomMenuItem::new(
                 format!("invitation-sent-cancel-{}", invitation.id),
