@@ -534,7 +534,7 @@ mod tests {
                 .create_identity()
                 .await
                 .unwrap();
-            let config = IdentityConfig::new(&identity.identifier()).await;
+            let config = IdentityConfig::new(identity.identifier()).await;
 
             let state = sut.identities.create(&name, config).unwrap();
             let got = sut.identities.get(&name).unwrap();
