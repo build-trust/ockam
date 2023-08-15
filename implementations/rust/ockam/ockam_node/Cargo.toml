@@ -84,7 +84,7 @@ once_cell = { version = "1", optional = true, default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false }
 serde_json = { version = "1", optional = true }
-tokio = { version = "1.30", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.31", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default_features = false }
 tracing-error = { version = "0.2", optional = true }
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
