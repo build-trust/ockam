@@ -32,6 +32,8 @@ pub struct ServiceCreateCommand {
     pub shared_node_identity: String,
     pub shared_node_route: String,
 
+    pub enrollment_ticket: String,
+
     #[arg(long, short = 'x')]
     pub expires_at: Option<String>,
 }
@@ -55,6 +57,8 @@ impl From<ServiceCreateCommand> for CreateServiceInvitation {
             project_authority_route,
             shared_node_identity,
             shared_node_route,
+
+            enrollment_ticket,
             ..
         } = val;
         Self {
@@ -68,6 +72,8 @@ impl From<ServiceCreateCommand> for CreateServiceInvitation {
             project_authority_route,
             shared_node_identity,
             shared_node_route,
+
+            enrollment_ticket,
         }
     }
 }
