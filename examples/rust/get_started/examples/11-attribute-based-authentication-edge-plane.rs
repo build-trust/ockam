@@ -1,6 +1,6 @@
 use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
-use ockam::identity::credential::OneTimeCode;
+use ockam::identity::OneTimeCode;
 use ockam::identity::{
     identities, AuthorityService, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannelOptions,
     TrustContext, TrustMultiIdentifiersPolicy,
@@ -85,7 +85,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
         Some(AuthorityService::new(
-            node.identities().identities_reader(),
             node.credentials(),
             project.authority_identifier(),
             Some(Arc::new(RemoteCredentialsRetriever::new(
@@ -103,8 +102,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .authority()?
         .credential(node.context(), &edge_plane)
         .await?;
-
-    println!("{credential}");
 
     // start a credential exchange worker which will be
     // later on to exchange credentials with the control node
@@ -159,7 +156,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .present_credential_mutual(
             node.context(),
             route![secure_channel_to_control.clone(), "credential_exchange"],
-            &[project.authority_identity()],
+            &[project.authority_identifier()],
             credential,
         )
         .await?;
