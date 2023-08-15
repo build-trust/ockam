@@ -100,7 +100,6 @@ impl Vault {
                 if peer_public_key.data().len() != attributes.length() as usize {
                     return Err(VaultError::UnknownEcdhKeyType.into());
                 }
-
                 let sk = x25519_dalek::StaticSecret::from(*array_ref!(
                     key.as_ref(),
                     0,

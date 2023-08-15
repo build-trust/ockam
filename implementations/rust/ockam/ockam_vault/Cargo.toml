@@ -38,8 +38,6 @@ std = [
   "rand/std",
   "rand/std_rng",
   "tracing/std",
-  "x25519-dalek/std",
-  "x25519-dalek/u64_backend",
   "alloc",
   "p256/std",
 ]
@@ -49,7 +47,6 @@ std = [
 no_std = [
   "ockam_node/no_std",
   "rand_pcg",
-  "x25519-dalek/u32_backend",
   "aes-gcm/heapless",
   "aes-gcm/force-soft",
   "aes-gcm/stream",
@@ -61,6 +58,7 @@ alloc = [
   "ockam_node/alloc",
   "aes-gcm/alloc",
   "ed25519-dalek/alloc",
+  "x25519-dalek/alloc",
   "p256/ecdsa",
   "p256/pem",
 ]
@@ -87,8 +85,8 @@ serde_cbor = { version = "0.11.2", optional = true }
 sha2 = { version = "0.10", default-features = false }
 thiserror = { version = "1.0.43", optional = true }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
-x25519-dalek = { version = "1.0", default_features = false }
-zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
+x25519-dalek = { version = "2.0.0", default_features = false, features = ["precomputed-tables", "static_secrets", "zeroize"] }
+zeroize = { version = "1.6.0", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 data-encoding = { version = "2.4.0", features = ["alloc"] }
