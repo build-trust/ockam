@@ -75,7 +75,7 @@ impl AbacAccessControl {
         // Get identity attributes and populate the environment:
         if let Some(attrs) = self.repository.get_attributes(&id).await? {
             for (key, value) in attrs.attrs() {
-                let key = match from_utf8(&key) {
+                let key = match from_utf8(key) {
                     Ok(key) => key,
                     Err(_) => {
                         log::warn! {

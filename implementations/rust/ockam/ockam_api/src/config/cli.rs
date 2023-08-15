@@ -273,7 +273,7 @@ impl CredentialRetrieverConfig {
     ) -> Result<Arc<dyn CredentialsRetriever>> {
         match self {
             CredentialRetrieverConfig::FromMemory(credential) => Ok(Arc::new(
-                CredentialsMemoryRetriever::new(minicbor::decode(&credential)?),
+                CredentialsMemoryRetriever::new(minicbor::decode(credential)?),
             )),
             CredentialRetrieverConfig::FromPath(state) => Ok(Arc::new(
                 CredentialsMemoryRetriever::new(state.config().credential()?),
