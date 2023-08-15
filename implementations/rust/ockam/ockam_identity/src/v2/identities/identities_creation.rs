@@ -1,9 +1,12 @@
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::KeyId;
+use ockam_vault::{KeyId, Secret, SecretAttributes};
 
 use super::super::models::{ChangeHistory, Identifier};
-use super::super::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault, Identity};
+use super::super::{
+    IdentitiesKeys, IdentitiesRepository, IdentitiesVault, Identity, IdentityError,
+};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
@@ -53,6 +56,29 @@ impl IdentitiesCreation {
     pub async fn create_identity_with_existing_key(&self, kid: &KeyId) -> Result<Identity> {
         // TODO: Consider creating PurposeKeys by default
         self.make_and_persist_identity(Some(kid)).await
+    }
+
+    /// Create an identity with a vault initialized with a secret key
+    /// encoded as a hex string.
+    /// Such a key can be obtained by running vault.secret_export and then encoding
+    /// the exported secret as a hex string
+    /// Note: the data is not persisted!
+    pub async fn import_private_identity(
+        &self,
+        identity_history: &str,
+        secret: &str,
+    ) -> Result<Identity> {
+        let secret = Secret::new(hex::decode(secret).unwrap());
+        self.vault
+            .import_ephemeral_secret(secret, SecretAttributes::Ed25519)
+            .await?;
+        let identity_history_data: Vec<u8> =
+            hex::decode(identity_history).map_err(|_| IdentityError::InvalidHex)?;
+        let identity = self.import(None, identity_history_data.as_slice()).await?;
+        self.repository
+            .update_identity(identity.identifier(), identity.change_history())
+            .await?;
+        Ok(identity)
     }
 }
 
