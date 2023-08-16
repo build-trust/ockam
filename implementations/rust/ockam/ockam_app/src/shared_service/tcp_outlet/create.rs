@@ -6,6 +6,7 @@ use tracing::{debug, error, info};
 
 use crate::app::AppState;
 use crate::error::Error;
+#[cfg(feature = "invitations")]
 use crate::invitations::commands::create_service_invitation;
 
 /// Create a TCP outlet within the default node.
@@ -30,7 +31,7 @@ async fn tcp_outlet_create_impl(
     app: AppHandle<Wry>,
     service: String,
     port: String,
-    email: Option<String>,
+    #[cfg_attr(not(feature = "invitations"), allow(unused_variables))] email: Option<String>,
 ) -> crate::Result<()> {
     debug!(%service, %port, "Creating an outlet");
     let app_state = app.state::<AppState>();
@@ -59,6 +60,7 @@ async fn tcp_outlet_create_impl(
         }
         Err(_) => Err(Error::Generic("Failed to create outlet".to_string())),
     }?;
+    #[cfg(feature = "invitations")]
     if let Some(email) = email {
         create_service_invitation(email, tcp_addr.to_string(), app)
             .await
