@@ -1,6 +1,6 @@
 use ockam_api::cloud::project::Project;
 
-mod commands;
+pub(crate) mod commands;
 mod error;
 pub(crate) mod events;
 pub(super) mod plugin;
