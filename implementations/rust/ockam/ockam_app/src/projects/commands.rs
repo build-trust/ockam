@@ -3,8 +3,9 @@ use std::sync::Arc;
 use tauri::{async_runtime::RwLock, AppHandle, Manager, Runtime, State};
 use tracing::{debug, info};
 
-use ockam_api::{cli_state::StateDirTrait, cloud::project::Project};
+use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
 use ockam_command::util::api::CloudOpts;
+use ockam_core::env::get_env_with_default;
 
 use super::error::{Error, Result};
 use super::State as ProjectState;
@@ -13,6 +14,42 @@ use crate::app::AppState;
 type SyncState = Arc<RwLock<ProjectState>>;
 
 // At time of writing, tauri::command requires pub not pub(crate)
+
+#[tauri::command]
+pub async fn create_enrollment_ticket<R: Runtime>(
+    project_id: String,
+    app: AppHandle<R>,
+) -> Result<EnrollmentTicket> {
+    let state: State<'_, SyncState> = app.state();
+    let reader = state.read().await;
+    let project: &Project = reader
+        .iter()
+        .inspect(|project| debug!(?project))
+        .find(|p| p.id == project_id)
+        .ok_or_else(|| Error::ProjectNotFound(project_id.to_owned()))?;
+
+    debug!(?project_id, "creating enrollment ticket via CLI");
+    // TODO: Issue enrollment ticket using in-memory code instead of subshell
+    // TODO: How might this degrade for users who have multiple spaces and projects?
+    let bin = get_env_with_default("OCKAM", "ockam".to_string())
+        .map_err(|_| Error::OckamCommandInvalid)?;
+    let hex_encoded_ticket = duct::cmd!(
+        bin,
+        "project",
+        "ticket",
+        "--quiet",
+        "--project",
+        project.name.clone(),
+        "--to",
+        &format!("/project/{}", project.name)
+    )
+    .read()
+    .map_err(|_| Error::EnrollmentTicketFailed)?;
+    serde_json::from_slice(
+        &hex::decode(hex_encoded_ticket).map_err(|_| Error::EnrollmentTicketDecodeFailed)?,
+    )
+    .map_err(|_| Error::EnrollmentTicketDecodeFailed)
+}
 
 #[tauri::command]
 pub async fn list_projects<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Project>> {
