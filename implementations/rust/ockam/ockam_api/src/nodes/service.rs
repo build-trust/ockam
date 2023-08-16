@@ -618,7 +618,7 @@ impl NodeManagerWorker {
                 encode_request_result(self.create_secure_channel_listener(req, dec, ctx).await)?
             }
             (Delete, ["node", "secure_channel_listener"]) => self
-                .delete_secure_channel_listener(req, dec)
+                .delete_secure_channel_listener(ctx, req, dec)
                 .await?
                 .to_vec(),
             (Get, ["node", "show_secure_channel_listener"]) => {
