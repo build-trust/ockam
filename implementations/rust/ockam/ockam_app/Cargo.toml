@@ -35,6 +35,7 @@ path = "src/lib.rs"
 tauri-build = { version = "2.0.0-alpha.6", features = [] }
 
 [dependencies]
+duct = "0.13.6"
 log = { version = "0.4.19", optional = true }
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
 muda = "0.8"
