@@ -7,7 +7,6 @@ use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::Debug;
-use std::path::Path;
 use tracing::debug;
 
 pub struct ConfigRunner {
@@ -31,22 +30,11 @@ impl ConfigRunner {
         }
     }
 
-    pub async fn go(opts: CommandGlobalOpts, path: &Path, blocking: bool) -> miette::Result<()> {
-        let mut cr = Self::new();
-        let config = std::fs::read_to_string(path).into_diagnostic()?;
-        cr.parse(&config, blocking)?;
-        cr.run(opts).await?;
-        Ok(())
-    }
-
-    pub async fn go_inline(
-        opts: CommandGlobalOpts,
-        config: &str,
-        blocking: bool,
-    ) -> miette::Result<()> {
+    pub async fn go(opts: CommandGlobalOpts, config: &str, blocking: bool) -> miette::Result<()> {
         let mut cr = Self::new();
         cr.parse(config, blocking)?;
-        cr.run(opts).await
+        cr.run(opts).await?;
+        Ok(())
     }
 
     fn parse(&mut self, config: &str, blocking: bool) -> miette::Result<()> {
@@ -227,8 +215,8 @@ impl NodeConfig {
                 Ok(())
             };
 
-        // always enroll since it's an idempotent operation
-        // the trust context is named after the node
+        // Always enroll since it's an idempotent operation.
+        // The trust context is named after the node.
         if let Some(enroll_ticket) = &self.enroll_ticket {
             insert_command(
                 "node",
@@ -246,30 +234,24 @@ impl NodeConfig {
         }
 
         // Always create the node, if it already exists (but not running) it'll be-started.
-        if blocking {
-            insert_command(
-                "node",
-                node_name,
-                self.depends_on.map(|s| format!("node/{s}")),
-                &[
-                    "node",
-                    "create",
-                    node_name,
-                    "--foreground",
-                    "--trust-context",
-                    node_name,
-                ],
-                true,
-            )?;
-        } else {
-            insert_command(
-                "node",
-                node_name,
-                self.depends_on.map(|s| format!("node/{s}")),
-                &["node", "create", node_name, "--trust-context", node_name],
-                false,
-            )?;
-        }
+        let args = {
+            let mut args = vec!["node", "create", node_name];
+            if blocking {
+                args.push("--foreground");
+            }
+            if self.enroll_ticket.is_some() {
+                args.push("--trust-context");
+                args.push(node_name);
+            }
+            args
+        };
+        insert_command(
+            "node",
+            node_name,
+            self.depends_on.map(|s| format!("node/{s}")),
+            &args,
+            blocking,
+        )?;
 
         // TODO: all commands should support both `/node/{name}` and `{name}` formats.
         let node_name_formatted = format!("/node/{node_name}");

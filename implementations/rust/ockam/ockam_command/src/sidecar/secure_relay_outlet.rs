@@ -112,6 +112,6 @@ impl SecureRelayOutlet {
             ))
             .write_line()?;
 
-        ConfigRunner::go_inline(opts, &recipe, true).await
+        ConfigRunner::go(opts, &recipe, true).await
     }
 }
