@@ -63,7 +63,7 @@ debugger = []
 tag = ["cddl-cat", "serde_cbor"]
 
 [dependencies]
-async-trait = "0.1.71"
+async-trait = "0.1.73"
 backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
 cddl-cat = { version = "0.6.1", optional = true }
 cfg-if = "1.0"
