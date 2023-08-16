@@ -29,6 +29,8 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
         .map(|i| info!("Enrolled a new user with identifier {}", i))
         .unwrap_or_else(|e| error!("{:?}", e));
     app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+    app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
+    app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
     // Reset the node manager to include the project's setup, needed to create the relay.
     // This is necessary because the project data is used in the worker initialization,
     // which can't be rerun manually once the worker is started.

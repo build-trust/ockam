@@ -1,5 +1,5 @@
 pub(crate) mod commands;
-mod events;
+pub(crate) mod events;
 pub(super) mod plugin;
 mod state;
 mod tray_menu;
