@@ -2,12 +2,13 @@ use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, info};
 
 use ockam_api::{
+    cli_state::StateDirTrait,
     cloud::share::{AcceptInvitation, InvitationListKind, ListInvitations},
     nodes::models::portal::OutletStatus,
 };
 use ockam_command::util::api::CloudOpts;
 
-use crate::app::AppState;
+use crate::{app::AppState, projects::commands::create_enrollment_ticket};
 
 use super::{
     events::REFRESHED_INVITATIONS,
@@ -46,10 +47,26 @@ pub async fn create_service_invitation<R: Runtime>(
         ?outlet_addr,
         "creating service invitation"
     );
-    let invite_args =
-        super::build_args_for_create_service_invitation(&app, &outlet_addr, &recipient_email)
-            .await
-            .map_err(|e| e.to_string())?;
+    let app_state = app.state::<AppState>();
+    let project_id = app_state
+        .state()
+        .await
+        .projects
+        .default()
+        .map_err(|_| "could not load default project".to_string())?
+        .id()
+        .to_owned();
+    let enrollment_ticket = create_enrollment_ticket(project_id, app.clone())
+        .await
+        .map_err(|e| e.to_string())?;
+    let invite_args = super::build_args_for_create_service_invitation(
+        &app,
+        &outlet_addr,
+        &recipient_email,
+        enrollment_ticket,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     let state: State<'_, AppState> = app.state();
     let node_manager_worker = state.node_manager_worker().await;
