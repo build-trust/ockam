@@ -16,6 +16,9 @@ pub struct ProjectState {
 }
 
 impl ProjectState {
+    pub fn id(&self) -> &str {
+        &self.config.id
+    }
     pub fn name(&self) -> &str {
         &self.name
     }
