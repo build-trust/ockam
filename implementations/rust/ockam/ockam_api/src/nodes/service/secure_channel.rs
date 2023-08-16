@@ -270,9 +270,11 @@ impl NodeManager {
 
     pub(super) async fn delete_secure_channel_listener_impl(
         &mut self,
+        ctx: &Context,
         addr: &Address,
     ) -> Option<SecureChannelListenerInfo> {
         debug!("deleting secure channel listener: {addr}");
+        let _ = ctx.stop_worker(addr.clone()).await;
         self.registry.secure_channel_listeners.remove(addr)
     }
 }
@@ -461,6 +463,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_secure_channel_listener(
         &mut self,
+        ctx: &Context,
         req: &Request,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
@@ -471,7 +474,7 @@ impl NodeManagerWorker {
         let id = req.id();
         Ok(
             match node_manager
-                .delete_secure_channel_listener_impl(&addr)
+                .delete_secure_channel_listener_impl(ctx, &addr)
                 .await
             {
                 Some(_) => {
