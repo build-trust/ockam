@@ -28,6 +28,6 @@
   "type": "module",
   "dependencies": {
     "@tauri-apps/api": "2.0.0-alpha.5",
-    "@tauri-apps/plugin-window": "2.0.0-alpha.0"
+    "@tauri-apps/plugin-window": "2.0.0-alpha.1"
   }
 }
