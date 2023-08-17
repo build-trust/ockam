@@ -377,10 +377,6 @@ impl<W: TerminalWriter> Terminal<W, ToStdOut> {
     }
 
     pub fn write_line(self) -> Result<()> {
-        if self.quiet {
-            return Ok(());
-        }
-
         // Check that there is at least one output format defined
         if self.mode.output.plain.is_none()
             && self.mode.output.machine.is_none()
