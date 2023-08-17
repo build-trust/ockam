@@ -205,7 +205,12 @@ impl Runner {
 
             let ticket = EnrollmentTicket::new(token, project, trust_context);
             let ticket_serialized = hex::encode(serde_json::to_vec(&ticket).into_diagnostic()?);
-            print!("{}", ticket_serialized)
+            self.opts
+                .terminal
+                .clone()
+                .stdout()
+                .machine(ticket_serialized)
+                .write_line()?;
         }
 
         delete_embedded_node(&self.opts, &node_name).await;
