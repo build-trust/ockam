@@ -5,8 +5,8 @@ use tracing::info;
 use ockam::identity::storage::LmdbStorage;
 use ockam::identity::{
     CredentialsIssuer, Identifier, Identities, IdentitiesRepository, IdentitiesStorage,
-    IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
-    SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+    IdentityAttributesReader, IdentityAttributesWriter, SecureChannelListenerOptions,
+    SecureChannels, TrustEveryonePolicy,
 };
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
@@ -54,7 +54,7 @@ impl Authority {
         let vault = Self::create_secure_channels_vault(configuration).await?;
         let repository = Self::create_identities_repository(configuration).await?;
         let secure_channels = SecureChannels::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(repository)
             .build();
 
@@ -267,9 +267,7 @@ impl Authority {
     }
 
     /// Create an identity vault backed by a FileStorage
-    async fn create_secure_channels_vault(
-        configuration: &Configuration,
-    ) -> Result<Arc<dyn IdentitiesVault>> {
+    async fn create_secure_channels_vault(configuration: &Configuration) -> Result<Vault> {
         let vault_path = &configuration.vault_path;
         Self::create_ockam_directory_if_necessary(vault_path)?;
         let vault = Vault::create_with_persistent_storage_path(vault_path).await?;

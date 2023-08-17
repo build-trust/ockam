@@ -6,8 +6,8 @@ use minicbor::Decoder;
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::identity::{
-    Identifier, Identities, IdentitiesVault, SecureChannelListenerOptions, SecureChannelOptions,
-    SecureChannels, TrustMultiIdentifiersPolicy,
+    Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    TrustMultiIdentifiersPolicy,
 };
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
@@ -15,6 +15,7 @@ use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
+use ockam_vault::Vault;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::StateItemTrait;
@@ -221,7 +222,7 @@ impl NodeManager {
         let identities = self.get_identities(vault_name).await?;
         let registry = self.secure_channels.secure_channel_registry();
         Ok(SecureChannels::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities(identities)
             .with_secure_channels_registry(registry)
             .build())
@@ -243,10 +244,7 @@ impl NodeManager {
         self.node_identities().get_identities(vault_name).await
     }
 
-    async fn get_secure_channels_vault(
-        &mut self,
-        vault_name: Option<String>,
-    ) -> Result<Arc<dyn IdentitiesVault>> {
+    async fn get_secure_channels_vault(&mut self, vault_name: Option<String>) -> Result<Vault> {
         if let Some(vault) = vault_name {
             let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
             Ok(existing_vault)
