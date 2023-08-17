@@ -21,7 +21,7 @@ pub fn run() {
         .plugin(configure_tauri_plugin_log())
         .plugin(tauri_plugin_window::init())
         .plugin(tauri_plugin_positioner::init())
-        .setup(move |app| setup_app(app))
+        .setup(setup_app)
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![tcp_outlet_create]);
 

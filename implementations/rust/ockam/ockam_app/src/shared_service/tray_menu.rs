@@ -1,84 +1,96 @@
-use tauri::{AppHandle, CustomMenuItem, Manager, SystemTrayMenu, SystemTraySubmenu, Wry};
+use tauri::menu::{MenuBuilder, MenuItem, Submenu, SubmenuBuilder};
+use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_positioner::{Position, WindowExt};
-use tauri_runtime::menu::SystemTrayMenuItem;
-
-use ockam_api::nodes::models::portal::OutletStatus;
 
 use crate::app::AppState;
+use ockam_api::nodes::models::portal::OutletStatus;
 
 pub const SHARED_SERVICE_HEADER_MENU_ID: &str = "shared_service_header";
 pub const SHARED_SERVICE_CREATE_MENU_ID: &str = "shared_service_create";
 pub const SHARED_SERVICE_WINDOW_ID: &str = "shared_service_creation";
 
-pub(crate) async fn build_shared_services_section(
-    app_state: &AppState,
-    tray_menu: SystemTrayMenu,
-) -> SystemTrayMenu {
+pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>(
+    app_handle: &AppHandle<R>,
+    mut builder: MenuBuilder<'a, R, M>,
+) -> MenuBuilder<'a, R, M> {
+    let app_state: State<AppState> = app_handle.state();
     if !app_state.is_enrolled().await {
-        return tray_menu;
+        return builder;
     };
 
-    let tm = tray_menu
-        .add_native_item(SystemTrayMenuItem::Separator)
-        .add_item(CustomMenuItem::new(SHARED_SERVICE_HEADER_MENU_ID, "Shared").disabled())
-        .add_item(CustomMenuItem::new(
+    for outlet in app_state.tcp_outlet_list().await {
+        builder = builder.item(&shared_service_submenu(&outlet, app_handle))
+    }
+
+    builder.separator().items(&[
+        &MenuItem::with_id(
+            app_handle,
+            SHARED_SERVICE_HEADER_MENU_ID,
+            "Shared",
+            false,
+            None,
+        ),
+        &MenuItem::with_id(
+            app_handle,
             SHARED_SERVICE_CREATE_MENU_ID,
             "Create...",
-        ));
-    app_state
-        .tcp_outlet_list()
-        .await
-        .iter()
-        .map(shared_service_submenu)
-        .fold(tm, |menu, submenu| menu.add_submenu(submenu))
+            true,
+            None,
+        ),
+    ])
 }
 
-fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
+fn shared_service_submenu<R: Runtime>(
+    outlet: &OutletStatus,
+    app_handle: &AppHandle<R>,
+) -> Submenu<R> {
     let worker_address = outlet.worker_address().unwrap();
 
-    #[cfg_attr(not(feature = "invitations"), allow(unused_mut))]
-    let mut submenu = SystemTrayMenu::new();
+    let outlet_info = format!("{} to {}", worker_address, outlet.tcp_addr);
+    let mut submenu = SubmenuBuilder::new(app_handle, outlet_info);
 
     #[cfg(feature = "invitations")]
     {
         // NOTE: Event handler for dynamic ID is defined in crate::invitations::tray_menu module,
         // and reached via crate::app::tray_menu::fallback_for_id
-        submenu = submenu.add_item(CustomMenuItem::new(
+        submenu = submenu.item(&MenuItem::with_id(
+            app_handle,
             format!("invitation-create-for-{}", outlet.tcp_addr),
             "Share".to_string(),
+            true,
+            None,
         ));
     }
 
-    submenu = submenu
-        .add_item(
-            CustomMenuItem::new(
-                "outlet-tcp-address".to_string(),
-                format!("TCP Address: {}", outlet.tcp_addr),
-            )
-            .disabled(),
-        )
-        .add_item(
-            CustomMenuItem::new(
-                "outlet-worker-address".to_string(),
-                format!("Worker Address: {}", worker_address),
-            )
-            .disabled(),
-        )
-        .add_item(
-            CustomMenuItem::new(
-                "outlet-worker-status".to_string(),
-                format!("Status: {}", "unknown"),
-            )
-            .disabled(),
-        );
+    submenu = submenu.items(&[
+        &MenuItem::with_id(
+            app_handle,
+            "outlet-tcp-address".to_string(),
+            format!("TCP Address: {}", outlet.tcp_addr),
+            false,
+            None,
+        ),
+        &MenuItem::with_id(
+            app_handle,
+            "outlet-worker-address".to_string(),
+            format!("Worker Address: {}", worker_address),
+            false,
+            None,
+        ),
+        &MenuItem::with_id(
+            app_handle,
+            "outlet-worker-status".to_string(),
+            format!("Status: {}", "unknown"),
+            false,
+            None,
+        ),
+    ]);
 
-    let outlet_info = format!("{} to {}", worker_address, outlet.tcp_addr);
-
-    SystemTraySubmenu::new(outlet_info, submenu)
+    submenu.build().expect("Failed to build outlet submenu")
 }
 
 /// Event listener for the "Create..." menu item
-pub fn on_create(app: &AppHandle<Wry>) -> tauri::Result<()> {
+pub fn on_create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     match app.get_window(SHARED_SERVICE_WINDOW_ID) {
         None => {
             let w = tauri::WindowBuilder::new(
