@@ -340,7 +340,7 @@ pub mod test_utils {
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
     use ockam_node::compat::asynchronous::RwLock;
-    use ockam_node::{Context, InMemoryKeyValueStorage};
+    use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
     use ockam_vault::{Secret, SecretAttributes};
 
@@ -396,10 +396,9 @@ pub mod test_utils {
         // export the identity and credentials,then import in the LMDB after secure-channel
         // has been re-created
         let secure_channels = SecureChannels::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(cli_state.identities.identities_repository().await?)
             .with_identities_storage(InMemoryStorage::create())
-            .with_vault_storage(InMemoryKeyValueStorage::create())
             .build();
 
         let identity = create_identity_zero(&secure_channels).await?;
@@ -473,7 +472,8 @@ pub mod test_utils {
         // the rng with a fixed value
         let identity_key_id = secure_channels
             .vault()
-            .import_ephemeral_secret(Secret::new([0u8; 32].to_vec()), SecretAttributes::Ed25519)
+            .signing_vault
+            .import_key(Secret::new([0u8; 32].to_vec()), SecretAttributes::Ed25519)
             .await?;
 
         let identity = secure_channels

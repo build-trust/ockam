@@ -10,7 +10,6 @@ use nix::errno::Errno;
 use ockam::identity::Identifier;
 use ockam::LmdbStorage;
 use ockam_core::compat::collections::HashSet;
-use ockam_core::compat::sync::Arc;
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -195,7 +194,7 @@ impl NodeConfig {
         Ok(std::fs::canonicalize(&self.default_vault)?)
     }
 
-    pub async fn vault(&self) -> Result<Arc<Vault>> {
+    pub async fn vault(&self) -> Result<Vault> {
         let state = VaultState::load(self.vault_path()?)?;
         state.get().await
     }
