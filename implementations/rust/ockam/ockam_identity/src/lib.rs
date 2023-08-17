@@ -32,37 +32,37 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-/// Data types supporting the creation of a credential
-pub mod credential;
-
-/// Services for creating and validating credentials
-pub mod credentials;
-
-/// Service for the management of identities
-pub mod identities;
-
-/// Data types representing an identity
-pub mod identity;
-
-/// Data types supporting the creation of a secure channels
-pub mod secure_channel;
-
-/// Service supporting the creation of secure channel listener and connection to a listener
-pub mod secure_channels;
-
-/// Errors
-mod error;
+// /// Data types supporting the creation of a credential
+// pub mod credential;
+//
+// /// Services for creating and validating credentials
+// pub mod credentials;
+//
+// /// Service for the management of identities
+// pub mod identities;
+//
+// /// Data types representing an identity
+// pub mod identity;
+//
+// /// Data types supporting the creation of a secure channels
+// pub mod secure_channel;
+//
+// /// Service supporting the creation of secure channel listener and connection to a listener
+// pub mod secure_channels;
+//
+// /// Errors
+// mod error;
 
 ///
 /// Exports
 ///
-pub use credential::*;
-pub use credentials::*;
-pub use error::*;
-pub use identities::*;
-pub use identity::*;
-pub use secure_channel::*;
-pub use secure_channels::*;
+// pub use credential::*;
+// pub use credentials::*;
+// pub use error::*;
+// pub use identities::*;
+// pub use identity::*;
+// pub use secure_channel::*;
+// pub use secure_channels::*;
 
 /// New version of Identity implementation meant to replace the current one when ready
 pub mod v2;
