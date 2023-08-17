@@ -56,6 +56,8 @@ pub enum IdentityError {
     ConsistencyError,
     /// Invalid Hex
     InvalidHex,
+    /// Secret Key doesn't correspond to the Identity
+    WrongSecretKey,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}
