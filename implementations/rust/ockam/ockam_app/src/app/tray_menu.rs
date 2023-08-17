@@ -29,6 +29,8 @@ pub fn process_system_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
         let result = match id.as_str() {
             enroll::ENROLL_MENU_ID => enroll::on_enroll(app),
             shared_service::SHARED_SERVICE_CREATE_MENU_ID => shared_service::on_create(app),
+            #[cfg(debug_assertions)]
+            options::REFRESH_MENU_ID => options::on_refresh(app),
             options::RESET_MENU_ID => options::on_reset(app),
             options::QUIT_MENU_ID => options::on_quit(),
             id => fallback_for_id(app, id),
