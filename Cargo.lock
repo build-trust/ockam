@@ -3259,6 +3259,7 @@ dependencies = [
  "ockam_transport_uds",
  "ockam_transport_websocket",
  "ockam_vault",
+ "r3bl_ansi_color",
  "rand 0.8.5",
  "serde",
  "serde_bare",
@@ -5684,6 +5685,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "r3bl_ansi_color"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e10543981a8298abc7850a1a6392c0ab5d5b1a98db2c574a75e94815d7a14ab"
+dependencies = [
+ "is-terminal",
+ "is_ci",
 ]
 
 [[package]]
