@@ -278,16 +278,16 @@ impl CliState {
         self.identities.create(identity_name, identity_config)
     }
 
-    pub async fn get_identities(&self, vault: Arc<Vault>) -> Result<Arc<Identities>> {
+    pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
         Ok(Identities::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
     }
 
     pub async fn default_identities(&self) -> Result<Arc<Identities>> {
         Ok(Identities::builder()
-            .with_identities_vault(self.vaults.default()?.identities_vault().await?)
+            .with_vault(self.vaults.default()?.vault().await?)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
     }
@@ -391,7 +391,6 @@ mod tests {
     use crate::cloud::enroll::auth0::UserInfo;
     use crate::config::cli::TrustContextConfig;
     use crate::config::lookup::{ConfigLookup, LookupValue, ProjectLookup, SpaceLookup};
-    use ockam::identity::IdentitiesVault;
     use ockam_multiaddr::MultiAddr;
     use std::str::FromStr;
 
@@ -523,9 +522,9 @@ mod tests {
         let identity_name = {
             let name = hex::encode(random::<[u8; 4]>());
             let vault_state = sut.vaults.get(&vault_name).unwrap();
-            let vault: Arc<dyn IdentitiesVault> = vault_state.get().await.unwrap();
+            let vault: Vault = vault_state.get().await.unwrap();
             let identities = Identities::builder()
-                .with_identities_vault(vault)
+                .with_vault(vault)
                 .with_identities_repository(sut.identities.identities_repository().await?)
                 .build();
             let identity = identities
