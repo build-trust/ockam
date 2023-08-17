@@ -19,7 +19,6 @@ in {
       suggestedCargoPlugins = mkEnableOption "extra cargo plugins";
       version = mkOption {
         type = types.nullOr (types.strMatching "^([0-9]+)\.([0-9]+)(\.([0-9]+))$");
-        default = "1.69.0";
       };
     };
   };
@@ -36,6 +35,7 @@ in {
         compilerTools = with pkgs; [
           clang
           cmake
+          dprint
           lld
         ];
 
