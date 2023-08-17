@@ -1,3 +1,11 @@
+use crate::identity::models::Identifier;
+use crate::identity::storage::Storage;
+use crate::identity::{
+    secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
+    IdentitiesKeys, IdentitiesRepository, Purpose, SecureChannel, SecureChannelListener,
+    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
+};
+use crate::identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
@@ -5,18 +13,8 @@ use ockam_core::{
     Address, IncomingAccessControl, Message, OutgoingAccessControl, Processor, Result, Route,
     Routed, Worker,
 };
-use ockam_identity::v2::models::Identifier;
-use ockam_identity::v2::storage::Storage;
-use ockam_identity::v2::{
-    secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
-    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
-};
-use ockam_identity::v2::{
-    IdentitiesVault, Identity, SecureChannelListenerOptions, SecureChannelOptions,
-};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
-use ockam_vault::VaultStorage;
+use ockam_vault::{Vault, VaultStorage};
 
 use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use crate::stream::Stream;
@@ -109,6 +107,17 @@ impl Node {
             .await?
             .identifier()
             .clone())
+    }
+
+    /// Create the [`SecureChannel`] [`PurposeKey`]
+    pub async fn create_secure_channel_key(&self, identifier: &Identifier) -> Result<()> {
+        let _ = self
+            .identities()
+            .purpose_keys()
+            .create_purpose_key(identifier, Purpose::SecureChannel)
+            .await?;
+
+        Ok(())
     }
 
     /// Import an Identity given its private key and change history
@@ -293,16 +302,6 @@ impl Node {
         self.identities().repository()
     }
 
-    /// Return the vault used by secure channels
-    pub fn secure_channels_vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.secure_channels().vault()
-    }
-
-    /// Return the vault used by identities
-    pub fn identities_vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.identities().vault()
-    }
-
     /// Return a new builder for top-level services
     pub fn builder() -> NodeBuilder {
         NodeBuilder::new()
@@ -325,46 +324,40 @@ pub struct NodeBuilder {
 }
 
 impl NodeBuilder {
-    fn new() -> NodeBuilder {
-        NodeBuilder {
+    fn new() -> Self {
+        Self {
             builder: SecureChannels::builder(),
         }
     }
 
-    /// Set a specific vault storage for identities and secure channels
-    pub fn with_vault_storage(&mut self, storage: VaultStorage) -> NodeBuilder {
-        self.builder = self.builder.with_vault_storage(storage);
-        self.clone()
+    /// Set [`Vault`]
+    pub fn with_vault(mut self, vault: Vault) -> Self {
+        self.builder = self.builder.with_vault(vault);
+        self
     }
 
-    /// Set a specific identities vault
-    pub fn with_identities_vault(&mut self, vault: Arc<dyn IdentitiesVault>) -> NodeBuilder {
-        self.builder = self.builder.with_identities_vault(vault);
-        self.clone()
+    /// With Software Vault with given Storage
+    pub fn with_vault_storage(mut self, storage: VaultStorage) -> Self {
+        self.builder = self.builder.with_vault_storage(storage);
+        self
     }
 
     /// Set a specific storage for identities
-    pub fn with_identities_storage(&mut self, storage: Arc<dyn Storage>) -> NodeBuilder {
+    pub fn with_identities_storage(mut self, storage: Arc<dyn Storage>) -> Self {
         self.builder = self.builder.with_identities_storage(storage);
-        self.clone()
+        self
     }
 
     /// Set a specific identities repository
-    pub fn with_identities_repository(
-        &mut self,
-        repository: Arc<dyn IdentitiesRepository>,
-    ) -> NodeBuilder {
+    pub fn with_identities_repository(mut self, repository: Arc<dyn IdentitiesRepository>) -> Self {
         self.builder = self.builder.with_identities_repository(repository);
-        self.clone()
+        self
     }
 
     /// Set a specific secure channels registry
-    pub fn with_secure_channels_registry(
-        &mut self,
-        registry: SecureChannelRegistry,
-    ) -> NodeBuilder {
+    pub fn with_secure_channels_registry(mut self, registry: SecureChannelRegistry) -> Self {
         self.builder = self.builder.with_secure_channels_registry(registry);
-        self.clone()
+        self
     }
 
     /// Build top level services
