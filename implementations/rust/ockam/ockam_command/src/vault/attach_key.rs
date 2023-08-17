@@ -60,8 +60,8 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
 mod tests {
     use ockam::identity::Identities;
     use ockam_core::Result;
-    use ockam_vault::{PersistentSecretsStore, SecretAttributes, Vault};
-    use ockam_vault_aws::AwsSecurityModule;
+    use ockam_vault::{SecretAttributes, Vault};
+    use ockam_vault_aws::AwsSigningVault;
     use std::sync::Arc;
 
     /// This test needs to be executed with the following environment variables
@@ -71,15 +71,14 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_create_identity_with_external_key_id() -> Result<()> {
-        let vault =
-            Vault::create_with_security_module(Arc::new(AwsSecurityModule::default().await?));
-        let identities = Identities::builder()
-            .with_identities_vault(vault.clone())
-            .build();
+        let mut vault = Vault::create();
+        vault.signing_vault = Arc::new(AwsSigningVault::default().await?);
+        let identities = Identities::builder().with_vault(vault.clone()).build();
 
         // create a secret key using the AWS KMS
         let key_id = vault
-            .create_persistent_secret(SecretAttributes::NistP256)
+            .signing_vault
+            .generate_key(SecretAttributes::NistP256)
             .await?;
 
         let identity = identities
