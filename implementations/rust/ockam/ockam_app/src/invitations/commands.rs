@@ -59,8 +59,8 @@ pub async fn create_service_invitation<R: Runtime>(
         ?outlet_addr,
         "creating service invitation"
     );
-    let app_state = app.state::<AppState>();
-    let project_id = app_state
+    let state = app.state::<AppState>();
+    let project_id = state
         .state()
         .await
         .projects
@@ -80,9 +80,7 @@ pub async fn create_service_invitation<R: Runtime>(
     .await
     .map_err(|e| e.to_string())?;
 
-    let state: State<'_, AppState> = app.state();
     let node_manager_worker = state.node_manager_worker().await;
-
     let res = node_manager_worker
         .create_service_invitation(&state.context(), invite_args, &CloudOpts::route(), None)
         .await
@@ -138,6 +136,9 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
 async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
     let invitations_state: State<'_, SyncState> = app.state();
     let reader = invitations_state.read().await;
+    if reader.accepted.is_empty() {
+        return Ok(());
+    }
     let app_state: State<'_, AppState> = app.state();
     let cli_state = app_state.state().await;
     let accepted_invitations_by_node =
@@ -162,6 +163,7 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                 &cli_bin,
                 "tcp-inlet",
                 "list",
+                "--quiet",
                 "--at",
                 &node_name,
                 "--output",
@@ -197,6 +199,7 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                 &cli_bin,
                 "tcp-inlet",
                 "delete",
+                "--quiet",
                 &inlet.alias,
                 "--at",
                 &node_name,
@@ -226,7 +229,7 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()>
                 to: {service_route}
         "#
     };
-    duct::cmd!(cli_bin()?, "run", "--inline", run_cmd_template)
+    duct::cmd!(cli_bin()?, "run", "--quiet", "--inline", run_cmd_template)
         .run()
         .map_err(|e| {
             error!(%e, enrollment_ticket=enrollment_ticket_hex, "Could not create a tcp-inlet for the accepted invitation");
