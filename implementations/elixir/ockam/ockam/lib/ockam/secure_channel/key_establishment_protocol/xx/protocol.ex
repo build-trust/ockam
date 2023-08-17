@@ -256,20 +256,14 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def encrypt_and_hash(%{vault: vault, k: k, n: n, h: h} = state, plaintext) do
-    with {:ok, k} <- Vault.secret_export(vault, k),
-         {:ok, k} <- Vault.secret_import(vault, [type: :aes], k),
-         {:ok, ciphertext_and_tag} <- Vault.aead_aes_gcm_encrypt(vault, k, n, h, plaintext),
-         :ok <- Vault.secret_destroy(vault, k),
+    with {:ok, ciphertext_and_tag} <- Vault.aead_aes_gcm_encrypt(vault, k, n, h, plaintext),
          {:ok, state} <- mix_hash(state, ciphertext_and_tag) do
       {:ok, %{state | n: n + 1}, ciphertext_and_tag}
     end
   end
 
   def decrypt_and_hash(%{vault: vault, k: k, n: n, h: h} = state, ciphertext_and_tag) do
-    with {:ok, k} <- Vault.secret_export(vault, k),
-         {:ok, k} <- Vault.secret_import(vault, [type: :aes], k),
-         {:ok, plaintext} <- Vault.aead_aes_gcm_decrypt(vault, k, n, h, ciphertext_and_tag),
-         :ok <- Vault.secret_destroy(vault, k),
+    with {:ok, plaintext} <- Vault.aead_aes_gcm_decrypt(vault, k, n, h, ciphertext_and_tag),
          {:ok, state} <- mix_hash(state, ciphertext_and_tag) do
       {:ok, %{state | n: n + 1}, plaintext}
     end
