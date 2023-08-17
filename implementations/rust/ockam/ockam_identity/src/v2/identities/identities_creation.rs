@@ -75,6 +75,10 @@ impl IdentitiesCreation {
         let identity_history_data: Vec<u8> =
             hex::decode(identity_history).map_err(|_| IdentityError::InvalidHex)?;
         let identity = self.import(None, identity_history_data.as_slice()).await?;
+        if identity.get_public_key()? != self.signing_vault.get_public_key(&key_id).await? {
+            return Err(IdentityError::WrongSecretKey.into());
+        }
+
         self.repository
             .update_identity(identity.identifier(), identity.change_history())
             .await?;
