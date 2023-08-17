@@ -1,10 +1,10 @@
+use ockam::identity::{
+    secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions,
+};
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::workers::Echoer;
 use ockam::{ForwardingService, ForwardingServiceOptions};
 use ockam_core::{route, AllowAll, Result};
-use ockam_identity::v2::{
-    secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions,
-};
 use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use std::time::Duration;
