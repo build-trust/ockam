@@ -120,7 +120,7 @@ async fn get_orchestrator_version(
         let identities_vault = opts.state.vaults.default()?.get().await?;
         let identities_repository = opts.state.identities.identities_repository().await?;
         Node::builder()
-            .with_identities_vault(identities_vault)
+            .with_vault(identities_vault)
             .with_identities_repository(identities_repository)
             .build(ctx)
             .await?
