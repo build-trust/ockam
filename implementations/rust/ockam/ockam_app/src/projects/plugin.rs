@@ -13,7 +13,7 @@ use super::{
     State,
 };
 
-const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(300);
+const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("projects")
