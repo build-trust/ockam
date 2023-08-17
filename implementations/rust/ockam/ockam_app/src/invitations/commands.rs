@@ -4,7 +4,6 @@ use tracing::{debug, error, info, warn};
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::{AcceptInvitation, InvitationWithAccess};
-use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::{
     cloud::share::{InvitationListKind, ListInvitations},
     nodes::models::portal::OutletStatus,
@@ -141,70 +140,32 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
     }
     let app_state: State<'_, AppState> = app.state();
     let cli_state = app_state.state().await;
-    let accepted_invitations_by_node =
-        reader
-            .accepted
-            .iter()
-            .fold(std::collections::HashMap::new(), |mut acc, invitation| {
-                let _ = InletDataFromInvitation::new(&cli_state, invitation).map(|d| {
-                    d.map(|d| {
-                        acc.entry(d.local_node_name.clone())
-                            .or_insert_with(Vec::new)
-                            .push(d);
-                    })
-                });
-                acc
-            });
     let cli_bin = cli_bin()?;
-    for (node_name, invitations) in accepted_invitations_by_node {
-        let mut node_inlets_to_delete = Vec::new();
-        let node_inlets = {
-            match duct::cmd!(
-                &cli_bin,
-                "tcp-inlet",
-                "list",
-                "--quiet",
-                "--at",
-                &node_name,
-                "--output",
-                "json"
-            )
-            .read()
-            {
-                Ok(json_res) => serde_json::from_str::<Vec<InletStatus>>(&json_res)?,
-                Err(e) => {
-                    warn!(?node_name, %e, "Could not list inlets for node");
-                    // If the node doesn't exist, the command will return an error, so
-                    // we initialize the inlets list to an empty vector.
-                    Vec::new()
+    for invitation in &reader.accepted {
+        match InletDataFromInvitation::new(&cli_state, invitation) {
+            Ok(i) => {
+                if let Some(i) = i {
+                    if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
+                        if node.is_running() {
+                            continue;
+                        }
+                    }
+                    let _ = duct::cmd!(
+                        &cli_bin,
+                        "node",
+                        "delete",
+                        "--quiet",
+                        "--yes",
+                        &i.local_node_name
+                    )
+                    .run();
+                    create_inlet(&i).await?;
                 }
             }
-        };
-        // Iterate the invitations and create the inlets if they don't exist
-        for invitation_inlet_data in invitations {
-            if let Some(inlet) = node_inlets
-                .iter()
-                // The inlets we create are named after the remote service name (i.e. the remote tcp-outlet name)
-                .find(|inlet| inlet.alias == invitation_inlet_data.service_name)
-            {
-                // If the inlet already exists, mark it to remove it from the node
-                node_inlets_to_delete.push(inlet);
-            } else {
-                create_inlet(&invitation_inlet_data).await?;
+            Err(err) => {
+                warn!(%err, "Could not create inlet from invitation");
+                continue;
             }
-        }
-        // Remove the orphaned inlets (no matching invitations) from the node
-        for inlet in node_inlets_to_delete {
-            let _ = duct::cmd!(
-                &cli_bin,
-                "tcp-inlet",
-                "delete",
-                "--quiet",
-                &inlet.alias,
-                "--at",
-                &node_name,
-            )
-            .run();
         }
     }
     Ok(())
@@ -229,7 +190,8 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()>
                 to: {service_route}
         "#
     };
-    duct::cmd!(cli_bin()?, "run", "--quiet", "--inline", run_cmd_template)
+    duct::cmd!(cli_bin()?, "run", "--inline", run_cmd_template)
+        .env("QUIET", "1")
         .run()
         .map_err(|e| {
             error!(%e, enrollment_ticket=enrollment_ticket_hex, "Could not create a tcp-inlet for the accepted invitation");

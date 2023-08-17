@@ -88,6 +88,7 @@ impl ConfigRunner {
 
         for command in self.commands_sorted.into_iter() {
             debug!("Running command: {}: {:?}", command.id, command.cmd);
+
             // If a command fails it will show the appropriate error in its subshell.
             // No need to return an error here.
             if let Some(spawn_node) = command.block_on_node {

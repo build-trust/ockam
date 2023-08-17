@@ -3,6 +3,7 @@ System
   If it's not set it has no effect in the Ockam CLI.
 
 CLI Behavior
+- QUIET: a `boolean` that, if set, the CLI won't print any log messages. Defaults to `false`.
 - NO_COLOR: a `boolean` that, if set, the colors will be stripped out from output messages.
   Otherwise, let the terminal decide.
 - NO_INPUT: a `boolean` that, if set, the CLI won't ask the user for input.
