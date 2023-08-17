@@ -80,6 +80,7 @@ use message::MessageCommand;
 use miette::GraphicalReportHandler;
 use node::NodeCommand;
 use ockam_api::cli_state::CliState;
+use ockam_core::env::get_env_with_default;
 use once_cell::sync::Lazy;
 use policy::PolicyCommand;
 use project::ProjectCommand;
@@ -142,8 +143,8 @@ pub struct GlobalArgs {
     )]
     help: Option<bool>,
 
-    /// Do not print any trace messages
-    #[arg(global = true, long, short, conflicts_with("verbose"))]
+    /// Do not print any log messages
+    #[arg(global = true, long, short)]
     quiet: bool,
 
     /// Increase verbosity of trace messages
@@ -151,7 +152,6 @@ pub struct GlobalArgs {
     global = true,
     long,
     short,
-    conflicts_with("quiet"),
     action = ArgAction::Count
     )]
     verbose: u8,
@@ -182,12 +182,15 @@ pub struct GlobalArgs {
 
 impl Default for GlobalArgs {
     fn default() -> Self {
+        let quiet = get_env_with_default("QUIET", false).unwrap_or(false);
+        let no_color = get_env_with_default("NO_COLOR", false).unwrap_or(false);
+        let no_input = get_env_with_default("NO_INPUT", false).unwrap_or(false);
         Self {
             help: None,
-            quiet: false,
+            quiet,
             verbose: 0,
-            no_color: false,
-            no_input: false,
+            no_color,
+            no_input,
             output_format: OutputFormat::Plain,
             test_argument_parser: false,
         }

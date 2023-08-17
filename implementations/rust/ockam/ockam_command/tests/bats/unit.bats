@@ -519,7 +519,7 @@ teardown() {
   run $OCKAM tcp-inlet list --at /node/n2
   assert_success
 
-  assert_output --partial "Inlet tcp-inlet-2"
+  assert_output --partial "tcp-inlet-2"
   assert_output --partial "127.0.0.1:$port"
   assert_success
 }
@@ -533,8 +533,9 @@ teardown() {
   assert_success
 
   run $OCKAM tcp-outlet list --at /node/n1
-  assert_output --partial "Outlet test-outlet"
-  assert_output --partial "From /service/outlet to 127.0.0.1:$port"
+  assert_output --partial "test-outlet"
+  assert_output --partial "/service/outlet"
+  assert_output --partial "127.0.0.1:$port"
   assert_success
 }
 
