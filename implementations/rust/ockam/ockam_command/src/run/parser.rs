@@ -174,8 +174,8 @@ pub struct Config {
 pub struct NodeConfig {
     #[serde(rename(deserialize = "depends-on"))]
     pub depends_on: Option<String>,
-    #[serde(rename(deserialize = "enroll-ticket"))]
-    pub enroll_ticket: Option<String>,
+    #[serde(rename(deserialize = "enrollment-ticket"))]
+    pub enrollment_ticket: Option<String>,
     #[serde(rename(deserialize = "tcp-inlets"))]
     pub tcp_inlets: Option<HashMap<String, InletConfig>>,
     #[serde(rename(deserialize = "tcp-outlets"))]
@@ -217,7 +217,7 @@ impl NodeConfig {
 
         // Always enroll since it's an idempotent operation.
         // The trust context is named after the node.
-        if let Some(enroll_ticket) = &self.enroll_ticket {
+        if let Some(enroll_ticket) = &self.enrollment_ticket {
             insert_command(
                 "node",
                 &format!("{}/enroll", node_name),
@@ -239,7 +239,7 @@ impl NodeConfig {
             if blocking {
                 args.push("--foreground");
             }
-            if self.enroll_ticket.is_some() {
+            if self.enrollment_ticket.is_some() {
                 args.push("--trust-context");
                 args.push(node_name);
             }

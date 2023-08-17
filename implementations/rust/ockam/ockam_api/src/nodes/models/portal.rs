@@ -10,7 +10,6 @@ use ockam_core::TypeTag;
 use ockam_core::{CowStr, Route};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
-use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ApiError;
@@ -159,11 +158,12 @@ impl CreateOutlet {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Decode, Encode)]
+#[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletStatus {
     #[cfg(feature = "tag")]
+    #[serde(skip)]
     #[n(0)] tag: TypeTag<9302588>,
     #[n(1)] pub bind_addr: String,
     #[n(2)] pub worker_addr: String,
@@ -171,21 +171,6 @@ pub struct InletStatus {
     /// An optional status payload
     #[n(4)] pub payload: Option<String>,
     #[n(5)] pub outlet_route: String,
-}
-
-impl Serialize for InletStatus {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("InletStatus", 5)?;
-        state.serialize_field("bind_addr", &self.bind_addr)?;
-        state.serialize_field("worker_addr", &self.worker_addr)?;
-        state.serialize_field("alias", &self.alias)?;
-        state.serialize_field("payload", &self.payload)?;
-        state.serialize_field("outlet_route", &self.outlet_route)?;
-        state.end()
-    }
 }
 
 impl InletStatus {

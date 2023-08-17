@@ -1,11 +1,10 @@
-use crate::app::AppState;
+use crate::app::{AppState, NODE_NAME};
 use crate::Result;
 use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_api::nodes::NodeManagerWorker;
-use ockam_core::compat::rand::random_string;
 use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
 use tracing::{debug, info};
@@ -31,7 +30,8 @@ pub async fn create_relay_impl(
             debug!(project = %project.name(), "Creating relay at project");
             let project_route = format!("/project/{}", project.name());
             let project_address = MultiAddr::from_str(&project_route).into_diagnostic()?;
-            let req = CreateForwarder::at_project(project_address.clone(), Some(random_string()));
+            let req =
+                CreateForwarder::at_project(project_address.clone(), Some(NODE_NAME.to_string()));
             let relay = node_manager_worker
                 .create_forwarder(context, req)
                 .await

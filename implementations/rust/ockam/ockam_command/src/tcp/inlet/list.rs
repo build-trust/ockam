@@ -5,7 +5,7 @@ use crate::{docs, CommandGlobalOpts};
 
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models;
 
@@ -68,12 +68,17 @@ async fn run_impl(
 
     let (inlets, _) = try_join!(send_req, progress_output)?;
 
-    let list = opts.terminal.build_list(
+    let plain = opts.terminal.build_list(
         &inlets.list,
         "Inlets",
         &format!("No TCP Inlets found on {node_name}"),
     )?;
-    opts.terminal.stdout().plain(list).write_line()?;
+    let json = serde_json::to_string_pretty(&inlets.list).into_diagnostic()?;
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
 
     Ok(())
 }
