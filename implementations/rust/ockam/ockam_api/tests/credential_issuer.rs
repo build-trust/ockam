@@ -55,7 +55,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     // and the repository containing the trusted identities
     let identities = Identities::builder()
         .with_identities_repository(Arc::new(bootstrapped))
-        .with_identities_vault(identities.vault())
+        .with_vault(identities.vault())
         .with_purpose_keys_repository(identities.purpose_keys_repository())
         .build();
     let secure_channels = SecureChannels::builder()

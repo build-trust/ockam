@@ -1,8 +1,9 @@
 use ockam::compat::sync::Arc;
+use ockam::identity::Identity;
 use ockam::identity::{Identifier, IdentitiesRepository};
 use ockam::identity::{Identities, IdentitiesCreation};
-use ockam::identity::{IdentitiesVault, Identity};
 use ockam::Result;
+use ockam_vault::Vault;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::CliState;
@@ -22,7 +23,7 @@ impl NodeIdentities {
         }
     }
 
-    pub(super) fn identities_vault(&self) -> Arc<dyn IdentitiesVault> {
+    pub(super) fn identities_vault(&self) -> Vault {
         self.identities.vault()
     }
 
@@ -75,7 +76,7 @@ impl NodeIdentities {
         let vault = self.get_identities_vault(vault_name).await?;
         let repository = self.cli_state.identities.identities_repository().await?;
         Ok(Identities::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(repository)
             .build())
     }
@@ -86,14 +87,15 @@ impl NodeIdentities {
         vault_name: Option<String>,
     ) -> Result<IdentitiesCreation> {
         let vault = self.get_identities_vault(vault_name).await?;
-        Ok(IdentitiesCreation::new(self.identities_repository(), vault))
+        Ok(IdentitiesCreation::new(
+            self.identities_repository(),
+            vault.signing_vault,
+            vault.verifying_vault,
+        ))
     }
 
     /// Return either the default vault or a specific one
-    pub(crate) async fn get_identities_vault(
-        &self,
-        vault_name: Option<String>,
-    ) -> Result<Arc<dyn IdentitiesVault>> {
+    pub(crate) async fn get_identities_vault(&self, vault_name: Option<String>) -> Result<Vault> {
         if let Some(vault) = vault_name {
             let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
             Ok(existing_vault)

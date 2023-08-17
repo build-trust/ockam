@@ -11,7 +11,7 @@ pub use node_identities::*;
 use ockam::identity::TrustContext;
 use ockam::identity::{
     Credentials, CredentialsServer, CredentialsServerModule, Identities, IdentitiesRepository,
-    IdentitiesVault, IdentityAttributesReader, IdentityAttributesWriter,
+    IdentityAttributesReader, IdentityAttributesWriter,
 };
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
@@ -27,6 +27,7 @@ use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
+use ockam_vault::Vault;
 
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
@@ -129,8 +130,8 @@ impl NodeManager {
         Arc::new(CredentialsServerModule::new(self.credentials()))
     }
 
-    pub(super) fn secure_channels_vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.secure_channels.vault().clone()
+    pub(super) fn secure_channels_vault(&self) -> Vault {
+        self.secure_channels.identities().vault()
     }
 
     pub(super) fn list_outlets(&self) -> OutletList {
@@ -325,7 +326,7 @@ impl NodeManager {
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
-        let vault: Arc<dyn IdentitiesVault> = node_state.config().vault().await?;
+        let vault: Vault = node_state.config().vault().await?;
         let identities_repository: Arc<dyn IdentitiesRepository> =
             Arc::new(match general_options.pre_trusted_identities {
                 None => BootstrapedIdentityStore::new(
@@ -337,7 +338,7 @@ impl NodeManager {
 
         debug!("create the secure channels service");
         let secure_channels = SecureChannels::builder()
-            .with_identities_vault(vault)
+            .with_vault(vault)
             .with_identities_repository(identities_repository.clone())
             .build();
 
