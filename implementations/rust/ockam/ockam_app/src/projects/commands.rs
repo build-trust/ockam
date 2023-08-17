@@ -5,11 +5,11 @@ use tracing::{debug, info};
 
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
 use ockam_command::util::api::CloudOpts;
-use ockam_core::env::get_env_with_default;
 
 use super::error::{Error, Result};
 use super::State as ProjectState;
 use crate::app::AppState;
+use crate::cli::cli_bin;
 
 type SyncState = Arc<RwLock<ProjectState>>;
 
@@ -31,8 +31,7 @@ pub async fn create_enrollment_ticket<R: Runtime>(
     debug!(?project_id, "creating enrollment ticket via CLI");
     // TODO: Issue enrollment ticket using in-memory code instead of subshell
     // TODO: How might this degrade for users who have multiple spaces and projects?
-    let bin = get_env_with_default("OCKAM", "ockam".to_string())
-        .map_err(|_| Error::OckamCommandInvalid)?;
+    let bin = cli_bin().map_err(|_| Error::OckamCommandInvalid)?;
     let hex_encoded_ticket = duct::cmd!(
         bin,
         "project",

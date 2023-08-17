@@ -8,6 +8,8 @@ mod create;
 mod list;
 mod show;
 
+use crate::error::ApiError;
+use crate::identity::EnrollmentTicket;
 pub use accept::*;
 pub use create::*;
 pub use list::*;
@@ -121,4 +123,15 @@ pub struct ServiceAccessDetails {
     #[n(4)] pub project_authority_route: String,
     #[n(5)] pub shared_node_identity: String,
     #[n(6)] pub shared_node_route: String,
+    #[n(7)] pub enrollment_ticket: String, // hex-encoded as with CLI output/input
+}
+
+impl ServiceAccessDetails {
+    pub fn enrollment_ticket(&self) -> ockam_core::Result<EnrollmentTicket> {
+        let hex_decoded = hex::decode(&self.enrollment_ticket)
+            .map_err(|_| ApiError::generic("Invalid hex-encoded enrollment ticket"))?;
+        let as_json = serde_json::from_slice(&hex_decoded)
+            .map_err(|_| ApiError::generic("Invalid enrollment ticket"))?;
+        Ok(as_json)
+    }
 }

@@ -7,6 +7,7 @@ use crate::error::Result;
 use shared_service::tcp_outlet::tcp_outlet_create;
 
 mod app;
+mod cli;
 mod enroll;
 mod error;
 #[cfg(feature = "invitations")]

@@ -4520,6 +4520,7 @@ version = "0.1.0"
 dependencies = [
  "duct",
  "hex",
+ "indoc",
  "log",
  "miette",
  "muda",

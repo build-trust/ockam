@@ -68,10 +68,9 @@ impl SecureRelayOutlet {
     pub async fn create_config_and_start(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let stdout = opts.terminal.clone().stdout();
 
-        let enroll: String = if let Some(enroll_ticket) = self.enroll.enroll_ticket.as_ref() {
+        let enrollment_ticket: String = if let Some(t) = self.enroll.enroll_ticket.as_ref() {
             format! {
-                "enroll-ticket: {enroll_ticket}",
-                enroll_ticket = enroll_ticket
+                "enrollment-ticket: {t}",
             }
         } else {
             "okta: true".to_string()
@@ -81,7 +80,7 @@ impl SecureRelayOutlet {
             r#"
             nodes:
               secure_relay_outlet:
-                {enroll}
+                {enrollment_ticket}
                 tcp-outlets:
                   {service_name}:
                     from: '/service/outlet_{service_name}'
@@ -91,7 +90,6 @@ impl SecureRelayOutlet {
                   {service_name}:
                     at: /project/default
             "#,
-            enroll = enroll,
             to = self.to.to_string(),
             service_name = self.service_name,
         };

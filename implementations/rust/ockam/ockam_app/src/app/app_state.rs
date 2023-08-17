@@ -162,8 +162,7 @@ impl AppState {
     /// Return the list of currently running outlets
     pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
         let node_manager = self.node_manager_worker.read().await;
-        let inner = node_manager.inner().read().await;
-        inner.list_outlets().list
+        node_manager.list_outlets().await.list
     }
 
     pub async fn model_mut(&self, f: impl FnOnce(&mut ModelState)) -> Result<()> {

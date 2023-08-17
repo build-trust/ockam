@@ -144,7 +144,7 @@ impl NodeManager {
         self.secure_channels.vault().clone()
     }
 
-    pub fn list_outlets(&self) -> OutletList {
+    pub(super) fn list_outlets(&self) -> OutletList {
         let outlets = self.registry.outlets.clone();
         OutletList::new(
             outlets
