@@ -26,8 +26,8 @@ test_nextest_%:
 	cargo --locked nextest --config-file tools/nextest/.config/nextest.toml -p $* run
 	cargo --locked test --doc
 
-lint: lint_format lint_cargo_deny lint_cargo_clippy
-lint_format:
+lint: lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy
+lint_cargo_fmt_check:
 	cargo fmt --all -- --check
 lint_cargo_deny:
 	cargo deny --all-features \
@@ -35,7 +35,8 @@ lint_cargo_deny:
 		--config=tools/cargo-deny/deny.toml
 lint_cargo_clippy:
 	cargo clippy --no-deps --all-targets -- -D warnings
-
+lint_cargo_toml_files:
+	dprint check --config tools/dprint/dprint.json
 lint_cargo_readme:
 	@set -e;	\
 	for dir in implementations/rust/ockam/*; do \
@@ -73,5 +74,5 @@ format:
 .PHONY: \
 	build build_% build_release build_release_% \
 	test test_% test_nextest \
-	lint lint_format lint_cargo_deny lint_cargo_clippy \
+	lint lint_format lint_cargo_deny lint_cargo_clippy lint_cargo_readme lint_cargo_readme_% \
 	clean clean_% very_clean docs format

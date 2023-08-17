@@ -54,78 +54,29 @@ defaults:
     shell: bash
 
 jobs:
-  lint-cargo-toml:
-    name: Rust - lint-cargo-toml
+  lint:
+    name: Rust - lint_${{ matrix.lint_projects }}
     runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        lint_projects:
+          - cargo_readme
+          - cargo_fmt_check
+          - cargo_clippy
+          - cargo_deny
+          - cargo_toml_files
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - name: Install Dprint
-        run: npm install -g dprint@0.39.1
-      - name: Check Formatting
-        run: |
-          dprint check --config tools/dprint/dprint.json
-
-  lint_cargo_fmt_check:
-    name: Rust - lint_cargo_fmt_check
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew lint_cargo_fmt_check
-
-  lint_cargo_readme:
-    name: Rust - lint_cargo_readme
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
+        uses: ./.github/actions/nix_installer
 
-      - uses: DeterminateSystems/magic-nix-cache-action@749fc5bbc9fa49d60c2b93f6c4bc867b82e1d295
-
-      - name: Run Shfmt Check
-        run:  nix develop ./tools/nix#rust --ignore-environment --command make -f implementations/rust/Makefile lint_cargo_readme
-
-  lint_cargo_clippy:
-    name: Rust - lint_cargo_clippy
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew lint_cargo_clippy
-
-  lint_cargo_deny:
-    name: Rust - lint_cargo_deny
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew lint_cargo_deny
+      - name: Run lint ${{ matrix.lint_projects }}
+        run:  nix develop ./tools/nix#rust --ignore-environment --command make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
 
   build_docs:
     name: Rust - build_docs
