@@ -16,7 +16,7 @@ use ockam::compat::fmt::Debug;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_node::callback::{new_callback, CallbackSender};
-use ockam_vault::Vault;
+use ockam_vault::SoftwareVerifyingVault;
 
 use crate::enroll::oidc_provider::OidcProvider;
 use crate::enroll::OckamOidcProvider;
@@ -189,7 +189,7 @@ impl OidcService {
     async fn authorization_code(&self, code_verifier: &str) -> Result<AuthorizationCode> {
         // Hash and base64 encode the random bytes
         // to obtain a code challenge
-        let hashed = Vault::sha256(code_verifier.as_bytes());
+        let hashed = SoftwareVerifyingVault::compute_sha256(code_verifier.as_bytes())?;
         let code_challenge = base64_url::encode(&hashed);
 
         // Start a local server to get back the authorization code after redirect
