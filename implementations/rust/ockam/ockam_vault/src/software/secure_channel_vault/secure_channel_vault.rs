@@ -10,11 +10,11 @@ use aes_gcm::aead::NewAead;
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use arrayref::array_ref;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::rand::RngCore;
+use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_node::KeyValueStorage;
-use rand::thread_rng;
 use sha2::{Digest, Sha256};
 
 /// [`SecureChannelVault`] implementation using software
