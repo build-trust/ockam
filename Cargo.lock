@@ -7150,8 +7150,7 @@ dependencies = [
 [[package]]
 name = "tauri-build"
 version = "2.0.0-alpha.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc47d3c84f4aeac397cd956267f3b8060c5a2dba78288a5ccf9a8b7a8c1e7025"
+source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme#7856354fe16197b270dfa36bc095fec33bec4cff"
 dependencies = [
  "anyhow",
  "cargo_toml",
@@ -7317,8 +7316,7 @@ dependencies = [
 [[package]]
 name = "tauri-utils"
 version = "2.0.0-alpha.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06bcd7c6f67fd6371dcc22da7d7f26ec12c4eae26ad7bc54943bb9f35b5db302"
+source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme#7856354fe16197b270dfa36bc095fec33bec4cff"
 dependencies = [
  "brotli",
  "ctor",
@@ -8917,3 +8915,8 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
+
+[[patch.unused]]
+name = "tauri"
+version = "2.0.0-alpha.12"
+source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme#7856354fe16197b270dfa36bc095fec33bec4cff"
