@@ -6,32 +6,58 @@ use ockam_core::{
 /// Identity crate error
 #[derive(Clone, Copy, Debug)]
 pub enum IdentityError {
-    /// Bare serialization error
-    BareError = 1,
-    /// Invalid internal state of the `Identity`
-    InvalidInternalState,
-    /// Consistency check failed
-    ConsistencyError,
-    /// SecureChannel signature check failed during Identity authentication
-    SecureChannelVerificationFailed,
-    /// SecureChannel `TrustPolicy` check failed
-    SecureChannelTrustCheckFailed,
-    /// Unknown channel message destination
-    UnknownChannelMsgDestination,
-    /// Invalid `LocalInfo` type
-    InvalidLocalInfoType,
-    /// `Identity` verification error
+    /// Invalid key type
+    InvalidKeyType = 1,
+    /// Invalid Identifier format
+    InvalidIdentifier,
+    /// Identity Change History is empty
+    EmptyIdentity,
+    /// Identity Verification Failed
     IdentityVerificationFailed,
-    /// Invalid `IdentityIdentifier` format
-    InvalidIdentityId,
+    /// PurposeKeyAttestation Verification Failed
+    PurposeKeyAttestationVerificationFailed,
+    /// Credential Verification Failed
+    CredentialVerificationFailed,
+    /// Error occurred while getting current UTC Timestamp
+    UnknownTimestamp,
+    /// Attributes were already set
+    AttributesAlreadySet,
+    /// Attributes hasn't been set
+    AttributesNotSet,
+    /// Schema was not yet set
+    SchemaNotSet,
+    /// Maximum time for credential validity exceeded
+    CredentialTtlExceeded,
+    /// Credential ttl wasn't set
+    CredentialTtlNotSet,
     /// Unknown Authority
     UnknownAuthority,
-    /// SecureChannel with this address already exists
-    DuplicateSecureChannel,
-    /// Invalid nonce format
+    /// Unknown version of the Credential
+    UnknownCredentialVersion,
+    /// Unknown version of the PurposeKeyAttestation
+    UnknownPurposeKeyVersion,
+    /// Unknown version of the Identity
+    UnknownIdentityVersion,
+    /// SecureChannelVerificationFailed
+    SecureChannelVerificationFailed,
+    /// SecureChannelTrustCheckFailed
+    SecureChannelTrustCheckFailed,
+    /// Invalid Nonce value
     InvalidNonce,
     /// Nonce overflow
     NonceOverflow,
+    /// Unknown message destination
+    UnknownChannelMsgDestination,
+    /// Invalid LocalInfo type
+    InvalidLocalInfoType,
+    /// Duplicate Secure Channel
+    DuplicateSecureChannel,
+    /// Consistency Error
+    ConsistencyError,
+    /// Invalid Hex
+    InvalidHex,
+    /// Secret Key doesn't correspond to the Identity
+    WrongSecretKey,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

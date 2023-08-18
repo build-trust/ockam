@@ -4,8 +4,8 @@ use rand::random;
 
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, AllowAll, Result, Route};
-use ockam_identity::v2::models::Identifier;
-use ockam_identity::v2::{
+use ockam_identity::models::Identifier;
+use ockam_identity::{
     secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
 };
 use ockam_node::{Context, MessageReceiveOptions};

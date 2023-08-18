@@ -1,21 +1,25 @@
-use crate::identities::Identities;
-use crate::identities::IdentitiesVault;
-use crate::identity::IdentityIdentifier;
-use crate::secure_channel::handshake_worker::HandshakeWorker;
-use crate::secure_channel::{
-    Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
-    SecureChannelRegistry,
-};
-use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
 use ockam_node::Context;
+use ockam_vault::Vault;
+
+use super::super::identities::Identities;
+use super::super::models::Identifier;
+use super::super::secure_channel::handshake_worker::HandshakeWorker;
+use super::super::secure_channel::{
+    Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
+    SecureChannelRegistry,
+};
+use super::super::{
+    Purpose, PurposeKeys, SecureChannel, SecureChannelListener, SecureChannelsBuilder,
+};
 
 /// Identity implementation
 #[derive(Clone)]
 pub struct SecureChannels {
     pub(crate) identities: Arc<Identities>,
+    pub(crate) purpose_keys: Arc<PurposeKeys>,
     pub(crate) secure_channel_registry: SecureChannelRegistry,
 }
 
@@ -23,10 +27,12 @@ impl SecureChannels {
     /// Constructor
     pub(crate) fn new(
         identities: Arc<Identities>,
+        purpose_keys: Arc<PurposeKeys>,
         secure_channel_registry: SecureChannelRegistry,
     ) -> Self {
         Self {
             identities,
+            purpose_keys,
             secure_channel_registry,
         }
     }
@@ -36,9 +42,9 @@ impl SecureChannels {
         self.identities.clone()
     }
 
-    /// Return the vault associated to this service
-    pub fn vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.identities.vault.clone()
+    /// Vault
+    pub fn vault(&self) -> Vault {
+        self.identities.vault()
     }
 
     /// Return the secure channel registry
@@ -60,7 +66,7 @@ impl SecureChannels {
     pub async fn create_secure_channel_listener(
         &self,
         ctx: &Context,
-        identifier: &IdentityIdentifier,
+        identifier: &Identifier,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
     ) -> Result<SecureChannelListener> {
@@ -84,7 +90,7 @@ impl SecureChannels {
     pub async fn create_secure_channel(
         &self,
         ctx: &Context,
-        identifier: &IdentityIdentifier,
+        identifier: &Identifier,
         route: impl Into<Route>,
         options: impl Into<SecureChannelOptions>,
     ) -> Result<SecureChannel> {
@@ -97,11 +103,20 @@ impl SecureChannels {
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
 
+        let purpose_key = self
+            .purpose_keys
+            .repository()
+            .get_purpose_key(identifier, Purpose::SecureChannel)
+            .await?;
+
+        let purpose_key = self.purpose_keys.import_purpose_key(&purpose_key).await?;
+
         HandshakeWorker::create(
             ctx,
             Arc::new(self.clone()),
             addresses.clone(),
             identifier.clone(),
+            purpose_key,
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
             options.credentials,

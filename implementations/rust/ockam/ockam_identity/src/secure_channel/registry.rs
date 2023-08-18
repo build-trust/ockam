@@ -1,9 +1,10 @@
-use crate::identity::IdentityIdentifier;
-use crate::IdentityError;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Result};
+
+use super::super::models::Identifier;
+use super::super::IdentityError;
 
 /// Known information about particular SecureChannel
 #[derive(Clone, Debug)]
@@ -13,8 +14,8 @@ pub struct SecureChannelRegistryEntry {
     decryptor_messaging_address: Address,
     decryptor_api_address: Address,
     is_initiator: bool,
-    my_id: IdentityIdentifier,
-    their_id: IdentityIdentifier,
+    my_id: Identifier,
+    their_id: Identifier,
     their_decryptor_address: Address,
 }
 
@@ -27,8 +28,8 @@ impl SecureChannelRegistryEntry {
         decryptor_messaging_address: Address,
         decryptor_api_address: Address,
         is_initiator: bool,
-        my_id: IdentityIdentifier,
-        their_id: IdentityIdentifier,
+        my_id: Identifier,
+        their_id: Identifier,
         their_decryptor_address: Address,
     ) -> Self {
         Self {
@@ -69,13 +70,13 @@ impl SecureChannelRegistryEntry {
     }
 
     /// Our `IdentityIdentifier`
-    pub fn my_id(&self) -> IdentityIdentifier {
-        self.my_id.clone()
+    pub fn my_id(&self) -> &Identifier {
+        &self.my_id
     }
 
     /// Their `IdentityIdentifier`
-    pub fn their_id(&self) -> IdentityIdentifier {
-        self.their_id.clone()
+    pub fn their_id(&self) -> &Identifier {
+        &self.their_id
     }
 
     /// Their `Decryptor` address

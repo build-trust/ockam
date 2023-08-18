@@ -16,7 +16,7 @@ use crate::{eval, Env, Expr};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
-use ockam_identity::v2::{Identifier, IdentitiesRepository, IdentitySecureChannelLocalInfo};
+use ockam_identity::{Identifier, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
 /// This AccessControl uses a storage for authenticated attributes in order
 /// to verify if a policy expression is valid
