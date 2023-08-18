@@ -193,7 +193,7 @@ impl NodeManager {
         let mut env = Env::new();
         env.put("resource.id", str(r.as_str()));
         env.put("action.id", str(a.as_str()));
-        env.put("resource.project_id", str(project_id));
+        env.put("resource.trust_context_id", str(project_id));
         // Check if a policy exists for (resource, action) and if not, then
         // create a default entry:
         if self.policies.get_policy(r, a).await?.is_none() {
@@ -219,7 +219,10 @@ impl NodeManager {
         }
         let action = actions::HANDLE_MESSAGE;
         let resource = Resource::new(&addr.to_string());
-        let rule = eq([ident("resource.project_id"), ident("subject.project_id")]);
+        let rule = eq([
+            ident("resource.trust_context_id"),
+            ident("subject.trust_context_id"),
+        ]);
         let abac = self
             .build_access_control(&resource, &action, project.as_str(), &rule)
             .await?;
@@ -311,7 +314,10 @@ impl NodeManager {
             self.attributes_writer(),
         );
         let rule = and([
-            eq([ident("resource.project_id"), ident("subject.project_id")]),
+            eq([
+                ident("resource.trust_context_id"),
+                ident("subject.trust_context_id"),
+            ]),
             eq([ident("subject.ockam-role"), str("enroller")]),
         ]);
         let abac = self
