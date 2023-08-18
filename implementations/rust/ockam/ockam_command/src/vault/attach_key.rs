@@ -68,11 +68,13 @@ mod tests {
     /// AWS_REGION
     /// AWS_ACCESS_KEY_ID
     /// AWS_SECRET_ACCESS_KEY
+    /// or credentials in ~/.aws/credentials
     #[tokio::test]
     #[ignore]
+    // FIXME: Not yet working
     async fn test_create_identity_with_external_key_id() -> Result<()> {
         let mut vault = Vault::create();
-        vault.signing_vault = Arc::new(AwsSigningVault::default().await?);
+        vault.signing_vault = Arc::new(AwsSigningVault::create().await?);
         let identities = Identities::builder().with_vault(vault.clone()).build();
 
         // create a secret key using the AWS KMS
@@ -84,8 +86,12 @@ mod tests {
         let identity = identities
             .identities_creation()
             .create_identity_with_existing_key(&key_id)
-            .await;
-        assert!(identity.is_ok());
+            .await?;
+
+        identities
+            .identities_creation()
+            .import(Some(identity.identifier()), &identity.export()?)
+            .await?;
 
         Ok(())
     }
