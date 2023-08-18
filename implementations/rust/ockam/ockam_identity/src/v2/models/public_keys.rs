@@ -16,7 +16,7 @@ pub struct X25519PublicKey(pub [u8; 32]);
 
 /// P256 Public Key
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct P256ECDSAPublicKey(pub [u8; 64]);
+pub struct P256ECDSAPublicKey(pub [u8; 65]);
 
 impl<C> Encode<C> for Ed25519PublicKey {
     fn encode<W: Write>(
@@ -66,7 +66,7 @@ impl<C> Encode<C> for P256ECDSAPublicKey {
 
 impl<'b, C> Decode<'b, C> for P256ECDSAPublicKey {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
-        let data = ByteArray::<64>::decode(d, ctx)?;
+        let data = ByteArray::<65>::decode(d, ctx)?;
 
         Ok(Self(*data.deref()))
     }
