@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context as _;
 use miette::miette;
 use minicbor::{Decode, Encode};
 use tracing::info;
@@ -207,7 +208,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     .state
                     .projects
                     .default()
-                    .expect("A default project or project parameter is required.");
+                    .context("A default project or project parameter is required")?;
 
                 default_project.path().clone()
             }
