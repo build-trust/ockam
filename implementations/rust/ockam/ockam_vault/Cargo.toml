@@ -59,6 +59,7 @@ alloc = [
   "aes-gcm/alloc",
   "ed25519-dalek/alloc",
   "x25519-dalek/alloc",
+  "p256/alloc",
   "p256/ecdsa",
   "p256/pem",
 ]
