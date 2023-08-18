@@ -74,54 +74,35 @@ jobs:
 
       - name: Install Nix
         uses: ./.github/actions/nix_installer
+        
+      - name: Run lint ${{ matrix.lint_projects }}
+        run:  nix develop ./tools/nix#rust --ignore-environment --command ldd --version
 
       - name: Run lint ${{ matrix.lint_projects }}
         run:  nix develop ./tools/nix#rust --ignore-environment --command make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
 
-  build_docs:
-    name: Rust - build_docs
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew build_docs
-
   build:
-    name: Rust - build
+    name: Rust - build_${{ matrix.build_projects }}
     runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
+    strategy:
+      fail-fast: false
+      matrix:
+        build_projects:
+          - docs
+          - packages
+          - examples
+          - nightly
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - name: Checkout repository
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew build
 
-  build_examples:
-    name: Rust - build_examples
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew build_examples
+      - name: Install Nix
+        uses: ./.github/actions/nix_installer
+
+      - name: Run lint ${{ matrix.build_projects }}
+        run:  nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command make -f implementations/rust/Makefile build${{ matrix.build_projects == 'nightly' && '_packages' || format('_{0}', matrix.build_projects) }}
 
   test:
     name: Rust - test
@@ -218,23 +199,6 @@ jobs:
       - run: |
           rustc --version
           RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
-
-  build_nightly:
-    name: Rust - build_nightly
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: rustup default nightly
-      - run: rustup update nightly
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew build
 
   test_nightly:
     name: Rust - test_nightly

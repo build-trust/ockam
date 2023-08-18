@@ -47,6 +47,7 @@ in {
           ++ lib.optionals stdenv.isLinux [
             dbus
             webkitgtk_4_1
+            glibc
             (lib.getDev systemd)
           ]
           ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [

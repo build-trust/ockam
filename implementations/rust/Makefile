@@ -1,4 +1,8 @@
-build:
+build_docs:
+	cargo doc --no-deps
+build_examples:
+	cargo --locked build --examples
+build_packages:
 	cargo build
 build_release:
 	cargo --locked build --release
@@ -65,14 +69,11 @@ clean_%:
 very_clean:
 	rm -rf ../../target
 
-docs:
-	cargo doc --no-deps
-
 format:
 	cargo fmt --all
 
 .PHONY: \
-	build build_% build_release build_release_% \
+	build_docs build_examples build_packages build_release build_release_% build_% \
 	test test_% test_nextest \
-	lint lint_format lint_cargo_deny lint_cargo_clippy lint_cargo_readme lint_cargo_readme_% \
-	clean clean_% very_clean docs format
+	lint lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy lint_cargo_readme lint_cargo_readme_% lint_cargo_toml_files \
+	clean clean_% very_clean format
