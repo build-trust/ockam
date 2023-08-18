@@ -18,7 +18,7 @@ use ockam::{
     Address, Context, ForwardingService, ForwardingServiceOptions, Result, Routed, TcpTransport,
     Worker,
 };
-use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{string::String, sync::Arc};
@@ -192,7 +192,6 @@ impl NodeManager {
             let mut env = Env::new();
             env.put("resource.id", str(r.as_str()));
             env.put("action.id", str(a.as_str()));
-            env.put("resource.project_id", str(tcid.to_string()));
             env.put("resource.trust_context_id", str(tcid));
 
             // Check if a policy exists for (resource, action) and if not, then
@@ -200,17 +199,9 @@ impl NodeManager {
             if self.policies.get_policy(r, a).await?.is_none() {
                 let fallback = match custom_default {
                     Some(e) => e.clone(),
-                    None => and([
-                        eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                                                                                         /*
-                                                                                         * TODO: replace the project_id check for trust_context_id.  For now the
-                                                                                         * existing authority deployed doesn't know about trust_context so this is to
-                                                                                         * be done after updating deployed authorities.
-                                                                                         eq([
-                                                                                             ident("resource.trust_context_id"),
-                                                                                             ident("subject.trust_context_id"),
-                                                                                         ]),
-                                                                                         */
+                    None => eq([
+                        ident("resource.trust_context_id"),
+                        ident("subject.trust_context_id"),
                     ]),
                 };
                 self.policies.set_policy(r, a, &fallback).await?

@@ -345,7 +345,6 @@ impl Authority {
         // the same project id as the authority
         let rule = if enroller_check == EnrollerOnly {
             and([
-                eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
                 eq([
                     ident("resource.trust_context_id"),
                     ident("subject.trust_context_id"),
@@ -353,21 +352,14 @@ impl Authority {
                 eq([ident("subject.ockam-role"), str("enroller")]),
             ])
         } else {
-            and([
-                eq([ident("resource.project_id"), ident("subject.project_id")]), // TODO: DEPRECATE - Removing PROJECT_ID attribute in favor of TRUST_CONTEXT_ID
-                eq([
-                    ident("resource.trust_context_id"),
-                    ident("subject.trust_context_id"),
-                ]),
+            eq([
+                ident("resource.trust_context_id"),
+                ident("subject.trust_context_id"),
             ])
         };
         let mut env = Env::new();
         env.put("resource.id", str(address.as_str()));
         env.put("action.id", str(actions::HANDLE_MESSAGE.as_str()));
-        env.put(
-            "resource.project_id",
-            str(configuration.clone().project_identifier),
-        );
         env.put(
             "resource.trust_context_id",
             str(configuration.clone().trust_context_identifier),
