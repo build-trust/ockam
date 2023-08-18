@@ -49,3 +49,9 @@ inherits = "test"
 opt-level = 2
 [profile.dev.package.adler]
 opt-level = 1
+
+[patch.crates-io]
+# temporary fork for url scheme - https://github.com/build-trust/ockam/issues/5667
+tauri = { git = "https://github.com/build-trust/tauri.git", branch = "add-url-scheme" }
+tauri-build = { git = "https://github.com/build-trust/tauri.git", branch = "add-url-scheme" }
+tauri-utils = { git = "https://github.com/build-trust/tauri.git", branch = "add-url-scheme" }
