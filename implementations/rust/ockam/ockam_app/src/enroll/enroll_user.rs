@@ -9,7 +9,7 @@ use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::SpaceConfig;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::{CreateSpace, Space};
-use ockam_command::enroll::{update_enrolled_identity, OidcService};
+use ockam_command::enroll::{update_enrolled_identity, OidcService, wait_for_email_verification};
 use ockam_command::node::util::add_project_info_to_node_state;
 use ockam_command::util::api::CloudOpts;
 
@@ -43,8 +43,8 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     let token = oidc_service.get_token_with_pkce().await?;
 
     // retrieve the user information
-    let user_info = oidc_service
-        .wait_for_email_verification(&token, &app_state.options().await)
+    let user_info =
+        wait_for_email_verification(oidc_service, &token, &app_state.options().await)
         .await?;
     info!("the user info is {user_info:?}");
     app_state.model_mut(|m| m.set_user_info(user_info)).await?;
