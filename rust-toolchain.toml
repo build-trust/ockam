@@ -2,3 +2,4 @@
 channel = "1.71.1"
 components = [ "clippy", "rustfmt" ]
 profile = "minimal"
+targets = [ "thumbv7em-none-eabihf" ]

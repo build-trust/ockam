@@ -101,123 +101,54 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/nix_installer
 
-      - name: Run lint ${{ matrix.build_projects }}
+      - name: Run build ${{ matrix.build_projects }}
         run:  nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command make -f implementations/rust/Makefile build${{ matrix.build_projects == 'nightly' && '_packages' || format('_{0}', matrix.build_projects) }}
 
   test:
-    name: Rust - test
+    name: Rust - test_${{ matrix.test_projects }}
     runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
     services:
       ockam_cloud:
         image: ghcr.io/build-trust/ockam-cloud-node@sha256:518314876a5b07c263b88995792335c4426d940c10e5e638a60e66776d86cff5
     env:
       CLOUD_ADDRESS: ockam_cloud:4000
+    strategy:
+      fail-fast: false
+      matrix:
+        test_projects:
+          - stable
+          - nightly
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew test
 
-  check_no_std:
-    name: Rust - check_no_std
+      - name: Install Nix
+        uses: ./.github/actions/nix_installer
+
+      - name: Run test on ${{ matrix.test_projects }}
+        run: nix develop ./tools/nix#rust${{matrix.test_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command make -f implementations/rust/Makefile test
+
+  check:
+    name: Rust - check_${{ matrix.check_projects }}
     runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
+    strategy:
+      fail-fast: false
+      matrix:
+        check_projects:
+          - cargo_update
+          - no_std
+          - tag
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: |
-          rustc --version
-          rustup target add thumbv7em-none-eabihf
-          cd implementations/rust/ockam/ockam
-          export RUSTFLAGS='-Dwarnings'
-          cargo check --target thumbv7em-none-eabihf --no-default-features --features 'no_std alloc software_vault'
 
-          # no_std example project
-          cd ../../../../examples/rust/example_projects/no_std
-          cargo check --example hello
-          # RUSTFLAGS='-Dwarnings' cargo check --example hello --no-default-features --features 'alloc no_std'
-          # RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="qemu"
-          # RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="atsame54"
-          # RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="stm32f4"
-
-  check_tag:
-    name: Rust - check_tag
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: |
-          rustc --version
-          RUSTFLAGS='-Dwarnings' cargo check --features tag
-
-  check_cargo_update:
-    name: Rust - check_cargo_update
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: |
-          rustc --version
-          cd examples/rust/get_started
-          rm -rf Cargo.lock
-          cargo update
-          RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
-
-  check_nightly:
-    name: Rust - check_nightly
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: rustup default nightly
-      - run: rustup update nightly
-      - run: |
-          rustc --version
-          RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
-
-  test_nightly:
-    name: Rust - test_nightly
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
-      - run: rustup default nightly
-      - run: rustup update nightly
-      - run: |
-          rustc --version
-          cd implementations/rust && ../../gradlew test
-        env:
-          NIGHTLY_CI: 1
+      - name: Install Nix
+        uses: ./.github/actions/nix_installer
+  
+      - name: Run check on ${{ matrix.check_projects }}
+        run: nix develop ./tools/nix#rust --ignore-environment --command make -f implementations/rust/Makefile check_${{ matrix.check_projects }}
 
   test_ockam_command:
     name: Rust - test_ockam_command
@@ -373,3 +304,4 @@ jobs:
       - name: Check Rust Documentation
         run: |
           CHECK_MD_DIR="ockam-documentation/reference/libraries/rust" CHECK_MD_DIR_RUST_EXAMPLE="ockam/examples/rust/get_started" OCKAM_HOME="ockam" ockam/tools/docs/check_documentation.sh
+ 
