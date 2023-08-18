@@ -1,14 +1,13 @@
+use crate::error::Error;
 use aws_config::SdkConfig;
 use aws_sdk_kms::error::SdkError;
 use aws_sdk_kms::operation::schedule_key_deletion::ScheduleKeyDeletionError;
 use aws_sdk_kms::primitives::Blob;
 use aws_sdk_kms::types::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::Client;
-use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Result};
 use ockam_vault::{KeyId, PublicKey, SecretType, Signature};
 use sha2::{Digest, Sha256};
-use thiserror::Error;
 use tracing as log;
 
 /// AWS KMS client.
@@ -51,11 +50,6 @@ impl AwsKmsClient {
     pub async fn new(config: AwsKmsConfig) -> Result<AwsKmsClient> {
         let client = Client::new(&config.sdk_config);
         Ok(Self { client, config })
-    }
-
-    /// Create an AWS KMS client using the default configuration.
-    pub async fn default() -> Result<Self> {
-        Self::new(AwsKmsConfig::default().await?).await
     }
 
     /// Create a new NIST P-256 key-pair in AWS KMS and return its ID.
@@ -142,38 +136,16 @@ impl AwsKmsClient {
         }
         if let Some(k) = output.public_key() {
             log::debug!(%key_id, "received public key");
-            return Ok(PublicKey::new(k.as_ref().to_vec(), SecretType::NistP256));
+            use p256::pkcs8::DecodePublicKey;
+            let k = p256::ecdsa::VerifyingKey::from_public_key_der(k.as_ref())
+                .map_err(|_| Error::InvalidPublicKeyDer)?;
+            return Ok(PublicKey::new(
+                k.to_sec1_bytes().to_vec(),
+                SecretType::NistP256,
+            ));
         }
         log::error!(%key_id, "key type not supported to get a public key");
         Err(Error::UnsupportedKeyType.into())
-    }
-
-    /// Have AWS KMS verify a message signature.
-    pub async fn verify(
-        &self,
-        key_id: &KeyId,
-        message: &[u8],
-        signature: &Signature,
-    ) -> Result<bool> {
-        log::trace!(%key_id, "verify message signature");
-        let client = self
-            .client
-            .verify()
-            .key_id(key_id)
-            .signature(Blob::new(signature.as_ref()))
-            .signing_algorithm(SigningAlgorithmSpec::EcdsaSha256)
-            .message(digest(message))
-            .message_type(MessageType::Digest);
-        let output = client.send().await.map_err(|err| {
-            log::error!(%key_id, %err, "failed to verify message signature");
-            Error::Verify {
-                keyid: key_id.to_string(),
-                error: err.to_string(),
-            }
-        })?;
-        let is_valid = output.signature_valid();
-        log::debug!(%key_id, %is_valid, "verified message signature");
-        Ok(is_valid)
     }
 
     /// Have AWS KMS sign a message.
@@ -195,7 +167,9 @@ impl AwsKmsClient {
         })?;
         if let Some(sig) = output.signature() {
             log::debug!(%key_id, "signed message");
-            return Ok(Signature::new(sig.as_ref().to_vec()));
+            let sig = p256::ecdsa::Signature::from_der(sig.as_ref())
+                .map_err(|_| Error::InvalidSignatureDer)?;
+            return Ok(Signature::new(sig.to_vec()));
         }
         log::error!(%key_id, "no signature received from aws");
         Err(Error::MissingSignature.into())
@@ -204,17 +178,20 @@ impl AwsKmsClient {
 
 /// This trait is introduced to help with the testing of the AwsSecurityModule
 #[async_trait]
-pub(crate) trait KmsClient {
+pub trait KmsClient {
+    /// Create a key
     async fn create_key(&self) -> Result<KeyId>;
 
+    /// Delete a key
     async fn delete_key(&self, key_id: &KeyId) -> Result<bool>;
 
+    /// Get PublicKey
     async fn public_key(&self, key_id: &KeyId) -> Result<PublicKey>;
 
+    /// List All Keys
     async fn list_keys(&self) -> Result<Vec<KeyId>>;
 
-    async fn verify(&self, key_id: &KeyId, message: &[u8], signature: &Signature) -> Result<bool>;
-
+    /// Sign a message
     async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature>;
 }
 
@@ -234,6 +211,10 @@ impl KmsClient for AwsKmsClient {
             Error::MissingKeys
         })?;
 
+        if output.truncated() {
+            return Err(Error::TruncatedKeysList.into());
+        }
+
         if let Some(keys) = output.keys() {
             let mut result = vec![];
             for key in keys {
@@ -251,10 +232,6 @@ impl KmsClient for AwsKmsClient {
         self.public_key(key_id).await
     }
 
-    async fn verify(&self, key_id: &KeyId, message: &[u8], signature: &Signature) -> Result<bool> {
-        self.verify(key_id, message, signature).await
-    }
-
     async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature> {
         self.sign(key_id, message).await
     }
@@ -262,32 +239,4 @@ impl KmsClient for AwsKmsClient {
 
 fn digest(data: &[u8]) -> Blob {
     Blob::new(Sha256::digest(data).to_vec())
-}
-
-#[derive(Error, Debug)]
-pub(crate) enum Error {
-    #[error("aws sdk error creating new key")]
-    Create(String),
-    #[error("aws sdk error signing message with key {keyid}")]
-    Sign { keyid: String, error: String },
-    #[error("aws sdk error verifying message with key {keyid}")]
-    Verify { keyid: String, error: String },
-    #[error("aws sdk error exporting public key {keyid}")]
-    Export { keyid: String, error: String },
-    #[error("aws sdk error exporting public key {keyid}")]
-    Delete { keyid: String, error: String },
-    #[error("aws did not return a key id")]
-    MissingKeyId,
-    #[error("aws did not return the list of existing keys")]
-    MissingKeys,
-    #[error("aws did not return a signature")]
-    MissingSignature,
-    #[error("key type is not supported")]
-    UnsupportedKeyType,
-}
-
-impl From<Error> for ockam_core::Error {
-    fn from(e: Error) -> Self {
-        ockam_core::Error::new(Origin::Other, Kind::Io, e)
-    }
 }
