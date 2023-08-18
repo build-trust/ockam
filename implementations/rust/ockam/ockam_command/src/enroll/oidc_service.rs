@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::io::stdin;
 use std::str::FromStr;
 use std::sync::Arc;
+use async_trait::async_trait;
 
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
@@ -37,6 +38,59 @@ pub struct OidcService(Arc<dyn OidcProvider + Send + Sync + 'static>);
 impl Default for OidcService {
     fn default() -> Self {
         OidcService::new(Arc::new(OckamOidcProvider::default()))
+    }
+}
+
+
+
+#[async_trait]
+pub trait GetUserInfo{
+    async fn get_user_info(&self, token: &OidcToken) -> Result<UserInfo>;
+}
+
+#[async_trait]
+impl GetUserInfo for OidcService{
+    /// Return the information about a user once authenticated
+    async fn get_user_info(&self, token: &OidcToken) -> Result<UserInfo> {
+        let client = self.provider().build_http_client()?;
+        let access_token = token.access_token.0.clone();
+        let req = || {
+            client
+                .get("https://account.ockam.io/userinfo")
+                .header("Authorization", format!("Bearer {}", access_token.clone()))
+        };
+        let retry_strategy = ExponentialBackoff::from_millis(10).take(3);
+        let res = Retry::spawn(retry_strategy, move || req().send())
+            .await
+            .into_diagnostic()?;
+        res.json().await.map_err(|e| miette!(e).into())
+    }
+}
+
+pub async fn wait_for_email_verification <T:GetUserInfo> (
+    client: T,
+    token: &OidcToken,
+    opts: &CommandGlobalOpts,
+) -> Result<UserInfo> {
+    let spinner_option = opts.terminal.progress_spinner();
+    loop {
+        let user_info = client.get_user_info(token).await?;
+        if user_info.email_verified {
+            if let Some(spinner) = spinner_option.as_ref() {
+                spinner.finish_and_clear();
+            }
+            opts.terminal
+                .write_line(&fmt_para!("Email <{}> verified\n", user_info.email))?;
+            return Ok(user_info);
+        } else {
+            if let Some(spinner) = spinner_option.as_ref() {
+                spinner.set_message(format!(
+                    "Email <{}> pending verification. Please check your inbox...",
+                    user_info.email
+                ))
+            }
+            sleep(Duration::from_secs(5)).await;
+        }
     }
 }
 
@@ -134,32 +188,6 @@ impl OidcService {
         res.json().await.map_err(|e| miette!(e).into())
     }
 
-    pub async fn wait_for_email_verification(
-        &self,
-        token: &OidcToken,
-        opts: &CommandGlobalOpts,
-    ) -> Result<UserInfo> {
-        let spinner_option = opts.terminal.progress_spinner();
-        loop {
-            let user_info = self.get_user_info(token).await?;
-            if user_info.email_verified {
-                if let Some(spinner) = spinner_option.as_ref() {
-                    spinner.finish_and_clear();
-                }
-                opts.terminal
-                    .write_line(&fmt_para!("Email <{}> verified\n", user_info.email))?;
-                return Ok(user_info);
-            } else {
-                if let Some(spinner) = spinner_option.as_ref() {
-                    spinner.set_message(format!(
-                        "Email <{}> pending verification. Please check your inbox...",
-                        user_info.email
-                    ))
-                }
-                sleep(Duration::from_secs(5)).await;
-            }
-        }
-    }
 
     pub(crate) async fn validate_provider_config(&self) -> miette::Result<()> {
         if let Err(e) = self.device_code().await {
@@ -477,8 +505,15 @@ impl OidcService {
     }
 }
 
+
+
+
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+    use ockam_api::cloud::enroll::Token;
+    use ockam_node::Executor;
+    use crate::GlobalArgs;
     use super::*;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -546,5 +581,67 @@ mod tests {
         let code = OidcService::get_code("/callback?code=12345");
         assert!(code.is_ok());
         assert_eq!(code.unwrap(), "12345".to_string())
+    }
+
+    enum BananaState {
+        FirstCall,
+        SecondCall,
+        Finished
+    }
+
+    struct Banana {
+        state: Arc<Mutex<BananaState>>
+    }
+
+    #[async_trait]
+    impl GetUserInfo for Banana{
+        async fn get_user_info(&self, token: &OidcToken) -> Result<UserInfo> {
+
+                let mut guard = self.state.lock().unwrap();
+
+            match *guard {
+                 BananaState::FirstCall => {
+                     *guard = BananaState::SecondCall;
+                    return Ok(UserInfo{
+                        sub: "".to_string(),
+                        nickname: "bad_nickname".to_string(),
+                        name: "".to_string(),
+                        picture: "".to_string(),
+                        updated_at: "".to_string(),
+                        email: "".to_string(),
+                        email_verified: false,
+                    })
+                }
+
+                BananaState::SecondCall => {
+                    *guard = BananaState::Finished;
+                    return Ok(UserInfo{
+                        sub: "".to_string(),
+                        nickname: "my_cool_nickname".to_string(),
+                        name: "".to_string(),
+                        picture: "".to_string(),
+                        updated_at: "".to_string(),
+                        email: "".to_string(),
+                        email_verified: true,
+                    })
+                }
+
+                BananaState::Finished => panic!("an extra call!")
+            }
+        }
+    }
+
+    #[test] fn test_wait_for_email_verification() -> Result<()>{
+        let opts = CommandGlobalOpts::new(GlobalArgs::default()).set_quiet();
+        let authorization_code = OidcToken{ token_type: TokenType::Bearer, access_token: Token("".to_string())};
+
+        let result = Executor::execute_future( async move {
+            wait_for_email_verification(Banana { state: Arc::new(Mutex::new(BananaState::FirstCall ))}, &authorization_code, &opts).await
+        })
+            .expect("TODO: panic message");
+
+        let user_info = result.unwrap();
+        assert_eq!("my_cool_nickname", user_info.nickname.as_str());
+        Ok(())
     }
 }
