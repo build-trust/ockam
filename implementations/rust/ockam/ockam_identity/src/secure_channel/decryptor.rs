@@ -1,26 +1,26 @@
-use crate::secure_channel::encryptor::{Encryptor, KEY_RENEWAL_INTERVAL};
-use crate::secure_channel::key_tracker::KeyTracker;
-use crate::secure_channel::nonce_tracker::NonceTracker;
-use crate::secure_channel::Addresses;
-use crate::XXInitializedVault;
-use crate::{
-    DecryptionRequest, DecryptionResponse, IdentityError, IdentityIdentifier,
-    IdentitySecureChannelLocalInfo,
-};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Any, Result, Routed, TransportMessage};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
-use ockam_vault::KeyId;
+use ockam_vault::{KeyId, SecureChannelVault};
 use tracing::debug;
 use tracing::warn;
+
+use super::super::models::Identifier;
+use super::super::secure_channel::encryptor::{Encryptor, KEY_RENEWAL_INTERVAL};
+use super::super::secure_channel::key_tracker::KeyTracker;
+use super::super::secure_channel::nonce_tracker::NonceTracker;
+use super::super::secure_channel::Addresses;
+use super::super::{
+    DecryptionRequest, DecryptionResponse, IdentityError, IdentitySecureChannelLocalInfo,
+};
 
 pub(crate) struct DecryptorHandler {
     //for debug purposes only
     pub(crate) role: &'static str,
     pub(crate) addresses: Addresses,
-    pub(crate) their_identity_id: IdentityIdentifier,
+    pub(crate) their_identity_id: Identifier,
     pub(crate) decryptor: Decryptor,
 }
 
@@ -29,8 +29,8 @@ impl DecryptorHandler {
         role: &'static str,
         addresses: Addresses,
         key: KeyId,
-        vault: Arc<dyn XXInitializedVault>,
-        their_identity_id: IdentityIdentifier,
+        vault: Arc<dyn SecureChannelVault>,
+        their_identity_id: Identifier,
     ) -> Self {
         Self {
             role,
@@ -124,13 +124,13 @@ impl DecryptorHandler {
 }
 
 pub(crate) struct Decryptor {
-    vault: Arc<dyn XXInitializedVault>,
+    vault: Arc<dyn SecureChannelVault>,
     key_tracker: KeyTracker,
     nonce_tracker: NonceTracker,
 }
 
 impl Decryptor {
-    pub fn new(key_id: KeyId, vault: Arc<dyn XXInitializedVault>) -> Self {
+    pub fn new(key_id: KeyId, vault: Arc<dyn SecureChannelVault>) -> Self {
         Self {
             vault,
             key_tracker: KeyTracker::new(key_id, KEY_RENEWAL_INTERVAL),
@@ -173,7 +173,7 @@ impl Decryptor {
         if result.is_ok() {
             self.nonce_tracker = nonce_tracker;
             if let Some(key_to_delete) = self.key_tracker.update_key(key)? {
-                self.vault.delete_ephemeral_secret(key_to_delete).await?;
+                self.vault.delete_secret(key_to_delete).await?;
             }
         }
         result
@@ -182,10 +182,10 @@ impl Decryptor {
     /// Remove the channel keys on shutdown
     pub(crate) async fn shutdown(&self) -> Result<()> {
         self.vault
-            .delete_ephemeral_secret(self.key_tracker.current_key.clone())
+            .delete_secret(self.key_tracker.current_key.clone())
             .await?;
         if let Some(previous_key) = self.key_tracker.previous_key.clone() {
-            self.vault.delete_ephemeral_secret(previous_key).await?;
+            self.vault.delete_secret(previous_key).await?;
         };
         Ok(())
     }

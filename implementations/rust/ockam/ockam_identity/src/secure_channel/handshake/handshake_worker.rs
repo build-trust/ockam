@@ -1,21 +1,3 @@
-use crate::credential::Credential;
-use crate::secure_channel::decryptor::DecryptorHandler;
-use crate::secure_channel::encryptor::Encryptor;
-use crate::secure_channel::encryptor_worker::EncryptorWorker;
-use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
-use crate::secure_channel::handshake::handshake_state_machine::Event::{
-    Initialize, ReceivedMessage,
-};
-use crate::secure_channel::handshake::handshake_state_machine::{
-    Action, HandshakeResults, StateMachine,
-};
-use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMachine;
-use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
-use crate::secure_channel::{Addresses, Role};
-use crate::{
-    to_xx_initialized, to_xx_vault, IdentityError, IdentityIdentifier, SecureChannelRegistryEntry,
-    SecureChannels, TrustContext, TrustPolicy,
-};
 use alloc::sync::Arc;
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, vec::Vec};
@@ -29,13 +11,32 @@ use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info};
 
+use super::super::super::models::{CredentialAndPurposeKey, Identifier};
+use super::super::super::secure_channel::decryptor::DecryptorHandler;
+use super::super::super::secure_channel::encryptor::Encryptor;
+use super::super::super::secure_channel::encryptor_worker::EncryptorWorker;
+use super::super::super::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
+use super::super::super::secure_channel::handshake::handshake_state_machine::Event::{
+    Initialize, ReceivedMessage,
+};
+use super::super::super::secure_channel::handshake::handshake_state_machine::{
+    Action, HandshakeResults, StateMachine,
+};
+use super::super::super::secure_channel::handshake::initiator_state_machine::InitiatorStateMachine;
+use super::super::super::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
+use super::super::super::secure_channel::{Addresses, Role};
+use super::super::super::{
+    IdentityError, PurposeKey, SecureChannelRegistryEntry, SecureChannels, TrustContext,
+    TrustPolicy,
+};
+
 /// This struct implements a Worker receiving and sending messages
 /// on one side of the secure channel creation as specified with its role: INITIATOR or REPSONDER
 pub(crate) struct HandshakeWorker {
     secure_channels: Arc<SecureChannels>,
     callback_sender: Option<CallbackSender<()>>,
     state_machine: Box<dyn StateMachine>,
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     addresses: Addresses,
     role: Role,
     remote_route: Option<Route>,
@@ -152,16 +153,17 @@ impl HandshakeWorker {
         context: &Context,
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
+        purpose_key: PurposeKey,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        credentials: Vec<Credential>,
+        credentials: Vec<CredentialAndPurposeKey>,
         trust_context: Option<TrustContext>,
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
     ) -> Result<()> {
-        let vault = to_xx_vault(secure_channels.vault());
+        let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
         let state_machine: Box<dyn StateMachine> = if role.is_initiator() {
             Box::new(
@@ -169,6 +171,7 @@ impl HandshakeWorker {
                     vault,
                     identities,
                     identifier.clone(),
+                    purpose_key,
                     credentials,
                     trust_policy,
                     trust_context,
@@ -181,6 +184,7 @@ impl HandshakeWorker {
                     vault,
                     identities,
                     identifier.clone(),
+                    purpose_key,
                     credentials,
                     trust_policy,
                     trust_context,
@@ -289,7 +293,7 @@ impl HandshakeWorker {
             self.role.str(),
             self.addresses.clone(),
             handshake_results.handshake_keys.decryption_key,
-            to_xx_initialized(self.secure_channels.identities.vault()),
+            self.secure_channels.identities.vault().secure_channel_vault,
             handshake_results.their_identifier.clone(),
         );
 
@@ -302,7 +306,7 @@ impl HandshakeWorker {
                 Encryptor::new(
                     handshake_results.handshake_keys.encryption_key,
                     0,
-                    to_xx_initialized(self.secure_channels.identities.vault()),
+                    self.secure_channels.identities.vault().secure_channel_vault,
                 ),
             );
 

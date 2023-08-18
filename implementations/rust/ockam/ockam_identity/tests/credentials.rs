@@ -4,10 +4,10 @@ use std::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Any, DenyAll};
 use ockam_core::{route, Result, Routed, Worker};
-use ockam_identity::v2::models::SchemaId;
-use ockam_identity::v2::secure_channels::secure_channels;
-use ockam_identity::v2::utils::AttributesBuilder;
-use ockam_identity::v2::{
+use ockam_identity::models::SchemaId;
+use ockam_identity::secure_channels::secure_channels;
+use ockam_identity::utils::AttributesBuilder;
+use ockam_identity::{
     AuthorityService, CredentialAccessControl, CredentialsMemoryRetriever, Purpose,
     SecureChannelListenerOptions, SecureChannelOptions, TrustContext, TrustIdentifierPolicy,
 };

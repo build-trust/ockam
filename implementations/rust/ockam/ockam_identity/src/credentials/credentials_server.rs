@@ -1,9 +1,3 @@
-use crate::credential::Credential;
-use crate::credentials::credentials_server_worker::CredentialsServerWorker;
-use crate::credentials::Credentials;
-use crate::identity::Identity;
-use crate::secure_channel::IdentitySecureChannelLocalInfo;
-use crate::{IdentityIdentifier, TrustContext};
 use async_trait::async_trait;
 use minicbor::Decoder;
 use ockam_core::api::{Request, Response, Status};
@@ -13,6 +7,11 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, Error, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
 use ockam_node::{Context, WorkerBuilder};
+
+use super::super::credentials::credentials_server_worker::CredentialsServerWorker;
+use super::super::credentials::Credentials;
+use super::super::models::{CredentialAndPurposeKey, Identifier};
+use super::super::{IdentitySecureChannelLocalInfo, TrustContext};
 
 /// This trait allows an identity to send its credential to another identity
 /// located at the end of a secure channel route
@@ -25,8 +24,8 @@ pub trait CredentialsServer: Send + Sync {
         &self,
         ctx: &Context,
         route: Route,
-        authorities: &[Identity],
-        credential: Credential,
+        authorities: &[Identifier],
+        credential: CredentialAndPurposeKey,
     ) -> Result<()>;
 
     /// Present credential to other party, route shall use secure channel
@@ -34,7 +33,7 @@ pub trait CredentialsServer: Send + Sync {
         &self,
         ctx: &Context,
         route: Route,
-        credential: Credential,
+        credential: CredentialAndPurposeKey,
     ) -> Result<()>;
 
     /// Start this service as a worker
@@ -42,7 +41,7 @@ pub trait CredentialsServer: Send + Sync {
         &self,
         ctx: &Context,
         trust_context: TrustContext,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
         address: Address,
         present_back: bool,
     ) -> Result<()>;
@@ -50,7 +49,7 @@ pub trait CredentialsServer: Send + Sync {
 
 /// Implementation of the CredentialsService
 pub struct CredentialsServerModule {
-    credentials: Arc<dyn Credentials>,
+    credentials: Arc<Credentials>,
 }
 
 #[async_trait]
@@ -61,8 +60,8 @@ impl CredentialsServer for CredentialsServerModule {
         &self,
         ctx: &Context,
         route: Route,
-        authorities: &[Identity],
-        credential: Credential,
+        authorities: &[Identifier],
+        credential: CredentialAndPurposeKey,
     ) -> Result<()> {
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
@@ -74,9 +73,8 @@ impl CredentialsServer for CredentialsServerModule {
         )
         .await?;
 
-        let their_id = IdentitySecureChannelLocalInfo::find_info_from_list(&local_info)?
-            .their_identity_id()
-            .clone();
+        let their_id =
+            IdentitySecureChannelLocalInfo::find_info_from_list(&local_info)?.their_identity_id();
 
         let mut dec = Decoder::new(&buf);
         let res: Response = dec.decode()?;
@@ -98,9 +96,9 @@ impl CredentialsServer for CredentialsServerModule {
             }
         }
 
-        let credential: Credential = dec.decode()?;
+        let credential_and_purpose_key: CredentialAndPurposeKey = dec.decode()?;
         self.credentials
-            .receive_presented_credential(&their_id, authorities, credential)
+            .receive_presented_credential(&their_id, authorities, &credential_and_purpose_key)
             .await?;
 
         Ok(())
@@ -111,7 +109,7 @@ impl CredentialsServer for CredentialsServerModule {
         &self,
         ctx: &Context,
         route: Route,
-        credential: Credential,
+        credential: CredentialAndPurposeKey,
     ) -> Result<()> {
         let buf = request(
             ctx,
@@ -139,7 +137,7 @@ impl CredentialsServer for CredentialsServerModule {
         &self,
         ctx: &Context,
         trust_context: TrustContext,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
         address: Address,
         present_back: bool,
     ) -> Result<()> {
@@ -161,7 +159,7 @@ impl CredentialsServer for CredentialsServerModule {
 
 impl CredentialsServerModule {
     /// Create a CredentialsService. It is simply backed by the Credentials interface
-    pub fn new(credentials: Arc<dyn Credentials>) -> Self {
+    pub fn new(credentials: Arc<Credentials>) -> Self {
         Self { credentials }
     }
 }
