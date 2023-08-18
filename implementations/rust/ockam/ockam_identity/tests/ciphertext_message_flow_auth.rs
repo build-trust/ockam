@@ -1,15 +1,15 @@
 use core::time::Duration;
 
 use ockam_core::{route, Result};
-use ockam_identity::v2::SecureChannelOptions;
+use ockam_identity::SecureChannelOptions;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 
-use crate::v2_common::{
+use crate::common::{
     create_secure_channel, create_secure_channel_listener, message_should_not_pass,
 };
 
-mod v2_common;
+mod common;
 
 // Alice: TCP connection + Secure Channel
 // Bob: TCP listener + Secure Channel listener

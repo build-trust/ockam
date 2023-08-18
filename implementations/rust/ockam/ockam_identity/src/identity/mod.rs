@@ -1,11 +1,12 @@
+mod constants;
+mod history_comparison;
 #[allow(clippy::module_inception)]
 mod identity;
-/// List of key changes associated to an identity
-pub mod identity_change;
-mod identity_change_history;
-mod identity_identifier;
+mod identity_verification;
 
+pub use constants::*;
+pub use history_comparison::*;
 pub use identity::*;
-pub use identity_change::*;
-pub use identity_change_history::*;
-pub use identity_identifier::*;
+
+/// Verified Changes of an [`Identity`]
+pub mod verified_change;

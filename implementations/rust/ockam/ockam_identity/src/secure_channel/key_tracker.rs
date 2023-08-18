@@ -1,8 +1,9 @@
-use crate::IdentityError;
 use ockam_core::Result;
 use ockam_vault::KeyId;
 use tracing::debug;
 use tracing::warn;
+
+use super::super::IdentityError;
 
 pub(crate) struct KeyTracker {
     pub(crate) current_key: KeyId,

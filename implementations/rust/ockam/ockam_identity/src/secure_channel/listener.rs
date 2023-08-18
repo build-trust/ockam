@@ -1,25 +1,27 @@
-use crate::secure_channel::addresses::Addresses;
-use crate::secure_channel::handshake_worker::HandshakeWorker;
-use crate::secure_channel::options::SecureChannelListenerOptions;
-use crate::secure_channel::role::Role;
-use crate::secure_channels::secure_channels::SecureChannels;
-use crate::{Credential, IdentityIdentifier};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Any, Result, Routed, Worker};
 use ockam_node::Context;
 
+use super::super::models::{CredentialAndPurposeKey, Identifier};
+use super::super::secure_channel::addresses::Addresses;
+use super::super::secure_channel::handshake_worker::HandshakeWorker;
+use super::super::secure_channel::options::SecureChannelListenerOptions;
+use super::super::secure_channel::role::Role;
+use super::super::secure_channels::secure_channels::SecureChannels;
+use super::super::Purpose;
+
 pub(crate) struct IdentityChannelListener {
     secure_channels: Arc<SecureChannels>,
-    identifier: IdentityIdentifier,
+    identifier: Identifier,
     options: SecureChannelListenerOptions,
 }
 
 impl IdentityChannelListener {
     fn new(
         secure_channels: Arc<SecureChannels>,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
         options: SecureChannelListenerOptions,
     ) -> Self {
         Self {
@@ -32,7 +34,7 @@ impl IdentityChannelListener {
     pub async fn create(
         ctx: &Context,
         secure_channels: Arc<SecureChannels>,
-        identifier: &IdentityIdentifier,
+        identifier: &Identifier,
         address: Address,
         options: SecureChannelListenerOptions,
     ) -> Result<()> {
@@ -47,7 +49,7 @@ impl IdentityChannelListener {
 
     /// If credentials are not provided via list in options
     /// get them from the trust context
-    async fn get_credentials(&self, ctx: &mut Context) -> Result<Vec<Credential>> {
+    async fn get_credentials(&self, ctx: &mut Context) -> Result<Vec<CredentialAndPurposeKey>> {
         let credentials = if self.options.credentials.is_empty() {
             if let Some(trust_context) = &self.options.trust_context {
                 vec![
@@ -88,11 +90,25 @@ impl Worker for IdentityChannelListener {
 
         let credentials = self.get_credentials(ctx).await?;
 
+        let purpose_key = self
+            .secure_channels
+            .purpose_keys
+            .repository()
+            .get_purpose_key(&self.identifier, Purpose::SecureChannel)
+            .await?;
+
+        let purpose_key = self
+            .secure_channels
+            .purpose_keys
+            .import_purpose_key(&purpose_key)
+            .await?;
+
         HandshakeWorker::create(
             ctx,
             self.secure_channels.clone(),
             addresses.clone(),
             self.identifier.clone(),
+            purpose_key,
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             credentials,
