@@ -356,7 +356,6 @@ pub mod test_utils {
     use ockam_node::compat::asynchronous::RwLock;
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
-    use ockam_vault::{Secret, SecretAttributes};
 
     use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
@@ -415,7 +414,7 @@ pub mod test_utils {
             .with_identities_storage(InMemoryStorage::create())
             .build();
 
-        let identity = create_identity_zero(&secure_channels).await?;
+        let identity = create_random_identity(&secure_channels).await?;
 
         let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
             .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
@@ -466,7 +465,7 @@ pub mod test_utils {
         let secure_channels = node_manager.read().await.secure_channels.clone();
 
         // since we re-created secure-channels, we rewrite the identity in the LMDB storage
-        create_identity_zero(&secure_channels).await?;
+        create_random_identity(&secure_channels).await?;
 
         context
             .start_worker(NODEMANAGER_ADDR, node_manager_worker)
@@ -481,30 +480,20 @@ pub mod test_utils {
         })
     }
 
-    async fn create_identity_zero(secure_channels: &Arc<SecureChannels>) -> Result<Identity> {
-        // FIXME: Zero secrets are bad, generate a value randomly and use it from there, or seed
-        // the rng with a fixed value
-        let identity_key_id = secure_channels
-            .vault()
-            .signing_vault
-            .import_key(Secret::new([0u8; 32].to_vec()), SecretAttributes::Ed25519)
-            .await?;
-
+    async fn create_random_identity(secure_channels: &Arc<SecureChannels>) -> Result<Identity> {
         let identity = secure_channels
             .identities()
             .identities_creation()
-            .create_identity_with_existing_key(&identity_key_id)
+            .create_identity()
             .await
             .unwrap();
 
-        // FIXME: Should it use predefined secret?
         secure_channels
             .identities()
             .purpose_keys()
             .create_purpose_key(identity.identifier(), Purpose::Credentials)
             .await?;
 
-        // FIXME: Should it use predefined secret?
         secure_channels
             .identities()
             .purpose_keys()
