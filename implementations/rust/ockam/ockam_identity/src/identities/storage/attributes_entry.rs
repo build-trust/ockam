@@ -1,8 +1,7 @@
-use crate::alloc::borrow::ToOwned;
-use crate::credential::Timestamp;
-use crate::identity::IdentityIdentifier;
+use super::super::super::models::{Identifier, TimestampInSeconds};
 use minicbor::{Decode, Encode};
-use ockam_core::compat::{collections::BTreeMap, string::String, vec::Vec};
+use ockam_core::compat::borrow::ToOwned;
+use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use serde::{Deserialize, Serialize};
 
 /// An entry on the AuthenticatedIdentities table.
@@ -10,10 +9,10 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AttributesEntry {
-    #[b(1)] attrs: BTreeMap<String, Vec<u8>>,
-    #[n(2)] added: Timestamp,
-    #[n(3)] expires: Option<Timestamp>,
-    #[n(4)] attested_by: Option<IdentityIdentifier>,
+    #[b(1)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
+    #[n(2)] added: TimestampInSeconds,
+    #[n(3)] expires: Option<TimestampInSeconds>,
+    #[n(4)] attested_by: Option<Identifier>,
 }
 
 impl AttributesEntry {
@@ -23,10 +22,10 @@ impl AttributesEntry {
 
     /// Constructor
     pub fn new(
-        attrs: BTreeMap<String, Vec<u8>>,
-        added: Timestamp,
-        expires: Option<Timestamp>,
-        attested_by: Option<IdentityIdentifier>,
+        attrs: BTreeMap<Vec<u8>, Vec<u8>>,
+        added: TimestampInSeconds,
+        expires: Option<TimestampInSeconds>,
+        attested_by: Option<Identifier>,
     ) -> Self {
         Self {
             attrs,
@@ -37,22 +36,22 @@ impl AttributesEntry {
     }
 
     /// The entry attributes
-    pub fn attrs(&self) -> &BTreeMap<String, Vec<u8>> {
+    pub fn attrs(&self) -> &BTreeMap<Vec<u8>, Vec<u8>> {
         &self.attrs
     }
 
     /// Expiration time for this entry
-    pub fn expires(&self) -> Option<Timestamp> {
+    pub fn expires(&self) -> Option<TimestampInSeconds> {
         self.expires
     }
 
     /// Date that the entry was added
-    pub fn added(&self) -> Timestamp {
+    pub fn added(&self) -> TimestampInSeconds {
         self.added
     }
 
     /// Who attested this attributes for this identity identifier
-    pub fn attested_by(&self) -> Option<IdentityIdentifier> {
+    pub fn attested_by(&self) -> Option<Identifier> {
         self.attested_by.to_owned()
     }
 }

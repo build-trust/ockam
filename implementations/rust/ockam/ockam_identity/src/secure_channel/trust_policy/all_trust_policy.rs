@@ -1,7 +1,8 @@
-use crate::secure_channel::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{AsyncTryClone, Result};
+
+use super::super::super::secure_channel::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
 
 /// Succeeds only if both `TrustPolicy` checks succeeded
 #[derive(AsyncTryClone)]
@@ -28,8 +29,10 @@ impl<F: TrustPolicy, S: TrustPolicy> TrustPolicy for AllTrustPolicy<F, S> {
 
 #[cfg(test)]
 mod test {
-    use crate::identity::IdentityIdentifier;
-    use crate::secure_channel::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
+    use super::super::super::super::models::Identifier;
+    use super::super::super::super::secure_channel::trust_policy::{
+        SecureChannelTrustInfo, TrustPolicy,
+    };
     use ockam_core::async_trait;
     use ockam_core::Result;
 
@@ -45,7 +48,7 @@ mod test {
             }
         }
 
-        let id = IdentityIdentifier::random();
+        let id = Identifier::try_from("Iabababababababababababababababababababab").unwrap();
         let trust_info = SecureChannelTrustInfo::new(id);
 
         assert!(TrustPolicyStub(true)

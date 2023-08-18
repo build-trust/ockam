@@ -1,21 +1,23 @@
-use crate::secure_channel::handshake::error::XXError;
-use crate::secure_channel::handshake::handshake::Handshake;
-use crate::secure_channel::handshake::handshake_state_machine::{
-    Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
-    StateMachine, Status,
-};
-use crate::{Credential, Identities, IdentityIdentifier, Role, TrustContext, TrustPolicy, XXVault};
 use async_trait::async_trait;
 use delegate::delegate;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::PublicKey;
+use ockam_vault::{PublicKey, SecureChannelVault};
 use Action::*;
 use Event::*;
 use Role::*;
 use Status::*;
+
+use super::super::super::models::{CredentialAndPurposeKey, Identifier};
+use super::super::super::secure_channel::handshake::error::XXError;
+use super::super::super::secure_channel::handshake::handshake::Handshake;
+use super::super::super::secure_channel::handshake::handshake_state_machine::{
+    Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
+    StateMachine, Status,
+};
+use super::super::super::{Identities, PurposeKey, Role, TrustContext, TrustPolicy};
 
 /// Implementation of a state machine for the key exchange on the responder side
 #[async_trait]
@@ -44,8 +46,8 @@ impl StateMachine for ResponderStateMachine {
             // Process message 3
             (WaitingForMessage3, ReceivedMessage(message)) => {
                 let message3_payload = self.decode_message3(&message).await?;
-                let their_identity_payload =
-                    CommonStateMachine::deserialize_payload(message3_payload)?;
+                let their_identity_payload: IdentityAndCredentials =
+                    minicbor::decode(&message3_payload)?;
                 self.verify_identity(their_identity_payload, &self.handshake.state.rs()?.clone())
                     .await?;
                 self.set_final_state(Responder).await?;
@@ -97,27 +99,27 @@ impl ResponderStateMachine {
 
 impl ResponderStateMachine {
     pub async fn new(
-        vault: Arc<dyn XXVault>,
+        vault: Arc<dyn SecureChannelVault>,
         identities: Arc<Identities>,
-        identifier: IdentityIdentifier,
-        credentials: Vec<Credential>,
+        identifier: Identifier,
+        purpose_key: PurposeKey,
+        credentials: Vec<CredentialAndPurposeKey>,
         trust_policy: Arc<dyn TrustPolicy>,
         trust_context: Option<TrustContext>,
     ) -> Result<ResponderStateMachine> {
         let common = CommonStateMachine::new(
-            vault.clone(),
             identities,
             identifier,
+            purpose_key.attestation().clone(),
             credentials,
             trust_policy,
             trust_context,
         );
-        let static_key = common.get_static_key().await?;
-        let identity_payload = common.make_identity_payload(&static_key).await?;
+        let identity_payload = common.make_identity_payload().await?;
 
         Ok(ResponderStateMachine {
             common,
-            handshake: Handshake::new(vault.clone(), static_key).await?,
+            handshake: Handshake::new(vault, purpose_key.key_id().clone()).await?,
             identity_payload: Some(identity_payload),
         })
     }

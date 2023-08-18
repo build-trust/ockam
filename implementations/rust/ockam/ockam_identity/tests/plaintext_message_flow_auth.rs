@@ -1,15 +1,15 @@
-use crate::v2_common::{
+use crate::common::{
     message_should_not_pass, message_should_not_pass_with_ctx, message_should_pass_with_ctx,
 };
 use ockam_core::{route, AllowAll, Result};
-use ockam_identity::v2::{
+use ockam_identity::{
     secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions,
 };
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use std::time::Duration;
 
-mod v2_common;
+mod common;
 
 // Alice: Secure Channel
 // Bob: Secure Channel listener

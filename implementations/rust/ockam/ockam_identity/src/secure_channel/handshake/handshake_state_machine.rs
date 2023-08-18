@@ -1,14 +1,17 @@
-use crate::{
-    Credential, Credentials, Identities, Identity, IdentityError, IdentityIdentifier,
-    SecureChannelTrustInfo, TrustContext, TrustPolicy, XXVault,
-};
+use minicbor::{Decode, Encode};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Error, Message, Result};
-use ockam_vault::{KeyId, PublicKey, SecretAttributes, Signature};
-use serde::{Deserialize, Serialize};
+use ockam_core::{async_trait, Result};
+use ockam_vault::{KeyId, PublicKey, SecretType};
 use tracing::info;
+
+use super::super::super::models::{
+    ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
+};
+use super::super::super::{
+    Identities, Identity, IdentityError, IdentityHistoryComparison, SecureChannelTrustInfo,
+    TrustContext, TrustPolicy,
+};
 
 /// Interface for a state machine in a key exchange protocol
 #[async_trait]
@@ -54,33 +57,33 @@ pub(super) struct HandshakeKeys {
 #[derive(Debug, Clone)]
 pub(super) struct HandshakeResults {
     pub(super) handshake_keys: HandshakeKeys,
-    pub(super) their_identifier: IdentityIdentifier,
+    pub(super) their_identifier: Identifier,
 }
 
 /// This struct implements functions common to both initiator and the responder state machines
 pub(super) struct CommonStateMachine {
-    pub(super) vault: Arc<dyn XXVault>,
     pub(super) identities: Arc<Identities>,
-    pub(super) identifier: IdentityIdentifier,
-    pub(super) credentials: Vec<Credential>,
+    pub(super) identifier: Identifier,
+    pub(super) purpose_key_attestation: PurposeKeyAttestation,
+    pub(super) credentials: Vec<CredentialAndPurposeKey>,
     pub(super) trust_policy: Arc<dyn TrustPolicy>,
     pub(super) trust_context: Option<TrustContext>,
-    their_identifier: Option<IdentityIdentifier>,
+    their_identifier: Option<Identifier>,
 }
 
 impl CommonStateMachine {
     pub(super) fn new(
-        vault: Arc<dyn XXVault>,
         identities: Arc<Identities>,
-        identifier: IdentityIdentifier,
-        credentials: Vec<Credential>,
+        identifier: Identifier,
+        purpose_key_attestation: PurposeKeyAttestation,
+        credentials: Vec<CredentialAndPurposeKey>,
         trust_policy: Arc<dyn TrustPolicy>,
         trust_context: Option<TrustContext>,
     ) -> Self {
         Self {
-            vault,
             identities,
             identifier,
+            purpose_key_attestation,
             credentials,
             trust_policy,
             trust_context,
@@ -88,38 +91,29 @@ impl CommonStateMachine {
         }
     }
 
-    /// Generate a handshake static key
-    /// for now this is an ephemeral key but it the future we can use a more permanent key
-    /// for the current identity
-    pub(super) async fn get_static_key(&self) -> Result<KeyId> {
-        self.vault
-            .create_ephemeral_secret(SecretAttributes::X25519)
-            .await
-    }
-
     /// Prepare a payload containing the identity of the current party and serialize it.
     /// That payload contains:
     ///
-    ///  - the current identity
-    ///  - a signature of the static key used during the handshake
-    ///  - the identity credentials
+    ///  - the current Identity Change History
+    ///  - the current Secure Channel Purpose Key Attestation
+    ///  - the Identity Credentials and corresponding Credentials Purpose Key Attestations
     ///
-    pub(super) async fn make_identity_payload(&self, static_key: &KeyId) -> Result<Vec<u8>> {
+    pub(super) async fn make_identity_payload(&self) -> Result<Vec<u8>> {
         // prepare the payload that will be sent either in message 2 or message 3
-        let identity = self
+        let change_history = self
             .identities
             .repository()
             .get_identity(&self.identifier)
             .await?;
         let payload = IdentityAndCredentials {
-            identity: identity.export()?,
-            signature: self.sign_static_key(identity, static_key).await?,
+            change_history,
+            purpose_key_attestation: self.purpose_key_attestation.clone(),
             credentials: self.credentials.clone(),
         };
-        Ok(serde_bare::to_vec(&payload)?)
+        Ok(minicbor::to_vec(payload)?)
     }
 
-    /// Verify the identity sent by the other party: the signature and the credentials must be valid
+    /// Verify the identity sent by the other party: the Purpose Key and the credentials must be valid
     /// If everything is valid, store the identity identifier which will used to make the
     /// final state machine result
     pub(super) async fn verify_identity(
@@ -127,62 +121,69 @@ impl CommonStateMachine {
         peer: IdentityAndCredentials,
         peer_public_key: &PublicKey,
     ) -> Result<()> {
-        let identity = self.decode_identity(peer.identity).await?;
-        self.verify_signature(&identity, &peer.signature, peer_public_key)
-            .await?;
-        self.verify_credentials(&identity, peer.credentials).await?;
-        self.their_identifier = Some(identity.identifier());
-        Ok(())
-    }
+        let identity = Identity::import_from_change_history(
+            None,
+            peer.change_history.clone(),
+            self.identities.vault().verifying_vault,
+        )
+        .await?;
 
-    /// Deserialize a payload as D from a bare encoding
-    pub(super) fn deserialize_payload<D: for<'a> Deserialize<'a>>(payload: Vec<u8>) -> Result<D> {
-        serde_bare::from_slice(payload.as_slice())
-            .map_err(|error| Error::new(Origin::Channel, Kind::Invalid, error))
-    }
-
-    /// Sign the static key used in the key exchange with the identity private key
-    async fn sign_static_key(&self, identity: Identity, key_id: &KeyId) -> Result<Signature> {
-        let public_static_key = self.vault.get_public_key(key_id).await?;
-        self.identities
-            .identities_keys()
-            .create_signature(&identity, public_static_key.data(), None)
-            .await
-    }
-
-    /// Decode an Identity that was encoded with a BARE encoding
-    async fn decode_identity(&self, encoded: Vec<u8>) -> Result<Identity> {
-        self.identities
-            .identities_creation()
-            .decode_identity(encoded.as_slice())
-            .await
-    }
-
-    /// Verify that the signature was signed with the public key associated to the other party identity
-    async fn verify_signature(
-        &self,
-        their_identity: &Identity,
-        their_signature: &Signature,
-        their_public_key: &PublicKey,
-    ) -> Result<()> {
-        // verify the signature of the static key used during noise exchanges
-        // actually matches the signature of the identity
-        let signature_verified = self
+        if let Some(known_identity) = self
             .identities
-            .identities_keys()
-            .verify_signature(
-                their_identity,
-                their_signature,
-                their_public_key.data(),
-                None,
+            .repository()
+            .retrieve_identity(identity.identifier())
+            .await?
+        {
+            let known_identity = Identity::import_from_change_history(
+                Some(identity.identifier()),
+                known_identity,
+                self.identities.vault().verifying_vault,
             )
             .await?;
 
-        if !signature_verified {
-            Err(IdentityError::SecureChannelVerificationFailed.into())
+            match identity.compare(&known_identity) {
+                IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
+                    return Err(IdentityError::ConsistencyError.into());
+                }
+                IdentityHistoryComparison::Newer => {
+                    self.identities
+                        .repository()
+                        .update_identity(identity.identifier(), identity.change_history())
+                        .await?;
+                }
+                IdentityHistoryComparison::Equal => {}
+            }
         } else {
-            Ok(())
+            self.identities
+                .repository()
+                .update_identity(identity.identifier(), identity.change_history())
+                .await?;
         }
+
+        let purpose_key = self
+            .identities
+            .purpose_keys()
+            .verify_purpose_key_attestation(&peer.purpose_key_attestation)
+            .await?;
+
+        if peer_public_key.stype() != SecretType::X25519 {
+            return Err(IdentityError::InvalidKeyType.into());
+        }
+
+        match &purpose_key.public_key {
+            PurposePublicKey::SecureChannelStaticKey(public_key) => {
+                if public_key.0 != peer_public_key.data() {
+                    return Err(IdentityError::InvalidKeyType.into());
+                }
+            }
+            PurposePublicKey::CredentialSigningKey(_) => {
+                return Err(IdentityError::InvalidKeyType.into())
+            }
+        }
+
+        self.verify_credentials(&identity, peer.credentials).await?;
+        self.their_identifier = Some(identity.identifier().clone());
+        Ok(())
     }
 
     /// Verify that the credentials sent by the other party are valid using a trust context
@@ -190,10 +191,10 @@ impl CommonStateMachine {
     async fn verify_credentials(
         &self,
         their_identity: &Identity,
-        credentials: Vec<Credential>,
+        credentials: Vec<CredentialAndPurposeKey>,
     ) -> Result<()> {
         // check our TrustPolicy
-        let trust_info = SecureChannelTrustInfo::new(their_identity.identifier.clone());
+        let trust_info = SecureChannelTrustInfo::new(their_identity.identifier().clone());
         let trusted = self.trust_policy.check(&trust_info).await?;
         if !trusted {
             // TODO: Shutdown? Communicate error?
@@ -201,17 +202,18 @@ impl CommonStateMachine {
         }
         info!(
             "Initiator checked trust policy for SecureChannel from: {}",
-            their_identity.identifier
+            their_identity.identifier()
         );
 
         if let Some(trust_context) = &self.trust_context {
             for credential in credentials {
                 let result = self
                     .identities
+                    .credentials()
                     .receive_presented_credential(
-                        &their_identity.identifier,
-                        &[trust_context.authority()?.identity().await?],
-                        credential,
+                        their_identity.identifier(),
+                        &[trust_context.authority()?.identifier().clone()],
+                        &credential,
                     )
                     .await;
 
@@ -224,12 +226,6 @@ impl CommonStateMachine {
             // we cannot validate credentials without a trust context
             return Err(IdentityError::SecureChannelVerificationFailed.into());
         };
-
-        // store identity for future validation
-        self.identities
-            .repository()
-            .update_identity(their_identity)
-            .await?;
 
         Ok(())
     }
@@ -252,14 +248,17 @@ impl CommonStateMachine {
 }
 
 /// This internal structure is used as a payload in the XX protocol
-#[derive(Debug, Clone, Serialize, Deserialize, Message)]
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+#[cbor(map)]
 pub(super) struct IdentityAndCredentials {
     /// Exported identity
-    pub(super) identity: Vec<u8>,
-    /// The signature guarantees that the other end has access to the private key of the identity
-    /// The signature refers to the static key of the noise ('x') and is made with the static
+    #[n(1)] pub(super) change_history: ChangeHistory,
+    /// The Purpose Key guarantees that the other end has access to the private key of the identity
+    /// The Purpose Key here is also the static key of the noise ('x') and is issued with the static
     /// key of the identity
-    pub(super) signature: Signature,
-    /// Credentials associated to the identity
-    pub(super) credentials: Vec<Credential>,
+    #[n(2)] pub(super) purpose_key_attestation: PurposeKeyAttestation,
+    /// Credentials associated to the identity along with corresponding Credentials Purpose Keys
+    /// to verify those Credentials
+    #[n(3)] pub(super) credentials: Vec<CredentialAndPurposeKey>,
 }
