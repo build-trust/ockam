@@ -6,9 +6,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_node::Context;
 use ockam_vault::Vault;
-use ockam_vault::{
-    KeyId, PublicKey, Secret, SecretAttributes, Signature, SigningVault, VerifyingVault,
-};
+use ockam_vault::{KeyId, PublicKey, SecretAttributes, Signature, SigningVault, VerifyingVault};
 use rand::{thread_rng, Rng};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -129,10 +127,6 @@ impl CrazySigningVault {
 impl SigningVault for CrazySigningVault {
     async fn generate_key(&self, attributes: SecretAttributes) -> Result<KeyId> {
         self.signing_vault.generate_key(attributes).await
-    }
-
-    async fn import_key(&self, key: Secret, attributes: SecretAttributes) -> Result<KeyId> {
-        self.signing_vault.import_key(key, attributes).await
     }
 
     async fn delete_key(&self, key_id: KeyId) -> Result<bool> {

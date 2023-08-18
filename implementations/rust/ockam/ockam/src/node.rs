@@ -14,7 +14,7 @@ use ockam_core::{
     Routed, Worker,
 };
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
-use ockam_vault::{Vault, VaultStorage};
+use ockam_vault::{KeyId, Vault, VaultStorage};
 
 use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use crate::stream::Stream;
@@ -125,10 +125,10 @@ impl Node {
     pub async fn import_private_identity(
         &self,
         identity_history: &str,
-        secret: &str,
+        key_id: &KeyId,
     ) -> Result<Identity> {
         self.identities_creation()
-            .import_private_identity(identity_history, secret)
+            .import_private_identity(identity_history, key_id)
             .await
     }
 
