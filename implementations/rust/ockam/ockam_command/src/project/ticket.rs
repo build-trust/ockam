@@ -1,3 +1,4 @@
+use crate::util::duration::duration_parser;
 use clap::Args;
 use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use ockam_api::config::cli::TrustContextConfig;
@@ -40,7 +41,7 @@ pub struct TicketCommand {
     #[command(flatten)]
     trust_opts: TrustContextOpts,
 
-    #[arg(long, short, conflicts_with = "ticket_ttl")]
+    #[arg(long, short, conflicts_with = "expires_in")]
     member: Option<IdentityIdentifier>,
 
     #[arg(long, short, default_value = "/project/default")]
@@ -50,8 +51,8 @@ pub struct TicketCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 
-    #[arg(long = "ticket-ttl", value_name = "SECS", conflicts_with = "member")]
-    ticket_ttl: Option<u64>,
+    #[arg(long = "expires-in", value_name = "SECS", conflicts_with = "member", value_parser=duration_parser)]
+    expires_in: Option<Duration>,
 }
 
 impl TicketCommand {
@@ -198,7 +199,7 @@ impl Runner {
             let token = client
                 .create_token(
                     self.cmd.attributes()?,
-                    self.cmd.ticket_ttl.map(Duration::from_secs),
+                    self.cmd.expires_in
                 )
                 .await
                 .into_diagnostic()?;
