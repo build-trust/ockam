@@ -41,8 +41,6 @@ impl Default for OidcService {
     }
 }
 
-
-
 #[async_trait]
 pub trait GetUserInfo{
     async fn get_user_info(&self, token: &OidcToken) -> Result<UserInfo>;
@@ -583,25 +581,25 @@ mod tests {
         assert_eq!(code.unwrap(), "12345".to_string())
     }
 
-    enum BananaState {
+    enum ClientState {
         FirstCall,
         SecondCall,
         Finished
     }
 
-    struct Banana {
-        state: Arc<Mutex<BananaState>>
+    struct Client {
+        state: Arc<Mutex<ClientState>>
     }
 
     #[async_trait]
-    impl GetUserInfo for Banana{
-        async fn get_user_info(&self, token: &OidcToken) -> Result<UserInfo> {
+    impl GetUserInfo for Client{
+        async fn get_user_info(&self, _token: &OidcToken) -> Result<UserInfo> {
 
                 let mut guard = self.state.lock().unwrap();
 
             match *guard {
-                 BananaState::FirstCall => {
-                     *guard = BananaState::SecondCall;
+                ClientState::FirstCall => {
+                     *guard = ClientState::SecondCall;
                     return Ok(UserInfo{
                         sub: "".to_string(),
                         nickname: "bad_nickname".to_string(),
@@ -613,8 +611,8 @@ mod tests {
                     })
                 }
 
-                BananaState::SecondCall => {
-                    *guard = BananaState::Finished;
+                ClientState::SecondCall => {
+                    *guard = ClientState::Finished;
                     return Ok(UserInfo{
                         sub: "".to_string(),
                         nickname: "my_cool_nickname".to_string(),
@@ -626,7 +624,7 @@ mod tests {
                     })
                 }
 
-                BananaState::Finished => panic!("an extra call!")
+                ClientState::Finished => panic!("an extra call!")
             }
         }
     }
@@ -636,7 +634,7 @@ mod tests {
         let authorization_code = OidcToken{ token_type: TokenType::Bearer, access_token: Token("".to_string())};
 
         let result = Executor::execute_future( async move {
-            wait_for_email_verification(Banana { state: Arc::new(Mutex::new(BananaState::FirstCall ))}, &authorization_code, &opts).await
+            wait_for_email_verification(Client { state: Arc::new(Mutex::new(ClientState::FirstCall ))}, &authorization_code, &opts).await
         })
             .expect("TODO: panic message");
 
