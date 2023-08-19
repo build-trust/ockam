@@ -98,13 +98,13 @@ teardown() {
 
 
   # Enrollment ticket expired by the time it's used
-  token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member --ticket-ttl 1)
+  token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member --expires-in 1s)
   sleep 2
   run "$OCKAM" project enroll $token --identity m3
   assert_failure
 
   # Enrollment ticket with enough ttl
-  token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member --ticket-ttl 30)
+  token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member --expires-in 30s)
   run "$OCKAM" project enroll $token --identity m3
   assert_success
   assert_output --partial "m3_member"
