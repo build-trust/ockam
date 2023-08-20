@@ -141,7 +141,7 @@ async fn start<W>(context: &Context, mailboxes: Mailboxes, worker: W) -> Result<
 where
     W: Worker<Context = Context>,
 {
-    info!(
+    debug!(
         "Initializing ockam worker '{}' with access control in:{:?} out:{:?}",
         mailboxes.main_address(),
         mailboxes.main_mailbox().incoming_access_control(),

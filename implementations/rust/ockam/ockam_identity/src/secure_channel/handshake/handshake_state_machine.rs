@@ -3,7 +3,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{async_trait, Result};
 use ockam_vault::{KeyId, PublicKey, SecretType};
-use tracing::info;
+use tracing::debug;
 
 use super::super::super::models::{
     ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
@@ -200,7 +200,7 @@ impl CommonStateMachine {
             // TODO: Shutdown? Communicate error?
             return Err(IdentityError::SecureChannelTrustCheckFailed.into());
         }
-        info!(
+        debug!(
             "Initiator checked trust policy for SecureChannel from: {}",
             their_identity.identifier()
         );
