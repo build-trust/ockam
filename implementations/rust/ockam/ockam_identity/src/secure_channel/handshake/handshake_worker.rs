@@ -53,7 +53,7 @@ impl Worker for HandshakeWorker {
     async fn initialize(&mut self, context: &mut Self::Context) -> Result<()> {
         match self.state_machine.on_event(Initialize).await? {
             SendMessage(message) => {
-                info!(
+                debug!(
                     "remote route {:?}, decryptor remote {:?}",
                     self.remote_route.clone(),
                     self.addresses.decryptor_remote.clone()
