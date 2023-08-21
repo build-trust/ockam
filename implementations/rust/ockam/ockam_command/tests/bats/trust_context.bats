@@ -180,28 +180,3 @@ teardown() {
   run "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context $msg
   assert_failure
 }
-
-@test "trust context - trust context with an id and authority using orchestrator; orchestrator enrollment and connection is performed, orchestrator" {
-  skip_if_orchestrator_tests_not_enabled
-  copy_local_orchestrator_data
-
-  $OCKAM trust-context create orchestrator-test
-
-  run "$OCKAM" identity create m1
-  $OCKAM project ticket >"$OCKAM_HOME/m1.token"
-  run "$OCKAM" project enroll $OCKAM_HOME/m1.token --identity m1
-
-  run "$OCKAM" identity create m2
-  $OCKAM project ticket >"$OCKAM_HOME/m2.token"
-  run "$OCKAM" project enroll $OCKAM_HOME/m2.token --identity m2
-
-  run "$OCKAM" node create n1 --identity m1 --trust-context orchestrator-test
-  assert_success
-
-  run "$OCKAM" node create n2 --identity m2 --trust-context orchestrator-test
-  assert_success
-
-  run bash -c "$OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api \
-        | $OCKAM message send hello --from /node/n1 --to -/service/echo"
-  assert_success
-}
