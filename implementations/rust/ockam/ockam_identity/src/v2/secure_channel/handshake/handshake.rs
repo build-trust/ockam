@@ -3,9 +3,9 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::constants::{AES256_SECRET_LENGTH_USIZE, CURVE25519_PUBLIC_LENGTH_USIZE};
+use ockam_vault::constants::{AES256_SECRET_LENGTH_USIZE, X25519_PUBLIC_LENGTH_USIZE};
 use ockam_vault::SecretType::X25519;
-use ockam_vault::{KeyId, PublicKey, Secret, SecretAttributes};
+use ockam_vault::{KeyId, PublicKey, Secret, SecretAttributes, SecureChannelVault};
 use sha2::{Digest, Sha256};
 use Status::*;
 
@@ -14,7 +14,6 @@ use super::super::super::secure_channel::handshake::handshake_state_machine::{
     HandshakeKeys, Status,
 };
 use super::super::super::secure_channel::Role;
-use super::super::super::XXVault;
 
 /// The number of bytes in a SHA256 digest
 pub const SHA256_SIZE_U32: u32 = 32;
@@ -28,7 +27,7 @@ pub const AES_GCM_TAGSIZE_USIZE: usize = 16;
 /// encrypt messages
 /// The variables used in the protocol itself: s, e, rs, re,... are handled in `HandshakeState`
 pub(super) struct Handshake {
-    vault: Arc<dyn XXVault>,
+    vault: Arc<dyn SecureChannelVault>,
     pub(super) state: HandshakeState,
 }
 
@@ -223,7 +222,10 @@ impl Handshake {
 
 impl Handshake {
     /// Create a new handshake
-    pub(super) async fn new(vault: Arc<dyn XXVault>, static_key: KeyId) -> Result<Handshake> {
+    pub(super) async fn new(
+        vault: Arc<dyn SecureChannelVault>,
+        static_key: KeyId,
+    ) -> Result<Handshake> {
         // 1. generate an ephemeral key pair for this handshake and set it to e
         let ephemeral_key = Self::generate_ephemeral_key(vault.clone()).await?;
 
@@ -273,7 +275,7 @@ impl Handshake {
 
         // The Diffie-Hellman secret is not useful anymore
         // we can delete it from memory
-        self.vault.delete_ephemeral_secret(dh).await?;
+        self.vault.delete_secret(dh).await?;
 
         let [new_ck, new_k]: [KeyId; 2] = hkdf_output
             .try_into()
@@ -281,11 +283,11 @@ impl Handshake {
 
         let old_ck = state.take_ck()?;
         state.ck = Some(new_ck);
-        self.vault.delete_ephemeral_secret(old_ck).await?;
+        self.vault.delete_secret(old_ck).await?;
 
         let old_k = state.take_k()?;
         state.k = Some(new_k);
-        self.vault.delete_ephemeral_secret(old_k).await?;
+        self.vault.delete_secret(old_k).await?;
 
         state.n = 0;
         Ok(())
@@ -309,8 +311,8 @@ impl Handshake {
             .try_into()
             .map_err(|_| XXError::InternalVaultError)?;
 
-        self.vault.delete_ephemeral_secret(state.take_ck()?).await?;
-        self.vault.delete_ephemeral_secret(state.take_k()?).await?;
+        self.vault.delete_secret(state.take_ck()?).await?;
+        self.vault.delete_secret(state.take_k()?).await?;
 
         Ok((k1, k2))
     }
@@ -345,10 +347,7 @@ impl Handshake {
     }
 
     async fn delete_ephemeral_keys(&mut self) -> Result<()> {
-        _ = self
-            .vault
-            .delete_ephemeral_secret(self.state.take_e()?)
-            .await?;
+        _ = self.vault.delete_secret(self.state.take_e()?).await?;
 
         Ok(())
     }
@@ -362,9 +361,9 @@ impl Handshake {
     }
 
     /// Generate an ephemeral key for the key exchange
-    async fn generate_ephemeral_key(vault: Arc<dyn XXVault>) -> Result<KeyId> {
+    async fn generate_ephemeral_key(vault: Arc<dyn SecureChannelVault>) -> Result<KeyId> {
         vault
-            .create_ephemeral_secret(SecretAttributes::X25519)
+            .generate_ephemeral_secret(SecretAttributes::X25519)
             .await
     }
 
@@ -434,7 +433,7 @@ impl Handshake {
 
     /// Size of a public key
     fn key_size() -> usize {
-        CURVE25519_PUBLIC_LENGTH_USIZE
+        X25519_PUBLIC_LENGTH_USIZE
     }
 
     /// Size of an encrypted key
@@ -582,18 +581,21 @@ impl HandshakeState {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::super::{identities, to_xx_vault};
+    use super::super::super::super::identities;
     use super::*;
     use hex::decode;
     use ockam_core::Result;
+    use ockam_node::InMemoryKeyValueStorage;
+    use ockam_vault::SoftwareSecureChannelVault;
 
     #[tokio::test]
     async fn test_initialization() -> Result<()> {
-        let identities = identities();
-        let vault = to_xx_vault(identities.vault());
+        let vault = Arc::new(SoftwareSecureChannelVault::new(
+            InMemoryKeyValueStorage::create(),
+        ));
 
         let static_key = vault
-            .create_ephemeral_secret(SecretAttributes::X25519)
+            .generate_static_secret(SecretAttributes::X25519)
             .await?;
         let mut handshake = Handshake::new(vault.clone(), static_key).await?;
         handshake.initialize().await?;
@@ -605,9 +607,7 @@ mod tests {
 
         assert_eq!(handshake.state.h, exp_h);
 
-        let ck = vault
-            .get_ephemeral_secret(handshake.state.ck()?, "ck")
-            .await?;
+        let ck = vault.get_ephemeral_secret(handshake.state.ck()?)?;
 
         assert_eq!(
             ck.secret().as_ref(),
@@ -673,41 +673,45 @@ mod tests {
     }
 
     async fn check_handshake(messages: HandshakeMessages) -> Result<()> {
-        let vault = to_xx_vault(identities().vault());
+        let vault = identities().vault();
 
         let initiator_static_key_id = vault
-            .import_ephemeral_secret(
+            .secure_channel_vault
+            .import_static_secret(
                 Secret::new(messages.initiator_static_key),
                 SecretAttributes::X25519,
             )
             .await?;
         let initiator_ephemeral_key_id = vault
+            .secure_channel_vault
             .import_ephemeral_secret(
                 Secret::new(messages.initiator_ephemeral_key),
                 SecretAttributes::X25519,
             )
             .await?;
         let mut initiator = Handshake::new_with_keys(
-            vault.clone(),
+            vault.secure_channel_vault.clone(),
             initiator_static_key_id,
             initiator_ephemeral_key_id,
         )
         .await?;
 
         let responder_static_key_id = vault
-            .import_ephemeral_secret(
+            .secure_channel_vault
+            .import_static_secret(
                 Secret::new(messages.responder_static_key),
                 SecretAttributes::X25519,
             )
             .await?;
         let responder_ephemeral_key_id = vault
+            .secure_channel_vault
             .import_ephemeral_secret(
                 Secret::new(messages.responder_ephemeral_key),
                 SecretAttributes::X25519,
             )
             .await?;
         let mut responder = Handshake::new_with_keys(
-            vault.clone(),
+            vault.secure_channel_vault.clone(),
             responder_static_key_id,
             responder_ephemeral_key_id,
         )
@@ -751,7 +755,7 @@ mod tests {
     impl Handshake {
         /// Initialize the handshake
         async fn new_with_keys(
-            vault: Arc<dyn XXVault>,
+            vault: Arc<dyn SecureChannelVault>,
             static_key: KeyId,
             ephemeral_key: KeyId,
         ) -> Result<Handshake> {

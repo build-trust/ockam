@@ -1,6 +1,4 @@
-use super::super::identities::{
-    Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault,
-};
+use super::super::identities::{Identities, IdentitiesRepository, IdentitiesStorage};
 use super::super::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
 use super::super::storage::Storage;
 
@@ -10,7 +8,7 @@ use ockam_vault::{Vault, VaultStorage};
 /// Builder for Identities services
 #[derive(Clone)]
 pub struct IdentitiesBuilder {
-    pub(crate) vault: Arc<dyn IdentitiesVault>,
+    pub(crate) vault: Vault,
     pub(crate) repository: Arc<dyn IdentitiesRepository>,
     pub(crate) purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
 }
@@ -21,43 +19,41 @@ pub fn identities() -> Arc<Identities> {
 }
 
 impl IdentitiesBuilder {
-    /// Set a specific storage for the identities vault
-    pub fn with_vault_storage(&mut self, storage: VaultStorage) -> IdentitiesBuilder {
-        self.with_identities_vault(Vault::create_with_persistent_storage(storage))
+    /// With Software Vault with given Storage
+    pub fn with_vault_storage(mut self, storage: VaultStorage) -> Self {
+        self.vault = Vault::create_with_persistent_storage(storage);
+        self
     }
 
-    /// Set a specific identities vault
-    pub fn with_identities_vault(&mut self, vault: Arc<dyn IdentitiesVault>) -> IdentitiesBuilder {
+    /// Set a Vault
+    pub fn with_vault(mut self, vault: Vault) -> Self {
         self.vault = vault;
-        self.clone()
+        self
     }
 
     /// Set a specific storage for identities
-    pub fn with_identities_storage(&mut self, storage: Arc<dyn Storage>) -> IdentitiesBuilder {
+    pub fn with_identities_storage(self, storage: Arc<dyn Storage>) -> Self {
         self.with_identities_repository(Arc::new(IdentitiesStorage::new(storage)))
     }
 
     /// Set a specific repository for identities
-    pub fn with_identities_repository(
-        &mut self,
-        repository: Arc<dyn IdentitiesRepository>,
-    ) -> IdentitiesBuilder {
+    pub fn with_identities_repository(mut self, repository: Arc<dyn IdentitiesRepository>) -> Self {
         self.repository = repository;
-        self.clone()
+        self
     }
 
     /// Set a specific storage for Purpose Keys
-    pub fn with_purpose_keys_storage(&mut self, storage: Arc<dyn Storage>) -> IdentitiesBuilder {
+    pub fn with_purpose_keys_storage(self, storage: Arc<dyn Storage>) -> Self {
         self.with_purpose_keys_repository(Arc::new(PurposeKeysStorage::new(storage)))
     }
 
     /// Set a specific repository for Purpose Keys
     pub fn with_purpose_keys_repository(
-        &mut self,
+        mut self,
         repository: Arc<dyn PurposeKeysRepository>,
-    ) -> IdentitiesBuilder {
+    ) -> Self {
         self.purpose_keys_repository = repository;
-        self.clone()
+        self
     }
 
     /// Build identities

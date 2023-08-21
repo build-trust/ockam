@@ -124,7 +124,7 @@ impl CommonStateMachine {
         let identity = Identity::import_from_change_history(
             None,
             peer.change_history.clone(),
-            self.identities.vault(),
+            self.identities.vault().verifying_vault,
         )
         .await?;
 
@@ -137,7 +137,7 @@ impl CommonStateMachine {
             let known_identity = Identity::import_from_change_history(
                 Some(identity.identifier()),
                 known_identity,
-                self.identities.vault(),
+                self.identities.vault().verifying_vault,
             )
             .await?;
 

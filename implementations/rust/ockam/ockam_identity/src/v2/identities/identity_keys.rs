@@ -1,4 +1,3 @@
-use super::super::identities::IdentitiesVault;
 use super::super::identity::Identity;
 use super::super::models::{
     Change, ChangeData, ChangeHash, ChangeHistory, ChangeSignature, Ed25519PublicKey,
@@ -9,11 +8,12 @@ use super::super::IdentityError;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{KeyId, SecretAttributes, Vault};
+use ockam_vault::{KeyId, SecretAttributes, SigningVault, VerifyingVault};
 
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {
-    vault: Arc<dyn IdentitiesVault>,
+    signing_vault: Arc<dyn SigningVault>,
+    verifying_vault: Arc<dyn VerifyingVault>,
 }
 
 impl IdentitiesKeys {
@@ -21,8 +21,12 @@ impl IdentitiesKeys {
         let change = self.make_change(key_id, None).await?;
         let change_history = ChangeHistory(vec![change]);
 
-        let identity =
-            Identity::import_from_change_history(None, change_history, self.vault.clone()).await?;
+        let identity = Identity::import_from_change_history(
+            None,
+            change_history,
+            self.verifying_vault.clone(),
+        )
+        .await?;
 
         Ok(identity)
     }
@@ -31,8 +35,14 @@ impl IdentitiesKeys {
 /// Public functions
 impl IdentitiesKeys {
     /// Create a new identities keys module
-    pub fn new(vault: Arc<dyn IdentitiesVault>) -> Self {
-        Self { vault }
+    pub fn new(
+        signing_vault: Arc<dyn SigningVault>,
+        verifying_vault: Arc<dyn VerifyingVault>,
+    ) -> Self {
+        Self {
+            signing_vault,
+            verifying_vault,
+        }
     }
 
     /// Rotate an existing key with a given label
@@ -52,13 +62,15 @@ impl IdentitiesKeys {
             )
             .await?;
 
-        identity.add_change(change, self.vault.clone()).await
+        identity
+            .add_change(change, self.verifying_vault.clone())
+            .await
     }
 
     /// Return the secret key of an identity
     pub async fn get_secret_key(&self, identity: &Identity) -> Result<KeyId> {
         if let Some(last_change) = identity.changes().last() {
-            self.vault
+            self.signing_vault
                 .get_key_id(last_change.primary_public_key())
                 .await
         } else {
@@ -76,7 +88,7 @@ impl IdentitiesKeys {
         previous: Option<(ChangeHash, KeyId)>,
     ) -> Result<Change> {
         let secret_key = self.generate_key_if_needed(secret).await?;
-        let public_key = self.vault.get_public_key(&secret_key).await?;
+        let public_key = self.signing_vault.get_public_key(&secret_key).await?;
 
         let public_key = Ed25519PublicKey(public_key.data().try_into().unwrap()); // FIXME
 
@@ -101,9 +113,9 @@ impl IdentitiesKeys {
 
         let versioned_data = minicbor::to_vec(&versioned_data)?;
 
-        let hash = Vault::sha256(&versioned_data);
+        let hash = self.verifying_vault.sha256(&versioned_data).await?;
 
-        let self_signature = self.vault.sign(&secret_key, hash.as_ref()).await?;
+        let self_signature = self.signing_vault.sign(&secret_key, hash.as_ref()).await?;
         let self_signature = Ed25519Signature(self_signature.as_ref().try_into().unwrap()); // FIXME
         let self_signature = ChangeSignature::Ed25519Signature(self_signature);
 
@@ -111,7 +123,10 @@ impl IdentitiesKeys {
         // If there is no previous_key - we're creating new identity, so we just generated the key
         let previous_signature = match previous.map(|x| x.1) {
             Some(previous_key) => {
-                let previous_signature = self.vault.sign(&previous_key, hash.as_ref()).await?;
+                let previous_signature = self
+                    .signing_vault
+                    .sign(&previous_key, hash.as_ref())
+                    .await?;
                 let previous_signature =
                     Ed25519Signature(previous_signature.as_ref().try_into().unwrap()); // FIXME
                 let previous_signature = ChangeSignature::Ed25519Signature(previous_signature);
@@ -134,8 +149,8 @@ impl IdentitiesKeys {
         if let Some(s) = secret {
             Ok(s.clone())
         } else {
-            self.vault
-                .create_persistent_secret(SecretAttributes::Ed25519 /* FIXME */)
+            self.signing_vault
+                .generate_key(SecretAttributes::Ed25519 /* FIXME */)
                 .await
         }
     }
@@ -165,7 +180,7 @@ mod test {
         let res = Identity::import_from_change_history(
             Some(&Identifier::from_str("Iabababababababababababababababababababab").unwrap()),
             identity.change_history().clone(),
-            identities.vault(),
+            identities.vault().verifying_vault,
         )
         .await;
         assert!(res.is_err());
@@ -174,7 +189,7 @@ mod test {
         let _ = Identity::import_from_change_history(
             Some(identity.identifier()),
             identity.change_history().clone(),
-            identities.vault(),
+            identities.vault().verifying_vault,
         )
         .await?;
 
@@ -187,7 +202,7 @@ mod test {
         let _ = Identity::import_from_change_history(
             Some(identity.identifier()),
             identity.change_history().clone(),
-            identities.vault(),
+            identities.vault().verifying_vault,
         )
         .await?;
 

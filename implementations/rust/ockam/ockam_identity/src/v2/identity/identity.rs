@@ -1,5 +1,4 @@
 use super::super::models::{Change, ChangeHash, ChangeHistory, Identifier};
-use super::super::IdentitiesVault;
 use super::super::IdentityError;
 use super::verified_change::VerifiedChange;
 use super::IdentityHistoryComparison;
@@ -10,7 +9,7 @@ use core::fmt::{Display, Formatter};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::PublicKey;
+use ockam_vault::{PublicKey, VerifyingVault};
 
 /// Identity implementation
 #[derive(Clone, Debug)]
@@ -79,9 +78,10 @@ impl Identity {
     pub async fn import_from_change_history(
         expected_identifier: Option<&Identifier>,
         change_history: ChangeHistory,
-        vault: Arc<dyn IdentitiesVault>,
+        vault: Arc<dyn VerifyingVault>,
     ) -> Result<Identity> {
-        let verified_changes = Self::check_entire_consistency(&change_history.0).await?;
+        let verified_changes =
+            Self::check_entire_consistency(&change_history.0, vault.clone()).await?;
         Self::verify_all_existing_changes(&verified_changes, &change_history.0, vault).await?;
 
         let identifier = if let Some(first_change) = verified_changes.first() {
@@ -109,7 +109,7 @@ impl Identity {
     pub async fn import(
         expected_identifier: Option<&Identifier>,
         data: &[u8],
-        vault: Arc<dyn IdentitiesVault>,
+        vault: Arc<dyn VerifyingVault>,
     ) -> Result<Identity> {
         let change_history = ChangeHistory::import(data)?;
 
@@ -130,7 +130,7 @@ impl Identity {
     pub async fn add_change(
         self,
         change: Change,
-        vault: Arc<dyn IdentitiesVault>,
+        vault: Arc<dyn VerifyingVault>,
     ) -> Result<Identity> {
         // TODO: Optimize
         let mut change_history = self.change_history;
