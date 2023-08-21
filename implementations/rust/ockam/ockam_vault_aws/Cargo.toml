@@ -60,7 +60,7 @@ ockam_node = { path = "../ockam_node", version = "^0.86.0", default_features = f
 ockam_vault = { path = "../ockam_vault", version = "^0.79.0", default_features = false }
 p256 = { version = "0.13.2", default_features = false }
 sha2 = { version = "0.10", default-features = false }
-thiserror = { version = "1.0.46" }
+thiserror = { version = "1.0.47" }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 
 [dev-dependencies]
