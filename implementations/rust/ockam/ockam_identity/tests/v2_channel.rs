@@ -1050,34 +1050,52 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
     let secure_channels_alice = SecureChannels::builder().build();
     let secure_channels_bob = SecureChannels::builder().build();
 
+    let alice_signing_vault = secure_channels_alice.vault().signing_vault;
+    let alice_sc_vault = secure_channels_alice.vault().secure_channel_vault;
+    let bob_signing_vault = secure_channels_bob.vault().signing_vault;
+    let bob_sc_vault = secure_channels_bob.vault().secure_channel_vault;
+
     let identities_creation_alice = secure_channels_alice.identities().identities_creation();
     let identities_creation_bob = secure_channels_bob.identities().identities_creation();
 
-    assert!(secure_channels_alice
-        .vault()
-        .list_ephemeral_secrets()
-        .await?
-        .is_empty());
-    assert!(secure_channels_bob
-        .vault()
-        .list_ephemeral_secrets()
-        .await?
-        .is_empty());
+    assert_eq!(alice_signing_vault.number_of_keys().await?, 0);
+    assert_eq!(alice_sc_vault.number_of_secrets().await?, 0);
+    assert_eq!(bob_signing_vault.number_of_keys().await?, 0);
+    assert_eq!(bob_sc_vault.number_of_secrets().await?, 0);
 
     let alice = identities_creation_alice.create_identity().await?;
-    let _alice_key = secure_channels_alice
+    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_secrets().await?, 0);
+    assert_eq!(bob_signing_vault.number_of_keys().await?, 0);
+    assert_eq!(bob_sc_vault.number_of_secrets().await?, 0);
+
+    secure_channels_alice
         .identities()
         .purpose_keys()
         .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
         .await?;
+    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_secrets().await?, 1);
+    assert_eq!(bob_signing_vault.number_of_keys().await?, 0);
+    assert_eq!(bob_sc_vault.number_of_secrets().await?, 0);
+
     let bob = identities_creation_bob.create_identity().await?;
-    let _bob_key = secure_channels_bob
+    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_secrets().await?, 1);
+    assert_eq!(bob_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(bob_sc_vault.number_of_secrets().await?, 0);
+
+    secure_channels_bob
         .identities()
         .purpose_keys()
         .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
         .await?;
+    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_secrets().await?, 1);
+    assert_eq!(bob_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(bob_sc_vault.number_of_secrets().await?, 1);
 
-    let _bob_listener = secure_channels_bob
+    secure_channels_bob
         .create_secure_channel_listener(
             ctx,
             bob.identifier(),
@@ -1085,25 +1103,12 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
             SecureChannelListenerOptions::new(),
         )
         .await?;
+    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_secrets().await?, 1);
+    assert_eq!(bob_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(bob_sc_vault.number_of_secrets().await?, 1);
 
-    assert_eq!(
-        secure_channels_alice
-            .vault()
-            .list_ephemeral_secrets()
-            .await?
-            .len(),
-        1
-    );
-    assert_eq!(
-        secure_channels_bob
-            .vault()
-            .list_ephemeral_secrets()
-            .await?
-            .len(),
-        1
-    );
-
-    let _alice_channel = secure_channels_alice
+    secure_channels_alice
         .create_secure_channel(
             ctx,
             alice.identifier(),
@@ -1111,46 +1116,21 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
             SecureChannelOptions::new(),
         )
         .await?;
-
     ctx.sleep(Duration::from_millis(100)).await;
 
     // k1, k2 and purpose key should exist
-    assert_eq!(
-        secure_channels_alice
-            .vault()
-            .list_ephemeral_secrets()
-            .await?
-            .len(),
-        3
-    );
-    assert_eq!(
-        secure_channels_bob
-            .vault()
-            .list_ephemeral_secrets()
-            .await?
-            .len(),
-        3
-    );
+    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_secrets().await?, 3);
+    assert_eq!(bob_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(bob_sc_vault.number_of_secrets().await?, 3);
 
     ctx.stop().await?;
 
     // when the channel is closed only purpose key should be left
-    assert_eq!(
-        secure_channels_alice
-            .vault()
-            .list_ephemeral_secrets()
-            .await?
-            .len(),
-        1
-    );
-    assert_eq!(
-        secure_channels_bob
-            .vault()
-            .list_ephemeral_secrets()
-            .await?
-            .len(),
-        1
-    );
+    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_secrets().await?, 1);
+    assert_eq!(bob_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(bob_sc_vault.number_of_secrets().await?, 1);
 
     Ok(())
 }

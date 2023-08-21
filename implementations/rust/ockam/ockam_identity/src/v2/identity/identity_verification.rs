@@ -2,12 +2,12 @@ use super::super::models::{
     Change, ChangeData, ChangeHash, ChangeSignature, VersionedData, CHANGE_HASH_LEN,
 };
 use super::super::verified_change::VerifiedChange;
-use super::super::{IdentitiesVault, Identity, IdentityError};
+use super::super::{Identity, IdentityError};
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::{PublicKey, SecretType, Signature, Vault};
+use ockam_vault::{PublicKey, SecretType, Signature, VerifyingVault};
 
 struct ChangeDetails {
     version: u8,
@@ -16,25 +16,34 @@ struct ChangeDetails {
 }
 
 impl Identity {
-    pub(crate) fn compute_change_hash_from_data(data: &[u8]) -> ChangeHash {
-        let hash = Vault::sha256(data);
+    pub(crate) async fn compute_change_hash_from_data(
+        data: &[u8],
+        vault: Arc<dyn VerifyingVault>,
+    ) -> Result<ChangeHash> {
+        let hash = vault.sha256(data).await?;
         Self::compute_change_hash_from_hash(hash)
     }
 
-    pub(crate) fn compute_change_hash_from_hash(hash: [u8; 32]) -> ChangeHash {
-        let change_hash = hash[0..CHANGE_HASH_LEN].try_into().unwrap();
-        ChangeHash::new(change_hash)
+    pub(crate) fn compute_change_hash_from_hash(hash: [u8; 32]) -> Result<ChangeHash> {
+        let change_hash = hash[0..CHANGE_HASH_LEN].try_into().unwrap(); // FIXME
+        Ok(ChangeHash::new(change_hash))
     }
 
     /// Check consistency of changes that are being added
-    pub async fn check_entire_consistency(changes: &[Change]) -> Result<Vec<VerifiedChange>> {
-        let to_be_verified_changes = Self::check_consistency(&[], changes).await?;
+    pub async fn check_entire_consistency(
+        changes: &[Change],
+        verifying_vault: Arc<dyn VerifyingVault>,
+    ) -> Result<Vec<VerifiedChange>> {
+        let to_be_verified_changes = Self::check_consistency(&[], changes, verifying_vault).await?;
 
         Ok(to_be_verified_changes)
     }
 
-    fn get_change_details(change: &Change) -> Result<ChangeDetails> {
-        let change_hash = Self::compute_change_hash_from_data(&change.data);
+    async fn get_change_details(
+        change: &Change,
+        vault: Arc<dyn VerifyingVault>,
+    ) -> Result<ChangeDetails> {
+        let change_hash = Self::compute_change_hash_from_data(&change.data, vault).await?;
         let versioned_data: VersionedData = minicbor::decode(&change.data)?;
 
         if versioned_data.version != 1 {
@@ -54,16 +63,19 @@ impl Identity {
     async fn check_consistency(
         existing_changes: &[Change],
         new_changes: &[Change],
+        vault: Arc<dyn VerifyingVault>,
     ) -> Result<Vec<VerifiedChange>> {
         let mut to_be_verified_changes = Vec::with_capacity(new_changes.len());
 
         let mut previous_change_details = match existing_changes.last() {
-            Some(previous_change) => Some(Self::get_change_details(previous_change)?),
+            Some(previous_change) => {
+                Some(Self::get_change_details(previous_change, vault.clone()).await?)
+            }
             None => None,
         };
 
         for change in new_changes.iter() {
-            let change_details = Self::get_change_details(change)?;
+            let change_details = Self::get_change_details(change, vault.clone()).await?;
 
             if let Some(previous_change_details) = previous_change_details {
                 if previous_change_details.version > change_details.version {
@@ -98,7 +110,7 @@ impl Identity {
     pub(crate) async fn verify_all_existing_changes(
         to_be_verified_changes: &[VerifiedChange],
         changes: &[Change],
-        vault: Arc<dyn IdentitiesVault>,
+        vault: Arc<dyn VerifyingVault>,
     ) -> Result<()> {
         let len = to_be_verified_changes.len();
         if len != changes.len() {
@@ -117,7 +129,7 @@ impl Identity {
         public_key: &PublicKey,
         hash: [u8; 32],
         signature: &ChangeSignature,
-        vault: Arc<dyn IdentitiesVault>,
+        vault: Arc<dyn VerifyingVault>,
     ) -> Result<bool> {
         let signature = match signature {
             ChangeSignature::Ed25519Signature(signature) => {
@@ -142,9 +154,9 @@ impl Identity {
     async fn verify_change(
         existing_changes: &[VerifiedChange],
         new_change: &Change,
-        vault: Arc<dyn IdentitiesVault>,
+        vault: Arc<dyn VerifyingVault>,
     ) -> Result<()> {
-        let hash = Vault::sha256(&new_change.data);
+        let hash = vault.sha256(&new_change.data).await?;
 
         let versioned_data: VersionedData = minicbor::decode(&new_change.data)?;
 

@@ -4,7 +4,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::PublicKey;
+use ockam_vault::{PublicKey, SecureChannelVault};
 use Action::*;
 use Event::*;
 use Role::*;
@@ -17,7 +17,7 @@ use super::super::super::secure_channel::handshake::handshake_state_machine::{
     Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
     StateMachine, Status,
 };
-use super::super::super::{Identities, PurposeKey, Role, TrustContext, TrustPolicy, XXVault};
+use super::super::super::{Identities, PurposeKey, Role, TrustContext, TrustPolicy};
 
 /// Implementation of a state machine for the key exchange on the initiator side
 #[async_trait]
@@ -96,7 +96,7 @@ impl InitiatorStateMachine {
 
 impl InitiatorStateMachine {
     pub async fn new(
-        vault: Arc<dyn XXVault>,
+        vault: Arc<dyn SecureChannelVault>,
         identities: Arc<Identities>,
         identifier: Identifier,
         purpose_key: PurposeKey,

@@ -2,15 +2,14 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::{KeyId, Secret};
+use ockam_vault::{KeyId, Secret, SecureChannelVault};
 
 use super::super::IdentityError;
-use super::super::XXInitializedVault;
 
 pub(crate) struct Encryptor {
     key: KeyId,
     nonce: u64,
-    vault: Arc<dyn XXInitializedVault>,
+    vault: Arc<dyn SecureChannelVault>,
 }
 
 // To simplify the implementation we use the same constant for the size of the message
@@ -31,7 +30,7 @@ impl Encryptor {
         (b, n)
     }
 
-    pub async fn rekey(vault: &Arc<dyn XXInitializedVault>, key: &KeyId) -> Result<KeyId> {
+    pub async fn rekey(vault: &Arc<dyn SecureChannelVault>, key: &KeyId) -> Result<KeyId> {
         let nonce_buffer = Self::convert_nonce_from_u64(u64::MAX).1;
         let zeroes = [0u8; 32];
 
@@ -57,7 +56,7 @@ impl Encryptor {
         if current_nonce > 0 && current_nonce % KEY_RENEWAL_INTERVAL == 0 {
             let new_key = Self::rekey(&self.vault, &self.key).await?;
             let old_key = core::mem::replace(&mut self.key, new_key);
-            self.vault.delete_ephemeral_secret(old_key).await?;
+            self.vault.delete_secret(old_key).await?;
         }
 
         let (small_nonce, nonce) = Self::convert_nonce_from_u64(current_nonce);
@@ -74,12 +73,12 @@ impl Encryptor {
         Ok(res)
     }
 
-    pub fn new(key: KeyId, nonce: u64, vault: Arc<dyn XXInitializedVault>) -> Self {
+    pub fn new(key: KeyId, nonce: u64, vault: Arc<dyn SecureChannelVault>) -> Self {
         Self { key, nonce, vault }
     }
 
     pub(crate) async fn shutdown(&self) -> Result<()> {
-        if !self.vault.delete_ephemeral_secret(self.key.clone()).await? {
+        if !self.vault.delete_secret(self.key.clone()).await? {
             Err(Error::new(
                 Origin::Ockam,
                 Kind::Internal,
