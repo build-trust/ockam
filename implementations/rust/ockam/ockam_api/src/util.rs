@@ -400,6 +400,8 @@ pub mod test_utils {
 
         let identity = create_random_identity(&secure_channels).await?;
 
+        let exported_identity = identity.export()?;
+
         let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
             .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
             .build();
@@ -448,8 +450,25 @@ pub mod test_utils {
         let node_manager = node_manager_worker.inner().clone();
         let secure_channels = node_manager.read().await.secure_channels.clone();
 
-        // since we re-created secure-channels, we rewrite the identity in the LMDB storage
-        create_random_identity(&secure_channels).await?;
+        // Import identity, since it doesn't exist in the LMDB storage
+        let _ = secure_channels
+            .identities()
+            .identities_creation()
+            .import(Some(identity.identifier()), &exported_identity)
+            .await?;
+
+        // It's easier to just recreate new Purpose keys instead of importing old ones
+        secure_channels
+            .identities()
+            .purpose_keys()
+            .create_purpose_key(identity.identifier(), Purpose::SecureChannel)
+            .await?;
+
+        secure_channels
+            .identities()
+            .purpose_keys()
+            .create_purpose_key(identity.identifier(), Purpose::Credentials)
+            .await?;
 
         context
             .start_worker(NODEMANAGER_ADDR, node_manager_worker)
