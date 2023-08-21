@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Unset OCKAM_LOG so it doesn't interfere in the CLI input/output
+unset OCKAM_LOG
+
 # Ockam binary to use
 if [[ -z $OCKAM ]]; then
   export OCKAM=ockam
