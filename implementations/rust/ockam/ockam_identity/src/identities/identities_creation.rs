@@ -1,3 +1,4 @@
+use crate::IdentityHistoryComparison;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::{KeyId, SigningVault, VerifyingVault};
@@ -26,27 +27,72 @@ impl IdentitiesCreation {
         }
     }
 
+    async fn store_imported_identity(&self, identity: &Identity) -> Result<()> {
+        // TODO: Duplicate
+        if let Some(known_identity) = self
+            .repository
+            .retrieve_identity(identity.identifier())
+            .await?
+        {
+            let known_identity = Identity::import_from_change_history(
+                Some(identity.identifier()),
+                known_identity,
+                self.verifying_vault.clone(),
+            )
+            .await?;
+
+            match identity.compare(&known_identity) {
+                IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
+                    return Err(IdentityError::ConsistencyError.into());
+                }
+                IdentityHistoryComparison::Newer => {
+                    self.repository
+                        .update_identity(identity.identifier(), identity.change_history())
+                        .await?;
+                }
+                IdentityHistoryComparison::Equal => {}
+            }
+        } else {
+            self.repository
+                .update_identity(identity.identifier(), identity.change_history())
+                .await?;
+        }
+
+        Ok(())
+    }
+
     /// Import and verify identity from its binary format
+    /// This action persists the Identity in the storage, use `Identity::import` to avoid that
     pub async fn import(
         &self,
         expected_identifier: Option<&Identifier>,
         data: &[u8],
     ) -> Result<Identity> {
-        Identity::import(expected_identifier, data, self.verifying_vault.clone()).await
+        let identity =
+            Identity::import(expected_identifier, data, self.verifying_vault.clone()).await?;
+
+        self.store_imported_identity(&identity).await?;
+
+        Ok(identity)
     }
 
     /// Import and verify identity from its Change History
+    /// This action persists the Identity in the storage, use `Identity::import` to avoid that
     pub async fn import_from_change_history(
         &self,
         expected_identifier: Option<&Identifier>,
         change_history: ChangeHistory,
     ) -> Result<Identity> {
-        Identity::import_from_change_history(
+        let identity = Identity::import_from_change_history(
             expected_identifier,
             change_history,
             self.verifying_vault.clone(),
         )
-        .await
+        .await?;
+
+        self.store_imported_identity(&identity).await?;
+
+        Ok(identity)
     }
 
     /// Create an `Identity`
