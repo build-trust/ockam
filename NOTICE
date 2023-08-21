@@ -124,7 +124,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | mime                          | Apache-2.0 OR MIT                                    | https://github.com/hyperium/mime                                          |
 | mio                           | MIT                                                  | https://github.com/tokio-rs/mio                                           |
 | miow                          | Apache-2.0 OR MIT                                    | https://github.com/yoshuawuyts/miow                                       |
-| native-tls                    | Apache-2.0 OR MIT                                    | https://github.com/sfackler/rust-native-tls                               |
 | nb                            | Apache-2.0 OR MIT                                    | https://github.com/rust-embedded/nb                                       |
 | ntapi                         | Apache-2.0 OR MIT                                    | https://github.com/MSxDOS/ntapi                                           |
 | num-integer                   | Apache-2.0 OR MIT                                    | https://github.com/rust-num/num-integer                                   |
@@ -173,6 +172,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | ron                           | Apache-2.0 OR MIT                                    | https://github.com/ron-rs/ron                                             |
 | rpassword                     | Apache-2.0                                           | https://github.com/conradkleinespel/rpassword                             |
 | rustc_version                 | Apache-2.0 OR MIT                                    | https://github.com/Kimundi/rustc-version-rs                               |
+| rustls                        | Apache-2.0 OR MIT                                    | https://github.com/rustls/rustls                                          |
 | ryu                           | Apache-2.0 OR BSL-1.0                                | https://github.com/dtolnay/ryu                                            |
 | schannel                      | MIT                                                  | https://github.com/steffengy/schannel-rs                                  |
 | scopeguard                    | Apache-2.0 OR MIT                                    | https://github.com/bluss/scopeguard                                       |

@@ -51,9 +51,11 @@ no_std = [
 alloc = ["ockam_core/alloc", "ockam_node/alloc", "ockam_vault/alloc"]
 
 [dependencies]
-aws-config = { version = "0.56.0", default-features = false, features = ["native-tls"] }
-aws-sdk-kms = { version = "0.28.0", default-features = false, features = ["native-tls"] }
+aws-config = { version = "0.56.0", default-features = false, features = ["rustls"] }
+aws-sdk-kms = { version = "0.29.0", default-features = false, features = ["rustls"] }
+aws-smithy-http = "0.56.0"
 delegate = "0.10.0"
+http = "0.2.9"
 ockam_core = { path = "../ockam_core", version = "^0.83.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.30.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.86.0", default_features = false }

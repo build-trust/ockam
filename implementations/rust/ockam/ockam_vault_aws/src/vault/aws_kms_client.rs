@@ -8,6 +8,8 @@ use aws_sdk_kms::operation::verify::VerifyError;
 use aws_sdk_kms::primitives::Blob;
 use aws_sdk_kms::types::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::Client;
+use aws_smithy_http::body::SdkBody;
+use http::Response;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Result};
 use ockam_vault::{KeyId, PublicKey, SecretType, Signature};
@@ -269,30 +271,30 @@ fn digest(data: &[u8]) -> Blob {
 #[derive(Error, Debug)]
 pub(crate) enum Error {
     #[error("aws sdk error creating new key")]
-    Create(#[from] SdkError<CreateKeyError>),
+    Create(#[from] SdkError<CreateKeyError, Response<SdkBody>>),
     #[error("aws sdk error signing message with key {keyid}")]
     Sign {
         keyid: String,
         #[source]
-        error: SdkError<SignError>,
+        error: SdkError<SignError, Response<SdkBody>>,
     },
     #[error("aws sdk error verifying message with key {keyid}")]
     Verify {
         keyid: String,
         #[source]
-        error: SdkError<VerifyError>,
+        error: SdkError<VerifyError, Response<SdkBody>>,
     },
     #[error("aws sdk error exporting public key {keyid}")]
     Export {
         keyid: String,
         #[source]
-        error: SdkError<GetPublicKeyError>,
+        error: SdkError<GetPublicKeyError, Response<SdkBody>>,
     },
     #[error("aws sdk error exporting public key {keyid}")]
     Delete {
         keyid: String,
         #[source]
-        error: SdkError<ScheduleKeyDeletionError>,
+        error: SdkError<ScheduleKeyDeletionError, Response<SdkBody>>,
     },
     #[error("aws did not return a key id")]
     MissingKeyId,
