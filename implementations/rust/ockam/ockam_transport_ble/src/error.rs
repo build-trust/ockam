@@ -19,7 +19,6 @@ pub enum BleError {
     ConfigurationFailed,
     /// Device failed to advertise itself
     AdvertisingFailure,
-    ConnectionClosed,
     ReadError,
     WriteError,
     UnexpectedCallback,
@@ -27,7 +26,6 @@ pub enum BleError {
     NoSuchCharacteristic,
     RuntimeError(String),
     Other(String),
-    Unknown,
 }
 
 impl ockam_core::compat::error::Error for BleError {}
@@ -42,7 +40,6 @@ impl core::fmt::Display for BleError {
             Self::NotConnected => write!(f, "not connected"),
             Self::ConfigurationFailed => write!(f, "configuration failed"),
             Self::AdvertisingFailure => write!(f, "ble advertising failed"),
-            Self::ConnectionClosed => write!(f, "connection closed"),
             Self::ReadError => write!(f, "read error"),
             Self::WriteError => write!(f, "write error"),
             Self::UnexpectedCallback => write!(f, "unexpected callback"),
@@ -50,7 +47,6 @@ impl core::fmt::Display for BleError {
             Self::NoSuchCharacteristic => write!(f, "no such characteristic"),
             Self::RuntimeError(s) => write!(f, "runtime error {:?}", s),
             Self::Other(s) => write!(f, "other error {:?}", s),
-            Self::Unknown => write!(f, "unknown error"),
         }
     }
 }

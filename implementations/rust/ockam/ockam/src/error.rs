@@ -12,21 +12,6 @@ use ockam_core::{
 // FIXME: Duplication from ockam_identity::IdentityError
 #[derive(Clone, Copy, Debug)]
 pub enum OckamError {
-    BareError = 1,
-    VerifyFailed,
-    InvalidInternalState,
-    InvalidProof,
-    ConsistencyError, // 5
-    ComplexEventsAreNotSupported,
-    EventIdDoesNotMatch,
-    IdentityIdDoesNotMatch,
-    EmptyChange,
-    ContactNotFound, // 10
-    EventNotFound,
-    InvalidChainSequence,
-    InvalidEventId,
-    AttestationRequesterDoesNotMatch,
-    AttestationNonceDoesNotMatch, // 15
     InvalidHubResponse,
     InvalidParameter,
     NoSuchProtocol,
