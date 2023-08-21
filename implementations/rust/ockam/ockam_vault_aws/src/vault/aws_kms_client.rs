@@ -1,15 +1,9 @@
 use aws_config::SdkConfig;
 use aws_sdk_kms::error::SdkError;
-use aws_sdk_kms::operation::create_key::CreateKeyError;
-use aws_sdk_kms::operation::get_public_key::GetPublicKeyError;
 use aws_sdk_kms::operation::schedule_key_deletion::ScheduleKeyDeletionError;
-use aws_sdk_kms::operation::sign::SignError;
-use aws_sdk_kms::operation::verify::VerifyError;
 use aws_sdk_kms::primitives::Blob;
 use aws_sdk_kms::types::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::Client;
-use aws_smithy_http::body::SdkBody;
-use http::Response;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Result};
 use ockam_vault::{KeyId, PublicKey, SecretType, Signature};
@@ -79,7 +73,9 @@ impl AwsKmsClient {
             Ok(out) => out,
             Err(err) => {
                 log::error!(%err, "failed to create new key");
-                return Err(Into::<ockam_core::Error>::into(Error::Create(err)));
+                return Err(Into::<ockam_core::Error>::into(Error::Create(
+                    err.to_string(),
+                )));
             }
         };
         if let Some(kid) = output.key_metadata().and_then(|meta| meta.key_id()) {
@@ -109,7 +105,7 @@ impl AwsKmsClient {
                 log::error!(%key_id, %err, "failed to schedule key for deletion");
                 Err(Error::Delete {
                     keyid: key_id.to_string(),
-                    error: err,
+                    error: err.to_string(),
                 }
                 .into())
             }
@@ -133,7 +129,7 @@ impl AwsKmsClient {
                 log::error!(%key_id, %err, "failed to get public key");
                 Error::Export {
                     keyid: key_id.to_string(),
-                    error: err,
+                    error: err.to_string(),
                 }
             })?;
         if output.key_spec() != Some(&KeySpec::EccNistP256) {
@@ -172,7 +168,7 @@ impl AwsKmsClient {
             log::error!(%key_id, %err, "failed to verify message signature");
             Error::Verify {
                 keyid: key_id.to_string(),
-                error: err,
+                error: err.to_string(),
             }
         })?;
         let is_valid = output.signature_valid();
@@ -194,7 +190,7 @@ impl AwsKmsClient {
             log::error!(%key_id, %err, "failed to sign message");
             Error::Sign {
                 keyid: key_id.to_string(),
-                error: err,
+                error: err.to_string(),
             }
         })?;
         if let Some(sig) = output.signature() {
@@ -271,31 +267,15 @@ fn digest(data: &[u8]) -> Blob {
 #[derive(Error, Debug)]
 pub(crate) enum Error {
     #[error("aws sdk error creating new key")]
-    Create(#[from] SdkError<CreateKeyError, Response<SdkBody>>),
+    Create(String),
     #[error("aws sdk error signing message with key {keyid}")]
-    Sign {
-        keyid: String,
-        #[source]
-        error: SdkError<SignError, Response<SdkBody>>,
-    },
+    Sign { keyid: String, error: String },
     #[error("aws sdk error verifying message with key {keyid}")]
-    Verify {
-        keyid: String,
-        #[source]
-        error: SdkError<VerifyError, Response<SdkBody>>,
-    },
+    Verify { keyid: String, error: String },
     #[error("aws sdk error exporting public key {keyid}")]
-    Export {
-        keyid: String,
-        #[source]
-        error: SdkError<GetPublicKeyError, Response<SdkBody>>,
-    },
+    Export { keyid: String, error: String },
     #[error("aws sdk error exporting public key {keyid}")]
-    Delete {
-        keyid: String,
-        #[source]
-        error: SdkError<ScheduleKeyDeletionError, Response<SdkBody>>,
-    },
+    Delete { keyid: String, error: String },
     #[error("aws did not return a key id")]
     MissingKeyId,
     #[error("aws did not return the list of existing keys")]
