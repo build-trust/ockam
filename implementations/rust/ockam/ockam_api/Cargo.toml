@@ -32,7 +32,7 @@ direct-authenticator = ["std"]
 
 [dependencies]
 anyhow = "1"
-aws-config = { version = "0.55.3", default-features = false, features = ["native-tls"] }
+aws-config = { version = "0.56.0", default-features = false, features = ["native-tls"] }
 bytes = { version = "1.4.0", default-features = false, features = ["serde"] }
 cddl-cat = { version = "0.6.1", optional = true }
 either = { version = "1.9.0", default-features = false }

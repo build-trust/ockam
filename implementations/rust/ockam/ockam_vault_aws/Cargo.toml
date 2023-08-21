@@ -51,7 +51,7 @@ no_std = [
 alloc = ["ockam_core/alloc", "ockam_node/alloc", "ockam_vault/alloc"]
 
 [dependencies]
-aws-config = { version = "0.55.3", default-features = false, features = ["native-tls"] }
+aws-config = { version = "0.56.0", default-features = false, features = ["native-tls"] }
 aws-sdk-kms = { version = "0.28.0", default-features = false, features = ["native-tls"] }
 delegate = "0.10.0"
 ockam_core = { path = "../ockam_core", version = "^0.83.0", default_features = false }
