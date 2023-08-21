@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+
+set -e
+
+ockam reset
+ockam enroll
+
+echo "Create a new Kafka cluster, if you haven't already, at https://console.aiven.io/"
+echo "then on the 'Overview' page select 'SASL' as the authentication method."
+echo ""
+read -p "What is the connection username: " username
+read -p "What is the connection password: " -s password
+echo ""
+read -p "What is the Service URI: " bootstrap_uri
+echo ""
+
+ockam project addon configure confluent \
+    --bootstrap-server $bootstrap_uri
+
+mkdir -p volumes/config
+cat > volumes/config/kafka.config <<EOF
+request.timeout.ms=30000
+security.protocol=SASL_PLAINTEXT
+sasl.mechanism=PLAIN
+sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+        username="$username" \
+        password="$password";
+EOF
+
+echo "Within the Aiven console create a new topic called 'ockam-demo'. Done? (Y/n)"
+read ok
+echo ""
+echo "You can now run ./bin/up to start the producer and consumer."

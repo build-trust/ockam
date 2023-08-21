@@ -1,0 +1,17 @@
+---
+version: "3.7"
+services:
+  # broker-relay:
+  #   build: ./relay
+  consumer:
+    build: ./client-node
+    entrypoint:
+      - /consumer.sh
+    volumes:
+      - ./volumes/consumer:/mnt
+      - ./volumes/config:/etc/kafka
+  producer:
+    build: ./client-node
+    volumes:
+      - ./volumes/producer:/mnt
+      - ./volumes/config:/etc/kafka
