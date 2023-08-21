@@ -26,8 +26,8 @@ use super::super::super::secure_channel::handshake::initiator_state_machine::Ini
 use super::super::super::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use super::super::super::secure_channel::{Addresses, Role};
 use super::super::super::{
-    to_xx_initialized, to_xx_vault, IdentityError, PurposeKey, SecureChannelRegistryEntry,
-    SecureChannels, TrustContext, TrustPolicy,
+    IdentityError, PurposeKey, SecureChannelRegistryEntry, SecureChannels, TrustContext,
+    TrustPolicy,
 };
 
 /// This struct implements a Worker receiving and sending messages
@@ -163,7 +163,7 @@ impl HandshakeWorker {
         timeout: Option<Duration>,
         role: Role,
     ) -> Result<()> {
-        let vault = to_xx_vault(secure_channels.vault());
+        let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
         let state_machine: Box<dyn StateMachine> = if role.is_initiator() {
             Box::new(
@@ -293,7 +293,7 @@ impl HandshakeWorker {
             self.role.str(),
             self.addresses.clone(),
             handshake_results.handshake_keys.decryption_key,
-            to_xx_initialized(self.secure_channels.identities.vault()),
+            self.secure_channels.identities.vault().secure_channel_vault,
             handshake_results.their_identifier.clone(),
         );
 
@@ -306,7 +306,7 @@ impl HandshakeWorker {
                 Encryptor::new(
                     handshake_results.handshake_keys.encryption_key,
                     0,
-                    to_xx_initialized(self.secure_channels.identities.vault()),
+                    self.secure_channels.identities.vault().secure_channel_vault,
                 ),
             );
 

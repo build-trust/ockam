@@ -1,4 +1,4 @@
-use super::super::identities::{IdentitiesKeys, IdentitiesRepository, IdentitiesVault};
+use super::super::identities::{IdentitiesKeys, IdentitiesRepository};
 use super::super::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
 use super::super::{
     Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation,
@@ -11,14 +11,14 @@ use ockam_vault::Vault;
 /// This struct supports all the services related to identities
 #[derive(Clone)]
 pub struct Identities {
-    vault: Arc<dyn IdentitiesVault>,
+    vault: Vault,
     identities_repository: Arc<dyn IdentitiesRepository>,
     purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
 }
 
 impl Identities {
-    /// Return the identities vault
-    pub fn vault(&self) -> Arc<dyn IdentitiesVault> {
+    /// Vault
+    pub fn vault(&self) -> Vault {
         self.vault.clone()
     }
 
@@ -44,14 +44,18 @@ impl Identities {
 
     /// Return the identities keys management service
     pub fn identities_keys(&self) -> Arc<IdentitiesKeys> {
-        Arc::new(IdentitiesKeys::new(self.vault.clone()))
+        Arc::new(IdentitiesKeys::new(
+            self.vault.signing_vault.clone(),
+            self.vault.verifying_vault.clone(),
+        ))
     }
 
     /// Return the identities creation service
     pub fn identities_creation(&self) -> Arc<IdentitiesCreation> {
         Arc::new(IdentitiesCreation::new(
             self.repository(),
-            self.vault.clone(),
+            self.vault.signing_vault.clone(),
+            self.vault.verifying_vault.clone(),
         ))
     }
 
@@ -63,7 +67,8 @@ impl Identities {
     /// Return the identities credentials service
     pub fn credentials(&self) -> Arc<Credentials> {
         Arc::new(Credentials::new(
-            self.vault(),
+            self.vault.signing_vault.clone(),
+            self.vault.verifying_vault.clone(),
             self.purpose_keys(),
             self.identities_repository.clone(),
         ))
@@ -78,7 +83,7 @@ impl Identities {
 impl Identities {
     /// Create a new identities module
     pub(crate) fn new(
-        vault: Arc<dyn IdentitiesVault>,
+        vault: Vault,
         identities_repository: Arc<dyn IdentitiesRepository>,
         purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
     ) -> Identities {

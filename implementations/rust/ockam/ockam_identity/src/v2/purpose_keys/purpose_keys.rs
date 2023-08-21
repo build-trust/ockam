@@ -4,7 +4,7 @@ use super::super::models::{
 };
 use super::super::utils::{add_seconds, now};
 use super::super::{
-    IdentitiesKeys, IdentitiesReader, IdentitiesVault, Identity, IdentityError, Purpose, PurposeKey,
+    IdentitiesKeys, IdentitiesReader, Identity, IdentityError, Purpose, PurposeKey,
 };
 use super::storage::PurposeKeysRepository;
 
@@ -15,23 +15,16 @@ use ockam_vault::{SecretAttributes, SecretType, Signature, Vault};
 /// This struct supports all the services related to identities
 #[derive(Clone)]
 pub struct PurposeKeys {
-    vault: Arc<dyn IdentitiesVault>,
+    vault: Vault,
     identities_reader: Arc<dyn IdentitiesReader>,
     identity_keys: Arc<IdentitiesKeys>,
     repository: Arc<dyn PurposeKeysRepository>,
 }
 
 impl PurposeKeys {
-    /// Return the identities vault
-    pub fn vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.vault.clone()
-    }
-}
-
-impl PurposeKeys {
     /// Create a new identities module
     pub(crate) fn new(
-        vault: Arc<dyn IdentitiesVault>,
+        vault: Vault,
         identities_reader: Arc<dyn IdentitiesReader>,
         identity_keys: Arc<IdentitiesKeys>,
         repository: Arc<dyn PurposeKeysRepository>,
@@ -63,28 +56,37 @@ impl PurposeKeys {
         let identity = Identity::import_from_change_history(
             Some(identifier),
             identity_change_history,
-            self.vault(),
+            self.vault.verifying_vault.clone(),
         )
         .await?;
 
         // FIXME
-        let secret_attributes = match &purpose {
-            Purpose::SecureChannel => SecretAttributes::X25519,
-            Purpose::Credentials => SecretAttributes::Ed25519,
-        };
-        let secret_key = self
-            .vault
-            .create_ephemeral_secret(secret_attributes)
-            .await?;
-
-        let public_key = self.vault.get_public_key(&secret_key).await?;
-
-        let public_key = match &purpose {
+        let (secret_key, public_key) = match &purpose {
             Purpose::SecureChannel => {
-                PurposePublicKey::SecureChannelStaticKey(public_key.try_into().unwrap())
+                let secret_key = self
+                    .vault
+                    .secure_channel_vault
+                    .generate_static_secret(SecretAttributes::X25519)
+                    .await?;
+                let public_key = self
+                    .vault
+                    .secure_channel_vault
+                    .get_public_key(&secret_key)
+                    .await?;
+                let public_key =
+                    PurposePublicKey::SecureChannelStaticKey(public_key.try_into().unwrap());
+                (secret_key, public_key)
             }
             Purpose::Credentials => {
-                PurposePublicKey::CredentialSigningKey(public_key.try_into().unwrap())
+                let secret_key = self
+                    .vault
+                    .signing_vault
+                    .generate_key(SecretAttributes::Ed25519)
+                    .await?;
+                let public_key = self.vault.signing_vault.get_public_key(&secret_key).await?;
+                let public_key =
+                    PurposePublicKey::CredentialSigningKey(public_key.try_into().unwrap());
+                (secret_key, public_key)
             }
         };
 
@@ -110,10 +112,14 @@ impl PurposeKeys {
         };
         let versioned_data = minicbor::to_vec(&versioned_data)?;
 
-        let versioned_data_hash = Vault::sha256(&versioned_data);
+        let versioned_data_hash = self.vault.verifying_vault.sha256(&versioned_data).await?;
 
         let signing_key = self.identity_keys.get_secret_key(&identity).await?;
-        let signature = self.vault.sign(&signing_key, &versioned_data_hash).await?;
+        let signature = self
+            .vault
+            .signing_vault
+            .sign(&signing_key, &versioned_data_hash)
+            .await?;
         let signature = Ed25519Signature(signature.as_ref().try_into().unwrap()); // FIXME
         let signature = PurposeKeyAttestationSignature::Ed25519Signature(signature);
 
@@ -143,7 +149,7 @@ impl PurposeKeys {
         &self,
         attestation: &PurposeKeyAttestation,
     ) -> Result<PurposeKeyAttestationData> {
-        let versioned_data_hash = Vault::sha256(&attestation.data);
+        let versioned_data_hash = self.vault.verifying_vault.sha256(&attestation.data).await?;
 
         let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
 
@@ -160,7 +166,7 @@ impl PurposeKeys {
         let identity = Identity::import_from_change_history(
             Some(&purpose_key_data.subject),
             change_history,
-            self.vault.clone(),
+            self.vault.verifying_vault.clone(),
         )
         .await?;
 
@@ -178,6 +184,7 @@ impl PurposeKeys {
 
         if !self
             .vault
+            .verifying_vault
             .verify(&public_key, &versioned_data_hash, &signature)
             .await?
         {
@@ -207,16 +214,24 @@ impl PurposeKeys {
     ) -> Result<PurposeKey> {
         let purpose_key_data = self.verify_purpose_key_attestation(attestation).await?;
 
-        let (purpose, public_key) = match purpose_key_data.public_key.clone() {
+        let (purpose, key_id) = match purpose_key_data.public_key.clone() {
             PurposePublicKey::SecureChannelStaticKey(public_key) => {
-                (Purpose::SecureChannel, public_key.into())
+                let key_id = self
+                    .vault
+                    .secure_channel_vault
+                    .get_key_id(&public_key.into())
+                    .await?;
+                (Purpose::SecureChannel, key_id)
             }
             PurposePublicKey::CredentialSigningKey(public_key) => {
-                (Purpose::Credentials, public_key.into())
+                let key_id = self
+                    .vault
+                    .signing_vault
+                    .get_key_id(&public_key.into())
+                    .await?;
+                (Purpose::Credentials, key_id)
             }
         };
-
-        let key_id = self.vault.get_key_id(&public_key).await?;
 
         let purpose_key = PurposeKey::new(
             purpose_key_data.subject.clone(),

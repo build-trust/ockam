@@ -2,8 +2,9 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
 use ockam_node::Context;
+use ockam_vault::Vault;
 
-use super::super::identities::{Identities, IdentitiesVault};
+use super::super::identities::Identities;
 use super::super::models::Identifier;
 use super::super::secure_channel::handshake_worker::HandshakeWorker;
 use super::super::secure_channel::{
@@ -41,8 +42,8 @@ impl SecureChannels {
         self.identities.clone()
     }
 
-    /// Return the vault associated to this service
-    pub fn vault(&self) -> Arc<dyn IdentitiesVault> {
+    /// Vault
+    pub fn vault(&self) -> Vault {
         self.identities.vault()
     }
 
