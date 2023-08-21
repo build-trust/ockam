@@ -79,12 +79,17 @@ impl ErrorData {
         #[allow(unused_mut)]
         let mut local: Vec<LocalPayloadEntry> = vec![];
 
-        #[cfg(all(feature = "std", feature = "error-traces"))]
+        #[cfg(all(feature = "std", feature = "backtrace"))]
         if trace_config::BACKTRACE_ENABLED.get() {
+            // This is called everytime an Error instance is created and takes up to 300ms
+            // on a fast CPU, which is way slower than expected from such type of operation.
+            // Therefore, this feature is disabled by default, but can be used.
+            // It's also possible to replace `Backtrace::new()` with `Backtrace::new_unresolved()`
+            // which is much faster.
             local.push(LocalPayloadEntry::Backtrace(backtrace::Backtrace::new()));
         }
 
-        #[cfg(all(feature = "std", feature = "error-traces"))]
+        #[cfg(all(feature = "std", feature = "tracing-error"))]
         if trace_config::SPANTRACE_ENABLED.get() {
             local.push(LocalPayloadEntry::Spantrace(
                 tracing_error::SpanTrace::capture(),
