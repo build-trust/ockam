@@ -56,7 +56,7 @@ anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
 base64-url = "2.0.0"
-clap = { version = "4.3.21", features = ["derive", "cargo", "wrap_help"] }
+clap = { version = "4.3.23", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.3.2"
 clap_mangen = "0.2.12"
 cli-table = "0.4"
