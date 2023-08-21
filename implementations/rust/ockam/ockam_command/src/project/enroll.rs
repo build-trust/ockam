@@ -1,5 +1,4 @@
 use clap::Args;
-use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use std::sync::Arc;
@@ -24,7 +23,7 @@ use crate::project::util::create_secure_channel_to_authority;
 use crate::project::ProjectInfo;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
-use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -130,18 +129,12 @@ pub async fn project_enroll(
 
     if !cmd.force {
         if let Ok(trust_context) = opts.state.trust_contexts.get(trust_context_name) {
-            return if trust_context.config().id() == project.id {
-                opts.terminal
-                    .stdout()
-                    .plain(fmt_ok!("Already enrolled"))
-                    .write_line()?;
-                Ok(project.name)
-            } else {
-                Err(miette!(
+            if trust_context.config().id() != project.id {
+                return Err(miette!(
                     "A trust context with the name {} already exists and is associated with a different project. Please choose a different name.",
                     trust_context_name
-                ))
-            };
+                ));
+            }
         }
     }
 
