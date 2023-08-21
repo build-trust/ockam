@@ -1,26 +1,30 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::{KeyId, Secret, SecretAttributes};
+use ockam_vault::{KeyId, Secret, SecretAttributes, SigningVault, VerifyingVault};
 
 use super::super::models::{ChangeHistory, Identifier};
-use super::super::{
-    IdentitiesKeys, IdentitiesRepository, IdentitiesVault, Identity, IdentityError,
-};
+use super::super::{IdentitiesKeys, IdentitiesRepository, Identity, IdentityError};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
     repository: Arc<dyn IdentitiesRepository>,
-    vault: Arc<dyn IdentitiesVault>,
+    signing_vault: Arc<dyn SigningVault>,
+    verifying_vault: Arc<dyn VerifyingVault>,
 }
 
 impl IdentitiesCreation {
     /// Create a new identities import module
     pub fn new(
         repository: Arc<dyn IdentitiesRepository>,
-        vault: Arc<dyn IdentitiesVault>,
-    ) -> IdentitiesCreation {
-        IdentitiesCreation { repository, vault }
+        signing_vault: Arc<dyn SigningVault>,
+        verifying_vault: Arc<dyn VerifyingVault>,
+    ) -> Self {
+        Self {
+            repository,
+            signing_vault,
+            verifying_vault,
+        }
     }
 
     /// Import and verify identity from its binary format
@@ -29,7 +33,7 @@ impl IdentitiesCreation {
         expected_identifier: Option<&Identifier>,
         data: &[u8],
     ) -> Result<Identity> {
-        Identity::import(expected_identifier, data, self.vault.clone()).await
+        Identity::import(expected_identifier, data, self.verifying_vault.clone()).await
     }
 
     /// Import and verify identity from its Change History
@@ -41,7 +45,7 @@ impl IdentitiesCreation {
         Identity::import_from_change_history(
             expected_identifier,
             change_history,
-            self.vault.clone(),
+            self.verifying_vault.clone(),
         )
         .await
     }
@@ -69,8 +73,9 @@ impl IdentitiesCreation {
         secret: &str,
     ) -> Result<Identity> {
         let secret = Secret::new(hex::decode(secret).unwrap());
-        self.vault
-            .import_ephemeral_secret(secret, SecretAttributes::Ed25519)
+        let key_id = self
+            .signing_vault
+            .import_key(secret, SecretAttributes::Ed25519)
             .await?;
         let identity_history_data: Vec<u8> =
             hex::decode(identity_history).map_err(|_| IdentityError::InvalidHex)?;
@@ -90,7 +95,8 @@ impl IdentitiesCreation {
     /// Make a new identity with its key and attributes
     /// and persist it
     async fn make_and_persist_identity(&self, key_id: Option<&KeyId>) -> Result<Identity> {
-        let identity_keys = IdentitiesKeys::new(self.vault.clone());
+        let identity_keys =
+            IdentitiesKeys::new(self.signing_vault.clone(), self.verifying_vault.clone());
         let identity = identity_keys.create_initial_key(key_id).await?;
         self.repository
             .update_identity(identity.identifier(), identity.change_history())
@@ -119,7 +125,7 @@ mod tests {
         let actual = Identity::import_from_change_history(
             Some(identity.identifier()),
             actual,
-            identities.vault(),
+            identities.vault().verifying_vault,
         )
         .await?;
         assert_eq!(
@@ -132,7 +138,7 @@ mod tests {
         let actual = Identity::import_from_change_history(
             Some(identity.identifier()),
             actual.unwrap(),
-            identities.vault(),
+            identities.vault().verifying_vault,
         )
         .await?;
         assert_eq!(

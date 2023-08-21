@@ -4,15 +4,13 @@ use super::super::models::{
     Ed25519Signature, Identifier, PurposeKeyAttestationData, PurposePublicKey, VersionedData,
 };
 use super::super::utils::{add_seconds, now};
-use super::super::{
-    IdentitiesRepository, IdentitiesVault, Identity, IdentityError, Purpose, PurposeKeys,
-};
+use super::super::{IdentitiesRepository, Identity, IdentityError, Purpose, PurposeKeys};
 
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::{SecretType, Signature, Vault};
+use ockam_vault::{SecretType, Signature, SigningVault, VerifyingVault};
 
 /// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
 /// after parsing and verifying corresponding [`Credential`] and [`super::super::models::PurposeKeyAttestation`]
@@ -26,7 +24,8 @@ pub struct CredentialAndPurposeKeyData {
 
 /// Service for managing [`Credential`]s
 pub struct Credentials {
-    vault: Arc<dyn IdentitiesVault>,
+    signing_vault: Arc<dyn SigningVault>,
+    verifying_vault: Arc<dyn VerifyingVault>,
     purpose_keys: Arc<PurposeKeys>,
     identities_repository: Arc<dyn IdentitiesRepository>,
 }
@@ -34,20 +33,17 @@ pub struct Credentials {
 impl Credentials {
     ///Constructor
     pub fn new(
-        vault: Arc<dyn IdentitiesVault>,
+        signing_vault: Arc<dyn SigningVault>,
+        verifying_vault: Arc<dyn VerifyingVault>,
         purpose_keys: Arc<PurposeKeys>,
         identities_repository: Arc<dyn IdentitiesRepository>,
     ) -> Self {
         Self {
-            vault,
+            signing_vault,
+            verifying_vault,
             purpose_keys,
             identities_repository,
         }
-    }
-
-    /// Vault
-    pub fn vault(&self) -> Arc<dyn IdentitiesVault> {
-        self.vault.clone()
     }
 
     /// [`PurposeKeys`]
@@ -88,7 +84,10 @@ impl Credentials {
 
         let public_key = public_key.into();
 
-        let versioned_data_hash = Vault::sha256(&credential_and_purpose_key.credential.data);
+        let versioned_data_hash = self
+            .verifying_vault
+            .sha256(&credential_and_purpose_key.credential.data)
+            .await?;
 
         let signature = match &credential_and_purpose_key.credential.signature {
             CredentialSignature::Ed25519Signature(signature) => {
@@ -100,7 +99,7 @@ impl Credentials {
         };
 
         if !self
-            .vault
+            .verifying_vault
             .verify(&public_key, &versioned_data_hash, &signature)
             .await?
         {
@@ -175,7 +174,7 @@ impl Credentials {
         let subject_identity = Identity::import_from_change_history(
             Some(subject),
             subject_change_history,
-            self.vault.clone(),
+            self.verifying_vault.clone(),
         )
         .await?;
 
@@ -197,7 +196,7 @@ impl Credentials {
         };
         let versioned_data = minicbor::to_vec(&versioned_data)?;
 
-        let versioned_data_hash = Vault::sha256(&versioned_data);
+        let versioned_data_hash = self.verifying_vault.sha256(&versioned_data).await?;
 
         if issuer_purpose_key.purpose() != Purpose::Credentials {
             return Err(IdentityError::InvalidKeyType.into());
@@ -208,7 +207,7 @@ impl Credentials {
         }
 
         let signature = self
-            .vault
+            .signing_vault
             .sign(issuer_purpose_key.key_id(), &versioned_data_hash)
             .await?;
         let signature: Vec<u8> = signature.into();
