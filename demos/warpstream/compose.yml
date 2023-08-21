@@ -1,0 +1,13 @@
+---
+version: "3.7"
+services:
+  consumer:
+    build: ./client-node
+    entrypoint:
+      - /consumer.sh
+    volumes:
+      - ./volumes/consumer:/mnt
+  producer:
+    build: ./client-node
+    volumes:
+      - ./volumes/producer:/mnt
