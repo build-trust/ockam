@@ -3,7 +3,7 @@ use core::fmt;
 use ockam_core::{
     compat::error::Error as StdError,
     errcode::{Kind, Origin},
-    Address, Error, Route,
+    Address, Error,
 };
 
 /// Enumeration of error causes in ockam_node
@@ -14,8 +14,6 @@ pub enum NodeError {
     ///
     /// An address either refers to a Worker or a Processor
     Address(Address),
-    /// Sending a message to a recipient failed
-    Recipient(Route),
     /// A data retrieval operation failed
     Data,
     /// A failure occurred because of invalid node state
@@ -68,7 +66,6 @@ impl fmt::Display for NodeError {
             "{}",
             match self {
                 Self::Address(addr) => format!("operation failed for address {}", addr),
-                Self::Recipient(route) => format!("operation failed for recipient {}", route),
                 Self::Data => "failed to load data".into(),
                 Self::NodeState(reason) => format!("failed because node state: {}", reason),
                 Self::WorkerState(reason) => format!("failed because worker state: {}", reason),
