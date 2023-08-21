@@ -137,7 +137,7 @@ impl<T: Write + Debug + Clone> TerminalStream<T> {
         let mut buffer = Vec::new();
         write!(buffer, "{}", msg.as_ref())?;
         if self.no_color {
-            buffer = strip_ansi_escapes::strip(&buffer)?;
+            buffer = strip_ansi_escapes::strip(&buffer);
         }
         Ok(String::from_utf8(buffer)
             .into_diagnostic()
