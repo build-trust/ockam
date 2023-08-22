@@ -65,11 +65,6 @@ ignore = [
   # CDDL schema conformance in tests.
   "RUSTSEC-2021-0127",
 
-  # `xml-rs` is unmaintained, pulled in from a transitive
-  # dependency `serde-xml`
-  # (https://rustsec.org/advisories/RUSTSEC-2022-0048.html)
-  "RUSTSEC-2022-0048",
-
   # `kuchiki` dependency of tauri, html/css parser, unmaintened
   # (https://rustsec.org/advisories/RUSTSEC-2023-0019.html)
   "RUSTSEC-2023-0019",
