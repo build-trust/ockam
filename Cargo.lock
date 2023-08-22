@@ -4486,6 +4486,7 @@ dependencies = [
  "tauri-plugin-window",
  "tauri-runtime",
  "thiserror",
+ "time",
  "tokio",
  "tracing",
  "tracing-subscriber",

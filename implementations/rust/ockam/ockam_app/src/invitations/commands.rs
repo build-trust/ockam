@@ -1,4 +1,6 @@
 use tauri::{AppHandle, Manager, Runtime, State};
+use time::format_description::well_known::iso8601::Iso8601;
+use time::OffsetDateTime;
 use tracing::{debug, error, info, warn};
 
 use ockam_api::cli_state::{CliState, StateDirTrait};
@@ -146,8 +148,8 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
     let cli_bin = cli_bin()?;
     for invitation in &reader.accepted {
         match InletDataFromInvitation::new(&cli_state, invitation) {
-            Ok(i) => {
-                if let Some(i) = i {
+            Ok(i) => match i {
+                Some(i) => {
                     if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
                         if node.is_running() {
                             debug!(node = %i.local_node_name, "Node already running");
@@ -166,7 +168,11 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                     .run();
                     create_inlet(&i).await?;
                 }
-            }
+                None => {
+                    warn!("Invalid invitation data");
+                    continue;
+                }
+            },
             Err(err) => {
                 warn!(%err, "Failed to parse invitation data");
                 continue;
@@ -225,6 +231,13 @@ impl InletDataFromInvitation {
         cli_state: &CliState,
         invitation: &InvitationWithAccess,
     ) -> crate::Result<Option<Self>> {
+        let expires_at =
+            OffsetDateTime::parse(&invitation.invitation.expires_at, &Iso8601::DEFAULT).unwrap();
+        if expires_at < OffsetDateTime::now_utc() {
+            let invitation = &invitation.invitation;
+            warn!(invitation = %invitation.id, at = %invitation.expires_at, "Invitation has expired");
+            return Ok(None);
+        }
         match &invitation.service_access_details {
             Some(d) => {
                 let service_name = extract_address_value(&d.shared_node_route)?;
