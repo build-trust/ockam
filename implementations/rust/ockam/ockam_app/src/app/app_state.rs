@@ -23,6 +23,7 @@ use crate::app::model_state_repository::{LmdbModelStateRepository, ModelStateRep
 use crate::Result;
 
 pub const NODE_NAME: &str = "ockam_app";
+// TODO: static project name of "default" is an unsafe default behavior due to backend uniqueness requirements
 pub const PROJECT_NAME: &str = "default";
 
 /// The AppState struct contains all the state managed by `tauri`.
