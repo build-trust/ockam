@@ -8,7 +8,6 @@ use ockam_api::{
     cloud::share::{InvitationListKind, ListInvitations},
     nodes::models::portal::OutletStatus,
 };
-use ockam_command::util::api::CloudOpts;
 use ockam_command::util::{extract_address_value, get_free_address};
 
 use crate::app::{AppState, NODE_NAME};
@@ -39,7 +38,7 @@ async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> c
         .accept_invitation(
             &state.context(),
             AcceptInvitation { id },
-            &CloudOpts::route(),
+            &state.controller_address(),
             None,
         )
         .await?;
@@ -81,7 +80,12 @@ pub async fn create_service_invitation<R: Runtime>(
 
     let node_manager_worker = state.node_manager_worker().await;
     let res = node_manager_worker
-        .create_service_invitation(&state.context(), invite_args, &CloudOpts::route(), None)
+        .create_service_invitation(
+            &state.context(),
+            invite_args,
+            &state.controller_address(),
+            None,
+        )
         .await
         .map_err(|e| e.to_string())?;
     debug!(?res, "invitation sent");
@@ -116,7 +120,7 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
             ListInvitations {
                 kind: InvitationListKind::All,
             },
-            &CloudOpts::route(),
+            &state.controller_address(),
             None,
         )
         .await
