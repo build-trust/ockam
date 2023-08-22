@@ -5,6 +5,7 @@ use crate::{
 };
 use miette::miette;
 
+use crate::credential::{identities, identity};
 use clap::Args;
 use colorful::Colorful;
 use ockam::identity::Identifier;
@@ -51,7 +52,10 @@ async fn run_impl(
 
     let send_req = async {
         let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
-            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
+            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path)
+                .await?
+                .trim()
+                .to_string(),
             (Some(credential), _) => credential.clone(),
             _ => {
                 *is_finished.lock().await = true;
@@ -68,8 +72,16 @@ async fn run_impl(
 
         let issuer = cmd.issuer();
 
+        let identities = match identities(&vault_name, &opts).await {
+            Ok(i) => i,
+            Err(_) => {
+                *is_finished.lock().await = true;
+                return Err(miette!("Invalid state").into());
+            }
+        };
+
         let cred = hex::decode(&cred_as_str)?;
-        let is_valid = match validate_encoded_cred(&cred, issuer, &vault_name, &opts).await {
+        let is_valid = match validate_encoded_cred(&cred, identities, issuer).await {
             Ok(_) => (true, String::new()),
             Err(e) => (false, e.to_string()),
         };
