@@ -61,7 +61,9 @@ pub async fn create_enrollment_ticket<R: Runtime>(
     })
 }
 
-async fn list_projects_with_admin<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Project>> {
+pub(crate) async fn list_projects_with_admin<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Vec<Project>> {
     let app_state: State<'_, AppState> = app.state();
     let user_email = app_state.user_email().await.unwrap_or_default();
     let state: State<'_, SyncState> = app.state();
