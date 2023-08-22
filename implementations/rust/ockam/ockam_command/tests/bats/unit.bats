@@ -88,20 +88,20 @@ teardown() {
   assert_output --partial "Type: OCKAM"
 
   v2=$(random_str)
-  run "$OCKAM" vault create "${v2}" --aws-kms
+  run "$OCKAM" vault create "${v2}"
   assert_success
 
   run "$OCKAM" vault show "${v2}"
   assert_success
   assert_output --partial "Name: ${v2}"
-  assert_output --partial "Type: AWS KMS"
+  assert_output --partial "Type: OCKAM"
 
   run "$OCKAM" vault list
   assert_success
   assert_output --partial "Vault ${v1}"
   assert_output --partial "Type OCKAM"
   assert_output --partial "Vault ${v2}"
-  assert_output --partial "Type AWS KMS"
+  assert_output --partial "Type OCKAM"
 }
 
 @test "vault - CRUD" {
