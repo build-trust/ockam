@@ -106,13 +106,12 @@ impl Credentials {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        let versioned_data: VersionedData =
-            minicbor::decode(&credential_and_purpose_key.credential.data)?;
+        let versioned_data = credential_and_purpose_key.credential.get_versioned_data()?;
         if versioned_data.version != 1 {
             return Err(IdentityError::UnknownCredentialVersion.into());
         }
 
-        let credential_data: CredentialData = minicbor::decode(&versioned_data.data)?;
+        let credential_data = CredentialData::get_data(&versioned_data)?;
 
         if credential_data.subject.is_none() && credential_data.subject_latest_change_hash.is_none()
         {

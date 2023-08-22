@@ -1,6 +1,4 @@
-use super::super::models::{
-    Change, ChangeData, ChangeHash, ChangeSignature, VersionedData, CHANGE_HASH_LEN,
-};
+use super::super::models::{Change, ChangeData, ChangeHash, ChangeSignature, CHANGE_HASH_LEN};
 use super::super::verified_change::VerifiedChange;
 use super::super::{Identity, IdentityError};
 
@@ -44,13 +42,13 @@ impl Identity {
         vault: Arc<dyn VerifyingVault>,
     ) -> Result<ChangeDetails> {
         let change_hash = Self::compute_change_hash_from_data(&change.data, vault).await?;
-        let versioned_data: VersionedData = minicbor::decode(&change.data)?;
+        let versioned_data = change.get_versioned_data()?;
 
         if versioned_data.version != 1 {
             return Err(IdentityError::UnknownIdentityVersion.into());
         }
 
-        let change_data: ChangeData = minicbor::decode(&versioned_data.data)?;
+        let change_data = ChangeData::get_data(&versioned_data)?;
 
         Ok(ChangeDetails {
             version: versioned_data.version,
@@ -158,13 +156,13 @@ impl Identity {
     ) -> Result<()> {
         let hash = vault.sha256(&new_change.data).await?;
 
-        let versioned_data: VersionedData = minicbor::decode(&new_change.data)?;
+        let versioned_data = new_change.get_versioned_data()?;
 
         if versioned_data.version != 1 {
             return Err(IdentityError::UnknownIdentityVersion.into());
         }
 
-        let change_data: ChangeData = minicbor::decode(&versioned_data.data)?;
+        let change_data = ChangeData::get_data(&versioned_data)?;
 
         if let Some(last_verified_change) = existing_changes.last() {
             if let Some(previous_signature) = &new_change.previous_signature {
