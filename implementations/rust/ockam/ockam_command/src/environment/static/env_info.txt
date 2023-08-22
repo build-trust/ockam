@@ -17,6 +17,7 @@ CLI Behavior
 - OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node.
 
 Devs Usage
+- OCKAM: a `string` that defines the path to the ockam binary to use.
 - OCKAM_HELP_SHOW_HIDDEN: a `boolean` to control the visibility of hidden commands.
 - OCKAM_CONTROLLER_ADDR: a `string` that overrides the default address of the controller.
 - OCKAM_CONTROLLER_IDENTITY_ID: a `string` that overrides the default identifier of the controller.

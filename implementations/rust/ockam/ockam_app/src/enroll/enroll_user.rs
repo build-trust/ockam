@@ -1,7 +1,7 @@
 use miette::{miette, IntoDiagnostic};
 
 use tauri::{AppHandle, Manager, State, Wry};
-use tracing::log::{error, info};
+use tracing::{error, info};
 
 use ockam::identity::IdentityIdentifier;
 use ockam_api::cli_state;
@@ -51,7 +51,7 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
     let user_info = oidc_service
         .wait_for_email_verification(&token, &app_state.options().await)
         .await?;
-    info!("the user info is {user_info:?}");
+    info!(?user_info, "Email verification succeeded");
     app_state.model_mut(|m| m.set_user_info(user_info)).await?;
 
     // enroll the current user using that token on the controller
@@ -72,7 +72,7 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
 }
 
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
-    info!("retrieving the user space");
+    info!("retrieving the user's space");
     let node_manager_worker = app_state.node_manager_worker().await;
     let node_manager = node_manager_worker.inner().read().await;
 
@@ -126,16 +126,17 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
     };
     let project = match projects.iter().find(|p| p.name == *PROJECT_NAME) {
         Some(project) => project.clone(),
-        None => node_manager
-            .create_project(
-                &app_state.context(),
-                &CloudOpts::route(),
-                space.id.as_str(),
-                PROJECT_NAME,
-                vec![],
-            )
-            .await
-            .map_err(|e| miette!(e))?,
+        None => {
+            let ctx = &app_state.context();
+            let route = &CloudOpts::route();
+            let project = node_manager
+                .create_project(ctx, route, space.id.as_str(), PROJECT_NAME, vec![])
+                .await
+                .map_err(|e| miette!(e))?;
+            node_manager
+                .wait_until_project_is_ready(ctx, route, project)
+                .await?
+        }
     };
     app_state
         .state()
