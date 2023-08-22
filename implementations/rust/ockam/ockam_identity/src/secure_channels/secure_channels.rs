@@ -103,13 +103,11 @@ impl SecureChannels {
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
 
+        // TODO: Allow manual PurposeKey management
         let purpose_key = self
             .purpose_keys
-            .repository()
-            .get_purpose_key(identifier, Purpose::SecureChannel)
+            .get_or_create_purpose_key(identifier, Purpose::SecureChannel)
             .await?;
-
-        let purpose_key = self.purpose_keys.import_purpose_key(&purpose_key).await?;
 
         HandshakeWorker::create(
             ctx,

@@ -90,17 +90,11 @@ impl Worker for IdentityChannelListener {
 
         let credentials = self.get_credentials(ctx).await?;
 
+        // TODO: Allow manual PurposeKey management
         let purpose_key = self
             .secure_channels
             .purpose_keys
-            .repository()
-            .get_purpose_key(&self.identifier, Purpose::SecureChannel)
-            .await?;
-
-        let purpose_key = self
-            .secure_channels
-            .purpose_keys
-            .import_purpose_key(&purpose_key)
+            .get_or_create_purpose_key(&self.identifier, Purpose::SecureChannel)
             .await?;
 
         HandshakeWorker::create(

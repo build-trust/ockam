@@ -9,7 +9,7 @@ use super::super::{
 use super::storage::PurposeKeysRepository;
 
 use ockam_core::compat::sync::Arc;
-use ockam_core::Result;
+use ockam_core::{Error, Result};
 use ockam_vault::{SecretAttributes, SecretType, Signature, Vault};
 
 /// This struct supports all the services related to identities
@@ -142,6 +142,40 @@ impl PurposeKeys {
         );
 
         Ok(purpose_key)
+    }
+
+    /// Will try to get own Purpose Key from the repository, if that doesn't succeed - new one
+    /// will be generated
+    pub async fn get_or_create_purpose_key(
+        &self,
+        identifier: &Identifier,
+        purpose: Purpose,
+    ) -> Result<PurposeKey> {
+        let existent_key = async {
+            let purpose_key_attestation =
+                self.repository.get_purpose_key(identifier, purpose).await?;
+
+            let purpose_key = self.import_purpose_key(&purpose_key_attestation).await?;
+
+            Ok::<PurposeKey, Error>(purpose_key)
+        }
+        .await;
+
+        match existent_key {
+            Ok(purpose_key) => Ok(purpose_key),
+            Err(_) => self.create_purpose_key(identifier, purpose).await,
+        }
+    }
+
+    /// Get own Purpose Key from the repository
+    pub async fn get_purpose_key(
+        &self,
+        identifier: &Identifier,
+        purpose: Purpose,
+    ) -> Result<PurposeKey> {
+        let purpose_key_attestation = self.repository.get_purpose_key(identifier, purpose).await?;
+
+        self.import_purpose_key(&purpose_key_attestation).await
     }
 
     /// Verify a [`PurposeKeyAttestation`]
