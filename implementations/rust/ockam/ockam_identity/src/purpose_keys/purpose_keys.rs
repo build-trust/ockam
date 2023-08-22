@@ -185,13 +185,13 @@ impl PurposeKeys {
     ) -> Result<PurposeKeyAttestationData> {
         let versioned_data_hash = self.vault.verifying_vault.sha256(&attestation.data).await?;
 
-        let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
+        let versioned_data = attestation.get_versioned_data()?;
 
         if versioned_data.version != 1 {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
         }
 
-        let purpose_key_data: PurposeKeyAttestationData = minicbor::decode(&versioned_data.data)?;
+        let purpose_key_data = PurposeKeyAttestationData::get_data(&versioned_data)?;
 
         let change_history = self
             .identities_reader
