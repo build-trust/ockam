@@ -12,7 +12,7 @@ use ockam_core::compat::rand::thread_rng;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Error, Result};
-use ockam_node::KeyValueStorage;
+use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
 use sha2::{Digest, Sha256};
 use static_assertions::const_assert_eq;
 
@@ -41,6 +41,11 @@ impl SoftwareSigningVault {
     /// Constructor
     pub fn new(secrets: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>) -> Self {
         Self { secrets }
+    }
+
+    /// Create Software implementation Vault with [`InMemoryKeyVaultStorage`]
+    pub fn create() -> Arc<SoftwareSigningVault> {
+        Arc::new(Self::new(InMemoryKeyValueStorage::create()))
     }
 
     /// Import a key from a binary
