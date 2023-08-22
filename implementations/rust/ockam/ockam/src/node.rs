@@ -124,11 +124,11 @@ impl Node {
     /// Note: the data is not persisted!
     pub async fn import_private_identity(
         &self,
-        identity_history: &str,
+        identity_change_history: &[u8],
         key_id: &KeyId,
     ) -> Result<Identity> {
         self.identities_creation()
-            .import_private_identity(identity_history, key_id)
+            .import_private_identity(identity_change_history, key_id)
             .await
     }
 
