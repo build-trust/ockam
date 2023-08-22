@@ -66,6 +66,9 @@ jobs:
           - cargo_clippy
           - cargo_deny
           - cargo_toml_files
+    defaults:
+      run:
+        shell: nix develop ./tools/nix#rust --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -74,12 +77,11 @@ jobs:
 
       - name: Install Nix
         uses: ./.github/actions/nix_installer
-        
-      - name: Run lint ${{ matrix.lint_projects }}
-        run:  nix develop ./tools/nix#rust --ignore-environment --command ldd --version
+
+      - run: cargo clean
 
       - name: Run lint ${{ matrix.lint_projects }}
-        run:  nix develop ./tools/nix#rust --ignore-environment --command make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
+        run:  RUSTFLAGS="--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings" CARGO_INCREMENTAL=0 RUSTFLAGS="-Cdebuginfo=0" make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
 
   build:
     name: Rust - build_${{ matrix.build_projects }}
@@ -92,6 +94,10 @@ jobs:
           - packages
           - examples
           - nightly
+
+    defaults:
+      run:
+        shell: nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -102,7 +108,7 @@ jobs:
         uses: ./.github/actions/nix_installer
 
       - name: Run build ${{ matrix.build_projects }}
-        run:  nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command make -f implementations/rust/Makefile build${{ matrix.build_projects == 'nightly' && '_packages' || format('_{0}', matrix.build_projects) }}
+        run:  make -f implementations/rust/Makefile build${{ matrix.build_projects == 'nightly' && '_packages' || format('_{0}', matrix.build_projects) }}
 
   test:
     name: Rust - test_${{ matrix.test_projects }}
@@ -112,6 +118,9 @@ jobs:
         image: ghcr.io/build-trust/ockam-cloud-node@sha256:518314876a5b07c263b88995792335c4426d940c10e5e638a60e66776d86cff5
     env:
       CLOUD_ADDRESS: ockam_cloud:4000
+    defaults:
+      run:
+        shell: nix develop ./tools/nix#rust${{matrix.test_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command bash {0}
     strategy:
       fail-fast: false
       matrix:
@@ -127,7 +136,7 @@ jobs:
         uses: ./.github/actions/nix_installer
 
       - name: Run test on ${{ matrix.test_projects }}
-        run: nix develop ./tools/nix#rust${{matrix.test_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command make -f implementations/rust/Makefile test
+        run:  make -f implementations/rust/Makefile test
 
   check:
     name: Rust - check_${{ matrix.check_projects }}
@@ -139,6 +148,10 @@ jobs:
           - cargo_update
           - no_std
           - tag
+    
+    defaults:
+      run:
+        shell: nix develop ./tools/nix#rust${{matrix.check_projects == 'no_std' && '_nightly' || '' }} --ignore-environment --command bash {0}
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
@@ -146,9 +159,9 @@ jobs:
 
       - name: Install Nix
         uses: ./.github/actions/nix_installer
-  
+
       - name: Run check on ${{ matrix.check_projects }}
-        run: nix develop ./tools/nix#rust --ignore-environment --command make -f implementations/rust/Makefile check_${{ matrix.check_projects }}
+        run:  make -f implementations/rust/Makefile check_${{ matrix.check_projects }}
 
   test_ockam_command:
     name: Rust - test_ockam_command
@@ -185,6 +198,8 @@ jobs:
         shell: bash
         working-directory: ockam_cli
         run: |
+          which ldd
+          which cc
           rustc --version
           set -x
           cargo build --bin ockam
@@ -304,4 +319,3 @@ jobs:
       - name: Check Rust Documentation
         run: |
           CHECK_MD_DIR="ockam-documentation/reference/libraries/rust" CHECK_MD_DIR_RUST_EXAMPLE="ockam/examples/rust/get_started" OCKAM_HOME="ockam" ockam/tools/docs/check_documentation.sh
- 

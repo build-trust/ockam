@@ -35,18 +35,19 @@ in {
         compilerTools = with pkgs; [
           clang
           cmake
-          dprint
           lld
         ];
 
-        nightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
+        nightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
+          targets = [ "thumbv7em-none-eabihf" ];
+        });
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ../../../rust-toolchain.toml;
 
         nativeLibs = with pkgs;
           [(lib.getDev openssl)]
           ++ lib.optionals stdenv.isLinux [
             dbus
-            webkitgtk_4_1
+            gtk4
             glibc
             (lib.getDev systemd)
           ]
@@ -68,6 +69,7 @@ in {
             cargo-modules
             cargo-nextest
             cargo-readme
+            dprint
           ]
           ++ lib.optionals cfg.suggestedCargoPlugins [
             bacon

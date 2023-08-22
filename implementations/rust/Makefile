@@ -21,7 +21,6 @@ check_no_std:
 	# RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="qemu"
 	# RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="atsame54"
 	# RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="stm32f4"
-	cd -
 check_tag:
 	cargo check --features tag
 check_cargo_update:
@@ -29,7 +28,6 @@ check_cargo_update:
 	rm -rf Cargo.lock
 	cargo update
 	RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
-	cd -
 
 test:
 	@if [ "$(CI)" = "true" ]; then \

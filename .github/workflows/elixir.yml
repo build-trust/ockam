@@ -53,7 +53,7 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: nix develop ../../tools/nix#elixir --command bash {0}
 
 jobs:
   lint:
@@ -72,15 +72,16 @@ jobs:
           - ockam_services
           - ockam_typed_cbor
           - ockam_vault_software
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/elixir_cache
-      - run: ../../gradlew lint_${{ matrix.mix_project }}
+
+      - name: Install Nix
+        uses: ./.github/actions/nix_installer
+
+      - name: Lint ${{ matrix.mix_project }}
+        run: make lint_${{ matrix.mix_project }}
         working-directory: implementations/elixir
 
   build:
@@ -99,15 +100,16 @@ jobs:
           - ockam_services
           - ockam_typed_cbor
           - ockam_vault_software
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/elixir_cache
-      - run: ../../gradlew build_${{ matrix.mix_project }}
+
+      - name: Install Nix
+        uses: ./.github/actions/nix_installer
+
+      - name: Build ${{ matrix.mix_project }}
+        run: make build_${{ matrix.mix_project }}
         working-directory: implementations/elixir
 
   test:
@@ -126,13 +128,14 @@ jobs:
           - ockam_services
           - ockam_typed_cbor
           - ockam_vault_software
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/elixir_cache
-      - run: ../../gradlew test_${{ matrix.mix_project }}
+
+      - name: Install Nix
+        uses: ./.github/actions/nix_installer
+
+      - name: Test ${{ matrix.mix_project }}
+        run: make test_${{ matrix.mix_project }}
         working-directory: implementations/elixir
