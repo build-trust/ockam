@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
 use crate::{
-    fmt_err, fmt_log, fmt_ok, util::node_rpc, vault::default_vault_name, CommandGlobalOpts, Result,
+    fmt_err, fmt_log, fmt_ok, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
 };
 use miette::miette;
 
+use crate::credential::{identities, identity};
 use clap::Args;
 use colorful::Colorful;
-use ockam::identity::{identities, Identity};
 use ockam::Context;
 use tokio::{sync::Mutex, try_join};
 
@@ -32,18 +32,6 @@ impl VerifyCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(run_impl, (opts, self));
     }
-
-    pub async fn issuer(&self) -> Result<Identity> {
-        let identity_as_bytes = match hex::decode(&self.issuer) {
-            Ok(b) => b,
-            Err(e) => return Err(miette!(e).into()),
-        };
-        let identity = identities()
-            .identities_creation()
-            .import(None, &identity_as_bytes)
-            .await?;
-        Ok(identity)
-    }
 }
 
 async fn run_impl(
@@ -57,7 +45,10 @@ async fn run_impl(
 
     let send_req = async {
         let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
-            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path).await?,
+            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path)
+                .await?
+                .trim()
+                .to_string(),
             (Some(credential), _) => credential.clone(),
             _ => {
                 *is_finished.lock().await = true;
@@ -72,20 +63,27 @@ async fn run_impl(
             .clone()
             .unwrap_or_else(|| default_vault_name(&opts.state));
 
-        let issuer = match cmd.issuer().await {
+        let identities = match identities(&vault_name, &opts).await {
             Ok(i) => i,
             Err(_) => {
                 *is_finished.lock().await = true;
-                return Ok((false, "Issuer is invalid".to_string()));
+                return Err(miette!("Invalid state").into());
+            }
+        };
+
+        let issuer = match identity(&cmd.issuer, identities.clone()).await {
+            Ok(i) => i,
+            Err(_) => {
+                *is_finished.lock().await = true;
+                return Err(miette!("Issuer is invalid").into());
             }
         };
 
         let cred = hex::decode(&cred_as_str)?;
-        let is_valid =
-            match validate_encoded_cred(&cred, issuer.identifier(), &vault_name, &opts).await {
-                Ok(_) => (true, String::new()),
-                Err(e) => (false, e.to_string()),
-            };
+        let is_valid = match validate_encoded_cred(&cred, identities, issuer.identifier()).await {
+            Ok(_) => (true, String::new()),
+            Err(e) => (false, e.to_string()),
+        };
 
         *is_finished.lock().await = true;
         Ok(is_valid)

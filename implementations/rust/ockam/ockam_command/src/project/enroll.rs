@@ -23,7 +23,7 @@ use crate::project::util::create_secure_channel_to_authority;
 use crate::project::ProjectInfo;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
-use crate::util::output::Output;
+use crate::util::output::CredentialAndPurposeKeyDisplay;
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
@@ -210,7 +210,7 @@ pub async fn project_enroll(
 
     let credential = client2.credential().await.into_diagnostic()?;
     println!("---");
-    println!("{}", credential.output()?);
+    println!("{}", CredentialAndPurposeKeyDisplay(credential));
     println!("---");
     Ok(project.name)
 }
