@@ -40,7 +40,7 @@ teardown() {
   PROJECT_NAME="default"
   echo "{\"id\": \"1\",
   \"name\" : \"$PROJECT_NAME\",
-  \"identity\" : \"P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94\",
+  \"identity\" : \"I6c20e814b56579306f55c64e8747e6c1b4a53d9a\",
   \"access_route\" : \"/dnsaddr/127.0.0.1/tcp/4000/service/api\",
   \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/$port/service/api\",
   \"authority_identity\" : \"$authority_identity_full\"}" >"$PROJECT_JSON_PATH"
@@ -90,7 +90,7 @@ teardown() {
   PROJECT_JSON_PATH="$OCKAM_HOME/project-authority.json"
   echo "{\"id\": \"1\",
   \"name\" : \"default\",
-  \"identity\" : \"P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94\",
+  \"identity\" : \"I6c20e814b56579306f55c64e8747e6c1b4a53d9a\",
   \"access_route\" : \"/dnsaddr/127.0.0.1/tcp/4000/service/api\",
   \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/$port/service/api\",
   \"authority_identity\" : \"$authority_identity_full\"}" >"$PROJECT_JSON_PATH"
