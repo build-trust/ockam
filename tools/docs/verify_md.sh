@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+set -e
 FILE=$1
 TMP=$(mktemp)
 example_blocks "$FILE" >"$TMP"
