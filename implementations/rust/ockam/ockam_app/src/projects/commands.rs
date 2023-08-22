@@ -23,11 +23,9 @@ pub async fn create_enrollment_ticket<R: Runtime>(
     project_id: String,
     app: AppHandle<R>,
 ) -> Result<EnrollmentTicket> {
-    let state: State<'_, SyncState> = app.state();
-    let reader = state.read().await;
-    let project: &Project = reader
+    let projects = list_projects_with_admin(app).await?;
+    let project = projects
         .iter()
-        .inspect(|project| debug!(?project))
         .find(|p| p.id == project_id)
         .ok_or_else(|| Error::ProjectNotFound(project_id.to_owned()))?;
 
@@ -61,6 +59,18 @@ pub async fn create_enrollment_ticket<R: Runtime>(
         error!(?err, "could not JSON-decode enrollment ticket");
         Error::EnrollmentTicketDecodeFailed
     })
+}
+
+async fn list_projects_with_admin<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Project>> {
+    let app_state: State<'_, AppState> = app.state();
+    let user_email = app_state.user_email().await.unwrap_or_default();
+    let state: State<'_, SyncState> = app.state();
+    let reader = state.read().await;
+    Ok(reader
+        .iter()
+        .filter(|project| project.has_admin_with_email(&user_email))
+        .cloned()
+        .collect())
 }
 
 #[tauri::command]
