@@ -87,6 +87,14 @@ pub struct InvitationWithAccess {
     #[n(2)] pub service_access_details: Option<ServiceAccessDetails>,
 }
 
+impl PartialEq for InvitationWithAccess {
+    fn eq(&self, other: &Self) -> bool {
+        self.invitation.id == other.invitation.id
+    }
+}
+
+impl Eq for InvitationWithAccess {}
+
 #[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
