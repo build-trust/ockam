@@ -194,6 +194,10 @@ impl AppState {
         node_manager.list_outlets().await.list
     }
 
+    pub async fn user_email(&self) -> Option<String> {
+        self.model(|m| m.get_user_info()).await.map(|ui| ui.email)
+    }
+
     pub async fn model_mut(&self, f: impl FnOnce(&mut ModelState)) -> Result<()> {
         let mut model_state = self.model_state.write().await;
         f(&mut model_state);
