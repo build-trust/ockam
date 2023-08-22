@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tauri::{async_runtime::RwLock, AppHandle, Manager, Runtime, State};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
 use ockam_command::util::api::CloudOpts;
@@ -49,11 +49,18 @@ pub async fn create_enrollment_ticket<R: Runtime>(
         &format!("/project/{}", project.name)
     )
     .read()
-    .map_err(|_| Error::EnrollmentTicketFailed)?;
-    serde_json::from_slice(
-        &hex::decode(hex_encoded_ticket).map_err(|_| Error::EnrollmentTicketDecodeFailed)?,
-    )
-    .map_err(|_| Error::EnrollmentTicketDecodeFailed)
+    .map_err(|err| {
+        error!(?err, "could not create enrollment ticket");
+        Error::EnrollmentTicketFailed
+    })?;
+    serde_json::from_slice(&hex::decode(hex_encoded_ticket).map_err(|err| {
+        error!(?err, "could not hex-decode enrollment ticket");
+        Error::EnrollmentTicketDecodeFailed
+    })?)
+    .map_err(|err| {
+        error!(?err, "could not JSON-decode enrollment ticket");
+        Error::EnrollmentTicketDecodeFailed
+    })
 }
 
 #[tauri::command]
