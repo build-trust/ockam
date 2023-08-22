@@ -1,6 +1,7 @@
 mod change_history;
 mod credential;
 mod credential_and_purpose_key;
+mod encoding_utils;
 mod identifiers;
 mod public_keys;
 mod purpose_key_attestation;
