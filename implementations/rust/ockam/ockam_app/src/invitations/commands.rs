@@ -10,9 +10,9 @@ use ockam_api::{
 };
 use ockam_command::util::{extract_address_value, get_free_address};
 
-use crate::app::{AppState, NODE_NAME};
+use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::cli::cli_bin;
-use crate::projects::commands::create_enrollment_ticket;
+use crate::projects::commands::{create_enrollment_ticket, list_projects_with_admin};
 
 use super::{
     events::REFRESHED_INVITATIONS,
@@ -57,15 +57,13 @@ pub async fn create_service_invitation<R: Runtime>(
         ?outlet_addr,
         "creating service invitation"
     );
-    let state = app.state::<AppState>();
-    let project_id = state
-        .state()
-        .await
-        .projects
-        .default()
-        .map_err(|_| "could not load default project".to_string())?
-        .id()
-        .to_owned();
+    let state: State<'_, AppState> = app.state();
+    let projects = list_projects_with_admin(app.clone()).await?;
+    let project_id = projects
+        .iter()
+        .find(|p| p.name == *PROJECT_NAME)
+        .map(|p| p.id.to_owned())
+        .ok_or_else(|| "could not find default project".to_string())?;
     let enrollment_ticket = create_enrollment_ticket(project_id, app.clone())
         .await
         .map_err(|e| e.to_string())?;
