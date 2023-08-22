@@ -16,7 +16,6 @@ use crate::app::AppState;
 pub const INVITATIONS_PENDING_HEADER_MENU_ID: &str = "sent_invitations_header";
 pub const INVITATIONS_RECEIVED_HEADER_MENU_ID: &str = "received_invitations_header";
 pub const INVITATIONS_ACCEPTED_HEADER_MENU_ID: &str = "accepted_invitations_header";
-pub const INVITATIONS_MANAGE_MENU_ID: &str = "invitations_manage";
 pub const INVITATIONS_WINDOW_ID: &str = "invitations_creation";
 
 // https://url.spec.whatwg.org/#path-percent-encode-set
@@ -45,22 +44,29 @@ pub(crate) async fn build_invitations_section(
     debug!(sent = ?reader.sent, received = ?reader.received);
 
     let mut tray_menu = tray_menu.add_native_item(SystemTrayMenuItem::Separator);
-    tray_menu = add_pending_menu(tray_menu, &reader.sent);
     tray_menu = add_received_menu(tray_menu, &reader.received);
-    tray_menu = add_accepted_menu(tray_menu, &reader.accepted);
-    tray_menu.add_item(
-        CustomMenuItem::new(INVITATIONS_MANAGE_MENU_ID, "Manage Invitations...").disabled(),
-    )
+    add_manage_submenu(&reader.accepted, &reader.sent, tray_menu)
 }
 
-fn add_pending_menu(tray_menu: SystemTrayMenu, sent: &[SentInvitation]) -> SystemTrayMenu {
+fn add_manage_submenu(
+    accepted: &[InvitationWithAccess],
+    sent: &[SentInvitation],
+    tray_menu: SystemTrayMenu,
+) -> SystemTrayMenu {
+    let mut submenu = SystemTrayMenu::new();
+    submenu = add_pending_menu(submenu, sent);
+    submenu = add_accepted_menu(submenu, accepted);
+    tray_menu.add_submenu(SystemTraySubmenu::new("Manage Invitations...", submenu))
+}
+
+fn add_pending_menu(submenu: SystemTrayMenu, sent: &[SentInvitation]) -> SystemTrayMenu {
     let header_text = if sent.is_empty() {
         "No Pending Invitations"
     } else {
         "Pending Invitations"
     };
     sent.iter().map(pending_invitation_menu).fold(
-        tray_menu.add_item(
+        submenu.add_item(
             CustomMenuItem::new(INVITATIONS_PENDING_HEADER_MENU_ID, header_text).disabled(),
         ),
         |menu, submenu| menu.add_submenu(submenu),
@@ -150,17 +156,14 @@ fn received_invite_menu(invitation: &ReceivedInvitation) -> SystemTraySubmenu {
     SystemTraySubmenu::new(id, submenu)
 }
 
-fn add_accepted_menu(
-    tray_menu: SystemTrayMenu,
-    accepted: &[InvitationWithAccess],
-) -> SystemTrayMenu {
+fn add_accepted_menu(submenu: SystemTrayMenu, accepted: &[InvitationWithAccess]) -> SystemTrayMenu {
     let header_text = if accepted.is_empty() {
         "No Accepted Invitations"
     } else {
         "Accepted Invitations"
     };
     accepted.iter().map(accepted_invite_menu).fold(
-        tray_menu.add_item(
+        submenu.add_item(
             CustomMenuItem::new(INVITATIONS_ACCEPTED_HEADER_MENU_ID, header_text).disabled(),
         ),
         |menu, submenu| menu.add_submenu(submenu),
