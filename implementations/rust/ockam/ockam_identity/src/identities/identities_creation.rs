@@ -1,5 +1,4 @@
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::{KeyId, SigningVault, VerifyingVault};
 
@@ -69,12 +68,10 @@ impl IdentitiesCreation {
     /// Note: the data is not persisted!
     pub async fn import_private_identity(
         &self,
-        identity_history: &str,
+        identity_change_history: &[u8],
         key_id: &KeyId,
     ) -> Result<Identity> {
-        let identity_history_data: Vec<u8> =
-            hex::decode(identity_history).map_err(|_| IdentityError::InvalidHex)?;
-        let identity = self.import(None, identity_history_data.as_slice()).await?;
+        let identity = self.import(None, identity_change_history).await?;
         if identity.get_public_key()? != self.signing_vault.get_public_key(key_id).await? {
             return Err(IdentityError::WrongSecretKey.into());
         }
