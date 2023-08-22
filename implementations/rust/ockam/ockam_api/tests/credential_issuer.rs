@@ -1,5 +1,5 @@
 use ockam::identity::utils::now;
-use ockam::identity::{identities, AttributesEntry, Purpose};
+use ockam::identity::{identities, AttributesEntry};
 use ockam::identity::{
     CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions,
     SecureChannelOptions, SecureChannels,
@@ -19,19 +19,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     // create 2 identities to populate the trusted identities
     let identities = identities();
     let auth_identity = identities.identities_creation().create_identity().await?;
-    identities
-        .purpose_keys()
-        .create_purpose_key(auth_identity.identifier(), Purpose::Credentials)
-        .await?;
-    identities
-        .purpose_keys()
-        .create_purpose_key(auth_identity.identifier(), Purpose::SecureChannel)
-        .await?;
     let member_identity = identities.identities_creation().create_identity().await?;
-    identities
-        .purpose_keys()
-        .create_purpose_key(member_identity.identifier(), Purpose::SecureChannel)
-        .await?;
 
     let now = now().unwrap();
 

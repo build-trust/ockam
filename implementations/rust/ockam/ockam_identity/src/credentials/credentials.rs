@@ -159,15 +159,10 @@ impl Credentials {
         subject_attributes: Attributes,
         ttl: Duration,
     ) -> Result<CredentialAndPurposeKey> {
+        // TODO: Allow manual PurposeKey management
         let issuer_purpose_key = self
             .purpose_keys
-            .repository()
-            .get_purpose_key(issuer, Purpose::Credentials)
-            .await?;
-
-        let issuer_purpose_key = self
-            .purpose_keys
-            .import_purpose_key(&issuer_purpose_key)
+            .get_or_create_purpose_key(issuer, Purpose::Credentials)
             .await?;
 
         let subject_change_history = self.identities_repository.get_identity(subject).await?;
@@ -272,12 +267,6 @@ mod tests {
 
         let issuer = creation.create_identity().await?;
         let subject = creation.create_identity().await?;
-
-        let _credentials_key = identities
-            .purpose_keys()
-            .create_purpose_key(issuer.identifier(), Purpose::Credentials)
-            .await?;
-
         let credentials = identities.credentials();
 
         let mut map: BTreeMap<Vec<u8>, Vec<u8>> = Default::default();

@@ -2,9 +2,7 @@ use crate::common::{
     message_should_not_pass, message_should_not_pass_with_ctx, message_should_pass_with_ctx,
 };
 use ockam_core::{route, AllowAll, Result};
-use ockam_identity::{
-    secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions,
-};
+use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use std::time::Duration;
@@ -23,21 +21,11 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let _alice_key = alice_secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
-        .await?;
 
     let bob = bob_secure_channels
         .identities()
         .identities_creation()
         .create_identity()
-        .await?;
-    let _bob_key = bob_secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
         .await?;
 
     let bob_listener = bob_secure_channels
@@ -114,21 +102,11 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let _alice_key = alice_secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
-        .await?;
 
     let bob = bob_secure_channels
         .identities()
         .identities_creation()
         .create_identity()
-        .await?;
-    let _bob_key = bob_secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
         .await?;
 
     let bob_options = SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id());
