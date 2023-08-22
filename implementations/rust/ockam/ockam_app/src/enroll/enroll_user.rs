@@ -124,7 +124,14 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
             .await
             .map_err(|e| miette!(e))?
     };
-    let project = match projects.iter().find(|p| p.name == *PROJECT_NAME) {
+
+    let email = app_state.user_email().await.unwrap_or_default();
+
+    let project = match projects
+        .iter()
+        .filter(|p| p.has_admin_with_email(&email))
+        .find(|p| p.name == *PROJECT_NAME)
+    {
         Some(project) => project.clone(),
         None => {
             let ctx = &app_state.context();
