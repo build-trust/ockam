@@ -5,6 +5,7 @@ use tauri_runtime::menu::NativeImage;
 use crate::app::AppState;
 use crate::enroll::enroll_user::enroll_user;
 
+pub const ENROLL_MENU_EMAIL: &str = "user-email";
 pub const ENROLL_MENU_HEADER_ID: &str = "enroll-header";
 pub const ENROLL_MENU_ID: &str = "enroll";
 pub const ENROLL_MENU_USER_NAME: &str = "user-name";
@@ -22,7 +23,9 @@ pub(crate) async fn build_enroll_section(
                 );
                 #[cfg(target_os = "macos")]
                 let item = item.native_image(NativeImage::User);
-                tray_menu.add_item(item)
+                tray_menu
+                    .add_item(item)
+                    .add_item(CustomMenuItem::new(ENROLL_MENU_EMAIL, user_info.email).disabled())
             }
             None => tray_menu,
         }
