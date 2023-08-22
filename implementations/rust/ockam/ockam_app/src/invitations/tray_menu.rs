@@ -77,7 +77,7 @@ fn pending_invitation_menu(invitation: &SentInvitation) -> SystemTraySubmenu {
     let id = invitation.id.to_owned();
     let target_label = match invitation.scope {
         ShareScope::Project => "Project",
-        ShareScope::Service => "Project",
+        ShareScope::Service => "Service",
         ShareScope::Space => "Space",
     };
     let submenu = SystemTrayMenu::new()
