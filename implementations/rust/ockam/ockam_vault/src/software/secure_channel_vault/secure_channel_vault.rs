@@ -14,7 +14,7 @@ use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box, Result};
-use ockam_node::KeyValueStorage;
+use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
 use sha2::{Digest, Sha256};
 
 /// [`SecureChannelVault`] implementation using software
@@ -30,6 +30,11 @@ impl SoftwareSecureChannelVault {
             ephemeral_secrets: Default::default(),
             static_secrets: storage,
         }
+    }
+
+    /// Create Software implementation Vault with [`InMemoryKeyVaultStorage`]
+    pub fn create() -> Arc<SoftwareSecureChannelVault> {
+        Arc::new(Self::new(InMemoryKeyValueStorage::create()))
     }
 
     /// Return a binary for ephemeral secret
