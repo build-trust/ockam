@@ -119,7 +119,7 @@ impl Credentials {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        if credential_data.subject.as_ref() != expected_subject {
+        if expected_subject.is_some() && credential_data.subject.as_ref() != expected_subject {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
