@@ -9,7 +9,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
 
-use self::share::RoleInShare;
+use self::share::{RoleInShare, ShareScope};
 
 pub mod addon;
 pub mod enroll;
@@ -42,6 +42,7 @@ pub struct ProjectUserRole {
     #[n(1)] pub email: String,
     #[n(2)] pub id: usize,
     #[n(3)] pub role: RoleInShare,
+    #[n(4)] pub scope: ShareScope,
 }
 
 /// A wrapper around a cloud request with extra fields.

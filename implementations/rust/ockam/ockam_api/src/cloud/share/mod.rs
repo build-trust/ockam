@@ -47,7 +47,7 @@ impl FromStr for RoleInShare {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Decode, Deserialize, Encode, Serialize)]
 #[cbor(index_only)]
 #[rustfmt::skip]
 pub enum ShareScope {
