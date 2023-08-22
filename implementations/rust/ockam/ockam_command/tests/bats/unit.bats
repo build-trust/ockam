@@ -148,9 +148,9 @@ teardown() {
 
   run "$OCKAM" identity show "${i}" --full
   assert_success
-  assert_output --partial "Change History"
-  assert_output --partial "identifier"
-  assert_output --partial "signatures"
+  assert_output --partial "Change[0]:"
+  assert_output --partial "Identifier: "
+  assert_output --partial "primary_public_key: "
 }
 
 @test "identity - CRUD" {
