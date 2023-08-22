@@ -133,6 +133,7 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
 }
 
 async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
+    debug!("Refreshing inlets");
     let invitations_state: State<'_, SyncState> = app.state();
     let reader = invitations_state.read().await;
     if reader.accepted.is_empty() {
@@ -147,9 +148,11 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                 if let Some(i) = i {
                     if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
                         if node.is_running() {
+                            debug!(node = %i.local_node_name, "Node already running");
                             continue;
                         }
                     }
+                    debug!(node = %i.local_node_name, "Deleting node");
                     let _ = duct::cmd!(
                         &cli_bin,
                         "node",
@@ -163,15 +166,17 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                 }
             }
             Err(err) => {
-                warn!(%err, "Could not create inlet from invitation");
+                warn!(%err, "Failed to parse invitation data");
                 continue;
             }
         }
     }
+    info!("Inlets refreshed");
     Ok(())
 }
 
 async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()> {
+    debug!(?inlet_data, "Creating tcp-inlet for accepted invitation");
     let InletDataFromInvitation {
         local_node_name,
         service_name,
@@ -197,9 +202,15 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()>
             error!(%e, enrollment_ticket=enrollment_ticket_hex, "Could not create a tcp-inlet for the accepted invitation");
             e
         })?;
+    info!(
+        from,
+        to = service_route,
+        "Created tcp-inlet for accepted invitation"
+    );
     Ok(())
 }
 
+#[derive(Debug)]
 struct InletDataFromInvitation {
     pub local_node_name: String,
     pub service_name: String,

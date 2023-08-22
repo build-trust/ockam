@@ -253,13 +253,18 @@ impl CreateProject {
 }
 
 mod node {
+    use tokio_retry::strategy::FixedInterval;
+    use tokio_retry::Retry;
     use tracing::trace;
 
     use ockam_core::api::{Request, Response};
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
+    use crate::cloud::operation::Operation;
+    use crate::cloud::{
+        BareCloudRequestWrapper, CloudRequestWrapper, ORCHESTRATOR_AWAIT_TIMEOUT_MS,
+    };
     use crate::nodes::{NodeManager, NodeManagerWorker};
 
     use super::*;
@@ -356,6 +361,45 @@ mod node {
                     .await?
                     .as_slice(),
             )
+        }
+
+        pub async fn wait_until_project_is_ready(
+            &self,
+            ctx: &Context,
+            route: &MultiAddr,
+            project: Project,
+        ) -> Result<Project> {
+            if project.is_ready() {
+                return Ok(project);
+            }
+            let operation_id = match &project.operation_id {
+                Some(operation_id) => operation_id,
+                None => {
+                    return Err(ApiError::generic("Project has no operation id"));
+                }
+            };
+            let retry_strategy =
+                FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
+            let operation = Retry::spawn(retry_strategy.clone(), || async {
+                if let Ok(res) = self.get_operation(ctx, route, operation_id).await {
+                    if let Ok(operation) =
+                        Response::parse_response_body::<Operation>(res.as_slice())
+                    {
+                        if operation.is_completed() {
+                            return Ok(operation);
+                        }
+                    }
+                }
+                Err(ApiError::generic(
+                    "Project is not reachable yet. Retrying...",
+                ))
+            })
+            .await?;
+            if operation.is_successful() {
+                self.get_project(ctx, route, &project.id).await
+            } else {
+                Err(ApiError::generic("Operation failed. Please try again."))
+            }
         }
 
         pub(crate) async fn get_project_response(
