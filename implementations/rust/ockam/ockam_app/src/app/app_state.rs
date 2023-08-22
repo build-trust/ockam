@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use miette::IntoDiagnostic;
+use ockam_multiaddr::MultiAddr;
 use tauri::async_runtime::{block_on, spawn, RwLock};
 use tracing::{error, info};
 
@@ -14,7 +15,7 @@ use ockam_api::nodes::service::{
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_command::node::util::{add_project_info_to_node_state, init_node_state};
-use ockam_command::util::api::{TrustContextConfigBuilder, TrustContextOpts};
+use ockam_command::util::api::{CloudOpts, TrustContextConfigBuilder, TrustContextOpts};
 use ockam_command::{CommandGlobalOpts, GlobalArgs, Terminal};
 
 use crate::app::model_state::ModelState;
@@ -34,6 +35,7 @@ pub struct AppState {
     context: Arc<Context>,
     global_args: GlobalArgs,
     state: Arc<RwLock<CliState>>,
+    controller_address: Arc<MultiAddr>,
     node_manager_worker: Arc<RwLock<NodeManagerWorker>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
@@ -69,6 +71,7 @@ impl AppState {
             context,
             global_args: options.global_args,
             state: Arc::new(RwLock::new(options.state)),
+            controller_address: Arc::new(CloudOpts::route()),
             node_manager_worker: Arc::new(RwLock::new(node_manager_worker)),
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository: Arc::new(RwLock::new(model_state_repository)),
@@ -128,6 +131,11 @@ impl AppState {
     /// This can be used to run async actions involving the Router
     pub fn context(&self) -> Arc<Context> {
         self.context.clone()
+    }
+
+    /// Returns the address being used to contact Orchestrator
+    pub fn controller_address(&self) -> Arc<MultiAddr> {
+        self.controller_address.clone()
     }
 
     /// Return the application cli state
