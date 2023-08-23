@@ -13,6 +13,7 @@ use ockam_core::{
     Address, IncomingAccessControl, Message, OutgoingAccessControl, Processor, Result, Route,
     Routed, Worker,
 };
+use ockam_identity::PurposeKeys;
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_vault::{KeyId, Vault, VaultStorage};
 
@@ -274,32 +275,42 @@ impl Node {
 
     /// Return services to manage identities
     pub fn identities(&self) -> Arc<Identities> {
-        self.secure_channels().identities()
+        self.secure_channels.identities()
     }
 
     /// Return services to create and import identities
     pub fn identities_creation(&self) -> Arc<IdentitiesCreation> {
-        self.identities().identities_creation()
+        self.secure_channels.identities().identities_creation()
     }
 
     /// Return services to manage identities keys
     pub fn identities_keys(&self) -> Arc<IdentitiesKeys> {
-        self.identities().identities_keys()
+        self.secure_channels.identities().identities_keys()
     }
 
     /// Return services to manage credentials
     pub fn credentials(&self) -> Arc<Credentials> {
-        self.identities().credentials()
+        self.secure_channels.identities().credentials()
+    }
+
+    /// Return the [`Vault`]
+    pub fn vault(&self) -> Vault {
+        self.secure_channels.vault()
+    }
+
+    /// Return the vault used by secure channels
+    pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
+        self.secure_channels.identities().purpose_keys()
     }
 
     /// Return services to serve credentials
     pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
-        self.identities().credentials_server()
+        self.secure_channels.identities().credentials_server()
     }
 
     /// Return the repository used to store identities data
-    pub fn repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities().repository()
+    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
+        self.secure_channels.identities().repository()
     }
 
     /// Return a new builder for top-level services
