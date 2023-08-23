@@ -45,7 +45,7 @@ impl IdentitiesCreation {
         let identity =
             Identity::import(expected_identifier, data, self.verifying_vault.clone()).await?;
 
-        self.store_imported_identity(&identity).await?;
+        self.update_identity(&identity).await?;
 
         Ok(identity)
     }
@@ -64,7 +64,7 @@ impl IdentitiesCreation {
         )
         .await?;
 
-        self.store_imported_identity(&identity).await?;
+        self.update_identity(&identity).await?;
 
         Ok(identity)
     }
@@ -109,7 +109,7 @@ impl IdentitiesCreation {
         key_id: &KeyId,
     ) -> Result<Identity> {
         let identity = self.import(None, identity_change_history).await?;
-        if identity.get_public_key()? != self.signing_vault.get_public_key(key_id).await? {
+        if identity.get_latest_public_key()? != self.signing_vault.get_public_key(key_id).await? {
             return Err(IdentityError::WrongSecretKey.into());
         }
 
@@ -121,8 +121,12 @@ impl IdentitiesCreation {
 }
 
 impl IdentitiesCreation {
-    async fn store_imported_identity(&self, identity: &Identity) -> Result<()> {
-        // TODO: Duplicate
+    /// Compare Identity that was received by any side-channel (e.g., Secure Channel) to the
+    /// version we have observed and stored before.
+    ///   - Do nothing if they're equal
+    ///   - Throw an error if the received version has conflict or is older that previously observed
+    ///   - Update stored Identity if the received version is newer
+    pub async fn update_identity(&self, identity: &Identity) -> Result<()> {
         if let Some(known_identity) = self
             .repository
             .retrieve_identity(identity.identifier())

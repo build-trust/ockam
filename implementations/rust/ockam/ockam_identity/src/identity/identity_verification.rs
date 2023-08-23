@@ -100,9 +100,9 @@ impl Identity {
             }
 
             to_be_verified_changes.push(VerifiedChange::new(
+                change_details.change_data.clone(),
                 change_details.change_hash.clone(),
                 change_details.change_data.primary_public_key.clone().into(),
-                change_details.change_data.revoke_all_purpose_keys,
             ));
 
             previous_change_details = Some(change_details);

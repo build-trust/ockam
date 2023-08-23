@@ -11,7 +11,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::{PublicKey, VerifyingVault};
 
-/// Identity implementation
+/// Verified Identity
 #[derive(Clone, Debug)]
 pub struct Identity {
     identifier: Identifier,
@@ -31,6 +31,8 @@ impl PartialEq for Identity {
 
 impl Identity {
     /// Create a new identity
+    /// NOTE: This is intentionally private, so that the only way to create such struct is by
+    /// going through the verification process
     fn new(
         identifier: Identifier,
         changes: Vec<VerifiedChange>,
@@ -115,13 +117,23 @@ impl Identity {
 
 impl Identity {
     /// Get latest public key
-    pub fn get_public_key(&self) -> Result<PublicKey> {
+    pub fn get_latest_public_key(&self) -> Result<PublicKey> {
         if let Some(last_change) = self.changes().last() {
             Ok(last_change.primary_public_key().clone())
         } else {
             Err(IdentityError::EmptyIdentity.into())
         }
     }
+
+    /// Get latest [`VerifiedChange`]
+    pub fn get_latest_change(&self) -> Result<VerifiedChange> {
+        if let Some(last_change) = self.changes().last() {
+            Ok(last_change.clone())
+        } else {
+            Err(IdentityError::EmptyIdentity.into())
+        }
+    }
+
     /// Add a new key change to the change history
     pub async fn add_change(
         self,

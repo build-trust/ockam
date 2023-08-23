@@ -679,7 +679,7 @@ impl fmt::Display for IdentityDisplay {
             writeln!(
                 f,
                 "    revoke_all_purpose_keys: {}",
-                change.revoke_all_purpose_keys()
+                change.data().revoke_all_purpose_keys
             )?;
         }
 
