@@ -70,11 +70,6 @@ impl SecureChannelsBuilder {
     /// Build secure channels
     pub fn build(self) -> Arc<SecureChannels> {
         let identities = self.identities_builder.build();
-        let purpose_keys = identities.purpose_keys();
-        Arc::new(SecureChannels::new(
-            identities,
-            purpose_keys,
-            self.registry.clone(),
-        ))
+        Arc::new(SecureChannels::new(identities, self.registry.clone()))
     }
 }
