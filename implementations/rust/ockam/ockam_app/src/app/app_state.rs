@@ -84,6 +84,8 @@ impl AppState {
         self.reset_node_manager().await?;
 
         // recreate the model state repository since the cli state has changed
+        let mut writer = self.model_state.write().await;
+        *writer = ModelState::default();
         let identity_path = self
             .state()
             .await

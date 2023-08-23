@@ -2,6 +2,7 @@ use miette::miette;
 use tauri::{AppHandle, Manager, Wry};
 use tracing::log::info;
 
+use crate::app::events::system_tray_on_update;
 use crate::app::AppState;
 use crate::Result;
 
@@ -12,6 +13,6 @@ pub async fn reset(app: &AppHandle<Wry>) -> Result<()> {
     let app_state = app.state::<AppState>();
     let result = app_state.reset().await;
     info!("Application state recreated");
-    app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+    system_tray_on_update(app);
     result.map_err(|e| miette!(e).into())
 }

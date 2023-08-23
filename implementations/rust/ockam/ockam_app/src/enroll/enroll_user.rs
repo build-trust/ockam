@@ -13,6 +13,7 @@ use ockam_command::enroll::{update_enrolled_identity, OidcService};
 use ockam_command::node::util::add_project_info_to_node_state;
 use ockam_command::util::api::CloudOpts;
 
+use crate::app::events::{system_tray_on_update, system_tray_on_update_with_enroll_status};
 use crate::app::{default_trust_context_opts, AppState, NODE_NAME, PROJECT_NAME};
 use crate::{shared_service, Result};
 
@@ -24,11 +25,11 @@ use crate::{shared_service, Result};
 ///  - connects to the Orchestrator with the retrieved token to create a project
 pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     let app_state: State<AppState> = app.state::<AppState>();
-    enroll_with_token(&app_state)
+    enroll_with_token(app, &app_state)
         .await
         .map(|i| info!("Enrolled a new user with identifier {}", i))
         .unwrap_or_else(|e| error!("{:?}", e));
-    app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+    system_tray_on_update(app);
     #[cfg(feature = "invitations")]
     {
         app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
@@ -42,7 +43,11 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     Ok(())
 }
 
-async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
+async fn enroll_with_token(
+    app: &AppHandle<Wry>,
+    app_state: &AppState,
+) -> Result<IdentityIdentifier> {
+    system_tray_on_update_with_enroll_status(app, "Waiting for token...")?;
     // get an OIDC token
     let oidc_service = OidcService::default();
     let token = oidc_service.get_token_with_pkce().await?;
@@ -63,7 +68,9 @@ async fn enroll_with_token(app_state: &AppState) -> Result<IdentityIdentifier> {
             .await
             .into_diagnostic()?;
     }
+    system_tray_on_update_with_enroll_status(app, "Retrieving space...")?;
     let space = retrieve_space(app_state).await?;
+    system_tray_on_update_with_enroll_status(app, "Retrieving project...")?;
     let _ = retrieve_project(app_state, &space).await?;
     let identifier = update_enrolled_identity(&app_state.options().await, NODE_NAME)
         .await
