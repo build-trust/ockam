@@ -10,6 +10,8 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::{KeyId, SecretAttributes, SigningVault, VerifyingVault};
 
+use tracing::error;
+
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {
     signing_vault: Arc<dyn SigningVault>,
@@ -45,26 +47,39 @@ impl IdentitiesKeys {
         }
     }
 
-    /// Rotate an existing key with a given label
+    /// Rotate the Identity Key
     pub async fn rotate_key(&self, identity: Identity) -> Result<Identity> {
         let last_change = match identity.changes().last() {
             Some(last_change) => last_change,
             None => return Err(IdentityError::EmptyIdentity.into()),
         };
 
-        // TODO: Delete the previous key from the Vault
         let last_secret_key = self.get_secret_key(&identity).await?;
 
         let change = self
             .make_change(
                 None,
-                Some((last_change.change_hash().clone(), last_secret_key)),
+                Some((last_change.change_hash().clone(), last_secret_key.clone())),
             )
             .await?;
 
-        identity
+        let identity = identity
             .add_change(change, self.verifying_vault.clone())
+            .await?;
+
+        if self
+            .signing_vault
+            .delete_key(last_secret_key)
             .await
+            .is_err()
+        {
+            error!(
+                "Error deleting old Identity Key for {}",
+                identity.identifier()
+            );
+        }
+
+        Ok(identity)
     }
 
     /// Return the secret key of an identity
@@ -216,6 +231,21 @@ mod test {
         if public1 == public2 {
             return test_error("public did not change after rotate_key");
         }
+
+        // Old key should be deleted
+        assert!(identities
+            .vault()
+            .signing_vault
+            .get_public_key(&secret1)
+            .await
+            .is_err());
+        // New key should exist
+        assert!(identities
+            .vault()
+            .signing_vault
+            .get_public_key(&secret2)
+            .await
+            .is_ok());
 
         ctx.stop().await
     }
