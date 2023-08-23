@@ -4,6 +4,7 @@ use std::net::SocketAddr;
 use tauri::{AppHandle, Manager, Wry};
 use tracing::{debug, error, info};
 
+use crate::app::events::system_tray_on_update;
 use crate::app::AppState;
 use crate::error::Error;
 #[cfg(feature = "invitations")]
@@ -55,7 +56,7 @@ async fn tcp_outlet_create_impl(
         Ok(status) => {
             info!(tcp_addr = status.tcp_addr, "Outlet created");
             app_state.model_mut(|m| m.add_tcp_outlet(status)).await?;
-            app.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+            system_tray_on_update(&app);
             Ok(())
         }
         Err(_) => Err(Error::Generic("Failed to create outlet".to_string())),

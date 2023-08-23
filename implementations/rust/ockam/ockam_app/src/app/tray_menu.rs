@@ -1,18 +1,23 @@
 use tauri::{AppHandle, Manager, State, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, Wry};
 use tracing::error;
 
+use crate::app::events::SystemTrayOnUpdatePayload;
 use crate::app::AppState;
-use crate::enroll::build_enroll_section;
+use crate::enroll::{build_enroll_section, build_user_info_section};
 #[cfg(feature = "invitations")]
 use crate::invitations::{self, build_invitations_section};
 use crate::options::build_options_section;
 use crate::shared_service::build_shared_services_section;
 use crate::{enroll, options, shared_service};
 
-pub async fn build_tray_menu(app_handle: &AppHandle) -> SystemTrayMenu {
+pub async fn build_tray_menu(
+    app_handle: &AppHandle,
+    payload: Option<SystemTrayOnUpdatePayload>,
+) -> SystemTrayMenu {
     let app_state: State<'_, AppState> = app_handle.state();
     let mut tray_menu = SystemTrayMenu::new();
-    tray_menu = build_enroll_section(&app_state, tray_menu).await;
+    tray_menu = build_user_info_section(&app_state, tray_menu).await;
+    tray_menu = build_enroll_section(&app_state, tray_menu, &payload).await;
     tray_menu = build_shared_services_section(&app_state, tray_menu).await;
     #[cfg(feature = "invitations")]
     {

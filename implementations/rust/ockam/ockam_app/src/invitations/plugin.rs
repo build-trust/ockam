@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
+use crate::app::events::system_tray_on_update;
 use tauri::{
     async_runtime::{spawn, RwLock},
     plugin::{Builder, TauriPlugin},
@@ -42,7 +43,7 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             });
             let handle = app.clone();
             app.listen_global(REFRESHED_INVITATIONS, move |_event| {
-                handle.trigger_global(crate::app::events::SYSTEM_TRAY_ON_UPDATE, None);
+                system_tray_on_update(&handle);
             });
             Ok(())
         })
