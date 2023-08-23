@@ -59,7 +59,7 @@ jobs:
       - run: 'echo "Elixir - build_${{ matrix.mix_project }} - Ignored"'
 
   test:
-    name: Elixir - build_${{ matrix.mix_project }}
+    name: Elixir - test_${{ matrix.mix_project }}
     runs-on: ubuntu-20.04
     strategy:
       matrix:
