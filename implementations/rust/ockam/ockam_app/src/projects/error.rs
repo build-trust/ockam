@@ -11,8 +11,8 @@ pub enum Error {
     EnrollmentTicketDecodeFailed,
     #[error("listing projects failed: {0:?}")]
     ListingFailed(ockam::Error),
-    #[error("binary for ockam command is invalid")]
-    OckamCommandInvalid,
+    #[error("binary for ockam command is invalid: {0}")]
+    OckamCommandInvalid(String),
     #[error("project {0} not found")]
     ProjectNotFound(String),
     #[error("failed to save local project state")]
