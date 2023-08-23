@@ -37,6 +37,9 @@ pub const NIST_P256_PUBLIC_LENGTH_USIZE: usize = 65;
 /// NIST P256 signature length.
 pub const NIST_P256_SIGNATURE_LENGTH_USIZE: usize = 64;
 
+/// AES-GCM nonce length
+pub const AES_NONCE_LENGTH_USIZE: usize = 12;
+
 /// AES256 private key length.
 pub const AES256_SECRET_LENGTH_U32: u32 = 32;
 /// AES256 private key length.

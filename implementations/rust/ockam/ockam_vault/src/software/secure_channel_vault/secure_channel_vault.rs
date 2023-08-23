@@ -1,4 +1,4 @@
-use super::aes::AesGen;
+use super::aes::make_aes;
 
 use crate::constants::{
     X25519_PUBLIC_LENGTH_USIZE, X25519_SECRET_LENGTH_U32, X25519_SECRET_LENGTH_USIZE,
@@ -15,8 +15,6 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
 
-use aes_gcm::aead::NewAead;
-use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use arrayref::array_ref;
 use sha2::{Digest, Sha256};
 
@@ -142,21 +140,6 @@ impl SoftwareSecureChannelVault {
                 Err(VaultError::UnknownEcdhKeyType.into())
             }
             SecretType::NistP256 => Err(VaultError::UnknownEcdhKeyType.into()),
-        }
-    }
-
-    /// Depending on the secret type make the right type of encrypting / decrypting algorithm
-    fn make_aes(stored_secret: &StoredSecret) -> Result<AesGen> {
-        let secret_ref = stored_secret.secret().as_ref();
-
-        match stored_secret.attributes() {
-            SecretAttributes::Aes256 => {
-                Ok(AesGen::Aes256(Box::new(Aes256Gcm::new(secret_ref.into()))))
-            }
-            SecretAttributes::Aes128 => {
-                Ok(AesGen::Aes128(Box::new(Aes128Gcm::new(secret_ref.into()))))
-            }
-            _ => Err(VaultError::AeadAesGcmEncrypt.into()),
         }
     }
 
@@ -399,7 +382,7 @@ impl SecureChannelVault for SoftwareSecureChannelVault {
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
         let stored_secret = self.get_secret(key_id).await?;
-        let aes = Self::make_aes(&stored_secret)?;
+        let aes = make_aes(&stored_secret)?;
         aes.encrypt_message(plaintext, nonce, aad)
     }
 
@@ -411,7 +394,7 @@ impl SecureChannelVault for SoftwareSecureChannelVault {
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
         let stored_secret = self.get_secret(key_id).await?;
-        let aes = Self::make_aes(&stored_secret)?;
+        let aes = make_aes(&stored_secret)?;
         aes.decrypt_message(cipher_text, nonce, aad)
     }
 }
