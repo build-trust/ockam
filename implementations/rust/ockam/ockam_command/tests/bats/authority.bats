@@ -96,7 +96,6 @@ teardown() {
   \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/$port/service/api\",
   \"authority_identity\" : \"$authority_identity_full\"}" >"$PROJECT_JSON_PATH"
 
-
   # Enrollment ticket expired by the time it's used
   token=$($OCKAM project ticket --identity enroller --project-path "$PROJECT_JSON_PATH" --attribute sample_attr=m3_member --ticket-ttl 1)
   sleep 2

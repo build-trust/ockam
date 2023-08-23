@@ -27,9 +27,9 @@ _: {
 
     packages.shfmt-all = pkgs.writeShellApplication {
       name = "shfmt-all";
-      runtimeInputs = with pkgs; [shfmt];
+      runtimeInputs = with pkgs; [findutils gitMinimal shfmt];
       text = ''
-        shfmt -f <<<"$(git ls-files ':!:./demos/**' '*\.sh' '*\.bash' '*\.bats')" | xargs shfmt --diff
+        git ls-files ':!:./demos/**' '*\.sh' '*\.bash' '*\.bats' | xargs shfmt --diff
       '';
     };
   };
