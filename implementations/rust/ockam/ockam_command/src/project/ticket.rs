@@ -51,7 +51,7 @@ pub struct TicketCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 
-    #[arg(long = "expires-in", value_name = "SECS", conflicts_with = "member", value_parser=duration_parser)]
+    #[arg(long = "expires-in", value_name = "DURATION", conflicts_with = "member", value_parser=duration_parser)]
     expires_in: Option<Duration>,
 }
 
@@ -197,10 +197,7 @@ impl Runner {
                 .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
             );
             let token = client
-                .create_token(
-                    self.cmd.attributes()?,
-                    self.cmd.expires_in
-                )
+                .create_token(self.cmd.attributes()?, self.cmd.expires_in)
                 .await
                 .into_diagnostic()?;
 
