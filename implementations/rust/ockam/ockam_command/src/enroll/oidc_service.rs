@@ -1,8 +1,8 @@
+use async_trait::async_trait;
 use std::borrow::Borrow;
 use std::io::stdin;
 use std::str::FromStr;
 use std::sync::Arc;
-use async_trait::async_trait;
 
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
@@ -42,12 +42,12 @@ impl Default for OidcService {
 }
 
 #[async_trait]
-pub trait GetUserInfo{
+pub trait GetUserInfo {
     async fn get_user_info(&self, token: &OidcToken) -> Result<UserInfo>;
 }
 
 #[async_trait]
-impl GetUserInfo for OidcService{
+impl GetUserInfo for OidcService {
     /// Return the information about a user once authenticated
     async fn get_user_info(&self, token: &OidcToken) -> Result<UserInfo> {
         let client = self.provider().build_http_client()?;
@@ -65,7 +65,7 @@ impl GetUserInfo for OidcService{
     }
 }
 
-pub async fn wait_for_email_verification <T:GetUserInfo> (
+pub async fn wait_for_email_verification<T: GetUserInfo>(
     client: T,
     token: &OidcToken,
     opts: &CommandGlobalOpts,
@@ -185,7 +185,6 @@ impl OidcService {
             .into_diagnostic()?;
         res.json().await.map_err(|e| miette!(e).into())
     }
-
 
     pub(crate) async fn validate_provider_config(&self) -> miette::Result<()> {
         if let Err(e) = self.device_code().await {
@@ -503,16 +502,13 @@ impl OidcService {
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
+    use super::*;
+    use crate::GlobalArgs;
     use ockam_api::cloud::enroll::Token;
     use ockam_node::Executor;
-    use crate::GlobalArgs;
-    use super::*;
+    use std::sync::Mutex;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
@@ -584,23 +580,22 @@ mod tests {
     enum ClientState {
         FirstCall,
         SecondCall,
-        Finished
+        Finished,
     }
 
     struct Client {
-        state: Arc<Mutex<ClientState>>
+        state: Arc<Mutex<ClientState>>,
     }
 
     #[async_trait]
-    impl GetUserInfo for Client{
+    impl GetUserInfo for Client {
         async fn get_user_info(&self, _token: &OidcToken) -> Result<UserInfo> {
-
-                let mut guard = self.state.lock().unwrap();
+            let mut guard = self.state.lock().unwrap();
 
             match *guard {
                 ClientState::FirstCall => {
-                     *guard = ClientState::SecondCall;
-                    return Ok(UserInfo{
+                    *guard = ClientState::SecondCall;
+                    return Ok(UserInfo {
                         sub: "".to_string(),
                         nickname: "bad_nickname".to_string(),
                         name: "".to_string(),
@@ -608,12 +603,12 @@ mod tests {
                         updated_at: "".to_string(),
                         email: "".to_string(),
                         email_verified: false,
-                    })
+                    });
                 }
 
                 ClientState::SecondCall => {
                     *guard = ClientState::Finished;
-                    return Ok(UserInfo{
+                    return Ok(UserInfo {
                         sub: "".to_string(),
                         nickname: "my_cool_nickname".to_string(),
                         name: "".to_string(),
@@ -621,22 +616,33 @@ mod tests {
                         updated_at: "".to_string(),
                         email: "".to_string(),
                         email_verified: true,
-                    })
+                    });
                 }
 
-                ClientState::Finished => panic!("an extra call!")
+                ClientState::Finished => panic!("an extra call!"),
             }
         }
     }
 
-    #[test] fn test_wait_for_email_verification() -> Result<()>{
+    #[test]
+    fn test_wait_for_email_verification() -> Result<()> {
         let opts = CommandGlobalOpts::new(GlobalArgs::default()).set_quiet();
-        let authorization_code = OidcToken{ token_type: TokenType::Bearer, access_token: Token("".to_string())};
+        let authorization_code = OidcToken {
+            token_type: TokenType::Bearer,
+            access_token: Token("".to_string()),
+        };
 
-        let result = Executor::execute_future( async move {
-            wait_for_email_verification(Client { state: Arc::new(Mutex::new(ClientState::FirstCall ))}, &authorization_code, &opts).await
+        let result = Executor::execute_future(async move {
+            wait_for_email_verification(
+                Client {
+                    state: Arc::new(Mutex::new(ClientState::FirstCall)),
+                },
+                &authorization_code,
+                &opts,
+            )
+            .await
         })
-            .expect("TODO: panic message");
+        .expect("TODO: panic message");
 
         let user_info = result.unwrap();
         assert_eq!("my_cool_nickname", user_info.nickname.as_str());

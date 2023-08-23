@@ -17,6 +17,7 @@ use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
 use crate::enroll::oidc_service::OidcService;
+use crate::enroll::wait_for_email_verification;
 use crate::identity::initialize_identity_if_default;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::operation::util::check_for_completion;
@@ -25,7 +26,6 @@ use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts, Result};
-use crate::enroll::wait_for_email_verification;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -74,8 +74,7 @@ async fn run_impl(
         oidc_service.get_token_interactively(&opts).await?
     };
 
-    let user_info = wait_for_email_verification(oidc_service, &token, &opts)
-        .await?;
+    let user_info = wait_for_email_verification(oidc_service, &token, &opts).await?;
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 
