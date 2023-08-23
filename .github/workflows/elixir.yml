@@ -58,7 +58,7 @@ defaults:
 jobs:
   lint:
     name: Elixir - lint_${{ matrix.mix_project }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -86,7 +86,7 @@ jobs:
 
   build:
     name: Elixir - build_${{ matrix.mix_project }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -114,7 +114,7 @@ jobs:
 
   test:
     name: Elixir - test_${{ matrix.mix_project }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:

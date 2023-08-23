@@ -47,8 +47,7 @@ in {
           [(lib.getDev openssl)]
           ++ lib.optionals stdenv.isLinux [
             dbus
-            gtk4
-            glibc
+            webkitgtk_4_1
             (lib.getDev systemd)
           ]
           ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
@@ -92,7 +91,8 @@ in {
         envVars = {
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = lib.getExe pkgs.clang;
           OCKAM_DISABLE_UPGRADE_CHECK = lib.optional cfg.disableUpgradeCheck true;
-          RUSTFLAGS = "";
+          RUSTFLAGS = "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings";
+          CARGO_INCREMENTAL = 0;
         };
       in {
         rust = pkgs.mkShell {

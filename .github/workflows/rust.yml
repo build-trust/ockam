@@ -56,7 +56,7 @@ defaults:
 jobs:
   lint:
     name: Rust - lint_${{ matrix.lint_projects }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -81,11 +81,11 @@ jobs:
       - run: cargo clean
 
       - name: Run lint ${{ matrix.lint_projects }}
-        run:  RUSTFLAGS="--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings" CARGO_INCREMENTAL=0 RUSTFLAGS="-Cdebuginfo=0" make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
+        run:  make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
 
   build:
     name: Rust - build_${{ matrix.build_projects }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -112,7 +112,7 @@ jobs:
 
   test:
     name: Rust - test_${{ matrix.test_projects }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     services:
       ockam_cloud:
         image: ghcr.io/build-trust/ockam-cloud-node@sha256:518314876a5b07c263b88995792335c4426d940c10e5e638a60e66776d86cff5
@@ -140,7 +140,7 @@ jobs:
 
   check:
     name: Rust - check_${{ matrix.check_projects }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -159,6 +159,8 @@ jobs:
 
       - name: Install Nix
         uses: ./.github/actions/nix_installer
+
+      - run: cargo --version
 
       - name: Run check on ${{ matrix.check_projects }}
         run:  make -f implementations/rust/Makefile check_${{ matrix.check_projects }}
