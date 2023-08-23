@@ -577,53 +577,6 @@ mod tests {
         assert_eq!(code.unwrap(), "12345".to_string())
     }
 
-    enum ClientState {
-        FirstCall,
-        SecondCall,
-        Finished,
-    }
-
-    struct Client {
-        state: Arc<Mutex<ClientState>>,
-    }
-
-    #[async_trait]
-    impl GetUserInfo for Client {
-        async fn get_user_info(&self, _token: &OidcToken) -> Result<UserInfo> {
-            let mut guard = self.state.lock().unwrap();
-
-            match *guard {
-                ClientState::FirstCall => {
-                    *guard = ClientState::SecondCall;
-                    return Ok(UserInfo {
-                        sub: "".to_string(),
-                        nickname: "bad_nickname".to_string(),
-                        name: "".to_string(),
-                        picture: "".to_string(),
-                        updated_at: "".to_string(),
-                        email: "".to_string(),
-                        email_verified: false,
-                    });
-                }
-
-                ClientState::SecondCall => {
-                    *guard = ClientState::Finished;
-                    return Ok(UserInfo {
-                        sub: "".to_string(),
-                        nickname: "my_cool_nickname".to_string(),
-                        name: "".to_string(),
-                        picture: "".to_string(),
-                        updated_at: "".to_string(),
-                        email: "".to_string(),
-                        email_verified: true,
-                    });
-                }
-
-                ClientState::Finished => panic!("an extra call!"),
-            }
-        }
-    }
-
     #[test]
     fn test_wait_for_email_verification() -> Result<()> {
         let opts = CommandGlobalOpts::new(GlobalArgs::default()).set_quiet();
@@ -634,9 +587,7 @@ mod tests {
 
         let result = Executor::execute_future(async move {
             wait_for_email_verification(
-                Client {
-                    state: Arc::new(Mutex::new(ClientState::FirstCall)),
-                },
+                Client::new(Arc::new(Mutex::new(ClientState::FirstCall))),
                 &authorization_code,
                 &opts,
             )
@@ -647,5 +598,55 @@ mod tests {
         let user_info = result.unwrap();
         assert_eq!("my_cool_nickname", user_info.nickname.as_str());
         Ok(())
+    }
+
+    //TEST HELPERS
+    enum ClientState {
+        FirstCall,
+        SecondCall,
+        Finished,
+    }
+
+    struct Client {
+        state: Arc<Mutex<ClientState>>,
+    }
+
+    impl Client {
+        fn new (state: Arc<Mutex<ClientState>>) -> Self{
+            Self{state}
+        }
+    }
+
+    #[async_trait]
+    impl GetUserInfo for Client {
+        async fn get_user_info(&self, _token: &OidcToken) -> Result<UserInfo> {
+            let mut guard = self.state.lock().unwrap();
+            let mut user_info = UserInfo {
+                sub: "".to_string(),
+                nickname: "my_cool_nickname".to_string(),
+                name: "".to_string(),
+                picture: "".to_string(),
+                updated_at: "".to_string(),
+                email: "".to_string(),
+                email_verified: true,
+            };
+
+
+            match *guard {
+                ClientState::FirstCall => {
+                    *guard = ClientState::SecondCall;
+                    return Ok(user_info);
+                }
+
+                ClientState::SecondCall => {
+                    *guard = ClientState::Finished;
+                    user_info.nickname="bad_nickname".to_string();
+                    user_info.email_verified=false;
+                    return Ok(user_info);
+                }
+
+                ClientState::Finished => panic!("an extra call!"),
+            }
+        }
     }
 }
