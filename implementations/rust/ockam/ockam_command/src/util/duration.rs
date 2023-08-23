@@ -8,7 +8,7 @@ static DURATION_REGEX: OnceCell<Regex> = OnceCell::new();
 pub(crate) fn duration_parser(arg: &str) -> Result<Duration, clap::Error> {
     let needles = DURATION_REGEX
         .get_or_init(|| {
-            Regex::new(r"(?P<numeric_duration>[0-9]+)(?P<length_sigil>m|s|ms)?$").unwrap()
+            Regex::new(r"(?P<numeric_duration>[0-9]+)(?P<length_sigil>d|h|m|s|ms)?$").unwrap()
         })
         .captures(arg)
         .ok_or(Error::raw(ErrorKind::InvalidValue, "Invalid duration."))?;
@@ -19,8 +19,10 @@ pub(crate) fn duration_parser(arg: &str) -> Result<Duration, clap::Error> {
     match needles.name("length_sigil") {
         Some(n) => match n.as_str() {
             "ms" => Ok(Duration::from_millis(time)),
-            "m" => Ok(Duration::from_secs(60 * time)),
             "s" => Ok(Duration::from_secs(time)),
+            "m" => Ok(Duration::from_secs(60 * time)),
+            "h" => Ok(Duration::from_secs(60 * 60 * time)),
+            "d" => Ok(Duration::from_secs(60 * 60 * 24 * time)),
             _ => unreachable!("Alternatives excluded by regex."),
         },
         None => Ok(Duration::from_secs(time)),
@@ -53,7 +55,15 @@ mod tests {
 
             let mins = Duration::from_secs(secs.as_secs() / 60 * 60);
             let mins_str = format!("{}m", mins.as_secs() / 60);
-            prop_assert_eq!(duration_parser(mins_str.as_str()).unwrap(), mins)
+            prop_assert_eq!(duration_parser(mins_str.as_str()).unwrap(), mins);
+
+            let hrs = Duration::from_secs(secs.as_secs() / 60 * 60 * 60);
+            let hrs_str = format!("{}h", hrs.as_secs() / 60 / 60);
+            prop_assert_eq!(duration_parser(hrs_str.as_str()).unwrap(), hrs);
+
+            let days = Duration::from_secs(secs.as_secs() / 60 * 60 * 60 * 24);
+            let days_str = format!("{}d", days.as_secs() / 60 / 60 / 24);
+            prop_assert_eq!(duration_parser(days_str.as_str()).unwrap(), days)
         }
     }
 }
