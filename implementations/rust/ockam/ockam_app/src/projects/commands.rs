@@ -15,6 +15,9 @@ type SyncState = Arc<RwLock<ProjectState>>;
 
 // At time of writing, tauri::command requires pub not pub(crate)
 
+// 30 days
+const MONTH_IN_SECS : &str = "2592000";
+
 #[tauri::command]
 pub async fn create_enrollment_ticket<R: Runtime>(
     project_id: String,
@@ -39,6 +42,8 @@ pub async fn create_enrollment_ticket<R: Runtime>(
         "--quiet",
         "--project",
         project.name.clone(),
+        "--ticket-ttl",
+        MONTH_IN_SECS,
         "--to",
         &format!("/project/{}", project.name)
     )
