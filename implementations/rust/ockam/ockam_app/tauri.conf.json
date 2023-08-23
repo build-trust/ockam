@@ -12,7 +12,7 @@
     "distDir": "../../../typescript/ockam/ockam_app/build"
   },
   "package": {
-    "productName": "Ockam",
+    "productName": "OckamDesktop",
     "version": "0.1.0"
   },
   "tauri": {
