@@ -104,10 +104,7 @@ impl SoftwareSecureChannelVault {
     }
 
     /// Compute key id from secret and attributes
-    pub(crate) async fn compute_key_id(
-        secret: &Secret,
-        attributes: &SecretAttributes,
-    ) -> Result<KeyId> {
+    pub(crate) fn compute_key_id(secret: &Secret, attributes: &SecretAttributes) -> Result<KeyId> {
         Ok(match attributes.secret_type() {
             SecretType::X25519 => {
                 let public_key = Self::compute_public_key_from_secret(secret, SecretType::X25519)?;
@@ -199,7 +196,7 @@ impl SoftwareSecureChannelVault {
         secret: Secret,
         attributes: SecretAttributes,
     ) -> Result<KeyId> {
-        let key_id = Self::compute_key_id(&secret, &attributes).await?;
+        let key_id = Self::compute_key_id(&secret, &attributes)?;
         let stored_secret = StoredSecret::create(secret, attributes)?;
 
         self.static_secrets
