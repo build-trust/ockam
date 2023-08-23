@@ -1,18 +1,34 @@
 use super::super::identity::Identity;
 use super::super::models::ChangeHistory;
 use super::super::Identities;
+use crate::Identifier;
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_node::Context;
 use ockam_vault::Vault;
 use ockam_vault::{KeyId, PublicKey, SecretAttributes, Signature, SigningVault, VerifyingVault};
 use rand::{thread_rng, Rng};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-#[ockam_macros::test]
-async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
-    for _ in 0..100 {
+#[tokio::test]
+async fn test_valid_identity() -> Result<()> {
+    let identities = Identities::builder().build();
+    let mut identity = identities.identities_creation().create_identity().await?;
+
+    let j: i32 = thread_rng().gen_range(1..10);
+    for _ in 0..j {
+        identity = identities.identities_keys().rotate_key(identity).await?;
+    }
+
+    let res = check_identity(&identity).await;
+    assert!(res.is_ok());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_invalid_signature() -> Result<()> {
+    for _ in 0..10 {
         let mut vault = Vault::create();
         let crazy_signing_vault = Arc::new(CrazySigningVault::new(0.1, vault.signing_vault));
         vault.signing_vault = crazy_signing_vault.clone();
@@ -43,10 +59,31 @@ async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
         }
     }
 
-    ctx.stop().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_eject_signatures() -> Result<()> {
+    for _ in 0..10 {
+        let identities = Identities::builder().build();
+        let mut identity = identities.identities_creation().create_identity().await?;
+
+        let j: i32 = thread_rng().gen_range(1..10);
+        for _ in 0..j {
+            identity = identities.identities_keys().rotate_key(identity).await?;
+        }
+
+        let change_history = eject_random_signature(&identity)?;
+        let res = check_change_history(Some(identity.identifier()), change_history).await;
+        assert!(res.is_err());
+    }
 
     Ok(())
 }
+
+// TODO TEST: Test that if previous_hash value doesn't match - verification fails
+// TODO TEST: Test that if previous_hash value is empty - verification fails
+// TODO TEST: Test that if the new key was created earlier that the previous - verification fails
 
 /// This function simulates an identity import to check its history
 async fn check_identity(identity: &Identity) -> Result<Identity> {
@@ -58,33 +95,16 @@ async fn check_identity(identity: &Identity) -> Result<Identity> {
     .await
 }
 
-#[ockam_macros::test]
-async fn test_eject_signatures(ctx: &mut Context) -> Result<()> {
-    for _ in 0..10 {
-        let identities = Identities::builder().build();
-        let mut identity = identities.identities_creation().create_identity().await?;
-
-        let j: i32 = thread_rng().gen_range(1..10);
-        for _ in 0..j {
-            identity = identities.identities_keys().rotate_key(identity).await?;
-        }
-
-        let res = check_identity(&identity).await;
-        assert!(res.is_ok());
-
-        let change_history = eject_random_signature(&identity)?;
-        let res = Identity::import_from_change_history(
-            None,
-            change_history,
-            identities.vault().verifying_vault,
-        )
-        .await;
-        assert!(res.is_err());
-    }
-
-    ctx.stop().await?;
-
-    Ok(())
+async fn check_change_history(
+    expected_identifier: Option<&Identifier>,
+    change_history: ChangeHistory,
+) -> Result<Identity> {
+    Identity::import_from_change_history(
+        expected_identifier,
+        change_history,
+        Vault::create_verifying_vault(),
+    )
+    .await
 }
 
 pub fn eject_random_signature(identity: &Identity) -> Result<ChangeHistory> {
