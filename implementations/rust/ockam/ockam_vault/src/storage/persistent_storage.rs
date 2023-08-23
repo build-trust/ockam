@@ -1,10 +1,12 @@
 use crate::{constants, KeyId, Secret, SecretAttributes, SecretType, StoredSecret};
+
 use ockam_core::compat::boxed::Box;
+use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Result};
 use ockam_node::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueStorage};
+
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Storage for a Vault data backed by a file
