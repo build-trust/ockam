@@ -35,7 +35,7 @@ pub(crate) async fn build_invitations_section(
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
     let app_state: State<'_, AppState> = app_handle.state();
-    if !app_state.is_enrolled().await {
+    if !app_state.is_enrolled().await.unwrap_or(false) {
         return tray_menu;
     };
 

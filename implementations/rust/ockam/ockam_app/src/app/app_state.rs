@@ -172,12 +172,17 @@ impl AppState {
 
         let default_space_exists = self.state().await.spaces.default().is_ok();
         if !default_space_exists {
-            return Ok(false);
+            return Err(
+                "There should be a default space set for the current user. Please re-enroll".into(),
+            );
         }
 
         let default_project_exists = self.state().await.projects.default().is_ok();
         if !default_project_exists {
-            return Ok(false);
+            return Err(
+                "There should be a default project set for the current user. Please re-enroll"
+                    .into(),
+            );
         }
 
         Ok(true)

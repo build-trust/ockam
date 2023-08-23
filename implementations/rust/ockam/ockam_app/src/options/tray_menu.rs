@@ -1,7 +1,9 @@
 #[cfg(all(debug_assertions, feature = "invitations"))]
 use tauri::Manager;
 use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, SystemTraySubmenu, Wry};
+#[cfg(target_os = "macos")]
 use tauri_runtime::menu::NativeImage;
+use tracing::log::error;
 
 use crate::app::AppState;
 use crate::options::reset;
@@ -18,14 +20,25 @@ pub(crate) async fn build_options_section(
     app_state: &AppState,
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
-    let tm = if app_state.is_enrolled().await {
-        #[cfg(debug_assertions)]
-        let tray_menu = build_developer_submenu(app_state, tray_menu);
-        tray_menu.add_item(CustomMenuItem::new(RESET_MENU_ID, "Reset").accelerator("cmd+r"))
-    } else {
-        tray_menu
-    };
-    tm.add_item(CustomMenuItem::new(QUIT_MENU_ID, "Quit Ockam").accelerator("cmd+q"))
+    #[cfg(debug_assertions)]
+    let tray_menu = build_developer_submenu(app_state, tray_menu);
+    let tray_menu = tray_menu
+        .add_item(CustomMenuItem::new(RESET_MENU_ID, "Reset").accelerator("cmd+r"))
+        .add_item(CustomMenuItem::new(QUIT_MENU_ID, "Quit Ockam").accelerator("cmd+q"));
+
+    match app_state.is_enrolled().await {
+        Ok(_) => tray_menu,
+        Err(e) => {
+            error!("{}", e);
+            let error_item = CustomMenuItem::new(
+                ERROR_MENU_ID,
+                "The application state is corrupted, please re-enroll, reset or quit the application",
+            );
+            #[cfg(target_os = "macos")]
+            let error_item = error_item.native_image(NativeImage::Caution);
+            tray_menu.add_item(error_item)
+        }
+    }
 }
 
 fn build_developer_submenu(app_state: &AppState, tray_menu: SystemTrayMenu) -> SystemTrayMenu {
