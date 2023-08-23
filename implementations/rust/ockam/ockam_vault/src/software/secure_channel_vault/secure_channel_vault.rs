@@ -1,4 +1,5 @@
 use super::aes::AesGen;
+
 use crate::constants::{
     X25519_PUBLIC_LENGTH_USIZE, X25519_SECRET_LENGTH_U32, X25519_SECRET_LENGTH_USIZE,
 };
@@ -6,15 +7,17 @@ use crate::{
     Buffer, KeyId, PublicKey, Secret, SecretAttributes, SecretType, SecureChannelVault,
     SmallBuffer, StoredSecret, VaultError,
 };
-use aes_gcm::aead::NewAead;
-use aes_gcm::{Aes128Gcm, Aes256Gcm};
-use arrayref::array_ref;
+
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
+
+use aes_gcm::aead::NewAead;
+use aes_gcm::{Aes128Gcm, Aes256Gcm};
+use arrayref::array_ref;
 use sha2::{Digest, Sha256};
 
 /// [`SecureChannelVault`] implementation using software

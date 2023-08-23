@@ -7,12 +7,14 @@ use crate::{
     KeyId, PublicKey, Secret, SecretAttributes, SecretType, Signature, SigningVault, StoredSecret,
     VaultError,
 };
-use arrayref::array_ref;
+
 use ockam_core::compat::rand::thread_rng;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Error, Result};
 use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
+
+use arrayref::array_ref;
 use sha2::{Digest, Sha256};
 use static_assertions::const_assert_eq;
 

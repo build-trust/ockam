@@ -1,9 +1,11 @@
 use crate::constants::{ED25519_PUBLIC_LENGTH_USIZE, NIST_P256_PUBLIC_LENGTH_USIZE, SHA256_LENGTH};
 use crate::{PublicKey, SecretType, Signature, VaultError, VerifyingVault};
-use arrayref::array_ref;
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Error, Result};
+
+use arrayref::array_ref;
 use sha2::{Digest, Sha256};
 
 /// [`VerifyingVault`] implementation using software
