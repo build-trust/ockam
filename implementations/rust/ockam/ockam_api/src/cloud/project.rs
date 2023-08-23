@@ -14,6 +14,7 @@ use crate::cloud::addon::ConfluentConfigResponse;
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
 
+use super::share::RoleInShare;
 use super::ProjectUserRole;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
@@ -73,11 +74,14 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn is_ready(&self) -> bool {
-        !(self.access_route.is_empty()
-            || self.authority_access_route.is_none()
-            || self.identity.is_none()
-            || self.authority_identity.is_none())
+    pub fn access_route(&self) -> Result<MultiAddr> {
+        MultiAddr::from_str(&self.access_route).map_err(|e| ApiError::generic(&e.to_string()))
+    }
+
+    pub fn has_admin_with_email(&self, email: &str) -> bool {
+        self.user_roles
+            .iter()
+            .any(|ur| ur.role == RoleInShare::Admin && ur.email == email)
     }
 
     pub async fn is_reachable(&self) -> Result<bool> {
@@ -85,8 +89,11 @@ impl Project {
         Ok(tokio::net::TcpStream::connect(&socket_addr).await.is_ok())
     }
 
-    pub fn access_route(&self) -> Result<MultiAddr> {
-        MultiAddr::from_str(&self.access_route).map_err(|e| ApiError::generic(&e.to_string()))
+    pub fn is_ready(&self) -> bool {
+        !(self.access_route.is_empty()
+            || self.authority_access_route.is_none()
+            || self.identity.is_none()
+            || self.authority_identity.is_none())
     }
 
     // Converts the `access_route` MultiAddr into a single Address, which will
