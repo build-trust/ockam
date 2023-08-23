@@ -32,7 +32,7 @@ pub async fn create_enrollment_ticket<R: Runtime>(
     debug!(?project_id, "creating enrollment ticket via CLI");
     // TODO: Issue enrollment ticket using in-memory code instead of subshell
     // TODO: How might this degrade for users who have multiple spaces and projects?
-    let bin = cli_bin().map_err(|_| Error::OckamCommandInvalid)?;
+    let bin = cli_bin().map_err(|e| Error::OckamCommandInvalid(e.to_string()))?;
     let hex_encoded_ticket = duct::cmd!(
         bin,
         "project",
