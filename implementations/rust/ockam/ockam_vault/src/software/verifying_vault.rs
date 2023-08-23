@@ -73,13 +73,14 @@ impl SoftwareVerifyingVault {
     }
 }
 
-#[async_trait]
-impl VerifyingVault for SoftwareVerifyingVault {
-    async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]> {
+impl SoftwareVerifyingVault {
+    /// Compute SHA256
+    pub fn sha256_sync(&self, data: &[u8]) -> Result<[u8; 32]> {
         Self::compute_sha256(data)
     }
 
-    async fn verify(
+    /// Verify a signature
+    fn verify_sync(
         &self,
         public_key: &PublicKey,
         data: &[u8],
@@ -112,5 +113,21 @@ impl VerifyingVault for SoftwareVerifyingVault {
                 Err(VaultError::InvalidPublicKey.into())
             }
         }
+    }
+}
+
+#[async_trait]
+impl VerifyingVault for SoftwareVerifyingVault {
+    async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]> {
+        self.sha256_sync(data)
+    }
+
+    async fn verify(
+        &self,
+        public_key: &PublicKey,
+        data: &[u8],
+        signature: &Signature,
+    ) -> Result<bool> {
+        self.verify_sync(public_key, data, signature)
     }
 }
