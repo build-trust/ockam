@@ -4068,9 +4068,9 @@ dependencies = [
 
 [[package]]
 name = "muda"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7de0cd2fdb9ef32781658513eab9080a22b3a9775955019daaf1f54bd37753a"
+checksum = "fb28807bbe07d97a5bc148a79c730cb7a8dc373f354969e5b442c711adf61ccf"
 dependencies = [
  "cocoa 0.25.0",
  "crossbeam-channel",
