@@ -9,8 +9,7 @@ use super::super::super::models::{
     ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
 };
 use super::super::super::{
-    Identities, Identity, IdentityError, IdentityHistoryComparison, SecureChannelTrustInfo,
-    TrustContext, TrustPolicy,
+    Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
 };
 
 /// Interface for a state machine in a key exchange protocol
@@ -128,42 +127,18 @@ impl CommonStateMachine {
         )
         .await?;
 
-        if let Some(known_identity) = self
-            .identities
-            .repository()
-            .retrieve_identity(identity.identifier())
-            .await?
-        {
-            let known_identity = Identity::import_from_change_history(
-                Some(identity.identifier()),
-                known_identity,
-                self.identities.vault().verifying_vault,
-            )
+        self.identities
+            .identities_creation()
+            .update_identity(&identity)
             .await?;
-
-            match identity.compare(&known_identity) {
-                IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
-                    return Err(IdentityError::ConsistencyError.into());
-                }
-                IdentityHistoryComparison::Newer => {
-                    self.identities
-                        .repository()
-                        .update_identity(identity.identifier(), identity.change_history())
-                        .await?;
-                }
-                IdentityHistoryComparison::Equal => {}
-            }
-        } else {
-            self.identities
-                .repository()
-                .update_identity(identity.identifier(), identity.change_history())
-                .await?;
-        }
 
         let purpose_key = self
             .identities
             .purpose_keys()
-            .verify_purpose_key_attestation(&peer.purpose_key_attestation)
+            .verify_purpose_key_attestation(
+                Some(identity.identifier()),
+                &peer.purpose_key_attestation,
+            )
             .await?;
 
         if peer_public_key.stype() != SecretType::X25519 {
@@ -181,7 +156,8 @@ impl CommonStateMachine {
             }
         }
 
-        self.verify_credentials(&identity, peer.credentials).await?;
+        self.verify_credentials(identity.identifier(), peer.credentials)
+            .await?;
         self.their_identifier = Some(identity.identifier().clone());
         Ok(())
     }
@@ -190,11 +166,11 @@ impl CommonStateMachine {
     /// and store them
     async fn verify_credentials(
         &self,
-        their_identity: &Identity,
+        their_identifier: &Identifier,
         credentials: Vec<CredentialAndPurposeKey>,
     ) -> Result<()> {
         // check our TrustPolicy
-        let trust_info = SecureChannelTrustInfo::new(their_identity.identifier().clone());
+        let trust_info = SecureChannelTrustInfo::new(their_identifier.clone());
         let trusted = self.trust_policy.check(&trust_info).await?;
         if !trusted {
             // TODO: Shutdown? Communicate error?
@@ -202,7 +178,7 @@ impl CommonStateMachine {
         }
         debug!(
             "Initiator checked trust policy for SecureChannel from: {}",
-            their_identity.identifier()
+            their_identifier
         );
 
         if let Some(trust_context) = &self.trust_context {
@@ -211,7 +187,7 @@ impl CommonStateMachine {
                     .identities
                     .credentials()
                     .receive_presented_credential(
-                        their_identity.identifier(),
+                        their_identifier,
                         &[trust_context.authority()?.identifier().clone()],
                         &credential,
                     )

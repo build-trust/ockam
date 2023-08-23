@@ -74,7 +74,7 @@ impl PurposeKeys {
                     .get_public_key(&secret_key)
                     .await?;
                 let public_key =
-                    PurposePublicKey::SecureChannelStaticKey(public_key.try_into().unwrap());
+                    PurposePublicKey::SecureChannelStaticKey(public_key.try_into().unwrap()); // FIXME
                 (secret_key, public_key)
             }
             Purpose::Credentials => {
@@ -85,7 +85,7 @@ impl PurposeKeys {
                     .await?;
                 let public_key = self.vault.signing_vault.get_public_key(&secret_key).await?;
                 let public_key =
-                    PurposePublicKey::CredentialSigningKey(public_key.try_into().unwrap());
+                    PurposePublicKey::CredentialSigningKey(public_key.try_into().unwrap()); // FIXME
                 (secret_key, public_key)
             }
         };
@@ -181,6 +181,7 @@ impl PurposeKeys {
     /// Verify a [`PurposeKeyAttestation`]
     pub async fn verify_purpose_key_attestation(
         &self,
+        expected_subject: Option<&Identifier>,
         attestation: &PurposeKeyAttestation,
     ) -> Result<PurposeKeyAttestationData> {
         let versioned_data_hash = self.vault.verifying_vault.sha256(&attestation.data).await?;
@@ -193,6 +194,13 @@ impl PurposeKeys {
 
         let purpose_key_data = PurposeKeyAttestationData::get_data(&versioned_data)?;
 
+        if let Some(expected_subject) = expected_subject {
+            if expected_subject != &purpose_key_data.subject {
+                // We expected purpose key that belongs to someone else
+                return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+            }
+        }
+
         let change_history = self
             .identities_reader
             .get_identity(&purpose_key_data.subject)
@@ -204,9 +212,44 @@ impl PurposeKeys {
         )
         .await?;
 
-        // TODO: We might accept a signature from previous key
-        // TODO: Check if purpose key expiration is before the corresponding Identity public key expiration
-        let public_key = identity.get_public_key()?;
+        let latest_change = identity.get_latest_change()?;
+
+        // TODO: We should inspect purpose_key_data.subject_latest_change_hash, the possibilities are:
+        //     1) It's equal to the latest Change we know about, this is the default case and
+        //        this is the only case that the code below handles currently
+        //     2) We haven't yet discovered that new Change, therefore we can't verify such PurposeKey
+        //     3) It references previous Change from the known to us history, we might accept such
+        //        PurposeKey, but not if the next Change has revoke_all_purpose_keys == true
+        //     4) It references Change even older. IMO we shouldn't accept such PurposeKeys
+
+        if &purpose_key_data.subject_latest_change_hash != latest_change.change_hash() {
+            // Only verifying with the latest key is currently implemented, see the `TODO` above
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+        }
+
+        if purpose_key_data.expires_at > latest_change.data().expires_at {
+            // PurposeKey validity time range should be inside the identity key validity time range
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+        }
+
+        if purpose_key_data.created_at < latest_change.data().created_at {
+            // PurposeKey validity time range should be inside the identity key validity time range
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+        }
+
+        let now = now()?;
+
+        if purpose_key_data.created_at > now {
+            // PurposeKey can't be created in the future
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+        }
+
+        if purpose_key_data.expires_at < now {
+            // PurposeKey expired
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+        }
+
+        let identity_public_key = latest_change.primary_public_key();
 
         let signature = if let PurposeKeyAttestationSignature::Ed25519Signature(signature) =
             &attestation.signature
@@ -219,23 +262,11 @@ impl PurposeKeys {
         if !self
             .vault
             .verifying_vault
-            .verify(&public_key, &versioned_data_hash, &signature)
+            .verify(identity_public_key, &versioned_data_hash, &signature)
             .await?
         {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
         }
-
-        let now = now()?;
-
-        if purpose_key_data.created_at > now {
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
-        }
-
-        if purpose_key_data.expires_at < now {
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
-        }
-
-        // FIXME: purpose_key_data.subject_latest_change_hash;
 
         Ok(purpose_key_data)
     }
@@ -246,7 +277,9 @@ impl PurposeKeys {
         &self,
         attestation: &PurposeKeyAttestation,
     ) -> Result<PurposeKey> {
-        let purpose_key_data = self.verify_purpose_key_attestation(attestation).await?;
+        let purpose_key_data = self
+            .verify_purpose_key_attestation(None, attestation)
+            .await?;
 
         let (purpose, key_id) = match purpose_key_data.public_key.clone() {
             PurposePublicKey::SecureChannelStaticKey(public_key) => {
@@ -300,10 +333,16 @@ mod tests {
             .await?;
 
         let credentials_key = purpose_keys
-            .verify_purpose_key_attestation(credentials_key.attestation())
+            .verify_purpose_key_attestation(
+                Some(identity.identifier()),
+                credentials_key.attestation(),
+            )
             .await?;
         let secure_channel_key = purpose_keys
-            .verify_purpose_key_attestation(secure_channel_key.attestation())
+            .verify_purpose_key_attestation(
+                Some(identity.identifier()),
+                secure_channel_key.attestation(),
+            )
             .await?;
 
         assert_eq!(identity.identifier(), &credentials_key.subject);
@@ -345,7 +384,7 @@ mod tests {
             .await?
             .unwrap();
         purpose_keys
-            .verify_purpose_key_attestation(&key)
+            .verify_purpose_key_attestation(Some(identity.identifier()), &key)
             .await
             .unwrap();
         assert_eq!(&key, credentials_key.attestation());
@@ -356,7 +395,7 @@ mod tests {
             .await?
             .unwrap();
         purpose_keys
-            .verify_purpose_key_attestation(&key)
+            .verify_purpose_key_attestation(Some(identity.identifier()), &key)
             .await
             .unwrap();
         assert_eq!(&key, secure_channel_key.attestation());
@@ -371,7 +410,7 @@ mod tests {
             .await?
             .unwrap();
         purpose_keys
-            .verify_purpose_key_attestation(&key)
+            .verify_purpose_key_attestation(Some(identity.identifier()), &key)
             .await
             .unwrap();
         assert_eq!(&key, credentials_key2.attestation());
