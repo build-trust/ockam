@@ -3,8 +3,10 @@ use crate::app::configure_tauri_plugin_log;
 #[cfg(all(not(feature = "log"), feature = "tracing"))]
 use crate::app::configure_tracing_log;
 use crate::app::{process_application_event, setup_app, AppState};
+use crate::cli::check_ockam_executable;
 use crate::error::Result;
 use shared_service::tcp_outlet::tcp_outlet_create;
+use std::process::exit;
 
 mod app;
 mod cli;
@@ -22,6 +24,12 @@ mod shared_service;
 pub fn run() {
     #[cfg(all(feature = "tracing", not(feature = "log")))]
     configure_tracing_log();
+
+    // Exit if there is any issue with the ockam command
+    // The log messages should explain what went wrong
+    if check_ockam_executable().is_err() {
+        exit(-1)
+    }
 
     // For now, the application only consists of a system tray with several menu items
     #[cfg_attr(not(feature = "invitations"), allow(unused_mut))]
