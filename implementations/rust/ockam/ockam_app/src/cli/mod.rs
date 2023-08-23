@@ -15,7 +15,7 @@ pub(crate) fn cli_bin() -> Result<String> {
 /// its version
 pub(crate) fn check_ockam_executable() -> Result<()> {
     let ockam_path = cli_bin()?;
-    if ockam_path != "ockam".to_string() && !ockam_path.starts_with("/") {
+    if ockam_path != *"ockam" && !ockam_path.starts_with('/') {
         let message = format!("The OCKAM environment variable must be defined with an absolute path. The current value is: {ockam_path}");
         error!(message);
         return Err(Generic(message));
@@ -31,7 +31,7 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
             "The ockam command is available {:?}",
             std::str::from_utf8(&v.stdout)
                 .unwrap_or("can't decode the ockam version")
-                .split("\n")
+                .split('\n')
                 .collect::<Vec<&str>>()
                 .join(" ")
         ),
