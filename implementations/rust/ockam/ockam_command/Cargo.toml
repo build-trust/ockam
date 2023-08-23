@@ -9,6 +9,7 @@ categories = [
   "network-programming",
   "embedded",
 ]
+default-run = "ockam"
 edition = "2021"
 exclude = ["tests/**"]
 homepage = "https://github.com/build-trust/ockam"

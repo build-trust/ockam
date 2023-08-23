@@ -9,7 +9,6 @@ categories = [
   "network-programming",
   "embedded",
 ]
-default-run = "ockam_app"
 edition = "2021"
 homepage = "https://github.com/build-trust/ockam"
 keywords = [
