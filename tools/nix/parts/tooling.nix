@@ -24,5 +24,13 @@ _: {
     formatter = pkgs.alejandra;
 
     packages.bats = pkgs.bats.withLibraries (p: [p.bats-assert p.bats-file p.bats-support]);
+
+    packages.shfmt-all = pkgs.writeShellApplication {
+      name = "shfmt-all";
+      runtimeInputs = with pkgs; [shfmt];
+      text = ''
+        shfmt -f <<<"$(git ls-files ':!:./demos/**' '*\.sh' '*\.bash' '*\.bats')" | xargs shfmt --diff
+      '';
+    };
   };
 }
