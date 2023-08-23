@@ -37,10 +37,10 @@ jobs:
       - run: 'echo "Rust - lint_cargo_clippy - Ignored"'
 
   lint_cargo_deny:
-    name: Rust - lint_cargo_clippy
+    name: Rust - lint_cargo_deny
     runs-on: ubuntu-20.04
     steps:
-      - run: 'echo "Rust - lint_cargo_clippy - Ignored"'
+      - run: 'echo "Rust - lint_cargo_deny - Ignored"'
 
   build_docs:
     name: Rust - build_docs
