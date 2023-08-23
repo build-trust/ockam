@@ -27,38 +27,12 @@ impl IdentitiesCreation {
         }
     }
 
-    async fn store_imported_identity(&self, identity: &Identity) -> Result<()> {
-        // TODO: Duplicate
-        if let Some(known_identity) = self
-            .repository
-            .retrieve_identity(identity.identifier())
-            .await?
-        {
-            let known_identity = Identity::import_from_change_history(
-                Some(identity.identifier()),
-                known_identity,
-                self.verifying_vault.clone(),
-            )
-            .await?;
-
-            match identity.compare(&known_identity) {
-                IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
-                    return Err(IdentityError::ConsistencyError.into());
-                }
-                IdentityHistoryComparison::Newer => {
-                    self.repository
-                        .update_identity(identity.identifier(), identity.change_history())
-                        .await?;
-                }
-                IdentityHistoryComparison::Equal => {}
-            }
-        } else {
-            self.repository
-                .update_identity(identity.identifier(), identity.change_history())
-                .await?;
-        }
-
-        Ok(())
+    /// Return the identities keys management service
+    pub fn identities_keys(&self) -> Arc<IdentitiesKeys> {
+        Arc::new(IdentitiesKeys::new(
+            self.signing_vault.clone(),
+            self.verifying_vault.clone(),
+        ))
     }
 
     /// Import and verify identity from its binary format
@@ -95,23 +69,40 @@ impl IdentitiesCreation {
         Ok(identity)
     }
 
-    /// Create an `Identity`
+    /// Create an `Identity` and store it
     pub async fn create_identity(&self) -> Result<Identity> {
-        // TODO: Consider creating PurposeKeys by default
         self.make_and_persist_identity(None).await
     }
 
-    /// Create an `Identity` with a key previously created in the Vault
-    pub async fn create_identity_with_existing_key(&self, kid: &KeyId) -> Result<Identity> {
-        // TODO: Consider creating PurposeKeys by default
-        self.make_and_persist_identity(Some(kid)).await
+    /// Rotate an existing `Identity` and update the stored version
+    pub async fn rotate_identity(&self, identifier: Identifier) -> Result<()> {
+        let change_history = self.repository.get_identity(&identifier).await?;
+
+        let identity = Identity::import_from_change_history(
+            Some(&identifier),
+            change_history,
+            self.verifying_vault.clone(),
+        )
+        .await?;
+
+        let identity = self.identities_keys().rotate_key(identity).await?;
+
+        self.repository
+            .update_identity(identity.identifier(), identity.change_history())
+            .await?;
+
+        Ok(())
     }
 
-    /// Create an identity with a vault initialized with a secret key
-    /// encoded as a hex string.
-    /// Such a key can be obtained by running vault.secret_export and then encoding
-    /// the exported secret as a hex string
-    /// Note: the data is not persisted!
+    /// Create an `Identity` with a key previously created in the Vault and store it
+    pub async fn create_identity_with_existing_key(&self, key_id: &KeyId) -> Result<Identity> {
+        // TODO: Consider creating PurposeKeys by default
+        self.make_and_persist_identity(Some(key_id)).await
+    }
+
+    /// Import an existing Identity from its binary format
+    /// Its secret is expected to exist in the Vault (either generated there, or some Vault
+    /// implementations may allow importing a secret)
     pub async fn import_private_identity(
         &self,
         identity_change_history: &[u8],
@@ -130,12 +121,43 @@ impl IdentitiesCreation {
 }
 
 impl IdentitiesCreation {
+    async fn store_imported_identity(&self, identity: &Identity) -> Result<()> {
+        // TODO: Duplicate
+        if let Some(known_identity) = self
+            .repository
+            .retrieve_identity(identity.identifier())
+            .await?
+        {
+            let known_identity = Identity::import_from_change_history(
+                Some(identity.identifier()),
+                known_identity,
+                self.verifying_vault.clone(),
+            )
+            .await?;
+
+            match identity.compare(&known_identity) {
+                IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
+                    return Err(IdentityError::ConsistencyError.into());
+                }
+                IdentityHistoryComparison::Newer => {
+                    self.repository
+                        .update_identity(identity.identifier(), identity.change_history())
+                        .await?;
+                }
+                IdentityHistoryComparison::Equal => {}
+            }
+        } else {
+            self.repository
+                .update_identity(identity.identifier(), identity.change_history())
+                .await?;
+        }
+
+        Ok(())
+    }
     /// Make a new identity with its key and attributes
     /// and persist it
     async fn make_and_persist_identity(&self, key_id: Option<&KeyId>) -> Result<Identity> {
-        let identity_keys =
-            IdentitiesKeys::new(self.signing_vault.clone(), self.verifying_vault.clone());
-        let identity = identity_keys.create_initial_key(key_id).await?;
+        let identity = self.identities_keys().create_initial_key(key_id).await?;
         self.repository
             .update_identity(identity.identifier(), identity.change_history())
             .await?;
@@ -193,4 +215,6 @@ mod tests {
 
         Ok(())
     }
+
+    // TODO TEST: rotation
 }
