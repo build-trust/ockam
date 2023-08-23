@@ -11,15 +11,12 @@ use super::super::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannelRegistry,
 };
-use super::super::{
-    Purpose, PurposeKeys, SecureChannel, SecureChannelListener, SecureChannelsBuilder,
-};
+use super::super::{Purpose, SecureChannel, SecureChannelListener, SecureChannelsBuilder};
 
 /// Identity implementation
 #[derive(Clone)]
 pub struct SecureChannels {
     pub(crate) identities: Arc<Identities>,
-    pub(crate) purpose_keys: Arc<PurposeKeys>,
     pub(crate) secure_channel_registry: SecureChannelRegistry,
 }
 
@@ -27,12 +24,10 @@ impl SecureChannels {
     /// Constructor
     pub(crate) fn new(
         identities: Arc<Identities>,
-        purpose_keys: Arc<PurposeKeys>,
         secure_channel_registry: SecureChannelRegistry,
     ) -> Self {
         Self {
             identities,
-            purpose_keys,
             secure_channel_registry,
         }
     }
@@ -105,7 +100,8 @@ impl SecureChannels {
 
         // TODO: Allow manual PurposeKey management
         let purpose_key = self
-            .purpose_keys
+            .identities
+            .purpose_keys()
             .get_or_create_purpose_key(identifier, Purpose::SecureChannel)
             .await?;
 

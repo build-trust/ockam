@@ -93,7 +93,8 @@ impl Worker for IdentityChannelListener {
         // TODO: Allow manual PurposeKey management
         let purpose_key = self
             .secure_channels
-            .purpose_keys
+            .identities
+            .purpose_keys()
             .get_or_create_purpose_key(&self.identifier, Purpose::SecureChannel)
             .await?;
 
