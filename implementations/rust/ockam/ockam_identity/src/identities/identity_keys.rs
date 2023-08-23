@@ -209,7 +209,7 @@ mod test {
         .await?;
 
         let secret1 = identity_keys.get_secret_key(&identity).await?;
-        let public1 = identity.get_public_key()?;
+        let public1 = identity.get_latest_public_key()?;
 
         let identity = identity_keys.rotate_key(identity).await?;
 
@@ -222,7 +222,7 @@ mod test {
         .await?;
 
         let secret2 = identity_keys.get_secret_key(&identity).await?;
-        let public2 = identity.get_public_key()?;
+        let public2 = identity.get_latest_public_key()?;
 
         if secret1 == secret2 {
             return test_error("secret did not change after rotate_key");

@@ -10,7 +10,7 @@ use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::{SecretType, Signature, SigningVault, VerifyingVault};
+use ockam_vault::{Signature, SigningVault, VerifyingVault};
 
 /// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
 /// after parsing and verifying corresponding [`Credential`] and [`super::super::models::PurposeKeyAttestation`]
@@ -67,7 +67,10 @@ impl Credentials {
     ) -> Result<CredentialAndPurposeKeyData> {
         let purpose_key_data = self
             .purpose_keys
-            .verify_purpose_key_attestation(&credential_and_purpose_key.purpose_key_attestation)
+            .verify_purpose_key_attestation(
+                None,
+                &credential_and_purpose_key.purpose_key_attestation,
+            )
             .await?;
 
         if !authorities.contains(&purpose_key_data.subject) {
@@ -93,8 +96,8 @@ impl Credentials {
             CredentialSignature::Ed25519Signature(signature) => {
                 Signature::new(signature.0.to_vec())
             }
-            CredentialSignature::P256ECDSASignature(_) => {
-                return Err(IdentityError::InvalidKeyType.into())
+            CredentialSignature::P256ECDSASignature(signature) => {
+                Signature::new(signature.0.to_vec())
             }
         };
 
@@ -113,36 +116,60 @@ impl Credentials {
 
         let credential_data = CredentialData::get_data(&versioned_data)?;
 
+        if credential_data.subject.is_none() {
+            // Currently unsupported
+            return Err(IdentityError::CredentialVerificationFailed.into());
+        }
+
         if credential_data.subject.is_none() && credential_data.subject_latest_change_hash.is_none()
         {
+            // At least one should be always present, otherwise it's unclear who this credential belongs to
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
         if expected_subject.is_some() && credential_data.subject.as_ref() != expected_subject {
+            // We expected credential that belongs to someone else
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
         if credential_data.created_at < purpose_key_data.created_at {
+            // Credential validity time range should be inside the purpose key validity time range
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
         if credential_data.expires_at > purpose_key_data.expires_at {
+            // Credential validity time range should be inside the purpose key validity time range
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
         let now = now()?;
 
         if credential_data.created_at > now {
+            // Credential can't be created in the future
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
         if credential_data.expires_at < now {
+            // Credential expired
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        // FIXME: credential_data.subject_latest_change_hash
-        // FIXME: Verify if given authority is allowed to issue credentials with given Schema
-        // FIXME: Verify if Schema aligns with Attributes
+        if let Some(_subject_latest_change_hash) = &credential_data.subject_latest_change_hash {
+            // TODO: Check how that aligns with the ChangeHistory of the subject that we have in the storage
+            //     For example, if we just established a secure channel with that subject,
+            //     latest_change_hash MUST be equal to the one in present ChangeHistory.
+            //     If credential_data.subject_latest_change_hash equals to some older value from the
+            //     subject's ChangeHistory, that means that subject hasn't updated its Credentials
+            //     after the Identity Key rotation, which is suspicious, such Credential should be rejected
+            //     If credential_data.subject_latest_change_hash equals to some future value that we haven't yet
+            //     observed, than subject should had presented its newer Changes as well. We should
+            //     reject such Credential, unless we have cases where subject may not had an opportunity
+            //     to present its newer Changes (e.g., if we receive its Credential from someone else).
+            //     In such cases some limited tolerance may be introduced.
+        }
+
+        // FIXME: Verify if given authority is allowed to issue credentials with given Schema <-- Should be handled somewhere in the TrustContext
+        // FIXME: Verify if Schema aligns with Attributes <-- Should be handled somewhere in the TrustContext
 
         Ok(CredentialAndPurposeKeyData {
             credential_data,
@@ -192,20 +219,12 @@ impl Credentials {
 
         let versioned_data_hash = self.verifying_vault.sha256(&versioned_data).await?;
 
-        if issuer_purpose_key.purpose() != Purpose::Credentials {
-            return Err(IdentityError::InvalidKeyType.into());
-        }
-
-        if issuer_purpose_key.stype() != SecretType::Ed25519 {
-            return Err(IdentityError::InvalidKeyType.into());
-        }
-
         let signature = self
             .signing_vault
             .sign(issuer_purpose_key.key_id(), &versioned_data_hash)
             .await?;
         let signature: Vec<u8> = signature.into();
-        let signature = Ed25519Signature(signature.try_into().unwrap());
+        let signature = Ed25519Signature(signature.try_into().unwrap()); // FIXME
         let signature = CredentialSignature::Ed25519Signature(signature);
 
         let credential = Credential {
