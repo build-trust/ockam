@@ -16,8 +16,8 @@ pub(crate) async fn build_user_info_section(
     app_state: &AppState,
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
-    match app_state.model(|m| m.get_user_info()).await {
-        Some(user_info) => {
+    match app_state.user_info().await {
+        Ok(user_info) => {
             let item = CustomMenuItem::new(
                 ENROLL_MENU_USER_NAME,
                 format!("{} ({})", user_info.name, user_info.nickname),
@@ -28,7 +28,7 @@ pub(crate) async fn build_user_info_section(
                 .add_item(item)
                 .add_item(CustomMenuItem::new(ENROLL_MENU_EMAIL, user_info.email).disabled())
         }
-        None => tray_menu,
+        Err(_) => tray_menu,
     }
 }
 
@@ -39,9 +39,9 @@ pub(crate) async fn build_enroll_section(
 ) -> SystemTrayMenu {
     if let Some(payload) = &payload {
         if let Some(message) = &payload.enroll_status {
-            let tray_menu = match app_state.model(|m| m.get_user_info()).await {
-                None => tray_menu,
-                Some(_) => tray_menu.add_native_item(SystemTrayMenuItem::Separator),
+            let tray_menu = match app_state.user_info().await {
+                Err(_) => tray_menu,
+                Ok(_) => tray_menu.add_native_item(SystemTrayMenuItem::Separator),
             };
             return tray_menu
                 .add_item(CustomMenuItem::new(ENROLL_MENU_HEADER_ID, "Enrolling...").disabled())

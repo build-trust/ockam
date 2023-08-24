@@ -1,4 +1,4 @@
-use miette::{miette, IntoDiagnostic};
+use miette::{miette, IntoDiagnostic, WrapErr};
 
 use tauri::{AppHandle, Manager, State, Wry};
 use tracing::{error, info};
@@ -57,7 +57,11 @@ async fn enroll_with_token(
         .wait_for_email_verification(&token, &app_state.options().await)
         .await?;
     info!(?user_info, "Email verification succeeded");
-    app_state.model_mut(|m| m.set_user_info(user_info)).await?;
+    app_state
+        .state()
+        .await
+        .users_info
+        .overwrite(&user_info.email, user_info.clone())?;
 
     // enroll the current user using that token on the controller
     {
@@ -132,7 +136,10 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
             .map_err(|e| miette!(e))?
     };
 
-    let email = app_state.user_email().await.unwrap_or_default();
+    let email = app_state
+        .user_email()
+        .await
+        .wrap_err("User info is not valid")?;
 
     let project = match projects
         .iter()

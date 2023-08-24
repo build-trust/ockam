@@ -8,6 +8,7 @@ use tracing::{error, info};
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
@@ -197,8 +198,19 @@ impl AppState {
         node_manager.list_outlets().await.list
     }
 
-    pub async fn user_email(&self) -> Option<String> {
-        self.model(|m| m.get_user_info()).await.map(|ui| ui.email)
+    pub async fn user_info(&self) -> Result<UserInfo> {
+        Ok(self
+            .state
+            .read()
+            .await
+            .users_info
+            .default()?
+            .config()
+            .clone())
+    }
+
+    pub async fn user_email(&self) -> Result<String> {
+        self.user_info().await.map(|u| u.email)
     }
 
     pub async fn model_mut(&self, f: impl FnOnce(&mut ModelState)) -> Result<()> {

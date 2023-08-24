@@ -1,9 +1,10 @@
+use miette::Diagnostic;
 use serde::Serialize;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Error, Serialize)]
+#[derive(Debug, Diagnostic, Error, Serialize)]
 pub enum Error {
     #[error("creating enrollment ticket failed")]
     EnrollmentTicketFailed,
