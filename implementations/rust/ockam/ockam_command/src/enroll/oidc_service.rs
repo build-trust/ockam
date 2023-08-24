@@ -327,7 +327,7 @@ impl OidcService {
         let redirect_timeout = self.provider().redirect_timeout();
 
         // Start a background thread which will wait for a request sending the authorization code
-        tokio::spawn(async move {
+        tokio::task::spawn_blocking(move || {
             match server.recv_timeout(redirect_timeout) {
                 Ok(Some(request)) => {
                     let code = Self::get_code(request.url())?;
@@ -481,7 +481,7 @@ impl OidcService {
 mod tests {
     use super::*;
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[tokio::test]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_user_info() -> Result<()> {
         let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
@@ -491,7 +491,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[tokio::test]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_get_token_with_pkce() -> Result<()> {
         let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
@@ -500,7 +500,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[tokio::test]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_authorization_code() -> Result<()> {
         let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
@@ -512,7 +512,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[tokio::test]
     async fn test_wait_for_authorization_code() -> Result<()> {
         let oidc_service = OidcService::default();
 
