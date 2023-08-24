@@ -54,9 +54,7 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
-
-      - uses: DeterminateSystems/magic-nix-cache-action@749fc5bbc9fa49d60c2b93f6c4bc867b82e1d295
+        uses: ./.github/actions/nix_installer
 
       - name: Run Shfmt Check
         run:  nix run ./tools/nix#shfmt-all
