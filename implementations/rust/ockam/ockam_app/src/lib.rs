@@ -1,3 +1,19 @@
+//! This crate contains the implementation of the Ockam desktop application.
+//!
+//! In order to run the application in development you need to execute:
+//! ```sh
+//! # to build the `ockam` executable in the target/debug directory
+//! cargo build
+//!
+//! # to build the `ockam_desktop` executable in the target/debug directory and start it
+//! # the overridden tauri configuration renames the package.productName value from "Ockam" to
+//! # "OckamDesktop" so that we don't get any conflict with the command line executable name.
+//! # However when the application is published we keep "Ockam" as a name since this will be the
+//! # MacOS bundle name
+//! cd implementations/rust/ockam/ockam_app; cargo tauri dev -c tauri.conf.dev.json; cd -
+//!
+//! ```
+
 #[cfg(feature = "log")]
 use crate::app::configure_tauri_plugin_log;
 #[cfg(all(not(feature = "log"), feature = "tracing"))]
