@@ -164,32 +164,8 @@ impl AppState {
         }
     }
 
-    /// Return true if the user is enrolled
-    /// At the moment this check only verifies that there is a default project.
-    /// This project should be the project that is created at the end of the enrollment procedure
     pub async fn is_enrolled(&self) -> Result<bool> {
-        let identity_state = self.state().await.identities.get_or_default(None)?;
-
-        if !identity_state.is_enrolled() {
-            return Ok(false);
-        }
-
-        let default_space_exists = self.state().await.spaces.default().is_ok();
-        if !default_space_exists {
-            return Err(
-                "There should be a default space set for the current user. Please re-enroll".into(),
-            );
-        }
-
-        let default_project_exists = self.state().await.projects.default().is_ok();
-        if !default_project_exists {
-            return Err(
-                "There should be a default project set for the current user. Please re-enroll"
-                    .into(),
-            );
-        }
-
-        Ok(true)
+        self.state().await.is_enrolled().map_err(|e| e.into())
     }
 
     /// Return the list of currently running outlets
@@ -327,6 +303,7 @@ fn load_model_state(
                     context.clone(),
                     node_manager_worker,
                     &model_state,
+                    cli_state,
                 )
                 .await;
                 crate::shared_service::relay::load_model_state(
@@ -338,7 +315,7 @@ fn load_model_state(
                 model_state
             }
             Err(e) => {
-                println!("cannot load the model state: {e:?}");
+                error!(?e, "cannot load the model state");
                 panic!("{}", e)
             }
         }

@@ -25,6 +25,9 @@ pub async fn create_relay_impl(
     cli_state: &CliState,
     node_manager_worker: &NodeManagerWorker,
 ) -> Result<Option<ForwarderInfo>> {
+    if !cli_state.is_enrolled().unwrap_or(false) {
+        return Ok(None);
+    }
     match cli_state.projects.default() {
         Ok(project) => {
             debug!(project = %project.name(), "Creating relay at project");
