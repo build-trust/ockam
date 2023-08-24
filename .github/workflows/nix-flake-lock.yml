@@ -21,7 +21,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@65d7c888b2778e8cf30a07a88422ccb23499bfb8
       - name: Update flake.lock
         # https://github.com/DeterminateSystems/update-flake-lock/releases/tag/v19
-        uses: DeterminateSystems/update-flake-lock@dec3bc3c9b11c3b9d547f47dfb579b91a6051603
+        uses: DeterminateSystems/update-flake-lock@da2fd6f2563fe3e4f2af8be73b864088564e263d
         with:
           git-author-name: 'ockam[bot]'
           git-author-email: 'ockam[bot]@users.noreply.ockam.io'
