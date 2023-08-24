@@ -113,6 +113,9 @@ pub async fn list_outlets<R: Runtime>(app: AppHandle<R>) -> tauri::Result<Vec<Ou
 pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     info!("refreshing invitations");
     let state: State<'_, AppState> = app.state();
+    if !state.is_enrolled().await.unwrap_or(false) {
+        return Ok(());
+    }
     let node_manager_worker = state.node_manager_worker().await;
     let invitations = node_manager_worker
         .list_shares(

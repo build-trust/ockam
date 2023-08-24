@@ -74,6 +74,12 @@ pub enum CliStateError {
     InvalidVersion(String),
 }
 
+impl From<&str> for CliStateError {
+    fn from(e: &str) -> Self {
+        CliStateError::InvalidOperation(e.to_string())
+    }
+}
+
 impl From<CliStateError> for ockam_core::Error {
     fn from(e: CliStateError) -> Self {
         match e {
@@ -275,6 +281,33 @@ impl CliState {
             .with_identities_vault(self.vaults.default()?.identities_vault().await?)
             .with_identities_repository(self.identities.identities_repository().await?)
             .build())
+    }
+
+    /// Return true if the user is enrolled.
+    /// At the moment this check only verifies that there is a default project.
+    /// This project should be the project that is created at the end of the enrollment procedure
+    pub fn is_enrolled(&self) -> Result<bool> {
+        let identity_state = self.identities.get_or_default(None)?;
+        if !identity_state.is_enrolled() {
+            return Ok(false);
+        }
+
+        let default_space_exists = self.spaces.default().is_ok();
+        if !default_space_exists {
+            return Err(
+                "There should be a default space set for the current user. Please re-enroll".into(),
+            );
+        }
+
+        let default_project_exists = self.projects.default().is_ok();
+        if !default_project_exists {
+            return Err(
+                "There should be a default project set for the current user. Please re-enroll"
+                    .into(),
+            );
+        }
+
+        Ok(true)
     }
 }
 

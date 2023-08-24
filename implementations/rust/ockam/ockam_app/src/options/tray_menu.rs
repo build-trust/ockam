@@ -33,7 +33,7 @@ pub(crate) async fn build_options_section(
             let error_item = CustomMenuItem::new(
                 ERROR_MENU_ID,
                 "The application state is corrupted, please re-enroll, reset or quit the application",
-            );
+            ).disabled();
             #[cfg(target_os = "macos")]
             let error_item = error_item.native_image(NativeImage::Caution);
             tray_menu.add_item(error_item)
