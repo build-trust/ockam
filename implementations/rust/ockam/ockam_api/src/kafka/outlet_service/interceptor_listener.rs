@@ -2,13 +2,12 @@ use crate::kafka::outlet_controller::KafkaOutletController;
 use crate::kafka::portal_worker::KafkaPortalWorker;
 use crate::kafka::protocol_aware::OutletInterceptorImpl;
 use crate::kafka::{KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS};
-use ockam::identity::{SecureChannels, TRUST_CONTEXT_ID};
+use ockam::identity::{SecureChannels, TRUST_CONTEXT_ID_UTF8};
 use ockam::{Any, Context, Result, Routed, Worker};
 use ockam_abac::AbacAccessControl;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::Address;
 use ockam_node::WorkerBuilder;
-use std::str::from_utf8;
 use std::sync::Arc;
 
 /// This service handles the central component which is responsible for creating connections
@@ -50,7 +49,7 @@ impl OutletManagerService {
             outlet_controller: KafkaOutletController::new(),
             incoming_access_control: Arc::new(AbacAccessControl::create(
                 secure_channels.identities().repository(),
-                from_utf8(TRUST_CONTEXT_ID).unwrap(),
+                TRUST_CONTEXT_ID_UTF8,
                 trust_context_id,
             )),
             flow_control_id: flow_control_id.clone(),
