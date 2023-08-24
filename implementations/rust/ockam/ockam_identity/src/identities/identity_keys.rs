@@ -8,7 +8,7 @@ use super::super::IdentityError;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{KeyId, SecretAttributes, SigningVault, VerifyingVault};
+use ockam_vault::{KeyId, SecretAttributes, SecretType, SigningVault, VerifyingVault};
 
 use tracing::error;
 
@@ -104,6 +104,11 @@ impl IdentitiesKeys {
     ) -> Result<Change> {
         let secret_key = self.generate_key_if_needed(secret).await?;
         let public_key = self.signing_vault.get_public_key(&secret_key).await?;
+
+        if public_key.stype() != SecretType::Ed25519 {
+            // TODO: Not supported yet
+            return Err(IdentityError::IdentityVerificationFailed.into());
+        }
 
         let public_key = Ed25519PublicKey(public_key.data().try_into().unwrap()); // FIXME
 
