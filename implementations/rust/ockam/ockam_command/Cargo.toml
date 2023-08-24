@@ -120,7 +120,7 @@ assert_cmd = "2"
 ockam_api = { path = "../ockam_api", version = "0.33.0", features = ["std", "authenticators"] }
 ockam_macros = { path = "../ockam_macros", version = "^0.30.0" }
 proptest = "1.2.0"
-tempfile = "3.7.1"
+tempfile = "3.8.0"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
 
 [features]
