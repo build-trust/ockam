@@ -1,6 +1,6 @@
-use core::time::Duration;
-use minicbor::Decoder;
-use tracing::trace;
+use super::super::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
+use super::super::utils::AttributesBuilder;
+use super::super::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::boxed::Box;
@@ -11,13 +11,16 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{api, Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
-use super::super::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
-use super::super::utils::AttributesBuilder;
-use super::super::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
+use core::time::Duration;
+use minicbor::Decoder;
+use tracing::trace;
 
 /// Name of the attribute identifying the trust context for that attribute, meaning
 /// from which set of trusted authorities the attribute comes from
 pub const TRUST_CONTEXT_ID: &[u8] = b"trust_context_id";
+
+/// The same as above but in string format
+pub const TRUST_CONTEXT_ID_UTF8: &str = "trust_context_id";
 
 /// Identifier for the schema of a project credential
 pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);

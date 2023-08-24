@@ -9,7 +9,7 @@ use crate::DefaultAddress;
 use minicbor::Decoder;
 use ockam::identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID,
+    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID_UTF8,
 };
 use ockam_abac::AbacAccessControl;
 use ockam_core::api::{Request, Response, Status};
@@ -22,7 +22,6 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::compat::tokio::sync::MutexGuard;
 use ockam_node::Context;
-use std::str::from_utf8;
 
 pub(crate) struct KafkaEncryptedContent {
     /// The encrypted content
@@ -213,7 +212,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     ) -> KafkaSecureChannelControllerImpl<F> {
         let access_control = AbacAccessControl::create(
             secure_channels.identities().repository(),
-            from_utf8(TRUST_CONTEXT_ID).unwrap(),
+            TRUST_CONTEXT_ID_UTF8,
             &trust_context_id,
         );
 
