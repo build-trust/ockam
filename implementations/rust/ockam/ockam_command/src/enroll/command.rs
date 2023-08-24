@@ -76,6 +76,9 @@ async fn run_impl(
     let user_info = oidc_service
         .wait_for_email_verification(&token, &opts)
         .await?;
+    opts.state
+        .users_info
+        .overwrite(&user_info.email, user_info.clone())?;
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;
 

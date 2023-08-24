@@ -182,8 +182,8 @@ pub mod auth0 {
         pub access_token: Token,
     }
 
-    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-    #[cfg_attr(test, derive(PartialEq, Eq))]
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Eq, PartialEq)]
+    #[cfg_attr(test, derive(Default))]
     pub struct UserInfo {
         pub sub: String,
         pub nickname: String,

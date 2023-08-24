@@ -5,6 +5,7 @@ pub mod projects;
 pub mod spaces;
 pub mod traits;
 pub mod trust_contexts;
+pub mod user_info;
 pub mod vaults;
 
 pub use crate::cli_state::credentials::*;
@@ -14,6 +15,7 @@ pub use crate::cli_state::projects::*;
 pub use crate::cli_state::spaces::*;
 pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
+use crate::cli_state::user_info::UsersInfoState;
 pub use crate::cli_state::vaults::*;
 use crate::config::cli::LegacyCliConfig;
 use miette::Diagnostic;
@@ -96,6 +98,7 @@ pub struct CliState {
     pub projects: ProjectsState,
     pub credentials: CredentialsState,
     pub trust_contexts: TrustContextsState,
+    pub users_info: UsersInfoState,
     pub dir: PathBuf,
 }
 
@@ -123,6 +126,7 @@ impl CliState {
             projects: ProjectsState::init(dir).await?,
             credentials: CredentialsState::init(dir).await?,
             trust_contexts: TrustContextsState::init(dir).await?,
+            users_info: UsersInfoState::init(dir).await?,
             dir: dir.to_path_buf(),
         };
         state.migrate()?;
@@ -174,6 +178,7 @@ impl CliState {
             self.projects.dir(),
             self.credentials.dir(),
             self.trust_contexts.dir(),
+            self.users_info.dir(),
             &dir.join("defaults"),
         ] {
             if dir.exists() {
@@ -292,6 +297,7 @@ impl CliState {
             projects: ProjectsState::init(dir).await?,
             credentials: CredentialsState::init(dir).await?,
             trust_contexts: TrustContextsState::init(dir).await?,
+            users_info: UsersInfoState::init(dir).await?,
             dir: dir.to_path_buf(),
         };
         state.migrate()?;
@@ -309,6 +315,7 @@ impl CliState {
             projects: ProjectsState::load(dir)?,
             credentials: CredentialsState::load(dir)?,
             trust_contexts: TrustContextsState::load(dir)?,
+            users_info: UsersInfoState::load(dir)?,
             dir: dir.to_path_buf(),
         })
     }
@@ -344,6 +351,7 @@ fn file_stem(path: &Path) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cloud::enroll::auth0::UserInfo;
     use crate::config::cli::TrustContextConfig;
     use crate::config::lookup::{ConfigLookup, LookupValue, ProjectLookup, SpaceLookup};
     use ockam_identity::IdentitiesVault;
@@ -546,7 +554,7 @@ mod tests {
             name
         };
 
-        // Trust
+        // Trust Contexts
         let trust_context_name = {
             let name = hex::encode(random::<[u8; 4]>());
             let config = TrustContextConfig::new(name.to_string(), None);
@@ -556,6 +564,21 @@ mod tests {
             assert_eq!(got, state);
 
             name
+        };
+
+        // Users Info
+        let user_info_email = {
+            let email = hex::encode(random::<[u8; 4]>());
+            let config = UserInfo {
+                email: email.clone(),
+                ..Default::default()
+            };
+
+            let state = sut.users_info.create(&email, config).unwrap();
+            let got = sut.users_info.get(&email).unwrap();
+            assert_eq!(got, state);
+
+            email
         };
 
         // Check structure
@@ -575,6 +598,8 @@ mod tests {
             format!("projects/{project_name}.json"),
             "trust_contexts".to_string(),
             format!("trust_contexts/{trust_context_name}.json"),
+            "users_info".to_string(),
+            format!("users_info/{user_info_email}.json"),
             "credentials".to_string(),
             "defaults".to_string(),
             "defaults/vault".to_string(),
@@ -583,6 +608,7 @@ mod tests {
             "defaults/space".to_string(),
             "defaults/project".to_string(),
             "defaults/trust_context".to_string(),
+            "defaults/user_info".to_string(),
         ];
         expected_entries.sort();
         let mut found_entries = vec![];
@@ -647,7 +673,8 @@ mod tests {
                         found_entries.push(format!("{dir_name}/{file_name}"));
                     });
                 }
-                "defaults" | "spaces" | "projects" | "credentials" | "trust_contexts" => {
+                "defaults" | "spaces" | "projects" | "credentials" | "trust_contexts"
+                | "users_info" => {
                     assert!(entry.path().is_dir());
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
