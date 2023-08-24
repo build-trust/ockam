@@ -15,7 +15,7 @@ use tauri::{AppHandle, Manager, Runtime, State};
 
 pub(crate) async fn build_args_for_create_service_invitation<R: Runtime>(
     app_handle: &AppHandle<R>,
-    outlet_tcp_addr: &str,
+    outlet_worker_addr: &str,
     recipient_email: &str,
     enrollment_ticket: EnrollmentTicket,
 ) -> crate::Result<CreateServiceInvitation> {
@@ -25,7 +25,7 @@ pub(crate) async fn build_args_for_create_service_invitation<R: Runtime>(
         .model(|m| {
             m.tcp_outlets
                 .iter()
-                .find(|o| o.tcp_addr == outlet_tcp_addr)
+                .find(|o| o.worker_addr == outlet_worker_addr)
                 .map(|o| o.worker_address())
         })
         .await

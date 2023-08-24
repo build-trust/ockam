@@ -44,7 +44,7 @@ fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
         // NOTE: Event handler for dynamic ID is defined in crate::invitations::tray_menu module,
         // and reached via crate::app::tray_menu::fallback_for_id
         submenu = submenu.add_item(CustomMenuItem::new(
-            format!("invitation-create-for-{}", outlet.tcp_addr),
+            format!("invitation-create-for-{}", outlet.worker_addr),
             "Share".to_string(),
         ));
     }
