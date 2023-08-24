@@ -1,6 +1,4 @@
 use tauri::{AppHandle, Manager, Runtime, State};
-use time::format_description::well_known::iso8601::Iso8601;
-use time::OffsetDateTime;
 use tracing::{debug, error, info, warn};
 
 use ockam_api::cli_state::{CliState, StateDirTrait};
@@ -234,13 +232,6 @@ impl InletDataFromInvitation {
         cli_state: &CliState,
         invitation: &InvitationWithAccess,
     ) -> crate::Result<Option<Self>> {
-        let expires_at =
-            OffsetDateTime::parse(&invitation.invitation.expires_at, &Iso8601::DEFAULT).unwrap();
-        if expires_at < OffsetDateTime::now_utc() {
-            let invitation = &invitation.invitation;
-            warn!(invitation = %invitation.id, at = %invitation.expires_at, "Invitation has expired");
-            return Ok(None);
-        }
         match &invitation.service_access_details {
             Some(d) => {
                 let service_name = extract_address_value(&d.shared_node_route)?;
