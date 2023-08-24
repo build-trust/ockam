@@ -177,7 +177,11 @@ impl Display for Identity {
 mod tests {
     use super::super::super::identities;
     use super::*;
+    use crate::Identities;
     use core::str::FromStr;
+    use ockam_core::compat::rand::RngCore;
+    use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault, Vault};
+    use rand::thread_rng;
 
     #[tokio::test]
     async fn test_display() {
@@ -200,41 +204,101 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
 
     #[tokio::test]
     async fn test_compare() -> Result<()> {
-        let identities = identities();
-        let identity1 = identities.identities_creation().create_identity().await?;
+        let signing_vault0 = SoftwareSigningVault::create();
+        let signing_vault01 = SoftwareSigningVault::create();
+        let signing_vault02 = SoftwareSigningVault::create();
 
-        let identity2 = identities
-            .identities_keys()
-            .rotate_key(identity1.clone())
+        let mut key0_bin = [0u8; 32];
+        thread_rng().fill_bytes(&mut key0_bin);
+
+        let key0 = signing_vault0
+            .import_key(Secret::new(key0_bin.to_vec()), SecretAttributes::Ed25519)
+            .await?;
+        let key01 = signing_vault01
+            .import_key(Secret::new(key0_bin.to_vec()), SecretAttributes::Ed25519)
+            .await?;
+        let key02 = signing_vault02
+            .import_key(Secret::new(key0_bin.to_vec()), SecretAttributes::Ed25519)
             .await?;
 
-        let identity3 = identities
+        let identities0 = Identities::builder()
+            .with_vault(Vault::new(
+                signing_vault0,
+                Vault::create_verifying_vault(),
+                Vault::create_secure_channel_vault(),
+            ))
+            .build();
+
+        let identity0 = identities0
+            .identities_creation()
+            .create_identity_with_existing_key(&key0)
+            .await?;
+        let identity0_bin = identity0.export()?;
+
+        let identities01 = Identities::builder()
+            .with_vault(Vault::new(
+                signing_vault01,
+                Vault::create_verifying_vault(),
+                Vault::create_secure_channel_vault(),
+            ))
+            .build();
+        let identities02 = Identities::builder()
+            .with_vault(Vault::new(
+                signing_vault02,
+                Vault::create_verifying_vault(),
+                Vault::create_secure_channel_vault(),
+            ))
+            .build();
+
+        let identity01 = identities01
+            .identities_creation()
+            .import_private_identity(&identity0_bin, &key01)
+            .await?;
+        let identity02 = identities02
+            .identities_creation()
+            .import_private_identity(&identity0_bin, &key02)
+            .await?;
+
+        let identity01 = identities01
             .identities_keys()
-            .rotate_key(identity1.clone())
+            .rotate_key(identity01.clone())
+            .await?;
+
+        let identity02 = identities02
+            .identities_keys()
+            .rotate_key(identity02.clone())
             .await?;
 
         assert_eq!(
-            identity1.compare(&identity1),
+            identity0.compare(&identity0),
             IdentityHistoryComparison::Equal
         );
         assert_eq!(
-            identity2.compare(&identity2),
+            identity01.compare(&identity01),
             IdentityHistoryComparison::Equal
         );
         assert_eq!(
-            identity3.compare(&identity3),
+            identity02.compare(&identity02),
             IdentityHistoryComparison::Equal
         );
         assert_eq!(
-            identity1.compare(&identity2),
+            identity0.compare(&identity01),
             IdentityHistoryComparison::Older
         );
         assert_eq!(
-            identity2.compare(&identity1),
+            identity0.compare(&identity02),
+            IdentityHistoryComparison::Older
+        );
+        assert_eq!(
+            identity01.compare(&identity0),
             IdentityHistoryComparison::Newer
         );
         assert_eq!(
-            identity2.compare(&identity3),
+            identity02.compare(&identity0),
+            IdentityHistoryComparison::Newer
+        );
+        assert_eq!(
+            identity01.compare(&identity02),
             IdentityHistoryComparison::Conflict
         );
 
