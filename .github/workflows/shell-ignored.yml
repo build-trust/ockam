@@ -5,10 +5,10 @@ permissions:
 
 on:
   pull_request:
-    paths-ignore:
-      - ".github/workflows/shell.yml"
-      - "**.sh"
-      - "**.bash"
+    paths:
+      - "!.github/workflows/shell.yml"
+      - "!**.sh"
+      - "!**.bash"
 
 jobs:
   lint_shellcheck:

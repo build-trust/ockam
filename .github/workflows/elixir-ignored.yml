@@ -5,21 +5,21 @@ permissions:
 
 on:
   pull_request:
-    paths-ignore:
-      - ".github/workflows/elixir.yml"
-      - ".github/actions/**"
-      - "**.ex"
-      - "**.exs"
-      - "**/mix.lock"
-      - "**/priv/**"
-      - "**/native/**"
-      - "**.rs"
-      - "**.toml"
-      - "**/Cargo.lock"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+    paths:
+      - "!.github/workflows/elixir.yml"
+      - "!.github/actions/**"
+      - "!**.ex"
+      - "!**.exs"
+      - "!**/mix.lock"
+      - "!**/priv/**"
+      - "!**/native/**"
+      - "!**.rs"
+      - "!**.toml"
+      - "!**/Cargo.lock"
+      - "!**.gradle"
+      - "!tools/gradle/**"
+      - "!gradlew"
+      - "!gradlew.bat"
 
 jobs:
   lint:

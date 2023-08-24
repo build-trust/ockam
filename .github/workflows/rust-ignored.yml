@@ -5,17 +5,17 @@ permissions:
 
 on:
   pull_request:
-    paths-ignore:
-      - ".github/workflows/rust.yml"
-      - ".github/actions/**"
-      - "**.rs"
-      - "**.toml"
-      - "**/Cargo.lock"
-      - "implementations/rust/ockam/ockam_command/tests/**"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+    paths:
+      - "!.github/workflows/rust.yml"
+      - "!.github/actions/**"
+      - "!**.rs"
+      - "!**.toml"
+      - "!**/Cargo.lock"
+      - "!implementations/rust/ockam/ockam_command/tests/**"
+      - "!**.gradle"
+      - "!tools/gradle/**"
+      - "!gradlew"
+      - "!gradlew.bat"
 
 jobs:
   lint-cargo-toml:
