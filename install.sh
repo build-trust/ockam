@@ -40,6 +40,7 @@ info() {
   local _ansi_escapes_are_valid="$return_value"
 
   local _green='\033[0;32m'
+
   local _no_color='\033[0m'
 
   if $_ansi_escapes_are_valid; then
