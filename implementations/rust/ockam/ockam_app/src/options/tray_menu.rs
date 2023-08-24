@@ -1,6 +1,8 @@
 #[cfg(all(debug_assertions, feature = "invitations"))]
 use tauri::Manager;
-use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, SystemTraySubmenu, Wry};
+#[cfg(debug_assertions)]
+use tauri::SystemTraySubmenu;
+use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
 #[cfg(target_os = "macos")]
 use tauri_runtime::menu::NativeImage;
 use tracing::log::error;
@@ -41,6 +43,7 @@ pub(crate) async fn build_options_section(
     }
 }
 
+#[cfg(debug_assertions)]
 fn build_developer_submenu(app_state: &AppState, tray_menu: SystemTrayMenu) -> SystemTrayMenu {
     let submenu = SystemTrayMenu::new()
         .add_item(CustomMenuItem::new(REFRESH_MENU_ID, "Refresh Data"))
