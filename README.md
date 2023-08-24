@@ -11,6 +11,7 @@ confidentiality. To be private and secure by-design, applications must have
 granular control over every trust and access decision. Ockam allows you to add
 these controls and guarantees to any application.
 
+
 ## Quick Start
 
 Let's build a solution for a very common secure communication topology that
