@@ -223,7 +223,7 @@ pub(crate) fn dispatch_click_event(app: &AppHandle<Wry>, id: &str) -> tauri::Res
         .collect::<Vec<&str>>();
     match segments.as_slice() {
         ["accepted", "connect", id] => on_connect(app, id),
-        ["create", "for", outlet_tcp_addr] => on_create(app, outlet_tcp_addr),
+        ["create", "for", outlet_worker_addr] => on_create(app, outlet_worker_addr),
         ["received", "accept", id] => on_accept(app, id),
         ["received", "decline", id] => on_decline(app, id),
         ["sent", "cancel", id] => on_cancel(app, id),
@@ -251,13 +251,13 @@ fn on_cancel(_app: &AppHandle<Wry>, invite_id: &str) -> tauri::Result<()> {
     todo!()
 }
 
-fn on_create(app: &AppHandle<Wry>, outlet_tcp_addr: &str) -> tauri::Result<()> {
-    debug!(?outlet_tcp_addr, "creating invite via menu");
+fn on_create(app: &AppHandle<Wry>, outlet_worker_addr: &str) -> tauri::Result<()> {
+    debug!(?outlet_worker_addr, "creating invite via menu");
 
     match app.get_window(INVITATIONS_WINDOW_ID) {
         None => {
             let url_path = percent_encode(
-                format!("invite/{outlet_tcp_addr}").as_bytes(),
+                format!("invite/{outlet_worker_addr}").as_bytes(),
                 &PATH_ENCODING_SET,
             )
             .to_string();
