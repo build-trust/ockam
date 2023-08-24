@@ -19,7 +19,6 @@ in {
       suggestedCargoPlugins = mkEnableOption "extra cargo plugins";
       version = mkOption {
         type = types.nullOr (types.strMatching "^([0-9]+)\.([0-9]+)(\.([0-9]+))$");
-        default = "1.69.0";
       };
     };
   };
@@ -39,13 +38,16 @@ in {
           lld
         ];
 
-        nightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
+        nightlyToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
+          targets = [ "thumbv7em-none-eabihf" ];
+        });
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ../../../rust-toolchain.toml;
 
         nativeLibs = with pkgs;
           [(lib.getDev openssl)]
           ++ lib.optionals stdenv.isLinux [
             dbus
+            webkitgtk_4_1
             (lib.getDev systemd)
           ]
           ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
@@ -66,6 +68,7 @@ in {
             cargo-modules
             cargo-nextest
             cargo-readme
+            dprint
           ]
           ++ lib.optionals cfg.suggestedCargoPlugins [
             bacon
@@ -88,7 +91,8 @@ in {
         envVars = {
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = lib.getExe pkgs.clang;
           OCKAM_DISABLE_UPGRADE_CHECK = lib.optional cfg.disableUpgradeCheck true;
-          RUSTFLAGS = "";
+          RUSTFLAGS = "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings";
+          CARGO_INCREMENTAL = 0;
         };
       in {
         rust = pkgs.mkShell {

@@ -14,7 +14,7 @@
   outputs = inputs @ {flake-parts, ...}:
     flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [inputs.beam-flakes.flakeModule ./parts/all.nix];
-      systems = ["aarch64-darwin" "x86_64-darwin" "x86_64-linux"];
+      systems = ["aarch64-darwin" "aarch64-linux" "x86_64-darwin" "x86_64-linux"];
 
       # see /tools/docker/builder/Dockerfile
       # 24.1.7 stipulated by Dockerfile does not build successfully with current nixpkgs input
