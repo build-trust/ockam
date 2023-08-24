@@ -96,7 +96,6 @@ impl IdentitiesCreation {
 
     /// Create an `Identity` with a key previously created in the Vault and store it
     pub async fn create_identity_with_existing_key(&self, key_id: &KeyId) -> Result<Identity> {
-        // TODO: Consider creating PurposeKeys by default
         self.make_and_persist_identity(Some(key_id)).await
     }
 
