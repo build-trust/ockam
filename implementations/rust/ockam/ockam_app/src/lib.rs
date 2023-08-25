@@ -28,11 +28,9 @@ mod app;
 mod cli;
 mod enroll;
 mod error;
-#[cfg(feature = "invitations")]
 mod invitations;
 mod options;
 mod platform;
-#[cfg(feature = "invitations")]
 mod projects;
 mod shared_service;
 
@@ -48,7 +46,6 @@ pub fn run() {
     }
 
     // For now, the application only consists of a system tray with several menu items
-    #[cfg_attr(not(feature = "invitations"), allow(unused_mut))]
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_window::init())
         .plugin(tauri_plugin_positioner::init())
@@ -61,12 +58,8 @@ pub fn run() {
     {
         builder = builder.plugin(configure_tauri_plugin_log());
     }
-
-    #[cfg(feature = "invitations")]
-    {
-        builder = builder.plugin(projects::plugin::init());
-        builder = builder.plugin(invitations::plugin::init());
-    }
+    builder = builder.plugin(projects::plugin::init());
+    builder = builder.plugin(invitations::plugin::init());
 
     let mut app = builder
         .build(tauri::generate_context!())
