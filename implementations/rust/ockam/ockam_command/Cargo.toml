@@ -59,7 +59,7 @@ async-trait = "0.1"
 base64-url = "2.0.0"
 clap = { version = "4.3.24", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.4.0"
-clap_mangen = "0.2.12"
+clap_mangen = "0.2.13"
 cli-table = "0.4"
 colorful = "0.2"
 colors-transform = "0.2.11"
