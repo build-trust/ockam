@@ -1,4 +1,3 @@
-#[cfg(all(debug_assertions, feature = "invitations"))]
 use tauri::Manager;
 #[cfg(debug_assertions)]
 use tauri::SystemTraySubmenu;
@@ -64,14 +63,9 @@ fn build_developer_submenu(app_state: &AppState, tray_menu: SystemTrayMenu) -> S
 }
 
 #[cfg(debug_assertions)]
-pub fn on_refresh(
-    #[cfg_attr(not(feature = "invitations"), allow(unused_variables))] app: &AppHandle<Wry>,
-) -> tauri::Result<()> {
-    #[cfg(feature = "invitations")]
-    {
-        app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
-        app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
-    }
+pub fn on_refresh(app: &AppHandle<Wry>) -> tauri::Result<()> {
+    app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
+    app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
     system_tray_on_update(app);
     Ok(())
 }

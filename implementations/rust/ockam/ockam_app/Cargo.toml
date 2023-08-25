@@ -63,8 +63,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"], optional =
 # If you use cargo directly instead of tauri's cli you can use this feature flag to switch between tauri's `dev` and `build` modes.
 # DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
-default = ["invitations", "tracing"]
-invitations = []
+default = ["tracing"]
 log = ["dep:log", "dep:tauri-plugin-log", "log/release_max_level_info", "tracing/log"]
-release = ["invitations", "log"]
+release = ["log"]
 tracing = ["dep:tracing-subscriber", "tracing/log", "tracing/release_max_level_info"]

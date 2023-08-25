@@ -4,7 +4,6 @@ use tracing::error;
 use crate::app::events::SystemTrayOnUpdatePayload;
 use crate::app::AppState;
 use crate::enroll::{build_enroll_section, build_user_info_section};
-#[cfg(feature = "invitations")]
 use crate::invitations::{self, build_invitations_section};
 use crate::options::build_options_section;
 use crate::shared_service::build_shared_services_section;
@@ -19,10 +18,7 @@ pub async fn build_tray_menu(
     tray_menu = build_user_info_section(&app_state, tray_menu).await;
     tray_menu = build_enroll_section(&app_state, tray_menu, &payload).await;
     tray_menu = build_shared_services_section(&app_state, tray_menu).await;
-    #[cfg(feature = "invitations")]
-    {
-        tray_menu = build_invitations_section(app_handle, tray_menu).await;
-    }
+    tray_menu = build_invitations_section(app_handle, tray_menu).await;
     tray_menu = tray_menu.add_native_item(SystemTrayMenuItem::Separator);
     tray_menu = build_options_section(&app_state, tray_menu).await;
     tray_menu
@@ -46,16 +42,10 @@ pub fn process_system_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
     }
 }
 
-#[cfg(feature = "invitations")]
 fn fallback_for_id(app: &AppHandle<Wry>, s: &str) -> tauri::Result<()> {
     if s.starts_with("invitation-") {
         invitations::dispatch_click_event(app, s)
     } else {
         Ok(())
     }
-}
-
-#[cfg(not(feature = "invitations"))]
-fn fallback_for_id(_app: &AppHandle<Wry>, _s: &str) -> tauri::Result<()> {
-    Ok(())
 }

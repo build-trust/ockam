@@ -36,18 +36,13 @@ pub(crate) async fn build_shared_services_section(
 fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
     let worker_address = outlet.worker_address().unwrap();
 
-    #[cfg_attr(not(feature = "invitations"), allow(unused_mut))]
     let mut submenu = SystemTrayMenu::new();
-
-    #[cfg(feature = "invitations")]
-    {
-        // NOTE: Event handler for dynamic ID is defined in crate::invitations::tray_menu module,
-        // and reached via crate::app::tray_menu::fallback_for_id
-        submenu = submenu.add_item(CustomMenuItem::new(
-            format!("invitation-create-for-{}", outlet.worker_addr),
-            "Share".to_string(),
-        ));
-    }
+    // NOTE: Event handler for dynamic ID is defined in crate::invitations::tray_menu module,
+    // and reached via crate::app::tray_menu::fallback_for_id
+    submenu = submenu.add_item(CustomMenuItem::new(
+        format!("invitation-create-for-{}", outlet.worker_addr),
+        "Share".to_string(),
+    ));
 
     submenu = submenu
         .add_item(
