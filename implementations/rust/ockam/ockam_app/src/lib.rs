@@ -52,6 +52,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_window::init())
         .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(move |app| setup_app(app))
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![tcp_outlet_create]);
