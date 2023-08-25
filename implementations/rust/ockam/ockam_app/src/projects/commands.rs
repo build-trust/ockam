@@ -14,7 +14,7 @@ use crate::cli::cli_bin;
 type SyncState = Arc<RwLock<ProjectState>>;
 
 // Matches backend default of 14 days
-const DEFAULT_ENROLLMENT_TICKET_TTL: usize = 60 * 60 * 24 * 14;
+const DEFAULT_ENROLLMENT_TICKET_EXPIRY: &str = "14d";
 
 // At time of writing, tauri::command requires pub not pub(crate)
 
@@ -40,9 +40,8 @@ pub async fn create_enrollment_ticket<R: Runtime>(
         "--quiet",
         "--project",
         project.name.clone(),
-        // TODO: rename to expires-in after https://github.com/build-trust/ockam/pull/5677
-        "--ticket-ttl",
-        DEFAULT_ENROLLMENT_TICKET_TTL.to_string(),
+        "--expires-in",
+        DEFAULT_ENROLLMENT_TICKET_EXPIRY.to_string(),
         "--to",
         &format!("/project/{}", project.name)
     )
