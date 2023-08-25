@@ -1,33 +1,32 @@
 build_docs:
-	cargo doc --no-deps
+	cargo doc --locked --no-deps
 build_examples:
 	cargo --locked build --examples
 build_packages:
-	cargo build
+	cargo build --locked
 build_release:
 	cargo --locked build --release
 build_release_%:
 	cargo --locked build --release --package $*
 build_%:
-	cargo build --package $*
+	cargo build --locked --package $*
 
 check_no_std:
-	cd implementations/rust/ockam/ockam
-	cargo check --target thumbv7em-none-eabihf --no-default-features --features 'no_std alloc software_vault'
+	cargo --version
+	cargo check --locked --target thumbv7em-none-eabihf -p ockam --no-default-features --features 'no_std alloc software_vault'
 	# no_std example project
-	cd ../../../../examples/rust/example_projects/no_std
+	cd examples/rust/example_projects/no_std
 	cargo check --example hello
 	# RUSTFLAGS='-Dwarnings' cargo check --example hello --no-default-features --features 'alloc no_std'
 	# RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="qemu"
 	# RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="atsame54"
 	# RUSTFLAGS='-Dwarnings' cargo +nightly check --example hello --target thumbv7em-none-eabihf --no-default-features --features="stm32f4"
 check_tag:
-	cargo check --features tag
+	cargo check --locked --features tag
 check_cargo_update:
-	cd examples/rust/get_started
 	rm -rf Cargo.lock
 	cargo update
-	RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
+	cargo check --locked
 
 test:
 	@if [ "$(CI)" = "true" ]; then \
@@ -90,7 +89,7 @@ very_clean:
 format:
 	cargo fmt --all
 
-.PHONY: \
+.PHONY:
 	build_docs build_examples build_packages build_release build_release_% build_% \
 	test test_% test_nextest \
 	check_no_std check_tag check_cargo_update \
