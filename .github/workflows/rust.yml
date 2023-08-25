@@ -78,6 +78,8 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/nix_installer
 
+      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+
       - name: Run lint ${{ matrix.lint_projects }}
         run:  make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
 
@@ -104,6 +106,8 @@ jobs:
 
       - name: Install Nix
         uses: ./.github/actions/nix_installer
+
+      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
 
       - name: Run build ${{ matrix.build_projects }}
         run:  make -f implementations/rust/Makefile build${{ matrix.build_projects == 'nightly' && '_packages' || format('_{0}', matrix.build_projects) }}
@@ -133,6 +137,8 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/nix_installer
 
+      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+
       - name: Run test on ${{ matrix.test_projects }}
         run:  make -f implementations/rust/Makefile test
 
@@ -146,10 +152,10 @@ jobs:
           - cargo_update
           - no_std
           - tag
-    
+
     defaults:
       run:
-        shell: nix develop ./tools/nix#rust${{matrix.check_projects == 'no_std' && '_nightly' || '' }} --ignore-environment --command bash {0}
+        shell: nix develop ./tools/nix#rust --ignore-environment --command bash {0}
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
@@ -159,6 +165,7 @@ jobs:
         uses: ./.github/actions/nix_installer
 
       - run: cargo --version
+      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
 
       - name: Run check on ${{ matrix.check_projects }}
         run:  make -f implementations/rust/Makefile check_${{ matrix.check_projects }}
