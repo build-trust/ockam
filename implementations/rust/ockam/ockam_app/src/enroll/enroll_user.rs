@@ -1,9 +1,9 @@
 use miette::{miette, IntoDiagnostic, WrapErr};
 
 use tauri::{AppHandle, Manager, State, Wry};
-use tracing::{error, info};
+use tauri_plugin_notification::NotificationExt;
+use tracing::{debug, error, info};
 
-use ockam::identity::IdentityIdentifier;
 use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::SpaceConfig;
@@ -27,8 +27,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     let app_state: State<AppState> = app.state::<AppState>();
     enroll_with_token(app, &app_state)
         .await
-        .map(|i| info!("Enrolled a new user with identifier {}", i))
-        .unwrap_or_else(|e| error!("{:?}", e));
+        .unwrap_or_else(|e| error!(?e, "Failed to enroll user"));
     system_tray_on_update(app);
     #[cfg(feature = "invitations")]
     {
@@ -43,11 +42,19 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     Ok(())
 }
 
-async fn enroll_with_token(
-    app: &AppHandle<Wry>,
-    app_state: &AppState,
-) -> Result<IdentityIdentifier> {
+async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result<()> {
+    if app_state.is_enrolled().await.unwrap_or_default() {
+        debug!("User is already enrolled");
+        return Ok(());
+    }
+    app.notification()
+        .builder()
+        .title("Enrolling...")
+        .body("Please wait")
+        .show()
+        .unwrap_or_else(|e| error!(?e, "Failed to create push notification"));
     system_tray_on_update_with_enroll_status(app, "Waiting for token...")?;
+
     // get an OIDC token
     let oidc_service = OidcService::default();
     let token = oidc_service.get_token_with_pkce().await?;
@@ -75,11 +82,18 @@ async fn enroll_with_token(
     system_tray_on_update_with_enroll_status(app, "Retrieving space...")?;
     let space = retrieve_space(app_state).await?;
     system_tray_on_update_with_enroll_status(app, "Retrieving project...")?;
-    let _ = retrieve_project(app_state, &space).await?;
+    let _ = retrieve_project(app, app_state, &space).await?;
     let identifier = update_enrolled_identity(&app_state.options().await, NODE_NAME)
         .await
         .into_diagnostic()?;
-    Ok(identifier)
+    info!(%identifier, "User enrolled successfully");
+    app.notification()
+        .builder()
+        .title("Enrolled successfully!")
+        .body("You can now use the Ockam app")
+        .show()
+        .unwrap_or_else(|e| error!(?e, "Failed to create push notification"));
+    Ok(())
 }
 
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
@@ -125,7 +139,11 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     Ok(space)
 }
 
-async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project> {
+async fn retrieve_project(
+    app: &AppHandle<Wry>,
+    app_state: &AppState,
+    space: &Space,
+) -> Result<Project> {
     info!("retrieving the user project");
     let node_manager_worker = app_state.node_manager_worker().await;
     let node_manager = node_manager_worker.inner().read().await;
@@ -148,6 +166,12 @@ async fn retrieve_project(app_state: &AppState, space: &Space) -> Result<Project
     {
         Some(project) => project.clone(),
         None => {
+            app.notification()
+                .builder()
+                .title("Creating a new project...")
+                .body("This might take a few seconds")
+                .show()
+                .unwrap_or_else(|e| error!(?e, "Failed to create push notification"));
             let ctx = &app_state.context();
             let route = &CloudOpts::route();
             let project = node_manager

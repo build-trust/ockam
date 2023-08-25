@@ -7,6 +7,7 @@ use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
 use tauri_runtime::menu::NativeImage;
 use tracing::log::error;
 
+use crate::app::events::system_tray_on_update;
 use crate::app::AppState;
 use crate::options::reset;
 
@@ -71,6 +72,7 @@ pub fn on_refresh(
         app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
         app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
     }
+    system_tray_on_update(app);
     Ok(())
 }
 
