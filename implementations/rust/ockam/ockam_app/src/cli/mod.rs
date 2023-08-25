@@ -14,6 +14,7 @@ pub(crate) fn cli_bin() -> Result<String> {
 /// Check that the ockam command can at least be called with the `--version` option and log
 /// its version
 pub(crate) fn check_ockam_executable() -> Result<()> {
+    // Get the ockam executable path and check that it is an absolute path
     let ockam_path = cli_bin()?;
     if ockam_path != *"ockam" && !ockam_path.starts_with('/') {
         let message = format!("The OCKAM environment variable must be defined with an absolute path. The current value is: {ockam_path}");
@@ -21,6 +22,27 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
         return Err(Generic(message));
     };
 
+    // Check that the executable can be found on the path
+    match duct::cmd!("which", ockam_path.clone())
+        .stdout_capture()
+        .run()
+    {
+        Err(e) => {
+            let message = format!("The ockam path could not be found: {e}");
+            error!(message);
+            return Err(Generic(message));
+        }
+        Ok(v) => info!(
+            "The ockam command was found at {:?}",
+            std::str::from_utf8(&v.stdout)
+                .unwrap_or("can't decode the ockam path")
+                .split('\n')
+                .collect::<Vec<&str>>()
+                .join(" ")
+        ),
+    };
+
+    // Get the command line version
     match duct::cmd!(ockam_path, "--version").stdout_capture().run() {
         Err(e) => {
             let message = format!("The ockam command could not be executed correctly: {e}. Please execute $OCKAM --version or ockam --version");
