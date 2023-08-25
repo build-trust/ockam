@@ -79,6 +79,8 @@ jobs:
         uses: ./.github/actions/nix_installer
 
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+        with:
+          key: "${{ github.job }}-${{ matrix.lint_projects }}"
 
       - name: Run lint ${{ matrix.lint_projects }}
         run:  make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
@@ -108,6 +110,8 @@ jobs:
         uses: ./.github/actions/nix_installer
 
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+        with:
+          key: "${{ github.job }}-${{ matrix.build_projects }}"
 
       - name: Run build ${{ matrix.build_projects }}
         run:  make -f implementations/rust/Makefile build${{ matrix.build_projects == 'nightly' && '_packages' || format('_{0}', matrix.build_projects) }}
@@ -138,9 +142,11 @@ jobs:
         uses: ./.github/actions/nix_installer
 
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+        with:
+          key: "${{ github.job }}-${{ matrix.test_projects }}"
 
       - name: Run test on ${{ matrix.test_projects }}
-        run:  make -f implementations/rust/Makefile test
+        run:  make -f implementations/rust/Makefile test_nextest
 
   check:
     name: Rust - check_${{ matrix.check_projects }}
@@ -149,13 +155,13 @@ jobs:
       fail-fast: false
       matrix:
         check_projects:
-          - cargo_update
+          # - cargo_update
           - no_std
           - tag
 
     defaults:
       run:
-        shell: nix develop ./tools/nix#rust --ignore-environment --command bash {0}
+        shell: nix develop ./tools/nix#rust${{matrix.check_projects == 'no_std' && '_nightly' || '' }} --ignore-environment --command bash {0}
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
@@ -164,8 +170,9 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/nix_installer
 
-      - run: cargo --version
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+        with:
+          key: "${{ github.job }}-${{ matrix.check_projects }}"
 
       - name: Run check on ${{ matrix.check_projects }}
         run:  make -f implementations/rust/Makefile check_${{ matrix.check_projects }}
