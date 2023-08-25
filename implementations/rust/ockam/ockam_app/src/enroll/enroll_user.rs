@@ -47,6 +47,14 @@ async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result
         debug!("User is already enrolled");
         return Ok(());
     }
+    app.notification()
+        .builder()
+        .icon("icon.png")
+        .title("Enrolling!")
+        .body("Please wait")
+        .show()
+        .unwrap_or_else(|e| error!(?e, "Failed to create push notification"));
+
     system_tray_on_update_with_enroll_status(app, "Waiting for token...")?;
     // get an OIDC token
     let oidc_service = OidcService::default();
