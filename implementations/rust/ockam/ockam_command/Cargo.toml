@@ -102,7 +102,7 @@ serde_yaml = "0.9"
 strip-ansi-escapes = "0.2.0"
 syntect = "5"
 termcolor = "1.2.0"
-termimad = "0.24"
+termimad = "0.25"
 thiserror = "1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
 tiny_http = "0.12.0"
