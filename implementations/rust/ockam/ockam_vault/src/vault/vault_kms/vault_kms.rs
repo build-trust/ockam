@@ -147,8 +147,9 @@ impl VaultSecurityModule {
                     return Err(VaultError::InvalidSecretLength(
                         SecretType::X25519,
                         stored_secret.secret().length(),
-                        CURVE25519_SECRET_LENGTH_U32)
-                        .into());
+                        CURVE25519_SECRET_LENGTH_U32,
+                    )
+                    .into());
                 };
                 let secret = *array_ref![
                     stored_secret.secret().as_ref(),
@@ -165,8 +166,9 @@ impl VaultSecurityModule {
                     return Err(VaultError::InvalidSecretLength(
                         SecretType::Ed25519,
                         stored_secret.secret().length(),
-                        SECRET_KEY_LENGTH as u32)
-                        .into());
+                        SECRET_KEY_LENGTH as u32,
+                    )
+                    .into());
                 };
                 let secret = array_ref![stored_secret.secret().as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = ed25519_dalek::SigningKey::from_bytes(secret);
@@ -190,8 +192,9 @@ impl VaultSecurityModule {
                     return Err(VaultError::InvalidSecretLength(
                         SecretType::Ed25519,
                         stored_secret.secret().length(),
-                        SECRET_KEY_LENGTH as u32)
-                        .into());
+                        SECRET_KEY_LENGTH as u32,
+                    )
+                    .into());
                 }
                 let secret = array_ref![stored_secret.secret().as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = SigningKey::from_bytes(secret);
@@ -223,8 +226,9 @@ impl VaultSecurityModule {
                     return Err(VaultError::InvalidSecretLength(
                         SecretType::X25519,
                         secret.length(),
-                        CURVE25519_SECRET_LENGTH_U32)
-                        .into());
+                        CURVE25519_SECRET_LENGTH_U32,
+                    )
+                    .into());
                 };
                 let secret = *array_ref![secret.as_ref(), 0, CURVE25519_SECRET_LENGTH_U32 as usize];
                 let sk = x25519_dalek::StaticSecret::from(secret);
@@ -241,8 +245,9 @@ impl VaultSecurityModule {
                     return Err(VaultError::InvalidSecretLength(
                         SecretType::Ed25519,
                         secret.length(),
-                        SECRET_KEY_LENGTH as u32)
-                        .into());
+                        SECRET_KEY_LENGTH as u32,
+                    )
+                    .into());
                 }
                 let secret = array_ref![secret.as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = SigningKey::from_bytes(secret);
