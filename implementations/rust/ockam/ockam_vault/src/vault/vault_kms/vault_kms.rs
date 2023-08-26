@@ -6,6 +6,7 @@ use crate::{
     StoredSecret, VaultError,
 };
 use arrayref::array_ref;
+use ed25519_dalek::SECRET_KEY_LENGTH;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -143,6 +144,9 @@ impl VaultSecurityModule {
         let attributes = stored_secret.attributes();
         match attributes.secret_type() {
             SecretType::X25519 => {
+                if stored_secret.secret().length() != CURVE25519_SECRET_LENGTH_U32 as usize {
+                    return Err(VaultError::InvalidX25519SecretLength.into());
+                };
                 let secret = *array_ref![
                     stored_secret.secret().as_ref(),
                     0,
@@ -154,6 +158,13 @@ impl VaultSecurityModule {
             }
             SecretType::Ed25519 => {
                 use ed25519_dalek::SECRET_KEY_LENGTH;
+                if stored_secret.secret().length() != SECRET_KEY_LENGTH {
+                    return Err(VaultError::InvalidSecretLength(
+                        SecretType::Ed25519,
+                        stored_secret.secret().length(),
+                        SECRET_KEY_LENGTH as u32)
+                        .into());
+                };
                 let secret = array_ref![stored_secret.secret().as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = ed25519_dalek::SigningKey::from_bytes(secret);
                 let pk = sk.verifying_key();
@@ -172,6 +183,13 @@ impl VaultSecurityModule {
         match attributes.secret_type() {
             SecretType::Ed25519 => {
                 use ed25519_dalek::{Signer, SigningKey, SECRET_KEY_LENGTH};
+                if stored_secret.secret().length() != SECRET_KEY_LENGTH {
+                    return Err(VaultError::InvalidSecretLength(
+                        SecretType::Ed25519,
+                        stored_secret.secret().length(),
+                        SECRET_KEY_LENGTH as u32)
+                        .into());
+                }
                 let secret = array_ref![stored_secret.secret().as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = SigningKey::from_bytes(secret);
                 let sig = sk.sign(data.as_ref());
@@ -198,6 +216,9 @@ impl VaultSecurityModule {
     ) -> Result<KeyId> {
         Ok(match attributes.secret_type() {
             SecretType::X25519 => {
+                if secret.length() != CURVE25519_SECRET_LENGTH_U32 as usize {
+                    return Err(VaultError::InvalidX25519SecretLength.into());
+                };
                 let secret = *array_ref![secret.as_ref(), 0, CURVE25519_SECRET_LENGTH_U32 as usize];
                 let sk = x25519_dalek::StaticSecret::from(secret);
                 let public = x25519_dalek::PublicKey::from(&sk);
@@ -209,6 +230,13 @@ impl VaultSecurityModule {
             }
             SecretType::Ed25519 => {
                 use ed25519_dalek::{SigningKey, SECRET_KEY_LENGTH};
+                if secret.length() != SECRET_KEY_LENGTH {
+                    return Err(VaultError::InvalidSecretLength(
+                        SecretType::Ed25519,
+                        secret.length(),
+                        SECRET_KEY_LENGTH as u32)
+                        .into());
+                }
                 let secret = array_ref![secret.as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = SigningKey::from_bytes(secret);
                 let pk = sk.verifying_key();
