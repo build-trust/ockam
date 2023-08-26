@@ -6,7 +6,6 @@ use crate::{
     StoredSecret, VaultError,
 };
 use arrayref::array_ref;
-use ed25519_dalek::SECRET_KEY_LENGTH;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -145,7 +144,11 @@ impl VaultSecurityModule {
         match attributes.secret_type() {
             SecretType::X25519 => {
                 if stored_secret.secret().length() != CURVE25519_SECRET_LENGTH_U32 as usize {
-                    return Err(VaultError::InvalidX25519SecretLength.into());
+                    return Err(VaultError::InvalidSecretLength(
+                        SecretType::X25519,
+                        stored_secret.secret().length(),
+                        CURVE25519_SECRET_LENGTH_U32)
+                        .into());
                 };
                 let secret = *array_ref![
                     stored_secret.secret().as_ref(),
@@ -217,7 +220,11 @@ impl VaultSecurityModule {
         Ok(match attributes.secret_type() {
             SecretType::X25519 => {
                 if secret.length() != CURVE25519_SECRET_LENGTH_U32 as usize {
-                    return Err(VaultError::InvalidX25519SecretLength.into());
+                    return Err(VaultError::InvalidSecretLength(
+                        SecretType::X25519,
+                        secret.length(),
+                        CURVE25519_SECRET_LENGTH_U32)
+                        .into());
                 };
                 let secret = *array_ref![secret.as_ref(), 0, CURVE25519_SECRET_LENGTH_U32 as usize];
                 let sk = x25519_dalek::StaticSecret::from(secret);
