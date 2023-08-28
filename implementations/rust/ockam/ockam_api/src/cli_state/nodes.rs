@@ -1,11 +1,12 @@
 use super::Result;
 use crate::cli_state::{
-    CliState, CliStateError, IdentityConfig, IdentityState, StateDirTrait, StateItemTrait,
-    VaultState,
+    CliState, CliStateError, IdentityConfig, IdentityState, ProjectConfig, ProjectConfigCompact,
+    StateDirTrait, StateItemTrait, VaultState,
 };
 use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::CreateTransportJson;
 use backwards_compatibility::*;
+use miette::{IntoDiagnostic, WrapErr};
 use nix::errno::Errno;
 use ockam_core::compat::collections::HashSet;
 use ockam_core::compat::sync::Arc;
@@ -566,6 +567,98 @@ mod traits {
             &self.config
         }
     }
+}
+
+pub async fn init_node_state(
+    cli_state: &CliState,
+    node_name: &str,
+    vault_name: Option<&str>,
+    identity_name: Option<&str>,
+) -> miette::Result<()> {
+    debug!(name=%node_name, "initializing node state");
+    // Get vault specified in the argument, or get the default
+    let vault_state = cli_state.create_vault_state(vault_name).await?;
+
+    // create an identity for the node
+    let identity = cli_state
+        .get_identities(vault_state.get().await?)
+        .await?
+        .identities_creation()
+        .create_identity()
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to create identity")?;
+
+    let identity_state = cli_state
+        .create_identity_state(&identity.identifier(), identity_name)
+        .await?;
+
+    // Create the node with the given vault and identity
+    let node_config = NodeConfigBuilder::default()
+        .vault(vault_state.path().clone())
+        .identity(identity_state.path().clone())
+        .build(cli_state)?;
+    cli_state.nodes.overwrite(node_name, node_config)?;
+
+    info!(name=%node_name, "node state initialized");
+    Ok(())
+}
+
+pub async fn add_project_info_to_node_state(
+    node_name: &str,
+    cli_state: &CliState,
+    project_path: Option<&PathBuf>,
+) -> Result<Option<String>> {
+    debug!(name=%node_name, "Adding project info to state");
+    let proj_path = if let Some(path) = project_path {
+        Some(path.clone())
+    } else if let Ok(proj) = cli_state.projects.default() {
+        Some(proj.path().clone())
+    } else {
+        None
+    };
+
+    match proj_path {
+        Some(path) => {
+            debug!(path=%path.display(), "Reading project info from path");
+            let s = std::fs::read_to_string(path)?;
+            let proj_info: ProjectConfigCompact = serde_json::from_str(&s)?;
+            let proj_lookup = ProjectLookup::from_project(&(&proj_info).into())
+                .await
+                .map_err(|e| {
+                    CliStateError::InvalidData(format!("Failed to read project: {}", e))
+                })?;
+            let proj_config = ProjectConfig::from(&proj_info);
+            let state = cli_state.nodes.get(node_name)?;
+            state.set_setup(state.config().setup_mut().set_project(proj_lookup.clone()))?;
+            cli_state
+                .projects
+                .overwrite(proj_lookup.name, proj_config)?;
+            Ok(Some(proj_lookup.id))
+        }
+        None => {
+            debug!("No project info used");
+            Ok(None)
+        }
+    }
+}
+
+pub async fn update_enrolled_identity(
+    cli_state: &CliState,
+    node_name: &str,
+) -> Result<IdentityIdentifier> {
+    let identities = cli_state.identities.list()?;
+
+    let node_state = cli_state.nodes.get(node_name)?;
+    let node_identifier = node_state.config().identifier()?;
+
+    for mut identity in identities {
+        if node_identifier == identity.config().identifier() {
+            identity.set_enrollment_status()?;
+        }
+    }
+
+    Ok(node_identifier)
 }
 
 #[cfg(test)]

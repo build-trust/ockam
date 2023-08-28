@@ -69,7 +69,7 @@ impl NodeManagerWorker {
         let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
         let route = match local_multiaddr_to_route(&route) {
             Some(route) => route,
-            None => return Err(ApiError::generic("Invalid credentials service route").into()),
+            None => return Err(ApiError::core("Invalid credentials service route").into()),
         };
 
         let credential = node_manager

@@ -104,12 +104,12 @@ impl ForwarderInfo {
 
     pub fn remote_address_ma(&self) -> Result<MultiAddr, ockam_core::Error> {
         route_to_multiaddr(&route![self.remote_address.to_string()])
-            .ok_or_else(|| ApiError::generic("Invalid Remote Address"))
+            .ok_or_else(|| ApiError::core("Invalid Remote Address"))
     }
 
     pub fn worker_address_ma(&self) -> Result<MultiAddr, ockam_core::Error> {
         route_to_multiaddr(&route![self.worker_address.to_string()])
-            .ok_or_else(|| ApiError::generic("Invalid Worker Address"))
+            .ok_or_else(|| ApiError::core("Invalid Worker Address"))
     }
 }
 

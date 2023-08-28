@@ -32,7 +32,7 @@ impl SendMessage {
 
     pub fn multiaddr(&self) -> Result<MultiAddr> {
         MultiAddr::from_str(self.route.as_ref())
-            .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))
+            .map_err(|_err| ApiError::core(format!("Invalid route: {}", self.route)))
     }
 }
 
@@ -68,7 +68,7 @@ mod node {
                 NodeManager::connect(self.node_manager.clone(), connection).await?;
 
             let route = local_multiaddr_to_route(&connection_instance.normalized_addr)
-                .ok_or_else(|| ApiError::generic("Invalid route"))?;
+                .ok_or_else(|| ApiError::core("Invalid route"))?;
 
             trace!(target: TARGET, route = %route, msg_l = %msg_length, "sending message");
 

@@ -1,8 +1,8 @@
 use clap::Args;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::extract_address_value;
 use ockam::Context;
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
 

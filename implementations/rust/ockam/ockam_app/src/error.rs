@@ -12,10 +12,10 @@ pub enum Error {
     Ockam(#[from] ockam_core::Error),
 
     #[error(transparent)]
-    Command(#[from] ockam_command::error::Error),
+    Api(#[from] ockam_api::error::ApiError),
 
     #[error(transparent)]
-    CommandState(#[from] ockam_api::cli_state::CliStateError),
+    CliState(#[from] ockam_api::cli_state::CliStateError),
 
     #[error(transparent)]
     Tauri(#[from] tauri::Error),

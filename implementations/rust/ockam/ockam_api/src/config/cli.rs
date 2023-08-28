@@ -107,7 +107,7 @@ impl TrustContextConfig {
     pub fn authority(&self) -> Result<&TrustAuthorityConfig> {
         self.authority
             .as_ref()
-            .ok_or_else(|| ApiError::generic("Missing authority on trust context config"))
+            .ok_or_else(|| ApiError::core("Missing authority on trust context config"))
     }
 
     pub async fn to_trust_context(
@@ -183,7 +183,7 @@ impl TryFrom<Project> for TrustContextConfig {
         ) {
             (Some(route), Some(identity)) => {
                 let authority_route = MultiAddr::from_str(route)
-                    .map_err(|_| ApiError::generic("incorrect multi address"))?;
+                    .map_err(|_| ApiError::core("incorrect multi address"))?;
                 let retriever = CredentialRetrieverConfig::FromCredentialIssuer(
                     CredentialIssuerConfig::new(identity.to_string(), authority_route),
                 );
@@ -246,7 +246,7 @@ impl TrustAuthorityConfig {
             .identities_creation()
             .decode_identity(
                 &hex::decode(&self.identity)
-                    .map_err(|_| ApiError::generic("unable to decode authority identity"))?,
+                    .map_err(|_| ApiError::core("unable to decode authority identity"))?,
             )
             .await
     }
@@ -254,7 +254,7 @@ impl TrustAuthorityConfig {
     pub fn own_credential(&self) -> Result<&CredentialRetrieverConfig> {
         self.own_credential
             .as_ref()
-            .ok_or_else(|| ApiError::generic("Missing own credential on trust authority config"))
+            .ok_or_else(|| ApiError::core("Missing own credential on trust authority config"))
     }
 }
 
@@ -283,7 +283,7 @@ impl CredentialRetrieverConfig {
                 CredentialsMemoryRetriever::new(state.config().credential()?),
             )),
             CredentialRetrieverConfig::FromCredentialIssuer(issuer_config) => {
-                let _ = tcp_transport.ok_or_else(|| ApiError::generic("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
+                let _ = tcp_transport.ok_or_else(|| ApiError::core("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
                 let credential_issuer_info = RemoteCredentialsRetrieverInfo::new(
                     issuer_config.resolve_identity().await?.identifier(),
                     issuer_config.resolve_route().await?,
@@ -374,14 +374,14 @@ impl CredentialIssuerConfig {
         let Some(route) = multiaddr_to_transport_route(&self.multiaddr) else {
             let err_msg = format!("Invalid route within trust context: {}", &self.multiaddr);
             error!("{err_msg}");
-            return Err(ApiError::generic(&err_msg));
+            return Err(ApiError::core(&err_msg));
         };
         Ok(route)
     }
 
     async fn resolve_identity(&self) -> Result<Identity> {
-        let encoded = hex::decode(&self.identity)
-            .map_err(|_| ApiError::generic("Invalid project authority"))?;
+        let encoded =
+            hex::decode(&self.identity).map_err(|_| ApiError::core("Invalid project authority"))?;
         identities()
             .identities_creation()
             .decode_identity(&encoded)

@@ -137,9 +137,9 @@ pub struct ServiceAccessDetails {
 impl ServiceAccessDetails {
     pub fn enrollment_ticket(&self) -> ockam_core::Result<EnrollmentTicket> {
         let hex_decoded = hex::decode(&self.enrollment_ticket)
-            .map_err(|_| ApiError::generic("Invalid hex-encoded enrollment ticket"))?;
+            .map_err(|_| ApiError::core("Invalid hex-encoded enrollment ticket"))?;
         let as_json = serde_json::from_slice(&hex_decoded)
-            .map_err(|_| ApiError::generic("Invalid enrollment ticket"))?;
+            .map_err(|_| ApiError::core("Invalid enrollment ticket"))?;
         Ok(as_json)
     }
 }

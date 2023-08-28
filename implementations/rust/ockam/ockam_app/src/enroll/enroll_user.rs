@@ -1,20 +1,19 @@
 use miette::{miette, IntoDiagnostic, WrapErr};
 
+use ockam_api::address::controller_route;
 use tauri::{AppHandle, Manager, State, Wry};
 use tauri_plugin_notification::NotificationExt;
 use tracing::{debug, error, info};
 
 use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::SpaceConfig;
+use ockam_api::cli_state::{add_project_info_to_node_state, update_enrolled_identity, SpaceConfig};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::{CreateSpace, Space};
-use ockam_command::enroll::{update_enrolled_identity, OidcService};
-use ockam_command::node::util::add_project_info_to_node_state;
-use ockam_command::util::api::CloudOpts;
+use ockam_api::enroll::oidc_service::OidcService;
 
 use crate::app::events::{system_tray_on_update, system_tray_on_update_with_enroll_status};
-use crate::app::{default_trust_context_opts, AppState, NODE_NAME, PROJECT_NAME};
+use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::{shared_service, Result};
 
 /// Enroll a user.
@@ -60,13 +59,10 @@ async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result
     let token = oidc_service.get_token_with_pkce().await?;
 
     // retrieve the user information
-    let user_info = oidc_service
-        .wait_for_email_verification(&token, &app_state.options().await)
-        .await?;
+    let user_info = oidc_service.get_user_info(&token).await?;
     info!(?user_info, "Email verification succeeded");
-    app_state
-        .state()
-        .await
+    let cli_state = app_state.state().await;
+    cli_state
         .users_info
         .overwrite(&user_info.email, user_info.clone())?;
 
@@ -75,7 +71,7 @@ async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result
         let node_manager_worker = app_state.node_manager_worker().await;
         let node_manager = node_manager_worker.inner().read().await;
         node_manager
-            .enroll_auth0(&app_state.context(), &CloudOpts::route(), token)
+            .enroll_auth0(&app_state.context(), &controller_route(), token)
             .await
             .into_diagnostic()?;
     }
@@ -83,7 +79,7 @@ async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result
     let space = retrieve_space(app_state).await?;
     system_tray_on_update_with_enroll_status(app, "Retrieving project...")?;
     let _ = retrieve_project(app, app_state, &space).await?;
-    let identifier = update_enrolled_identity(&app_state.options().await, NODE_NAME)
+    let identifier = update_enrolled_identity(&cli_state, NODE_NAME)
         .await
         .into_diagnostic()?;
     info!(%identifier, "User enrolled successfully");
@@ -106,7 +102,7 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     // if several spaces are available
     let spaces = {
         let mut spaces = node_manager
-            .list_spaces(&app_state.context(), &CloudOpts::route())
+            .list_spaces(&app_state.context(), &controller_route())
             .await
             .map_err(|e| miette!(e))?;
         spaces.sort_by(|s1, s2| s1.name.cmp(&s2.name));
@@ -123,7 +119,7 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
                 .create_space(
                     &app_state.context(),
                     CreateSpace::new(space_name, vec![]),
-                    &CloudOpts::route(),
+                    &controller_route(),
                     None,
                 )
                 .await
@@ -149,7 +145,7 @@ async fn retrieve_project(
     let node_manager = node_manager_worker.inner().read().await;
     let projects = {
         node_manager
-            .list_projects(&app_state.context(), &CloudOpts::route())
+            .list_projects(&app_state.context(), &controller_route())
             .await
             .map_err(|e| miette!(e))?
     };
@@ -173,7 +169,7 @@ async fn retrieve_project(
                 .show()
                 .unwrap_or_else(|e| error!(?e, "Failed to create push notification"));
             let ctx = &app_state.context();
-            let route = &CloudOpts::route();
+            let route = &controller_route();
             let project = node_manager
                 .create_project(ctx, route, space.id.as_str(), PROJECT_NAME, vec![])
                 .await
@@ -183,16 +179,10 @@ async fn retrieve_project(
                 .await?
         }
     };
-    app_state
-        .state()
-        .await
+    let cli_state = app_state.state().await;
+    cli_state
         .projects
         .overwrite(&project.name, project.clone())?;
-    add_project_info_to_node_state(
-        NODE_NAME,
-        &app_state.options().await,
-        &default_trust_context_opts(&app_state.state().await),
-    )
-    .await?;
+    add_project_info_to_node_state(NODE_NAME, &cli_state, None).await?;
     Ok(project)
 }

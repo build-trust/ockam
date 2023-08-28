@@ -3,6 +3,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
+use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
@@ -11,7 +12,7 @@ use tokio::try_join;
 
 use crate::node::get_node_name;
 use crate::terminal::OckamColor;
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");

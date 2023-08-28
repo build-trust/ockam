@@ -1,22 +1,15 @@
 use clap::Args;
-use miette::miette;
 
-use ockam::identity::IdentityIdentifier;
 use ockam::Context;
-use ockam_api::cloud::project::OktaConfig;
+
 use ockam_api::cloud::project::Project;
 
-use ockam_api::config::lookup::ProjectLookup;
-use ockam_core::CowStr;
-
-use crate::error::Error;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::refresh_projects;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use serde::{Deserialize, Serialize};
+use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 
 #[derive(Clone, Debug, Args)]
 pub struct InfoCommand {
@@ -29,75 +22,6 @@ pub struct InfoCommand {
 
     #[arg(long, default_value = "false")]
     pub as_trust_context: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct ProjectInfo<'a> {
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
-    pub identity: Option<IdentityIdentifier>,
-    #[serde(borrow)]
-    pub access_route: CowStr<'a>,
-    #[serde(borrow)]
-    pub authority_access_route: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub authority_identity: Option<CowStr<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub okta_config: Option<OktaConfig>,
-}
-
-impl TryFrom<ProjectLookup> for ProjectInfo<'_> {
-    type Error = Error;
-    fn try_from(p: ProjectLookup) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: p.id.into(),
-            name: p.name.into(),
-            identity: p.identity_id,
-            access_route: p
-                .node_route
-                .map_or(Err(miette!("Project access route is missing")), Ok)?
-                .to_string()
-                .into(),
-            authority_access_route: p.authority.as_ref().map(|a| a.address().to_string().into()),
-            authority_identity: p
-                .authority
-                .as_ref()
-                .map(|a| hex::encode(a.identity()).into()),
-            okta_config: p.okta.map(|o| o.into()),
-        })
-    }
-}
-
-impl<'a> From<Project> for ProjectInfo<'a> {
-    fn from(p: Project) -> Self {
-        Self {
-            id: p.id.into(),
-            name: p.name.into(),
-            identity: p.identity,
-            access_route: p.access_route.into(),
-            authority_access_route: p.authority_access_route.map(|a| a.into()),
-            authority_identity: p.authority_identity.map(|a| a.into()),
-            okta_config: p.okta_config,
-        }
-    }
-}
-
-impl<'a> From<&ProjectInfo<'a>> for Project {
-    fn from(p: &ProjectInfo<'a>) -> Self {
-        Project {
-            id: p.id.to_string(),
-            name: p.name.to_string(),
-            identity: p.identity.to_owned(),
-            access_route: p.access_route.to_string(),
-            authority_access_route: p.authority_access_route.as_ref().map(|a| a.to_string()),
-            authority_identity: p.authority_identity.as_ref().map(|a| a.to_string()),
-            okta_config: p.okta_config.clone(),
-            ..Default::default()
-        }
-    }
 }
 
 impl InfoCommand {
@@ -134,7 +58,7 @@ async fn run_impl(
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::project::show(&id, controller_route))
         .await?;
-    let info: ProjectInfo = rpc.parse_response_body::<Project>()?.into();
+    let info: ProjectConfigCompact = rpc.parse_response_body::<Project>()?.into();
 
     rpc.print_response(&info)?;
 

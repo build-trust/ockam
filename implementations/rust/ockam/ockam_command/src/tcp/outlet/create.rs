@@ -4,7 +4,7 @@ use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 
 use crate::util::parsers::{host_parser, HostPort};
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, Rpc};
 use crate::{display_parse_logs, fmt_log};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
@@ -13,6 +13,7 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_abac::Resource;
+use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_core::api::Request;

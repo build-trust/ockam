@@ -2,11 +2,12 @@ use clap::Args;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");

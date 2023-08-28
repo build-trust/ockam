@@ -2,25 +2,23 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::{Context, TcpListenerOptions, TcpTransport};
-use ockam_api::cli_state;
-use ockam_api::cli_state::traits::StateItemTrait;
-use ockam_api::config::lookup::ProjectLookup;
 
-use ockam_api::cli_state::{ProjectConfig, StateDirTrait};
+use ockam_api::cli_state::{
+    add_project_info_to_node_state, init_node_state, CliState, StateDirTrait,
+};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+
 use ockam_core::env::get_env_with_default;
 use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use tracing::{debug, info};
 
 use crate::node::CreateCommand;
-use crate::project::ProjectInfo;
-use crate::util::api::{TrustContextConfigBuilder, TrustContextOpts};
+use crate::util::api::TrustContextOpts;
 use crate::{CommandGlobalOpts, Result};
 
 pub async fn start_embedded_node(
@@ -28,12 +26,12 @@ pub async fn start_embedded_node(
     opts: &CommandGlobalOpts,
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<String> {
-    start_embedded_node_with_vault_and_identity(ctx, opts, None, None, trust_opts).await
+    start_embedded_node_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts).await
 }
 
 pub async fn start_embedded_node_with_vault_and_identity(
     ctx: &Context,
-    opts: &CommandGlobalOpts,
+    cli_state: &CliState,
     vault: Option<String>,
     identity: Option<String>,
     trust_opts: Option<&TrustContextOpts>,
@@ -42,17 +40,28 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        init_node_state(opts, &cmd.node_name, vault.as_deref(), identity.as_deref()).await?;
+        init_node_state(
+            cli_state,
+            &cmd.node_name,
+            vault.as_deref(),
+            identity.as_deref(),
+        )
+        .await?;
     }
 
     if let Some(p) = trust_opts {
-        add_project_info_to_node_state(&cmd.node_name, opts, p).await?;
+        add_project_info_to_node_state(&cmd.node_name, cli_state, p.project_path.as_ref()).await?;
     } else {
-        add_project_info_to_node_state(&cmd.node_name, opts, &cmd.trust_context_opts).await?;
+        add_project_info_to_node_state(
+            &cmd.node_name,
+            cli_state,
+            cmd.trust_context_opts.project_path.as_ref(),
+        )
+        .await?;
     };
 
     let trust_context_config = match trust_opts {
-        Some(t) => TrustContextConfigBuilder::new(&opts.state, t)?.build(),
+        Some(t) => t.to_config(cli_state)?.build(),
         None => None,
     };
 
@@ -65,7 +74,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let node_man = NodeManager::create(
         ctx,
         NodeManagerGeneralOptions::new(
-            opts.state.clone(),
+            cli_state.clone(),
             cmd.node_name.clone(),
             cmd.launch_config.is_some(),
             None,
@@ -84,78 +93,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
         .await?;
 
     Ok(cmd.node_name.clone())
-}
-
-pub async fn add_project_info_to_node_state(
-    node_name: &str,
-    opts: &CommandGlobalOpts,
-    project_opts: &TrustContextOpts,
-) -> Result<Option<String>> {
-    debug!(name=%node_name, "Adding project info to state");
-    let proj_path = if let Some(path) = project_opts.project_path.clone() {
-        Some(path)
-    } else if let Ok(proj) = opts.state.projects.default() {
-        Some(proj.path().clone())
-    } else {
-        None
-    };
-
-    match &proj_path {
-        Some(path) => {
-            debug!(path=%path.display(), "Reading project info from path");
-            let s = tokio::fs::read_to_string(path).await?;
-            let proj_info: ProjectInfo = serde_json::from_str(&s)?;
-            let proj_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
-            let proj_config = ProjectConfig::from(&proj_info);
-            let state = opts.state.nodes.get(node_name)?;
-            state.set_setup(state.config().setup_mut().set_project(proj_lookup.clone()))?;
-            opts.state
-                .projects
-                .overwrite(proj_lookup.name, proj_config)?;
-            Ok(Some(proj_lookup.id))
-        }
-        None => {
-            debug!("No project info used");
-            Ok(None)
-        }
-    }
-}
-
-pub async fn init_node_state(
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-    vault_name: Option<&str>,
-    identity_name: Option<&str>,
-) -> miette::Result<()> {
-    debug!(name=%node_name, "initializing node state");
-    // Get vault specified in the argument, or get the default
-    let vault_state = opts.state.create_vault_state(vault_name).await?;
-
-    // create an identity for the node
-    let identity = opts
-        .state
-        .get_identities(vault_state.get().await?)
-        .await?
-        .identities_creation()
-        .create_identity()
-        .await
-        .into_diagnostic()
-        .wrap_err("Failed to create identity")?;
-
-    let identity_state = opts
-        .state
-        .create_identity_state(&identity.identifier(), identity_name)
-        .await?;
-
-    // Create the node with the given vault and identity
-    let node_config = cli_state::NodeConfigBuilder::default()
-        .vault(vault_state.path().clone())
-        .identity(identity_state.path().clone())
-        .build(&opts.state)?;
-    opts.state.nodes.overwrite(node_name, node_config)?;
-
-    info!(name=%node_name, "node state initialized");
-    Ok(())
 }
 
 pub async fn delete_embedded_node(opts: &CommandGlobalOpts, name: &str) {

@@ -1,4 +1,3 @@
-use crate::node::util::init_node_state;
 use crate::node::util::run_ockam;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
@@ -8,6 +7,7 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
+use ockam_api::cli_state::init_node_state;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::authority_node::{OktaConfiguration, TrustedIdentity};
@@ -109,7 +109,7 @@ async fn spawn_background_node(
 ) -> miette::Result<()> {
     // Create node state, including the vault and identity if they don't exist
     init_node_state(
-        opts,
+        &opts.state,
         &cmd.node_name,
         cmd.vault.as_deref(),
         cmd.identity.as_deref(),
@@ -262,7 +262,7 @@ async fn start_authority_node(
     // Create node state, including the vault and identity if they don't exist
     if !opts.state.nodes.exists(&cmd.node_name) {
         init_node_state(
-            &opts,
+            &opts.state,
             &cmd.node_name,
             cmd.vault.as_deref(),
             cmd.identity.as_deref(),

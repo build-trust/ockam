@@ -65,7 +65,7 @@ impl NodeManagerWorker {
         let options = RemoteForwarderOptions::new();
 
         let route = local_multiaddr_to_route(&connection_instance.normalized_addr)
-            .ok_or_else(|| ApiError::message("invalid address: {addr}"))?;
+            .ok_or_else(|| ApiError::core("invalid address: {addr}"))?;
 
         let forwarder = if req.at_rust_node() {
             if let Some(alias) = req.alias() {
@@ -258,7 +258,7 @@ fn replacer(
 
                 let route = local_multiaddr_to_route(&new_connection_instance.normalized_addr)
                     .ok_or_else(|| {
-                        ApiError::message(format!(
+                        ApiError::core(format!(
                             "invalid multiaddr: {}",
                             &new_connection_instance.normalized_addr
                         ))
@@ -276,7 +276,7 @@ fn replacer(
             match timeout(MAX_RECOVERY_TIME, f).await {
                 Err(_) => {
                     warn!(%addr, "timeout creating new remote forwarder");
-                    Err(ApiError::generic("timeout"))
+                    Err(ApiError::core("timeout"))
                 }
                 Ok(Err(e)) => {
                     warn!(%addr, err = %e, "error creating new remote forwarder");

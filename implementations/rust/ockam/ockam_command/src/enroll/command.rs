@@ -1,22 +1,23 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, WrapErr};
+use miette::{miette, IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::info;
 
 use ockam::Context;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::cli_state::SpaceConfig;
+use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_api::cli_state::{update_enrolled_identity, SpaceConfig};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
+use ockam_api::enroll::oidc_service::OidcService;
 use ockam_core::api::Response;
 use ockam_core::api::Status;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
-use crate::enroll::oidc_service::OidcService;
+use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::operation::util::check_for_completion;
@@ -68,13 +69,13 @@ async fn run_impl(
 
     let oidc_service = OidcService::default();
     let token = if _cmd.authorization_code_flow {
-        oidc_service.get_token_with_pkce().await?
+        oidc_service.get_token_with_pkce().await.into_diagnostic()?
     } else {
         oidc_service.get_token_interactively(&opts).await?
     };
 
     let user_info = oidc_service
-        .wait_for_email_verification(&token, &opts)
+        .wait_for_email_verification(&token, Some(&opts.terminal))
         .await?;
     opts.state
         .users_info
@@ -120,7 +121,7 @@ pub async fn retrieve_user_project(
         ))?;
     info!("Retrieved the user default project {:?}", project);
 
-    let identifier = update_enrolled_identity(opts, node_name)
+    let identifier = update_enrolled_identity(&opts.state, node_name)
         .await
         .wrap_err(format!(
             "Unable to set the local identity as enrolled with project {}",
@@ -347,22 +348,4 @@ async fn default_project(
         .trust_contexts
         .overwrite(&project.name, project.clone().try_into()?)?;
     Ok(project)
-}
-
-pub async fn update_enrolled_identity(
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-) -> Result<IdentityIdentifier> {
-    let identities = opts.state.identities.list()?;
-
-    let node_state = opts.state.nodes.get(node_name)?;
-    let node_identifier = node_state.config().identifier()?;
-
-    for mut identity in identities {
-        if node_identifier == identity.config().identifier() {
-            identity.set_enrollment_status()?;
-        }
-    }
-
-    Ok(node_identifier)
 }

@@ -8,6 +8,7 @@ use ockam::identity::IdentityIdentifier;
 use ockam_multiaddr::proto::Project;
 
 use ockam::{Context, TcpTransport};
+use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
@@ -18,7 +19,7 @@ use tokio::try_join;
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::OckamColor;
 use crate::util::output::Output;
-use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
+use crate::util::{node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::{display_parse_logs, docs, fmt_ok, CommandGlobalOpts};
 use crate::{fmt_log, Result};
 

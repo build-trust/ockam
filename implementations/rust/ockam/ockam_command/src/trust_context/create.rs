@@ -1,10 +1,7 @@
 use crate::util::local_cmd;
 use crate::{
     docs,
-    util::{
-        api::{TrustContextConfigBuilder, TrustContextOpts},
-        random_name,
-    },
+    util::{api::TrustContextOpts, random_name},
     CommandGlobalOpts,
 };
 use clap::Args;
@@ -42,7 +39,9 @@ impl CreateCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
-    let config = TrustContextConfigBuilder::new(&opts.state, &cmd.trust_context_opts)?
+    let config = cmd
+        .trust_context_opts
+        .to_config(&opts.state)?
         .with_credential_name(cmd.credential.as_ref())
         .use_default_trust_context(false)
         .build();

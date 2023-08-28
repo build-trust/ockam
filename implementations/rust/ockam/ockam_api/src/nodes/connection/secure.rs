@@ -56,7 +56,7 @@ impl Instantiator for SecureChannelInstantiator {
 
         debug!(%secure_piece, %transport_route, "creating secure channel");
         let route = local_multiaddr_to_route(&secure_piece)
-            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            .ok_or_else(|| ApiError::core("invalid multiaddr"))?;
 
         let mut node_manager = self.node_manager.write().await;
         let sc = node_manager

@@ -52,7 +52,7 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.identity_services.contains_key(&addr) {
-            return Err(ApiError::generic("Identity service exists at this address"));
+            return Err(ApiError::core("Identity service exists at this address"));
         }
 
         let service = IdentityService::new(self.node_identities()).await?;
@@ -77,9 +77,7 @@ impl NodeManager {
         oneway: bool,
     ) -> Result<()> {
         if self.registry.credentials_services.contains_key(&addr) {
-            return Err(ApiError::generic(
-                "Credentials service exists at this address",
-            ));
+            return Err(ApiError::core("Credentials service exists at this address"));
         }
 
         self.credentials_service()
@@ -99,7 +97,7 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.authenticated_services.contains_key(&addr) {
-            return Err(ApiError::generic(
+            return Err(ApiError::core(
                 "Authenticated service exists at this address",
             ));
         }
@@ -120,9 +118,7 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.uppercase_services.contains_key(&addr) {
-            return Err(ApiError::generic(
-                "Uppercase service exists at this address",
-            ));
+            return Err(ApiError::core("Uppercase service exists at this address"));
         }
 
         ctx.start_worker(addr.clone(), Uppercase).await?;
@@ -140,7 +136,7 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.echoer_services.contains_key(&addr) {
-            return Err(ApiError::generic("Echoer service exists at this address"));
+            return Err(ApiError::core("Echoer service exists at this address"));
         }
 
         let maybe_trust_context_id = self.trust_context.as_ref().map(|c| c.id());
@@ -173,7 +169,7 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.hop_services.contains_key(&addr) {
-            return Err(ApiError::generic("Hop service exists at this address"));
+            return Err(ApiError::core("Hop service exists at this address"));
         }
 
         ctx.flow_controls()
@@ -219,9 +215,7 @@ impl NodeManager {
         project: String,
     ) -> Result<()> {
         if self.registry.authenticator_service.contains_key(&addr) {
-            return Err(ApiError::generic(
-                "Credential issuer service already started",
-            ));
+            return Err(ApiError::core("Credential issuer service already started"));
         }
         let action = actions::HANDLE_MESSAGE;
         let resource = Resource::new(&addr.to_string());
@@ -249,7 +243,7 @@ impl NodeManager {
         project: String,
     ) -> Result<()> {
         if self.registry.authenticator_service.contains_key(&addr) {
-            return Err(ApiError::generic(
+            return Err(ApiError::core(
                 "Direct Authenticator  service already started",
             ));
         }
@@ -300,7 +294,7 @@ impl NodeManager {
                 .authenticator_service
                 .contains_key(&acceptor_addr)
         {
-            return Err(ApiError::generic(
+            return Err(ApiError::core(
                 "Enrollment token Authenticator service already started",
             ));
         }
@@ -348,7 +342,7 @@ impl NodeManager {
             .okta_identity_provider_services
             .contains_key(&addr)
         {
-            return Err(ApiError::generic(
+            return Err(ApiError::core(
                 "Okta Identity Provider service already started",
             ));
         }
@@ -444,7 +438,7 @@ impl NodeManagerWorker {
     ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
         #[cfg(not(feature = "direct-authenticator"))]
-        return Err(ApiError::generic("Direct authenticator not available"));
+        return Err(ApiError::core("Direct authenticator not available"));
 
         #[cfg(feature = "direct-authenticator")]
         {
@@ -511,7 +505,7 @@ impl NodeManagerWorker {
         let addr: Address = body.address().into();
 
         if node_manager.registry.verifier_services.contains_key(&addr) {
-            return Err(ApiError::generic("Verifier service exists at this address").into());
+            return Err(ApiError::core("Verifier service exists at this address").into());
         }
 
         ctx.flow_controls()
@@ -541,7 +535,7 @@ impl NodeManagerWorker {
         let encoded_identity = body.public_identity();
 
         let decoded_identity =
-            &hex::decode(encoded_identity).map_err(|_| ApiError::generic("Unable to decode trust context's public identity when starting credential service."))?;
+            &hex::decode(encoded_identity).map_err(|_| ApiError::core("Unable to decode trust context's public identity when starting credential service."))?;
         let i = identities()
             .identities_creation()
             .decode_identity(decoded_identity)
@@ -576,7 +570,7 @@ impl NodeManagerWorker {
             .flow_controls()
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
             .ok_or_else(|| {
-                ApiError::generic("Unable to get flow control for secure channel listener")
+                ApiError::core("Unable to get flow control for secure channel listener")
             })?;
 
         PrefixForwarderService::create(
@@ -673,7 +667,7 @@ impl NodeManagerWorker {
             .flow_controls()
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
             .ok_or_else(|| {
-                ApiError::generic("Unable to get flow control for secure channel listener")
+                ApiError::core("Unable to get flow control for secure channel listener")
             })?;
 
         {
@@ -717,7 +711,7 @@ impl NodeManagerWorker {
             route![KAFKA_OUTLET_INTERCEPTOR_ADDRESS],
             bind_ip,
             PortRange::try_from(brokers_port_range)
-                .map_err(|_| ApiError::message("invalid port range"))?,
+                .map_err(|_| ApiError::core("invalid port range"))?,
         );
 
         // since we cannot call APIs of node manager via message due to the read/write lock
@@ -872,7 +866,7 @@ impl NodeManagerWorker {
             route![KAFKA_OUTLET_INTERCEPTOR_ADDRESS],
             bind_ip,
             PortRange::try_from(brokers_port_range)
-                .map_err(|_| ApiError::message("invalid port range"))?,
+                .map_err(|_| ApiError::core("invalid port range"))?,
         );
 
         // since we cannot call APIs of node manager via message due to the read/write lock

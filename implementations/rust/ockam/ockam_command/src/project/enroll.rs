@@ -5,9 +5,11 @@ use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::config::lookup::ProjectAuthority;
+use ockam_api::enroll::oidc_service::OidcService;
+use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::identity::EnrollmentTicket;
 use ockam_api::DefaultAddress;
 use ockam_core::route;
@@ -16,11 +18,10 @@ use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::RpcClient;
 
-use crate::enroll::{enroll_with_node, OidcService, OktaOidcProvider};
+use crate::enroll::{enroll_with_node, OidcServiceExt};
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::create_secure_channel_to_authority;
-use crate::project::ProjectInfo;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -90,7 +91,7 @@ pub async fn project_enroll(
     let project_as_string: String;
 
     // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
-    let proj: ProjectInfo = if let Some(ticket) = &cmd.enroll_ticket {
+    let proj: ProjectConfigCompact = if let Some(ticket) = &cmd.enroll_ticket {
         let proj = ticket
             .project()
             .expect("Enrollment ticket is invalid. Ticket does not contain a project.");
@@ -218,7 +219,7 @@ async fn authenticate_through_okta(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
-    p: ProjectInfo<'_>,
+    p: ProjectConfigCompact,
     secure_channel_addr: MultiAddr,
 ) -> miette::Result<()> {
     // Get auth0 token

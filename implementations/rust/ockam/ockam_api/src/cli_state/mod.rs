@@ -66,6 +66,10 @@ pub enum CliStateError {
 
     #[error("{0}")]
     #[diagnostic(code("OCK500"))]
+    InvalidData(String),
+
+    #[error("{0}")]
+    #[diagnostic(code("OCK500"))]
     InvalidOperation(String),
 
     #[error("Invalid configuration version '{0}'")]

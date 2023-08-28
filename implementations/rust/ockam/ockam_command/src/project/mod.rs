@@ -9,8 +9,6 @@ mod ticket;
 pub mod util;
 mod version;
 
-pub use info::ProjectInfo;
-
 use clap::{Args, Subcommand};
 
 pub use crate::credential::get::GetCommand;

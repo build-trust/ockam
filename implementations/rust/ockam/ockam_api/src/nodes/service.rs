@@ -241,7 +241,7 @@ impl NodeManager {
     pub(crate) fn trust_context(&self) -> Result<&TrustContext> {
         self.trust_context
             .as_ref()
-            .ok_or_else(|| ApiError::generic("Trust context doesn't exist"))
+            .ok_or_else(|| ApiError::core("Trust context doesn't exist"))
     }
 }
 
@@ -503,21 +503,21 @@ impl NodeManager {
     ) -> Result<(MultiAddr, IdentityIdentifier)> {
         let projects = ProjectLookup::from_state(self.cli_state.projects.list()?)
             .await
-            .map_err(|e| ApiError::message(format!("Cannot load projects: {:?}", e)))?;
+            .map_err(|e| ApiError::core(format!("Cannot load projects: {:?}", e)))?;
         if let Some(info) = projects.get(name) {
             let node_route = info
                 .node_route
                 .as_ref()
-                .ok_or_else(|| ApiError::generic("Project should have node route set"))?
+                .ok_or_else(|| ApiError::core("Project should have node route set"))?
                 .clone();
             let identity_id = info
                 .identity_id
                 .as_ref()
-                .ok_or_else(|| ApiError::generic("Project should have identity set"))?
+                .ok_or_else(|| ApiError::core("Project should have identity set"))?
                 .clone();
             Ok((node_route, identity_id))
         } else {
-            Err(ApiError::message(format!("project {name} not found")))
+            Err(ApiError::core(format!("project {name} not found")))
         }
     }
 

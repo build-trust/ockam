@@ -3,8 +3,8 @@ use std::sync::Arc;
 use tauri::{async_runtime::RwLock, AppHandle, Manager, Runtime, State};
 use tracing::{debug, error, info};
 
+use ockam_api::address::controller_route;
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
-use ockam_command::util::api::CloudOpts;
 
 use super::error::{Error, Result};
 use super::State as ProjectState;
@@ -91,7 +91,7 @@ pub async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()> {
     }
     let node_manager_worker = state.node_manager_worker().await;
     let projects = node_manager_worker
-        .list_projects(&state.context(), &CloudOpts::route())
+        .list_projects(&state.context(), &controller_route())
         .await
         .map_err(Error::ListingFailed)?;
     debug!(?projects);

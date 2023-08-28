@@ -1,11 +1,10 @@
+use crate::cloud::project::OktaAuth0;
+use ockam_core::Result;
 use std::time::Duration;
-
-use miette::{miette, Result};
 use url::Url;
 
-use ockam_api::cloud::project::OktaAuth0;
-
 use crate::enroll::oidc_provider::OidcProvider;
+use crate::error::ApiError;
 
 pub struct OktaOidcProvider {
     okta: OktaAuth0,
@@ -49,12 +48,12 @@ impl OidcProvider for OktaOidcProvider {
 
     fn build_http_client(&self) -> Result<reqwest::Client> {
         let certificate = reqwest::Certificate::from_pem(self.okta.certificate.as_bytes())
-            .map_err(|e| miette!("Error parsing certificate: {}", e))?;
+            .map_err(|e| ApiError::core(format!("Error parsing certificate: {}", e)))?;
 
         reqwest::ClientBuilder::new()
             .tls_built_in_root_certs(false)
             .add_root_certificate(certificate)
             .build()
-            .map_err(|e| miette!("Error building http client: {}", e))
+            .map_err(|e| ApiError::core(e.to_string()))
     }
 }

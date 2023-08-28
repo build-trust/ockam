@@ -3,6 +3,7 @@ use miette::{Context as _, IntoDiagnostic};
 
 use core::time::Duration;
 use ockam::{Context, TcpTransport};
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::{Request, RequestBuilder};
@@ -12,7 +13,7 @@ use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::duration::duration_parser;
-use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
+use crate::util::{clean_nodes_multiaddr, node_rpc, RpcBuilder};
 
 use crate::{docs, CommandGlobalOpts};
 
@@ -77,7 +78,7 @@ async fn rpc(
             let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
             let api_node = start_embedded_node_with_vault_and_identity(
                 ctx,
-                &opts,
+                &opts.state,
                 None,
                 Some(identity),
                 Some(&cmd.trust_context_opts),

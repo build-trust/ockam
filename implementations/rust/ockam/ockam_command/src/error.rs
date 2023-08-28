@@ -176,6 +176,7 @@ gen_from_impl!(minicbor::encode::Error<std::convert::Infallible>, DATAERR);
 gen_from_impl!(minicbor::decode::Error, DATAERR);
 gen_from_impl!(ockam::Error, SOFTWARE);
 gen_from_impl!(ockam_api::cli_state::CliStateError, SOFTWARE);
+gen_from_impl!(ockam_api::error::ApiError, SOFTWARE);
 gen_from_impl!(ockam_multiaddr::Error, SOFTWARE);
 gen_from_impl!(miette::ErrReport, SOFTWARE);
 gen_from_impl!(time::error::Parse, DATAERR);

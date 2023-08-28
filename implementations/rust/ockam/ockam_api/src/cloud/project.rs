@@ -75,7 +75,7 @@ pub struct Project {
 
 impl Project {
     pub fn access_route(&self) -> Result<MultiAddr> {
-        MultiAddr::from_str(&self.access_route).map_err(|e| ApiError::generic(&e.to_string()))
+        MultiAddr::from_str(&self.access_route).map_err(|e| ApiError::core(e.to_string()))
     }
 
     pub fn has_admin_with_email(&self, email: &str) -> bool {
@@ -103,7 +103,7 @@ impl Project {
     fn access_route_socket_addr(&self) -> Result<String> {
         let ma = self.access_route()?;
         ma.to_socket_addr()
-            .map_err(|e| ApiError::generic(&e.to_string()))
+            .map_err(|e| ApiError::core(e.to_string()))
     }
 }
 
@@ -382,7 +382,7 @@ mod node {
             let operation_id = match &project.operation_id {
                 Some(operation_id) => operation_id,
                 None => {
-                    return Err(ApiError::generic("Project has no operation id"));
+                    return Err(ApiError::core("Project has no operation id"));
                 }
             };
             let retry_strategy =
@@ -397,15 +397,13 @@ mod node {
                         }
                     }
                 }
-                Err(ApiError::generic(
-                    "Project is not reachable yet. Retrying...",
-                ))
+                Err(ApiError::core("Project is not reachable yet. Retrying..."))
             })
             .await?;
             if operation.is_successful() {
                 self.get_project(ctx, route, &project.id).await
             } else {
-                Err(ApiError::generic("Operation failed. Please try again."))
+                Err(ApiError::core("Operation failed. Please try again."))
             }
         }
 
