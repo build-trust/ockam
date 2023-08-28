@@ -64,17 +64,17 @@ impl DeleteServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaOutletRequest {
-    #[n(1)] pub bootstrap_server_addr: String,
+    #[n(1)] pub bootstrap_server_addr: SocketAddr,
 }
 
 impl StartKafkaOutletRequest {
-    pub fn new(bootstrap_server_addr: impl Into<String>) -> Self {
+    pub fn new(bootstrap_server_addr: SocketAddr) -> Self {
         Self {
-            bootstrap_server_addr: bootstrap_server_addr.into(),
+            bootstrap_server_addr,
         }
     }
 
-    pub fn bootstrap_server_addr(&self) -> &str {
+    pub fn bootstrap_server_addr(&self) -> &SocketAddr {
         &self.bootstrap_server_addr
     }
 }
@@ -150,7 +150,7 @@ impl StartKafkaProducerRequest {
 #[cbor(map)]
 pub struct StartKafkaDirectRequest {
     #[n(1)] bind_address: SocketAddr,
-    #[n(2)] bootstrap_server_addr: String,
+    #[n(2)] bootstrap_server_addr: SocketAddr,
     #[n(3)] brokers_port_range: (u16, u16),
     #[n(4)] consumer_route: Option<String>,
 }
@@ -158,7 +158,7 @@ pub struct StartKafkaDirectRequest {
 impl StartKafkaDirectRequest {
     pub fn new(
         bind_address: SocketAddr,
-        bootstrap_server_addr: String,
+        bootstrap_server_addr: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
         consumer_route: Option<MultiAddr>,
     ) -> Self {
@@ -173,7 +173,7 @@ impl StartKafkaDirectRequest {
     pub fn bind_address(&self) -> SocketAddr {
         self.bind_address
     }
-    pub fn bootstrap_server_addr(&self) -> &str {
+    pub fn bootstrap_server_addr(&self) -> &SocketAddr {
         &self.bootstrap_server_addr
     }
     pub fn brokers_port_range(&self) -> (u16, u16) {

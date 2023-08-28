@@ -30,7 +30,7 @@ pub(crate) async fn load_model_state(
         let _ = node_manager
             .create_outlet(
                 &context,
-                tcp_outlet.tcp_addr.clone(),
+                tcp_outlet.socket_addr,
                 tcp_outlet.worker_addr.clone(),
                 None,
                 true,
@@ -39,7 +39,7 @@ pub(crate) async fn load_model_state(
             .map_err(|e| {
                 error!(
                     ?e,
-                    "failed to create outlet with tcp addr {}", tcp_outlet.tcp_addr
+                    "failed to create outlet with tcp addr {}", tcp_outlet.socket_addr
                 );
             });
     }

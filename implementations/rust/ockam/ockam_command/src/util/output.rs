@@ -256,7 +256,7 @@ Outlet {}:
     Worker Address: {}
 "#,
             self.alias,
-            self.tcp_addr,
+            self.socket_addr,
             self.worker_address()?
         );
 
@@ -273,7 +273,7 @@ From {} to {}"#,
             self.worker_address()?
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            self.tcp_addr
+            self.socket_addr
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
         );

@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -36,12 +37,15 @@ impl NodeManager {
     pub async fn create_outlet(
         &mut self,
         ctx: &Context,
-        tcp_addr: String,
-        worker_addr: String,
+        socket_addr: SocketAddr,
+        worker_addr: Address,
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
     ) -> Result<OutletStatus> {
-        info!("Handling request to create outlet portal");
+        info!(
+            "Handling request to create outlet portal at {:?}",
+            socket_addr
+        );
         let resource = alias
             .as_deref()
             .map(Resource::new)
@@ -58,8 +62,6 @@ impl NodeManager {
                 message,
             ));
         }
-
-        let worker_addr = Address::from_string(&worker_addr);
 
         let check_credential = self.enable_credential_checks;
         let trust_context_id = if check_credential {
@@ -95,7 +97,7 @@ impl NodeManager {
 
         let res = self
             .tcp_transport
-            .create_outlet(worker_addr.clone(), tcp_addr.clone(), options)
+            .create_tcp_outlet(worker_addr.clone(), socket_addr, options)
             .await;
 
         Ok(match res {
@@ -103,13 +105,13 @@ impl NodeManager {
                 // TODO: Use better way to store outlets?
                 self.registry.outlets.insert(
                     alias.clone(),
-                    OutletInfo::new(&tcp_addr, Some(&worker_addr)),
+                    OutletInfo::new(&socket_addr, Some(&worker_addr)),
                 );
 
-                OutletStatus::new(tcp_addr, worker_addr.to_string(), alias, None)
+                OutletStatus::new(socket_addr, worker_addr, alias, None)
             }
             Err(e) => {
-                warn!(at = %tcp_addr, err = %e, "Failed to create TCP outlet");
+                warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
                 let message = format!("Failed to create outlet: {}", e);
                 return Err(ockam_core::Error::new(
                     Origin::Node,
@@ -396,7 +398,7 @@ impl NodeManagerWorker {
         create_outlet: CreateOutlet,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let CreateOutlet {
-            tcp_addr,
+            socket_addr,
             worker_addr,
             alias,
             reachable_from_default_secure_channel,
@@ -406,7 +408,7 @@ impl NodeManagerWorker {
         self.create_outlet_impl(
             ctx,
             req.id(),
-            tcp_addr,
+            socket_addr,
             worker_addr,
             alias,
             reachable_from_default_secure_channel,
@@ -418,8 +420,8 @@ impl NodeManagerWorker {
         &self,
         ctx: &Context,
         req_id: Id,
-        tcp_addr: String,
-        worker_addr: String,
+        socket_addr: SocketAddr,
+        worker_addr: Address,
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
@@ -427,7 +429,7 @@ impl NodeManagerWorker {
         match node_manager
             .create_outlet(
                 ctx,
-                tcp_addr,
+                socket_addr,
                 worker_addr,
                 alias,
                 reachable_from_default_secure_channel,
@@ -460,8 +462,8 @@ impl NodeManagerWorker {
                 Ok(_) => {
                     debug!(%alias, "Successfully stopped outlet");
                     Ok(Response::ok(req.id()).body(OutletStatus::new(
-                        outlet_to_delete.tcp_addr,
-                        outlet_to_delete.worker_addr.to_string(),
+                        outlet_to_delete.socket_addr,
+                        outlet_to_delete.worker_addr.clone(),
                         alias,
                         None,
                     )))
@@ -492,8 +494,8 @@ impl NodeManagerWorker {
         if let Some(outlet_to_show) = node_manager.registry.outlets.get(alias) {
             debug!(%alias, "Outlet not found in node registry");
             Ok(Response::ok(req.id()).body(OutletStatus::new(
-                outlet_to_show.tcp_addr.to_string(),
-                outlet_to_show.worker_addr.to_string(),
+                outlet_to_show.socket_addr,
+                outlet_to_show.worker_addr.clone(),
                 alias,
                 None,
             )))

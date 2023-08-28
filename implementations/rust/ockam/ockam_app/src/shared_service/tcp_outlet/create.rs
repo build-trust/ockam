@@ -35,7 +35,7 @@ async fn tcp_outlet_create_impl(
 ) -> crate::Result<()> {
     debug!(%service, %port, "Creating an outlet");
     let app_state = app.state::<AppState>();
-    let tcp_addr: SocketAddr = format!("127.0.0.1:{port}")
+    let socket_addr: SocketAddr = format!("127.0.0.1:{port}")
         .parse()
         .into_diagnostic()
         .wrap_err("Invalid port")?;
@@ -45,15 +45,15 @@ async fn tcp_outlet_create_impl(
     match node_manager
         .create_outlet(
             &app_state.context(),
-            tcp_addr.to_string(),
-            worker_addr,
+            socket_addr,
+            worker_addr.into(),
             None,
             true,
         )
         .await
     {
         Ok(status) => {
-            info!(tcp_addr = status.tcp_addr, "Outlet created");
+            info!(socket_addr = socket_addr.to_string(), "Outlet created");
             app_state.model_mut(|m| m.add_tcp_outlet(status)).await?;
             system_tray_on_update(&app);
             Ok(())
@@ -62,7 +62,7 @@ async fn tcp_outlet_create_impl(
     }?;
 
     if let Some(email) = email {
-        create_service_invitation(email, tcp_addr.to_string(), app)
+        create_service_invitation(email, socket_addr.to_string(), app)
             .await
             .map_err(Error::Generic)?;
     }

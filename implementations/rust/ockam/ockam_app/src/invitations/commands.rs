@@ -1,3 +1,6 @@
+use miette::IntoDiagnostic;
+use std::net::SocketAddr;
+use std::str::FromStr;
 use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, error, info, warn};
 
@@ -49,12 +52,12 @@ async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> c
 #[tauri::command]
 pub async fn create_service_invitation<R: Runtime>(
     recipient_email: String,
-    outlet_addr: String,
+    outlet_socket_addr: String,
     app: AppHandle<R>,
 ) -> Result<(), String> {
     info!(
         ?recipient_email,
-        ?outlet_addr,
+        ?outlet_socket_addr,
         "creating service invitation"
     );
     let state: State<'_, AppState> = app.state();
@@ -67,9 +70,13 @@ pub async fn create_service_invitation<R: Runtime>(
     let enrollment_ticket = create_enrollment_ticket(project_id, app.clone())
         .await
         .map_err(|e| e.to_string())?;
+
+    let socket_addr = SocketAddr::from_str(outlet_socket_addr.as_str())
+        .into_diagnostic()
+        .map_err(|e| format!("Cannot parse the outlet address as a socket address: {e}"))?;
     let invite_args = super::build_args_for_create_service_invitation(
         &app,
-        &outlet_addr,
+        &socket_addr,
         &recipient_email,
         enrollment_ticket,
     )

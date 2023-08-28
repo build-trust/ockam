@@ -122,7 +122,7 @@ impl TcpListener {
 }
 
 /// Resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
-pub(super) fn resolve_peer(peer: String) -> Result<SocketAddr> {
+pub fn resolve_peer(peer: String) -> Result<SocketAddr> {
     // Try to parse as SocketAddr
     if let Ok(p) = parse_socket_addr(&peer) {
         return Ok(p);

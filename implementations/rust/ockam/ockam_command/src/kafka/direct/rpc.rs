@@ -23,7 +23,7 @@ pub struct ArgOpts {
     pub bind_address: SocketAddr,
     pub brokers_port_range: PortRange,
     pub consumer_route: Option<MultiAddr>,
-    pub bootstrap_server: String,
+    pub bootstrap_server: SocketAddr,
 }
 
 pub async fn start(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> miette::Result<()> {

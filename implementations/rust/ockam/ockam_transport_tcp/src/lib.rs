@@ -27,6 +27,7 @@ use ockam_core::TransportType;
 pub use options::{TcpConnectionOptions, TcpListenerOptions};
 pub use portal::{PortalInternalMessage, PortalMessage, MAX_PAYLOAD_SIZE};
 pub use registry::*;
+pub use transport::common::*;
 pub use transport::*;
 
 mod workers;

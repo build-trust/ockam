@@ -29,7 +29,7 @@ pub struct CreateCommand {
     bind_address: SocketAddr,
     /// The address of the kafka bootstrap broke
     #[arg(long, default_value_t = kafka_default_outlet_server())]
-    bootstrap_server: String,
+    bootstrap_server: SocketAddr,
     /// Local port range dynamically allocated to kafka brokers, must not overlap with the
     /// bootstrap port
     #[arg(long, default_value_t = kafka_default_consumer_port_range())]

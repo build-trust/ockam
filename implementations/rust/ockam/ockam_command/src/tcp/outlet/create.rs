@@ -2,8 +2,9 @@ use crate::node::{get_node_name, initialize_node_if_default};
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
+use std::net::SocketAddr;
 
-use crate::util::parsers::{host_parser, HostPort};
+use crate::util::parsers::socket_addr_parser;
 use crate::util::{node_rpc, Rpc};
 use crate::{display_parse_logs, fmt_log};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -35,8 +36,8 @@ pub struct CreateCommand {
     from: String,
 
     /// TCP address to send raw tcp traffic.
-    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS", value_parser = host_parser)]
-    to: HostPort,
+    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS", value_parser = socket_addr_parser)]
+    to: SocketAddr,
 
     /// Assign a name to this outlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
@@ -87,8 +88,8 @@ pub async fn run_impl(
 
     let send_req = async {
         let payload = CreateOutlet::new(
-            cmd.to.to_string(),
-            extract_address_value(&cmd.from)?,
+            cmd.to,
+            extract_address_value(&cmd.from)?.into(),
             cmd.alias,
             true,
         );
