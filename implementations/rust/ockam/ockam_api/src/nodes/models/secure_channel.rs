@@ -87,7 +87,7 @@ impl CreateSecureChannelResponse {
 
     pub fn multiaddr(&self) -> Result<MultiAddr> {
         route_to_multiaddr(&route![self.addr.to_string()])
-            .ok_or_else(|| ApiError::generic(&format!("Invalid route: {}", self.addr)))
+            .ok_or_else(|| ApiError::core(format!("Invalid route: {}", self.addr)))
     }
 }
 

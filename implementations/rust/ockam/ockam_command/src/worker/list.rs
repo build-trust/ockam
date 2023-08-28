@@ -1,12 +1,13 @@
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::OckamColor;
 use crate::util::output::Output;
-use crate::util::{api, extract_address_value, node_rpc, Rpc};
+use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 use ockam::Context;
+use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
 use tokio::sync::Mutex;

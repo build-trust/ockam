@@ -50,7 +50,7 @@ impl Server {
         attributes: &[String],
     ) -> Result<Self> {
         let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
-            .map_err(|err| ApiError::generic(&err.to_string()))?;
+            .map_err(|err| ApiError::core(err.to_string()))?;
         Ok(Server {
             attributes_writer,
             project,
@@ -124,7 +124,7 @@ impl Server {
             .tls_built_in_root_certs(false)
             .add_root_certificate(self.certificate.clone())
             .build()
-            .map_err(|err| ApiError::generic(&err.to_string()))?;
+            .map_err(|err| ApiError::core(err.to_string()))?;
         let res = client
             .get(format!("{}/v1/userinfo", &self.tenant_base_url))
             .header("Authorization", format!("Bearer {token}"))
@@ -138,7 +138,7 @@ impl Server {
                     let doc: HashMap<String, serde_json::Value> = res
                         .json()
                         .await
-                        .map_err(|_err| ApiError::generic("Failed to authenticate with Okta"))?;
+                        .map_err(|_err| ApiError::core("Failed to authenticate with Okta"))?;
                     debug!("userinfo received: {doc:?}");
                     let mut custom_attrs = HashMap::new();
                     for a in self.attributes.iter() {

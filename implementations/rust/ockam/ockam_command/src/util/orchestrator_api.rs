@@ -7,7 +7,7 @@ use tracing::info;
 
 use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::Context;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 use ockam_api::{
     config::lookup::ProjectLookup, nodes::models::secure_channel::CredentialExchangeMode,
     DefaultAddress,
@@ -20,10 +20,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::{
     node::util::{delete_node, start_embedded_node_with_vault_and_identity},
-    project::{
-        util::{create_secure_channel_to_authority, create_secure_channel_to_project},
-        ProjectInfo,
-    },
+    project::util::{create_secure_channel_to_authority, create_secure_channel_to_project},
     util::Rpc,
     CommandGlobalOpts, Result,
 };
@@ -83,7 +80,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
         // TODO: always use the default vault
         let node_name = start_embedded_node_with_vault_and_identity(
             self.ctx,
-            self.opts,
+            &self.opts.state,
             None,
             self.identity.clone(),
             Some(self.trust_context_opts),
@@ -100,7 +97,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
     ) -> Result<&mut OrchestratorApiBuilder<'a>> {
         // Read (okta and authority) project parameters from project.json
         let s = tokio::fs::read_to_string(file_path).await?;
-        let proj_info: ProjectInfo = serde_json::from_str(&s)?;
+        let proj_info: ProjectConfigCompact = serde_json::from_str(&s)?;
         let project_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
 
         self.project_lookup = Some(project_lookup);

@@ -53,13 +53,13 @@ impl CreateServiceInvitation {
         let project = cli_state.projects.get(&project_name)?.config().clone();
         let project_authority_route = project
             .authority_access_route
-            .ok_or(ApiError::generic("Project authority route is missing"))?;
+            .ok_or(ApiError::core("Project authority route is missing"))?;
         let project_authority_identifier = {
             let identity = project
                 .authority_identity
-                .ok_or(ApiError::generic("Project authority identifier is missing"))?;
+                .ok_or(ApiError::core("Project authority identifier is missing"))?;
             let as_hex = hex::decode(identity.as_str()).map_err(|_| {
-                ApiError::generic("Project authority identifier is not a valid hex string")
+                ApiError::core("Project authority identifier is not a valid hex string")
             })?;
             identities()
                 .identities_creation()
@@ -70,7 +70,7 @@ impl CreateServiceInvitation {
         // see also: ockam_command::project::ticket
         let enrollment_ticket = hex::encode(
             serde_json::to_vec(&enrollment_ticket)
-                .map_err(|_| ApiError::generic("Could not encode enrollment ticket"))?,
+                .map_err(|_| ApiError::core("Could not encode enrollment ticket"))?,
         );
         Ok(CreateServiceInvitation {
             enrollment_ticket,
@@ -79,7 +79,7 @@ impl CreateServiceInvitation {
             recipient_email: recipient_email.as_ref().to_string(),
             project_identity: project
                 .identity
-                .ok_or(ApiError::generic("Project identity is missing"))?
+                .ok_or(ApiError::core("Project identity is missing"))?
                 .to_string(),
             project_route: project.access_route,
             project_authority_identity: project_authority_identifier.to_string(),

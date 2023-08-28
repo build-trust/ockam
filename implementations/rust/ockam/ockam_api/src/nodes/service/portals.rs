@@ -592,7 +592,7 @@ fn replacer(
                 let normalized_route = route![
                     prefix_route,
                     local_multiaddr_to_route(&new_connection_instance.normalized_addr.clone())
-                        .ok_or_else(|| ApiError::generic("invalid normalized address"))?,
+                        .ok_or_else(|| ApiError::core("invalid normalized address"))?,
                     suffix_route
                 ];
 
@@ -615,7 +615,7 @@ fn replacer(
             match timeout(MAX_RECOVERY_TIME, f).await {
                 Err(_) => {
                     warn!(%addr, "timeout creating new tcp inlet");
-                    Err(ApiError::generic("timeout"))
+                    Err(ApiError::core("timeout"))
                 }
                 Ok(Err(e)) => {
                     warn!(%addr, err = %e, "error creating new tcp inlet");

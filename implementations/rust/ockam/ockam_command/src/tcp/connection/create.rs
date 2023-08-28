@@ -2,12 +2,13 @@ use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::is_tty;
 use crate::{
     docs,
-    util::{api, extract_address_value, node_rpc, Rpc},
+    util::{api, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat,
 };
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models;
 use serde_json::json;
 

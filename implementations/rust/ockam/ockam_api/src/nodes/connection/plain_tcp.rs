@@ -38,10 +38,10 @@ impl Instantiator for PlainTcpInstantiator {
 
         let mut tcp = multiaddr_to_route(&tcp_piece, &self.tcp_transport)
             .await
-            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            .ok_or_else(|| ApiError::core("invalid multiaddr"))?;
 
         let multiaddr =
-            route_to_multiaddr(&tcp.route).ok_or_else(|| ApiError::generic("invalid tcp route"))?;
+            route_to_multiaddr(&tcp.route).ok_or_else(|| ApiError::core("invalid tcp route"))?;
 
         let current_multiaddr = ConnectionInstanceBuilder::combine(before, multiaddr, after)?;
 
@@ -50,7 +50,7 @@ impl Instantiator for PlainTcpInstantiator {
         let tcp_connection = tcp
             .tcp_connection
             .take()
-            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            .ok_or_else(|| ApiError::core("invalid multiaddr"))?;
 
         Ok(Changes {
             current_multiaddr,

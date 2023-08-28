@@ -250,7 +250,7 @@ impl OutletStatus {
 
     pub fn worker_address(&self) -> Result<MultiAddr, ockam_core::Error> {
         route_to_multiaddr(&route![self.worker_addr.to_string()])
-            .ok_or_else(|| ApiError::generic("Invalid Worker Address"))
+            .ok_or_else(|| ApiError::core("Invalid Worker Address"))
     }
 }
 

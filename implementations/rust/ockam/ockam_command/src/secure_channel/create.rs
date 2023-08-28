@@ -2,7 +2,7 @@ use crate::{
     error::Error,
     fmt_log, fmt_ok,
     terminal::OckamColor,
-    util::{exitcode, extract_address_value, node_rpc},
+    util::{exitcode, node_rpc},
     CommandGlobalOpts,
 };
 
@@ -18,6 +18,7 @@ use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::util::api::CloudOpts;
 use crate::util::{clean_nodes_multiaddr, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelResponse, CredentialExchangeMode,

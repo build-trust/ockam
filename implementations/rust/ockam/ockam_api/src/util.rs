@@ -232,7 +232,7 @@ pub fn multiaddr_to_addr(ma: &MultiAddr) -> Option<Address> {
 
 pub fn try_multiaddr_to_addr(ma: &MultiAddr) -> Result<Address, Error> {
     multiaddr_to_addr(ma)
-        .ok_or_else(|| ApiError::message(format!("could not convert {ma} to address")))
+        .ok_or_else(|| ApiError::core(format!("could not convert {ma} to address")))
 }
 
 /// Try to convert an Ockam Route into a MultiAddr.
@@ -251,9 +251,7 @@ pub fn try_address_to_multiaddr(a: &Address) -> Result<MultiAddr, Error> {
         LOCAL => ma.push_back(Service::new(a.address()))?,
         other => {
             error!(target: "ockam_api", transport = %other, "unsupported transport type");
-            return Err(ApiError::message(format!(
-                "unknown transport type: {other}"
-            )));
+            return Err(ApiError::core(format!("unknown transport type: {other}")));
         }
     }
     Ok(ma)
@@ -325,7 +323,7 @@ pub fn local_worker(code: &Code) -> Result<bool> {
         | Secure::CODE => Ok(false),
         Worker::CODE | Service::CODE => Ok(true),
 
-        _ => Err(ApiError::message(format!("unknown transport type: {code}"))),
+        _ => Err(ApiError::core(format!("unknown transport type: {code}"))),
     }
 }
 

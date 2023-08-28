@@ -1,6 +1,7 @@
 use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, error, info, warn};
 
+use ockam_api::address::{extract_address_value, get_free_address};
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::{AcceptInvitation, InvitationWithAccess};
@@ -8,7 +9,6 @@ use ockam_api::{
     cloud::share::{InvitationListKind, ListInvitations},
     nodes::models::portal::OutletStatus,
 };
-use ockam_command::util::{extract_address_value, get_free_address};
 
 use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::cli::cli_bin;

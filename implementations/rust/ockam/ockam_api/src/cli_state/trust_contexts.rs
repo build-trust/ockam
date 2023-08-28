@@ -50,6 +50,25 @@ mod traits {
         }
     }
 
+    impl TrustContextsState {
+        pub fn read_config_from_path(&self, path: &str) -> Result<TrustContextConfig> {
+            let tcc = match std::fs::read_to_string(path) {
+                Ok(contents) => {
+                    let mut tc = serde_json::from_str::<TrustContextConfig>(&contents)?;
+                    tc.set_path(PathBuf::from(path));
+                    tc
+                }
+                Err(_) => {
+                    let state = self.get(path)?;
+                    let mut tcc = state.config().clone();
+                    tcc.set_path(state.path().clone());
+                    tcc
+                }
+            };
+            Ok(tcc)
+        }
+    }
+
     #[async_trait]
     impl StateItemTrait for TrustContextState {
         type Config = TrustContextConfig;

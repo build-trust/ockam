@@ -1,5 +1,5 @@
 use miette::{IntoDiagnostic, WrapErr};
-use ockam_command::util::extract_address_value;
+use ockam_api::address::extract_address_value;
 use std::net::SocketAddr;
 use tauri::{AppHandle, Manager, Wry};
 use tracing::{debug, error, info};

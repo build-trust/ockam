@@ -2,11 +2,12 @@ use clap::Args;
 use miette::IntoDiagnostic;
 
 use ockam::{Context, TcpTransport};
+use ockam_api::address::extract_address_value;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::{get_node_name, NodeOpts};
-use crate::util::{api, extract_address_value, node_rpc, RpcBuilder};
+use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]

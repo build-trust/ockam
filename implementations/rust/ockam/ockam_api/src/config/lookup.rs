@@ -1,7 +1,8 @@
 use crate::cli_state::{ProjectState, StateItemTrait};
 use crate::cloud::project::{OktaAuth0, Project};
+use crate::error::ApiError;
 use bytes::Bytes;
-use miette::{miette, IntoDiagnostic, WrapErr};
+use miette::WrapErr;
 use ockam::identity::{identities, IdentityIdentifier};
 use ockam_core::compat::collections::VecDeque;
 use ockam_multiaddr::MultiAddr;
@@ -226,17 +227,12 @@ pub struct ProjectLookup {
 }
 
 impl ProjectLookup {
-    pub async fn from_project(project: &Project) -> miette::Result<Self> {
-        let node_route: MultiAddr = project
-            .access_route
-            .as_str()
-            .try_into()
-            .into_diagnostic()
-            .wrap_err("Invalid project node route")?;
+    pub async fn from_project(project: &Project) -> ockam_core::Result<Self, ApiError> {
+        let node_route: MultiAddr = project.access_route.as_str().try_into()?;
         let pid = project
             .identity
             .as_ref()
-            .ok_or_else(|| miette!("Project should have identity set"))?;
+            .ok_or_else(|| ApiError::message("Project should have identity set"))?;
         let authority = ProjectAuthority::from_raw(
             &project.authority_access_route,
             &project.authority_identity,
@@ -289,19 +285,19 @@ impl ProjectAuthority {
     pub async fn from_raw<S: ToString>(
         route: &Option<S>,
         identity: &Option<S>,
-    ) -> miette::Result<Option<Self>> {
+    ) -> ockam_core::Result<Option<Self>, ApiError> {
         if let Some(r) = route {
-            let rte = MultiAddr::try_from(r.to_string().as_str()).into_diagnostic()?;
+            let rte = MultiAddr::try_from(r.to_string().as_str())?;
             let a = identity
                 .as_ref()
-                .ok_or_else(|| miette!("Identity is not set"))?
+                .ok_or_else(|| ApiError::message("Identity is not set"))?
                 .to_string();
-            let a = hex::decode(a.as_str()).map_err(|_| miette!("Invalid project authority"))?;
+            let a = hex::decode(a.as_str())
+                .map_err(|_| ApiError::message("Invalid project authority"))?;
             let p = identities()
                 .identities_creation()
                 .decode_identity(&a)
-                .await
-                .into_diagnostic()?;
+                .await?;
             Ok(Some(ProjectAuthority::new(p.identifier(), rte, a)))
         } else {
             Ok(None)

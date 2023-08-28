@@ -13,9 +13,11 @@ use tokio::try_join;
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::NodeManagerTrustOptions;
+
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
@@ -27,11 +29,11 @@ use ockam_api::{
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::{route, LOCAL};
 
-use crate::node::util::{add_project_info_to_node_state, init_node_state, spawn_node};
+use crate::node::util::spawn_node;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::terminal::OckamColor;
-use crate::util::api::{parse_trust_context, TrustContextConfigBuilder, TrustContextOpts};
+use crate::util::api::TrustContextOpts;
 use crate::util::{api, parse_node_name, RpcBuilder};
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
@@ -261,7 +263,7 @@ async fn run_foreground_node(
     // and there is no existing state for it yet.
     if !cmd.child_process && !opts.state.nodes.exists(&node_name) {
         init_node_state(
-            &opts,
+            &opts.state,
             &node_name,
             cmd.vault.as_deref(),
             cmd.identity.as_deref(),
@@ -269,13 +271,19 @@ async fn run_foreground_node(
         .await?;
     }
 
-    add_project_info_to_node_state(&node_name, &opts, &cmd.trust_context_opts).await?;
+    add_project_info_to_node_state(
+        &node_name,
+        &opts.state,
+        cmd.trust_context_opts.project_path.as_ref(),
+    )
+    .await?;
 
-    let trust_context_config =
-        TrustContextConfigBuilder::new(&opts.state, &cmd.trust_context_opts)?
-            .with_authority_identity(cmd.authority_identity.as_ref())
-            .with_credential_name(cmd.credential.as_ref())
-            .build();
+    let trust_context_config = cmd
+        .trust_context_opts
+        .to_config(&opts.state)?
+        .with_authority_identity(cmd.authority_identity.as_ref())
+        .with_credential_name(cmd.credential.as_ref())
+        .build();
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let options = TcpListenerOptions::new();
@@ -446,7 +454,7 @@ pub async fn spawn_background_node(
     let node_name = parse_node_name(&cmd.node_name)?;
     // Create node state, including the vault and identity if don't exist
     init_node_state(
-        opts,
+        &opts.state,
         &node_name,
         cmd.vault.as_deref(),
         cmd.identity.as_deref(),
@@ -455,7 +463,7 @@ pub async fn spawn_background_node(
 
     let trust_context_path = match cmd.trust_context_opts.trust_context.clone() {
         Some(tc) => {
-            let config = parse_trust_context(&opts.state, &tc)?;
+            let config = opts.state.trust_contexts.read_config_from_path(&tc)?;
             Some(config.path().unwrap().clone())
         }
         None => None,

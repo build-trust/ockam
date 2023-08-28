@@ -13,10 +13,11 @@ use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::{OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
+use ockam_api::enroll::oidc_service::OidcService;
+use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::minicbor_url::Url;
 use ockam_core::api::Request;
 
-use crate::enroll::{OidcService, OktaOidcProvider};
 use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::configure_addon_endpoint;

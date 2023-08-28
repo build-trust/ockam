@@ -1,7 +1,7 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
 
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
 use clap::Args;
@@ -10,6 +10,7 @@ use miette::miette;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::portal::OutletList;
 
+use ockam_api::address::extract_address_value;
 use ockam_core::api::Request;
 use ockam_node::Context;
 use tokio::sync::Mutex;

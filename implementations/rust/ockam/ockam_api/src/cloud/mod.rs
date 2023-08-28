@@ -71,7 +71,7 @@ impl<T> CloudRequestWrapper<T> {
 
     pub fn multiaddr(&self) -> Result<MultiAddr> {
         MultiAddr::from_str(self.route.as_ref())
-            .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))
+            .map_err(|_err| ApiError::core(format!("Invalid route: {}", self.route)))
     }
 }
 
@@ -176,7 +176,7 @@ mod node {
             let sc = {
                 let cloud_route = crate::multiaddr_to_route(cloud_multiaddr, &self.tcp_transport)
                     .await
-                    .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+                    .ok_or_else(|| ApiError::core("Invalid Multiaddr"))?;
 
                 let options = SecureChannelOptions::new()
                     .with_trust_policy(TrustIdentifierPolicy::new(self.controller_identifier()));

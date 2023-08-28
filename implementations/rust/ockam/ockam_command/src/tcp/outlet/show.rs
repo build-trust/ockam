@@ -1,11 +1,12 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, Rpc};
 use crate::Result;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::miette;
 use ockam::{route, Context};
+use ockam_api::address::extract_address_value;
 
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::route_to_multiaddr;

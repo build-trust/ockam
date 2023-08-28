@@ -1,9 +1,10 @@
 use crate::policy::policy_path;
-use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
 use ockam_abac::{Action, Resource};
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::policy::Policy;
 use ockam_core::api::Request;
 

@@ -56,11 +56,11 @@ impl Instantiator for ProjectInstantiator {
 
         let project_protocol_value = project_piece
             .first()
-            .ok_or_else(|| ApiError::message("missing project protocol in multiaddr"))?;
+            .ok_or_else(|| ApiError::core("missing project protocol in multiaddr"))?;
 
         let project = project_protocol_value
             .cast::<Project>()
-            .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
+            .ok_or_else(|| ApiError::core("invalid project protocol in multiaddr"))?;
 
         let mut node_manager = self.node_manager.write().await;
         let (project_multiaddr, project_identifier) =
@@ -69,7 +69,7 @@ impl Instantiator for ProjectInstantiator {
         debug!(addr = %project_multiaddr, "creating secure channel");
         let tcp = multiaddr_to_route(&project_multiaddr, &node_manager.tcp_transport)
             .await
-            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            .ok_or_else(|| ApiError::core("invalid multiaddr"))?;
 
         let sc = node_manager
             .create_secure_channel_impl(

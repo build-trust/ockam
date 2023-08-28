@@ -123,6 +123,7 @@
 //! file per vault. A vault contains secrets which are generally used during the creation of secure
 //! channels to sign or encrypt data involved in the handshake.
 //!
+pub mod address;
 pub mod auth;
 pub mod authenticator;
 pub mod bootstrapped_identities_store;
@@ -130,6 +131,7 @@ pub mod cli_state;
 pub mod cloud;
 pub mod config;
 pub mod echoer;
+pub mod enroll;
 pub mod error;
 pub mod hop;
 pub mod identity;
@@ -139,6 +141,7 @@ pub mod nodes;
 pub mod okta;
 pub mod port_range;
 pub mod rpc_proxy_service;
+pub mod trust_context;
 pub mod uppercase;
 pub mod verifier;
 

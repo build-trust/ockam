@@ -1,4 +1,4 @@
-use miette::Result;
+use ockam_core::Result;
 use std::time::Duration;
 use url::Url;
 

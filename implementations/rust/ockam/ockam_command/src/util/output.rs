@@ -6,7 +6,7 @@ use miette::miette;
 use miette::IntoDiagnostic;
 
 use ockam::identity::credential::Credential;
-use ockam_api::cli_state::{StateItemTrait, VaultState};
+use ockam_api::cli_state::{ProjectConfigCompact, StateItemTrait, VaultState};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
@@ -16,7 +16,6 @@ use ockam_api::nodes::models::secure_channel::{
 use ockam_api::route_to_multiaddr;
 use ockam_core::{route, Route};
 
-use crate::project::ProjectInfo;
 use crate::terminal::OckamColor;
 use crate::util::comma_separated;
 use crate::Result;
@@ -156,7 +155,7 @@ Space {}"#,
     }
 }
 
-impl Output for ProjectInfo<'_> {
+impl Output for ProjectConfigCompact {
     fn output(&self) -> Result<String> {
         let pi = self
             .identity

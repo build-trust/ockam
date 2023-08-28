@@ -161,7 +161,7 @@ mod node {
                     self.configure_addon_impl::<ConfluentConfig>(ctx, dec, project_id, addon_id)
                         .await
                 }
-                _ => Err(ApiError::generic(&format!("Unknown addon: {addon_id}"))),
+                _ => Err(ApiError::core(format!("Unknown addon: {addon_id}"))),
             }
         }
 

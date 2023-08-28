@@ -19,7 +19,7 @@ use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Error, RequestBuilder, Response};
 use ockam_core::DenyAll;
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{
     proto::{self, Node},
     MultiAddr, Protocol,
@@ -36,8 +36,6 @@ pub mod orchestrator_api;
 pub mod parsers;
 
 pub(crate) mod output;
-
-pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
 
 #[derive(Clone)]
 pub enum RpcMode<'a> {
@@ -413,49 +411,6 @@ pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }
 
-/// Get address value from a string.
-///
-/// The input string can be either a plain address of a MultiAddr formatted string.
-/// Examples: `/node/<name>`, `<name>`
-pub fn extract_address_value(input: &str) -> Result<String> {
-    // we default to the `input` value
-    let mut addr = input.to_string();
-    // if input has "/", we process it as a MultiAddr
-    if input.contains('/') {
-        let err = miette!("invalid address protocol");
-        let maddr = MultiAddr::from_str(input)?;
-        if let Some(p) = maddr.iter().next() {
-            match p.code() {
-                Node::CODE => {
-                    addr = p
-                        .cast::<proto::Node>()
-                        .ok_or(miette!("Failed to parse `node` protocol"))?
-                        .to_string();
-                }
-                Service::CODE => {
-                    addr = p
-                        .cast::<proto::Service>()
-                        .ok_or(miette!("Failed to parse `service` protocol"))?
-                        .to_string();
-                }
-                Project::CODE => {
-                    addr = p
-                        .cast::<proto::Project>()
-                        .ok_or(miette!("Failed to parse `project` protocol"))?
-                        .to_string();
-                }
-                code => return Err(miette!("Protocol {} not supported", code).into()),
-            }
-        } else {
-            return Err(err.into());
-        }
-    }
-    if addr.is_empty() {
-        return Err(miette!("Empty address in input: {}", input).into());
-    }
-    Ok(addr)
-}
-
 /// Parses a node's input string for its name in case it's a `MultiAddr` string.
 ///
 /// Ensures that the node's name will be returned if the input string is a `MultiAddr` of the `node` type
@@ -568,12 +523,6 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     Ok(())
 }
 
-pub fn get_free_address() -> Result<SocketAddr> {
-    let listener = TcpListener::bind("127.0.0.1:0")?;
-    let port = listener.local_addr()?.port();
-    Ok(format!("127.0.0.1:{port}").parse()?)
-}
-
 pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {
     use is_terminal::IsTerminal;
     s.is_terminal()
@@ -585,6 +534,7 @@ pub fn random_name() -> String {
 
 #[cfg(test)]
 mod tests {
+    use ockam_api::address::extract_address_value;
     use ockam_api::cli_state;
     use ockam_api::cli_state::identities::IdentityConfig;
     use ockam_api::cli_state::traits::StateDirTrait;
