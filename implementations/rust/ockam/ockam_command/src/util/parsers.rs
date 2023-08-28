@@ -1,109 +1,77 @@
-use crate::{exitcode::SOFTWARE, Result};
+use crate::Result;
 use miette::miette;
+use ockam_transport_tcp::resolve_peer;
 use std::net::SocketAddr;
-use url::Host;
 
-/// Helper fn for parsing ip and port from user input
-/// It can parse a string containing either an `ip:port` pair or just a `port`
-/// into a valid SocketAddr instance. Uses the host_parser fn to initially parse
-/// the input as a HostPort and further validates non-Domain type hosts.
+/// Helper function for parsing a socket from user input
+/// It is possible to just input a `port`. In that case the address will be assumed to be
+/// 127.0.0.1:<port>
 pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
-    host_parser(input).and_then(|hp| hp.try_into())
-}
-
-/// Helper fn for parsing command user inputs and validating for Ipv4 or Domain
-/// hosts with a provided port, e.g. `host:port` or just a `port`.
-pub(crate) fn host_parser(input: &str) -> Result<HostPort> {
     let addr: Vec<&str> = input.split(':').collect();
 
-    match addr.len() {
+    let address = match addr.len() {
         // Only the port is available
-        1 => {
-            let port: u16 = addr[0]
-                .parse()
-                .map_err(|_| miette!("Invalid port number"))?;
-            let host = Host::Ipv4([127, 0, 0, 1].into());
-            Ok(HostPort { host, port })
-        }
+        1 => format!("127.0.0.1:{}", addr[0]),
         // Both the ip and port are available
-        2 => {
-            let port: u16 = addr[1]
-                .parse()
-                .map_err(|_| miette!("Invalid port number"))?;
-            let host = Host::parse(addr[0])
-                .map_err(|_| miette!("Invalid IP address or hostname"))
-                .and_then(|value| match value {
-                    Host::Ipv6(_) => Err(miette!("Ipv6 is not supported")),
-                    _ => Ok(value),
-                })?;
-
-            Ok(HostPort { host, port })
-        }
-        _ => Err(miette!("Argument {} is an invalid IP Address or Port", input).into()),
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct HostPort {
-    host: Host,
-    port: u16,
-}
-
-impl TryFrom<HostPort> for SocketAddr {
-    type Error = crate::Error;
-
-    fn try_from(value: HostPort) -> std::result::Result<Self, Self::Error> {
-        match value.host {
-            Host::Domain(_) => Err(Self::Error::new(
-                SOFTWARE,
-                // DNS resolution occurs at the node
-                miette!("Domains can not be converted to SocketAddrs"),
-            )),
-            Host::Ipv6(_) => Err(Self::Error::new(
-                SOFTWARE,
-                miette!("Ipv6 addresses are not supported"),
-            )),
-            Host::Ipv4(addr) => Ok(SocketAddr::new(addr.into(), value.port)),
-        }
-    }
-}
-
-impl std::fmt::Display for HostPort {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.host, self.port)
-    }
+        _ => input.to_string(),
+    };
+    Ok(resolve_peer(address.to_string())
+        .map_err(|e| miette!("cannot parse the address {address} as a socket address: {e}"))?)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use ockam_core::compat::net::{IpAddr, Ipv4Addr, SocketAddr};
-
-    use crate::util::parsers::*;
+    use std::net::Ipv6Addr;
 
     #[test]
-    fn test_parse_bootstrap_server() {
-        // Test case 1: only a port is provided
+    fn test_parse_port_only() {
         let input = "9000";
         let result = socket_addr_parser(input);
         assert!(result.is_ok());
-        if let Ok(bootstrap_server) = result {
-            assert_eq!(
-                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9000),
-                bootstrap_server
-            );
-        }
+        assert_eq!(
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9000),
+            result.unwrap()
+        );
+    }
 
-        // Test case 2: Any 4 octet combination (IPv4) followed by ":" like in "192.168.0.1:9999"
+    #[test]
+    fn test_ipv4_and_port() {
         let input = "192.168.0.1:9999";
         let result = socket_addr_parser(input);
         assert!(result.is_ok());
-        if let Ok(bootstrap_server) = result {
-            assert_eq!(
-                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 0, 1)), 9999),
-                bootstrap_server
-            );
-        }
+        assert_eq!(
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 0, 1)), 9999),
+            result.unwrap()
+        );
+    }
 
+    #[test]
+    fn test_ipv6_and_port() {
+        let input = "[::1]:9999";
+        let result = socket_addr_parser(input);
+        assert!(result.is_ok());
+        assert_eq!(
+            SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), 9999),
+            result.unwrap()
+        );
+    }
+
+    #[test]
+    fn test_localhost() {
+        let input = "localhost:9999";
+        let result = socket_addr_parser(input);
+        assert!(result.is_ok());
+        assert!(result.is_ok());
+        assert_eq!(
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9999),
+            result.unwrap()
+        );
+    }
+
+    #[test]
+    fn test_invalid_inputs() {
         // Test case 3: Any other format will throw an error
         let invalid_input = "invalid";
         assert!(socket_addr_parser(invalid_input).is_err());
@@ -115,23 +83,5 @@ mod tests {
         assert!(socket_addr_parser(invalid_input).is_err());
         let invalid_input = "192,166,0.1:9999";
         assert!(socket_addr_parser(invalid_input).is_err());
-    }
-
-    #[test]
-    fn test_host_parser() {
-        let input = "localhost:9000";
-
-        let result = host_parser(input);
-        assert!(result.is_ok());
-
-        if let Ok(host_port) = result {
-            assert_eq!(
-                HostPort {
-                    host: Host::Domain("localhost".into()),
-                    port: 9000
-                },
-                host_port
-            );
-        }
     }
 }

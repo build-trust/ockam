@@ -150,7 +150,7 @@ impl NodeManager {
             outlets
                 .iter()
                 .map(|(alias, info)| {
-                    OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
+                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), alias, None)
                 })
                 .collect(),
         )

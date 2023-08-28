@@ -1,5 +1,6 @@
 //! Inlets and outlet request/response types
 
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
@@ -7,7 +8,7 @@ use ockam::route;
 use ockam_core::compat::borrow::Cow;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_core::{CowStr, Route};
+use ockam_core::{Address, CowStr, Route};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
@@ -129,9 +130,9 @@ pub struct CreateOutlet {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5351558>,
     /// The address the portal should connect or bind to
-    #[n(1)] pub tcp_addr: String,
+    #[n(1)] pub socket_addr: SocketAddr,
     /// The address the portal should connect or bind to
-    #[n(2)] pub worker_addr: String,
+    #[n(2)] pub worker_addr: Address,
     /// A human-friendly alias for this portal endpoint
     #[n(3)] pub alias: Option<String>,
     /// Allow the outlet to be reachable from the default secure channel, useful when we want to
@@ -141,16 +142,16 @@ pub struct CreateOutlet {
 
 impl CreateOutlet {
     pub fn new(
-        tcp_addr: impl Into<String>,
-        worker_addr: impl Into<String>,
+        socket_addr: SocketAddr,
+        worker_addr: Address,
         alias: impl Into<Option<String>>,
         reachable_from_default_secure_channel: bool,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tcp_addr: tcp_addr.into(),
-            worker_addr: worker_addr.into(),
+            socket_addr,
+            worker_addr,
             alias: alias.into(),
             reachable_from_default_secure_channel,
         }
@@ -213,8 +214,8 @@ pub struct OutletStatus {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)] tag: TypeTag<4012569>,
-    #[n(1)] pub tcp_addr: String,
-    #[n(2)] pub worker_addr: String,
+    #[n(1)] pub socket_addr: SocketAddr,
+    #[n(2)] pub worker_addr: Address,
     #[n(3)] pub alias:String,
     /// An optional status payload
     #[n(4)] pub payload: Option<String>,
@@ -225,7 +226,7 @@ impl OutletStatus {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tcp_addr: "".into(),
+            socket_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 80),
             worker_addr: "".into(),
             alias: "".into(),
             payload: Some(reason.into()),
@@ -233,16 +234,16 @@ impl OutletStatus {
     }
 
     pub fn new(
-        tcp_addr: impl Into<String>,
-        worker_addr: impl Into<String>,
+        socket_addr: SocketAddr,
+        worker_addr: Address,
         alias: impl Into<String>,
         payload: impl Into<Option<String>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tcp_addr: tcp_addr.into(),
-            worker_addr: worker_addr.into(),
+            socket_addr,
+            worker_addr,
             alias: alias.into(),
             payload: payload.into(),
         }

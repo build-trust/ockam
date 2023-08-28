@@ -48,7 +48,7 @@ fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
         .add_item(
             CustomMenuItem::new(
                 "outlet-tcp-address".to_string(),
-                format!("TCP Address: {}", outlet.tcp_addr),
+                format!("TCP Address: {}", outlet.socket_addr),
             )
             .disabled(),
         )

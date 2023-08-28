@@ -4738,6 +4738,7 @@ dependencies = [
  "ockam_macros",
  "ockam_multiaddr",
  "ockam_node",
+ "ockam_transport_tcp",
  "ockam_vault",
  "ockam_vault_aws",
  "once_cell",

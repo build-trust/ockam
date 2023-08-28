@@ -150,9 +150,9 @@ fn print_node_info(
         println!("  Outlets:");
         for e in &outlets.list {
             println!("    Outlet:");
-            println!("      Forward Address: {}", e.tcp_addr);
+            println!("      Forward Address: {}", e.socket_addr);
 
-            if let Some(ma) = addr_to_multiaddr(&e.worker_addr) {
+            if let Some(ma) = addr_to_multiaddr(e.worker_addr.to_string()) {
                 println!("      Address: {ma}");
             }
         }

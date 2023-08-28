@@ -5,6 +5,7 @@ use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_core::api::Request;
+use std::net::SocketAddr;
 
 use tokio::{sync::Mutex, try_join};
 
@@ -29,7 +30,7 @@ pub struct CreateCommand {
     addr: String,
     /// The address of the kafka bootstrap broker
     #[arg(long, default_value_t = kafka_default_outlet_server())]
-    bootstrap_server: String,
+    bootstrap_server: SocketAddr,
 }
 
 impl CreateCommand {
@@ -50,7 +51,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     let send_req = async {
         let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
 
-        let payload = StartKafkaOutletRequest::new(bootstrap_server.clone());
+        let payload = StartKafkaOutletRequest::new(bootstrap_server);
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_outlet").body(payload);
         let node_name = get_node_name(&opts.state, &node_opts.at_node);

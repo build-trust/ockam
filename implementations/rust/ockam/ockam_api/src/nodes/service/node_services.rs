@@ -594,8 +594,8 @@ impl NodeManagerWorker {
             .create_outlet_impl(
                 context,
                 request.id(),
-                body.request().bootstrap_server_addr.clone(),
-                KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
+                body.request().bootstrap_server_addr,
+                KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
                 false,
             )
@@ -640,7 +640,7 @@ impl NodeManagerWorker {
                 body_req.bind_address().ip(),
                 body_req.bind_address().port(),
                 body_req.brokers_port_range(),
-                body_req.bootstrap_server_addr().to_string(),
+                *body_req.bootstrap_server_addr(),
                 consumer_route,
             )
             .await
@@ -660,7 +660,7 @@ impl NodeManagerWorker {
         bind_ip: IpAddr,
         server_bootstrap_port: u16,
         brokers_port_range: (u16, u16),
-        bootstrap_server_addr: String,
+        bootstrap_server_addr: SocketAddr,
         consumer_route: Option<MultiAddr>,
     ) -> Result<(), ResponseBuilder<Error>> {
         let default_secure_channel_listener_flow_control_id = context
@@ -685,7 +685,7 @@ impl NodeManagerWorker {
             context,
             request.id(),
             bootstrap_server_addr,
-            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
+            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
             Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
             false,
         )

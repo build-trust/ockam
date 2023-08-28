@@ -54,7 +54,7 @@ pub async fn run_impl(
     let addr = route_to_multiaddr(&route![outlet_to_show.worker_addr.to_string()])
         .ok_or_else(|| miette!("Invalid Outlet Address"))?;
     println!("  From Outlet: {addr}");
-    println!("  To TCP: {}", outlet_to_show.tcp_addr);
+    println!("  To TCP: {}", outlet_to_show.socket_addr);
     Ok(())
 }
 

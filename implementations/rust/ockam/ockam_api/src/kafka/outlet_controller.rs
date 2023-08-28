@@ -10,6 +10,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
 use ockam_core::{Address, Result};
 use ockam_node::Context;
+use std::net::SocketAddr;
 
 type BrokerId = i32;
 
@@ -23,7 +24,7 @@ pub(crate) struct KafkaOutletController {
 
 #[derive(Debug)]
 struct KafkaOutletMapInner {
-    broker_map: HashMap<BrokerId, String>,
+    broker_map: HashMap<BrokerId, SocketAddr>,
 }
 
 impl KafkaOutletController {
@@ -42,32 +43,37 @@ impl KafkaOutletController {
         &self,
         context: &Context,
         broker_id: BrokerId,
-        tcp_address: String,
+        socket_addr: SocketAddr,
     ) -> Result<Address> {
         let outlet_address = kafka_outlet_address(broker_id);
         let mut inner = self.inner.lock().await;
         if !inner.broker_map.contains_key(&broker_id) {
-            let tcp_address = Self::request_outlet_creation(
+            let socket_address = Self::request_outlet_creation(
                 context,
-                tcp_address,
+                socket_addr,
                 kafka_outlet_address(broker_id),
             )
             .await?;
-            inner.broker_map.insert(broker_id, tcp_address);
+            inner.broker_map.insert(broker_id, socket_address);
         }
-        Ok(outlet_address.into())
+        Ok(outlet_address)
     }
 
     async fn request_outlet_creation(
         context: &Context,
-        tcp_address: String,
-        worker_address: String,
-    ) -> Result<String> {
+        socket_address: SocketAddr,
+        worker_address: Address,
+    ) -> Result<SocketAddr> {
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
                 Request::post("/node/outlet")
-                    .body(CreateOutlet::new(tcp_address, worker_address, None, false))
+                    .body(CreateOutlet::new(
+                        socket_address,
+                        worker_address,
+                        None,
+                        false,
+                    ))
                     .to_vec()?,
             )
             .await?;
@@ -91,7 +97,7 @@ impl KafkaOutletController {
             ))
         } else {
             let status: OutletStatus = decoder.decode()?;
-            Ok(status.tcp_addr)
+            Ok(status.socket_addr)
         }
     }
 }

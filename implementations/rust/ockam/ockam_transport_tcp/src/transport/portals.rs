@@ -96,6 +96,19 @@ impl TcpTransport {
         Ok(())
     }
 
+    /// Create Tcp Outlet Listener at address, that connects to peer using Tcp
+    pub async fn create_tcp_outlet(
+        &self,
+        address: Address,
+        peer: SocketAddr,
+        options: TcpOutletOptions,
+    ) -> Result<()> {
+        TcpOutletListenWorker::start(&self.ctx, self.registry.clone(), address, peer, options)
+            .await?;
+
+        Ok(())
+    }
+
     /// Stop outlet at addr
     /// ```rust
     /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};

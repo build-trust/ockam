@@ -5,6 +5,7 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
 use ockam_identity::{SecureChannel, SecureChannelListener};
 use std::fmt::Display;
+use std::net::SocketAddr;
 
 #[derive(Default)]
 pub(crate) struct SecureChannelRegistry {
@@ -173,18 +174,18 @@ impl InletInfo {
 
 #[derive(Clone)]
 pub(crate) struct OutletInfo {
-    pub(crate) tcp_addr: String,
+    pub(crate) socket_addr: SocketAddr,
     pub(crate) worker_addr: Address,
 }
 
 impl OutletInfo {
-    pub(crate) fn new(tcp_addr: &str, worker_addr: Option<&Address>) -> Self {
+    pub(crate) fn new(socket_addr: &SocketAddr, worker_addr: Option<&Address>) -> Self {
         let worker_addr = match worker_addr {
             Some(addr) => addr.clone(),
             None => Address::from_string(""),
         };
         Self {
-            tcp_addr: tcp_addr.to_owned(),
+            socket_addr: *socket_addr,
             worker_addr,
         }
     }
