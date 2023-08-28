@@ -52,7 +52,7 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "ockam_vault/alloc"]
 
 [dependencies]
 aws-config = { version = "0.56.1", default-features = false, features = ["rustls"] }
-aws-sdk-kms = { version = "0.29.0", default-features = false, features = ["rustls"] }
+aws-sdk-kms = { version = "0.30.0", default-features = false, features = ["rustls"] }
 delegate = "0.10.0"
 ockam_core = { path = "../ockam_core", version = "^0.83.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.30.0", default-features = false }
