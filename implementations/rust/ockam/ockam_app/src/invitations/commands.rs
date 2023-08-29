@@ -7,7 +7,7 @@ use tracing::{debug, error, info, warn};
 use ockam_api::address::{extract_address_value, get_free_address};
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::share::{AcceptInvitation, InvitationWithAccess};
+use ockam_api::cloud::share::{AcceptInvitation, CreateServiceInvitation, InvitationWithAccess};
 use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
 
 use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
@@ -57,7 +57,7 @@ pub async fn create_service_invitation<R: Runtime>(
         ?outlet_socket_addr,
         "creating service invitation"
     );
-    let state: State<'_, AppState> = app.state();
+
     let projects = list_projects_with_admin(app.clone()).await?;
     let project_id = projects
         .iter()
@@ -80,6 +80,18 @@ pub async fn create_service_invitation<R: Runtime>(
     .await
     .map_err(|e| e.to_string())?;
 
+    // send the invitation asynchronously to avoid blocking the application waiting for a result
+    let app_clone = app.clone();
+    tauri::async_runtime::spawn(async move { send_invitation(invite_args, app_clone).await });
+    app.trigger_global(super::events::REFRESH_INVITATIONS, None);
+    Ok(())
+}
+
+async fn send_invitation<R: Runtime>(
+    invite_args: CreateServiceInvitation,
+    app: AppHandle<R>,
+) -> crate::Result<()> {
+    let state: State<'_, AppState> = app.state();
     let node_manager_worker = state.node_manager_worker().await;
     let res = node_manager_worker
         .create_service_invitation(
@@ -89,9 +101,8 @@ pub async fn create_service_invitation<R: Runtime>(
             None,
         )
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string());
     debug!(?res, "invitation sent");
-    app.trigger_global(super::events::REFRESH_INVITATIONS, None);
     Ok(())
 }
 
