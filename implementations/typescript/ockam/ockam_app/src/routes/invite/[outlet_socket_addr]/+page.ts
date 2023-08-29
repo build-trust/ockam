@@ -5,12 +5,12 @@
  */
 export function entries() {
   return [
-    { outlet_addr: '12345' },
+    { outlet_socket_addr: '12345' },
   ];
 }
 
 export const load = ({ params }) => {
   return {
-    outlet_addr: params.outlet_addr,
+    outlet_socket_addr: params.outlet_socket_addr,
   };
 };
