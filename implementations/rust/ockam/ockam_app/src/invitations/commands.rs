@@ -82,14 +82,17 @@ pub async fn create_service_invitation<R: Runtime>(
 
     // send the invitation asynchronously to avoid blocking the application waiting for a result
     let app_clone = app.clone();
-    tauri::async_runtime::spawn(async move { send_invitation(invite_args, app_clone).await });
-    app.trigger_global(super::events::REFRESH_INVITATIONS, None);
+
+    tauri::async_runtime::spawn(async move {
+        let _ = send_invitation(invite_args, &app_clone).await;
+        app_clone.trigger_global(super::events::REFRESH_INVITATIONS, None);
+    });
     Ok(())
 }
 
 async fn send_invitation<R: Runtime>(
     invite_args: CreateServiceInvitation,
-    app: AppHandle<R>,
+    app: &AppHandle<R>,
 ) -> crate::Result<()> {
     let state: State<'_, AppState> = app.state();
     let node_manager_worker = state.node_manager_worker().await;
