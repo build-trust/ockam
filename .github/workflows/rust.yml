@@ -53,6 +53,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  CI: true
+
 jobs:
   lint:
     name: Rust - lint_${{ matrix.lint_projects }}
@@ -68,7 +71,7 @@ jobs:
           - cargo_toml_files
     defaults:
       run:
-        shell: nix develop ./tools/nix#rust --ignore-environment --command bash {0}
+        shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -99,7 +102,7 @@ jobs:
 
     defaults:
       run:
-        shell: nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command bash {0}
+        shell: nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -126,7 +129,7 @@ jobs:
       CLOUD_ADDRESS: ockam_cloud:4000
     defaults:
       run:
-        shell: nix develop ./tools/nix#rust${{matrix.test_projects == 'nightly' && '_nightly' || '' }} --ignore-environment --command bash {0}
+        shell: nix develop ./tools/nix#rust${{matrix.test_projects == 'nightly' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
     strategy:
       fail-fast: false
       matrix:
@@ -146,7 +149,7 @@ jobs:
           key: "${{ github.job }}-${{ matrix.test_projects }}"
 
       - name: Run test on ${{ matrix.test_projects }}
-        run:  make -f implementations/rust/Makefile test_nextest
+        run:  make -f implementations/rust/Makefile test
 
   check:
     name: Rust - check_${{ matrix.check_projects }}
@@ -161,7 +164,7 @@ jobs:
 
     defaults:
       run:
-        shell: nix develop ./tools/nix#rust${{matrix.check_projects == 'no_std' && '_nightly' || '' }} --ignore-environment --command bash {0}
+        shell: nix develop ./tools/nix#rust${{matrix.check_projects == 'no_std' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
