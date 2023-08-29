@@ -111,7 +111,7 @@ tracing = { version = "0.1", features = ["attributes"] }
 tracing-appender = "0.2.2"
 tracing-error = "0.2"
 tracing-subscriber = { version = "0.3.17", features = ["json"] }
-url = "2.4.0"
+url = "2.4.1"
 which = "4.4.0"
 
 [dev-dependencies]
