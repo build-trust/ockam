@@ -2,11 +2,11 @@ use std::path::Path;
 
 use miette::miette;
 
+use crate::app::state::model::ModelState;
 use ockam::identity::Storage;
 use ockam::LmdbStorage;
 use ockam_core::async_trait;
 
-use crate::app::model_state::ModelState;
 use crate::Result;
 
 const MODEL_STATE_ID: &str = "model_state";

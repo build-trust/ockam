@@ -6,7 +6,7 @@ use tauri::{
     plugin::{Builder, TauriPlugin},
     Manager, Runtime,
 };
-use tracing::trace;
+use tracing::{debug, info, trace};
 
 use super::commands::*;
 use super::events::{REFRESHED_INVITATIONS, REFRESH_INVITATIONS};
@@ -20,17 +20,18 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             accept_invitation,
             create_service_invitation,
             list_invitations,
-            // TODO: move into shared_service module tree
-            list_outlets,
             refresh_invitations
         ])
         .setup(|app, _api| {
+            debug!("Initializing the invitations plugin");
             app.manage(Arc::new(RwLock::new(InvitationState::default())));
+
             let handle = app.clone();
             app.listen_global(REFRESH_INVITATIONS, move |_event| {
                 let handle = handle.clone();
                 spawn(async move { refresh_invitations(handle.clone()).await });
             });
+
             let handle = app.clone();
             spawn(async move {
                 handle.trigger_global(REFRESH_INVITATIONS, None);
@@ -41,10 +42,12 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
                     handle.trigger_global(REFRESH_INVITATIONS, None);
                 }
             });
+
             let handle = app.clone();
             app.listen_global(REFRESHED_INVITATIONS, move |_event| {
                 system_tray_on_update(&handle);
             });
+            info!("Invitations plugin initialized");
             Ok(())
         })
         .build()

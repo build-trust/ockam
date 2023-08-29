@@ -9,6 +9,7 @@ use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_core::api::Request;
 use tokio::sync::Mutex;
 use tokio::try_join;
+use tracing::trace;
 
 use crate::node::get_node_name;
 use crate::terminal::OckamColor;
@@ -70,6 +71,7 @@ async fn run_impl(
         .progress_output(&output_messages, &is_finished);
 
     let (relays, _) = try_join!(send_req, progress_output)?;
+    trace!(?relays, "Relays retrieved");
 
     let plain = opts.terminal.build_list(
         &relays,
