@@ -174,7 +174,13 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                         &i.local_node_name
                     )
                     .run();
-                    create_inlet(&i).await?;
+                    let inlet_socket_addr = create_inlet(&i).await?;
+                    if let Some(tray_item) = app.tray_handle().try_get_item(&format!(
+                        "invitation-accepted-connect-{}",
+                        invitation.invitation.id
+                    )) {
+                        let _ = tray_item.set_title(inlet_socket_addr.to_string());
+                    }
                 }
                 None => {
                     warn!("Invalid invitation data");
@@ -191,7 +197,7 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
     Ok(())
 }
 
-async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()> {
+async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<SocketAddr> {
     debug!(?inlet_data, "Creating tcp-inlet for accepted invitation");
     let InletDataFromInvitation {
         local_node_name,
@@ -199,7 +205,8 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()>
         service_route,
         enrollment_ticket_hex,
     } = inlet_data;
-    let from = get_free_address()?.to_string(); // TODO: we should let the user pass this address
+    let from = get_free_address()?;
+    let from_str = from.to_string();
     let run_cmd_template = indoc::formatdoc! {
         r#"
         nodes:
@@ -207,7 +214,7 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()>
             enrollment-ticket: {enrollment_ticket_hex}
             tcp-inlets:
               {service_name}:
-                from: {from}
+                from: {from_str}
                 to: {service_route}
         "#
     };
@@ -219,11 +226,11 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()>
             e
         })?;
     info!(
-        from,
+        from = from_str,
         to = service_route,
         "Created tcp-inlet for accepted invitation"
     );
-    Ok(())
+    Ok(from)
 }
 
 #[derive(Debug)]
