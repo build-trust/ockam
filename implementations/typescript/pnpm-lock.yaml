@@ -40,10 +40,10 @@ importers:
     devDependencies:
       '@sveltejs/adapter-static':
         specifier: 2.0.3
-        version: 2.0.3(@sveltejs/kit@1.23.0)
+        version: 2.0.3(@sveltejs/kit@1.24.0)
       '@sveltejs/kit':
-        specifier: ^1.23.0
-        version: 1.23.0(svelte@4.2.0)(vite@4.4.9)
+        specifier: ^1.24.0
+        version: 1.24.0(svelte@4.2.0)(vite@4.4.9)
       autoprefixer:
         specifier: ^10.4.15
         version: 10.4.15(postcss@8.4.28)
@@ -943,16 +943,16 @@ packages:
       '@sinonjs/commons': 3.0.0
     dev: true
 
-  /@sveltejs/adapter-static@2.0.3(@sveltejs/kit@1.23.0):
+  /@sveltejs/adapter-static@2.0.3(@sveltejs/kit@1.24.0):
     resolution: {integrity: sha512-VUqTfXsxYGugCpMqQv1U0LIdbR3S5nBkMMDmpjGVJyM6Q2jHVMFtdWJCkeHMySc6mZxJ+0eZK3T7IgmUCDrcUQ==}
     peerDependencies:
       '@sveltejs/kit': ^1.5.0
     dependencies:
-      '@sveltejs/kit': 1.23.0(svelte@4.2.0)(vite@4.4.9)
+      '@sveltejs/kit': 1.24.0(svelte@4.2.0)(vite@4.4.9)
     dev: true
 
-  /@sveltejs/kit@1.23.0(svelte@4.2.0)(vite@4.4.9):
-    resolution: {integrity: sha512-MuDM6afpSMnPFMtEsE1O+Qn6NVPNHDqsDYYZE/8/+Z3IvGmE+GKHC+za6fEmCfwXLqNlxFZiV8s8kKOeNVJP+g==}
+  /@sveltejs/kit@1.24.0(svelte@4.2.0)(vite@4.4.9):
+    resolution: {integrity: sha512-r7Gj0/VcdAIRL1yE1cJ5rurWJ5drrR7BzRv+P+NAathtvnMCi0u4FhezO7T4bj7DJdQ3TNsax3yQcrVWxh60fg==}
     engines: {node: ^16.14 || >=18}
     hasBin: true
     requiresBuild: true
@@ -972,6 +972,7 @@ packages:
       set-cookie-parser: 2.6.0
       sirv: 2.0.3
       svelte: 4.2.0
+      tiny-glob: 0.2.9
       undici: 5.23.0
       vite: 4.4.9
     transitivePeerDependencies:
@@ -1808,6 +1809,14 @@ packages:
   /globals@11.12.0:
     resolution: {integrity: sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA==}
     engines: {node: '>=4'}
+    dev: true
+
+  /globalyzer@0.1.0:
+    resolution: {integrity: sha512-40oNTM9UfG6aBmuKxk/giHn5nQ8RVz/SS4Ir6zgzOv9/qC3kKZ9v4etGTcJbEl/NyVQH7FGU7d+X1egr57Md2Q==}
+    dev: true
+
+  /globrex@0.1.2:
+    resolution: {integrity: sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==}
     dev: true
 
   /graceful-fs@4.2.11:
@@ -3375,6 +3384,13 @@ packages:
     resolution: {integrity: sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==}
     dependencies:
       any-promise: 1.3.0
+    dev: true
+
+  /tiny-glob@0.2.9:
+    resolution: {integrity: sha512-g/55ssRPUjShh+xkfx9UPDXqhckHEsHr4Vd9zX55oSdGZc/MD0m3sferOkwWtp98bv+kcVfEHtRJgBVJzelrzg==}
+    dependencies:
+      globalyzer: 0.1.0
+      globrex: 0.1.2
     dev: true
 
   /tmpl@1.0.5:
