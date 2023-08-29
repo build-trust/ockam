@@ -2,14 +2,14 @@
   import { appWindow } from "@tauri-apps/plugin-window";
   import { invoke } from "@tauri-apps/api";
 
-  export let outlet_addr;
+  export let outlet_socket_addr;
 
   let email;
   let error = null;
 
   async function submit() {
     await invoke("plugin:invitations|create_service_invitation", {
-      outletAddr: outlet_addr,
+      outletSocketAddr: outlet_socket_addr,
       recipientEmail: email,
     })
       .then(() => appWindow.close())
@@ -25,7 +25,7 @@
 
 <div class="mb-4 border-b pb-2 text-xl font-bold">
   Service details
-  <h1 class="text-sm font-light">Sharing {outlet_addr}</h1>
+  <h1 class="text-sm font-light">Sharing {outlet_socket_addr}</h1>
 </div>
 <div class="grid gap-4">
   <div class="flex items-start">
