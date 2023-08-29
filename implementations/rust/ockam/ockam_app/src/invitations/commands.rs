@@ -8,10 +8,7 @@ use ockam_api::address::{extract_address_value, get_free_address};
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::{AcceptInvitation, InvitationWithAccess};
-use ockam_api::{
-    cloud::share::{InvitationListKind, ListInvitations},
-    nodes::models::portal::OutletStatus,
-};
+use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
 
 use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::cli::cli_bin;
@@ -103,15 +100,6 @@ pub async fn list_invitations<R: Runtime>(app: AppHandle<R>) -> tauri::Result<In
     let state: State<'_, SyncState> = app.state();
     let reader = state.read().await;
     Ok((*reader).clone())
-}
-
-// TODO: move into shared_service module tree
-#[tauri::command]
-pub async fn list_outlets<R: Runtime>(app: AppHandle<R>) -> tauri::Result<Vec<OutletStatus>> {
-    let state: State<'_, AppState> = app.state();
-    let outlets = state.tcp_outlet_list().await;
-    debug!(?outlets);
-    Ok(outlets)
 }
 
 #[tauri::command]

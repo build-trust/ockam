@@ -186,18 +186,22 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn get_forwarders(
-        &mut self,
+    pub async fn get_forwarders(&self) -> Vec<ForwarderInfo> {
+        let registry = &self.node_manager.read().await.registry.forwarders;
+        let forwarders = registry
+            .iter()
+            .map(|(_, registry_info)| ForwarderInfo::from(registry_info.to_owned()))
+            .collect();
+        trace!(?forwarders, "Forwarders retrieved");
+        forwarders
+    }
+
+    pub(super) async fn get_forwarders_response(
+        &self,
         req: &Request,
     ) -> ResponseBuilder<Vec<ForwarderInfo>> {
         debug!("Handling ListForwarders request");
-        let registry = &self.node_manager.read().await.registry.forwarders;
-        Response::ok(req.id()).body(
-            registry
-                .iter()
-                .map(|(_, registry_info)| ForwarderInfo::from(registry_info.to_owned()))
-                .collect(),
-        )
+        Response::ok(req.id()).body(self.get_forwarders().await)
     }
 }
 

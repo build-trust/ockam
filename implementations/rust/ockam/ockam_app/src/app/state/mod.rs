@@ -1,3 +1,6 @@
+mod model;
+mod repository;
+
 use std::sync::Arc;
 
 use miette::IntoDiagnostic;
@@ -5,6 +8,8 @@ use ockam_multiaddr::MultiAddr;
 use tauri::async_runtime::{block_on, spawn, RwLock};
 use tracing::{error, info};
 
+pub(crate) use crate::app::state::model::ModelState;
+pub(crate) use crate::app::state::repository::{LmdbModelStateRepository, ModelStateRepository};
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::address::controller_route;
@@ -20,8 +25,6 @@ use ockam_api::nodes::service::{
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::trust_context::TrustContextConfigBuilder;
 
-use crate::app::model_state::ModelState;
-use crate::app::model_state_repository::{LmdbModelStateRepository, ModelStateRepository};
 use crate::Result;
 
 pub const NODE_NAME: &str = "ockam_app";
@@ -59,6 +62,7 @@ impl AppState {
 
         // from now on we use the same runtime everywhere we need to run an async action
         tauri::async_runtime::set(context.runtime().clone());
+
         // start the router, it is needed for the node manager creation
         spawn(async move { executor.start_router().await });
         let node_manager_worker = create_node_manager_worker(context.clone(), &cli_state);
@@ -69,6 +73,8 @@ impl AppState {
             context.clone(),
             &cli_state,
         );
+
+        info!("AppState initialized");
 
         AppState {
             context,

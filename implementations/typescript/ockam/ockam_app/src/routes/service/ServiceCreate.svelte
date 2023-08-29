@@ -9,7 +9,7 @@
 
   async function submit() {
     error_message = "";
-    await invoke("tcp_outlet_create", {
+    await invoke("plugin:shared_service|tcp_outlet_create", {
       service: service,
       port: port,
       email: email,

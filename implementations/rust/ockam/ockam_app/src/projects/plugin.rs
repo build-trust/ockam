@@ -6,7 +6,7 @@ use tauri::{
     plugin::{Builder, TauriPlugin},
     Manager, Runtime,
 };
-use tracing::trace;
+use tracing::{debug, info, trace};
 
 use super::{
     commands::*,
@@ -20,6 +20,7 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("projects")
         .invoke_handler(tauri::generate_handler![list_projects])
         .setup(|app, _api| {
+            debug!("Initializing the projects plugin");
             app.manage(Arc::new(RwLock::new(State::default())));
 
             let handle = app.clone();
@@ -41,6 +42,7 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             app.listen_global(REFRESHED_PROJECTS, move |_event| {
                 system_tray_on_update(&handle);
             });
+            info!("Projects plugin initialized");
             Ok(())
         })
         .build()
