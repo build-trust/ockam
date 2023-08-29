@@ -202,11 +202,15 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()>
         enrollment_ticket_hex,
     } = inlet_data;
     let from = get_free_address()?.to_string(); // TODO: we should let the user pass this address
+    let enrollment_ticket = enrollment_ticket_hex
+        .as_ref()
+        .map(|t| format!("enrollment-ticket: {t}"))
+        .unwrap_or("".to_string());
     let run_cmd_template = indoc::formatdoc! {
         r#"
         nodes:
           {local_node_name}:
-            enrollment-ticket: {enrollment_ticket_hex}
+            {enrollment_ticket}
             tcp-inlets:
               {service_name}:
                 from: {from}
@@ -233,7 +237,7 @@ struct InletDataFromInvitation {
     pub local_node_name: String,
     pub service_name: String,
     pub service_route: String,
-    pub enrollment_ticket_hex: String,
+    pub enrollment_ticket_hex: Option<String>,
 }
 
 impl InletDataFromInvitation {
@@ -244,7 +248,11 @@ impl InletDataFromInvitation {
         match &invitation.service_access_details {
             Some(d) => {
                 let service_name = extract_address_value(&d.shared_node_route)?;
-                let enrollment_ticket_hex = d.enrollment_ticket.clone();
+                let enrollment_ticket_hex = if invitation.invitation.is_expired()? {
+                    None
+                } else {
+                    Some(d.enrollment_ticket.clone())
+                };
                 let enrollment_ticket = d.enrollment_ticket()?;
                 if let Some(project) = enrollment_ticket.project() {
                     let mut project = Project::from(project.clone());
