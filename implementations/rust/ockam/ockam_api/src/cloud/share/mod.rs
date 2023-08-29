@@ -2,6 +2,8 @@ use std::{fmt::Display, str::FromStr};
 
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
+use time::format_description::well_known::iso8601::Iso8601;
+use time::OffsetDateTime;
 
 mod accept;
 mod create;
@@ -107,6 +109,12 @@ pub struct ReceivedInvitation {
     #[n(6)] pub target_id: String,
 }
 
+impl ReceivedInvitation {
+    pub fn is_expired(&self) -> ockam_core::Result<bool> {
+        is_expired(&self.expires_at)
+    }
+}
+
 #[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
@@ -119,6 +127,26 @@ pub struct SentInvitation {
     #[n(6)] pub remaining_uses: usize,
     #[n(7)] pub scope: ShareScope,
     #[n(8)] pub target_id: String,
+}
+
+impl SentInvitation {
+    pub fn is_expired(&self) -> ockam_core::Result<bool> {
+        is_expired(&self.expires_at)
+    }
+}
+
+/// Check if a string that represents an Iso8601 date is expired, using the `time` crate
+fn is_expired(date: &str) -> ockam_core::Result<bool> {
+    // Add the Z timezone to the date, as the `time` crate requires it
+    let date = if date.ends_with('Z') {
+        date.to_string()
+    } else {
+        format!("{}Z", date)
+    };
+    let now = OffsetDateTime::now_utc();
+    let date = OffsetDateTime::parse(&date, &Iso8601::DEFAULT)
+        .map_err(|e| ApiError::core(e.to_string()))?;
+    Ok(date < now)
 }
 
 #[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
@@ -141,5 +169,27 @@ impl ServiceAccessDetails {
         let as_json = serde_json::from_slice(&hex_decoded)
             .map_err(|_| ApiError::core("Invalid enrollment ticket"))?;
         Ok(as_json)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_is_expired() {
+        let now = OffsetDateTime::now_utc();
+
+        let non_expired = now + time::Duration::days(1);
+        let non_expired_str = non_expired.format(&Iso8601::DEFAULT).unwrap();
+        assert!(is_expired(&non_expired_str).unwrap());
+
+        let expired = now - time::Duration::days(1);
+        let expired_str = expired.format(&Iso8601::DEFAULT).unwrap();
+        assert!(is_expired(&expired_str).unwrap());
+
+        // The following test cases are just to validate that it can parse the string correctly
+        assert!(is_expired("2020-09-12T15:07:14.00").unwrap());
+        assert!(is_expired("2020-09-12T15:07:14.00Z").unwrap());
     }
 }
