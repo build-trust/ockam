@@ -193,43 +193,63 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
     Ok(())
 }
 
-async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<()> {
-    debug!(?inlet_data, "Creating tcp-inlet for accepted invitation");
+/// Create the tcp-inlet for the accepted invitation
+/// Returns the inlet SocketAddr
+async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<SocketAddr> {
+    debug!(service_name = ?inlet_data.service_name, "Creating TCP inlet for accepted invitation");
     let InletDataFromInvitation {
         local_node_name,
         service_name,
         service_route,
         enrollment_ticket_hex,
     } = inlet_data;
-    let from = get_free_address()?.to_string(); // TODO: we should let the user pass this address
-    let enrollment_ticket = enrollment_ticket_hex
-        .as_ref()
-        .map(|t| format!("enrollment-ticket: {t}"))
-        .unwrap_or("".to_string());
-    let run_cmd_template = indoc::formatdoc! {
-        r#"
-        nodes:
-          {local_node_name}:
-            {enrollment_ticket}
-            tcp-inlets:
-              {service_name}:
-                from: {from}
-                to: {service_route}
-        "#
-    };
-    duct::cmd!(cli_bin()?, "run", "--inline", run_cmd_template)
-        .env("QUIET", "1")
-        .run()
-        .map_err(|e| {
-            error!(%e, enrollment_ticket=enrollment_ticket_hex, "Could not create a tcp-inlet for the accepted invitation");
-            e
-        })?;
+    let from = get_free_address()?;
+    let from_str = from.to_string();
+    if let Some(enrollment_ticket_hex) = enrollment_ticket_hex {
+        let _ = duct::cmd!(
+            cli_bin()?,
+            "--no-input",
+            "project",
+            "enroll",
+            "--new-trust-context-name",
+            &local_node_name,
+            &enrollment_ticket_hex,
+        )
+        .run();
+        debug!(node = %local_node_name, "Node enrolled using enrollment ticket");
+    }
+    duct::cmd!(
+        cli_bin()?,
+        "--no-input",
+        "node",
+        "create",
+        &local_node_name,
+        "--trust-context",
+        &local_node_name
+    )
+    .run()?;
+    debug!(node = %local_node_name, "Node created");
+    duct::cmd!(
+        cli_bin()?,
+        "--no-input",
+        "tcp-inlet",
+        "create",
+        "--at",
+        &local_node_name,
+        "--from",
+        &from_str,
+        "--to",
+        &service_route,
+        "--alias",
+        &service_name,
+    )
+    .run()?;
     info!(
-        from,
+        from = from_str,
         to = service_route,
         "Created tcp-inlet for accepted invitation"
     );
-    Ok(())
+    Ok(from)
 }
 
 #[derive(Debug)]
