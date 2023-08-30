@@ -86,7 +86,7 @@ pub fn on_create(app: &AppHandle<Wry>) -> tauri::Result<()> {
             let _ = w.move_window(Position::TopRight);
             w.show()?;
         }
-        Some(w) => w.show()?,
+        Some(w) => w.set_focus()?,
     }
     Ok(())
 }

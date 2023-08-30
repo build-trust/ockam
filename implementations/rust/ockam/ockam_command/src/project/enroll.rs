@@ -139,6 +139,14 @@ pub async fn project_enroll(
         }
     }
 
+    opts.state
+        .projects
+        .overwrite(&project.name, project.clone())?;
+
+    opts.state
+        .trust_contexts
+        .overwrite(trust_context_name, project.clone().try_into()?)?;
+
     // Create secure channel to the project's authority node
     // RPC is in embedded mode
     let secure_channel_addr = {
@@ -200,18 +208,8 @@ pub async fn project_enroll(
     .await
     .into_diagnostic()?;
 
-    opts.state
-        .projects
-        .overwrite(&project.name, project.clone())?;
-
-    opts.state
-        .trust_contexts
-        .overwrite(trust_context_name, project.clone().try_into()?)?;
-
     let credential = client2.credential().await.into_diagnostic()?;
-    println!("---");
-    println!("{credential}");
-    println!("---");
+    opts.terminal.stdout().plain(credential).write_line()?;
     Ok(project.name)
 }
 

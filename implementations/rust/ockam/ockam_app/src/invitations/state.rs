@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -14,21 +16,33 @@ pub struct InvitationState {
     #[serde(default)]
     pub(crate) received: Vec<ReceivedInvitation>,
     #[serde(default)]
-    pub(crate) accepted: Vec<InvitationWithAccess>,
+    pub(crate) accepted: AcceptedInvitations,
 }
 
-impl From<InvitationList> for InvitationState {
-    fn from(val: InvitationList) -> Self {
-        let InvitationList {
-            sent,
-            received,
-            accepted,
-        } = val;
-        Self {
-            sent: sent.unwrap_or_default(),
-            received: received.unwrap_or_default(),
-            accepted: accepted.unwrap_or_default(),
-        }
+impl InvitationState {
+    pub fn replace_by(&mut self, list: InvitationList) {
+        self.sent = list.sent.unwrap_or_default();
+        self.received = list.received.unwrap_or_default();
+        self.accepted.invitations = list.accepted.unwrap_or_default();
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct AcceptedInvitations {
+    #[serde(default)]
+    pub(crate) invitations: Vec<InvitationWithAccess>,
+
+    /// Inlets for accepted invitations, keyed by invitation id.
+    #[serde(default)]
+    pub(crate) inlets: HashMap<String, SocketAddr>,
+}
+
+impl AcceptedInvitations {
+    pub fn zip(&self) -> Vec<(&InvitationWithAccess, Option<&SocketAddr>)> {
+        self.invitations
+            .iter()
+            .map(|invitation| (invitation, self.inlets.get(&invitation.invitation.id)))
+            .collect::<Vec<_>>()
     }
 }
 

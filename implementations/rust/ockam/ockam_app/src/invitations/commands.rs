@@ -2,7 +2,7 @@ use miette::IntoDiagnostic;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use tauri::{AppHandle, Manager, Runtime, State};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, trace, warn};
 
 use ockam_api::address::{extract_address_value, get_free_address};
 use ockam_api::cli_state::{CliState, StateDirTrait};
@@ -118,9 +118,10 @@ pub async fn list_invitations<R: Runtime>(app: AppHandle<R>) -> tauri::Result<In
 
 #[tauri::command]
 pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    info!("refreshing invitations");
+    debug!("refreshing invitations");
     let state: State<'_, AppState> = app.state();
     if !state.is_enrolled().await.unwrap_or(false) {
+        debug!("not enrolled, skipping invitations refresh");
         return Ok(());
     }
     let node_manager_worker = state.node_manager_worker().await;
@@ -135,11 +136,11 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
         )
         .await
         .map_err(|e| e.to_string())?;
-    debug!(?invitations);
+    trace!(?invitations);
     {
         let invitation_state: State<'_, SyncState> = app.state();
         let mut writer = invitation_state.write().await;
-        *writer = invitations.into();
+        writer.replace_by(invitations);
     }
     refresh_inlets(&app).await.map_err(|e| e.to_string())?;
     app.trigger_global(REFRESHED_INVITATIONS, None);
@@ -149,20 +150,23 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
 async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
     debug!("Refreshing inlets");
     let invitations_state: State<'_, SyncState> = app.state();
-    let reader = invitations_state.read().await;
-    if reader.accepted.is_empty() {
+    let mut writer = invitations_state.write().await;
+    if writer.accepted.invitations.is_empty() {
         return Ok(());
     }
     let app_state: State<'_, AppState> = app.state();
     let cli_state = app_state.state().await;
     let cli_bin = cli_bin()?;
-    for invitation in &reader.accepted {
+    let mut inlets_socket_addrs = vec![];
+    for invitation in &writer.accepted.invitations {
         match InletDataFromInvitation::new(&cli_state, invitation) {
             Ok(i) => match i {
                 Some(i) => {
+                    debug!(node = %i.local_node_name, "Checking node status");
                     if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
                         if node.is_running() {
                             debug!(node = %i.local_node_name, "Node already running");
+                            // TODO: retrieve inlet socket address from node
                             continue;
                         }
                     }
@@ -176,7 +180,16 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                         &i.local_node_name
                     )
                     .run();
-                    create_inlet(&i).await?;
+                    match create_inlet(&i).await {
+                        Ok(inlet_socket_addr) => {
+                            inlets_socket_addrs
+                                .push((invitation.invitation.id.clone(), inlet_socket_addr));
+                        }
+                        Err(err) => {
+                            warn!(%err, node = %i.local_node_name, "Failed to create tcp-inlet for accepted invitation");
+                            continue;
+                        }
+                    }
                 }
                 None => {
                     warn!("Invalid invitation data");
@@ -188,6 +201,12 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                 continue;
             }
         }
+    }
+    for (invitation_id, inlet_socket_addr) in inlets_socket_addrs {
+        writer
+            .accepted
+            .inlets
+            .insert(invitation_id, inlet_socket_addr);
     }
     info!("Inlets refreshed");
     Ok(())
