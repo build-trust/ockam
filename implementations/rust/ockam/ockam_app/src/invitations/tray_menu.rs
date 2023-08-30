@@ -1,4 +1,5 @@
 use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
+use std::net::SocketAddr;
 use tauri::{
     AppHandle, CustomMenuItem, Manager, State, SystemTrayMenu, SystemTrayMenuItem,
     SystemTraySubmenu, Wry,
@@ -12,6 +13,7 @@ use ockam_api::cloud::share::{
 
 use super::state::SyncState;
 use crate::app::AppState;
+use crate::invitations::state::AcceptedInvitations;
 
 pub const INVITATIONS_PENDING_HEADER_MENU_ID: &str = "sent_invitations_header";
 pub const INVITATIONS_RECEIVED_HEADER_MENU_ID: &str = "received_invitations_header";
@@ -36,20 +38,19 @@ pub(crate) async fn build_invitations_section(
 ) -> SystemTrayMenu {
     let app_state: State<'_, AppState> = app_handle.state();
     if !app_state.is_enrolled().await.unwrap_or(false) {
+        trace!("not enrolled, skipping invitations menu");
         return tray_menu;
     };
 
     let state: State<'_, SyncState> = app_handle.state();
     let reader = state.read().await;
-    debug!(sent = ?reader.sent, received = ?reader.received);
-
     let mut tray_menu = tray_menu.add_native_item(SystemTrayMenuItem::Separator);
     tray_menu = add_received_menu(tray_menu, &reader.received);
     add_manage_submenu(&reader.accepted, &reader.sent, tray_menu)
 }
 
 fn add_manage_submenu(
-    accepted: &[InvitationWithAccess],
+    accepted: &AcceptedInvitations,
     sent: &[SentInvitation],
     tray_menu: SystemTrayMenu,
 ) -> SystemTrayMenu {
@@ -60,6 +61,7 @@ fn add_manage_submenu(
 }
 
 fn add_pending_menu(submenu: SystemTrayMenu, sent: &[SentInvitation]) -> SystemTrayMenu {
+    debug!(?sent, "adding pending invitations menu");
     let header_text = if sent.is_empty() {
         "No Pending Invitations"
     } else {
@@ -107,6 +109,7 @@ fn pending_invitation_menu(invitation: &SentInvitation) -> SystemTraySubmenu {
 }
 
 fn add_received_menu(tray_menu: SystemTrayMenu, received: &[ReceivedInvitation]) -> SystemTrayMenu {
+    debug!(?received, "adding received invitations menu");
     let header_text = if received.is_empty() {
         "No Received Invitations"
     } else {
@@ -156,22 +159,35 @@ fn received_invite_menu(invitation: &ReceivedInvitation) -> SystemTraySubmenu {
     SystemTraySubmenu::new(id, submenu)
 }
 
-fn add_accepted_menu(submenu: SystemTrayMenu, accepted: &[InvitationWithAccess]) -> SystemTrayMenu {
-    let header_text = if accepted.is_empty() {
+fn add_accepted_menu(submenu: SystemTrayMenu, accepted: &AcceptedInvitations) -> SystemTrayMenu {
+    debug!(?accepted, "adding accepted invitations menu");
+    let header_text = if accepted.invitations.is_empty() {
         "No Accepted Invitations"
     } else {
         "Accepted Invitations"
     };
-    accepted.iter().map(accepted_invite_menu).fold(
-        submenu.add_item(
-            CustomMenuItem::new(INVITATIONS_ACCEPTED_HEADER_MENU_ID, header_text).disabled(),
-        ),
-        |menu, submenu| menu.add_submenu(submenu),
-    )
+    accepted
+        .zip()
+        .iter()
+        .map(|(i, s)| accepted_invite_menu(i, s))
+        .fold(
+            submenu.add_item(
+                CustomMenuItem::new(INVITATIONS_ACCEPTED_HEADER_MENU_ID, header_text).disabled(),
+            ),
+            |menu, submenu| menu.add_submenu(submenu),
+        )
 }
 
-fn accepted_invite_menu(invitation: &InvitationWithAccess) -> SystemTraySubmenu {
+fn accepted_invite_menu(
+    invitation: &InvitationWithAccess,
+    inlet_socket_addr: &Option<&SocketAddr>,
+) -> SystemTraySubmenu {
+    debug!(invitation_id = %invitation.invitation.id, ?inlet_socket_addr, "adding accepted invitation menu");
     let id = invitation.invitation.id.to_owned();
+    let inlet_title = match inlet_socket_addr {
+        Some(s) => format!("Listening at: {}", s),
+        None => "Not connected".to_string(),
+    };
     let submenu = SystemTrayMenu::new()
         .add_item(CustomMenuItem::new(id.clone(), id.clone()).disabled())
         .add_item(
@@ -201,7 +217,7 @@ fn accepted_invite_menu(invitation: &InvitationWithAccess) -> SystemTraySubmenu 
         .add_item(
             CustomMenuItem::new(
                 format!("invitation-accepted-connect-{}", invitation.invitation.id),
-                "Connect",
+                inlet_title,
             )
             .disabled(),
         )
@@ -212,7 +228,6 @@ fn accepted_invite_menu(invitation: &InvitationWithAccess) -> SystemTraySubmenu 
             )
             .disabled(),
         );
-
     SystemTraySubmenu::new(id, submenu)
 }
 
@@ -277,7 +292,7 @@ fn on_create(app: &AppHandle<Wry>, outlet_socket_addr: &str) -> tauri::Result<()
             let _ = w.move_window(Position::TopRight);
             w.show()?;
         }
-        Some(w) => w.show()?,
+        Some(w) => w.set_focus()?,
     }
     Ok(())
 }
