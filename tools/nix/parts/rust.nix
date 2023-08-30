@@ -52,6 +52,7 @@ in {
           ]
           ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
             AppKit
+            Cocoa
             CoreBluetooth
             IOKit
             pkgs.libiconv
