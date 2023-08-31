@@ -11,6 +11,8 @@ build_release_%:
 build_%:
 	cargo build --locked --package $*
 
+check:
+	cargo check --locked
 check_no_std:
 	cargo --version
 	cargo check --locked --target thumbv7em-none-eabihf -p ockam --no-default-features --features 'no_std alloc software_vault'
@@ -20,9 +22,11 @@ check_no_std:
 check_tag:
 	cargo check --locked --features tag
 check_cargo_update:
-	rm -rf Cargo.lock
-	cargo update
-	cargo check --locked
+	cargo --version
+	# TODO: uncomment when tauri version is updated
+	# rm -rf Cargo.lock
+	# cargo update
+	# cargo check --locked
 
 test:
 	@if [ "$(CI)" = "true" ]; then \
@@ -87,7 +91,7 @@ format:
 
 .PHONY:
 	build_docs build_examples build_packages build_release build_release_% build_% \
-	check_no_std check_tag check_cargo_update \
+	check check_no_std check_tag check_cargo_update \
 	test test_% nextest nextest_%\
 	lint lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy lint_cargo_toml_files lint_cargo_readme lint_cargo_readme_% lint_cargo_toml_files \
 	clean clean_% very_clean format
