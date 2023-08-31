@@ -2,6 +2,7 @@ use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
 #[cfg(target_os = "macos")]
 use tauri_runtime::menu::NativeImage;
 use tauri_runtime::menu::SystemTrayMenuItem;
+use tracing::error;
 
 use crate::app::events::SystemTrayOnUpdatePayload;
 use crate::app::AppState;
@@ -61,6 +62,10 @@ pub(crate) async fn build_enroll_section(
 /// Enroll the user and show that it has been enrolled
 pub fn on_enroll(app: &AppHandle<Wry>) -> tauri::Result<()> {
     let app_handle = app.clone();
-    tauri::async_runtime::spawn(async move { enroll_user(&app_handle).await });
+    tauri::async_runtime::spawn(async move {
+        enroll_user(&app_handle)
+            .await
+            .map_err(|e| error!(%e, "Failed to enroll user"))
+    });
     Ok(())
 }

@@ -61,7 +61,7 @@ fn add_manage_submenu(
 }
 
 fn add_pending_menu(submenu: SystemTrayMenu, sent: &[SentInvitation]) -> SystemTrayMenu {
-    debug!(?sent, "adding pending invitations menu");
+    trace!(?sent, "adding pending invitations menu");
     let header_text = if sent.is_empty() {
         "No Pending Invitations"
     } else {
@@ -109,7 +109,7 @@ fn pending_invitation_menu(invitation: &SentInvitation) -> SystemTraySubmenu {
 }
 
 fn add_received_menu(tray_menu: SystemTrayMenu, received: &[ReceivedInvitation]) -> SystemTrayMenu {
-    debug!(?received, "adding received invitations menu");
+    trace!(?received, "adding received invitations menu");
     let header_text = if received.is_empty() {
         "No Received Invitations"
     } else {
@@ -160,7 +160,7 @@ fn received_invite_menu(invitation: &ReceivedInvitation) -> SystemTraySubmenu {
 }
 
 fn add_accepted_menu(submenu: SystemTrayMenu, accepted: &AcceptedInvitations) -> SystemTrayMenu {
-    debug!(?accepted, "adding accepted invitations menu");
+    trace!(?accepted, "adding accepted invitations menu");
     let header_text = if accepted.invitations.is_empty() {
         "No Accepted Invitations"
     } else {

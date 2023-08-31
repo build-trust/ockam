@@ -1,13 +1,14 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
-use crate::util::{node_rpc, Rpc};
-use crate::Result;
+use crate::util::{node_rpc, parse_node_name, Rpc};
 use crate::{docs, CommandGlobalOpts};
+use crate::{fmt_ok, Result};
 use clap::Args;
-use ockam::{Context, Route};
-use ockam_api::address::extract_address_value;
+use colorful::Colorful;
+use indoc::formatdoc;
+use miette::IntoDiagnostic;
+use ockam::Context;
 use ockam_api::nodes::models::portal::InletStatus;
-use ockam_api::route_to_multiaddr;
 use ockam_core::api::{Request, RequestBuilder};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
@@ -19,11 +20,11 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ShowCommand {
-    /// Name assigned to inlet that will be shown
+    /// Name of the inlet
     #[arg(display_order = 900, required = true, id = "ALIAS", value_parser = alias_parser)]
     alias: String,
 
-    /// Node from the inlet that is to be shown. If none are provided, the default node will be used
+    /// Node on which the inlet was started
     #[command(flatten)]
     node_opts: NodeOpts,
 }
@@ -40,21 +41,33 @@ pub async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = extract_address_value(&node_name)?;
+    let node_name = parse_node_name(&node_name)?;
+
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(make_api_request(cmd)?).await?;
     rpc.is_ok()?;
+    let inlet = rpc.parse_response_body::<InletStatus>()?;
 
-    let inlet_to_show = rpc.parse_response_body::<InletStatus>()?;
-
-    println!("Inlet:");
-    println!("  Alias: {}", inlet_to_show.alias);
-    println!("  TCP Address: {}", inlet_to_show.bind_addr);
-    if let Some(r) = Route::parse(inlet_to_show.outlet_route) {
-        if let Some(ma) = route_to_multiaddr(&r) {
-            println!("  To Outlet Address: {ma}");
-        }
-    }
+    let json = serde_json::to_string(&inlet).into_diagnostic()?;
+    let InletStatus {
+        alias,
+        bind_addr,
+        outlet_route,
+        ..
+    } = inlet;
+    let plain = formatdoc! {r#"
+        Inlet:
+          Alias: {alias}
+          TCP Address: {bind_addr}
+          To Outlet Address: {outlet_route}
+    "#};
+    let machine = bind_addr;
+    opts.terminal
+        .stdout()
+        .plain(fmt_ok!("{}", plain))
+        .machine(machine)
+        .json(json)
+        .write_line()?;
     Ok(())
 }
 

@@ -5,8 +5,14 @@ pub type Result<T> = miette::Result<T, Error>;
 
 #[derive(Error, Diagnostic, Debug)]
 pub enum Error {
+    #[error(transparent)]
+    Internal(Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error(transparent)]
+    Parse(Box<dyn std::error::Error + Send + Sync + 'static>),
+
     #[error("{0}")]
-    Generic(String),
+    App(String),
 
     #[error(transparent)]
     Ockam(#[from] ockam_core::Error),
@@ -19,22 +25,48 @@ pub enum Error {
 
     #[error(transparent)]
     Tauri(#[from] tauri::Error),
-
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-
-    #[error(transparent)]
-    JsonSerde(#[from] serde_json::Error),
 }
 
 impl From<miette::Report> for Error {
     fn from(e: miette::Report) -> Self {
-        Error::Generic(e.to_string())
+        Error::App(e.to_string())
     }
 }
 
 impl From<&str> for Error {
     fn from(e: &str) -> Self {
-        Error::Generic(e.to_string())
+        Error::App(e.to_string())
     }
 }
+
+impl From<String> for Error {
+    fn from(e: String) -> Self {
+        Error::App(e)
+    }
+}
+
+macro_rules! gen_to_parse_err_impl {
+    ($t:ty) => {
+        impl From<$t> for Error {
+            fn from(e: $t) -> Self {
+                Error::Parse(e.into())
+            }
+        }
+    };
+}
+
+gen_to_parse_err_impl!(serde_json::Error);
+gen_to_parse_err_impl!(std::net::AddrParseError);
+gen_to_parse_err_impl!(std::string::FromUtf8Error);
+
+macro_rules! gen_to_internal_err_impl {
+    ($t:ty) => {
+        impl From<$t> for Error {
+            fn from(e: $t) -> Self {
+                Error::Internal(e.into())
+            }
+        }
+    };
+}
+
+gen_to_internal_err_impl!(std::io::Error);

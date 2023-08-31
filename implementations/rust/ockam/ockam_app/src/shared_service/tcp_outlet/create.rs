@@ -58,13 +58,11 @@ async fn tcp_outlet_create_impl(
             system_tray_on_update(&app);
             Ok(())
         }
-        Err(_) => Err(Error::Generic("Failed to create outlet".to_string())),
+        Err(_) => Err(Error::App("Failed to create outlet".to_string())),
     }?;
 
     if let Some(email) = email {
-        create_service_invitation(email, socket_addr.to_string(), app)
-            .await
-            .map_err(Error::Generic)?;
+        create_service_invitation(email, socket_addr.to_string(), app).await?;
     }
     Ok(())
 }
