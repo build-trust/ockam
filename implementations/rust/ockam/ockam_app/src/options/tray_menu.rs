@@ -4,7 +4,7 @@ use tauri::SystemTraySubmenu;
 use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
 #[cfg(target_os = "macos")]
 use tauri_runtime::menu::NativeImage;
-use tracing::log::error;
+use tracing::error;
 
 use crate::app::events::system_tray_on_update;
 use crate::app::AppState;
@@ -74,7 +74,11 @@ pub fn on_refresh(app: &AppHandle<Wry>) -> tauri::Result<()> {
 /// Reset the persistent state
 pub fn on_reset(app: &AppHandle<Wry>) -> tauri::Result<()> {
     let app = app.clone();
-    tauri::async_runtime::spawn(async move { reset(&app).await });
+    tauri::async_runtime::spawn(async move {
+        reset(&app)
+            .await
+            .map_err(|e| error!(%e, "Failed to reset app"))
+    });
     Ok(())
 }
 

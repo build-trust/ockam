@@ -1,4 +1,4 @@
-use crate::error::Error::Generic;
+use crate::error::Error::App;
 use crate::Result;
 use ockam_core::env::get_env_with_default;
 use tracing::{error, info};
@@ -19,7 +19,7 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
     if ockam_path != *"ockam" && !ockam_path.starts_with('/') {
         let message = format!("The OCKAM environment variable must be defined with an absolute path. The current value is: {ockam_path}");
         error!(message);
-        return Err(Generic(message));
+        return Err(App(message));
     };
 
     // Check that the executable can be found on the path
@@ -30,7 +30,7 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
         Err(e) => {
             let message = format!("The ockam path could not be found: {e}");
             error!(message);
-            return Err(Generic(message));
+            return Err(App(message));
         }
         Ok(v) => info!(
             "The ockam command was found at {:?}",
@@ -47,7 +47,7 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
         Err(e) => {
             let message = format!("The ockam command could not be executed correctly: {e}. Please execute $OCKAM --version or ockam --version");
             error!(message);
-            return Err(Generic(message));
+            return Err(App(message));
         }
         Ok(v) => info!(
             "The ockam command is available {:?}",

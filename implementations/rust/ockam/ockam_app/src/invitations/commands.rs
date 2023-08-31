@@ -9,6 +9,7 @@ use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::{AcceptInvitation, CreateServiceInvitation, InvitationWithAccess};
 use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
+use ockam_api::nodes::models::portal::InletStatus;
 
 use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::cli::cli_bin;
@@ -148,13 +149,41 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
         match InletDataFromInvitation::new(&cli_state, invitation) {
             Ok(i) => match i {
                 Some(i) => {
+                    let mut inlet_is_running = false;
                     debug!(node = %i.local_node_name, "Checking node status");
                     if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
                         if node.is_running() {
                             debug!(node = %i.local_node_name, "Node already running");
-                            // TODO: retrieve inlet socket address from node
-                            continue;
+                            debug!(node = %i.local_node_name, "Checking TCP inlet status");
+                            if let Ok(cmd) = duct::cmd!(
+                                &cli_bin,
+                                "tcp-inlet",
+                                "show",
+                                "--quiet",
+                                &i.service_name,
+                                "--at",
+                                &i.local_node_name,
+                                "--output",
+                                "json"
+                            )
+                            .stdout_capture()
+                            .run()
+                            {
+                                let inlet: InletStatus = serde_json::from_slice(&cmd.stdout)?;
+                                let inlet_socket_addr = SocketAddr::from_str(&inlet.bind_addr)?;
+                                inlet_is_running = true;
+                                debug!(
+                                    at = ?inlet.bind_addr,
+                                    alias = inlet.alias,
+                                    "TCP inlet running"
+                                );
+                                inlets_socket_addrs
+                                    .push((invitation.invitation.id.clone(), inlet_socket_addr));
+                            }
                         }
+                    }
+                    if inlet_is_running {
+                        continue;
                     }
                     debug!(node = %i.local_node_name, "Deleting node");
                     let _ = duct::cmd!(
@@ -173,18 +202,15 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                         }
                         Err(err) => {
                             warn!(%err, node = %i.local_node_name, "Failed to create tcp-inlet for accepted invitation");
-                            continue;
                         }
                     }
                 }
                 None => {
                     warn!("Invalid invitation data");
-                    continue;
                 }
             },
             Err(err) => {
                 warn!(%err, "Failed to parse invitation data");
-                continue;
             }
         }
     }

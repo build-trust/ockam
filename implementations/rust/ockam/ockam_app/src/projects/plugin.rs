@@ -6,7 +6,7 @@ use tauri::{
     plugin::{Builder, TauriPlugin},
     Manager, Runtime,
 };
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace};
 
 use super::{
     commands::*,
@@ -26,7 +26,11 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             let handle = app.clone();
             app.listen_global(REFRESH_PROJECTS, move |_event| {
                 let handle = handle.clone();
-                spawn(async move { refresh_projects(handle.clone()).await });
+                spawn(async move {
+                    refresh_projects(handle.clone())
+                        .await
+                        .map_err(|e| error!(%e, "Failed to refresh projects"))
+                });
             });
             let handle = app.clone();
             spawn(async move {

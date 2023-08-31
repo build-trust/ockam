@@ -6,7 +6,7 @@ use tauri::{
     plugin::{Builder, TauriPlugin},
     Manager, Runtime,
 };
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace};
 
 use super::commands::*;
 use super::events::{REFRESHED_INVITATIONS, REFRESH_INVITATIONS};
@@ -24,7 +24,11 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             let handle = app.clone();
             app.listen_global(REFRESH_INVITATIONS, move |_event| {
                 let handle = handle.clone();
-                spawn(async move { refresh_invitations(handle.clone()).await });
+                spawn(async move {
+                    refresh_invitations(handle.clone())
+                        .await
+                        .map_err(|e| error!(%e, "Failed to refresh invitations"))
+                });
             });
 
             let handle = app.clone();
