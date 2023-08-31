@@ -14,14 +14,8 @@ use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::cli::cli_bin;
 use crate::projects::commands::{create_enrollment_ticket, list_projects_with_admin};
 
-use super::{
-    events::REFRESHED_INVITATIONS,
-    state::{InvitationState, SyncState},
-};
+use super::{events::REFRESHED_INVITATIONS, state::SyncState};
 
-// At time of writing, tauri::command requires pub not pub(crate)
-
-#[tauri::command]
 pub async fn accept_invitation<R: Runtime>(id: String, app: AppHandle<R>) -> Result<(), String> {
     accept_invitation_impl(id, &app)
         .await
@@ -109,14 +103,6 @@ async fn send_invitation<R: Runtime>(
     Ok(())
 }
 
-#[tauri::command]
-pub async fn list_invitations<R: Runtime>(app: AppHandle<R>) -> tauri::Result<InvitationState> {
-    let state: State<'_, SyncState> = app.state();
-    let reader = state.read().await;
-    Ok((*reader).clone())
-}
-
-#[tauri::command]
 pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     debug!("refreshing invitations");
     let state: State<'_, AppState> = app.state();

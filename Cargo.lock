@@ -4698,6 +4698,7 @@ dependencies = [
  "tauri-runtime",
  "thiserror",
  "tokio",
+ "tokio-retry",
  "tracing",
  "tracing-subscriber",
 ]

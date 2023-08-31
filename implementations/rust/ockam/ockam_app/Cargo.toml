@@ -55,6 +55,7 @@ tauri-plugin-window = "2.0.0-alpha.0"
 tauri-runtime = { version = "0.13.0-alpha.6", features = ["system-tray"] }
 thiserror = "1.0.47"
 tokio = { version = "1.31.0", features = ["full"] }
+tokio-retry = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"], optional = true }
 

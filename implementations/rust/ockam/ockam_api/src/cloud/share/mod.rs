@@ -182,7 +182,7 @@ mod test {
 
         let non_expired = now + time::Duration::days(1);
         let non_expired_str = non_expired.format(&Iso8601::DEFAULT).unwrap();
-        assert!(is_expired(&non_expired_str).unwrap());
+        assert!(!is_expired(&non_expired_str).unwrap());
 
         let expired = now - time::Duration::days(1);
         let expired_str = expired.format(&Iso8601::DEFAULT).unwrap();

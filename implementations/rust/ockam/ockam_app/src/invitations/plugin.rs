@@ -16,12 +16,7 @@ const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("invitations")
-        .invoke_handler(tauri::generate_handler![
-            accept_invitation,
-            create_service_invitation,
-            list_invitations,
-            refresh_invitations
-        ])
+        .invoke_handler(tauri::generate_handler![create_service_invitation,])
         .setup(|app, _api| {
             debug!("Initializing the invitations plugin");
             app.manage(Arc::new(RwLock::new(InvitationState::default())));
@@ -34,7 +29,6 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
 
             let handle = app.clone();
             spawn(async move {
-                handle.trigger_global(REFRESH_INVITATIONS, None);
                 let mut interval = tokio::time::interval(DEFAULT_POLL_INTERVAL);
                 loop {
                     interval.tick().await;
