@@ -2,7 +2,7 @@
   import { getCurrent } from "@tauri-apps/plugin-window";
   import { invoke } from "@tauri-apps/api/tauri";
 
-  let service = "/service/outlet";
+  let service = "";
   let port = "10000";
   let email = "";
   let error_message = "";
@@ -40,7 +40,7 @@
       <input
         type="text"
         class="w-full border-none bg-transparent px-4 text-right text-base focus:outline-none"
-        placeholder={service}
+        placeholder="service"
         bind:value={service}
       />
     </div>
