@@ -60,7 +60,7 @@ RUN set -xe; \
     esac; \
 # Setup base tools
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends parallel ca-certificates curl locales xz-utils clang net-tools libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends parallel ca-certificates curl locales xz-utils clang net-tools libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev libappindicator3-1; \
 # Setup locale
     LANG=en_US.UTF-8; \
     echo $LANG UTF-8 > /etc/locale.gen; \
@@ -104,7 +104,7 @@ RUN set -xe; \
     cargo install --locked cargo-deny; \
     cargo install --locked cargo-nextest; \
     cargo install --locked cargo-readme; \
-    cargo install tauri-cli --version 2.0.0-alpha.10; \
+    cargo install --locked tauri-cli --version 2.0.0-alpha.10; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
     echo "deb http://deb.debian.org/debian bullseye main" >> /etc/apt/sources.list; \
