@@ -89,7 +89,7 @@ jobs:
         run:  make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
 
   build:
-    name: Rust - build_${{ matrix.build_projects }}
+    name: Rust - build${{ matrix.build_projects != 'packages' && format('_{0}', matrix.build_projects) || '' }}
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -120,7 +120,7 @@ jobs:
         run:  make -f implementations/rust/Makefile build${{ matrix.build_projects == 'nightly' && '_packages' || format('_{0}', matrix.build_projects) }}
 
   test:
-    name: Rust - test_${{ matrix.test_projects }}
+    name: Rust - test${{ matrix.test_projects != 'stable' && format('_{0}', matrix.test_projects) || '' }}
     runs-on: ubuntu-22.04
     services:
       ockam_cloud:
@@ -157,14 +157,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check_projects:
-          # - cargo_update
-          - no_std
-          - tag
+        include:
+          - check_projects: cargo_update
+            nix_toolchain: 'rust'
+          - check_projects: no_std
+            nix_toolchain: 'rust_nightly'
+          - check_projects: tag
+            nix_toolchain: 'rust'
+          - check_projects: nightly
+            nix_toolchain: 'rust_nightly'
 
     defaults:
       run:
-        shell: nix develop ./tools/nix#rust${{matrix.check_projects == 'no_std' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
+        shell: nix develop ./tools/nix#${{matrix.nix_toolchain }} --keep CI --ignore-environment --command bash {0}
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
@@ -178,7 +183,7 @@ jobs:
           key: "${{ github.job }}-${{ matrix.check_projects }}"
 
       - name: Run check on ${{ matrix.check_projects }}
-        run:  make -f implementations/rust/Makefile check_${{ matrix.check_projects }}
+        run:  make -f implementations/rust/Makefile check${{ matrix.check_projects != 'nightly' && format('_{0}', matrix.check_projects) || '' }}
 
   test_ockam_command:
     name: Rust - test_ockam_command
