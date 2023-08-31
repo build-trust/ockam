@@ -44,21 +44,13 @@ fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
         "Share".to_string(),
     ));
 
-    submenu = submenu
-        .add_item(
-            CustomMenuItem::new(
-                "outlet-tcp-address".to_string(),
-                format!("TCP Address: {}", outlet.socket_addr),
-            )
-            .disabled(),
+    submenu = submenu.add_item(
+        CustomMenuItem::new(
+            "outlet-tcp-address".to_string(),
+            format!("TCP Address: {}", outlet.socket_addr),
         )
-        .add_item(
-            CustomMenuItem::new(
-                "outlet-worker-address".to_string(),
-                format!("Worker Address: {}", worker_address),
-            )
-            .disabled(),
-        );
+        .disabled(),
+    );
 
     let outlet_info = String::from_utf8(worker_address.last().unwrap().data().to_vec())
         .unwrap_or_else(|_| worker_address.to_string());
