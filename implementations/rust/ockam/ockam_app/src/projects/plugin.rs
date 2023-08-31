@@ -30,7 +30,6 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             });
             let handle = app.clone();
             spawn(async move {
-                handle.trigger_global(REFRESH_PROJECTS, None);
                 let mut interval = tokio::time::interval(DEFAULT_POLL_INTERVAL);
                 loop {
                     interval.tick().await;
