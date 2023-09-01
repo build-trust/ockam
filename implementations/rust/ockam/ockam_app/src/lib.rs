@@ -28,10 +28,11 @@ mod cli;
 mod enroll;
 mod error;
 mod invitations;
+mod local_services;
 mod options;
 mod platform;
 mod projects;
-mod shared_service;
+mod remote_services;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -50,7 +51,8 @@ pub fn run() {
         .plugin(tauri_plugin_window::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(shared_service::plugin::init())
+        .plugin(local_services::plugin::init())
+        .plugin(remote_services::plugin::init())
         .plugin(projects::plugin::init())
         .plugin(invitations::plugin::init())
         .setup(|app| setup(app))

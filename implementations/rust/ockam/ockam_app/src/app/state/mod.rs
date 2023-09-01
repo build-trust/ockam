@@ -17,7 +17,7 @@ use ockam_api::cli_state::{
     add_project_info_to_node_state, init_node_state, CliState, StateDirTrait, StateItemTrait,
 };
 use ockam_api::cloud::enroll::auth0::UserInfo;
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::ServiceStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -166,7 +166,7 @@ impl AppState {
     }
 
     /// Return the list of currently running outlets
-    pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
+    pub async fn tcp_outlet_list(&self) -> Vec<ServiceStatus> {
         let node_manager = self.node_manager_worker.read().await;
         node_manager.list_outlets().await.list
     }
@@ -286,14 +286,14 @@ fn load_model_state(
         match model_state_repository.load().await {
             Ok(model_state) => {
                 let model_state = model_state.unwrap_or(ModelState::default());
-                crate::shared_service::tcp_outlet::load_model_state(
+                crate::local_services::tcp_outlet::load_model_state(
                     context.clone(),
                     node_manager_worker,
                     &model_state,
                     cli_state,
                 )
                 .await;
-                crate::shared_service::relay::load_model_state(
+                crate::local_services::relay::load_model_state(
                     context.clone(),
                     node_manager_worker,
                     cli_state,

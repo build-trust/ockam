@@ -1,5 +1,5 @@
 use crate::kafka::kafka_outlet_address;
-use crate::nodes::models::portal::{CreateOutlet, OutletStatus};
+use crate::nodes::models::portal::{CreateOutlet, ServiceStatus};
 use crate::nodes::NODEMANAGER_ADDR;
 use minicbor::Decoder;
 use ockam::compat::tokio::sync::Mutex;
@@ -96,7 +96,7 @@ impl KafkaOutletController {
                 "invalid create outlet response",
             ))
         } else {
-            let status: OutletStatus = decoder.decode()?;
+            let status: ServiceStatus = decoder.decode()?;
             Ok(status.socket_addr)
         }
     }

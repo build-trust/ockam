@@ -24,7 +24,7 @@ use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
 use crate::nodes::connection::{Connection, ConnectionInstance};
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
+    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, ServiceStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::random_alias;
@@ -41,7 +41,7 @@ impl NodeManager {
         worker_addr: Address,
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
-    ) -> Result<OutletStatus> {
+    ) -> Result<ServiceStatus> {
         info!(
             "Handling request to create outlet portal at {:?}",
             socket_addr
@@ -108,7 +108,7 @@ impl NodeManager {
                     OutletInfo::new(&socket_addr, Some(&worker_addr)),
                 );
 
-                OutletStatus::new(socket_addr, worker_addr, alias, None)
+                ServiceStatus::new(socket_addr, worker_addr, alias, None)
             }
             Err(e) => {
                 warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
@@ -396,7 +396,7 @@ impl NodeManagerWorker {
         ctx: &Context,
         req: &Request,
         create_outlet: CreateOutlet,
-    ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<ServiceStatus>, ResponseBuilder<Error>> {
         let CreateOutlet {
             socket_addr,
             worker_addr,
@@ -424,7 +424,7 @@ impl NodeManagerWorker {
         worker_addr: Address,
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
-    ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<ServiceStatus>, ResponseBuilder<Error>> {
         let mut node_manager = self.inner().write().await;
         match node_manager
             .create_outlet(
@@ -448,7 +448,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<ServiceStatus>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         info!(%alias, "Handling request to delete outlet portal");
@@ -461,7 +461,7 @@ impl NodeManagerWorker {
             {
                 Ok(_) => {
                     debug!(%alias, "Successfully stopped outlet");
-                    Ok(Response::ok(req.id()).body(OutletStatus::new(
+                    Ok(Response::ok(req.id()).body(ServiceStatus::new(
                         outlet_to_delete.socket_addr,
                         outlet_to_delete.worker_addr.clone(),
                         alias,
@@ -487,13 +487,13 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request,
         alias: &'a str,
-    ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
+    ) -> Result<ResponseBuilder<ServiceStatus>, ResponseBuilder<Error>> {
         let node_manager = self.node_manager.read().await;
 
         info!(%alias, "Handling request to show outlet portal");
         if let Some(outlet_to_show) = node_manager.registry.outlets.get(alias) {
             debug!(%alias, "Outlet not found in node registry");
-            Ok(Response::ok(req.id()).body(OutletStatus::new(
+            Ok(Response::ok(req.id()).body(ServiceStatus::new(
                 outlet_to_show.socket_addr,
                 outlet_to_show.worker_addr.clone(),
                 alias,

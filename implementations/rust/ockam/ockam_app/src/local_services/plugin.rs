@@ -1,4 +1,4 @@
-use crate::shared_service::tcp_outlet::*;
+use crate::local_services::tcp_outlet::*;
 
 use tauri::{
     plugin::{Builder, TauriPlugin},

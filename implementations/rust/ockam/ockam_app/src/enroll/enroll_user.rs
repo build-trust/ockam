@@ -14,7 +14,7 @@ use ockam_api::enroll::oidc_service::OidcService;
 
 use crate::app::events::{system_tray_on_update, system_tray_on_update_with_enroll_status};
 use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
-use crate::{shared_service, Result};
+use crate::{local_services, Result};
 
 /// Enroll a user.
 ///
@@ -34,7 +34,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     app_state.reset_node_manager().await?;
     app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
     app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
-    shared_service::relay::create_relay(&app_state).await?;
+    local_services::relay::create_relay(&app_state).await?;
     Ok(())
 }
 

@@ -210,7 +210,7 @@ impl InletStatus {
 #[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct OutletStatus {
+pub struct ServiceStatus {
     #[cfg(feature = "tag")]
     #[serde(skip)]
     #[n(0)] tag: TypeTag<4012569>,
@@ -221,7 +221,7 @@ pub struct OutletStatus {
     #[n(4)] pub payload: Option<String>,
 }
 
-impl OutletStatus {
+impl ServiceStatus {
     pub fn bad_request(reason: &'static str) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -282,11 +282,11 @@ impl InletList {
 pub struct OutletList {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8708916>,
-    #[n(1)] pub list: Vec<OutletStatus>
+    #[n(1)] pub list: Vec<ServiceStatus>
 }
 
 impl OutletList {
-    pub fn new(list: Vec<OutletStatus>) -> Self {
+    pub fn new(list: Vec<ServiceStatus>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,

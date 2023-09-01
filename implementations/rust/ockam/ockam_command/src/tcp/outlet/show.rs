@@ -8,7 +8,7 @@ use miette::miette;
 use ockam::{route, Context};
 use ockam_api::address::extract_address_value;
 
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::ServiceStatus;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::{Request, RequestBuilder};
 
@@ -47,7 +47,7 @@ pub async fn run_impl(
     rpc.request(make_api_request(cmd)?).await?;
     rpc.is_ok()?;
 
-    let outlet_to_show = rpc.parse_response_body::<OutletStatus>()?;
+    let outlet_to_show = rpc.parse_response_body::<ServiceStatus>()?;
 
     println!("Outlet:");
     println!("  Alias: {}", outlet_to_show.alias);

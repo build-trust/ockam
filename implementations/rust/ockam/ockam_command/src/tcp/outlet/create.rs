@@ -16,7 +16,7 @@ use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
+use ockam_api::nodes::models::portal::{CreateOutlet, ServiceStatus};
 use ockam_core::api::Request;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -147,10 +147,10 @@ pub async fn send_request(
     opts: &CommandGlobalOpts,
     payload: CreateOutlet,
     to_node: impl Into<Option<String>>,
-) -> crate::Result<OutletStatus> {
+) -> crate::Result<ServiceStatus> {
     let to_node = get_node_name(&opts.state, &to_node.into());
     let mut rpc = Rpc::background(ctx, opts, &to_node)?;
     let req = Request::post("/node/outlet").body(payload);
     rpc.request(req).await?;
-    rpc.parse_response_body::<OutletStatus>()
+    rpc.parse_response_body::<ServiceStatus>()
 }

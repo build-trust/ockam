@@ -1,17 +1,17 @@
 use crate::app::ModelState;
 use ockam::Context;
 use ockam_api::cli_state::CliState;
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::ServiceStatus;
 use ockam_api::nodes::NodeManagerWorker;
 use std::sync::Arc;
 use tracing::error;
 
 impl ModelState {
-    pub fn add_tcp_outlet(&mut self, status: OutletStatus) {
+    pub fn add_tcp_outlet(&mut self, status: ServiceStatus) {
         self.tcp_outlets.push(status);
     }
 
-    pub fn get_tcp_outlets(&self) -> &[OutletStatus] {
+    pub fn get_tcp_outlets(&self) -> &[ServiceStatus] {
         &self.tcp_outlets
     }
 }

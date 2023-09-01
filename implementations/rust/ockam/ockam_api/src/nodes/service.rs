@@ -40,7 +40,7 @@ use crate::nodes::connection::{
     ProjectInstantiator, SecureChannelInstantiator,
 };
 use crate::nodes::models::base::NodeStatus;
-use crate::nodes::models::portal::{OutletList, OutletStatus};
+use crate::nodes::models::portal::{OutletList, ServiceStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::nodes::registry::KafkaServiceKind;
@@ -150,7 +150,7 @@ impl NodeManager {
             outlets
                 .iter()
                 .map(|(alias, info)| {
-                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), alias, None)
+                    ServiceStatus::new(info.socket_addr, info.worker_addr.clone(), alias, None)
                 })
                 .collect(),
         )

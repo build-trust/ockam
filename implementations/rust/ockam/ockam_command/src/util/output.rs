@@ -9,7 +9,7 @@ use ockam::identity::credential::Credential;
 use ockam_api::cli_state::{ProjectConfigCompact, StateItemTrait, VaultState};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
-use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
+use ockam_api::nodes::models::portal::{InletStatus, ServiceStatus};
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelResponse, ShowSecureChannelResponse,
 };
@@ -247,7 +247,7 @@ impl Output for ShowSecureChannelResponse {
     }
 }
 
-impl Output for OutletStatus {
+impl Output for ServiceStatus {
     fn output(&self) -> Result<String> {
         let output = format!(
             r#"
