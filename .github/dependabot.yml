@@ -35,17 +35,79 @@ updates:
       - "Type: Dependencies"
       - "Implementation: Typescript"
 
-  # Maintain dependencies for elixir applications
+# Maintain dependencies for elixir ockam application
   - package-ecosystem: "mix"
-    directory: "/implementations/elixir"
+    directory: "/implementations/elixir/ockam/ockam"
     commit-message:
       prefix: "build:"
     schedule:
       interval: "daily"
-    groups:
-      elixir-dependencies:
-        patterns:
-          - "*"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_services application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_services"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_metrics application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_metrics"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_healthcheck application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_healthcheck"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_cloud_node application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_cloud_node"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_kafka application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_kafka"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_vault_software application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_vault_software"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
     labels:
       - "Type: Dependencies"
       - "Implementation: Elixir"
