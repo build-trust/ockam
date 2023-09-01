@@ -39,7 +39,7 @@ hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde
 indoc = "2.0.3"
 log = { version = "0.4.20", optional = true }
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
-muda = "0.8"
+muda = "0.9"
 ockam = { path = "../ockam", version = "^0.90.0", features = ["software_vault"] }
 ockam_api = { path = "../ockam_api", version = "0.33.0", features = ["std", "authenticators"] }
 ockam_core = { path = "../ockam_core", version = "^0.83.0" }
