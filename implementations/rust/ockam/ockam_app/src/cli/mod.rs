@@ -22,6 +22,17 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
         return Err(App(message));
     };
 
+    #[cfg(target_os = "macos")]
+    {
+        // HACK: ockam is not installed in a listed PATH on MacOS when installed with homebrew
+        // On MacOS, the ockam command is installed in /opt/homebrew/bin/ockam
+        // It won't work if the user installed homebrew in a different location
+        let mut paths = std::env::var_os("PATH").unwrap_or_default();
+        paths.push(":");
+        paths.push("/opt/homebrew/bin/");
+        std::env::set_var("PATH", &paths);
+    }
+
     // Check that the executable can be found on the path
     match duct::cmd!("which", ockam_path.clone())
         .stdout_capture()

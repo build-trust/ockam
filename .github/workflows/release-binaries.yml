@@ -200,27 +200,39 @@ jobs:
           os: ubuntu-20.04
           toolchain: stable
           target: aarch64-unknown-linux-musl
+          build_app: false
           use-cross-build: true
         - build: linux_armv7
           os: ubuntu-20.04
           toolchain: stable
           target: armv7-unknown-linux-musleabihf
           use-cross-build: true
+          build_app: false
         - build: linux_86
           os: ubuntu-20.04
           toolchain: stable
           target: x86_64-unknown-linux-musl
           use-cross-build: true
+          build_app: false
+        - build: linux_86_gnu
+          os: ubuntu-22.04
+          toolchain: stable
+          target: x86_64-unknown-linux-gnu
+          use-cross-build: false
+          build_app: true
+          build_command: false
         - build: macos_silicon
           os: macos-latest
           toolchain: stable
           target: aarch64-apple-darwin
           use-cross-build: false
+          build_app: true
         - build: macos_86
           os: macos-latest
           toolchain: stable
           target: x86_64-apple-darwin
           use-cross-build: false
+          build_app: true
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout repository
@@ -237,12 +249,22 @@ jobs:
         toolchain: ${{ matrix.toolchain }}
         target: ${{ matrix.target }}
         platform_operating_system: ${{ matrix.os }}
+        build_app: ${{ matrix.build_app }}
 
-    - name: Build archive
+    - name: Copy Artifacts
       run: |
         set -x
+        find target/
         cp target/${{ matrix.target }}/release/ockam ockam.${{ matrix.target }}
-        echo "ASSET=ockam.${{ matrix.target }}" >> $GITHUB_ENV
+        echo "ASSET_OCKAM_CLI=ockam.${{ matrix.target }}" >> $GITHUB_ENV
+        if [ -e "target/${{ matrix.target }}/release/bundle/dmg/Ockam App"*dmg ]; then
+          cp "target/${{ matrix.target }}/release/bundle/dmg/Ockam App"*dmg "Ockam_App_${{ matrix.target }}.dmg"
+          echo "ASSET_OCKAM_APP_DMG=Ockam_App_${{ matrix.target }}.dmg" >> $GITHUB_ENV
+        fi
+        if [ -e "target/${{ matrix.target }}/release/bundle/deb/ockam-app"*.deb ]; then
+          cp "target/${{ matrix.target }}/release/bundle/deb/ockam-app"*.deb "ockam-app-${{ matrix.target }}.deb"
+          echo "ASSET_OCKAM_APP_DEB=ockam-app-${{ matrix.target }}.deb" >> $GITHUB_ENV
+        fi
         ls $GITHUB_WORKSPACE
 
     - name: Install Cosign
@@ -250,31 +272,81 @@ jobs:
       with:
         cosign-release: 'v2.0.0'
 
-    - name: Sign Binary
+    - name: Sign Binaries
       env:
         PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
         COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
       run: |
-        cosign sign-blob --yes --key env://PRIVATE_KEY ${{ env.ASSET }} > ${{ env.ASSET }}.sig
+        cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_CLI }}" > "${{ env.ASSET_OCKAM_CLI }}.sig"
+        if [ -n "${{ env.ASSET_OCKAM_APP_DMG }}" ]; then
+          cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_APP_DMG }}" > "${{ env.ASSET_OCKAM_APP_DMG }}.sig"
+        fi
+        if [ -n "${{ env.ASSET_OCKAM_APP_DEB }}" ]; then
+          cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_APP_DEB }}" > "${{ env.ASSET_OCKAM_APP_DEB }}.sig"
+        fi
 
-    - name: Upload release archive
+    - name: Upload CLI release archive
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET }}
-        asset_name: ${{ env.ASSET }}
+        asset_path: ${{ env.ASSET_OCKAM_CLI }}
+        asset_name: ${{ env.ASSET_OCKAM_CLI }}
         asset_content_type: application/octet-stream
 
-    - name: Upload Signature
+    - name: Upload CLI Signature
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET }}.sig
-        asset_name: ${{ env.ASSET }}.sig
+        asset_path: ${{ env.ASSET_OCKAM_CLI }}.sig
+        asset_name: ${{ env.ASSET_OCKAM_CLI }}.sig
+        asset_content_type: application/octet-stream
+
+    - name: Upload MacOS App release
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_APP_DMG }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_APP_DMG }}
+        asset_name: ${{ env.ASSET_OCKAM_APP_DMG }}
+        asset_content_type: application/octet-stream
+
+    - name: Upload MacOS App release Signature
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_APP_DMG }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_APP_DMG }}.sig
+        asset_name: ${{ env.ASSET_OCKAM_APP_DMG }}.sig
+        asset_content_type: application/octet-stream
+
+    - name: Upload Debian App Package
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_APP_DEB }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_APP_DEB }}
+        asset_name: ${{ env.ASSET_OCKAM_APP_DEB }}
+        asset_content_type: application/octet-stream
+
+    - name: Upload Debian App Package Signature
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_APP_DEB }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_APP_DEB }}.sig
+        asset_name: ${{ env.ASSET_OCKAM_APP_DEB }}.sig
         asset_content_type: application/octet-stream
 
   build_elixir_nifs:

@@ -2,7 +2,7 @@
   "build": {
     "beforeBuildCommand": {
       "cwd": "../../../typescript/ockam/ockam_app",
-      "script": "pnpm run build"
+      "script": "pnpm install . && pnpm run build"
     },
     "beforeDevCommand": {
       "cwd": "../../../typescript/ockam/ockam_app",
@@ -12,21 +12,21 @@
     "distDir": "../../../typescript/ockam/ockam_app/build"
   },
   "package": {
-    "productName": "Ockam",
-    "version": "0.1.0"
+    "productName": "Ockam App"
   },
   "tauri": {
     "systemTray": {
       "iconPath": "icons/icon.png",
       "iconAsTemplate": true
     },
+    "security": {
+      "csp": null
+    },
     "bundle": {
       "active": true,
       "category": "DeveloperTool",
-      "copyright": "",
-      "deb": {
-        "depends": []
-      },
+      "identifier": "io.ockam.app",
+      "publisher": "Ockam",
       "externalBin": [],
       "icon": [
         "icons/32x32.png",
@@ -35,27 +35,17 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "io.ockam.app",
-      "longDescription": "",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
       "resources": [],
-      "shortDescription": "",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
+      "shortDescription": "Ockam App",
+      "longDescription": "End-to-end encryption and mutual authentication for distributed applications.",
+      "targets": [
+        "deb",
+        "dmg"
+      ],
+      "macOS": {
+      },
+      "deb": {
       }
-    },
-    "security": {
-      "csp": null
-    },
-    "windows": []
+    }
   }
 }

@@ -46,7 +46,7 @@ ext {
     command = ['cargo']
     command.addAll(arguments)
 
-    if (command.contains('build') && mode == 'release') {
+    if (command.contains('build') && !command.contains('tauri') && mode == 'release') {
       command.add('--release')
     }
 
@@ -147,6 +147,8 @@ task build {
     exec {
       environment environmentVars()
       commandLine cargo('--locked', 'build')
+      workingDir "ockam/ockam_app"
+      commandLine cargo('--locked', 'tauri', 'build')
     }
   }
 }
