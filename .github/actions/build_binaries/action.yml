@@ -2,6 +2,12 @@ name: Build Ockam Binaries For Different Architechtures
 description: Build Ockam Binaries For Different Architechtures
 
 inputs:
+  build_command:
+    description: Indicate if building the ockam command
+    default: 'true'
+  build_app:
+    description: Indicate if we are also building ockam app
+    default: 'false'
   use_cross_build:
     description: Indicate If Cross Should Be Used To Build Binary Instead Of Cargo
     required: true
@@ -24,7 +30,17 @@ runs:
         profile: minimal
         override: true
         target: ${{ inputs.target }}
-
+    - name: setup node
+      if: inputs.build_app == 'true'
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+    - uses: pnpm/action-setup@d882d12c64e032187b2edb46d3a0d003b7a43598
+      if: inputs.build_app == 'true'
+      name: Install pnpm
+      with:
+        version: 8
+        run_install: false
     - shell: bash
       if: inputs.platform_operating_system == 'ubuntu-20.04'
       run: |
@@ -34,12 +50,24 @@ runs:
           cargo install --version 0.1.16 cross
         else
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool musl-tools
+          sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool musl-tools libwebkit2gtk-4.0-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+        fi
+    - shell: bash
+      if: inputs.platform_operating_system == 'ubuntu-22.04'
+      run: |
+        set -x
+        use_cross_build=${{ inputs.use_cross_build }}
+        if [[ $use_cross_build == true ]]; then
+          cargo install --version 0.1.16 cross
+        else
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool musl-tools libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
         fi
 
     ## TODO Cache for faster build for different targets
 
     - shell: bash
+      if: inputs.build_command == 'true'
       run: |
         set -x
         use_cross_build="${{ inputs.use_cross_build }}"
@@ -49,7 +77,16 @@ runs:
         fi
 
         if [[ $use_cross_build == "true" ]]; then
-          cross build --bin ockam --target ${{ inputs.target }} --verbose --release
+          cross build --bin ockam --target ${{ inputs.target }} --release
         else
-          cargo build --bin ockam --target ${{ inputs.target }} --verbose --release
+          cargo build --bin ockam --target ${{ inputs.target }} --release
         fi
+
+    - shell: bash
+      if: inputs.build_app == 'true'
+      run: |
+        set -x
+        cargo install --locked tauri-cli --version 2.0.0-alpha.10
+
+        cd implementations/rust/ockam/ockam_app/
+        cargo tauri build --target ${{ inputs.target }}

@@ -196,7 +196,7 @@ jobs:
           os: ubuntu-20.04
           rust: stable
           target: x86_64-unknown-linux-gnu
-          container: "ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b"
+          container: "ghcr.io/build-trust/ockam-builder@sha256:65812150a60a114b1620f63dcf9f2380144985a213d54d3ef7978a0221bd147e"
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
@@ -289,7 +289,7 @@ jobs:
   test_docs_rust_library_examples:
     name: Rust - test_docs_rust_library_examples
     runs-on: ubuntu-20.04
-    container: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
+    container: ghcr.io/build-trust/ockam-builder@sha256:65812150a60a114b1620f63dcf9f2380144985a213d54d3ef7978a0221bd147e
     if: github.event_name == 'workflow_dispatch'
 
     steps:
@@ -320,7 +320,7 @@ jobs:
     name: Rust - lint_docs_ockam_io_rust_examples
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9ee4558d834514e60a50c41bbf38c6ecae47d94dcfaa4df6a7256c262a7b0f4b
+      image: ghcr.io/build-trust/ockam-builder@sha256:65812150a60a114b1620f63dcf9f2380144985a213d54d3ef7978a0221bd147e
 
     steps:
       - name: Checkout Ockam Repository
