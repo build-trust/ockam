@@ -1,4 +1,4 @@
-use crate::constants::CURVE25519_PUBLIC_LENGTH_USIZE;
+use crate::constants::{CURVE25519_PUBLIC_LENGTH_USIZE, NISTP256_SECRET_LENGTH_U32};
 use crate::constants::CURVE25519_SECRET_LENGTH_U32;
 
 use crate::{
@@ -6,6 +6,7 @@ use crate::{
     StoredSecret, VaultError,
 };
 use arrayref::array_ref;
+use p256::pkcs8::DecodePrivateKey;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -149,7 +150,7 @@ impl VaultSecurityModule {
                         stored_secret.secret().length(),
                         CURVE25519_SECRET_LENGTH_U32,
                     )
-                    .into());
+                        .into());
                 };
                 let secret = *array_ref![
                     stored_secret.secret().as_ref(),
@@ -168,15 +169,35 @@ impl VaultSecurityModule {
                         stored_secret.secret().length(),
                         SECRET_KEY_LENGTH as u32,
                     )
-                    .into());
+                        .into());
                 };
                 let secret = array_ref![stored_secret.secret().as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = ed25519_dalek::SigningKey::from_bytes(secret);
                 let pk = sk.verifying_key();
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::Ed25519))
             }
-            SecretType::NistP256 => Self::public_key(stored_secret.secret().as_ref()),
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            SecretType::NistP256 => {
+                use p256::{
+                       ecdsa::{SigningKey, VerifyingKey},
+                    };
+                if stored_secret.secret().length() != NISTP256_SECRET_LENGTH_U32 as usize {
+                    return Err(VaultError::InvalidSecretLength(
+                        SecretType::NistP256,
+                        stored_secret.secret().length(),
+                        NISTP256_SECRET_LENGTH_U32,
+                    )
+                        .into());
+                };
+                let secret = array_ref![stored_secret.secret().as_ref(),
+                    0,
+                    NISTP256_SECRET_LENGTH_U32 as usize];
+                let sk = SigningKey::from_pkcs8_der(secret).map_err(Self::from_pkcs8)?;;
+                let pk = p256::ecdsa::VerifyingKey::from(sk);
+                Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::NistP256))
+            }
+            SecretType::Buffer | SecretType::Aes => {
+                Err(VaultError::InvalidKeyType.into())
+            },
         }
     }
 
@@ -194,7 +215,7 @@ impl VaultSecurityModule {
                         stored_secret.secret().length(),
                         SECRET_KEY_LENGTH as u32,
                     )
-                    .into());
+                        .into());
                 }
                 let secret = array_ref![stored_secret.secret().as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = SigningKey::from_bytes(secret);
@@ -204,7 +225,17 @@ impl VaultSecurityModule {
             SecretType::NistP256 => {
                 use p256::ecdsa::signature::Signer;
                 use p256::pkcs8::DecodePrivateKey;
-                let key = stored_secret.secret().as_ref();
+                if stored_secret.secret().length() != NISTP256_SECRET_LENGTH_U32 as usize {
+                    return Err(VaultError::InvalidSecretLength(
+                        SecretType::NistP256,
+                        stored_secret.secret().length(),
+                        NISTP256_SECRET_LENGTH_U32,
+                    )
+                        .into());
+                };
+                let key = array_ref![stored_secret.secret().as_ref(),
+                    0,
+                    NISTP256_SECRET_LENGTH_U32 as usize];
                 let sec = p256::ecdsa::SigningKey::from_pkcs8_der(key).map_err(Self::from_pkcs8)?;
                 let sig: p256::ecdsa::Signature = sec.sign(data);
                 Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
@@ -228,7 +259,7 @@ impl VaultSecurityModule {
                         secret.length(),
                         CURVE25519_SECRET_LENGTH_U32,
                     )
-                    .into());
+                        .into());
                 };
                 let secret = *array_ref![secret.as_ref(), 0, CURVE25519_SECRET_LENGTH_U32 as usize];
                 let sk = x25519_dalek::StaticSecret::from(secret);
@@ -237,7 +268,7 @@ impl VaultSecurityModule {
                     public.as_bytes().to_vec(),
                     SecretType::X25519,
                 ))
-                .await?
+                    .await?
             }
             SecretType::Ed25519 => {
                 use ed25519_dalek::{SigningKey, SECRET_KEY_LENGTH};
@@ -247,7 +278,7 @@ impl VaultSecurityModule {
                         secret.length(),
                         SECRET_KEY_LENGTH as u32,
                     )
-                    .into());
+                        .into());
                 }
                 let secret = array_ref![secret.as_ref(), 0, SECRET_KEY_LENGTH];
                 let sk = SigningKey::from_bytes(secret);
@@ -256,7 +287,7 @@ impl VaultSecurityModule {
                     pk.as_bytes().to_vec(),
                     SecretType::Ed25519,
                 ))
-                .await?
+                    .await?
             }
             SecretType::Buffer | SecretType::Aes => {
                 // NOTE: Buffer and Aes secrets in the system are ephemeral and it should be fine,
@@ -269,6 +300,14 @@ impl VaultSecurityModule {
                 hex::encode(rand)
             }
             SecretType::NistP256 => {
+                if secret().length() != NISTP256_SECRET_LENGTH_U32 as usize {
+                    return Err(VaultError::InvalidSecretLength(
+                        SecretType::NistP256,
+                        secret().length(),
+                        NISTP256_SECRET_LENGTH_U32,
+                    )
+                        .into());
+                };
                 let pk = Self::public_key(secret.as_ref())?;
                 Self::compute_key_id_for_public_key(&pk).await?
             }
