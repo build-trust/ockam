@@ -1,39 +1,39 @@
 defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   @moduledoc false
 
-  alias Ockam.Vault
+  alias Ockam.SecureChannel.Crypto
   alias __MODULE__
   @max_nonce trunc(:math.pow(2, 64)) - 1
 
   defmodule Encryptor do
     @moduledoc false
     alias __MODULE__
-    defstruct [:vault, :k, :nonce, :rekey_each]
+    alias Ockam.SecureChannel.Crypto
+    defstruct [:k, :nonce, :rekey_each]
     @opaque t :: %Encryptor{}
 
-    def new(vault, k, nonce), do: new(vault, k, nonce, 32)
+    def new(k, nonce), do: new(k, nonce, 32)
 
-    def new(vault, k, nonce, rekey_each) do
-      %Encryptor{vault: vault, k: k, nonce: nonce, rekey_each: rekey_each}
+    def new(k, nonce, rekey_each) do
+      %Encryptor{k: k, nonce: nonce, rekey_each: rekey_each}
     end
 
     def encrypt(
           ad,
           plaintext,
-          %Encryptor{vault: vault, k: k, nonce: nonce, rekey_each: rekey_each} = state
+          %Encryptor{k: k, nonce: nonce, rekey_each: rekey_each} = state
         ) do
-      with {:ok, ciphertext} <- Vault.aead_aes_gcm_encrypt(vault, k, nonce, ad, plaintext),
+      with {:ok, ciphertext} <- Crypto.aead_aes_gcm_encrypt(k, nonce, ad, plaintext),
            {:ok, next_nonce} <- AeadAesGcm.increment_nonce(nonce),
-           {:ok, next_k, _} <- rotate_if_needed(vault, next_nonce, k, rekey_each) do
+           {:ok, next_k, _} <- rotate_if_needed(next_nonce, k, rekey_each) do
         {:ok, <<nonce::unsigned-big-integer-size(64), ciphertext::binary>>,
          %Encryptor{state | nonce: next_nonce, k: next_k}}
       end
     end
 
-    defp rotate_if_needed(vault, next_nonce, k, rekey_each) do
+    defp rotate_if_needed(next_nonce, k, rekey_each) do
       if rem(next_nonce, rekey_each) == 0 do
-        with {:ok, new_k} <- AeadAesGcm.rekey(vault, k) do
-          :ok = Vault.secret_destroy(vault, k)
+        with {:ok, new_k} <- AeadAesGcm.rekey(k) do
           {:ok, new_k, true}
         end
       else
@@ -45,14 +45,15 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   defmodule Decryptor do
     @moduledoc false
     alias __MODULE__
-    defstruct [:vault, :k, :expected_nonce, :rekey_each, :prev_k, :seen, :prev_seen]
+    alias Ockam.SecureChannel.Crypto
+
+    defstruct [:k, :expected_nonce, :rekey_each, :prev_k, :seen, :prev_seen]
     @opaque t :: %Decryptor{}
 
-    def new(vault, k, nonce), do: new(vault, k, nonce, 32)
+    def new(k, nonce), do: new(k, nonce, 32)
 
-    def new(vault, k, nonce, rekey_each) do
+    def new(k, nonce, rekey_each) do
       %Decryptor{
-        vault: vault,
         k: k,
         expected_nonce: nonce,
         rekey_each: rekey_each,
@@ -71,14 +72,14 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
            nonce,
            ad,
            ciphertext,
-           %Decryptor{vault: vault, seen: seen, k: k, expected_nonce: expected_nonce} = state
+           %Decryptor{seen: seen, k: k, expected_nonce: expected_nonce} = state
          ) do
       if MapSet.member?(seen, nonce) do
         {:error, :repeated_nonce}
       else
         {:ok, next_nonce} = AeadAesGcm.increment_nonce(nonce)
 
-        case Vault.aead_aes_gcm_decrypt(vault, k, nonce, ad, ciphertext) do
+        case Crypto.aead_aes_gcm_decrypt(k, nonce, ad, ciphertext) do
           {:ok, plaintext} ->
             {:ok, plaintext,
              %Decryptor{
@@ -98,12 +99,12 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
            nonce,
            ad,
            ciphertext,
-           %Decryptor{vault: vault, prev_seen: prev_seen, prev_k: prev_k} = state
+           %Decryptor{prev_seen: prev_seen, prev_k: prev_k} = state
          ) do
       if MapSet.member?(prev_seen, nonce) do
         {:error, :repeated_nonce}
       else
-        case Vault.aead_aes_gcm_decrypt(vault, prev_k, nonce, ad, ciphertext) do
+        case Crypto.aead_aes_gcm_decrypt(prev_k, nonce, ad, ciphertext) do
           {:ok, plaintext} ->
             {:ok, plaintext, %Decryptor{state | prev_seen: MapSet.put(prev_seen, nonce)}}
 
@@ -118,17 +119,13 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
            nonce,
            ad,
            ciphertext,
-           %Decryptor{vault: vault, seen: seen, prev_k: prev_k, k: k} = state
+           %Decryptor{seen: seen, k: k} = state
          ) do
       {:ok, next_nonce} = AeadAesGcm.increment_nonce(nonce)
-      {:ok, new_k} = AeadAesGcm.rekey(vault, k)
+      {:ok, new_k} = AeadAesGcm.rekey(k)
 
-      case Vault.aead_aes_gcm_decrypt(vault, new_k, nonce, ad, ciphertext) do
+      case Crypto.aead_aes_gcm_decrypt(new_k, nonce, ad, ciphertext) do
         {:ok, plaintext} ->
-          if prev_k != nil do
-            :ok = Vault.secret_destroy(vault, prev_k)
-          end
-
           {:ok, plaintext,
            %Decryptor{
              state
@@ -179,10 +176,10 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
     end
   end
 
-  def rekey(vault, k) do
-    {:ok, <<new_k::binary-size(32), _::binary>>} =
-      Vault.aead_aes_gcm_encrypt(vault, k, @max_nonce, <<>>, <<0::32*8>>)
-
-    Vault.secret_import(vault, [type: :aes], new_k)
+  def rekey(k) do
+    with {:ok, <<new_k::binary-size(32), _::binary>>} <-
+           Crypto.aead_aes_gcm_encrypt(k, @max_nonce, <<>>, <<0::32*8>>) do
+      {:ok, new_k}
+    end
   end
 end

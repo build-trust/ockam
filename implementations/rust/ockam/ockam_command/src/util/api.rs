@@ -15,8 +15,7 @@ use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartHopServiceRequest, StartIdentityServiceRequest, StartOktaIdentityProviderRequest,
-    StartVerifierService,
+    StartHopServiceRequest, StartOktaIdentityProviderRequest,
 };
 use ockam_api::nodes::*;
 use ockam_api::trust_context::TrustContextConfigBuilder;
@@ -136,24 +135,12 @@ pub(crate) fn start_hop_service(addr: &str) -> RequestBuilder<StartHopServiceReq
     Request::post(node_service(DefaultAddress::HOP_SERVICE)).body(payload)
 }
 
-/// Construct a request to start an Identity Service
-pub(crate) fn start_identity_service(addr: &str) -> RequestBuilder<StartIdentityServiceRequest> {
-    let payload = StartIdentityServiceRequest::new(addr);
-    Request::post(node_service(DefaultAddress::IDENTITY_SERVICE)).body(payload)
-}
-
 /// Construct a request to start an Authenticated Service
 pub(crate) fn start_authenticated_service(
     addr: &str,
 ) -> RequestBuilder<StartAuthenticatedServiceRequest> {
     let payload = StartAuthenticatedServiceRequest::new(addr);
     Request::post(node_service(DefaultAddress::AUTHENTICATED_SERVICE)).body(payload)
-}
-
-/// Construct a request to start a Verifier Service
-pub(crate) fn start_verifier_service(addr: &str) -> RequestBuilder<StartVerifierService> {
-    let payload = StartVerifierService::new(addr);
-    Request::post(node_service(DefaultAddress::VERIFIER)).body(payload)
 }
 
 /// Construct a request to start a Credential Service

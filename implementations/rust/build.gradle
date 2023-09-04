@@ -155,7 +155,7 @@ task build_vault {
   doLast {
     exec {
       environment environmentVars()
-      commandLine cargo('--locked', 'build', '-p', 'ockam_vault', '-p', 'ockam-ffi')
+      commandLine cargo('--locked', 'build', '-p', 'ockam_vault')
     }
   }
 }

@@ -9,15 +9,6 @@ use ockam_api::DefaultAddress;
 use crate::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IdentityConfig {
-    #[serde(default = "identity_default_addr")]
-    pub(crate) address: String,
-
-    #[serde(default)]
-    pub(crate) disabled: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecureChannelListenerConfig {
     #[serde(default = "sec_listener_default_addr")]
     pub(crate) address: String,
@@ -30,15 +21,6 @@ pub struct SecureChannelListenerConfig {
 
     #[serde(default)]
     pub(crate) identity: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerifierConfig {
-    #[serde(default = "verifier_default_addr")]
-    pub(crate) address: String,
-
-    #[serde(default)]
-    pub(crate) disabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,9 +53,7 @@ pub struct OktaIdentityProviderConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceConfigs {
-    pub(crate) identity: Option<IdentityConfig>,
     pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
-    pub(crate) verifier: Option<VerifierConfig>,
     pub(crate) authenticator: Option<AuthenticatorConfig>,
     pub(crate) okta_identity_provider: Option<OktaIdentityProviderConfig>,
 }
@@ -95,16 +75,8 @@ impl Config {
     }
 }
 
-fn identity_default_addr() -> String {
-    DefaultAddress::IDENTITY_SERVICE.to_string()
-}
-
 fn sec_listener_default_addr() -> String {
     DefaultAddress::SECURE_CHANNEL_LISTENER.to_string()
-}
-
-fn verifier_default_addr() -> String {
-    DefaultAddress::VERIFIER.to_string()
 }
 
 fn authenticator_default_addr() -> String {

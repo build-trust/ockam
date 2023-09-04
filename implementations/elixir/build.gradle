@@ -6,6 +6,7 @@ ext {
   mode = (mode == 'debug') ? 'dev' : mode
 
   apps = [
+    'ockly',
     'ockam',
     'ockam_abac',
     'ockam_cloud_node',
@@ -13,8 +14,7 @@ ext {
     'ockam_kafka',
     'ockam_metrics',
     'ockam_services',
-    'ockam_typed_cbor',
-    'ockam_vault_software'
+    'ockam_typed_cbor'
   ].collect { app ->
     [name: app, path: Paths.get(projectDir.toPath().toString(), 'ockam', app)]
   }
@@ -89,9 +89,6 @@ task build { dependsOn ordered(taskDeps) }
 taskDeps = ['checkLocalHexAndRebar']
 apps.each { app ->
   task "test_${app.name}" {
-    if(app.name == 'ockam_vault_software') {
-      dependsOn rustVaultBuild
-    }
     dependsOn checkLocalHexAndRebar
     doLast {
       exec {
