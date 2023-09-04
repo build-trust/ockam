@@ -1,140 +1,58 @@
 defmodule Ockam.Identity do
   @moduledoc """
-  API facade for identity implementations
-  Using module name and opaque data to represent implementation-specific identities
-
-  You can chose an implementation when creating an identity
-
-  Default implementation is `Ockam.Identity.Sidecar`
   """
 
   @type identity_data() :: binary()
   @type identity_id() :: String.t()
 
-  @type t() :: {module :: atom, data :: binary()}
+  defstruct [:identity_id, :data]
+  alias Ockam.Identity
+
+  @type t() :: %Identity{}
 
   @type proof() :: binary()
 
   @type compare_result() :: :none | :equal | :conflict | :newer | :older
 
-  @callback create() :: {:ok, identity_data(), identity_id()}
-  @callback create_purpose_key() :: {:ok, binary(),  binary()}
-  @callback get(String.t()) :: {:ok, identity_data(), identity_id()}
-  @callback validate_identity_change_history(identity_data()) ::
-              {:ok, identity_id()} | {:error, any()}
-  @callback create_signature(
-              vault_name :: String.t(),
-              identity_data(),
-              signature_source :: binary()
-            ) :: {:ok, proof()} | {:error, any()}
-  @callback verify_signature(identity_data(), proof(), signature_source :: binary()) ::
-              :ok | {:error, any()}
-  @callback compare_identity_change_history(
-              current_data :: identity_data(),
-              known_data :: identity_data()
-            ) :: {:ok, compare_result()} | {:error, any()}
-  @callback check_local_private_key(vault_name :: String.t(), identity_data()) ::
-              :ok | {:error, any()}
 
-  def default_implementation() do
-    Application.get_env(:ockam, :identity_module, Ockam.Identity.Stub)
-  end
-
-  @spec create(module :: atom()) ::
+  @spec create() ::
           {:ok, identity :: t(), identity_id :: binary()} | {:error, reason :: any()}
-  def create(module \\ nil)
-
-  def create(nil) do
-    create(default_implementation())
-  end
-
-  def create(module) do
-    with {:ok, data, id} <- module.create() do
-      {:ok, {module, data}, id}
+  def create() do
+    with {id, data} <- Ockly.Native.create_identity() do
+      {:ok, %Identity{identity_id: id, data: data}}
     end
   end
 
-  def get(identity_name) do
-    get(default_implementation(), identity_name)
-  end
-
-  def get(module, identity_name) do
-    with {:ok, data, id} <- module.get(identity_name) do
-      {:ok, {module, data}, id}
-    end
-  end
-
-  def make_identity(identity) do
-    make_identity(default_implementation(), identity)
-  end
-
-  def make_identity(module, {module, data}) do
-    {:ok, {module, data}}
-  end
-
-  def make_identity(module, {other_module, _data}) do
-    {:error, {:different_identity_implementations, module, other_module}}
-  end
-
-  def make_identity(module, data) when is_binary(data) do
-    with {:ok, identity, _id} <- validate_contact_data({module, ""}, data) do
-      {:ok, identity}
-    end
-  end
-
-  def from_data(module, data) do
-    validate_contact_data({module, ""}, data)
-  end
-
-  @spec validate_contact_data(my_identity :: t(), contact_data :: binary()) ::
+  @spec validate_contact_data(contact_data :: binary()) ::
           {:ok, identity :: t(), identity_id :: binary()}
-  def validate_contact_data({my_module, _my_data}, contact_data) do
-    with {:ok, contact_id} <- validate_identity_change_history({my_module, contact_data}) do
-      {:ok, {my_module, contact_data}, contact_id}
+  def validate_contact_data(contact_data) do
+    with contact_id <- Ockly.Native.check_identity(contact_data) do
+      {:ok, %Identity{identity_id: contact_id, data: contact_data},  contact_id}
     end
   end
 
   @spec get_data(t()) :: any()
-  def get_data({_module, data}) do
+  def get_data(%Identity{data: data}) do
     data
   end
 
-  @spec create_purpose_key(contact :: t()) ::
-          {:ok, public_key :: binary(), attestation :: binary()} | {:error, reason :: any()}
-  def create_purpose_key({module, data}) do
-    module.create_purpose_key(data)
+  @spec get_identifier(t()) :: String.t()
+  def get_identifier(%Identity{identity_id: id}) do
+    id
   end
 
-  @spec validate_identity_change_history(contact :: t()) ::
-          {:ok, contact_id :: binary()} | {:error, reason :: any()}
-  def validate_identity_change_history({module, data}) do
-    module.validate_identity_change_history(data)
+  @spec attest_purpose_key(contact :: t(), pubkey :: binary()) ::
+          {:ok, proof()}
+  def attest_purpose_key(%Identity{identity_id: identifier}, pubkey) do
+    {:ok, %Ockam.Identity.PurposeKeyAttestation{attestation: Ockly.Native.attest_purpose_key(identifier, pubkey)}}
   end
 
-  ## Not using a boolean because error reason could be important
-  @spec check_local_private_key(identity :: t(), vault_name :: String.t()) ::
-          :ok | {:error, any()}
-  def check_local_private_key({module, data}, vault_name \\ nil) do
-    module.check_local_private_key(vault_name, data)
+  @spec verify_purpose_key_attestation(contact :: t(), pubkey :: binary(), attestation :: %Ockam.Identity.PurposeKeyAttestation{}) :: boolean()
+  def verify_purpose_key_attestation(%Identity{data: identity_data}, pubkey, %Ockam.Identity.PurposeKeyAttestation{attestation: attestation}) do
+    Ockly.Native.verify_purpose_key_attestation(identity_data,  pubkey, attestation)
   end
 
-  @spec create_signature(identity :: t(), auth_hash :: binary()) ::
-          {:ok, proof :: proof()} | {:error, reason :: any()}
-  @spec create_signature(identity :: t(), auth_hash :: binary(), vault_name :: String.t() | nil) ::
-          {:ok, proof :: proof()} | {:error, reason :: any()}
-  def create_signature({module, data}, auth_hash, vault_name \\ nil) do
-    module.create_signature(vault_name, data, auth_hash)
-  end
-
-  @spec verify_signature(
-          identity :: t(),
-          proof :: proof(),
-          auth_hash :: binary()
-        ) :: :ok | {:error, reason :: any()}
-  def verify_signature({module, data}, proof, auth_hash) do
-    module.verify_signature(data, proof, auth_hash)
-  end
-
+  """
   @spec compare_identity_change_history(current_identity :: t(), known_identity :: t) ::
           {:ok, atom()} | {:error, reason :: any()}
   def compare_identity_change_history({module, current_data}, {module, known_data}) do
@@ -144,4 +62,11 @@ defmodule Ockam.Identity do
   def compare_identity_change_history(current_identity, known_identity) do
     {:error, {:different_identity_implementations, current_identity, known_identity}}
   end
+  """
 end
+
+  defimpl CBOR.Encoder, for: Ockam.Identity do
+    def encode_into(identity, acc) do
+     <<acc::binary,  (Ockam.Identity.get_data(identity))::binary>>
+    end
+  end

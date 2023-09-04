@@ -36,23 +36,20 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.IdentityProof
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol, as: XX
   alias Ockam.SecureChannel.ServiceMessage
+  alias Ockam.SecureChannel.Crypto
   alias Ockam.Session.Spawner
-  alias Ockam.Vault
   alias Ockam.Wire
 
   alias __MODULE__
 
   require Logger
 
-  @type encryption_options :: [{:vault, Vault}, {:static_keypair, reference()}]
+  @type encryption_options :: [{:static_keypair, %{public: binary(), private: binary()}}, {:static_key_attestation, binary()}]
   @type authorization :: list() | map()
   @type trust_policies :: list()
   @type secure_channel_opt ::
           {:identity, binary() | :dynamic}
           | {:key_exchange_timeout, non_neg_integer()}
-          #  vault name where identity' private key is located
-          | {:vault_name, String.t() | nil}
-          | {:identity_module, module()}
           | {:encryption_options, encryption_options()}
           | {:address, Ockam.Address.t()}
           | {:trust_policies, list(TrustPolicy.trust_rule())}
@@ -66,7 +63,6 @@ defmodule Ockam.SecureChannel.Channel do
   # the handling of messages to them.  We can do that after the 3-packet handshake that
   # will simplify the handshaking anyway.
   typedstruct module: Handshaking do
-    field(:vault, Vault)
     field(:waiting, {pid(), reference()})
     field(:xx, XX.t())
     field(:timer, reference())
@@ -87,7 +83,6 @@ defmodule Ockam.SecureChannel.Channel do
     field(:identity, Identity.t())
     field(:address, Ockam.Address.t())
     field(:inner_address, Ockam.Address.t())
-    field(:vault_name, binary())
     field(:peer_route, Ockam.Address.route())
     field(:trust_policies, trust_policies())
     field(:additional_metadata, map())
@@ -326,41 +321,29 @@ defmodule Ockam.SecureChannel.Channel do
   defp noise_payloads(:initiator, id_proof), do: %{message3: id_proof}
   defp noise_payloads(:responder, id_proof), do: %{message2: id_proof}
 
-  defp get_static_keypair(vault, options) do
-    case Keyword.fetch(options, :static_keypair) do
-      :error ->
-        XX.generate_keypair(vault)
-
-      {:ok, %{private: _priv, public: _pub} = keypair} ->
-        {:ok, keypair}
-
-      {:ok, vault_handle} ->
-        XX.turn_vault_private_key_handle_to_keypair(vault, vault_handle)
-    end
+  defp get_static_keypair(options) do
+    Keyword.fetch(options, :static_keypair)
+  end
+  defp get_static_key_attestation(options) do
+    Keyword.fetch(options, :static_key_attestation)
   end
 
-  defp setup_noise_key_exchange(vault, opts, role, identity, vault_name, credentials) do
-    with {:ok, static_keypair} <- get_static_keypair(vault, opts),
-         contact_data = Identity.get_data(identity),
-         {:ok, signature} <-
-           Identity.create_signature(identity, static_keypair.public, vault_name) do
+  defp setup_noise_key_exchange(opts, role, identity, credentials) do
+    with {:ok, static_keypair} <- get_static_keypair(opts),
+         {:ok, attestation} <- get_static_key_attestation(opts) do
+
       proof = %IdentityProof{
-        contact: contact_data,
-        signature: signature,
+        contact: identity,
+        attestation: attestation,
         credentials: credentials
       }
 
+      IO.puts("proof setup: #{inspect(proof)}")
+
       encoded_proof = IdentityProof.encode(proof)
       payloads = noise_payloads(role, encoded_proof)
-      options = [vault: vault, payloads: payloads, static_keypair: static_keypair]
+      options = [payloads: payloads, static_keypair: static_keypair]
       XX.setup(static_keypair, options)
-    end
-  end
-
-  defp vault_from_opts(encryption_options) do
-    case Keyword.fetch(encryption_options, :vault) do
-      {:ok, vault} -> {:ok, vault}
-      :error -> Ockam.Vault.Software.init()
     end
   end
 
@@ -377,21 +360,7 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp identity_from_opts(options) do
-    identity_module =
-      Keyword.get_lazy(options, :identity_module, &Identity.default_implementation/0)
-
-    case Keyword.fetch(options, :identity) do
-      {:ok, :dynamic} ->
-        with {:ok, identity, _id} <- Identity.create(identity_module) do
-          {:ok, identity}
-        end
-
-      {:ok, other} ->
-        Identity.make_identity(identity_module, other)
-
-      :error ->
-        {:error, :missing_identity}
-    end
+    Keyword.fetch(options, :identity)
   end
 
   def inner_setup_impl(address, inner_address, options) do
@@ -399,21 +368,17 @@ defmodule Ockam.SecureChannel.Channel do
     additional_metadata = Keyword.get(options, :additional_metadata, %{})
     encryption_options = Keyword.get(options, :encryption_options, [])
     key_exchange_timeout = Keyword.get(options, :key_exchange_timeout, @handshake_timeout)
-    vault_name = Keyword.get(options, :vault_name)
-    noise_key_exchange_options = Keyword.take(encryption_options, [:static_keypair])
+    noise_key_exchange_options = Keyword.take(encryption_options, [:static_keypair, :static_key_attestation])
     credentials = Keyword.get(options, :credentials, [])
 
     with {:ok, role} <- Keyword.fetch(options, :role),
-         {:ok, vault} <- vault_from_opts(encryption_options),
          {:ok, identity} <- identity_from_opts(options),
          {:ok, credential_verifier} <- credential_verifier_from_opts(options),
          {:ok, key_exchange_state} <-
            setup_noise_key_exchange(
-             vault,
              noise_key_exchange_options,
              role,
              identity,
-             vault_name,
              credentials
            ) do
       {:ok, tref} = :timer.apply_after(key_exchange_timeout, Ockam.Node, :stop, [address])
@@ -423,33 +388,32 @@ defmodule Ockam.SecureChannel.Channel do
         address: address,
         inner_address: inner_address,
         identity: identity,
-        vault_name: vault_name,
         trust_policies: trust_policies,
         additional_metadata: additional_metadata,
         credential_verifier: credential_verifier
       }
 
-      complete_inner_setup(state, options, key_exchange_state, vault, tref)
+      complete_inner_setup(state, options, key_exchange_state, tref)
     end
   end
 
-  defp complete_inner_setup(%Channel{role: :initiator} = state, options, xx, vault, tref) do
+  defp complete_inner_setup(%Channel{role: :initiator} = state, options, xx, tref) do
     with {:ok, waiter} <- Keyword.fetch(options, :waiter),
          {:ok, init_route} <- Keyword.fetch(options, :route) do
       continue_handshake({:continue, xx}, %Channel{
         state
         | peer_route: init_route,
-          channel_state: %Handshaking{vault: vault, waiting: waiter, timer: tref}
+          channel_state: %Handshaking{waiting: waiter, timer: tref}
       })
     end
   end
 
-  defp complete_inner_setup(%Channel{role: :responder} = state, options, xx, vault, tref) do
+  defp complete_inner_setup(%Channel{role: :responder} = state, options, xx, tref) do
     with {:ok, init_message} <- Keyword.fetch(options, :init_message) do
       handle_inner_message_impl(init_message, %Channel{
         state
         | peer_route: init_message.return_route,
-          channel_state: %Handshaking{xx: xx, timer: tref, vault: vault}
+          channel_state: %Handshaking{xx: xx, timer: tref}
       })
     end
   end
@@ -459,6 +423,7 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp next_handshake_state({:complete, {k1, k2, h, rs, payloads}}, state) do
+    IO.puts("next_handshake_state :complete 1")
     peer_proof_msg =
       case state.role do
         :initiator -> :message2
@@ -467,18 +432,16 @@ defmodule Ockam.SecureChannel.Channel do
 
     with {:ok, peer_proof_data} <- Map.fetch(payloads, peer_proof_msg),
          {:ok, identity_proof} <- IdentityProof.decode(peer_proof_data),
-         {:ok, peer_identity, peer_identity_id} <-
-           Ockam.Identity.validate_contact_data(state.identity, identity_proof.contact),
-         :ok <- Ockam.Identity.verify_signature(peer_identity, identity_proof.signature, rs),
-         :ok <-
-           check_trust(state.trust_policies, state.identity, peer_identity, peer_identity_id),
-         :ok <-
-           process_credentials(
-             identity_proof.credentials,
-             peer_identity_id,
-             state.credential_verifier
-           ) do
-      {encrypt_st, decrypt_st} = split(state.channel_state.vault, k1, k2, state.role)
+         {:ok, peer, peer_identity_id} <- Identity.validate_contact_data(identity_proof.contact),
+         true <- Identity.verify_purpose_key_attestation(peer, rs, %Ockam.Identity.PurposeKeyAttestation{attestation: identity_proof.attestation}),
+          :ok <- check_trust(state.trust_policies, state.identity, identity_proof.contact, peer_identity_id) do
+         #:ok <-
+         #  process_credentials(
+         #    identity_proof.credentials,
+         #    peer_identity_id,
+         #    state.credential_verifier
+         #  ) do
+      {encrypt_st, decrypt_st} = split(k1, k2, state.role)
 
       {:ok, :cancel} = :timer.cancel(state.channel_state.timer)
 
@@ -491,7 +454,7 @@ defmodule Ockam.SecureChannel.Channel do
         encrypt_st: encrypt_st,
         decrypt_st: decrypt_st,
         h: h,
-        peer_identity: peer_identity,
+        peer_identity: peer,
         peer_identity_id: peer_identity_id
       }
 
@@ -517,15 +480,16 @@ defmodule Ockam.SecureChannel.Channel do
   defp process_credentials(_creds, _peer_identity_id, _cred_verifier),
     do: {:error, :multiple_credentials}
 
-  defp split(vault, k1, k2, :initiator),
-    do: {Encryptor.new(vault, k2, 0), Decryptor.new(vault, k1, 0)}
+  defp split(k1, k2, :initiator),
+    do: {Encryptor.new(k2, 0), Decryptor.new(k1, 0)}
 
-  defp split(vault, k1, k2, :responder),
-    do: {Encryptor.new(vault, k1, 0), Decryptor.new(vault, k2, 0)}
+  defp split(k1, k2, :responder),
+    do: {Encryptor.new(k1, 0), Decryptor.new(k2, 0)}
 
   # Check result of the handshake step, send handshake data to the peer if there is a message to exchange,
   # and possible move to another state
   defp continue_handshake({:complete, _key_agreements} = r, state) do
+    IO.puts("continue_handshake complete!")
     next_handshake_state(r, state)
   end
 
@@ -627,7 +591,7 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp check_trust(policies, identity, contact, contact_id) do
-    with {:ok, identity_id} <- Identity.validate_identity_change_history(identity) do
+    with identity_id <- Identity.get_identifier(identity) do
       TrustPolicy.from_config(policies, %{id: identity_id, identity: identity}, %{
         id: contact_id,
         identity: contact

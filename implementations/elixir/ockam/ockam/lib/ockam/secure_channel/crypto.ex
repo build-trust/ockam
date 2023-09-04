@@ -24,7 +24,10 @@ defmodule Ockam.SecureChannel.Crypto do
   def aead_aes_gcm_decrypt(k, n, h, ciphertext_and_tag) do
     size = byte_size(ciphertext_and_tag) - 16
     <<ciphertext::binary-size(size), tag::binary-size(16)>> = ciphertext_and_tag
-    {:ok, :crypto.crypto_one_time_aead(:aes_256_gcm, k, <<n::96>>, ciphertext, h, tag, false)}
+    case :crypto.crypto_one_time_aead(:aes_256_gcm, k, <<n::96>>, ciphertext, h, tag, false) do
+      :error -> {:error, :aead_aes_gcm_decrypt_error}
+      plaintext -> {:ok, plaintext}
+    end
   end
 
   def hkdf(salt), do: hkdf(salt, <<>>)
