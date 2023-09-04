@@ -28,16 +28,8 @@ pub enum StartSubCommand {
         #[arg(long, default_value_t = hop_default_addr())]
         addr: String,
     },
-    Identity {
-        #[arg(long, default_value_t = identity_default_addr())]
-        addr: String,
-    },
     Authenticated {
         #[arg(long, default_value_t = authenticated_default_addr())]
-        addr: String,
-    },
-    Verifier {
-        #[arg(long, default_value_t = verifier_default_addr())]
         addr: String,
     },
     Credentials {
@@ -63,16 +55,8 @@ fn hop_default_addr() -> String {
     DefaultAddress::HOP_SERVICE.to_string()
 }
 
-fn identity_default_addr() -> String {
-    DefaultAddress::IDENTITY_SERVICE.to_string()
-}
-
 fn authenticated_default_addr() -> String {
     DefaultAddress::AUTHENTICATED_SERVICE.to_string()
-}
-
-fn verifier_default_addr() -> String {
-    DefaultAddress::VERIFIER.to_string()
 }
 
 fn credentials_default_addr() -> String {
@@ -104,17 +88,9 @@ async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StartCommand) -> m
             start_hop_service(&mut rpc, &addr).await?;
             addr
         }
-        StartSubCommand::Identity { addr, .. } => {
-            start_identity_service(&mut rpc, &addr).await?;
-            addr
-        }
         StartSubCommand::Authenticated { addr, .. } => {
             let req = api::start_authenticated_service(&addr);
             start_service_impl(&mut rpc, "Authenticated", req).await?;
-            addr
-        }
-        StartSubCommand::Verifier { addr, .. } => {
-            start_verifier_service(&mut rpc, &addr).await?;
             addr
         }
         StartSubCommand::Credentials {
@@ -165,18 +141,6 @@ where
 pub async fn start_hop_service<'a>(rpc: &mut Rpc, serv_addr: &str) -> Result<()> {
     let req = api::start_hop_service(serv_addr);
     start_service_impl(rpc, "Hop", req).await
-}
-
-/// Public so `ockam_command::node::create` can use it.
-pub async fn start_identity_service<'a>(rpc: &mut Rpc, serv_addr: &str) -> Result<()> {
-    let req = api::start_identity_service(serv_addr);
-    start_service_impl(rpc, "Identity", req).await
-}
-
-/// Public so `ockam_command::node::create` can use it.
-pub async fn start_verifier_service<'a>(rpc: &mut Rpc, serv_addr: &str) -> Result<()> {
-    let req = api::start_verifier_service(serv_addr);
-    start_service_impl(rpc, "Verifier", req).await
 }
 
 /// Public so `ockam_command::node::create` can use it.

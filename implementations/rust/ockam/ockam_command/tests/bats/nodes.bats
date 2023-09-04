@@ -51,16 +51,8 @@ force_kill_node() {
   assert_success
 
   # Check we can start service, but only once with the same name
-  run_success "$OCKAM" service start identity --addr my_identity --at n1
-  run_failure "$OCKAM" service start identity --addr my_identity --at n1
-
-  # Check we can start service, but only once with the same name
   run_success "$OCKAM" service start authenticated --addr my_authenticated --at n1
   run_failure "$OCKAM" service start authenticated --addr my_authenticated --at n1
-
-  # Check we can start service, but only once with the same name
-  run_success "$OCKAM" service start verifier --addr my_verifier --at n1
-  run_failure "$OCKAM" service start verifier --addr my_verifier --at n1
 
   # Check we can start service, but only once with the same name
   run_success "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81a201583ba20101025835a4028201815820984249b1a11c6933002d02019f408ec0bdb7f3058068227a472986ea588ec67003f4041a64e49a5e051a77b09d5e02820181584002c2cc20acf3d7d59d67c420c3c29d4ebb1ebe483bfaba7fb046f59de96284ebfb570d17539e5d4989b74f22af12261b9c1d5eecf731e2d19907b092f6c47d04

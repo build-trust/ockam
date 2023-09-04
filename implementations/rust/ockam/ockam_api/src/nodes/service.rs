@@ -604,9 +604,6 @@ impl NodeManagerWorker {
             }
 
             // ==*== Services ==*==
-            (Post, ["node", "services", DefaultAddress::IDENTITY_SERVICE]) => {
-                encode_request_result(self.start_identity_service(ctx, req, dec).await)?
-            }
             (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => {
                 encode_request_result(self.start_authenticated_service(ctx, req, dec).await)?
             }
@@ -621,9 +618,6 @@ impl NodeManagerWorker {
             }
             (Post, ["node", "services", DefaultAddress::DIRECT_AUTHENTICATOR]) => {
                 encode_request_result(self.start_authenticator_service(ctx, req, dec).await)?
-            }
-            (Post, ["node", "services", DefaultAddress::VERIFIER]) => {
-                encode_request_result(self.start_verifier_service(ctx, req, dec).await)?
             }
             (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => {
                 encode_request_result(self.start_credentials_service(ctx, req, dec).await)?

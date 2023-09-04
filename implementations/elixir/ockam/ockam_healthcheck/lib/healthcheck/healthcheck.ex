@@ -160,14 +160,14 @@ defmodule Ockam.Healthcheck do
   defp connect_secure_channel(tcp_conn, api_worker) do
     api_route = [tcp_conn, api_worker]
 
-    with {:ok, identity, vault_name} <- get_healthcheck_identity() do
-      Logger.debug("Identity: #{inspect(identity)}")
-
+    with {:ok, identity} <- get_healthcheck_identity(),
+         {:ok, keypair} <- SecureChannel.Crypto.generate_dh_keypair(),
+         {:ok, attestation} <- Ockam.Identity.attest_purpose_key(identity, keypair) do
       case SecureChannel.create_channel(
              [
                route: api_route,
                identity: identity,
-               vault_name: vault_name
+               encryption_options: [static_keypair: keypair, static_key_attestation: attestation]
              ],
              ## TODO: make this configurable
              @key_exchange_timeout
@@ -249,7 +249,7 @@ defmodule Ockam.Healthcheck do
   end
 
   @spec get_healthcheck_identity() ::
-          {:ok, identity :: Ockam.Identity.t(), vault_name :: binary() | nil}
+          {:ok, identity :: Ockam.Identity.t()}
           | {:error, reason :: any()}
   defp get_healthcheck_identity() do
     case Application.get_env(:ockam_healthcheck, :identity_source) do
@@ -260,7 +260,8 @@ defmodule Ockam.Healthcheck do
 
       :file ->
         file = Application.get_env(:ockam_healthcheck, :identity_file)
-        identity_from_file(file)
+        secret = Application.get_env(:ockam_healthcheck, :identity_signing_key_file)
+        identity_from_file(file, secret)
     end
   end
 
@@ -272,17 +273,11 @@ defmodule Ockam.Healthcheck do
     {:error, {:invalid_identity_function, not_function}}
   end
 
-  defp identity_from_file(file) do
-    case File.read(file) do
-      {:ok, data} ->
-        data = :erlang.binary_to_term(data)
-
-        with {:ok, identity} <- Ockam.Identity.make_identity(data) do
-          {:ok, identity, nil}
-        end
-
-      {:error, reason} ->
-        {:error, reason}
+  defp identity_from_file(file, secret) do
+    with {:ok, identity_data} <- File.read(file),
+         {:ok, signing_key} <- File.read(secret),
+         {:ok, identity, _identity_id} <- Ockam.Identity.import(identity_data, signing_key) do
+      {:ok, identity}
     end
   end
 
@@ -292,14 +287,7 @@ defmodule Ockam.Healthcheck do
         generate_and_cache_identity()
 
       identity ->
-        ## Validate that identity is still valid
-        case Ockam.Identity.check_local_private_key(identity) do
-          :ok ->
-            {:ok, identity, nil}
-
-          {:error, _reason} ->
-            generate_and_cache_identity()
-        end
+        {:ok, identity}
     end
   end
 
@@ -307,7 +295,7 @@ defmodule Ockam.Healthcheck do
     case generate_identity() do
       {:ok, identity} ->
         :persistent_term.put(:healthcheck_identity, identity)
-        {:ok, identity, nil}
+        {:ok, identity}
 
       {:error, reason} ->
         {:error, reason}

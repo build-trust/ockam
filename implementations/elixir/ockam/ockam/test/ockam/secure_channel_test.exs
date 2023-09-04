@@ -8,21 +8,20 @@ defmodule Ockam.SecureChannel.Tests do
   alias Ockam.Node
   alias Ockam.Router
   alias Ockam.SecureChannel
+  alias Ockam.SecureChannel.Crypto
   alias Ockam.Tests.Helpers.Echoer
-  alias Ockam.Vault
-  alias Ockam.Vault.Software, as: SoftwareVault
 
   @identity_impl Ockam.Identity.Stub
 
   setup do
     Node.register_address("test")
-    {:ok, alice, alice_id} = Identity.create(@identity_impl)
-    {:ok, bob, bob_id} = Identity.create(@identity_impl)
+    {:ok, alice} = Identity.create()
+    {:ok, bob} = Identity.create()
     on_exit(fn -> Node.unregister_address("test") end)
 
     # TODO: rework the relationship on credential exchange API, attribute storage and secure channel
     :ok = AttributeStorage.init()
-    {:ok, alice: alice, alice_id: alice_id, bob: bob, bob_id: bob_id}
+    {:ok, alice: alice, bob: bob}
   end
 
   defp man_in_the_middle(callback) do
@@ -252,32 +251,20 @@ defmodule Ockam.SecureChannel.Tests do
                    10_000
   end
 
-  test "local secure channel", %{alice: alice, alice_id: alice_id, bob: bob, bob_id: bob_id} do
-    {:ok, vault} = SoftwareVault.init()
+  test "local secure channel", %{alice: alice, bob: bob} do
+    {:ok, listener} = create_secure_channel_listener(alice)
 
-    {:ok, listener} =
-      SecureChannel.create_listener(
-        identity: alice,
-        encryption_options: [vault: vault]
-      )
-
-    {:ok, channel} =
-      SecureChannel.create_channel(
-        [
-          identity: bob,
-          encryption_options: [vault: vault],
-          route: [listener]
-        ],
-        3000
-      )
+    {:ok, channel} = create_secure_channel([listener], bob)
 
     channel_pid = Ockam.Node.whereis(channel)
 
     ref1 = Process.monitor(channel_pid)
 
     assert {:ok, alice} == SecureChannel.get_remote_identity(channel)
-    assert {:ok, alice_id} == SecureChannel.get_remote_identity_id(channel)
-    assert {:ok, alice, alice_id} == SecureChannel.get_remote_identity_with_id(channel)
+    assert {:ok, Identity.get_identifier(alice)} == SecureChannel.get_remote_identity_id(channel)
+
+    assert {:ok, alice, Identity.get_identifier(alice)} ==
+             SecureChannel.get_remote_identity_with_id(channel)
 
     {:ok, me} = Ockam.Node.register_random_address()
     Ockam.Router.route("PING!", [channel, me], [me])
@@ -289,7 +276,7 @@ defmodule Ockam.SecureChannel.Tests do
       local_metadata: %{identity_id: id, identity: _identity, channel: :secure_channel}
     }
 
-    assert id == bob_id
+    assert id == Identity.get_identifier(bob)
 
     # Hacky way to get the receiver' pid, so we can monitor it and ensure it get terminated
     # after disconnection
@@ -306,7 +293,7 @@ defmodule Ockam.SecureChannel.Tests do
       local_metadata: %{identity_id: id, identity: _identity, channel: :secure_channel}
     }
 
-    assert id == alice_id
+    assert id == Identity.get_identifier(alice)
 
     SecureChannel.disconnect(channel)
     assert_receive {:DOWN, ^ref1, _, _, _}
@@ -317,20 +304,10 @@ defmodule Ockam.SecureChannel.Tests do
     ## Inner address is the one pointing to the other peer.
     ## This just test that it don't pass messages around, as
     ## the message will fail to be decrypted
-    {:ok, vault} = SoftwareVault.init()
 
-    {:ok, listener} =
-      SecureChannel.create_listener(
-        identity: alice,
-        encryption_options: [vault: vault]
-      )
+    {:ok, listener} = create_secure_channel_listener(alice)
 
-    {:ok, channel} =
-      SecureChannel.create_channel(
-        identity: bob,
-        encryption_options: [vault: vault],
-        route: [listener]
-      )
+    {:ok, channel} = create_secure_channel([listener], bob)
 
     {:ok, bob_inner_address} = Ockam.AsymmetricWorker.get_inner_address(channel)
 
@@ -345,22 +322,8 @@ defmodule Ockam.SecureChannel.Tests do
   end
 
   test "additional metadata", %{alice: alice, bob: bob} do
-    {:ok, vault} = SoftwareVault.init()
-
-    {:ok, listener} =
-      SecureChannel.create_listener(
-        identity: alice,
-        encryption_options: [vault: vault],
-        additional_metadata: %{foo: :bar}
-      )
-
-    {:ok, channel} =
-      SecureChannel.create_channel(
-        identity: bob,
-        encryption_options: [vault: vault],
-        route: [listener],
-        additional_metadata: %{bar: :foo}
-      )
+    {:ok, listener} = create_secure_channel_listener(alice, %{foo: :bar})
+    {:ok, channel} = create_secure_channel([listener], bob, %{bar: :foo})
 
     {:ok, me} = Ockam.Node.register_random_address()
     Ockam.Router.route("PING!", [channel, me], [me])
@@ -393,21 +356,17 @@ defmodule Ockam.SecureChannel.Tests do
   end
 
   test "initiator trust policy", %{alice: alice, bob: bob} do
-    {:ok, vault} = SoftwareVault.init()
+    {:ok, listener} = create_secure_channel_listener(alice, %{foo: :bar})
 
-    {:ok, listener} =
-      SecureChannel.create_listener(
-        identity: alice,
-        encryption_options: [vault: vault],
-        additional_metadata: %{foo: :bar}
-      )
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    attestation = Identity.attest_purpose_key(bob, keypair)
 
     {:error, _reason} =
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [vault: vault],
           route: [listener],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           additional_metadata: %{bar: :foo},
           trust_policies: [fn _me, _contact -> {:error, :test} end]
         ],
@@ -416,23 +375,18 @@ defmodule Ockam.SecureChannel.Tests do
   end
 
   test "responder trust policy", %{alice: alice, bob: bob} do
-    {:ok, vault} = SoftwareVault.init()
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(alice, keypair)
 
     {:ok, listener} =
       SecureChannel.create_listener(
         identity: alice,
-        encryption_options: [vault: vault],
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
         additional_metadata: %{foo: :bar},
         trust_policies: [fn _me, _contact -> {:error, :test} end]
       )
 
-    {:ok, channel} =
-      SecureChannel.create_channel(
-        identity: bob,
-        encryption_options: [vault: vault],
-        route: [listener],
-        additional_metadata: %{bar: :foo}
-      )
+    {:ok, channel} = create_secure_channel([listener], bob, %{bar: :foo})
 
     {:ok, me} = Ockam.Node.register_random_address()
     Ockam.Router.route("PING!", [channel, me], [me])
@@ -443,89 +397,41 @@ defmodule Ockam.SecureChannel.Tests do
     }
   end
 
-  test "dynamic identity" do
-    {:ok, listener} = SecureChannel.create_listener(identity: :dynamic)
-
-    {:ok, channel} =
-      SecureChannel.create_channel(
-        identity: :dynamic,
-        route: [listener]
-      )
-
-    {:ok, me} = Ockam.Node.register_random_address()
-    Ockam.Router.route("PING!", [channel, me], [me])
-
-    assert_receive %Ockam.Message{
-      onward_route: [^me],
-      payload: "PING!",
-      return_route: [_channel, ^me],
-      local_metadata: %{identity_id: _id, identity: _identity, channel: :secure_channel}
-    }
-  end
-
-  defmodule FakeVerifier do
-    @moduledoc """
-    Just for testing purposes.
-    """
-
-    alias Ockam.Credential.AttributeSet
-    alias Ockam.Credential.AttributeSet.Attributes
-
-    def verify(credential, identity_id, authorities) do
-      with {:credential, authority_id, ^identity_id, attributes, expiration} <-
-             :erlang.binary_to_term(credential),
-           {:ok, _} <- Map.fetch(authorities, authority_id) do
-        {:ok,
-         %AttributeSet{attributes: %Attributes{attributes: attributes}, expiration: expiration}}
-      else
-        _other ->
-          {:error, :rejected}
-      end
-    end
-
-    def credential(subject_id, authority, attributes, expiration) do
-      with {:ok, authority_id} <- Identity.validate_identity_change_history(authority) do
-        {:ok,
-         :erlang.term_to_binary({:credential, authority_id, subject_id, attributes, expiration})}
-      end
-    end
-  end
-
   test "credential in handshake accepted", %{
     alice: alice,
-    bob: bob,
-    bob_id: bob_id,
-    alice_id: alice_id
+    bob: bob
   } do
-    {:ok, vault} = SoftwareVault.init()
-
-    {:ok, authority, _authority_id} = Identity.create(@identity_impl)
+    {:ok, authority} = Identity.create()
 
     alice_attributes = %{"role" => "server"}
-    expiration = System.os_time(:second) + 100
+    alice_id = Identity.get_identifier(alice)
+    bob_id = Identity.get_identifier(bob)
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(alice, keypair)
 
     {:ok, alice_credential} =
-      FakeVerifier.credential(alice_id, authority, alice_attributes, expiration)
+      Identity.issue_credential(authority, alice_id, alice_attributes, 100)
 
     {:ok, listener} =
       SecureChannel.create_listener(
         identity: alice,
-        encryption_options: [vault: vault],
-        credential_verifier: {FakeVerifier, [authority]},
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+        authorities: [authority],
         credentials: [alice_credential]
       )
 
     bob_attributes = %{"role" => "member"}
-    expiration = System.os_time(:second) + 100
-    {:ok, bob_credential} = FakeVerifier.credential(bob_id, authority, bob_attributes, expiration)
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(bob, keypair)
+    {:ok, bob_credential} = Identity.issue_credential(authority, bob_id, bob_attributes, 100)
 
     {:ok, channel} =
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [vault: vault],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           route: [listener],
-          credential_verifier: {FakeVerifier, [authority]},
+          authorities: [authority],
           credentials: [bob_credential]
         ],
         3000
@@ -552,47 +458,45 @@ defmodule Ockam.SecureChannel.Tests do
     # Secure channel is terminated if we present invalid credential
 
     # Credential by unknown authority
-    {:ok, wrong_authority, _authority_id} = Identity.create(@identity_impl)
+    {:ok, wrong_authority} = Identity.create()
     attributes = %{"role" => "attacker"}
-    expiration = System.os_time(:second) + 100
 
-    {:ok, wrong_credential} =
-      FakeVerifier.credential(bob_id, wrong_authority, attributes, expiration)
+    {:ok, wrong_credential} = Identity.issue_credential(wrong_authority, bob_id, attributes, 100)
 
-    {:ok, channel} =
+    # {:ok, channel} =
+    {:error, _} =
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [vault: vault],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           route: [listener],
           credentials: [wrong_credential],
-          credential_verifier: {FakeVerifier, [authority]}
+          authority: [authority]
         ],
         1000
       )
 
-    Ockam.Router.route("PING!", [channel, me], [me])
+    # Ockam.Router.route("PING!", [channel, me], [me])
 
-    refute_receive %Ockam.Message{
-      onward_route: [^me],
-      payload: "PING!",
-      return_route: [_channel, ^me],
-      local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
-    }
+    # refute_receive %Ockam.Message{
+    #  onward_route: [^me],
+    #  payload: "PING!",
+    #  return_route: [_channel, ^me],
+    #  local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
+    # }
 
     # Credential for another identifier
     attributes = %{"role" => "attacker"}
-    expiration = System.os_time(:second) + 100
-    {:ok, wrong_credential} = FakeVerifier.credential(alice_id, authority, attributes, expiration)
+    {:ok, wrong_credential} = Identity.issue_credential(authority, alice_id, attributes, 100)
 
     {:ok, channel} =
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [vault: vault],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           route: [listener],
           credentials: [wrong_credential],
-          credential_verifier: {FakeVerifier, [authority]}
+          authorities: [authority]
         ],
         1000
       )
@@ -611,35 +515,53 @@ defmodule Ockam.SecureChannel.Tests do
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [vault: vault],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           route: [listener],
-          credential_verifier: {FakeVerifier, [wrong_authority]}
+          authorities: [wrong_authority]
         ],
         1000
       )
   end
 
   defp create_secure_channel_listener() do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
-    {:ok, identity, _identity_id} = Identity.create(@identity_impl)
+    {:ok, identity} = Identity.create()
+    create_secure_channel_listener(identity)
+  end
+
+  defp create_secure_channel_listener(identity) do
+    create_secure_channel_listener(identity, %{})
+  end
+
+  defp create_secure_channel_listener(identity, additional_metadata) do
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(identity, keypair)
 
     SecureChannel.create_listener(
       identity: identity,
-      encryption_options: [vault: vault, static_keypair: keypair]
+      encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+      additional_metadata: additional_metadata
     )
   end
 
   defp create_secure_channel(route_to_listener) do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
-    {:ok, identity, _identity_id} = Identity.create(@identity_impl)
+    {:ok, identity} = Identity.create()
+    create_secure_channel(route_to_listener, identity)
+  end
+
+  defp create_secure_channel(route_to_listener, identity) do
+    create_secure_channel(route_to_listener, identity, %{})
+  end
+
+  defp create_secure_channel(route_to_listener, identity, additional_metadata) do
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(identity, keypair)
 
     {:ok, c} =
       SecureChannel.create_channel(
         identity: identity,
         route: route_to_listener,
-        encryption_options: [vault: vault, static_keypair: keypair]
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+        additional_metadata: additional_metadata
       )
 
     {:ok, c}
