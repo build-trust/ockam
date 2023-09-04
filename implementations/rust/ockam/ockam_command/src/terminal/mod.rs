@@ -34,6 +34,12 @@ pub struct Terminal<T: TerminalWriter, WriteMode = ToStdErr> {
     mode: WriteMode,
 }
 
+impl<T: TerminalWriter, W> Terminal<T, W> {
+    pub fn is_quiet(&self) -> bool {
+        self.quiet
+    }
+}
+
 impl<W: TerminalWriter> Default for Terminal<W> {
     fn default() -> Self {
         Terminal::new(false, false, false, OutputFormat::Plain)
