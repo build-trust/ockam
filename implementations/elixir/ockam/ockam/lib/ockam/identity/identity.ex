@@ -52,6 +52,15 @@ defmodule Ockam.Identity do
     Ockly.Native.verify_purpose_key_attestation(identity_data,  pubkey, attestation)
   end
 
+
+  def issue_credential(%Identity{data: issuer}, subject, attrs, ttl) do
+    {:ok, Ockly.Native.issue_credential(issuer, subject, attrs, ttl)}
+  end
+
+  def verify_credential(subject_id, authorities, credential) do
+    {ttl, verified_attrs} = Ockly.Native.verify_credential(subject_id, authorities, credential)
+    {:ok, {ttl, verified_attrs}}
+  end
   """
   @spec compare_identity_change_history(current_identity :: t(), known_identity :: t) ::
           {:ok, atom()} | {:error, reason :: any()}

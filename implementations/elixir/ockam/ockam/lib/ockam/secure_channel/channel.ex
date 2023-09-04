@@ -56,7 +56,7 @@ defmodule Ockam.SecureChannel.Channel do
           | {:authorization, Ockam.Worker.Authorization.config()}
           | {:additional_metadata, map()}
           | {:idle_timeout, non_neg_integer() | :infinity}
-          | {:credential_verifier, {module :: atom(), authorities :: [Identity.t()]}}
+          | {:authorities :: [Identity.t()]}
           | {:credentials, [binary()]}
 
   # Note: we could split each of these into their own file as proper modules and delegate
@@ -88,21 +88,11 @@ defmodule Ockam.SecureChannel.Channel do
     field(:additional_metadata, map())
     field(:channel_state, Handshaking.t() | Established.t())
 
-    field(
-      :credential_verifier,
-      {module :: atom(), authorities :: %{(identity_id :: binary()) => identity_data :: binary()}}
-    )
+    field(:authorities,  [Identity.t()])
 
     field(:credentials, [binary()])
   end
 
-  defmodule CredentialRejecter do
-    @moduledoc """
-    A verifier that just reject every credential.  It's the one used by default if none is specified.
-    """
-    def verify(_credential, _peer_identity_id, _authorities),
-      do: {:error, :no_credential_verified_configured}
-  end
 
   @handshake_timeout 30_000
 
@@ -347,16 +337,8 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  defp credential_verifier_from_opts(options) do
-    {mod, authorities} = Keyword.get(options, :credential_verifier, {CredentialRejecter, []})
-
-    authorities =
-      Map.new(authorities, fn authority_identity ->
-        {:ok, identity_id} = Identity.validate_identity_change_history(authority_identity)
-        {identity_id, Identity.get_data(authority_identity)}
-      end)
-
-    {:ok, {mod, authorities}}
+  defp authorities_form_options(options) do
+    {:ok, Keyword.get(options, :authorities, [])}
   end
 
   defp identity_from_opts(options) do
@@ -373,7 +355,7 @@ defmodule Ockam.SecureChannel.Channel do
 
     with {:ok, role} <- Keyword.fetch(options, :role),
          {:ok, identity} <- identity_from_opts(options),
-         {:ok, credential_verifier} <- credential_verifier_from_opts(options),
+         {:ok, authorities} <- authorities_form_options(options),
          {:ok, key_exchange_state} <-
            setup_noise_key_exchange(
              noise_key_exchange_options,
@@ -390,7 +372,7 @@ defmodule Ockam.SecureChannel.Channel do
         identity: identity,
         trust_policies: trust_policies,
         additional_metadata: additional_metadata,
-        credential_verifier: credential_verifier
+        authorities: authorities
       }
 
       complete_inner_setup(state, options, key_exchange_state, tref)
@@ -434,13 +416,13 @@ defmodule Ockam.SecureChannel.Channel do
          {:ok, identity_proof} <- IdentityProof.decode(peer_proof_data),
          {:ok, peer, peer_identity_id} <- Identity.validate_contact_data(identity_proof.contact),
          true <- Identity.verify_purpose_key_attestation(peer, rs, %Ockam.Identity.PurposeKeyAttestation{attestation: identity_proof.attestation}),
-          :ok <- check_trust(state.trust_policies, state.identity, identity_proof.contact, peer_identity_id) do
-         #:ok <-
-         #  process_credentials(
-         #    identity_proof.credentials,
-         #    peer_identity_id,
-         #    state.credential_verifier
-         #  ) do
+          :ok <- check_trust(state.trust_policies, state.identity, identity_proof.contact, peer_identity_id),
+         :ok <-
+           process_credentials(
+             identity_proof.credentials,
+             peer_identity_id,
+             state.authorities
+           ) do
       {encrypt_st, decrypt_st} = split(k1, k2, state.role)
 
       {:ok, :cancel} = :timer.cancel(state.channel_state.timer)
@@ -465,19 +447,18 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  defp process_credentials([], _peer_identity_id, _cred_verifier), do: :ok
+  defp process_credentials([], _peer_identity_id, _authorities), do: :ok
 
-  defp process_credentials([cred], peer_identity_id, {cred_verifier_module, authorities}) do
-    case cred_verifier_module.verify(cred, peer_identity_id, authorities) do
+  defp process_credentials([cred], peer_identity_id, authorities) do
+    case Identity.verify_credential(peer_identity_id, cred, authorities) do
       {:ok, attribute_set} ->
         AttributeStorage.put_attribute_set(peer_identity_id, attribute_set)
-
       other ->
         {:error, {:rejected_credential, other}}
     end
   end
 
-  defp process_credentials(_creds, _peer_identity_id, _cred_verifier),
+  defp process_credentials(_creds, _peer_identity_id, _authorities),
     do: {:error, :multiple_credentials}
 
   defp split(k1, k2, :initiator),
