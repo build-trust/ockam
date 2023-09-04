@@ -5,7 +5,6 @@ defmodule Ockam.Metrics.TelemetryPoller.Tests do
   alias Ockam.Identity
   alias Ockam.Metrics.TelemetryPoller
   alias Ockam.SecureChannel
-  alias Ockam.Vault.Software, as: SoftwareVault
 
   setup do
     {:ok, me} = Ockam.Node.register_random_address()
@@ -14,21 +13,28 @@ defmodule Ockam.Metrics.TelemetryPoller.Tests do
   end
 
   test "secure channels metrics", %{me: self_addr} do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, alice, alice_id} = Identity.create(Ockam.Identity.Stub)
+    {:ok, alice} = Identity.create()
+    alice_id = Identity.get_identifier(alice)
+    {:ok, alice_keypair} = SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, alice_attestation} = Identity.attest_purpose_key(alice, alice_keypair)
 
     {:ok, listener} =
       SecureChannel.create_listener(
         identity: alice,
-        encryption_options: [vault: vault]
+        encryption_options: [
+          static_keypair: alice_keypair,
+          static_key_attestation: alice_attestation
+        ]
       )
 
-    {:ok, bob, _bob_id} = Identity.create(Ockam.Identity.Stub)
+    {:ok, bob} = Identity.create()
+    {:ok, bob_keypair} = SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, bob_attestation} = Identity.attest_purpose_key(bob, bob_keypair)
 
     {:ok, channel} =
       SecureChannel.create_channel(
         identity: bob,
-        encryption_options: [vault: vault],
+        encryption_options: [static_keypair: bob_keypair, static_key_attestation: bob_attestation],
         route: [listener]
       )
 
@@ -41,7 +47,7 @@ defmodule Ockam.Metrics.TelemetryPoller.Tests do
     {:ok, channel2} =
       SecureChannel.create_channel(
         identity: bob,
-        encryption_options: [vault: vault],
+        encryption_options: [static_keypair: bob_keypair, static_key_attestation: bob_attestation],
         route: [listener]
       )
 
