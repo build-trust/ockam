@@ -62,7 +62,7 @@ cli-table = "0.4"
 colorful = "0.2"
 colors-transform = "0.2.11"
 console = "0.15.7"
-ctrlc = { version = "3.4.0", features = ["termination"] }
+ctrlc = { version = "3.4.1", features = ["termination"] }
 dialoguer = "0.10"
 duct = "0.13"
 flate2 = "1.0.27"
