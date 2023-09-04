@@ -114,7 +114,7 @@ force_kill_node() {
 
 @test "node - background node logs to file" {
   n="$(random_str)"
-  $OCKAM node create $n
+  QUIET=0 $OCKAM node create $n
 
   log_file="$($OCKAM node logs $n)"
   if [ ! -s $log_file ]; then
