@@ -144,7 +144,7 @@ pub struct GlobalArgs {
     help: Option<bool>,
 
     /// Do not print any log messages
-    #[arg(global = true, long, short)]
+    #[arg(global = true, long, short, default_value_t = quiet_default_value())]
     quiet: bool,
 
     /// Increase verbosity of trace messages
@@ -157,11 +157,11 @@ pub struct GlobalArgs {
     verbose: u8,
 
     /// Output without any colors
-    #[arg(hide = docs::hide(), global = true, long)]
+    #[arg(hide = docs::hide(), global = true, long, default_value_t = no_color_default_value())]
     no_color: bool,
 
     /// Disable tty functionality
-    #[arg(hide = docs::hide(), global = true, long)]
+    #[arg(hide = docs::hide(), global = true, long, default_value_t = no_input_default_value())]
     no_input: bool,
 
     /// Output format
@@ -180,17 +180,26 @@ pub struct GlobalArgs {
     test_argument_parser: bool,
 }
 
+fn quiet_default_value() -> bool {
+    get_env_with_default("QUIET", false).unwrap_or(false)
+}
+
+fn no_color_default_value() -> bool {
+    get_env_with_default("NO_COLOR", false).unwrap_or(false)
+}
+
+fn no_input_default_value() -> bool {
+    get_env_with_default("NO_INPUT", false).unwrap_or(false)
+}
+
 impl Default for GlobalArgs {
     fn default() -> Self {
-        let quiet = get_env_with_default("QUIET", false).unwrap_or(false);
-        let no_color = get_env_with_default("NO_COLOR", false).unwrap_or(false);
-        let no_input = get_env_with_default("NO_INPUT", false).unwrap_or(false);
         Self {
             help: None,
-            quiet,
+            quiet: quiet_default_value(),
             verbose: 0,
-            no_color,
-            no_input,
+            no_color: no_color_default_value(),
+            no_input: no_input_default_value(),
             output_format: OutputFormat::Plain,
             test_argument_parser: false,
         }
