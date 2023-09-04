@@ -9,16 +9,18 @@ use crate::app::AppState;
 use crate::error::Error;
 use crate::invitations::commands::create_service_invitation;
 
+const DEFAULT_HOST: &str = "127.0.0.1";
+
 /// Create a TCP outlet within the default node.
 #[tauri::command]
 pub async fn tcp_outlet_create(
     app: AppHandle<Wry>,
     service: String,
-    port: String,
+    address: String,
     email: String,
 ) -> Result<(), String> {
     let email = if email.is_empty() { None } else { Some(email) };
-    tcp_outlet_create_impl(app, service, port, email)
+    tcp_outlet_create_impl(app, service, address, email)
         .await
         .map_err(|e| {
             error!("{:?}", e);
@@ -30,15 +32,19 @@ pub async fn tcp_outlet_create(
 async fn tcp_outlet_create_impl(
     app: AppHandle<Wry>,
     service: String,
-    port: String,
+    address: String,
     email: Option<String>,
 ) -> crate::Result<()> {
-    debug!(%service, %port, "Creating an outlet");
+    debug!(%service, %address, "Creating an outlet");
     let app_state = app.state::<AppState>();
-    let socket_addr: SocketAddr = format!("127.0.0.1:{port}")
-        .parse()
-        .into_diagnostic()
-        .wrap_err("Invalid port")?;
+    let socket_addr: SocketAddr = if let Some((host, port)) = address.split_once(':') {
+        format!("{host}:{port}")
+    } else {
+        format!("{DEFAULT_HOST}:{address}")
+    }
+    .parse()
+    .into_diagnostic()
+    .wrap_err("Invalid port")?;
     let worker_addr = extract_address_value(&service).wrap_err("Invalid service address")?;
     let node_manager_worker = app_state.node_manager_worker().await;
     let mut node_manager = node_manager_worker.inner().write().await;
