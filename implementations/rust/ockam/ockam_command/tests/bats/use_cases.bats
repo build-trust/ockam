@@ -24,28 +24,21 @@ teardown() {
 # https://docs.ockam.io/guides/use-cases/add-end-to-end-encryption-to-any-client-and-server-application-with-no-code-change
 @test "use-case - end-to-end encryption, local" {
   port="$(random_port)"
-  run "$OCKAM" node create relay
-  assert_success
+  run_success "$OCKAM" node create relay
 
   # Service
-  run "$OCKAM" node create server_sidecar
-  assert_success
+  run_success "$OCKAM" node create server_sidecar
 
-  run "$OCKAM" tcp-outlet create --at /node/server_sidecar --to 127.0.0.1:5000
-  assert_success
-  run "$OCKAM" relay create server_sidecar --at /node/relay --to /node/server_sidecar
+  run_success "$OCKAM" tcp-outlet create --at /node/server_sidecar --to 127.0.0.1:5000
+  run_success "$OCKAM" relay create server_sidecar --at /node/relay --to /node/server_sidecar
   assert_output --partial "forward_to_server_sidecar"
-  assert_success
 
   # Client
-  run "$OCKAM" node create client_sidecar
-  assert_success
-  run bash -c "$OCKAM secure-channel create --from /node/client_sidecar --to /node/relay/service/forward_to_server_sidecar/service/api \
+  run_success "$OCKAM" node create client_sidecar
+  run_success bash -c "$OCKAM secure-channel create --from /node/client_sidecar --to /node/relay/service/forward_to_server_sidecar/service/api \
               | $OCKAM tcp-inlet create --at /node/client_sidecar --from 127.0.0.1:$port --to -/service/outlet"
-  assert_success
 
-  run curl --head --max-time 10 "127.0.0.1:$port"
-  assert_success
+  run_success curl --head --max-time 10 "127.0.0.1:$port"
 }
 
 # https://docs.ockam.io/
@@ -56,20 +49,18 @@ teardown() {
   port="$(random_port)"
 
   # Service
-  run "$OCKAM" node create s
-  run "$OCKAM" tcp-outlet create --at /node/s --to 127.0.0.1:5000
+  run_success "$OCKAM" node create s
+  run_success "$OCKAM" tcp-outlet create --at /node/s --to 127.0.0.1:5000
 
   fwd=$(random_str)
-  run "$OCKAM" relay create "$fwd" --to /node/s
+  run_success "$OCKAM" relay create "$fwd" --to /node/s
 
   # Client
-  run "$OCKAM" node create c
-  run bash -c "$OCKAM secure-channel create --from /node/c --to /project/default/service/forward_to_$fwd/service/api \
+  run_success "$OCKAM" node create c
+  run_success bash -c "$OCKAM secure-channel create --from /node/c --to /project/default/service/forward_to_$fwd/service/api \
               | $OCKAM tcp-inlet create --at /node/c --from 127.0.0.1:$port --to -/service/outlet"
-  assert_success
 
-  run curl --head --max-time 10 "127.0.0.1:$port"
-  assert_success
+  run_success curl --head --max-time 10 "127.0.0.1:$port"
 }
 
 # https://docs.ockam.io/use-cases/apply-fine-grained-permissions-with-attribute-based-access-control-abac
@@ -95,8 +86,7 @@ teardown() {
   $OCKAM node create control_plane1 --project-path "$PROJECT_JSON_PATH" --identity control_identity
   $OCKAM policy create --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
   $OCKAM tcp-outlet create --at /node/control_plane1 --to 127.0.0.1:5000
-  run "$OCKAM" relay create "$fwd" --to /node/control_plane1
-  assert_success
+  run_success "$OCKAM" relay create "$fwd" --to /node/control_plane1
 
   # Edge plane
   setup_home_dir
@@ -105,8 +95,7 @@ teardown() {
   $OCKAM node create edge_plane1 --project-path "$PROJECT_JSON_PATH" --identity edge_identity
   $OCKAM policy create --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
-  run curl --fail --head --max-time 5 "127.0.0.1:$port_1"
-  assert_success
+  run_success curl --fail --head --max-time 5 "127.0.0.1:$port_1"
 
   ## The following is denied
   $OCKAM identity create x_identity

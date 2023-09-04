@@ -126,4 +126,9 @@ run_success() {
   assert_success
 }
 
+run_failure() {
+  run "$@"
+  assert_failure
+}
+
 bats_require_minimum_version 1.5.0
