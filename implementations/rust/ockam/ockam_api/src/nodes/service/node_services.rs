@@ -18,7 +18,6 @@ use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
-use crate::identity::IdentityService;
 use crate::kafka::{
     ConsumerNodeAddr, KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
     KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
@@ -28,14 +27,12 @@ use crate::nodes::models::portal::CreateInlet;
 use crate::nodes::models::services::{
     DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
     StartAuthenticatorRequest, StartCredentialsService, StartEchoerServiceRequest,
-    StartHopServiceRequest, StartIdentityServiceRequest, StartKafkaConsumerRequest,
-    StartKafkaDirectRequest, StartKafkaOutletRequest, StartKafkaProducerRequest,
-    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
-    StartVerifierService,
+    StartHopServiceRequest, StartKafkaConsumerRequest, StartKafkaDirectRequest,
+    StartKafkaOutletRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
+    StartServiceRequest, StartUppercaseServiceRequest,
 };
 use crate::nodes::registry::{
     AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
-    VerifierServiceInfo,
 };
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
@@ -46,29 +43,6 @@ use crate::{actions, resources};
 use super::NodeManagerWorker;
 
 impl NodeManager {
-    pub(super) async fn start_identity_service_impl(
-        &mut self,
-        ctx: &Context,
-        addr: Address,
-    ) -> Result<()> {
-        if self.registry.identity_services.contains_key(&addr) {
-            return Err(ApiError::core("Identity service exists at this address"));
-        }
-
-        let service = IdentityService::new(self.node_identities()).await?;
-
-        ctx.flow_controls()
-            .add_consumer(addr.clone(), &self.api_transport_flow_control_id);
-
-        ctx.start_worker(addr.clone(), service).await?;
-
-        self.registry
-            .identity_services
-            .insert(addr, Default::default());
-
-        Ok(())
-    }
-
     pub(super) async fn start_credentials_service_impl<'a>(
         &mut self,
         ctx: &Context,
@@ -374,19 +348,6 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-    pub(super) async fn start_identity_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
-        let mut node_manager = self.node_manager.write().await;
-        let req_body: StartIdentityServiceRequest = dec.decode()?;
-        let addr = req_body.addr.to_string().into();
-        node_manager.start_identity_service_impl(ctx, addr).await?;
-        Ok(Response::ok(req.id()))
-    }
-
     pub(super) async fn start_authenticated_service(
         &mut self,
         ctx: &Context,
@@ -503,34 +464,6 @@ impl NodeManagerWorker {
                 project,
             )
             .await?;
-        Ok(Response::ok(req.id()))
-    }
-
-    pub(super) async fn start_verifier_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
-        let mut node_manager = self.node_manager.write().await;
-        let body: StartVerifierService = dec.decode()?;
-        let addr: Address = body.address().into();
-
-        if node_manager.registry.verifier_services.contains_key(&addr) {
-            return Err(ApiError::core("Verifier service exists at this address").into());
-        }
-
-        ctx.flow_controls()
-            .add_consumer(addr.clone(), &node_manager.api_transport_flow_control_id);
-
-        let vs = crate::verifier::Verifier::new(node_manager.identities());
-        ctx.start_worker(addr.clone(), vs).await?;
-
-        node_manager
-            .registry
-            .verifier_services
-            .insert(addr, VerifierServiceInfo::default());
-
         Ok(Response::ok(req.id()))
     }
 
@@ -988,12 +921,6 @@ impl NodeManagerWorker {
 
     fn list_services_impl(registry: &Registry) -> Vec<ServiceStatus> {
         let mut list = Vec::new();
-        registry.identity_services.keys().for_each(|addr| {
-            list.push(ServiceStatus::new(
-                addr.address(),
-                DefaultAddress::IDENTITY_SERVICE,
-            ))
-        });
         registry.authenticated_services.keys().for_each(|addr| {
             list.push(ServiceStatus::new(
                 addr.address(),
@@ -1017,9 +944,6 @@ impl NodeManagerWorker {
                 addr.address(),
                 DefaultAddress::HOP_SERVICE,
             ))
-        });
-        registry.verifier_services.keys().for_each(|addr| {
-            list.push(ServiceStatus::new(addr.address(), DefaultAddress::VERIFIER))
         });
         registry.credentials_services.keys().for_each(|addr| {
             list.push(ServiceStatus::new(

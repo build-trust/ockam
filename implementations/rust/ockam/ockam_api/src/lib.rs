@@ -143,7 +143,6 @@ pub mod port_range;
 pub mod rpc_proxy_service;
 pub mod trust_context;
 pub mod uppercase;
-pub mod verifier;
 
 mod schema;
 mod session;
@@ -158,7 +157,6 @@ extern crate tracing;
 pub struct DefaultAddress;
 
 impl DefaultAddress {
-    pub const IDENTITY_SERVICE: &'static str = "identity_service";
     pub const AUTHENTICATED_SERVICE: &'static str = "authenticated";
     pub const FORWARDING_SERVICE: &'static str = "forwarding_service";
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
@@ -170,7 +168,6 @@ impl DefaultAddress {
     pub const CREDENTIAL_ISSUER: &'static str = "credential_issuer";
     pub const ENROLLMENT_TOKEN_ISSUER: &'static str = "enrollment_token_issuer";
     pub const ENROLLMENT_TOKEN_ACCEPTOR: &'static str = "enrollment_token_acceptor";
-    pub const VERIFIER: &'static str = "verifier";
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
@@ -181,8 +178,7 @@ impl DefaultAddress {
     pub fn is_valid(name: &str) -> bool {
         matches!(
             name,
-            Self::IDENTITY_SERVICE
-                | Self::AUTHENTICATED_SERVICE
+            Self::AUTHENTICATED_SERVICE
                 | Self::FORWARDING_SERVICE
                 | Self::UPPERCASE_SERVICE
                 | Self::ECHO_SERVICE
@@ -193,7 +189,6 @@ impl DefaultAddress {
                 | Self::CREDENTIAL_ISSUER
                 | Self::ENROLLMENT_TOKEN_ISSUER
                 | Self::ENROLLMENT_TOKEN_ACCEPTOR
-                | Self::VERIFIER
                 | Self::OKTA_IDENTITY_PROVIDER
                 | Self::KAFKA_CONSUMER
                 | Self::KAFKA_PRODUCER
@@ -205,7 +200,6 @@ impl DefaultAddress {
 
     pub fn iter() -> impl Iterator<Item = &'static str> {
         [
-            Self::IDENTITY_SERVICE,
             Self::AUTHENTICATED_SERVICE,
             Self::FORWARDING_SERVICE,
             Self::UPPERCASE_SERVICE,
@@ -217,7 +211,6 @@ impl DefaultAddress {
             Self::CREDENTIAL_ISSUER,
             Self::ENROLLMENT_TOKEN_ISSUER,
             Self::ENROLLMENT_TOKEN_ACCEPTOR,
-            Self::VERIFIER,
             Self::OKTA_IDENTITY_PROVIDER,
             Self::KAFKA_CONSUMER,
             Self::KAFKA_PRODUCER,
@@ -305,7 +298,6 @@ mod test {
     #[test]
     fn test_default_address_is_valid() {
         assert!(!DefaultAddress::is_valid("foo"));
-        assert!(DefaultAddress::is_valid(DefaultAddress::IDENTITY_SERVICE));
         assert!(DefaultAddress::is_valid(
             DefaultAddress::AUTHENTICATED_SERVICE
         ));
@@ -329,7 +321,6 @@ mod test {
         assert!(DefaultAddress::is_valid(
             DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR
         ));
-        assert!(DefaultAddress::is_valid(DefaultAddress::VERIFIER));
         assert!(DefaultAddress::is_valid(
             DefaultAddress::OKTA_IDENTITY_PROVIDER
         ));

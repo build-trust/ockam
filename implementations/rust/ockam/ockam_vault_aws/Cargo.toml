@@ -50,6 +50,9 @@ no_std = [
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_node/alloc", "ockam_vault/alloc"]
 
+# Feature: "credentials-sso" enables support for sso on aws-config
+credentials-sso = ["aws-config/credentials-sso"]
+
 [dependencies]
 aws-config = { version = "0.56.1", default-features = false, features = ["rustls"] }
 aws-sdk-kms = { version = "0.30.0", default-features = false, features = ["rustls"] }
