@@ -5,7 +5,7 @@ use crate::{
 };
 use miette::miette;
 
-use crate::credential::{identities, identity};
+use crate::credential::identities;
 use clap::Args;
 use colorful::Colorful;
 use ockam::identity::Identifier;
