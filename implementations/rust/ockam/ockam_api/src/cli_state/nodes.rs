@@ -590,7 +590,7 @@ pub async fn init_node_state(
         .wrap_err("Failed to create identity")?;
 
     let identity_state = cli_state
-        .create_identity_state(&identity.identifier(), identity_name)
+        .create_identity_state(identity.identifier(), identity_name)
         .await?;
 
     // Create the node with the given vault and identity
