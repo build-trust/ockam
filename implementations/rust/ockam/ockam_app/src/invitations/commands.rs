@@ -94,13 +94,18 @@ async fn send_invitation<R: Runtime>(
     let res = node_manager_worker
         .create_service_invitation(
             &state.context(),
-            invite_args,
+            invite_args.clone(),
             &state.controller_address(),
             None,
         )
         .await
         .map_err(|e| e.to_string());
-    debug!(?res, "invitation sent");
+    debug!(
+        ?res,
+        "invitation sent for service {} to {}",
+        invite_args.service_name,
+        invite_args.recipient_email
+    );
     Ok(())
 }
 

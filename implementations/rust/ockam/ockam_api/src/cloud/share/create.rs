@@ -37,6 +37,7 @@ pub struct CreateServiceInvitation {
     #[n(8)] pub shared_node_identity: String,
     #[n(9)] pub shared_node_route: String,
     #[n(10)] pub enrollment_ticket: String,
+    #[n(11)] pub service_name: String,
 }
 
 impl CreateServiceInvitation {
@@ -46,6 +47,7 @@ impl CreateServiceInvitation {
         project_name: S,
         recipient_email: S,
         node_name: S,
+        service_name: S,
         service_route: S,
         enrollment_ticket: EnrollmentTicket,
     ) -> Result<Self> {
@@ -86,6 +88,7 @@ impl CreateServiceInvitation {
             project_authority_route,
             shared_node_identity: node_identifier.to_string(),
             shared_node_route: service_route.as_ref().to_string(),
+            service_name: service_name.as_ref().to_string(),
         })
     }
 }

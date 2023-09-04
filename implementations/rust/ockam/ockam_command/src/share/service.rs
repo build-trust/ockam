@@ -17,7 +17,7 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 
 #[derive(Clone, Debug, Args)]
 #[command(
-    before_help = docs::before_help(PREVIEW_TAG),
+before_help = docs::before_help(PREVIEW_TAG),
 )]
 pub struct ServiceCreateCommand {
     #[command(flatten)]
@@ -33,6 +33,7 @@ pub struct ServiceCreateCommand {
     pub shared_node_route: String,
 
     pub enrollment_ticket: String,
+    pub service_name: String,
 
     #[arg(long, short = 'x')]
     pub expires_at: Option<String>,
@@ -50,15 +51,14 @@ impl From<ServiceCreateCommand> for CreateServiceInvitation {
             expires_at,
             project_id,
             recipient_email,
-
             project_identity,
             project_route,
             project_authority_identity,
             project_authority_route,
             shared_node_identity,
             shared_node_route,
-
             enrollment_ticket,
+            service_name,
             ..
         } = val;
         Self {
@@ -74,6 +74,7 @@ impl From<ServiceCreateCommand> for CreateServiceInvitation {
             shared_node_route,
 
             enrollment_ticket,
+            service_name,
         }
     }
 }
