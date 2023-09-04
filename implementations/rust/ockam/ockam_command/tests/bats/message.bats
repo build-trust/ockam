@@ -2,17 +2,10 @@
 
 # ===== SETUP
 
-setup_file() {
-  load load/base.bash
-}
-
 setup() {
   load load/base.bash
-  load load/orchestrator.bash
   load_bats_ext
   setup_home_dir
-  skip_if_orchestrator_tests_not_enabled
-  copy_local_orchestrator_data
 }
 
 teardown() {
@@ -21,51 +14,40 @@ teardown() {
 
 # ===== TESTS
 
-@test "message - send a message to a project node from an embedded node" {
+@test "message - send messages between local nodes" {
+  # Send from a temporary node to a background node
+  run_success "$OCKAM" node create n1
   msg=$(random_str)
-  run "$OCKAM" message send "$msg" --to /project/default/service/echo
-  assert_success
-  assert_output "$msg"
+  run_success "$OCKAM" message send "$msg" --timeout 5 --to /node/n1/service/uppercase
+  assert_output "$(to_uppercase "$msg")"
+
+  # Send between two background nodes
+  run_success "$OCKAM" node create n2
+  msg=$(random_str)
+  run_success "$OCKAM" message send "$msg" --timeout 5 --from n1 --to /node/n2/service/uppercase
+  assert_output "$(to_uppercase "$msg")"
+
+  # Same, but using the `/node/` prefix in the `--from` argument
+  msg=$(random_str)
+  run_success "$OCKAM" message send "$msg" --timeout 5 --from /node/n1 --to /node/n2/service/uppercase
+  assert_output "$(to_uppercase "$msg")"
 }
 
-@test "message - send a message to a project node from a background node" {
-  run "$OCKAM" node create blue
-  assert_success
+@test "message - secure-channels with authorized identifiers" {
+  run_success "$OCKAM" vault create v1
+  run_success "$OCKAM" identity create i1 --vault v1
+  idt1=$($OCKAM identity show i1)
+
+  run_success "$OCKAM" vault create v2
+  run_success "$OCKAM" identity create i2 --vault v2
+  idt2=$($OCKAM identity show i2)
+
+  run_success "$OCKAM" node create n1 --vault v1 --identity i1
+  run_success "$OCKAM" node create n2 --vault v1 --identity i1
 
   msg=$(random_str)
-  run "$OCKAM" message send "$msg" --from /node/blue --to /project/default/service/echo
-  assert_success
-  assert_output "$msg"
-}
-
-@test "message - send a message to a project node from an embedded node, passing identity" {
-  run "$OCKAM" identity create m1
-  assert_success
-  m1_identifier=$($OCKAM identity show m1)
-
-  run "$OCKAM" project ticket --member "$m1_identifier" --attribute role=member
-  assert_success
-
-  # m1' identity was added by enroller
-  run "$OCKAM" project enroll --identity m1
-  assert_success
-
-  # m1 is a member, must be able to contact the project' service
-  msg=$(random_str)
-  run "$OCKAM" message send --timeout 5 --identity m1 --to /project/default/service/echo "$msg"
-  assert_success
-  assert_output "$msg"
-
-  # m2 is not a member, must not be able to contact the project' service
-  run "$OCKAM" identity create m2
-  assert_success
-  run "$OCKAM" message send --timeout 5 --identity m2 --to /project/default/service/echo "$msg"
-  assert_failure
-}
-
-@test "message - send a hex encoded message to a project node from an embedded node" {
-  msg=$(random_str)
-  run "$OCKAM" message send "$msg" --to /project/default/service/echo --hex
-  assert_success
+  run_success "$OCKAM" secure-channel-listener create l --at n2 --vault v2 --identity i2 --authorized "$idt1"
+  run_success bash -c "$OCKAM secure-channel create --from n1 --to /node/n2/service/l --authorized $idt2 \
+              | $OCKAM message send $msg --from /node/n1 --to -/service/echo"
   assert_output "$msg"
 }

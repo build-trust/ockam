@@ -22,6 +22,5 @@ teardown() {
 # ===== TESTS
 
 @test "spaces - list" {
-  run "$OCKAM" space list
-  assert_success
+  run_success "$OCKAM" space list
 }
