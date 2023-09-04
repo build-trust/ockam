@@ -6,7 +6,7 @@ defmodule Ockam.Credential.Authenticator.Direct.Client.AddMemberRequest do
 
   typedstruct do
     plugin(Ockam.TypedCBOR.Plugin)
-    field(:identity_id, String.t(), minicbor: [key: 1])
+    field(:identity_id, binary(), minicbor: [key: 1])
     field(:attributes, %{String.t() => String.t()}, minicbor: [key: 2])
   end
 end
@@ -20,10 +20,10 @@ defmodule Ockam.Credential.Authenticator.Direct.Client.AttributesEntry do
   typedstruct do
     plugin(Ockam.TypedCBOR.Plugin)
     ## Rust encodes attribute values as a list of bytes
-    field(:attributes, %{String.t() => {:list, :integer}}, minicbor: [key: 1])
+    field(:attributes, %{{:list, :integer} => {:list, :integer}}, minicbor: [key: 1])
     field(:added_at, integer(), minicbor: [key: 2])
     field(:expires, integer() | nil, minicbor: [key: 3])
-    field(:attested_by, String.t() | nil, minicbor: [key: 4])
+    field(:attested_by, binary() | nil, minicbor: [key: 4])
   end
 end
 
@@ -46,7 +46,9 @@ defmodule Ockam.Credential.Authenticator.Direct.Client.ListMembersResponse do
        Map.new(decoded, fn {id, entry} ->
          attributes =
            Map.get(entry, :attributes, %{})
-           |> Map.new(fn {key, val} -> {key, :erlang.list_to_binary(val)} end)
+           |> Map.new(fn {key, val} ->
+             {:erlang.list_to_binary(key), :erlang.list_to_binary(val)}
+           end)
 
          {id, Map.put(entry, :attributes, attributes)}
        end)}

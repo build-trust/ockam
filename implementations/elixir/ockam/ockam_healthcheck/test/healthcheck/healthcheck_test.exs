@@ -8,11 +8,15 @@ defmodule Ockam.Healthcheck.Test do
 
   setup_all do
     start_supervised({Ockam.Transport.TCP, [listen: [port: 4000]]})
+    {:ok, identity} = Ockam.Identity.create()
+    {:ok, keypair} = Ockam.SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair)
 
     {:ok, _api} =
       Ockam.SecureChannel.create_listener(
-        identity: :dynamic,
         address: "api",
+        identity: identity,
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
         trust_policies: []
       )
 

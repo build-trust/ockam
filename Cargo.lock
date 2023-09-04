@@ -469,6 +469,7 @@ checksum = "fc6b3804dca60326e07205179847f17a4fce45af3a1106939177ad41ac08a6de"
 dependencies = [
  "aws-credential-types",
  "aws-http",
+ "aws-sdk-sso",
  "aws-sdk-sts",
  "aws-smithy-async",
  "aws-smithy-client",
@@ -479,12 +480,15 @@ dependencies = [
  "aws-types",
  "bytes 1.5.0",
  "fastrand 2.0.0",
+ "hex",
  "http",
  "hyper",
+ "ring",
  "time",
  "tokio",
  "tower",
  "tracing",
+ "zeroize",
 ]
 
 [[package]]
@@ -546,6 +550,30 @@ name = "aws-sdk-kms"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a92f134e75581d16a36a6d7e6dd8b6cdef5cbc610e599a8c12df317eb7868c8b"
+dependencies = [
+ "aws-credential-types",
+ "aws-http",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes 1.5.0",
+ "http",
+ "regex",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
+name = "aws-sdk-sso"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "903f888ff190e64f6f5c83fb0f8d54f9c20481f1dc26359bb8896f5d99908949"
 dependencies = [
  "aws-credential-types",
  "aws-http",
@@ -4587,17 +4615,6 @@ dependencies = [
  "sha2",
  "tracing",
  "trybuild",
-]
-
-[[package]]
-name = "ockam-ffi"
-version = "0.77.0"
-dependencies = [
- "futures 0.3.28",
- "lazy_static",
- "ockam_core",
- "ockam_vault",
- "tokio",
 ]
 
 [[package]]

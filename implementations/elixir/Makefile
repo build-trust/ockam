@@ -1,5 +1,5 @@
 PACKAGES := \
-	ockam_vault_software \
+	ockly \
 	ockam \
 	ockam_abac \
 	ockam_services \
@@ -14,17 +14,9 @@ build_release: $(addprefix build_release_,$(PACKAGES))
 
 build_release_%: deps_%
 	cd ockam/$* && MIX_ENV=prod mix compile
-build_release_ockam_vault_software: rust_build_release_ockam-ffi deps_ockam_vault_software
-	cd ockam/ockam_vault_software && MIX_ENV=prod mix compile
-rust_build_release_ockam-ffi:
-	$(MAKE) -C ../rust build_release_ockam-ffi
 
 build_%: deps_%
 	cd ockam/$* && mix compile
-build_ockam_vault_software: rust_build_release_ockam-ffi deps_ockam_vault_software
-	cd ockam/ockam_vault_software && mix compile
-rust_build_ockam-ffi:
-	$(MAKE) -C ../rust build_ockam-ffi
 
 test: $(addprefix test_,$(PACKAGES))
 test_%: build_% deps_%

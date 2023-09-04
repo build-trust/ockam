@@ -195,14 +195,12 @@ impl OutletInfo {
 pub(crate) struct Registry {
     pub(crate) secure_channels: SecureChannelRegistry,
     pub(crate) secure_channel_listeners: BTreeMap<Address, SecureChannelListenerInfo>,
-    pub(crate) identity_services: BTreeMap<Address, IdentityServiceInfo>,
     pub(crate) authenticated_services: BTreeMap<Address, AuthenticatedServiceInfo>,
     pub(crate) okta_identity_provider_services: BTreeMap<Address, OktaIdentityProviderServiceInfo>,
     pub(crate) uppercase_services: BTreeMap<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
     pub(crate) kafka_services: BTreeMap<Address, KafkaServiceInfo>,
     pub(crate) hop_services: BTreeMap<Address, HopServiceInfo>,
-    pub(crate) verifier_services: BTreeMap<Address, VerifierServiceInfo>,
     pub(crate) credentials_services: BTreeMap<Address, CredentialsServiceInfo>,
     #[cfg(feature = "direct-authenticator")]
     pub(crate) authenticator_service: BTreeMap<Address, AuthenticatorServiceInfo>,
