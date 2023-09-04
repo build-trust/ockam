@@ -1,17 +1,15 @@
 defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   @moduledoc false
 
-  alias Ockam.Vault
+  alias Ockam.SecureChannel.Crypto
 
   @type message :: :message1 | :message2 | :message3
   @type t :: %__MODULE__{}
 
   defstruct [
-    # handle to a vault
-    :vault,
-    # static keypair, reference in vault
+    # static keypair
     :s,
-    # ephemeral keypair, reference in vault
+    # ephemeral keypair
     :e,
     # remote peer's identity public key
     :rs,
@@ -47,12 +45,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def setup(%{public: _, private: _} = static_keypair, options) do
-    with {:ok, protocol_state} <-
-           setup_vault(options, %__MODULE__{
-             pending_handshake: [:message1, :message2, :message3],
-             s: static_keypair
-           }),
-         {:ok, protocol_state} <- setup_e(options, protocol_state),
+    protocol_state = %__MODULE__{pending_handshake: [:message1, :message2, :message3], s: static_keypair}
+    with {:ok, protocol_state} <- setup_e(options, protocol_state),
          {:ok, protocol_state} <- setup_h(protocol_state),
          {:ok, protocol_state} <- setup_ck(protocol_state),
          {:ok, protocol_state} <- setup_prologue(options, protocol_state) do
@@ -75,10 +69,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  defp next(%{pending_handshake: [], vault: vault, ck: ck, h: h, rs: rs, payloads: payloads}) do
-    k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
-
-    with {:ok, [k1, k2]} <- Vault.hkdf_sha256(vault, ck, [k_attributes, k_attributes]) do
+  defp next(%{pending_handshake: [], ck: ck, h: h, rs: rs, payloads: payloads}) do
+    with {k1, k2} <- Crypto.hkdf(ck) do
       {:ok, {:complete, {k1, k2, h, rs, payloads}}}
     end
   end
@@ -87,23 +79,13 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     {:ok, {:continue, state}}
   end
 
-  defp setup_vault(options, state) do
-    case Keyword.get(options, :vault) do
-      nil -> {:error, :vault_option_is_nil}
-      vault -> {:ok, %{state | vault: vault}}
-    end
-  end
-
   defp get_e(options, state) do
     case Keyword.fetch(options, :ephemeral_keypair) do
       :error ->
-        generate_keypair(state.vault)
+        Crypto.generate_dh_keypair()
 
       {:ok, %{private: _priv, public: _pub} = keypair} ->
         {:ok, keypair}
-
-      {:ok, vault_handle} ->
-        turn_vault_private_key_handle_to_keypair(state.vault, vault_handle)
     end
   end
 
@@ -113,32 +95,12 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  def turn_vault_private_key_handle_to_keypair(vault, handle) do
-    with {:ok, public_key} <- Vault.secret_publickey_get(vault, handle) do
-      {:ok, %{private: handle, public: public_key}}
-    end
-  end
-
-  def generate_keypair(vault) do
-    case Ockam.Vault.secret_generate(vault, type: :curve25519) do
-      {:ok, key_handle} ->
-        turn_vault_private_key_handle_to_keypair(vault, key_handle)
-
-      {:error, reason} ->
-        {:error, {:could_not_generate_key, reason}}
-    end
-  end
-
   defp setup_h(state) do
-    h = zero_padded_protocol_name()
-    {:ok, %{state | h: h}}
+    {:ok, %{state | h: zero_padded_protocol_name()}}
   end
 
-  defp setup_ck(%{vault: vault} = state) do
-    case Vault.secret_import(vault, [type: :buffer], zero_padded_protocol_name()) do
-      {:ok, ck} -> {:ok, %{state | ck: ck}}
-      {:error, reason} -> {:error, {:could_not_setup_ck, reason}}
-    end
+  defp setup_ck(state) do
+     {:ok, %{state | ck: zero_padded_protocol_name()}}
   end
 
   defp setup_prologue(options, state) do
@@ -167,10 +129,10 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     payload = Map.get(payloads, :message2, "")
 
     with {:ok, state} <- mix_hash(state, e.public),
-         {:ok, shared_secret} <- dh(state, e, re),
+         {:ok, shared_secret} <- Crypto.dh(re, e.private),
          {:ok, state} <- mix_key(state, shared_secret),
          {:ok, state, encrypted_s_and_tag} <- encrypt_and_hash(state, s.public),
-         {:ok, shared_secret} <- dh(state, s, re),
+         {:ok, shared_secret} <- Crypto.dh(re, s.private),
          {:ok, state} <- mix_key(state, shared_secret),
          {:ok, state, encrypted_payload_and_tag} <- encrypt_and_hash(state, payload) do
       {:ok, e.public <> encrypted_s_and_tag <> encrypted_payload_and_tag, state}
@@ -181,7 +143,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     payload = Map.get(payloads, :message3, "")
 
     with {:ok, state, encrypted_s_and_tag} <- encrypt_and_hash(state, s.public),
-         {:ok, shared_secret} <- dh(state, s, re),
+         {:ok, shared_secret} <- Crypto.dh(re, s.private),
          {:ok, state} <- mix_key(state, shared_secret),
          {:ok, state, encrypted_payload_and_tag} <- encrypt_and_hash(state, payload) do
       {:ok, encrypted_s_and_tag <> encrypted_payload_and_tag, state}
@@ -199,10 +161,10 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   def decode(:message2, %{e: e} = state, message) do
     with {:ok, re, encrypted_rs_and_tag, encrypted_payload_and_tag} <- parse_message2(message),
          {:ok, state} <- mix_hash(state, re),
-         {:ok, shared_secret} <- dh(state, e, re),
+         {:ok, shared_secret} <- Crypto.dh(re, e.private),
          {:ok, state} <- mix_key(state, shared_secret),
          {:ok, state, rs} <- decrypt_and_hash(state, encrypted_rs_and_tag),
-         {:ok, shared_secret} <- dh(state, e, rs),
+         {:ok, shared_secret} <- Crypto.dh(rs, e.private),
          {:ok, state} <- mix_key(state, shared_secret),
          {:ok, state, payload} <- decrypt_and_hash(state, encrypted_payload_and_tag) do
       {:ok, payload, %{state | re: re, rs: rs}}
@@ -212,7 +174,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   def decode(:message3, %{e: e} = state, message) do
     with {:ok, encrypted_rs_and_tag, encrypted_payload_and_tag} <- parse_message3(message),
          {:ok, state, rs} <- decrypt_and_hash(state, encrypted_rs_and_tag),
-         {:ok, shared_secret} <- dh(state, e, rs),
+         {:ok, shared_secret} <- Crypto.dh(rs, e.private),
          {:ok, state} <- mix_key(state, shared_secret),
          {:ok, state, payload} <- decrypt_and_hash(state, encrypted_payload_and_tag) do
       {:ok, payload, %{state | rs: rs}}
@@ -234,53 +196,36 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
 
   def parse_message3(message), do: {:error, {:unexpected_structure, :message3, message}}
 
-  def mix_hash(%{vault: vault, h: h} = state, value) do
-    case Vault.sha256(vault, h <> value) do
-      {:ok, h} -> {:ok, %{state | h: h}}
-      error -> {:error, {:could_not_mix_hash, {state, value, error}}}
-    end
+  def mix_hash(%{h: h} = state, value) do
+    {:ok, %{state | h: Crypto.sha256(h <> value)}}
   end
 
-  def mix_key(%{vault: vault, ck: ck} = state, input_key_material) do
-    ck_attributes = %{type: :buffer, length: 32, persistence: :ephemeral}
-    k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
-    kdf_result = Vault.hkdf_sha256(vault, ck, input_key_material, [ck_attributes, k_attributes])
-
-    with {:ok, [ck, k]} <- kdf_result do
+  def mix_key(%{ck: ck} = state, input_key_material) do
+    with {ck, k} <- Crypto.hkdf(ck, input_key_material) do
       {:ok, %{state | n: 0, ck: ck, k: k}}
     end
   end
 
-  def dh(%{vault: vault}, keypair, peer_public) do
-    Vault.ecdh(vault, keypair.private, peer_public)
-  end
-
-  def encrypt_and_hash(%{vault: vault, k: k, n: n, h: h} = state, plaintext) do
-    with {:ok, k} <- Vault.secret_export(vault, k),
-         {:ok, k} <- Vault.secret_import(vault, [type: :aes], k),
-         {:ok, ciphertext_and_tag} <- Vault.aead_aes_gcm_encrypt(vault, k, n, h, plaintext),
-         :ok <- Vault.secret_destroy(vault, k),
+  def encrypt_and_hash(%{k: k, n: n, h: h} = state, plaintext) do
+    with {:ok, ciphertext_and_tag} <- Crypto.aead_aes_gcm_encrypt(k, n, h, plaintext),
          {:ok, state} <- mix_hash(state, ciphertext_and_tag) do
       {:ok, %{state | n: n + 1}, ciphertext_and_tag}
     end
   end
 
-  def decrypt_and_hash(%{vault: vault, k: k, n: n, h: h} = state, ciphertext_and_tag) do
-    with {:ok, k} <- Vault.secret_export(vault, k),
-         {:ok, k} <- Vault.secret_import(vault, [type: :aes], k),
-         {:ok, plaintext} <- Vault.aead_aes_gcm_decrypt(vault, k, n, h, ciphertext_and_tag),
-         :ok <- Vault.secret_destroy(vault, k),
+  def decrypt_and_hash(%{k: k, n: n, h: h} = state, ciphertext_and_tag) do
+    with {:ok, plaintext} <- Crypto.aead_aes_gcm_decrypt(k, n, h, ciphertext_and_tag),
          {:ok, state} <- mix_hash(state, ciphertext_and_tag) do
       {:ok, %{state | n: n + 1}, plaintext}
     end
   end
 
-  def split(%{xx_key_establishment_state: %{vault: vault, ck: ck, h: h}} = data) do
-    k1_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
-    k2_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
-
-    with {:ok, [k1, k2]} <- Vault.hkdf_sha256(vault, ck, [k1_attributes, k2_attributes]) do
+  def split(%{xx_key_establishment_state: %{ck: ck, h: h}} = data) do
+    with  {k1, k2} <- Crypto.hkdf(ck) do
       {:ok, {k1, k2, h}, data}
     end
   end
+
+
+
 end

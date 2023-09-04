@@ -14,6 +14,12 @@ defmodule Ockam.Identity.Stub do
     {:ok, "DATA_" <> bytes, "ID_" <> bytes}
   end
 
+
+  @spec create_purpose_key(contact :: t()) :: {:ok, binary(), binary()}
+  def create_purpose_key(data) do
+    {:ok, data <>  "_PUB",  data <> "_PUB_SIGNED"}
+  end
+
   def get(_identity_name) do
     {:error, :not_implemented}
   end

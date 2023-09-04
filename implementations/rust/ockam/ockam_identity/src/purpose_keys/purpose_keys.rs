@@ -10,7 +10,7 @@ use super::storage::PurposeKeysRepository;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
-use ockam_vault::{SecretAttributes, SecretType, Signature, Vault};
+use ockam_vault::{SecretAttributes, SecretType, Signature, Vault, PublicKey};
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
@@ -144,6 +144,64 @@ impl PurposeKeys {
         Ok(purpose_key)
     }
 
+    /// Attest a given PublicKey as a [`PurposeKey`]
+    pub async fn attest_purpose_key(
+        &self,
+        identifier: &Identifier,
+        _purpose: Purpose,
+        to_attest: PublicKey,
+    ) -> Result<PurposeKeyAttestation> {
+        // TODO: Check if such key already exists and rewrite it correctly (also delete from the Vault)
+
+        let identity_change_history = self.identities_reader.get_identity(identifier).await?;
+        let identity = Identity::import_from_change_history(
+            Some(identifier),
+            identity_change_history,
+            self.vault.verifying_vault.clone(),
+        )
+        .await?;
+
+        let public_key = PurposePublicKey::SecureChannelStaticKey(to_attest.try_into().unwrap()); // FIXME
+        let created_at = now()?;
+        // TODO: allow customizing ttl
+        // TODO: check if expiration is before the purpose key expiration
+        let five_years = 5 * 365 * 24 * 60 * 60;
+        let expires_at = add_seconds(&created_at, five_years);
+
+        let purpose_key_attestation_data = PurposeKeyAttestationData {
+            subject: identity.identifier().clone(),
+            subject_latest_change_hash: identity.latest_change_hash()?.clone(),
+            public_key,
+            created_at,
+            expires_at,
+        };
+
+        let purpose_key_attestation_data_binary = minicbor::to_vec(&purpose_key_attestation_data)?;
+
+        let versioned_data = VersionedData {
+            version: 1,
+            data: purpose_key_attestation_data_binary,
+        };
+        let versioned_data = minicbor::to_vec(&versioned_data)?;
+
+        let versioned_data_hash = self.vault.verifying_vault.sha256(&versioned_data).await?;
+
+        let signing_key = self.identity_keys.get_secret_key(&identity).await?;
+        let signature = self
+            .vault
+            .signing_vault
+            .sign(&signing_key, &versioned_data_hash)
+            .await?;
+        let signature = Ed25519Signature(signature.as_ref().try_into().unwrap()); // FIXME
+        let signature = PurposeKeyAttestationSignature::Ed25519Signature(signature);
+
+        let attestation = PurposeKeyAttestation {
+            data: versioned_data,
+            signature,
+        };
+        Ok(attestation)
+    }
+
     /// Will try to get own Purpose Key from the repository, if that doesn't succeed - new one
     /// will be generated
     pub async fn get_or_create_purpose_key(
@@ -201,6 +259,7 @@ impl PurposeKeys {
             }
         }
 
+        
         let change_history = self
             .identities_reader
             .get_identity(&purpose_key_data.subject)

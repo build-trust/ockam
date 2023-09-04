@@ -4,6 +4,8 @@ defmodule Ockam.Identity.API.Request do
   """
   alias Ockam.TypedCBOR
 
+  @create_purpose_key {:struct, %{identity_id: %{key: 1, schema: :binary}}}
+
   @validate_identity_change_history {:struct, %{identity: %{key: 1, schema: :binary}}}
 
   @create_signature {:struct,
@@ -28,6 +30,10 @@ defmodule Ockam.Identity.API.Request do
 
   def create() do
     ""
+  end
+
+  def create_purpose_key(identity_id) do
+    TypedCBOR.encode!(@create_purpose_key, %{identity_id: identity_id})
   end
 
   def validate_identity_change_history(identity) do

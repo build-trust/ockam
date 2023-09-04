@@ -18,6 +18,7 @@ defmodule Ockam.Identity do
   @type compare_result() :: :none | :equal | :conflict | :newer | :older
 
   @callback create() :: {:ok, identity_data(), identity_id()}
+  @callback create_purpose_key() :: {:ok, binary(),  binary()}
   @callback get(String.t()) :: {:ok, identity_data(), identity_id()}
   @callback validate_identity_change_history(identity_data()) ::
               {:ok, identity_id()} | {:error, any()}
@@ -96,6 +97,12 @@ defmodule Ockam.Identity do
   @spec get_data(t()) :: any()
   def get_data({_module, data}) do
     data
+  end
+
+  @spec create_purpose_key(contact :: t()) ::
+          {:ok, public_key :: binary(), attestation :: binary()} | {:error, reason :: any()}
+  def create_purpose_key({module, data}) do
+    module.create_purpose_key(data)
   end
 
   @spec validate_identity_change_history(contact :: t()) ::

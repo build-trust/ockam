@@ -7,16 +7,9 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
   alias Ockam.Vault.Software, as: SoftwareVault
 
   test "normal flow" do
-    # We can't share the _same_ k between encryptor and decryptor on the same vault, as when the encryptor
-    # rotate the key, it destroy the old k.  But that might still be used by the decryptor to decrypt yet-to-be
-    # delivered packets.
-    {:ok, encryptor_vault} = SoftwareVault.init()
-    {:ok, decryptor_vault} = SoftwareVault.init()
     shared_k = :crypto.strong_rand_bytes(32)
-    {:ok, ke} = Vault.secret_import(encryptor_vault, [type: :aes], shared_k)
-    {:ok, kd} = Vault.secret_import(decryptor_vault, [type: :aes], shared_k)
-    encryptor = Encryptor.new(encryptor_vault, ke, 0)
-    decryptor = Decryptor.new(decryptor_vault, kd, 0)
+    encryptor = Encryptor.new(shared_k, 0)
+    decryptor = Decryptor.new(shared_k, 0)
 
     Enum.reduce(0..200, {encryptor, decryptor}, fn _i, {encryptor, decryptor} ->
       plain = :crypto.strong_rand_bytes(64)
@@ -27,13 +20,9 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
   end
 
   test "message lost" do
-    {:ok, encryptor_vault} = SoftwareVault.init()
-    {:ok, decryptor_vault} = SoftwareVault.init()
     shared_k = :crypto.strong_rand_bytes(32)
-    {:ok, ke} = Vault.secret_import(encryptor_vault, [type: :aes], shared_k)
-    {:ok, kd} = Vault.secret_import(decryptor_vault, [type: :aes], shared_k)
-    encryptor = Encryptor.new(encryptor_vault, ke, 0, 32)
-    decryptor = Decryptor.new(decryptor_vault, kd, 0, 32)
+    encryptor = Encryptor.new(shared_k, 0, 32)
+    decryptor = Decryptor.new(shared_k, 0, 32)
 
     Enum.reduce(0..200, {encryptor, decryptor}, fn i, {encryptor, decryptor} ->
       plain = :crypto.strong_rand_bytes(64)
@@ -52,13 +41,9 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     # We can't share the _same_ k between encryptor and decryptor on the same vault, as when the encryptor
     # rotate the key, it destroy the old k.  But that might still be used by the decryptor to decrypt yet-to-be
     # delivered packets.
-    {:ok, encryptor_vault} = SoftwareVault.init()
-    {:ok, decryptor_vault} = SoftwareVault.init()
     shared_k = :crypto.strong_rand_bytes(32)
-    {:ok, ke} = Vault.secret_import(encryptor_vault, [type: :aes], shared_k)
-    {:ok, kd} = Vault.secret_import(decryptor_vault, [type: :aes], shared_k)
-    encryptor = Encryptor.new(encryptor_vault, ke, 0, 32)
-    decryptor = Decryptor.new(decryptor_vault, kd, 0, 32)
+    encryptor = Encryptor.new(shared_k, 0, 32)
+    decryptor = Decryptor.new(shared_k, 0, 32)
 
     {msgs, encryptor} =
       Enum.reduce(0..1000, {[], encryptor}, fn _i, {acc, encryptor} ->
@@ -91,14 +76,10 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
 
   test "out of order, exact sliding window" do
     # Test values taken from nonce_tracker.rs test case
-    {:ok, encryptor_vault} = SoftwareVault.init()
-    {:ok, decryptor_vault} = SoftwareVault.init()
     shared_k = :crypto.strong_rand_bytes(32)
-    {:ok, ke} = Vault.secret_import(encryptor_vault, [type: :aes], shared_k)
-    {:ok, kd} = Vault.secret_import(decryptor_vault, [type: :aes], shared_k)
     key_renewal_interval = 32
-    encryptor = Encryptor.new(encryptor_vault, ke, 0, key_renewal_interval)
-    decryptor = Decryptor.new(decryptor_vault, kd, 0, key_renewal_interval)
+    encryptor = Encryptor.new(shared_k, 0, key_renewal_interval)
+    decryptor = Decryptor.new(shared_k, 0, key_renewal_interval)
 
     {msgs, _encryptor} =
       Enum.reduce(0..(key_renewal_interval * 5), {[], encryptor}, fn _i, {acc, encryptor} ->

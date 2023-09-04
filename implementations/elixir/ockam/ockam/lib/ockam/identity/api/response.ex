@@ -5,7 +5,10 @@ defmodule Ockam.Identity.API.Response do
   alias Ockam.TypedCBOR
 
   @create {:struct,
-           %{identity: %{key: 1, schema: :binary}, identity_id: %{key: 2, schema: :string}}}
+           %{identity: %{key: 1, schema: :binary}, identity_id: %{key: 2, schema: :binary}}}
+
+  @create_purpose_key {:struct,
+           %{public_key: %{key: 1, schema: :binary}, attestation: %{key: 2, schema: :binary}}}
 
   @validate_identity_change_history {:struct, %{identity_id: %{key: 1, schema: :string}}}
 
@@ -17,6 +20,10 @@ defmodule Ockam.Identity.API.Response do
 
   def create(data) do
     TypedCBOR.decode_strict(@create, data)
+  end
+
+  def create_purpose_key(data) do
+    TypedCBOR.decode_strict(@create_purpose_key, data)
   end
 
   def validate_identity_change_history(data) do

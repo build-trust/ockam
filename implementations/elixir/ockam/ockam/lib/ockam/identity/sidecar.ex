@@ -48,6 +48,19 @@ defmodule Ockam.Identity.Sidecar do
     end
   end
 
+  @spec create_purpose_key(contact :: t()) :: {:ok, binary(), binary()}
+  def create_purpose_key(contact) do
+    with {:ok, body} <-
+           api_request(
+             :post,
+             api_path(:create_purpose_key),
+             IdentityRequest.create_purpose_key(contact)
+           ),
+         {:ok, public_key, attestation} <- IdentityResponse.create_purpose_key(body) do
+      {:ok, public_key, attestation}
+    end
+  end
+
   @spec create_signature(vault_name :: String.t() | nil, identity :: t(), auth_hash :: binary()) ::
           {:ok, proof :: proof()} | {:error, reason :: any()}
   def create_signature(vault_name, identity, auth_hash) do
@@ -117,6 +130,9 @@ defmodule Ockam.Identity.Sidecar do
 
   defp api_path(:create) do
     ""
+  end
+  defp api_path(:create_purpose_key) do
+    "purpose_key"
   end
 
   defp api_path(:create_signature) do

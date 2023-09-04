@@ -1,9 +1,10 @@
 #![allow(missing_docs)]
 
+use bytes::Bytes;
 use ockam_core::CowBytes;
 
-use minicbor::{Decode, Encode};
-use ockam::identity::Identifier;
+use minicbor::{Decode, Encode, bytes::ByteVec};
+use ockam::identity::{Identifier, models::{PurposeKeyAttestation, PurposePublicKey}, PurposeKey};
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -14,7 +15,7 @@ use ockam_core::TypeTag;
 pub struct CreateResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3500430>,
-    #[n(1)] identity: Vec<u8>,
+    #[n(1)] identity: ByteVec, //Vec<u8>,
     #[n(2)] identity_id: Identifier,
 }
 
@@ -23,7 +24,7 @@ impl CreateResponse {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            identity,
+            identity: identity.into(),
             identity_id,
         }
     }
@@ -32,6 +33,61 @@ impl CreateResponse {
     }
     pub fn identity_id(&self) -> &Identifier {
         &self.identity_id
+    }
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct CreatePurposeKeyRequest {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<8474240>,
+    #[n(1)] identity_id: Identifier,
+    //TODO: key type
+}
+
+impl CreatePurposeKeyRequest {
+    pub fn new(identity_id: Identifier) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            identity_id,
+        }
+    }
+    pub fn identity_id(&self) -> &Identifier {
+        &self.identity_id
+    }
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct CreatePurposeKeyResponse {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<1573564>,
+    #[n(1)] public_key: ByteVec, //Vec<u8>,
+    #[n(2)] attestation: ByteVec,
+}
+
+impl CreatePurposeKeyResponse {
+    pub fn new(key : PurposeKey) -> Self {
+        let purpose_key_attestation_binary = minicbor::to_vec(&key.attestation()).unwrap(); //FIXME
+        let key = match &key.data().public_key {
+            PurposePublicKey::SecureChannelStaticKey(key) => key.0.to_vec(),
+            PurposePublicKey::CredentialSigningKey(_) => vec![]
+        };
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            public_key: key.into(), 
+            attestation: purpose_key_attestation_binary.into(),
+        }
+    }
+    pub fn public_key(&self) -> &[u8] {
+        &self.public_key
+    }
+    pub fn attestation(&self) -> &[u8]{
+        &self.attestation
     }
 }
 
