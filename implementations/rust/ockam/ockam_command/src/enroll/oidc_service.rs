@@ -51,36 +51,47 @@ impl OidcServiceExt for OidcService {
     async fn get_token_interactively(&self, opts: &CommandGlobalOpts) -> Result<OidcToken> {
         let dc = self.device_code().await?;
 
-        opts.terminal
-            .write_line(&fmt_log!(
+        // If the terminal is quiet, write only the code at stdout so it can be processed
+        if opts.terminal.is_quiet() {
+            opts.terminal
+                .clone()
+                .stdout()
+                .plain(dc.user_code.to_string())
+                .write_line()?;
+        }
+        // Otherwise, write the instructions at stderr as normal
+        else {
+            opts.terminal
+                .write_line(&fmt_log!(
                 "To enroll we need to associate your Ockam identity with an Orchestrator account:\n"
             ))?
-            .write_line(&fmt_para!(
-                "First copy this one-time code: {}",
-                format!(" {} ", dc.user_code).bg_white().black()
-            ))?
-            .write(fmt_para!(
-                "Then press {} to open {} in your browser.",
-                " ENTER ↵ ".bg_white().black().blink(),
-                dc.verification_uri
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ))?;
+                .write_line(&fmt_para!(
+                    "First copy this one-time code: {}",
+                    format!(" {} ", dc.user_code).bg_white().black()
+                ))?
+                .write(fmt_para!(
+                    "Then press {} to open {} in your browser.",
+                    " ENTER ↵ ".bg_white().black().blink(),
+                    dc.verification_uri
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ))?;
 
-        let mut input = String::new();
-        match stdin().read_line(&mut input) {
-            Ok(_) => {
-                opts.terminal
-                    .write_line(&fmt_log!(""))?
-                    .write_line(&fmt_para!(
-                        "Opening {}, in your browser, to begin authentication...",
-                        dc.verification_uri
-                            .to_string()
-                            .color(OckamColor::PrimaryResource.color())
-                    ))?;
-            }
-            Err(_e) => {
-                return Err(miette!("couldn't read enter from stdin").into());
+            let mut input = String::new();
+            match stdin().read_line(&mut input) {
+                Ok(_) => {
+                    opts.terminal
+                        .write_line(&fmt_log!(""))?
+                        .write_line(&fmt_para!(
+                            "Opening {}, in your browser, to begin authentication...",
+                            dc.verification_uri
+                                .to_string()
+                                .color(OckamColor::PrimaryResource.color())
+                        ))?;
+                }
+                Err(_e) => {
+                    return Err(miette!("couldn't read enter from stdin").into());
+                }
             }
         }
 
