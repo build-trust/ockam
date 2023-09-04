@@ -911,6 +911,9 @@ name = "bitflags"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "630be753d4e58660abd17930c71b647fe46c27ea6b63cc59e1e3851406972e42"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "block"
@@ -3731,11 +3734,11 @@ dependencies = [
 
 [[package]]
 name = "keyboard-types"
-version = "0.6.2"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b7668b7cff6a51fe61cdde64cd27c8a220786f399501b57ebe36f7d8112fd68"
+checksum = "b750dcadc39a09dbadd74e118f6dd6598df77fa01df0cfcdc52c28dece74528a"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.3.3",
  "serde",
  "unicode-segmentation",
 ]
@@ -4251,9 +4254,9 @@ dependencies = [
 
 [[package]]
 name = "muda"
-version = "0.8.6"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f67233c70abb4ee46c4339a9d8b0e76ba91ada6c6a7c6b89848022071d14a44"
+checksum = "b6112ff1d15dd7b53f26038bbaac8b481cbcb088c4b0eb0af28a4843c8b6c0cc"
 dependencies = [
  "cocoa 0.25.0",
  "crossbeam-channel",
