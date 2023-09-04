@@ -30,8 +30,6 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
   Ping exchanges messages with ping using the secure channel
   """
   alias Ockam.SecureChannel
-  alias Ockam.Vault
-  alias Ockam.Vault.Software, as: SoftwareVault
 
   alias Ockam.Examples.Ping
   alias Ockam.Examples.Pong
@@ -153,27 +151,27 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
   end
 
   defp create_secure_channel_listener() do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
+    {:ok, identity} = Ockam.Identity.create()
+    {:ok, keypair} = SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair.secret)
 
     SecureChannel.create_listener(
       address: "SC_listener",
-      identity: :dynamic,
-      identity_module: Ockam.Identity.Stub,
-      encryption_options: [vault: vault, static_keypair: keypair]
+      identity: identity,
+      encryption_options: [static_keypair: keypair, static_key_attestation: attestation]
     )
   end
 
   defp create_secure_channel(route_to_listener) do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, keypair} = Vault.secret_generate(vault, type: :curve25519)
+    {:ok, identity} = Ockam.Identity.create()
+    {:ok, keypair} = SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair.secret)
 
     {:ok, c} =
       SecureChannel.create_channel(
-        identity: :dynamic,
-        identity_module: Ockam.Identity.Stub,
-        route: route_to_listener,
-        encryption_options: [vault: vault, static_keypair: keypair]
+        identity: identity,
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+        route: [route_to_listener]
       )
 
     {:ok, c}

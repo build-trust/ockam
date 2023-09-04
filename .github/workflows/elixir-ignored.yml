@@ -34,7 +34,7 @@ jobs:
           - ockam_metrics
           - ockam_services
           - ockam_typed_cbor
-          - ockam_vault_software
+          - ockly
     steps:
       - run: 'echo "Elixir - lint_${{ matrix.mix_project }} - Ignored"'
 
@@ -52,7 +52,7 @@ jobs:
           - ockam_metrics
           - ockam_services
           - ockam_typed_cbor
-          - ockam_vault_software
+          - ockly
     steps:
       - run: 'echo "Elixir - build_${{ matrix.mix_project }} - Ignored"'
 
@@ -70,6 +70,6 @@ jobs:
           - ockam_metrics
           - ockam_services
           - ockam_typed_cbor
-          - ockam_vault_software
+          - ockly
     steps:
       - run: 'echo "Elixir - test_${{ matrix.mix_project }} - Ignored"'

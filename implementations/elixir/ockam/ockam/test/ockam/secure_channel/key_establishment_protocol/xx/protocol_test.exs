@@ -3,8 +3,6 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
   doctest Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol
 
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol
-  alias Ockam.Vault
-  alias Ockam.Vault.Software, as: SoftwareVault
 
   @test_case1 %{
     initiator_static: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
@@ -43,8 +41,6 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
       |> Enum.map(fn {k, v} -> {k, Base.decode16!(v, case: :lower)} end)
       |> Enum.into(%{})
 
-    {:ok, vault} = SoftwareVault.init()
-
     keypairs = [
       :initiator_static,
       :initiator_ephemeral,
@@ -55,21 +51,18 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
     test_case =
       Enum.reduce(keypairs, test_case, fn k, test_case ->
         private_key = Map.get(test_case, k)
-        {:ok, private} = Vault.secret_import(vault, [type: :curve25519], private_key)
-        {:ok, public} = Vault.secret_publickey_get(vault, private)
-        %{test_case | k => %{private: private, public: public}}
+        {public_key, ^private_key} = :crypto.generate_key(:ecdh, :x25519, private_key)
+        %{test_case | k => %{private: private_key, public: public_key}}
       end)
 
     {:ok, initiator_state} =
       Protocol.setup(test_case.initiator_static,
-        vault: vault,
         ephemeral_keypair: test_case.initiator_ephemeral,
         payloads: %{message1: test_case.message_1_payload, message3: test_case.message_3_payload}
       )
 
     {:ok, responder_state} =
       Protocol.setup(test_case.responder_static,
-        vault: vault,
         ephemeral_keypair: test_case.responder_ephemeral,
         payloads: %{message2: test_case.message_2_payload}
       )
@@ -92,8 +85,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
     {:ok, {:complete, {k1_r, k2_r, h_r, _rs, p_r}}} =
       Protocol.in_payload(responder_state, message_3_ciphertext)
 
-    assert Vault.secret_export(vault, k1_i) == Vault.secret_export(vault, k1_r)
-    assert Vault.secret_export(vault, k2_i) == Vault.secret_export(vault, k2_r)
+    assert k1_i == k1_r
+    assert k2_i == k2_r
     assert h_i == h_r
     assert message_1_ciphertext == test_case.message_1_ciphertext
     assert message_2_ciphertext == test_case.message_2_ciphertext
