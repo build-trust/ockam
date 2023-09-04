@@ -74,7 +74,7 @@ jobs:
         shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
@@ -105,7 +105,7 @@ jobs:
         shell: nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
@@ -137,7 +137,7 @@ jobs:
           - stable
           - nightly
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
@@ -171,7 +171,7 @@ jobs:
       run:
         shell: nix develop ./tools/nix#${{matrix.nix_toolchain }} --keep CI --ignore-environment --command bash {0}
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
@@ -201,13 +201,13 @@ jobs:
     container: ${{ matrix.container }}
     steps:
       - name: Checkout ockam cli repository
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ inputs.ockam_command_cli_version != '' && inputs.ockam_command_cli_version || inputs.commit_sha  }}
           path: ockam_cli
 
       - name: Checkout ockam bats repository
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam_bats
@@ -255,7 +255,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ inputs.commit_sha }}
 
@@ -294,12 +294,12 @@ jobs:
 
     steps:
       # Run ockam example code against a different version of ockam library
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam_examples
 
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
           path: ockam_library
@@ -324,13 +324,13 @@ jobs:
 
     steps:
       - name: Checkout Ockam Repository
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam
 
       - name: Checkout Ockam Documentation Repository
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ inputs.ockam_docs_ref == '' && 'develop' || inputs.ockam_docs_ref }}
           repository: build-trust/ockam-documentation
