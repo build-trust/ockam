@@ -38,7 +38,6 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
   alias Ockam.Services.TokenLeaseManager
   alias Ockam.Services.TokenLeaseManager.Lease
   alias Ockam.Services.TokenLeaseManager.StorageService.Memory, as: MemoryStorage
-  alias Ockam.Vault.Software, as: SoftwareVault
 
   setup do
     {:ok, lm} =
@@ -57,40 +56,51 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
         ttl: 1
       )
 
-    on_exit(fn ->
-      Ockam.Node.stop(lm)
-      Ockam.Node.stop(short_live_lm)
-    end)
-
-    [lm: lm, short_live_lm: short_live_lm]
-  end
-
-  test "create and list leases", %{lm: lm} do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
+    {:ok, listener_identity} = Identity.create()
+    {:ok, listener_keypair} = SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(listener_identity, listener_keypair.public)
 
     {:ok, listener} =
       SecureChannel.create_listener(
         identity: listener_identity,
-        encryption_options: [vault: vault]
+        encryption_options: [static_keypair: listener_keypair,  static_key_attestation: attestation]
       )
 
-    {:ok, bob, bob_id} = Identity.create(Ockam.Identity.Stub)
-    {:ok, alice, alice_id} = Identity.create(Ockam.Identity.Stub)
+    {:ok, bob} = Identity.create()
+    {:ok, alice} = Identity.create()
+    bob_id = Identity.get_identifier(bob)
+    alice_id = Identity.get_identifier(alice)
+
+    {:ok, bob_keypair} = SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, bob_attestation} = Identity.attest_purpose_key(bob, bob_keypair.public)
+
+    {:ok, alice_keypair} = SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, alice_attestation} = Identity.attest_purpose_key(alice, alice_keypair.public)
 
     {:ok, bob_channel} =
       SecureChannel.create_channel(
         identity: bob,
-        encryption_options: [vault: vault],
+        encryption_options: [static_keypair: bob_keypair, static_key_attestation: bob_attestation],
         route: [listener]
       )
 
     {:ok, alice_channel} =
       SecureChannel.create_channel(
         identity: alice,
-        encryption_options: [vault: vault],
+        encryption_options: [static_keypair: alice_keypair, static_key_attestation: alice_attestation],
         route: [listener]
       )
+    on_exit(fn ->
+      Ockam.Node.stop(lm)
+      Ockam.Node.stop(short_live_lm)
+    end)
+
+    [lm: lm, short_live_lm: short_live_lm, bob_channel: bob_channel, alice_channel: alice_channel,
+     bob_id: bob_id, alice_id: alice_id, listener: listener]
+  end
+
+  test "create and list leases",
+    %{lm: lm, bob_channel: bob_channel, alice_channel: alice_channel, listener: listener, bob_id: bob_id, alice_id: alice_id} do
 
     # Initially no leases
     {:ok, resp} = Client.sync_request(:get, "/", nil, [bob_channel, lm])
@@ -126,32 +136,8 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
     assert {:ok, [^alice_lease], ""} = Lease.decode_list(body)
   end
 
-  test "lease get", %{lm: lm} do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
-
-    {:ok, listener} =
-      SecureChannel.create_listener(
-        identity: listener_identity,
-        encryption_options: [vault: vault]
-      )
-
-    {:ok, bob, bob_id} = Identity.create(Ockam.Identity.Stub)
-    {:ok, alice, _alice_id} = Identity.create(Ockam.Identity.Stub)
-
-    {:ok, bob_channel} =
-      SecureChannel.create_channel(
-        identity: bob,
-        encryption_options: [vault: vault],
-        route: [listener]
-      )
-
-    {:ok, alice_channel} =
-      SecureChannel.create_channel(
-        identity: alice,
-        encryption_options: [vault: vault],
-        route: [listener]
-      )
+  test "lease get",
+    %{lm: lm, bob_channel: bob_channel, alice_channel: alice_channel, listener: listener, bob_id: bob_id, alice_id: alice_id} do
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, lm])
     assert %{status: 200, body: body} = resp
@@ -168,25 +154,8 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
              Client.sync_request(:get, "/#{bob_lease_1_id}", nil, [alice_channel, lm])
   end
 
-  test "lease revoke", %{lm: lm} do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
-
-    {:ok, listener} =
-      SecureChannel.create_listener(
-        identity: listener_identity,
-        encryption_options: [vault: vault]
-      )
-
-    {:ok, bob, bob_id} = Identity.create(Ockam.Identity.Stub)
-    {:ok, alice, _alice_id} = Identity.create(Ockam.Identity.Stub)
-
-    {:ok, bob_channel} =
-      SecureChannel.create_channel(
-        identity: bob,
-        encryption_options: [vault: vault],
-        route: [listener]
-      )
+  test "lease revoke",
+    %{lm: lm, bob_channel: bob_channel, alice_channel: alice_channel, listener: listener, bob_id: bob_id, alice_id: alice_id} do
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, lm])
     assert %{status: 200, body: body} = resp
@@ -203,12 +172,6 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
     assert {:ok, [%Lease{id: bob_lease_2_id}], ""} = Lease.decode_list(body)
 
     # Alice can't delete bob' lease
-    {:ok, alice_channel} =
-      SecureChannel.create_channel(
-        identity: alice,
-        encryption_options: [vault: vault],
-        route: [listener]
-      )
 
     {:ok, resp} = Client.sync_request(:delete, "/#{bob_lease_2_id}", nil, [alice_channel, lm])
     assert %{status: 404} = resp
@@ -218,24 +181,8 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
     assert {:ok, [%Lease{id: ^bob_lease_2_id}], ""} = Lease.decode_list(body)
   end
 
-  test "lease expiration", %{short_live_lm: short_live_lm} do
-    {:ok, vault} = SoftwareVault.init()
-    {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
-
-    {:ok, listener} =
-      SecureChannel.create_listener(
-        identity: listener_identity,
-        encryption_options: [vault: vault]
-      )
-
-    {:ok, bob, bob_id} = Identity.create(Ockam.Identity.Stub)
-
-    {:ok, bob_channel} =
-      SecureChannel.create_channel(
-        identity: bob,
-        encryption_options: [vault: vault],
-        route: [listener]
-      )
+  test "lease expiration",
+    %{short_live_lm: short_live_lm, bob_channel: bob_channel, listener: listener, bob_id: bob_id} do
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, short_live_lm])
     assert %{status: 200, body: body} = resp
