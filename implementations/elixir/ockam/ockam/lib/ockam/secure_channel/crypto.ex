@@ -32,7 +32,7 @@ defmodule Ockam.SecureChannel.Crypto do
 
   def hkdf(salt), do: hkdf(salt, <<>>)
   def hkdf(salt, ikm) do
-    <<k1::binary-size(32), k2::binary-size(32), k3::binary>> = :hkdf.derive(:sha256, ikm, "", salt, 64)
+    <<k1::binary-size(32), k2::binary-size(32)>> = :hkdf.derive(:sha256, ikm, "", salt, 64)
     {k1,k2}
   end
 end

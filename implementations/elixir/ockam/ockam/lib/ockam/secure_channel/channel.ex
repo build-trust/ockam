@@ -36,7 +36,6 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.IdentityProof
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol, as: XX
   alias Ockam.SecureChannel.ServiceMessage
-  alias Ockam.SecureChannel.Crypto
   alias Ockam.Session.Spawner
   alias Ockam.Wire
 
@@ -47,8 +46,7 @@ defmodule Ockam.SecureChannel.Channel do
   @type encryption_options :: [{:static_keypair, %{public: binary(), private: binary()}}, {:static_key_attestation, binary()}]
   @type authorization :: list() | map()
   @type trust_policies :: list()
-  @type secure_channel_opt ::
-          {:identity, binary() | :dynamic}
+  @type secure_channel_opt :: {:identity, binary() | :dynamic}
           | {:key_exchange_timeout, non_neg_integer()}
           | {:encryption_options, encryption_options()}
           | {:address, Ockam.Address.t()}
@@ -56,7 +54,7 @@ defmodule Ockam.SecureChannel.Channel do
           | {:authorization, Ockam.Worker.Authorization.config()}
           | {:additional_metadata, map()}
           | {:idle_timeout, non_neg_integer() | :infinity}
-          | {:authorities :: [Identity.t()]}
+          | {:authorities, [Identity.t()]}
           | {:credentials, [binary()]}
 
   # Note: we could split each of these into their own file as proper modules and delegate

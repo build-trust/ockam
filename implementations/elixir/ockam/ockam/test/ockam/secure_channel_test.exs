@@ -395,35 +395,6 @@ defmodule Ockam.SecureChannel.Tests do
     }
   end
 
-
-  defmodule FakeVerifier do
-    @moduledoc """
-    Just for testing purposes.
-    """
-
-    alias Ockam.Credential.AttributeSet
-    alias Ockam.Credential.AttributeSet.Attributes
-
-    def verify(credential, identity_id, authorities) do
-      with {:credential, authority_id, ^identity_id, attributes, expiration} <-
-             :erlang.binary_to_term(credential),
-           {:ok, _} <- Map.fetch(authorities, authority_id) do
-        {:ok,
-         %AttributeSet{attributes: %Attributes{attributes: attributes}, expiration: expiration}}
-      else
-        _other ->
-          {:error, :rejected}
-      end
-    end
-
-    def credential(subject_id, authority, attributes, expiration) do
-      with {:ok, authority_id} <- Identity.validate_identity_change_history(authority) do
-        {:ok,
-         :erlang.term_to_binary({:credential, authority_id, subject_id, attributes, expiration})}
-      end
-    end
-  end
-
   test "credential in handshake accepted", %{
     alice: alice,
     bob: bob,

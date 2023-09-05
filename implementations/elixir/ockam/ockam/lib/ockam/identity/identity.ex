@@ -6,8 +6,8 @@ defmodule Ockam.Identity do
   @type identity_id() :: String.t()
 
   defstruct [:identity_id, :data]
-  alias Ockam.Credential.AttributeSet
   alias Ockam.Identity
+  alias Ockam.Credential.AttributeSet
 
   @type t() :: %Identity{}
 
@@ -65,22 +65,19 @@ defmodule Ockam.Identity do
       {:error, reason} ->
         {:error, reason}
       {expiration, verified_attrs} ->
-        attributes = %Ockam.Credential.AttributeSet{attributes: %Ockam.Credential.AttributeSet.Attributes{attributes: verified_attrs},
+        attributes = %AttributeSet{attributes: %AttributeSet.Attributes{attributes: verified_attrs},
                                   expiration: expiration}
         {:ok, attributes}
     end
   end
-  """
+
   @spec compare_identity_change_history(current_identity :: t(), known_identity :: t) ::
           {:ok, atom()} | {:error, reason :: any()}
-  def compare_identity_change_history({module, current_data}, {module, known_data}) do
-    module.compare_identity_change_history(current_data, known_data)
+  def compare_identity_change_history(_current_history, _known_history) do
+    ## TODO:  implement change history compare!
+    {:ok, :new}
   end
 
-  def compare_identity_change_history(current_identity, known_identity) do
-    {:error, {:different_identity_implementations, current_identity, known_identity}}
-  end
-  """
 end
 
   defimpl CBOR.Encoder, for: Ockam.Identity do

@@ -79,7 +79,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     {:ok, {:continue, state}}
   end
 
-  defp get_e(options, state) do
+  defp get_e(options) do
     case Keyword.fetch(options, :ephemeral_keypair) do
       :error ->
         Crypto.generate_dh_keypair()
@@ -90,7 +90,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   defp setup_e(options, state) do
-    with {:ok, keypair} <- get_e(options, state) do
+    with {:ok, keypair} <- get_e(options) do
       {:ok, %{state | e: keypair}}
     end
   end

@@ -1,7 +1,6 @@
 defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   @moduledoc false
 
-  alias Ockam.Vault
   alias Ockam.SecureChannel.Crypto
   alias __MODULE__
   @max_nonce trunc(:math.pow(2, 64)) - 1
@@ -120,7 +119,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
            nonce,
            ad,
            ciphertext,
-           %Decryptor{seen: seen, prev_k: prev_k, k: k} = state
+           %Decryptor{seen: seen, k: k} = state
          ) do
       {:ok, next_nonce} = AeadAesGcm.increment_nonce(nonce)
       {:ok, new_k} = AeadAesGcm.rekey(k)
