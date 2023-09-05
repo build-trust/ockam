@@ -77,6 +77,7 @@ impl CredentialsServerWorker {
 
                 let res = self
                     .credentials
+                    .credentials_verification()
                     .receive_presented_credential(
                         &sender,
                         self.trust_context.authorities().await?.as_slice(),
@@ -108,6 +109,7 @@ impl CredentialsServerWorker {
                 // FIXME info!("presented credential {}", credential);
                 let res = self
                     .credentials
+                    .credentials_verification()
                     .receive_presented_credential(
                         &sender,
                         self.trust_context.authorities().await?.as_slice(),

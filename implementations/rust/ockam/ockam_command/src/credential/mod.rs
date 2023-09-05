@@ -86,6 +86,7 @@ pub async fn validate_encoded_cred(
 
     identities
         .credentials()
+        .credentials_verification()
         .verify_credential(None, &[issuer.clone()], &cred)
         .await?;
 
