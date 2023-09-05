@@ -95,6 +95,7 @@ impl Worker for IdentityChannelListener {
             .secure_channels
             .identities
             .purpose_keys()
+            .purpose_keys_creation()
             .get_or_create_purpose_key(&self.identifier, Purpose::SecureChannel)
             .await?;
 

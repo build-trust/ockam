@@ -59,6 +59,7 @@ impl Credentials {
 
 impl Credentials {
     /// Verify a [`Credential`]
+    // TODO: Move to CredentialsVerification
     pub async fn verify_credential(
         &self,
         expected_subject: Option<&Identifier>,
@@ -67,6 +68,7 @@ impl Credentials {
     ) -> Result<CredentialAndPurposeKeyData> {
         let purpose_key_data = self
             .purpose_keys
+            .purpose_keys_verification()
             .verify_purpose_key_attestation(
                 None,
                 &credential_and_purpose_key.purpose_key_attestation,
@@ -188,6 +190,7 @@ impl Credentials {
         // TODO: Allow manual PurposeKey management
         let issuer_purpose_key = self
             .purpose_keys
+            .purpose_keys_creation()
             .get_or_create_purpose_key(issuer, Purpose::Credentials)
             .await?;
 
