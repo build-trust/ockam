@@ -4,7 +4,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_vault::{KeyId, Secret, SecureChannelVault};
 
-use super::super::IdentityError;
+use crate::IdentityError;
 
 pub(crate) struct Encryptor {
     key: KeyId,

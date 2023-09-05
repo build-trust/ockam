@@ -2,8 +2,8 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{Decodable, Encodable, LocalInfo, LocalMessage, Result};
 use serde::{Deserialize, Serialize};
 
-use super::super::models::Identifier;
-use super::super::IdentityError;
+use crate::models::Identifier;
+use crate::IdentityError;
 
 /// Identity SecureChannel LocalInfo unique Identifier
 pub const IDENTITY_SECURE_CHANNEL_IDENTIFIER: &str = "IDENTITY_SECURE_CHANNEL_IDENTIFIER";

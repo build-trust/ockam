@@ -2,8 +2,8 @@ use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::Result;
 
-use super::super::super::models::Identifier;
-use super::super::super::secure_channel::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
+use crate::models::Identifier;
+use crate::secure_channel::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
 
 /// `TrustPolicy` based on pre-known `IdentityIdentifier` of the other participant
 #[derive(Clone)]

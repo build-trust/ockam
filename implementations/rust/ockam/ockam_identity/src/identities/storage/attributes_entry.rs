@@ -1,4 +1,4 @@
-use super::super::super::models::{Identifier, TimestampInSeconds};
+use crate::models::{Identifier, TimestampInSeconds};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::ToOwned;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};

@@ -12,7 +12,7 @@ use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
 use tracing::debug;
 
-use super::Storage;
+use Storage;
 
 /// Storage using the Sqlite database
 #[derive(Clone)]

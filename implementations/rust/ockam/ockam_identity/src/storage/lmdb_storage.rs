@@ -1,12 +1,3 @@
-use core::str;
-use std::fmt;
-use std::path::Path;
-
-use lmdb::{Cursor, Database, Environment, Transaction};
-use tokio_retry::strategy::{jitter, FixedInterval};
-use tokio_retry::Retry;
-use tracing::debug;
-
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
@@ -16,7 +7,15 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_node::tokio::task::{self, JoinError};
 
-use super::Storage;
+use crate::storage::Storage;
+
+use core::str;
+use lmdb::{Cursor, Database, Environment, Transaction};
+use std::fmt;
+use std::path::Path;
+use tokio_retry::strategy::{jitter, FixedInterval};
+use tokio_retry::Retry;
+use tracing::debug;
 
 /// Storage using the LMDB database
 #[derive(Clone)]

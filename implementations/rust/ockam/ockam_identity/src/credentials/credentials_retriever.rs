@@ -6,9 +6,9 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, route, Address, Result, Route};
 use ockam_node::Context;
 
-use super::super::models::{CredentialAndPurposeKey, Identifier};
-use super::super::CredentialsIssuerClient;
-use super::super::{SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy};
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::CredentialsIssuerClient;
+use crate::{SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy};
 
 /// Trait for retrieving a credential for a given identity
 #[async_trait]

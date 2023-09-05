@@ -10,14 +10,14 @@ use Event::*;
 use Role::*;
 use Status::*;
 
-use super::super::super::models::{CredentialAndPurposeKey, Identifier};
-use super::super::super::secure_channel::handshake::error::XXError;
-use super::super::super::secure_channel::handshake::handshake::Handshake;
-use super::super::super::secure_channel::handshake::handshake_state_machine::{
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::secure_channel::handshake::error::XXError;
+use crate::secure_channel::handshake::handshake::Handshake;
+use crate::secure_channel::handshake::handshake_state_machine::{
     Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
     StateMachine, Status,
 };
-use super::super::super::{Identities, PurposeKey, Role, TrustContext, TrustPolicy};
+use crate::{Identities, PurposeKey, Role, TrustContext, TrustPolicy};
 
 /// Implementation of a state machine for the key exchange on the responder side
 #[async_trait]

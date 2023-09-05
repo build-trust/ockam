@@ -3,8 +3,8 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::{KeyId, SigningVault, VerifyingVault};
 
-use super::super::models::{ChangeHistory, Identifier};
-use super::super::{IdentitiesKeys, IdentitiesRepository, Identity, IdentityError};
+use crate::models::{ChangeHistory, Identifier};
+use crate::{IdentitiesKeys, IdentitiesRepository, Identity, IdentityError};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
@@ -170,9 +170,9 @@ impl IdentitiesCreation {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::models::Identifier;
-    use super::super::identities;
     use super::*;
+    use crate::identities;
+    use crate::models::Identifier;
     use core::str::FromStr;
 
     #[tokio::test]

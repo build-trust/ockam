@@ -2,7 +2,8 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
-use super::models::{Attributes, SchemaId, TimestampInSeconds};
+use crate::models::{Attributes, SchemaId, TimestampInSeconds};
+use crate::IdentityError;
 
 /// Create a new timestamp using the system time
 #[cfg(feature = "std")]
@@ -10,14 +11,14 @@ pub fn now() -> Result<TimestampInSeconds> {
     if let Ok(now) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
         Ok(TimestampInSeconds::new(now.as_secs()))
     } else {
-        Err(super::IdentityError::UnknownTimestamp.into())
+        Err(IdentityError::UnknownTimestamp.into())
     }
 }
 
 /// Create a new timestamp using the system time
 #[cfg(not(feature = "std"))]
 pub fn now() -> Result<TimestampInSeconds> {
-    Err(super::IdentityError::UnknownTimestamp.into())
+    Err(IdentityError::UnknownTimestamp.into())
 }
 
 /// Add a number of seconds to the [`TimestampInSeconds`]

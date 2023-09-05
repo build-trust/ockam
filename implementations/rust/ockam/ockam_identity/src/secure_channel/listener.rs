@@ -4,13 +4,13 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Any, Result, Routed, Worker};
 use ockam_node::Context;
 
-use super::super::models::{CredentialAndPurposeKey, Identifier};
-use super::super::secure_channel::addresses::Addresses;
-use super::super::secure_channel::handshake_worker::HandshakeWorker;
-use super::super::secure_channel::options::SecureChannelListenerOptions;
-use super::super::secure_channel::role::Role;
-use super::super::secure_channels::secure_channels::SecureChannels;
-use super::super::Purpose;
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::secure_channel::addresses::Addresses;
+use crate::secure_channel::handshake_worker::HandshakeWorker;
+use crate::secure_channel::options::SecureChannelListenerOptions;
+use crate::secure_channel::role::Role;
+use crate::secure_channels::secure_channels::SecureChannels;
+use crate::Purpose;
 
 pub(crate) struct IdentityChannelListener {
     secure_channels: Arc<SecureChannels>,

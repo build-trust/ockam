@@ -11,21 +11,21 @@ use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info};
 
-use super::super::super::models::{CredentialAndPurposeKey, Identifier};
-use super::super::super::secure_channel::decryptor::DecryptorHandler;
-use super::super::super::secure_channel::encryptor::Encryptor;
-use super::super::super::secure_channel::encryptor_worker::EncryptorWorker;
-use super::super::super::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
-use super::super::super::secure_channel::handshake::handshake_state_machine::Event::{
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::secure_channel::decryptor::DecryptorHandler;
+use crate::secure_channel::encryptor::Encryptor;
+use crate::secure_channel::encryptor_worker::EncryptorWorker;
+use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
+use crate::secure_channel::handshake::handshake_state_machine::Event::{
     Initialize, ReceivedMessage,
 };
-use super::super::super::secure_channel::handshake::handshake_state_machine::{
+use crate::secure_channel::handshake::handshake_state_machine::{
     Action, HandshakeResults, StateMachine,
 };
-use super::super::super::secure_channel::handshake::initiator_state_machine::InitiatorStateMachine;
-use super::super::super::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
-use super::super::super::secure_channel::{Addresses, Role};
-use super::super::super::{
+use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMachine;
+use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
+use crate::secure_channel::{Addresses, Role};
+use crate::{
     IdentityError, PurposeKey, SecureChannelRegistryEntry, SecureChannels, TrustContext,
     TrustPolicy,
 };

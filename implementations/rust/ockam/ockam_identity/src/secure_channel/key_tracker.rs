@@ -3,7 +3,7 @@ use ockam_vault::KeyId;
 use tracing::debug;
 use tracing::warn;
 
-use super::super::IdentityError;
+use crate::IdentityError;
 
 pub(crate) struct KeyTracker {
     pub(crate) current_key: KeyId,

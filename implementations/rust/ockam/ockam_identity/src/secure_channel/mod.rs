@@ -29,7 +29,7 @@ pub use trust_policy::*;
 
 #[cfg(test)]
 mod tests {
-    use super::super::secure_channel::{decryptor::Decryptor, encryptor::Encryptor};
+    use crate::secure_channel::{decryptor::Decryptor, encryptor::Encryptor};
     use ockam_core::compat::rand::RngCore;
     use ockam_core::Result;
     use ockam_vault::{Secret, SecretAttributes, Vault};

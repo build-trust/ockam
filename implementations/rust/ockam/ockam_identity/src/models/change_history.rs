@@ -1,4 +1,4 @@
-use super::super::models::{
+use crate::models::{
     ChangeHash, Ed25519PublicKey, Ed25519Signature, P256ECDSAPublicKey, P256ECDSASignature,
     TimestampInSeconds,
 };

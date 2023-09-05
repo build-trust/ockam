@@ -1,7 +1,7 @@
-use super::super::credentials::credentials_retriever::CredentialsRetriever;
-use super::super::models::{CredentialAndPurposeKey, Identifier, TimestampInSeconds};
-use super::super::utils::{add_seconds, now};
-use super::super::{Credentials, IdentityError};
+use crate::credentials::credentials_retriever::CredentialsRetriever;
+use crate::models::{CredentialAndPurposeKey, Identifier, TimestampInSeconds};
+use crate::utils::{add_seconds, now};
+use crate::{Credentials, IdentityError};
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::sync::RwLock;

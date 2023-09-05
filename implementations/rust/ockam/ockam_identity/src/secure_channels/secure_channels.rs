@@ -4,14 +4,14 @@ use ockam_core::{Address, Route};
 use ockam_node::Context;
 use ockam_vault::Vault;
 
-use super::super::identities::Identities;
-use super::super::models::Identifier;
-use super::super::secure_channel::handshake_worker::HandshakeWorker;
-use super::super::secure_channel::{
+use crate::identities::Identities;
+use crate::models::Identifier;
+use crate::secure_channel::handshake_worker::HandshakeWorker;
+use crate::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannelRegistry,
 };
-use super::super::{Purpose, SecureChannel, SecureChannelListener, SecureChannelsBuilder};
+use crate::{Purpose, SecureChannel, SecureChannelListener, SecureChannelsBuilder};
 
 /// Identity implementation
 #[derive(Clone)]
