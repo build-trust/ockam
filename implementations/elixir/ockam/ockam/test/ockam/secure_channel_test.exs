@@ -427,37 +427,38 @@ defmodule Ockam.SecureChannel.Tests do
   test "credential in handshake accepted", %{
     alice: alice,
     bob: bob,
-    bob_id: bob_id,
-    alice_id: alice_id
   } do
 
-    {:ok, authority, _authority_id} = Identity.create()
+    {:ok, authority} = Identity.create()
 
     alice_attributes = %{"role" => "server"}
-    expiration = System.os_time(:second) + 100
+    alice_id = Identity.get_identifier(alice)
+    bob_id = Identity.get_identifier(bob)
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(alice, keypair.public)
 
-    {:ok, alice_credential} =
-      FakeVerifier.credential(alice_id, authority, alice_attributes, expiration)
+    {:ok, alice_credential} = Identity.issue_credential(authority, alice_id, alice_attributes, 100)
 
     {:ok, listener} =
       SecureChannel.create_listener(
         identity: alice,
-        encryption_options: [],
-        credential_verifier: {FakeVerifier, [authority]},
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+        authorities: [authority],
         credentials: [alice_credential]
       )
 
     bob_attributes = %{"role" => "member"}
-    expiration = System.os_time(:second) + 100
-    {:ok, bob_credential} = FakeVerifier.credential(bob_id, authority, bob_attributes, expiration)
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(bob, keypair.public)
+    {:ok, bob_credential} = Identity.issue_credential(authority, bob_id, bob_attributes, 100)
 
     {:ok, channel} =
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           route: [listener],
-          credential_verifier: {FakeVerifier, [authority]},
+          authorities: [authority],
           credentials: [bob_credential]
         ],
         3000
@@ -484,47 +485,45 @@ defmodule Ockam.SecureChannel.Tests do
     # Secure channel is terminated if we present invalid credential
 
     # Credential by unknown authority
-    {:ok, wrong_authority, _authority_id} = Identity.create()
+    {:ok, wrong_authority} = Identity.create()
     attributes = %{"role" => "attacker"}
-    expiration = System.os_time(:second) + 100
 
-    {:ok, wrong_credential} =
-      FakeVerifier.credential(bob_id, wrong_authority, attributes, expiration)
+    {:ok, wrong_credential} = Identity.issue_credential(wrong_authority, bob_id, attributes, 100)
 
-    {:ok, channel} =
+    #{:ok, channel} =
+    {:error, _} =
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           route: [listener],
           credentials: [wrong_credential],
-          credential_verifier: {FakeVerifier, [authority]}
+          authority: [authority]
         ],
         1000
       )
 
-    Ockam.Router.route("PING!", [channel, me], [me])
+    #Ockam.Router.route("PING!", [channel, me], [me])
 
-    refute_receive %Ockam.Message{
-      onward_route: [^me],
-      payload: "PING!",
-      return_route: [_channel, ^me],
-      local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
-    }
+    #refute_receive %Ockam.Message{
+    #  onward_route: [^me],
+    #  payload: "PING!",
+    #  return_route: [_channel, ^me],
+    #  local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
+    #}
 
     # Credential for another identifier
     attributes = %{"role" => "attacker"}
-    expiration = System.os_time(:second) + 100
-    {:ok, wrong_credential} = FakeVerifier.credential(alice_id, authority, attributes, expiration)
+    {:ok, wrong_credential} = Identity.issue_credential(authority, alice_id, attributes, 100)
 
     {:ok, channel} =
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           route: [listener],
           credentials: [wrong_credential],
-          credential_verifier: {FakeVerifier, [authority]}
+          authorities: [authority]
         ],
         1000
       )
@@ -543,9 +542,9 @@ defmodule Ockam.SecureChannel.Tests do
       SecureChannel.create_channel(
         [
           identity: bob,
-          encryption_options: [],
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           route: [listener],
-          credential_verifier: {FakeVerifier, [wrong_authority]}
+          authorities: [wrong_authority]
         ],
         1000
       )

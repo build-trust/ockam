@@ -311,6 +311,8 @@ defmodule Ockam.SecureChannel.Channel do
   defp noise_payloads(:initiator, id_proof), do: %{message3: id_proof}
   defp noise_payloads(:responder, id_proof), do: %{message2: id_proof}
 
+  #FIXME:  proper errors here and the rest of mandatory "options"
+  #TODO:  shouldn't be options if they are mandatory
   defp get_static_keypair(options) do
     Keyword.fetch(options, :static_keypair)
   end
@@ -450,11 +452,11 @@ defmodule Ockam.SecureChannel.Channel do
   defp process_credentials([], _peer_identity_id, _authorities), do: :ok
 
   defp process_credentials([cred], peer_identity_id, authorities) do
-    case Identity.verify_credential(peer_identity_id, cred, authorities) do
+    case Identity.verify_credential(peer_identity_id, authorities, cred) do
       {:ok, attribute_set} ->
         AttributeStorage.put_attribute_set(peer_identity_id, attribute_set)
-      other ->
-        {:error, {:rejected_credential, other}}
+      {:error, reason} ->
+        {:error, {:rejected_credential, reason}}
     end
   end
 

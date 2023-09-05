@@ -6,6 +6,7 @@ defmodule Ockam.Identity do
   @type identity_id() :: String.t()
 
   defstruct [:identity_id, :data]
+  alias Ockam.Credential.AttributeSet
   alias Ockam.Identity
 
   @type t() :: %Identity{}
@@ -53,13 +54,24 @@ defmodule Ockam.Identity do
   end
 
 
-  def issue_credential(%Identity{data: issuer}, subject, attrs, ttl) do
-    {:ok, Ockly.Native.issue_credential(issuer, subject, attrs, ttl)}
+  def issue_credential(%Identity{data: issuer}, subject, attrs, ttl)  when is_map(attrs) and is_binary(subject) do
+    cred = Ockly.Native.issue_credential(issuer, subject, attrs, ttl)
+    IO.puts("> #{subject} #{inspect(cred)}")
+    {:ok, cred}
   end
 
-  def verify_credential(subject_id, authorities, credential) do
-    {ttl, verified_attrs} = Ockly.Native.verify_credential(subject_id, authorities, credential)
-    {:ok, {ttl, verified_attrs}}
+  def verify_credential(subject_id, authorities, credential) when is_binary(subject_id) and is_list(authorities) do
+    IO.puts("< #{subject_id} #{inspect(credential)}")
+    authorities = Enum.map(authorities, fn a -> a.data end)
+    case  Ockly.Native.verify_credential(subject_id, authorities, credential) do
+      {:error, reason} ->
+        {:error, reason}
+      {expiration, verified_attrs} ->
+        IO.puts("< attributes:  #{inspect(verified_attrs)}")
+        attributes = %Ockam.Credential.AttributeSet{attributes: %Ockam.Credential.AttributeSet.Attributes{attributes: verified_attrs},
+                                  expiration: expiration}
+        {:ok, attributes}
+    end
   end
   """
   @spec compare_identity_change_history(current_identity :: t(), known_identity :: t) ::
