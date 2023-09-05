@@ -1,6 +1,8 @@
 mod model;
 mod repository;
 
+#[cfg(debug_assertions)]
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use miette::IntoDiagnostic;
@@ -44,6 +46,9 @@ pub struct AppState {
     node_manager_worker: Arc<RwLock<NodeManagerWorker>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
+
+    #[cfg(debug_assertions)]
+    browser_dev_tools: AtomicBool,
 }
 
 impl Default for AppState {
@@ -83,6 +88,9 @@ impl AppState {
             node_manager_worker: Arc::new(RwLock::new(node_manager_worker)),
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository: Arc::new(RwLock::new(model_state_repository)),
+
+            #[cfg(debug_assertions)]
+            browser_dev_tools: Default::default(),
         }
     }
 
@@ -200,6 +208,19 @@ impl AppState {
     pub async fn model<T>(&self, f: impl FnOnce(&ModelState) -> T) -> T {
         let mut model_state = self.model_state.read().await;
         f(&mut model_state)
+    }
+}
+
+#[cfg(debug_assertions)]
+impl AppState {
+    pub fn browser_dev_tools(&self) -> bool {
+        self.browser_dev_tools
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub fn set_browser_dev_tools(&self, value: bool) {
+        self.browser_dev_tools
+            .store(value, std::sync::atomic::Ordering::Relaxed);
     }
 }
 

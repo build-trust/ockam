@@ -1,6 +1,6 @@
-use tauri::{AppHandle, CustomMenuItem, Manager, SystemTrayMenu, SystemTraySubmenu, Wry};
+use tauri::menu::{MenuBuilder, MenuItemBuilder, Submenu, SubmenuBuilder};
+use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_positioner::{Position, WindowExt};
-use tauri_runtime::menu::SystemTrayMenuItem;
 
 use ockam_api::nodes::models::portal::OutletStatus;
 
@@ -10,56 +10,57 @@ pub const SHARED_SERVICE_HEADER_MENU_ID: &str = "shared_service_header";
 pub const SHARED_SERVICE_CREATE_MENU_ID: &str = "shared_service_create";
 pub const SHARED_SERVICE_WINDOW_ID: &str = "shared_service_creation";
 
-pub(crate) async fn build_shared_services_section(
-    app_state: &AppState,
-    tray_menu: SystemTrayMenu,
-) -> SystemTrayMenu {
+pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>(
+    app_handle: &AppHandle<R>,
+    builder: MenuBuilder<'a, R, M>,
+) -> MenuBuilder<'a, R, M> {
+    let app_state: State<AppState> = app_handle.state();
     if !app_state.is_enrolled().await.unwrap_or(false) {
-        return tray_menu;
+        return builder;
     };
 
-    let tm = tray_menu
-        .add_native_item(SystemTrayMenuItem::Separator)
-        .add_item(CustomMenuItem::new(SHARED_SERVICE_HEADER_MENU_ID, "Shared").disabled())
-        .add_item(CustomMenuItem::new(
-            SHARED_SERVICE_CREATE_MENU_ID,
-            "Create...",
-        ));
+    let builder = builder.items(&[
+        &MenuItemBuilder::with_id(SHARED_SERVICE_HEADER_MENU_ID, "Shared")
+            .enabled(false)
+            .build(app_handle),
+        &MenuItemBuilder::with_id(SHARED_SERVICE_CREATE_MENU_ID, "Create...").build(app_handle),
+    ]);
+
     app_state
         .tcp_outlet_list()
         .await
         .iter()
-        .map(shared_service_submenu)
-        .fold(tm, |menu, submenu| menu.add_submenu(submenu))
+        .map(|outlet| shared_service_submenu(app_handle, outlet))
+        .fold(builder, |builder, submenu| builder.item(&submenu))
 }
 
-fn shared_service_submenu(outlet: &OutletStatus) -> SystemTraySubmenu {
+fn shared_service_submenu<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    outlet: &OutletStatus,
+) -> Submenu<R> {
     let worker_address = outlet.worker_address().unwrap();
-
-    let mut submenu = SystemTrayMenu::new();
-    // NOTE: Event handler for dynamic ID is defined in crate::invitations::tray_menu module,
-    // and reached via crate::app::tray_menu::fallback_for_id
-    submenu = submenu.add_item(CustomMenuItem::new(
-        format!("invitation-create-for-{}", outlet.socket_addr),
-        "Share".to_string(),
-    ));
-
-    submenu = submenu.add_item(
-        CustomMenuItem::new(
-            "outlet-tcp-address".to_string(),
-            format!("TCP Address: {}", outlet.socket_addr),
-        )
-        .disabled(),
-    );
 
     let outlet_info = String::from_utf8(worker_address.last().unwrap().data().to_vec())
         .unwrap_or_else(|_| worker_address.to_string());
 
-    SystemTraySubmenu::new(outlet_info, submenu)
+    // NOTE: Event handler for dynamic ID is defined in crate::invitations::tray_menu module,
+    // and reached via crate::app::tray_menu::fallback_for_id
+    SubmenuBuilder::new(app_handle, outlet_info)
+        .items(&[
+            &MenuItemBuilder::new("Share")
+                .id(format!("invitation-create-for-{}", outlet.socket_addr))
+                .build(app_handle),
+            &MenuItemBuilder::new(format!("TCP Address: {}", outlet.socket_addr))
+                .id("outlet-tcp-address")
+                .enabled(false)
+                .build(app_handle),
+        ])
+        .build()
+        .expect("cannot build menu for shared service")
 }
 
 /// Event listener for the "Create..." menu item
-pub fn on_create(app: &AppHandle<Wry>) -> tauri::Result<()> {
+pub fn on_create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     match app.get_window(SHARED_SERVICE_WINDOW_ID) {
         None => {
             let w = tauri::WindowBuilder::new(
@@ -77,6 +78,14 @@ pub fn on_create(app: &AppHandle<Wry>) -> tauri::Result<()> {
             // TODO: ideally we should use Position::TrayCenter, but it's broken on the latest alpha
             let _ = w.move_window(Position::TopRight);
             w.show()?;
+
+            #[cfg(debug_assertions)]
+            {
+                let app_state: State<AppState> = app.state();
+                if app_state.browser_dev_tools() {
+                    w.open_devtools();
+                }
+            }
         }
         Some(w) => w.set_focus()?,
     }

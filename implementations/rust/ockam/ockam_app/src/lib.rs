@@ -53,7 +53,7 @@ pub fn run() {
         .plugin(shared_service::plugin::init())
         .plugin(projects::plugin::init())
         .plugin(invitations::plugin::init())
-        .setup(|app| setup(app))
+        .setup(setup)
         .manage(AppState::new());
 
     #[cfg(feature = "log")]
