@@ -307,6 +307,7 @@ impl VaultSecurityModule {
                         NISTP256_SECRET_LENGTH_U32,
                     )
                         .into());
+                    
                 };
                 let pk = Self::public_key(secret.as_ref())?;
                 Self::compute_key_id_for_public_key(&pk).await?
