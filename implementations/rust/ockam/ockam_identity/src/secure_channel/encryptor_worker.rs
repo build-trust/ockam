@@ -4,10 +4,10 @@ use ockam_core::{Any, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use tracing::debug;
 
-use super::super::secure_channel::addresses::Addresses;
-use super::super::secure_channel::api::{EncryptionRequest, EncryptionResponse};
-use super::super::secure_channel::encryptor::Encryptor;
-use super::super::IdentityError;
+use crate::secure_channel::addresses::Addresses;
+use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
+use crate::secure_channel::encryptor::Encryptor;
+use crate::IdentityError;
 
 pub(crate) struct EncryptorWorker {
     //for debug purposes only

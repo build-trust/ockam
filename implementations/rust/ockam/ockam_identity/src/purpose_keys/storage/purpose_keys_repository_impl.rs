@@ -4,11 +4,11 @@ use ockam_core::compat::string::{String, ToString};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 
-use super::super::super::identity::IdentityConstants;
-use super::super::super::models::{Identifier, PurposeKeyAttestation};
-use super::super::super::storage::{InMemoryStorage, Storage};
-use super::super::super::Purpose;
-use super::{PurposeKeysReader, PurposeKeysRepository, PurposeKeysWriter};
+use crate::identity::IdentityConstants;
+use crate::models::{Identifier, PurposeKeyAttestation};
+use crate::purpose_keys::storage::{PurposeKeysReader, PurposeKeysRepository, PurposeKeysWriter};
+use crate::storage::{InMemoryStorage, Storage};
+use crate::Purpose;
 
 /// Storage for own [`super::super::super::purpose_key::PurposeKey`]s
 #[derive(Clone)]

@@ -1,6 +1,6 @@
-use super::super::identities::{IdentitiesKeys, IdentitiesRepository};
-use super::super::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
-use super::super::{
+use crate::identities::{IdentitiesKeys, IdentitiesRepository};
+use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
+use crate::{
     Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation,
     IdentitiesReader, IdentitiesStorage, PurposeKeys,
 };

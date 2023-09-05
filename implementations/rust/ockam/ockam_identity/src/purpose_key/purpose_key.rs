@@ -1,6 +1,7 @@
-use super::super::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData};
-use super::super::Purpose;
 use ockam_vault::{KeyId, SecretType};
+
+use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData};
+use crate::Purpose;
 
 /// Own PurposeKey
 #[derive(Clone, Debug)]

@@ -1,15 +1,16 @@
+use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::env::FromString;
+use ockam_core::{Error, Result};
+
+use crate::IdentityError;
+
 use core::fmt::{Display, Formatter};
 use core::ops::Deref;
 use core::str::FromStr;
 use minicbor::bytes::ByteArray;
 use minicbor::encode::Write;
 use minicbor::{Decode, Decoder, Encode, Encoder};
-use ockam_core::compat::{string::String, vec::Vec};
-use ockam_core::env::FromString;
-use ockam_core::{Error, Result};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-
-use super::super::IdentityError;
 
 /// Identifier length
 pub const IDENTIFIER_LEN: usize = 20;

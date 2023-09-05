@@ -1,14 +1,15 @@
-use core::fmt;
-use core::fmt::Formatter;
-use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{Address, OutgoingAccessControl, Result};
 
-use super::super::models::CredentialAndPurposeKey;
-use super::super::secure_channel::Addresses;
-use super::super::{TrustContext, TrustEveryonePolicy, TrustPolicy};
+use crate::models::CredentialAndPurposeKey;
+use crate::secure_channel::Addresses;
+use crate::{TrustContext, TrustEveryonePolicy, TrustPolicy};
+
+use core::fmt;
+use core::fmt::Formatter;
+use core::time::Duration;
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 

@@ -3,8 +3,8 @@ use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Result};
 
-use super::super::models::Identifier;
-use super::super::IdentityError;
+use crate::models::Identifier;
+use crate::IdentityError;
 
 /// Known information about particular SecureChannel
 #[derive(Clone, Debug)]

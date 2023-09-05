@@ -1,6 +1,6 @@
-use super::super::identities::{Identities, IdentitiesRepository, IdentitiesStorage};
-use super::super::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
-use super::super::storage::Storage;
+use crate::identities::{Identities, IdentitiesRepository, IdentitiesStorage};
+use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
+use crate::storage::Storage;
 
 use ockam_core::compat::sync::Arc;
 use ockam_vault::{Vault, VaultStorage};

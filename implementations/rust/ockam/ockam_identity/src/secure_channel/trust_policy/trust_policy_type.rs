@@ -5,8 +5,8 @@ use ockam_core::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::super::super::models::Identifier;
-use super::super::super::secure_channel::trust_policy::{AllTrustPolicy, AnyTrustPolicy};
+use crate::models::Identifier;
+use crate::secure_channel::trust_policy::{AllTrustPolicy, AnyTrustPolicy};
 
 /// Authenticated data of the newly created SecureChannel to perform `TrustPolicy` check
 #[derive(Clone, Serialize, Deserialize)]

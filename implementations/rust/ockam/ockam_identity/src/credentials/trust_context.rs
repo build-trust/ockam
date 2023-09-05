@@ -2,8 +2,8 @@ use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
-use super::super::models::Identifier;
-use super::super::{AuthorityService, IdentityError};
+use crate::models::Identifier;
+use crate::{AuthorityService, IdentityError};
 
 /// A trust context defines which authorities are trusted to attest to which attributes, within a context.
 /// Our first implementation assumes that there is only one authority and it is trusted to attest to all attributes within this context.

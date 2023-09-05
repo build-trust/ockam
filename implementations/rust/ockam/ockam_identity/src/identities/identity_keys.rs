@@ -1,10 +1,10 @@
-use super::super::identity::Identity;
-use super::super::models::{
+use crate::identity::Identity;
+use crate::models::{
     Change, ChangeData, ChangeHash, ChangeHistory, ChangeSignature, Ed25519PublicKey,
     Ed25519Signature, PrimaryPublicKey, VersionedData,
 };
-use super::super::utils::{add_seconds, now};
-use super::super::IdentityError;
+use crate::utils::{add_seconds, now};
+use crate::IdentityError;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
@@ -178,9 +178,9 @@ impl IdentitiesKeys {
 
 #[cfg(test)]
 mod test {
-    use super::super::super::models::Identifier;
-    use super::super::identities;
     use super::*;
+    use crate::identities;
+    use crate::models::Identifier;
     use core::str::FromStr;
     use ockam_core::errcode::{Kind, Origin};
     use ockam_core::Error;

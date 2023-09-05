@@ -1,4 +1,3 @@
-use super::Storage;
 use ockam_core::async_trait;
 use ockam_core::compat::{
     boxed::Box,
@@ -8,6 +7,8 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::Result;
+
+use crate::storage::Storage;
 
 /// Non-persistent table stored in RAM
 #[derive(Clone, Default)]

@@ -9,11 +9,9 @@ use ockam_vault::{KeyId, PublicKey, Secret, SecretAttributes, SecureChannelVault
 use sha2::{Digest, Sha256};
 use Status::*;
 
-use super::super::super::secure_channel::handshake::error::XXError;
-use super::super::super::secure_channel::handshake::handshake_state_machine::{
-    HandshakeKeys, Status,
-};
-use super::super::super::secure_channel::Role;
+use crate::secure_channel::handshake::error::XXError;
+use crate::secure_channel::handshake::handshake_state_machine::{HandshakeKeys, Status};
+use crate::secure_channel::Role;
 
 /// The number of bytes in a SHA256 digest
 pub const SHA256_SIZE_U32: u32 = 32;
@@ -581,8 +579,8 @@ impl HandshakeState {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::super::identities;
     use super::*;
+    use crate::identities;
     use hex::decode;
     use ockam_core::Result;
     use ockam_node::InMemoryKeyValueStorage;

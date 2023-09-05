@@ -4,8 +4,8 @@ use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
 use ockam_core::Result;
 use ockam_core::{async_trait, RelayMessage};
 
-use super::super::super::identities::IdentitiesRepository;
-use super::super::super::secure_channel::local_info::IdentitySecureChannelLocalInfo;
+use crate::identities::IdentitiesRepository;
+use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
 
 /// Access control checking that message senders have a specific set of attributes
 #[derive(Clone)]

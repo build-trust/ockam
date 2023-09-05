@@ -4,8 +4,8 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{RelayMessage, Result};
 
-use super::super::super::models::Identifier;
-use super::super::super::secure_channel::local_info::IdentitySecureChannelLocalInfo;
+use crate::models::Identifier;
+use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
 
 /// Builder for `Identity`-related AccessControls
 pub struct IdentityAccessControlBuilder;

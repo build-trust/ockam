@@ -1,10 +1,10 @@
-use super::super::identities::AttributesEntry;
-use super::super::models::{
+use crate::identities::AttributesEntry;
+use crate::models::{
     Attributes, Credential, CredentialAndPurposeKey, CredentialData, CredentialSignature,
     Ed25519Signature, Identifier, PurposeKeyAttestationData, PurposePublicKey, VersionedData,
 };
-use super::super::utils::{add_seconds, now};
-use super::super::{IdentitiesRepository, Identity, IdentityError, Purpose, PurposeKeys};
+use crate::utils::{add_seconds, now};
+use crate::{IdentitiesRepository, Identity, IdentityError, Purpose, PurposeKeys};
 
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
@@ -273,9 +273,9 @@ impl Credentials {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::identities::identities;
-    use super::super::super::models::SchemaId;
     use super::*;
+    use crate::identities::identities;
+    use crate::models::SchemaId;
     use ockam_core::compat::collections::BTreeMap;
 
     #[tokio::test]

@@ -1,16 +1,14 @@
-use super::super::models::{
-    Ed25519Signature, Identifier, PurposeKeyAttestation, PurposeKeyAttestationData,
-    PurposeKeyAttestationSignature, PurposePublicKey, VersionedData,
-};
-use super::super::utils::{add_seconds, now};
-use super::super::{
-    IdentitiesKeys, IdentitiesReader, Identity, IdentityError, Purpose, PurposeKey,
-};
-use super::storage::PurposeKeysRepository;
-
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
 use ockam_vault::{SecretAttributes, SecretType, Signature, Vault};
+
+use crate::models::{
+    Ed25519Signature, Identifier, PurposeKeyAttestation, PurposeKeyAttestationData,
+    PurposeKeyAttestationSignature, PurposePublicKey, VersionedData,
+};
+use crate::purpose_keys::storage::PurposeKeysRepository;
+use crate::utils::{add_seconds, now};
+use crate::{IdentitiesKeys, IdentitiesReader, Identity, IdentityError, Purpose, PurposeKey};
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
@@ -315,8 +313,8 @@ impl PurposeKeys {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::{identities, Purpose};
     use super::*;
+    use crate::{identities, Purpose};
 
     #[tokio::test]
     async fn create_purpose_keys() -> Result<()> {

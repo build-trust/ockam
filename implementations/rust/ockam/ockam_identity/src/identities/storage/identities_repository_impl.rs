@@ -6,11 +6,11 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
-use super::super::super::identity::IdentityConstants;
-use super::super::super::models::{ChangeHistory, Identifier};
-use super::super::super::storage::{InMemoryStorage, Storage};
-use super::super::super::utils::now;
-use super::{
+use crate::identity::IdentityConstants;
+use crate::models::{ChangeHistory, Identifier};
+use crate::storage::{InMemoryStorage, Storage};
+use crate::utils::now;
+use crate::{
     AttributesEntry, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
     IdentityAttributesReader, IdentityAttributesWriter,
 };

@@ -1,6 +1,6 @@
-use super::super::models::{Change, ChangeData, ChangeHash, ChangeSignature, CHANGE_HASH_LEN};
-use super::super::verified_change::VerifiedChange;
-use super::super::{Identity, IdentityError};
+use crate::models::{Change, ChangeData, ChangeHash, ChangeSignature, CHANGE_HASH_LEN};
+use crate::verified_change::VerifiedChange;
+use crate::{Identity, IdentityError};
 use arrayref::array_ref;
 
 use ockam_core::compat::sync::Arc;
