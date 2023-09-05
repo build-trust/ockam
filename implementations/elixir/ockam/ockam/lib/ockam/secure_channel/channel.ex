@@ -412,7 +412,7 @@ defmodule Ockam.SecureChannel.Channel do
     with {:ok, peer_proof_data} <- Map.fetch(payloads, peer_proof_msg),
          {:ok, identity_proof} <- IdentityProof.decode(peer_proof_data),
          {:ok, peer, peer_identity_id} <- Identity.validate_contact_data(identity_proof.contact),
-         true <- Identity.verify_purpose_key_attestation(peer, rs, %Ockam.Identity.PurposeKeyAttestation{attestation: identity_proof.attestation}),
+         {:ok, true} <- Identity.verify_purpose_key_attestation(peer, rs, %Ockam.Identity.PurposeKeyAttestation{attestation: identity_proof.attestation}),
           :ok <- check_trust(state.trust_policies, state.identity, identity_proof.contact, peer_identity_id),
          :ok <-
            process_credentials(

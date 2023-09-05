@@ -19,16 +19,18 @@ defmodule Ockam.Identity do
   @spec create() ::
           {:ok, identity :: t(), identity_id :: binary()} | {:error, reason :: any()}
   def create() do
-    with {id, data} <- Ockly.Native.create_identity() do
-      {:ok, %Identity{identity_id: id, data: data}}
+    case Ockly.Native.create_identity() do
+      {:error, reason} -> {:error, reason}
+      {id, data} -> {:ok, %Identity{identity_id: id, data: data}}
     end
   end
 
   @spec validate_contact_data(contact_data :: binary()) ::
-          {:ok, identity :: t(), identity_id :: binary()}
+          {:ok, identity :: t(), identity_id :: binary()} | {:error, any()}
   def validate_contact_data(contact_data) do
-    with contact_id <- Ockly.Native.check_identity(contact_data) do
-      {:ok, %Identity{identity_id: contact_id, data: contact_data},  contact_id}
+    case Ockly.Native.check_identity(contact_data) do
+      {:error, reason} -> {:error, reason}
+      contact_id  -> {:ok, %Identity{identity_id: contact_id, data: contact_data},  contact_id}
     end
   end
 
@@ -43,20 +45,28 @@ defmodule Ockam.Identity do
   end
 
   @spec attest_purpose_key(contact :: t(), pubkey :: binary()) ::
-          {:ok, proof()}
+          {:ok, proof()} | {:error, any()}
   def attest_purpose_key(%Identity{identity_id: identifier}, pubkey) do
-    {:ok, %Ockam.Identity.PurposeKeyAttestation{attestation: Ockly.Native.attest_purpose_key(identifier, pubkey)}}
+    case Ockly.Native.attest_purpose_key(identifier, pubkey) do
+      {:error, reason} -> {:error, reason}
+      attestation -> {:ok, %Ockam.Identity.PurposeKeyAttestation{attestation: attestation}}
+    end
   end
 
-  @spec verify_purpose_key_attestation(contact :: t(), pubkey :: binary(), attestation :: %Ockam.Identity.PurposeKeyAttestation{}) :: boolean()
+  @spec verify_purpose_key_attestation(contact :: t(), pubkey :: binary(), attestation :: %Ockam.Identity.PurposeKeyAttestation{}) :: {:ok, boolean()} | {:error, any()}
   def verify_purpose_key_attestation(%Identity{data: identity_data}, pubkey, %Ockam.Identity.PurposeKeyAttestation{attestation: attestation}) do
-    Ockly.Native.verify_purpose_key_attestation(identity_data,  pubkey, attestation)
+    case Ockly.Native.verify_purpose_key_attestation(identity_data,  pubkey, attestation) do
+      {:error, reason} -> {:error, reason}
+      true -> {:ok, true}
+    end
   end
 
 
   def issue_credential(%Identity{data: issuer}, subject, attrs, ttl)  when is_map(attrs) and is_binary(subject) do
-    cred = Ockly.Native.issue_credential(issuer, subject, attrs, ttl)
-    {:ok, cred}
+    case Ockly.Native.issue_credential(issuer, subject, attrs, ttl) do
+      {:error, reason} -> {:error, reason}
+      cred -> {:ok, cred}
+    end
   end
 
   def verify_credential(subject_id, authorities, credential) when is_binary(subject_id) and is_list(authorities) do
