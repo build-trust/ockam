@@ -7,6 +7,8 @@ pub use setup::*;
 pub use state::*;
 pub use tray_menu::*;
 
+#[cfg(debug_assertions)]
+mod dev_tools;
 pub(crate) mod events;
 #[cfg(feature = "log")]
 mod logging;

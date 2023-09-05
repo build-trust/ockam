@@ -12,7 +12,7 @@ use super::commands::*;
 use super::events::{REFRESHED_INVITATIONS, REFRESH_INVITATIONS};
 use super::state::InvitationState;
 
-const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(60);
+const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(30);
 
 pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("invitations")

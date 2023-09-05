@@ -1,7 +1,6 @@
 use tauri::{AppHandle, Manager, Runtime};
 
 pub const SYSTEM_TRAY_ON_UPDATE: &str = "app/system_tray/on_update";
-
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct SystemTrayOnUpdatePayload {
     /// An optional status message that is shown when the application

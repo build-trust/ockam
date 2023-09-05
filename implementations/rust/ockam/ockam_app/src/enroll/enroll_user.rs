@@ -1,7 +1,7 @@
 use miette::{miette, IntoDiagnostic, WrapErr};
 
 use ockam_api::address::controller_route;
-use tauri::{AppHandle, Manager, State, Wry};
+use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_notification::NotificationExt;
 use tracing::{debug, error, info};
 
@@ -22,7 +22,7 @@ use crate::{shared_service, Result};
 ///  - creates a default node, with a default identity if it doesn't exist
 ///  - connects to the OIDC service to authenticate the user of the Ockam application to retrieve a token
 ///  - connects to the Orchestrator with the retrieved token to create a project
-pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
+pub async fn enroll_user<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     let app_state: State<AppState> = app.state::<AppState>();
     enroll_with_token(app, &app_state)
         .await
@@ -43,7 +43,7 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     Ok(())
 }
 
-async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result<()> {
+async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState) -> Result<()> {
     if app_state.is_enrolled().await.unwrap_or_default() {
         debug!("User is already enrolled");
         return Ok(());
@@ -137,8 +137,8 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     Ok(space)
 }
 
-async fn retrieve_project(
-    app: &AppHandle<Wry>,
+async fn retrieve_project<R: Runtime>(
+    app: &AppHandle<R>,
     app_state: &AppState,
     space: &Space,
 ) -> Result<Project> {
