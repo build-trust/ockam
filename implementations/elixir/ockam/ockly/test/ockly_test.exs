@@ -2,20 +2,13 @@ defmodule OcklyTest do
   use ExUnit.Case
   doctest Ockly
 
-  test "greets the world" do
-    assert Ockly.hello() == :world
-  end
-
-  test "plus" do
-	assert Ockly.Native.add(1,2) == 3
-  end
-
   test "create identity" do
-	assert Ockly.Native.add(1,2) == 3
 	{id, exported_identity} = Ockly.Native.create_identity()
 	{pub_key, _secret_key} = :crypto.generate_key(:eddh, :x25519)
 	attestation = Ockly.Native.attest_purpose_key(id, pub_key)
 	assert Ockly.Native.verify_purpose_key_attestation(exported_identity, pub_key, attestation) == true
+	assert Ockly.Native.verify_purpose_key_attestation(exported_identity, id, attestation) == {:error, :invalid_attestation} # attest for another key
+	assert Ockly.Native.verify_purpose_key_attestation(exported_identity, pub_key, pub_key) == {:error, :attestation_decode_error} #attestation data is junk
 	assert Ockly.Native.check_identity(exported_identity) == id
 
 
@@ -27,6 +20,10 @@ defmodule OcklyTest do
 	{:error, :credential_verification_failed} = Ockly.Native.verify_credential(id, [exported_identity], credential)
 	assert verified_attrs == attrs
 	assert ttl == System.os_time(:second) + 60
+  end
+
+  test "junk identity" do
+	assert {:error, :identity_import_error} == Ockly.Native.check_identity("junk")
   end
 
   test "hkdf" do

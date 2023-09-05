@@ -2,7 +2,6 @@ defmodule Ockly.Native do
 
   use Rustler, otp_app: :ockly, crate: "ockly"
 
-  def add(_, _), do: error()
   def create_identity(), do: error() 
   def check_identity(_), do: error()
   def attest_purpose_key(_, _), do: error()
