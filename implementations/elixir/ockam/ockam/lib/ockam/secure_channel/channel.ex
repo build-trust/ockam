@@ -330,8 +330,6 @@ defmodule Ockam.SecureChannel.Channel do
         credentials: credentials
       }
 
-      IO.puts("proof setup: #{inspect(proof)}")
-
       encoded_proof = IdentityProof.encode(proof)
       payloads = noise_payloads(role, encoded_proof)
       options = [payloads: payloads, static_keypair: static_keypair]
@@ -407,7 +405,6 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp next_handshake_state({:complete, {k1, k2, h, rs, payloads}}, state) do
-    IO.puts("next_handshake_state :complete 1")
     peer_proof_msg =
       case state.role do
         :initiator -> :message2
@@ -472,7 +469,6 @@ defmodule Ockam.SecureChannel.Channel do
   # Check result of the handshake step, send handshake data to the peer if there is a message to exchange,
   # and possible move to another state
   defp continue_handshake({:complete, _key_agreements} = r, state) do
-    IO.puts("continue_handshake complete!")
     next_handshake_state(r, state)
   end
 

@@ -3,8 +3,6 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
 
   alias Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm.Decryptor
   alias Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm.Encryptor
-  alias Ockam.Vault
-  alias Ockam.Vault.Software, as: SoftwareVault
 
   test "normal flow" do
     shared_k = :crypto.strong_rand_bytes(32)
@@ -99,13 +97,13 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     {_, ciphertext} = Enum.at(msgs, 0)
     {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
-    {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 2)
+    {_plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 2)
     {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 1)
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
-    {plaintext, ciphertext} = Enum.at(msgs, 1)
+    {_plaintext, ciphertext} = Enum.at(msgs, 1)
     {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 2)
@@ -113,15 +111,15 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 3)
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
-    {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 1)
+    {_plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 1)
     {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
-    {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 2)
+    {_plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 2)
     {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {plaintext, ciphertext} = Enum.at(msgs, 2 * key_renewal_interval)
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
-    {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval - 1)
+    {_plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval - 1)
     {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {plaintext, ciphertext} = Enum.at(msgs, 3 * key_renewal_interval)
@@ -131,14 +129,14 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
 
     decryptor =
       Enum.reduce((3 * key_renewal_interval + 1)..(4 * key_renewal_interval - 1), decryptor, fn i,
-                                                                                                encryptor ->
+                                                                                                decryptor ->
         {plaintext, ciphertext} = Enum.at(msgs, i)
         {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
         decryptor
       end)
 
     Enum.reduce((4 * key_renewal_interval + 1)..(5 * key_renewal_interval), decryptor, fn i,
-                                                                                          encryptor ->
+                                                                                          decryptor ->
       {plaintext, ciphertext} = Enum.at(msgs, i)
       {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
       decryptor

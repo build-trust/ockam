@@ -56,18 +56,15 @@ defmodule Ockam.Identity do
 
   def issue_credential(%Identity{data: issuer}, subject, attrs, ttl)  when is_map(attrs) and is_binary(subject) do
     cred = Ockly.Native.issue_credential(issuer, subject, attrs, ttl)
-    IO.puts("> #{subject} #{inspect(cred)}")
     {:ok, cred}
   end
 
   def verify_credential(subject_id, authorities, credential) when is_binary(subject_id) and is_list(authorities) do
-    IO.puts("< #{subject_id} #{inspect(credential)}")
     authorities = Enum.map(authorities, fn a -> a.data end)
     case  Ockly.Native.verify_credential(subject_id, authorities, credential) do
       {:error, reason} ->
         {:error, reason}
       {expiration, verified_attrs} ->
-        IO.puts("< attributes:  #{inspect(verified_attrs)}")
         attributes = %Ockam.Credential.AttributeSet{attributes: %Ockam.Credential.AttributeSet.Attributes{attributes: verified_attrs},
                                   expiration: expiration}
         {:ok, attributes}
