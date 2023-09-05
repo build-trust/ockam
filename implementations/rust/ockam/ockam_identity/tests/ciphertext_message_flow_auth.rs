@@ -5,7 +5,7 @@ use ockam_identity::SecureChannelOptions;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 
-use crate::common::{
+use crate::common::message_flow_auth::{
     create_secure_channel, create_secure_channel_listener, message_should_not_pass,
 };
 
