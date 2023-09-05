@@ -72,8 +72,6 @@ mod tests {
     /// or credentials in ~/.aws/credentials
     #[tokio::test]
     #[ignore]
-    // TODO: Not working because we only support Ed25519 at the moment, but supporting different
-    //       key type should be enough for this test to succeed
     async fn test_create_identity_with_external_key_id() -> Result<()> {
         let mut vault = Vault::create();
         vault.signing_vault = Arc::new(AwsSigningVault::create().await?);
@@ -88,7 +86,7 @@ mod tests {
         let identity = identities
             .identities_creation()
             .identity_builder()
-            .with_existing_key(key_id)
+            .with_existing_key(key_id.clone())
             .build()
             .await?;
 
@@ -96,6 +94,8 @@ mod tests {
             .identities_creation()
             .import(Some(identity.identifier()), &identity.export()?)
             .await?;
+
+        vault.signing_vault.delete_key(key_id).await?;
 
         Ok(())
     }
