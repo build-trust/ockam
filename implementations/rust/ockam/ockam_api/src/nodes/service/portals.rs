@@ -245,7 +245,7 @@ impl NodeManager {
             }
             Err(e) => {
                 warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
-                let message = format!("Failed to create outlet: {}", e);
+                let message = format!("{}", e);
                 return Err(ockam_core::Error::new(
                     Origin::Node,
                     Kind::Internal,
