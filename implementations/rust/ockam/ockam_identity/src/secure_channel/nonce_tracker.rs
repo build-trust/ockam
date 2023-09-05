@@ -1,5 +1,5 @@
-use super::super::secure_channel::encryptor::KEY_RENEWAL_INTERVAL;
-use super::super::IdentityError;
+use crate::secure_channel::encryptor::KEY_RENEWAL_INTERVAL;
+use crate::IdentityError;
 
 /// fails compilation if [`KEY_RENEWAL_INTERVAL`] + 1 is bigger than [`BitmapType::BITS`].
 ///

@@ -5,8 +5,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 use ockam_core::{async_trait, Error};
 
-use super::super::super::models::{ChangeHistory, Identifier};
-use super::AttributesEntry;
+use crate::models::{ChangeHistory, Identifier};
+use crate::AttributesEntry;
 
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]

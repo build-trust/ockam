@@ -1,10 +1,12 @@
-use super::super::IdentityError;
+use ockam_core::{Error, Result};
+use ockam_vault::{PublicKey, SecretType};
+
+use crate::IdentityError;
+
 use core::ops::Deref;
 use minicbor::bytes::ByteArray;
 use minicbor::encode::Write;
 use minicbor::{Decode, Decoder, Encode, Encoder};
-use ockam_core::{Error, Result};
-use ockam_vault::{PublicKey, SecretType};
 
 /// Ed25519 Public Key
 #[derive(Clone, Debug, PartialEq, Eq)]

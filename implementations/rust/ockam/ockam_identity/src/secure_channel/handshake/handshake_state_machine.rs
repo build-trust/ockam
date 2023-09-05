@@ -5,10 +5,10 @@ use ockam_core::{async_trait, Result};
 use ockam_vault::{KeyId, PublicKey, SecretType};
 use tracing::debug;
 
-use super::super::super::models::{
+use crate::models::{
     ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
 };
-use super::super::super::{
+use crate::{
     Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
 };
 

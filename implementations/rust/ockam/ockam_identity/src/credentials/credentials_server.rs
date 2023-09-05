@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-use minicbor::Decoder;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
@@ -8,10 +6,13 @@ use ockam_core::{Address, Error, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
 use ockam_node::{Context, WorkerBuilder};
 
-use super::super::credentials::credentials_server_worker::CredentialsServerWorker;
-use super::super::credentials::Credentials;
-use super::super::models::{CredentialAndPurposeKey, Identifier};
-use super::super::{IdentitySecureChannelLocalInfo, TrustContext};
+use crate::credentials::credentials_server_worker::CredentialsServerWorker;
+use crate::credentials::Credentials;
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::{IdentitySecureChannelLocalInfo, TrustContext};
+
+use async_trait::async_trait;
+use minicbor::Decoder;
 
 /// This trait allows an identity to send its credential to another identity
 /// located at the end of a secure channel route

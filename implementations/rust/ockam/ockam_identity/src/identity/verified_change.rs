@@ -1,4 +1,4 @@
-use super::super::models::{ChangeData, ChangeHash};
+use crate::models::{ChangeData, ChangeHash};
 use ockam_vault::PublicKey;
 
 /// Verified Changes of an [`Identity`]

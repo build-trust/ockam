@@ -1,4 +1,4 @@
-use super::super::models::{
+use crate::models::{
     ChangeHash, Ed25519Signature, Identifier, P256ECDSASignature, TimestampInSeconds,
 };
 use minicbor::{Decode, Encode};

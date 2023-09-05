@@ -1,6 +1,6 @@
-use super::super::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
-use super::super::utils::AttributesBuilder;
-use super::super::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
+use crate::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
+use crate::utils::AttributesBuilder;
+use crate::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::boxed::Box;

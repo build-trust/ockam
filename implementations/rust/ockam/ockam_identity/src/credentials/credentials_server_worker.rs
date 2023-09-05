@@ -1,6 +1,3 @@
-use minicbor::Decoder;
-use tracing::{debug, error, info, trace, warn};
-
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
@@ -8,9 +5,12 @@ use ockam_core::compat::{string::ToString, sync::Arc, vec::Vec};
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 
-use super::super::credentials::Credentials;
-use super::super::models::{CredentialAndPurposeKey, Identifier};
-use super::super::{IdentitySecureChannelLocalInfo, TrustContext};
+use crate::credentials::Credentials;
+use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::{IdentitySecureChannelLocalInfo, TrustContext};
+
+use minicbor::Decoder;
+use tracing::{debug, error, info, trace, warn};
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 

@@ -1,4 +1,4 @@
-use super::super::models::{Credential, PurposeKeyAttestation};
+use crate::models::{Credential, PurposeKeyAttestation};
 use minicbor::{Decode, Encode};
 
 /// [`Credential`] and the corresponding [`PurposeKeyAttestation`] that was used to issue that

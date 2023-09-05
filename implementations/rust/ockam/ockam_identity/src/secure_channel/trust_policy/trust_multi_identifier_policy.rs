@@ -4,8 +4,8 @@ use ockam_core::compat::string::ToString;
 use ockam_core::{async_trait, compat::vec::Vec, Result};
 use tracing::info;
 
-use super::super::super::models::Identifier;
-use super::super::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
+use crate::models::Identifier;
+use crate::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
 
 /// `TrustPolicy` based on list of pre-known `IdentityIdentifier`s of the possible participants
 #[derive(Clone)]

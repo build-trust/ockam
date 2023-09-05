@@ -1,12 +1,14 @@
-use super::super::models::{
-    ChangeHash, Ed25519PublicKey, Ed25519Signature, Identifier, P256ECDSAPublicKey,
-    P256ECDSASignature, TimestampInSeconds, X25519PublicKey,
-};
-use super::super::IdentityError;
-use minicbor::{Decode, Encode};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Error, Result};
 use ockam_vault::{PublicKey, SecretType};
+
+use crate::models::{
+    ChangeHash, Ed25519PublicKey, Ed25519Signature, Identifier, P256ECDSAPublicKey,
+    P256ECDSASignature, TimestampInSeconds, X25519PublicKey,
+};
+use crate::IdentityError;
+
+use minicbor::{Decode, Encode};
 
 /// Self-signed Attestation of an [`super::super::identity::Identity`] associating
 /// a [`super::super::purpose_key::PurposeKey`] with itself

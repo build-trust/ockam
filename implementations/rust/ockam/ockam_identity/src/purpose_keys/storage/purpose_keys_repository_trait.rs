@@ -4,8 +4,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 use ockam_core::{async_trait, Error};
 
-use super::super::super::models::{Identifier, PurposeKeyAttestation};
-use super::super::super::Purpose;
+use crate::models::{Identifier, PurposeKeyAttestation};
+use crate::Purpose;
 
 // TODO: Only one PurposeKey per Purpose per Identity is supported for now
 

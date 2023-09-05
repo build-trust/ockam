@@ -1,7 +1,7 @@
-use super::super::identity::Identity;
-use super::super::models::ChangeHistory;
-use super::super::Identities;
+use crate::identity::Identity;
+use crate::models::ChangeHistory;
 use crate::Identifier;
+use crate::Identities;
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;

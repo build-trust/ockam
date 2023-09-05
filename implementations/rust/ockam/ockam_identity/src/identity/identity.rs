@@ -1,7 +1,7 @@
-use super::super::models::{Change, ChangeHash, ChangeHistory, Identifier};
-use super::super::IdentityError;
-use super::verified_change::VerifiedChange;
-use super::IdentityHistoryComparison;
+use crate::models::{Change, ChangeHash, ChangeHistory, Identifier};
+use crate::verified_change::VerifiedChange;
+use crate::IdentityError;
+use crate::IdentityHistoryComparison;
 
 use core::cmp::Ordering;
 use core::fmt;
@@ -175,8 +175,8 @@ impl Display for Identity {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::identities;
     use super::*;
+    use crate::identities;
     use crate::Identities;
     use core::str::FromStr;
     use ockam_core::compat::rand::RngCore;
