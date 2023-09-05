@@ -39,11 +39,16 @@ impl PurposeKeyBuilder {
         identifier: Identifier,
         purpose: Purpose,
     ) -> Self {
+        let key = match purpose {
+            Purpose::SecureChannel => Key::Generate(SecretType::X25519),
+            Purpose::Credentials => Key::Generate(SecretType::Ed25519),
+        };
+
         Self {
             purpose_keys_creation,
             identifier,
             purpose,
-            key: Key::Generate(SecretType::Ed25519),
+            key,
             ttl: Ttl::CreatedNowWithTtl(DEFAULT_PURPOSE_KEY_TTL),
         }
     }
