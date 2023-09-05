@@ -94,6 +94,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         .unwrap();
     let data = identities
         .credentials()
+        .credentials_verification()
         .verify_credential(
             Some(imported.identifier()),
             &[auth_identity.identifier().clone()],

@@ -86,6 +86,7 @@ async fn run_impl(
 
     let credential = identities
         .credentials()
+        .credentials_creation()
         .issue_credential(
             &issuer,
             cmd.identity_identifier(),

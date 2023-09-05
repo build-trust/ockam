@@ -108,6 +108,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let _bob_credential_1st = secure_channels
         .identities()
         .credentials()
+        .credentials_creation()
         .issue_credential(
             authority.identifier(),
             bob.identifier(),
@@ -121,6 +122,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let bob_credential_2 = secure_channels
         .identities()
         .credentials()
+        .credentials_creation()
         .issue_credential(
             authority.identifier(),
             bob.identifier(),
@@ -145,6 +147,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let _alice_credential_1st = secure_channels
         .identities()
         .credentials()
+        .credentials_creation()
         .issue_credential(
             authority.identifier(),
             alice.identifier(),
@@ -158,6 +161,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let alice_credential_2 = secure_channels
         .identities()
         .credentials()
+        .credentials_creation()
         .issue_credential(
             authority.identifier(),
             alice.identifier(),

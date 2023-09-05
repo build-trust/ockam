@@ -65,6 +65,7 @@ impl AuthorityService {
 
         let credential_data = self
             .credentials
+            .credentials_verification()
             .verify_credential(Some(subject), &[self.identifier.clone()], &credential)
             .await?;
 

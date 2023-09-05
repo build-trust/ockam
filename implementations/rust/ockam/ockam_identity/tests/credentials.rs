@@ -67,6 +67,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let credential = credentials
+        .credentials_creation()
         .issue_credential(
             authority.identifier(),
             client.identifier(),
@@ -107,6 +108,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let client2 = identities_creation.create_identity().await?;
 
     let credential = credentials
+        .credentials_creation()
         .issue_credential(
             authority.identifier(),
             client1.identifier(),
@@ -147,6 +149,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let credential = credentials
+        .credentials_creation()
         .issue_credential(
             authority.identifier(),
             client2.identifier(),
@@ -253,6 +256,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let credential = credentials
+        .credentials_creation()
         .issue_credential(
             authority.identifier(),
             client.identifier(),
