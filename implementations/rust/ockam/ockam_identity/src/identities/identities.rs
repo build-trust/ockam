@@ -1,11 +1,12 @@
 use crate::identities::{IdentitiesKeys, IdentitiesRepository};
 use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
 use crate::{
-    Credentials, CredentialsServer, CredentialsServerModule, IdentitiesBuilder, IdentitiesCreation,
-    IdentitiesReader, IdentitiesStorage, PurposeKeys,
+    Credentials, CredentialsServer, CredentialsServerModule, Identifier, IdentitiesBuilder,
+    IdentitiesCreation, IdentitiesReader, IdentitiesStorage, Identity, PurposeKeys,
 };
 
 use ockam_core::compat::sync::Arc;
+use ockam_core::Result;
 use ockam_vault::Vault;
 
 /// This struct supports all the services related to identities
@@ -30,6 +31,22 @@ impl Identities {
     /// Return the purpose keys repository
     pub fn purpose_keys_repository(&self) -> Arc<dyn PurposeKeysRepository> {
         self.purpose_keys_repository.clone()
+    }
+
+    /// Get an [`Identity`] from the repository
+    pub async fn get_identity(&self, identifier: &Identifier) -> Result<Identity> {
+        let change_history = self.identities_repository.get_identity(identifier).await?;
+        Identity::import_from_change_history(
+            Some(identifier),
+            change_history,
+            self.vault.verifying_vault.clone(),
+        )
+        .await
+    }
+
+    /// Export an [`Identity`] from the repository
+    pub async fn export_identity(&self, identifier: &Identifier) -> Result<Vec<u8>> {
+        self.get_identity(identifier).await?.export()
     }
 
     /// Return the [`PurposeKeys`] instance
