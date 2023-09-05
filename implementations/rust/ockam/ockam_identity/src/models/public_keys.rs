@@ -100,7 +100,7 @@ impl TryFrom<PublicKey> for Ed25519PublicKey {
             SecretType::Ed25519 => {
                 let data = value.data()[0..32]
                     .try_into()
-                    .map_err(|_| IdentityError::InvalidKeyType)?;
+                    .map_err(|_| IdentityError::InvalidKeyData)?;
                 Ok(Self(data))
             }
             _ => Err(IdentityError::InvalidKeyType.into()),
@@ -116,7 +116,7 @@ impl TryFrom<PublicKey> for X25519PublicKey {
             SecretType::X25519 => {
                 let data = value.data()[0..32]
                     .try_into()
-                    .map_err(|_| IdentityError::InvalidKeyType)?;
+                    .map_err(|_| IdentityError::InvalidKeyData)?;
                 Ok(Self(data))
             }
             _ => Err(IdentityError::InvalidKeyType.into()),
@@ -132,7 +132,7 @@ impl TryFrom<PublicKey> for P256ECDSAPublicKey {
             SecretType::NistP256 => {
                 let data = value.data()[0..64]
                     .try_into()
-                    .map_err(|_| IdentityError::InvalidKeyType)?;
+                    .map_err(|_| IdentityError::InvalidKeyData)?;
                 Ok(Self(data))
             }
             _ => Err(IdentityError::InvalidKeyType.into()),

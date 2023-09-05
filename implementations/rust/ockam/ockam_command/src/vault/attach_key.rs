@@ -41,13 +41,14 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
     }
     let vault = v_state.get().await?;
     let idt = {
-        opts.state
+        let builder = opts
+            .state
             .get_identities(vault)
             .await?
             .identities_creation()
-            .create_identity_with_existing_key(&cmd.key_id)
-            .await
-            .into_diagnostic()?
+            .identity_builder();
+        let builder = builder.with_existing_key(cmd.key_id);
+        builder.build().await.into_diagnostic()?
     };
     let idt_name = cli_state::random_name();
     let idt_config = IdentityConfig::new(idt.identifier()).await;
@@ -86,7 +87,9 @@ mod tests {
 
         let identity = identities
             .identities_creation()
-            .create_identity_with_existing_key(&key_id)
+            .identity_builder()
+            .with_existing_key(key_id)
+            .build()
             .await?;
 
         identities

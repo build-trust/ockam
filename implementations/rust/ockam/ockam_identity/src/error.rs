@@ -8,6 +8,10 @@ use ockam_core::{
 pub enum IdentityError {
     /// Invalid key type
     InvalidKeyType = 1,
+    /// Invalid Key Data
+    InvalidKeyData,
+    /// Invalid Signature Data
+    InvalidSignatureData,
     /// Invalid Identifier format
     InvalidIdentifier,
     /// Identity Change History is empty

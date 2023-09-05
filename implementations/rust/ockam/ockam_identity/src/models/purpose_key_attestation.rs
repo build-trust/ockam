@@ -89,6 +89,7 @@ impl TryFrom<PublicKey> for CredentialSigningKey {
         match value.stype() {
             SecretType::Ed25519 => Ok(Self::Ed25519PublicKey(value.try_into()?)),
             SecretType::NistP256 => Ok(Self::P256ECDSAPublicKey(value.try_into()?)),
+
             _ => Err(IdentityError::InvalidKeyType.into()),
         }
     }

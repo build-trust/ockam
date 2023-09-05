@@ -8,6 +8,7 @@ use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+// TODO: Remove in favor of SecretType
 // TODO: Has room for better type-safety
 /// Attributes for secrets
 ///   - a type indicating how the secret is generated: Aes, Ed25519
@@ -29,10 +30,9 @@ pub enum SecretAttributes {
     NistP256,
 }
 
-impl SecretAttributes {
-    /// Return the type of a secret
-    pub fn secret_type(&self) -> SecretType {
-        match self {
+impl From<SecretAttributes> for SecretType {
+    fn from(value: SecretAttributes) -> Self {
+        match value {
             SecretAttributes::Buffer(_) => SecretType::Buffer,
             SecretAttributes::Aes128 => SecretType::Aes,
             SecretAttributes::Aes256 => SecretType::Aes,
@@ -40,6 +40,25 @@ impl SecretAttributes {
             SecretAttributes::X25519 => SecretType::X25519,
             SecretAttributes::NistP256 => SecretType::NistP256,
         }
+    }
+}
+
+impl From<SecretType> for SecretAttributes {
+    fn from(value: SecretType) -> Self {
+        match value {
+            SecretType::Buffer => panic!(), // FIXME
+            SecretType::Aes => panic!(),    // FIXME
+            SecretType::X25519 => SecretAttributes::X25519,
+            SecretType::Ed25519 => SecretAttributes::Ed25519,
+            SecretType::NistP256 => SecretAttributes::NistP256,
+        }
+    }
+}
+
+impl SecretAttributes {
+    /// Return the type of a secret
+    pub fn secret_type(&self) -> SecretType {
+        (*self).into()
     }
 
     /// Return the length of a secret
