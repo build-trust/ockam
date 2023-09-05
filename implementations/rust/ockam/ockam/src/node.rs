@@ -115,6 +115,7 @@ impl Node {
         let _ = self
             .identities()
             .purpose_keys()
+            .purpose_keys_creation()
             .create_purpose_key(identifier, Purpose::SecureChannel)
             .await?;
 

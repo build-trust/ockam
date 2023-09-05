@@ -102,6 +102,7 @@ impl SecureChannels {
         let purpose_key = self
             .identities
             .purpose_keys()
+            .purpose_keys_creation()
             .get_or_create_purpose_key(identifier, Purpose::SecureChannel)
             .await?;
 

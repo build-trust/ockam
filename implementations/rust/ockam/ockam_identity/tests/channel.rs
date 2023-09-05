@@ -971,6 +971,7 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
     secure_channels_alice
         .identities()
         .purpose_keys()
+        .purpose_keys_creation()
         .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
         .await?;
     assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
@@ -981,6 +982,7 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
     secure_channels_bob
         .identities()
         .purpose_keys()
+        .purpose_keys_creation()
         .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
         .await?;
 
