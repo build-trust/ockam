@@ -8,14 +8,6 @@ use ockam_api::DefaultAddress;
 
 use crate::Result;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IdentityConfig {
-    #[serde(default = "identity_default_addr")]
-    pub(crate) address: String,
-
-    #[serde(default)]
-    pub(crate) disabled: bool,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecureChannelListenerConfig {
@@ -71,7 +63,6 @@ pub struct OktaIdentityProviderConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceConfigs {
-    pub(crate) identity: Option<IdentityConfig>,
     pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
     pub(crate) verifier: Option<VerifierConfig>,
     pub(crate) authenticator: Option<AuthenticatorConfig>,
@@ -95,9 +86,6 @@ impl Config {
     }
 }
 
-fn identity_default_addr() -> String {
-    DefaultAddress::IDENTITY_SERVICE.to_string()
-}
 
 fn sec_listener_default_addr() -> String {
     DefaultAddress::SECURE_CHANNEL_LISTENER.to_string()

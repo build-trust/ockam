@@ -615,9 +615,6 @@ impl NodeManagerWorker {
             }
 
             // ==*== Services ==*==
-            (Post, ["node", "services", DefaultAddress::IDENTITY_SERVICE]) => {
-                encode_request_result(self.start_identity_service(ctx, req, dec).await)?
-            }
             (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => {
                 encode_request_result(self.start_authenticated_service(ctx, req, dec).await)?
             }

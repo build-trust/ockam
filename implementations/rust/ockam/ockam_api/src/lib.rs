@@ -155,7 +155,6 @@ extern crate tracing;
 pub struct DefaultAddress;
 
 impl DefaultAddress {
-    pub const IDENTITY_SERVICE: &'static str = "identity_service";
     pub const AUTHENTICATED_SERVICE: &'static str = "authenticated";
     pub const FORWARDING_SERVICE: &'static str = "forwarding_service";
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
@@ -178,8 +177,7 @@ impl DefaultAddress {
     pub fn is_valid(name: &str) -> bool {
         matches!(
             name,
-            Self::IDENTITY_SERVICE
-                | Self::AUTHENTICATED_SERVICE
+                 Self::AUTHENTICATED_SERVICE
                 | Self::FORWARDING_SERVICE
                 | Self::UPPERCASE_SERVICE
                 | Self::ECHO_SERVICE
@@ -202,7 +200,6 @@ impl DefaultAddress {
 
     pub fn iter() -> impl Iterator<Item = &'static str> {
         [
-            Self::IDENTITY_SERVICE,
             Self::AUTHENTICATED_SERVICE,
             Self::FORWARDING_SERVICE,
             Self::UPPERCASE_SERVICE,
@@ -302,7 +299,6 @@ mod test {
     #[test]
     fn test_default_address_is_valid() {
         assert!(!DefaultAddress::is_valid("foo"));
-        assert!(DefaultAddress::is_valid(DefaultAddress::IDENTITY_SERVICE));
         assert!(DefaultAddress::is_valid(
             DefaultAddress::AUTHENTICATED_SERVICE
         ));

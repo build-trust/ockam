@@ -4,10 +4,7 @@ use clap::{Args, Subcommand};
 
 mod secure_relay_inlet;
 mod secure_relay_outlet;
-mod service;
 use crate::sidecar::secure_relay_outlet::SecureRelayOutlet;
-
-use self::service::SidecarService;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -29,8 +26,6 @@ pub enum SidecarSubcommand {
     SecureRelayInlet(Box<SecureRelayInlet>),
     #[command(display_order = 801)]
     SecureRelayOutlet(Box<SecureRelayOutlet>),
-    #[command(display_order = 802)]
-    Service(Box<SidecarService>),
 }
 
 impl SidecarCommand {
@@ -38,7 +33,6 @@ impl SidecarCommand {
         match self.subcommand {
             SidecarSubcommand::SecureRelayOutlet(c) => c.run(options),
             SidecarSubcommand::SecureRelayInlet(c) => c.run(options),
-            SidecarSubcommand::Service(c) => c.run(options),
         }
     }
 }
