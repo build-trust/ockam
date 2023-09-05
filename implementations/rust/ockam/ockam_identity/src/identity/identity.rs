@@ -180,7 +180,7 @@ mod tests {
     use crate::Identities;
     use core::str::FromStr;
     use ockam_core::compat::rand::RngCore;
-    use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault, Vault};
+    use ockam_vault::{Secret, SecretAttributes, SecretType, SoftwareSigningVault, Vault};
     use rand::thread_rng;
 
     #[tokio::test]
@@ -232,7 +232,7 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
         let identity0 = identities0
             .identities_creation()
             .identity_builder()
-            .with_existing_key(key0)
+            .with_existing_key(key0, SecretType::Ed25519)
             .build()
             .await?;
         let identifier = identity0.identifier().clone();

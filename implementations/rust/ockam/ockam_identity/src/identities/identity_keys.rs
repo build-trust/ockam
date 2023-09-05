@@ -172,7 +172,7 @@ mod test {
     use ockam_core::errcode::{Kind, Origin};
     use ockam_core::Error;
     use ockam_node::Context;
-    use ockam_vault::SecretAttributes;
+    use ockam_vault::{SecretAttributes, SecretType};
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {
         Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
@@ -192,7 +192,13 @@ mod test {
         let created_at1 = now;
         let expires_at1 = created_at1 + 120.into();
 
-        let options1 = IdentityOptions::new(key1.clone(), false, created_at1, expires_at1);
+        let options1 = IdentityOptions::new(
+            key1.clone(),
+            SecretType::Ed25519,
+            false,
+            created_at1,
+            expires_at1,
+        );
         let identity1 = identities_keys.create_initial_key(options1).await?;
 
         // Identifier should not match
@@ -223,7 +229,13 @@ mod test {
 
         let created_at2 = now + 10.into();
         let expires_at2 = created_at2 + 120.into();
-        let options2 = IdentityOptions::new(key2.clone(), false, created_at2, expires_at2);
+        let options2 = IdentityOptions::new(
+            key2.clone(),
+            SecretType::Ed25519,
+            false,
+            created_at2,
+            expires_at2,
+        );
         let identity2 = identities_keys
             .rotate_key_with_options(identity1, options2)
             .await?;

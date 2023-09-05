@@ -1,4 +1,4 @@
-use ockam_vault::KeyId;
+use ockam_vault::{KeyId, SecretType};
 
 use crate::{Identifier, Purpose, TimestampInSeconds};
 
@@ -7,6 +7,7 @@ pub struct PurposeKeyOptions {
     pub(super) identifier: Identifier,
     pub(super) purpose: Purpose,
     pub(super) key: KeyId,
+    pub(super) stype: SecretType,
     pub(super) created_at: TimestampInSeconds,
     pub(super) expires_at: TimestampInSeconds,
 }
@@ -17,6 +18,7 @@ impl PurposeKeyOptions {
         identifier: Identifier,
         purpose: Purpose,
         key: KeyId,
+        stype: SecretType,
         created_at: TimestampInSeconds,
         expires_at: TimestampInSeconds,
     ) -> Self {
@@ -24,6 +26,7 @@ impl PurposeKeyOptions {
             identifier,
             purpose,
             key,
+            stype,
             created_at,
             expires_at,
         }
@@ -42,6 +45,11 @@ impl PurposeKeyOptions {
     /// New key
     pub fn key(&self) -> &KeyId {
         &self.key
+    }
+
+    /// Secret key type
+    pub fn stype(&self) -> SecretType {
+        self.stype
     }
 
     /// Creation timestamp
