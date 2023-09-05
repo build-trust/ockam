@@ -135,6 +135,7 @@ impl CommonStateMachine {
         let purpose_key = self
             .identities
             .purpose_keys()
+            .purpose_keys_verification()
             .verify_purpose_key_attestation(
                 Some(identity.identifier()),
                 &peer.purpose_key_attestation,
