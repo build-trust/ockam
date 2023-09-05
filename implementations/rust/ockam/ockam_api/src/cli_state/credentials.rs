@@ -26,7 +26,9 @@ impl CredentialState {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CredentialConfig {
     pub issuer_identifier: Identifier,
+    // FIXME: Appear as array of number in JSON
     pub encoded_issuer_change_history: Vec<u8>,
+    // FIXME: Appear as array of number in JSON
     pub encoded_credential: Vec<u8>,
 }
 
