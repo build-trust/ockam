@@ -425,6 +425,7 @@ pub mod test_utils {
         let credential = secure_channels
             .identities()
             .credentials()
+            .credentials_creation()
             .issue_credential(
                 identity.identifier(),
                 identity.identifier(),

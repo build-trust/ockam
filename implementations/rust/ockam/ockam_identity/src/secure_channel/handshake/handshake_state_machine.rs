@@ -187,6 +187,7 @@ impl CommonStateMachine {
                 let result = self
                     .identities
                     .credentials()
+                    .credentials_verification()
                     .receive_presented_credential(
                         their_identifier,
                         &[trust_context.authority()?.identifier().clone()],

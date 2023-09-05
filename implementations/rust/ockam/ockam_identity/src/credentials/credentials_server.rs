@@ -99,6 +99,7 @@ impl CredentialsServer for CredentialsServerModule {
 
         let credential_and_purpose_key: CredentialAndPurposeKey = dec.decode()?;
         self.credentials
+            .credentials_verification()
             .receive_presented_credential(&their_id, authorities, &credential_and_purpose_key)
             .await?;
 
