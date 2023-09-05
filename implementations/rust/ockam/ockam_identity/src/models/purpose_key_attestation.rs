@@ -1,12 +1,9 @@
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Error, Result};
-use ockam_vault::{PublicKey, SecretType};
 
 use crate::models::{
     ChangeHash, Ed25519PublicKey, Ed25519Signature, Identifier, P256ECDSAPublicKey,
     P256ECDSASignature, TimestampInSeconds, X25519PublicKey,
 };
-use crate::IdentityError;
 
 use minicbor::{Decode, Encode};
 
@@ -71,26 +68,4 @@ pub enum CredentialSigningKey {
     #[n(1)] Ed25519PublicKey(#[n(0)] Ed25519PublicKey),
     /// ECDSA P256 Public Key
     #[n(2)] P256ECDSAPublicKey(#[n(0)] P256ECDSAPublicKey),
-}
-
-impl From<CredentialSigningKey> for PublicKey {
-    fn from(value: CredentialSigningKey) -> Self {
-        match value {
-            CredentialSigningKey::Ed25519PublicKey(key) => key.into(),
-            CredentialSigningKey::P256ECDSAPublicKey(key) => key.into(),
-        }
-    }
-}
-
-impl TryFrom<PublicKey> for CredentialSigningKey {
-    type Error = Error;
-
-    fn try_from(value: PublicKey) -> Result<Self> {
-        match value.stype() {
-            SecretType::Ed25519 => Ok(Self::Ed25519PublicKey(value.try_into()?)),
-            SecretType::NistP256 => Ok(Self::P256ECDSAPublicKey(value.try_into()?)),
-
-            _ => Err(IdentityError::InvalidKeyType.into()),
-        }
-    }
 }

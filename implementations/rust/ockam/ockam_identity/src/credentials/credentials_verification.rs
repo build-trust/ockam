@@ -1,7 +1,5 @@
 use crate::identities::AttributesEntry;
-use crate::models::{
-    CredentialAndPurposeKey, CredentialData, CredentialSignature, Identifier, PurposePublicKey,
-};
+use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier, PurposePublicKey};
 use crate::utils::now;
 use crate::{
     CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeysVerification,
@@ -9,7 +7,7 @@ use crate::{
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{Signature, VerifyingVault};
+use ockam_vault::VerifyingVault;
 
 /// Service for managing [`Credential`]s
 pub struct CredentialsVerification {
@@ -74,14 +72,11 @@ impl CredentialsVerification {
             .sha256(&credential_and_purpose_key.credential.data)
             .await?;
 
-        let signature = match &credential_and_purpose_key.credential.signature {
-            CredentialSignature::Ed25519Signature(signature) => {
-                Signature::new(signature.0.to_vec())
-            }
-            CredentialSignature::P256ECDSASignature(signature) => {
-                Signature::new(signature.0.to_vec())
-            }
-        };
+        let signature = credential_and_purpose_key
+            .credential
+            .signature
+            .clone()
+            .into();
 
         if !self
             .verifying_vault
