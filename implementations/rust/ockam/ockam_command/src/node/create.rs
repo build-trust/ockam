@@ -392,13 +392,6 @@ async fn start_services(ctx: &Context, cfg: &Config) -> miette::Result<()> {
             secure_channel_listener::create_listener(ctx, adr, ids, identity, route![]).await?;
         }
     }
-    if let Some(cfg) = config.verifier {
-        if !cfg.disabled {
-            println!("starting verifier service ...");
-            let req = api::start_verifier_service(&cfg.address);
-            send_req_to_node_manager(ctx, req).await?;
-        }
-    }
     if let Some(cfg) = config.authenticator {
         if !cfg.disabled {
             println!("starting authenticator service ...");

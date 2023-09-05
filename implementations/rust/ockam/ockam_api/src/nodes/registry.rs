@@ -200,7 +200,6 @@ pub(crate) struct Registry {
     pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
     pub(crate) kafka_services: BTreeMap<Address, KafkaServiceInfo>,
     pub(crate) hop_services: BTreeMap<Address, HopServiceInfo>,
-    pub(crate) verifier_services: BTreeMap<Address, VerifierServiceInfo>,
     pub(crate) credentials_services: BTreeMap<Address, CredentialsServiceInfo>,
     #[cfg(feature = "direct-authenticator")]
     pub(crate) authenticator_service: BTreeMap<Address, AuthenticatorServiceInfo>,

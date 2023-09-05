@@ -140,7 +140,6 @@ pub mod okta;
 pub mod port_range;
 pub mod rpc_proxy_service;
 pub mod uppercase;
-pub mod verifier;
 
 mod schema;
 mod session;
@@ -166,7 +165,6 @@ impl DefaultAddress {
     pub const CREDENTIAL_ISSUER: &'static str = "credential_issuer";
     pub const ENROLLMENT_TOKEN_ISSUER: &'static str = "enrollment_token_issuer";
     pub const ENROLLMENT_TOKEN_ACCEPTOR: &'static str = "enrollment_token_acceptor";
-    pub const VERIFIER: &'static str = "verifier";
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
@@ -188,7 +186,6 @@ impl DefaultAddress {
                 | Self::CREDENTIAL_ISSUER
                 | Self::ENROLLMENT_TOKEN_ISSUER
                 | Self::ENROLLMENT_TOKEN_ACCEPTOR
-                | Self::VERIFIER
                 | Self::OKTA_IDENTITY_PROVIDER
                 | Self::KAFKA_CONSUMER
                 | Self::KAFKA_PRODUCER
@@ -211,7 +208,6 @@ impl DefaultAddress {
             Self::CREDENTIAL_ISSUER,
             Self::ENROLLMENT_TOKEN_ISSUER,
             Self::ENROLLMENT_TOKEN_ACCEPTOR,
-            Self::VERIFIER,
             Self::OKTA_IDENTITY_PROVIDER,
             Self::KAFKA_CONSUMER,
             Self::KAFKA_PRODUCER,
@@ -322,7 +318,6 @@ mod test {
         assert!(DefaultAddress::is_valid(
             DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR
         ));
-        assert!(DefaultAddress::is_valid(DefaultAddress::VERIFIER));
         assert!(DefaultAddress::is_valid(
             DefaultAddress::OKTA_IDENTITY_PROVIDER
         ));

@@ -29,12 +29,10 @@ use crate::nodes::models::services::{
     StartAuthenticatorRequest, StartCredentialsService, StartEchoerServiceRequest,
     StartHopServiceRequest, StartKafkaConsumerRequest,
     StartKafkaDirectRequest, StartKafkaOutletRequest, StartKafkaProducerRequest,
-    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
-    StartVerifierService,
+    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest
 };
 use crate::nodes::registry::{
-    AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
-    VerifierServiceInfo,
+    AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry
 };
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
@@ -474,34 +472,6 @@ impl NodeManagerWorker {
                 project,
             )
             .await?;
-        Ok(Response::ok(req.id()))
-    }
-
-    pub(super) async fn start_verifier_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
-        let mut node_manager = self.node_manager.write().await;
-        let body: StartVerifierService = dec.decode()?;
-        let addr: Address = body.address().into();
-
-        if node_manager.registry.verifier_services.contains_key(&addr) {
-            return Err(ApiError::generic("Verifier service exists at this address").into());
-        }
-
-        ctx.flow_controls()
-            .add_consumer(addr.clone(), &node_manager.api_transport_flow_control_id);
-
-        let vs = crate::verifier::Verifier::new(node_manager.identities());
-        ctx.start_worker(addr.clone(), vs).await?;
-
-        node_manager
-            .registry
-            .verifier_services
-            .insert(addr, VerifierServiceInfo::default());
-
         Ok(Response::ok(req.id()))
     }
 
@@ -982,9 +952,6 @@ impl NodeManagerWorker {
                 addr.address(),
                 DefaultAddress::HOP_SERVICE,
             ))
-        });
-        registry.verifier_services.keys().for_each(|addr| {
-            list.push(ServiceStatus::new(addr.address(), DefaultAddress::VERIFIER))
         });
         registry.credentials_services.keys().for_each(|addr| {
             list.push(ServiceStatus::new(

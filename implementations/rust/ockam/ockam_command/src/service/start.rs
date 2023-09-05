@@ -32,10 +32,6 @@ pub enum StartSubCommand {
         #[arg(long, default_value_t = authenticated_default_addr())]
         addr: String,
     },
-    Verifier {
-        #[arg(long, default_value_t = verifier_default_addr())]
-        addr: String,
-    },
     Credentials {
         #[arg(long)]
         identity: String,
@@ -62,10 +58,6 @@ fn hop_default_addr() -> String {
 
 fn authenticated_default_addr() -> String {
     DefaultAddress::AUTHENTICATED_SERVICE.to_string()
-}
-
-fn verifier_default_addr() -> String {
-    DefaultAddress::VERIFIER.to_string()
 }
 
 fn credentials_default_addr() -> String {
@@ -107,10 +99,6 @@ async fn run_impl(
         StartSubCommand::Authenticated { addr, .. } => {
             let req = api::start_authenticated_service(&addr);
             start_service_impl(ctx, &opts, &node_name, "Authenticated", req, Some(&tcp)).await?;
-            addr
-        }
-        StartSubCommand::Verifier { addr, .. } => {
-            start_verifier_service(ctx, &opts, &node_name, &addr, Some(&tcp)).await?;
             addr
         }
         StartSubCommand::Credentials {
@@ -176,18 +164,6 @@ pub async fn start_hop_service(
 ) -> Result<()> {
     let req = api::start_hop_service(serv_addr);
     start_service_impl(ctx, opts, node_name, "Hop", req, tcp).await
-}
-
-/// Public so `ockam_command::node::create` can use it.
-pub async fn start_verifier_service(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-    serv_addr: &str,
-    tcp: Option<&'_ TcpTransport>,
-) -> Result<()> {
-    let req = api::start_verifier_service(serv_addr);
-    start_service_impl(ctx, opts, node_name, "Verifier", req, tcp).await
 }
 
 /// Public so `ockam_command::node::create` can use it.
