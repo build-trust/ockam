@@ -15,7 +15,7 @@ pub struct PurposeKeys {
 
 impl PurposeKeys {
     /// Create a new identities module
-    pub(crate) fn new(
+    pub fn new(
         vault: Vault,
         identities_reader: Arc<dyn IdentitiesReader>,
         identity_keys: Arc<IdentitiesKeys>,

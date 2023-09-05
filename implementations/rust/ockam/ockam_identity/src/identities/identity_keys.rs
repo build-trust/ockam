@@ -6,7 +6,7 @@ use crate::{IdentityError, IdentityOptions};
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{KeyId, SigningVault, VerifyingVault};
+use ockam_vault::{KeyId, SecretType, SigningVault, VerifyingVault};
 
 use tracing::error;
 
@@ -104,6 +104,14 @@ impl IdentitiesKeys {
         identity_options: IdentityOptions,
         previous: Option<(ChangeHash, KeyId)>,
     ) -> Result<Change> {
+        match identity_options.stype {
+            SecretType::Ed25519 | SecretType::NistP256 => {}
+
+            SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
+                return Err(IdentityError::InvalidKeyType.into());
+            }
+        }
+
         let secret_key = identity_options.key;
         let public_key = self.signing_vault.get_public_key(&secret_key).await?;
         let stype = public_key.stype();
