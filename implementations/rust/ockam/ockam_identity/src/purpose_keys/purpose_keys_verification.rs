@@ -1,10 +1,8 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{Signature, VerifyingVault};
+use ockam_vault::VerifyingVault;
 
-use crate::models::{
-    Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, PurposeKeyAttestationSignature,
-};
+use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData};
 use crate::utils::now;
 use crate::{IdentitiesReader, Identity, IdentityError};
 
@@ -102,17 +100,13 @@ impl PurposeKeysVerification {
 
         let identity_public_key = latest_change.primary_public_key();
 
-        let signature = if let PurposeKeyAttestationSignature::Ed25519Signature(signature) =
-            &attestation.signature
-        {
-            Signature::new(signature.0.to_vec())
-        } else {
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
-        };
-
         if !self
             .verifying_vault
-            .verify(identity_public_key, &versioned_data_hash, &signature)
+            .verify(
+                identity_public_key,
+                &versioned_data_hash,
+                &attestation.signature.clone().into(),
+            )
             .await?
         {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
