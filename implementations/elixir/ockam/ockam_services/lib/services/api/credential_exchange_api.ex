@@ -96,8 +96,7 @@ defmodule Ockam.Services.API.CredentialExchange do
     prepare_result =
       Enum.reduce(authorities_config, {:ok, []}, fn
         identity_data, {:ok, tuple_list} ->
-          with {:ok, identity} <- Identity.make_identity(identity_data),
-               {:ok, identity_id} <- Identity.validate_identity_change_history(identity) do
+          with  {:ok, identity, identity_id} <- Identity.validate_contact_data(identity_data) do
             {:ok, [{identity_id, Identity.get_data(identity)} | tuple_list]}
           end
 

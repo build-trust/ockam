@@ -5,7 +5,9 @@ defmodule Ockam.Services.Provider.SecureChannel do
   """
   @behaviour Ockam.Services.Provider
 
-  alias Ockam.Vault.Software, as: SoftwareVault
+  alias Ockam.Identity
+  alias Ockam.SecureChannel.Crypto
+
 
   @services [:secure_channel]
 
@@ -32,23 +34,21 @@ defmodule Ockam.Services.Provider.SecureChannel do
   end
 
   def service_options(:secure_channel, args) do
-    ## TODO: make it possible to read service identity from some storage
-    identity_module = Keyword.get(args, :identity_module, Ockam.Identity.default_implementation())
-
     trust_policies =
       Keyword.get(args, :trust_policies, [
         {:cached_identity, [Ockam.Identity.TrustPolicy.KnownIdentitiesEts]}
       ])
 
-    other_args = Keyword.drop(args, [:identity_module, :trust_policies])
+    other_args = Keyword.drop(args, [:trust_policies])
 
-    with {:ok, vault} <- SoftwareVault.init(),
-         {:ok, keypair} <- Ockam.Vault.secret_generate(vault, type: :curve25519) do
+
+    with {:ok, identity} <- Identity.create(),
+         {:ok, keypair} <- Crypto.generate_dh_keypair(),
+         {:ok, attestation} <- Identity.attest_purpose_key(identity, keypair.public) do
       Keyword.merge(
         [
-          identity: :dynamic,
-          identity_module: identity_module,
-          encryption_options: [vault: vault, static_keypair: keypair],
+	  identity: identity,
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           address: "secure_channel",
           trust_policies: trust_policies
         ],
