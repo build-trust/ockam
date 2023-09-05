@@ -1,10 +1,10 @@
-use crate::identity::Identity;
-use crate::models::ChangeHistory;
-use crate::Identifier;
-use crate::Identities;
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
+use ockam_identity::models::ChangeHistory;
+use ockam_identity::Identifier;
+use ockam_identity::Identities;
+use ockam_identity::Identity;
 use ockam_vault::Vault;
 use ockam_vault::{KeyId, PublicKey, SecretAttributes, Signature, SigningVault, VerifyingVault};
 use rand::{thread_rng, Rng};
@@ -13,15 +13,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 #[tokio::test]
 async fn test_valid_identity() -> Result<()> {
     let identities = Identities::builder().build();
-    let mut identity = identities.identities_creation().create_identity().await?;
+    let identities_creation = identities.identities_creation();
+    let identity = identities_creation.create_identity().await?;
 
     let j: i32 = thread_rng().gen_range(1..10);
     for _ in 0..j {
-        identity = identities.identities_keys().rotate_key(identity).await?;
+        // We internally check the validity during the rotation
+        identities_creation
+            .rotate_identity(identity.identifier())
+            .await?;
     }
-
-    let res = check_identity(&identity).await;
-    assert!(res.is_ok());
 
     Ok(())
 }
@@ -36,7 +37,9 @@ async fn test_invalid_signature() -> Result<()> {
             verifying_vault: vault.verifying_vault,
         });
         let identities = Identities::builder().with_vault(vault).build();
-        let mut identity = identities.identities_creation().create_identity().await?;
+        let identities_creation = identities.identities_creation();
+        let identity = identities_creation.create_identity().await?;
+        let identifier = identity.identifier().clone();
         let res = check_identity(&identity).await;
 
         if crazy_signing_vault.forged_operation_occurred() {
@@ -47,9 +50,12 @@ async fn test_invalid_signature() -> Result<()> {
         }
 
         loop {
-            identity = identities.identities_keys().rotate_key(identity).await?;
+            identities_creation.rotate_identity(&identifier).await?;
+
+            let identity = identities.get_identity(&identifier).await?;
 
             let res = check_identity(&identity).await;
+
             if crazy_signing_vault.forged_operation_occurred() {
                 assert!(res.is_err());
                 break;
@@ -66,15 +72,23 @@ async fn test_invalid_signature() -> Result<()> {
 async fn test_eject_signatures() -> Result<()> {
     for _ in 0..10 {
         let identities = Identities::builder().build();
-        let mut identity = identities.identities_creation().create_identity().await?;
+        let identities_creation = identities.identities_creation();
+        let identity = identities_creation.create_identity().await?;
+        let identifier = identity.identifier().clone();
 
         let j: i32 = thread_rng().gen_range(1..10);
         for _ in 0..j {
-            identity = identities.identities_keys().rotate_key(identity).await?;
+            identities_creation
+                .rotate_identity(identity.identifier())
+                .await?;
         }
 
+        let identity = identities
+            .repository()
+            .get_identity(identity.identifier())
+            .await?;
         let change_history = eject_random_signature(&identity)?;
-        let res = check_change_history(Some(identity.identifier()), change_history).await;
+        let res = check_change_history(Some(&identifier), change_history).await;
         assert!(res.is_err());
     }
 
@@ -107,8 +121,8 @@ async fn check_change_history(
     .await
 }
 
-pub fn eject_random_signature(identity: &Identity) -> Result<ChangeHistory> {
-    let mut history = identity.change_history().clone();
+pub fn eject_random_signature(change_history: &ChangeHistory) -> Result<ChangeHistory> {
+    let mut history = change_history.clone();
 
     let i = thread_rng().gen_range(1..history.0.len());
     let change = &mut history.0[i];

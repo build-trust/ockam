@@ -231,8 +231,11 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
 
         let identity0 = identities0
             .identities_creation()
-            .create_identity_with_existing_key(&key0)
+            .identity_builder()
+            .with_existing_key(key0)
+            .build()
             .await?;
+        let identifier = identity0.identifier().clone();
         let identity0_bin = identity0.export()?;
 
         let identities01 = Identities::builder()
@@ -254,20 +257,24 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
             .identities_creation()
             .import_private_identity(&identity0_bin, &key01)
             .await?;
+        assert_eq!(identity01.identifier(), &identifier);
         let identity02 = identities02
             .identities_creation()
             .import_private_identity(&identity0_bin, &key02)
             .await?;
+        assert_eq!(identity02.identifier(), &identifier);
 
-        let identity01 = identities01
-            .identities_keys()
-            .rotate_key(identity01.clone())
+        identities01
+            .identities_creation()
+            .rotate_identity(&identifier)
             .await?;
+        let identity01 = identities01.get_identity(&identifier).await?;
 
-        let identity02 = identities02
-            .identities_keys()
-            .rotate_key(identity02.clone())
+        identities02
+            .identities_creation()
+            .rotate_identity(&identifier)
             .await?;
+        let identity02 = identities02.get_identity(&identifier).await?;
 
         assert_eq!(
             identity0.compare(&identity0),

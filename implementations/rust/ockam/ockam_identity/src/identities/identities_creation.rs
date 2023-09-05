@@ -1,16 +1,17 @@
-use crate::IdentityHistoryComparison;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::{KeyId, SigningVault, VerifyingVault};
 
+use crate::identities::identity_builder::IdentityBuilder;
 use crate::models::{ChangeHistory, Identifier};
 use crate::{IdentitiesKeys, IdentitiesRepository, Identity, IdentityError};
+use crate::{IdentityHistoryComparison, IdentityOptions};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
-    repository: Arc<dyn IdentitiesRepository>,
-    signing_vault: Arc<dyn SigningVault>,
-    verifying_vault: Arc<dyn VerifyingVault>,
+    pub(super) repository: Arc<dyn IdentitiesRepository>,
+    pub(super) signing_vault: Arc<dyn SigningVault>,
+    pub(super) verifying_vault: Arc<dyn VerifyingVault>,
 }
 
 impl IdentitiesCreation {
@@ -69,34 +70,63 @@ impl IdentitiesCreation {
         Ok(identity)
     }
 
+    /// Get an instance of [`IdentityBuilder`]
+    pub fn identity_builder(&self) -> IdentityBuilder {
+        IdentityBuilder::new(Arc::new(Self::new(
+            self.repository.clone(),
+            self.signing_vault.clone(),
+            self.verifying_vault.clone(),
+        )))
+    }
+
     /// Create an `Identity` and store it
     pub async fn create_identity(&self) -> Result<Identity> {
-        self.make_and_persist_identity(None).await
+        let builder = self.identity_builder();
+        builder.build().await
+    }
+
+    /// Create an `Identity` and store it
+    pub async fn create_identity_with_options(&self, options: IdentityOptions) -> Result<Identity> {
+        let identity = self.identities_keys().create_initial_key(options).await?;
+        self.repository
+            .update_identity(identity.identifier(), identity.change_history())
+            .await?;
+        Ok(identity)
     }
 
     /// Rotate an existing `Identity` and update the stored version
-    pub async fn rotate_identity(&self, identifier: Identifier) -> Result<()> {
-        let change_history = self.repository.get_identity(&identifier).await?;
+    pub async fn rotate_identity(&self, identifier: &Identifier) -> Result<()> {
+        let builder = self.identity_builder();
+        let options = builder.build_options().await?;
+
+        self.rotate_identity_with_options(identifier, options).await
+    }
+
+    /// Rotate an existing `Identity` and update the stored version
+    pub async fn rotate_identity_with_options(
+        &self,
+        identifier: &Identifier,
+        options: IdentityOptions,
+    ) -> Result<()> {
+        let change_history = self.repository.get_identity(identifier).await?;
 
         let identity = Identity::import_from_change_history(
-            Some(&identifier),
+            Some(identifier),
             change_history,
             self.verifying_vault.clone(),
         )
         .await?;
 
-        let identity = self.identities_keys().rotate_key(identity).await?;
+        let identity = self
+            .identities_keys()
+            .rotate_key_with_options(identity, options)
+            .await?;
 
         self.repository
             .update_identity(identity.identifier(), identity.change_history())
             .await?;
 
         Ok(())
-    }
-
-    /// Create an `Identity` with a key previously created in the Vault and store it
-    pub async fn create_identity_with_existing_key(&self, key_id: &KeyId) -> Result<Identity> {
-        self.make_and_persist_identity(Some(key_id)).await
     }
 
     /// Import an existing Identity from its binary format
@@ -157,67 +187,4 @@ impl IdentitiesCreation {
 
         Ok(())
     }
-    /// Make a new identity with its key and attributes
-    /// and persist it
-    async fn make_and_persist_identity(&self, key_id: Option<&KeyId>) -> Result<Identity> {
-        let identity = self.identities_keys().create_initial_key(key_id).await?;
-        self.repository
-            .update_identity(identity.identifier(), identity.change_history())
-            .await?;
-        Ok(identity)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::identities;
-    use crate::models::Identifier;
-    use core::str::FromStr;
-
-    #[tokio::test]
-    async fn test_identity_creation() -> Result<()> {
-        let identities = identities();
-        let creation = identities.identities_creation();
-        let repository = identities.repository();
-        let keys = identities.identities_keys();
-
-        let identity = creation.create_identity().await?;
-        let actual = repository.get_identity(identity.identifier()).await?;
-
-        let actual = Identity::import_from_change_history(
-            Some(identity.identifier()),
-            actual,
-            identities.vault().verifying_vault,
-        )
-        .await?;
-        assert_eq!(
-            actual, identity,
-            "the identity can be retrieved from the repository"
-        );
-
-        let actual = repository.retrieve_identity(identity.identifier()).await?;
-        assert!(actual.is_some());
-        let actual = Identity::import_from_change_history(
-            Some(identity.identifier()),
-            actual.unwrap(),
-            identities.vault().verifying_vault,
-        )
-        .await?;
-        assert_eq!(
-            actual, identity,
-            "the identity can be retrieved from the repository as an Option"
-        );
-
-        let another_identifier = Identifier::from_str("Ie92f183eb4c324804ef4d62962dea94cf095a265")?;
-        let missing = repository.retrieve_identity(&another_identifier).await?;
-        assert_eq!(missing, None, "a missing identity returns None");
-
-        let root_key = keys.get_secret_key(&identity).await;
-        assert!(root_key.is_ok(), "there is a key for the created identity");
-
-        Ok(())
-    }
-
-    // TODO TEST: rotation
 }

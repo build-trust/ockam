@@ -1,14 +1,12 @@
 use crate::identity::Identity;
 use crate::models::{
-    Change, ChangeData, ChangeHash, ChangeHistory, ChangeSignature, Ed25519PublicKey,
-    Ed25519Signature, PrimaryPublicKey, VersionedData,
+    Change, ChangeData, ChangeHash, ChangeHistory, ChangeSignature, VersionedData,
 };
-use crate::utils::{add_seconds, now};
-use crate::IdentityError;
+use crate::{IdentityError, IdentityOptions};
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{KeyId, SecretAttributes, SecretType, SigningVault, VerifyingVault};
+use ockam_vault::{KeyId, SigningVault, VerifyingVault};
 
 use tracing::error;
 
@@ -19,8 +17,8 @@ pub struct IdentitiesKeys {
 }
 
 impl IdentitiesKeys {
-    pub(crate) async fn create_initial_key(&self, key_id: Option<&KeyId>) -> Result<Identity> {
-        let change = self.make_change(key_id, None).await?;
+    pub(crate) async fn create_initial_key(&self, options: IdentityOptions) -> Result<Identity> {
+        let change = self.make_change(options, None).await?;
         let change_history = ChangeHistory(vec![change]);
 
         let identity = Identity::import_from_change_history(
@@ -48,7 +46,11 @@ impl IdentitiesKeys {
     }
 
     /// Rotate the Identity Key
-    pub async fn rotate_key(&self, identity: Identity) -> Result<Identity> {
+    pub async fn rotate_key_with_options(
+        &self,
+        identity: Identity,
+        options: IdentityOptions,
+    ) -> Result<Identity> {
         let last_change = match identity.changes().last() {
             Some(last_change) => last_change,
             None => return Err(IdentityError::EmptyIdentity.into()),
@@ -58,7 +60,7 @@ impl IdentitiesKeys {
 
         let change = self
             .make_change(
-                None,
+                options,
                 Some((last_change.change_hash().clone(), last_secret_key.clone())),
             )
             .await?;
@@ -99,29 +101,21 @@ impl IdentitiesKeys {
     /// Create a new key
     async fn make_change(
         &self,
-        secret: Option<&KeyId>,
+        identity_options: IdentityOptions,
         previous: Option<(ChangeHash, KeyId)>,
     ) -> Result<Change> {
-        let secret_key = self.generate_key_if_needed(secret).await?;
+        let secret_key = identity_options.key;
         let public_key = self.signing_vault.get_public_key(&secret_key).await?;
+        let stype = public_key.stype();
 
-        if public_key.stype() != SecretType::Ed25519 {
-            // TODO: Not supported yet
-            return Err(IdentityError::IdentityVerificationFailed.into());
-        }
-
-        let public_key = Ed25519PublicKey(public_key.data().try_into().unwrap()); // FIXME
-
-        let created_at = now()?;
-        let ten_years = 10 * 365 * 24 * 60 * 60; // TODO: Allow to customize
-        let expires_at = add_seconds(&created_at, ten_years);
+        let primary_public_key = public_key.try_into()?;
 
         let change_data = ChangeData {
             previous_change: previous.as_ref().map(|x| x.0.clone()),
-            primary_public_key: PrimaryPublicKey::Ed25519PublicKey(public_key),
-            revoke_all_purpose_keys: false, // TODO: Allow to choose
-            created_at,
-            expires_at,
+            primary_public_key,
+            revoke_all_purpose_keys: identity_options.revoke_all_purpose_keys,
+            created_at: identity_options.created_at,
+            expires_at: identity_options.expires_at,
         };
 
         let change_data = minicbor::to_vec(&change_data)?;
@@ -136,8 +130,7 @@ impl IdentitiesKeys {
         let hash = self.verifying_vault.sha256(&versioned_data).await?;
 
         let self_signature = self.signing_vault.sign(&secret_key, hash.as_ref()).await?;
-        let self_signature = Ed25519Signature(self_signature.as_ref().try_into().unwrap()); // FIXME
-        let self_signature = ChangeSignature::Ed25519Signature(self_signature);
+        let self_signature = ChangeSignature::try_from_signature(self_signature, stype)?;
 
         // If we have previous_key passed we should sign using it
         // If there is no previous_key - we're creating new identity, so we just generated the key
@@ -147,9 +140,12 @@ impl IdentitiesKeys {
                     .signing_vault
                     .sign(&previous_key, hash.as_ref())
                     .await?;
-                let previous_signature =
-                    Ed25519Signature(previous_signature.as_ref().try_into().unwrap()); // FIXME
-                let previous_signature = ChangeSignature::Ed25519Signature(previous_signature);
+                // TODO: Optimize
+                let previous_public_key = self.signing_vault.get_public_key(&previous_key).await?;
+                let previous_signature = ChangeSignature::try_from_signature(
+                    previous_signature,
+                    previous_public_key.stype(),
+                )?;
 
                 Some(previous_signature)
             }
@@ -164,16 +160,6 @@ impl IdentitiesKeys {
 
         Ok(change)
     }
-
-    async fn generate_key_if_needed(&self, secret: Option<&KeyId>) -> Result<KeyId> {
-        if let Some(s) = secret {
-            Ok(s.clone())
-        } else {
-            self.signing_vault
-                .generate_key(SecretAttributes::Ed25519 /* FIXME */)
-                .await
-        }
-    }
 }
 
 #[cfg(test)]
@@ -181,10 +167,12 @@ mod test {
     use super::*;
     use crate::identities;
     use crate::models::Identifier;
+    use crate::utils::now;
     use core::str::FromStr;
     use ockam_core::errcode::{Kind, Origin};
     use ockam_core::Error;
     use ockam_node::Context;
+    use ockam_vault::SecretAttributes;
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {
         Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
@@ -193,13 +181,24 @@ mod test {
     #[ockam_macros::test]
     async fn test_basic_identity_key_ops(ctx: &mut Context) -> Result<()> {
         let identities = identities();
-        let identity_keys = identities.identities_keys();
-        let identity = identities.identities_creation().create_identity().await?;
+        let identities_keys = identities.identities_keys();
+
+        let key1 = identities_keys
+            .signing_vault
+            .generate_key(SecretAttributes::Ed25519)
+            .await?;
+
+        let now = now()?;
+        let created_at1 = now;
+        let expires_at1 = created_at1 + 120.into();
+
+        let options1 = IdentityOptions::new(key1.clone(), false, created_at1, expires_at1);
+        let identity1 = identities_keys.create_initial_key(options1).await?;
 
         // Identifier should not match
         let res = Identity::import_from_change_history(
             Some(&Identifier::from_str("Iabababababababababababababababababababab").unwrap()),
-            identity.change_history().clone(),
+            identity1.change_history().clone(),
             identities.vault().verifying_vault,
         )
         .await;
@@ -207,27 +206,48 @@ mod test {
 
         // Check if verification succeeds
         let _ = Identity::import_from_change_history(
-            Some(identity.identifier()),
-            identity.change_history().clone(),
+            Some(identity1.identifier()),
+            identity1.change_history().clone(),
             identities.vault().verifying_vault,
         )
         .await?;
 
-        let secret1 = identity_keys.get_secret_key(&identity).await?;
-        let public1 = identity.get_latest_public_key()?;
+        let secret1 = identities_keys.get_secret_key(&identity1).await?;
+        let public1 = identity1.get_latest_public_key()?;
+        assert_eq!(secret1, key1);
 
-        let identity = identity_keys.rotate_key(identity).await?;
+        let key2 = identities_keys
+            .signing_vault
+            .generate_key(SecretAttributes::Ed25519)
+            .await?;
+
+        let created_at2 = now + 10.into();
+        let expires_at2 = created_at2 + 120.into();
+        let options2 = IdentityOptions::new(key2.clone(), false, created_at2, expires_at2);
+        let identity2 = identities_keys
+            .rotate_key_with_options(identity1, options2)
+            .await?;
+
+        // Identifier should not match
+        let res = Identity::import_from_change_history(
+            Some(&Identifier::from_str("Iabababababababababababababababababababab").unwrap()),
+            identity2.change_history().clone(),
+            identities.vault().verifying_vault,
+        )
+        .await;
+        assert!(res.is_err());
 
         // Check if verification succeeds
         let _ = Identity::import_from_change_history(
-            Some(identity.identifier()),
-            identity.change_history().clone(),
+            Some(identity2.identifier()),
+            identity2.change_history().clone(),
             identities.vault().verifying_vault,
         )
         .await?;
 
-        let secret2 = identity_keys.get_secret_key(&identity).await?;
-        let public2 = identity.get_latest_public_key()?;
+        let secret2 = identities_keys.get_secret_key(&identity2).await?;
+        let public2 = identity2.get_latest_public_key()?;
+        assert_eq!(secret2, key2);
 
         if secret1 == secret2 {
             return test_error("secret did not change after rotate_key");
