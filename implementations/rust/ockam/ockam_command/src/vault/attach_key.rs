@@ -41,14 +41,24 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
     }
     let vault = v_state.get().await?;
     let idt = {
-        let builder = opts
+        let identities_creation = opts
             .state
             .get_identities(vault)
             .await?
-            .identities_creation()
-            .identity_builder();
-        let builder = builder.with_existing_key(cmd.key_id);
-        builder.build().await.into_diagnostic()?
+            .identities_creation();
+
+        let public_key = identities_creation
+            .signing_vault()
+            .get_public_key(&cmd.key_id)
+            .await
+            .into_diagnostic()?;
+
+        identities_creation
+            .identity_builder()
+            .with_existing_key(cmd.key_id, public_key.stype())
+            .build()
+            .await
+            .into_diagnostic()?
     };
     let idt_name = cli_state::random_name();
     let idt_config = IdentityConfig::new(idt.identifier()).await;
@@ -61,7 +71,7 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
 mod tests {
     use ockam::identity::Identities;
     use ockam_core::Result;
-    use ockam_vault::{SecretAttributes, Vault};
+    use ockam_vault::{SecretAttributes, SecretType, Vault};
     use ockam_vault_aws::AwsSigningVault;
     use std::sync::Arc;
 
@@ -86,7 +96,7 @@ mod tests {
         let identity = identities
             .identities_creation()
             .identity_builder()
-            .with_existing_key(key_id.clone())
+            .with_existing_key(key_id.clone(), SecretType::NistP256)
             .build()
             .await?;
 

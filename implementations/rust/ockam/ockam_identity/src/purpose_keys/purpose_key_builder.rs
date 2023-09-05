@@ -11,7 +11,7 @@ pub const DEFAULT_PURPOSE_KEY_TTL: TimestampInSeconds = TimestampInSeconds(5 * 3
 
 enum Key {
     Generate(SecretType),
-    Existing(KeyId),
+    Existing { key_id: KeyId, stype: SecretType },
 }
 
 enum Ttl {
@@ -49,8 +49,8 @@ impl PurposeKeyBuilder {
     }
 
     /// Use an existing key for the Identity (should be present in the corresponding Vault)
-    pub fn with_existing_key(mut self, key_id: KeyId) -> Self {
-        self.key = Key::Existing(key_id);
+    pub fn with_existing_key(mut self, key_id: KeyId, stype: SecretType) -> Self {
+        self.key = Key::Existing { key_id, stype };
         self
     }
 
@@ -81,24 +81,28 @@ impl PurposeKeyBuilder {
 
     /// Create the corresponding [`PurposeKeyOptions`] object
     pub async fn build_options(self) -> Result<PurposeKeyOptions> {
-        let key = match self.key {
-            Key::Generate(stype) => match &self.purpose {
-                Purpose::SecureChannel => {
-                    self.purpose_keys_creation
-                        .vault()
-                        .secure_channel_vault
-                        .generate_static_secret(stype.into())
-                        .await?
-                }
-                Purpose::Credentials => {
-                    self.purpose_keys_creation
-                        .vault()
-                        .signing_vault
-                        .generate_key(stype.into())
-                        .await?
-                }
-            },
-            Key::Existing(key) => key,
+        let (key_id, stype) = match self.key {
+            Key::Generate(stype) => {
+                let key_id = match &self.purpose {
+                    Purpose::SecureChannel => {
+                        self.purpose_keys_creation
+                            .vault()
+                            .secure_channel_vault
+                            .generate_static_secret(stype.into())
+                            .await?
+                    }
+                    Purpose::Credentials => {
+                        self.purpose_keys_creation
+                            .vault()
+                            .signing_vault
+                            .generate_key(stype.into())
+                            .await?
+                    }
+                };
+
+                (key_id, stype)
+            }
+            Key::Existing { key_id, stype } => (key_id, stype),
         };
 
         let (created_at, expires_at) = match self.ttl {
@@ -114,13 +118,14 @@ impl PurposeKeyBuilder {
             } => (created_at, expires_at),
         };
 
-        let options = PurposeKeyOptions {
-            identifier: self.identifier,
-            purpose: self.purpose,
-            key,
+        let options = PurposeKeyOptions::new(
+            self.identifier,
+            self.purpose,
+            key_id,
+            stype,
             created_at,
             expires_at,
-        };
+        );
 
         Ok(options)
     }

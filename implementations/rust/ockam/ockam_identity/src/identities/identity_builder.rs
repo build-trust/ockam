@@ -12,7 +12,7 @@ pub const DEFAULT_IDENTITY_TTL: TimestampInSeconds = TimestampInSeconds(10 * 365
 
 enum Key {
     Generate(SecretType),
-    Existing(KeyId),
+    Existing { key_id: KeyId, stype: SecretType },
 }
 
 enum Ttl {
@@ -44,8 +44,8 @@ impl IdentityBuilder {
     }
 
     /// Use an existing key for the Identity (should be present in the corresponding [`SigningVault`])
-    pub fn with_existing_key(mut self, key_id: KeyId) -> Self {
-        self.key = Key::Existing(key_id);
+    pub fn with_existing_key(mut self, key_id: KeyId, stype: SecretType) -> Self {
+        self.key = Key::Existing { key_id, stype };
         self
     }
 
@@ -82,14 +82,17 @@ impl IdentityBuilder {
 
     /// Create the corresponding [`IdentityOptions`] object
     pub async fn build_options(self) -> Result<IdentityOptions> {
-        let key = match self.key {
+        let (key, stype) = match self.key {
             Key::Generate(stype) => {
-                self.identities_creation
+                let key = self
+                    .identities_creation
                     .signing_vault
                     .generate_key(stype.into())
-                    .await?
+                    .await?;
+
+                (key, stype)
             }
-            Key::Existing(key) => key,
+            Key::Existing { key_id, stype } => (key_id, stype),
         };
 
         let (created_at, expires_at) = match self.ttl {
@@ -105,12 +108,13 @@ impl IdentityBuilder {
             } => (created_at, expires_at),
         };
 
-        let options = IdentityOptions {
+        let options = IdentityOptions::new(
             key,
-            revoke_all_purpose_keys: self.revoke_all_purpose_keys,
+            stype,
+            self.revoke_all_purpose_keys,
             created_at,
             expires_at,
-        };
+        );
 
         Ok(options)
     }

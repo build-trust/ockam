@@ -147,6 +147,16 @@ impl IdentitiesCreation {
             .await?;
         Ok(identity)
     }
+
+    /// [`SigningVault`]
+    pub fn signing_vault(&self) -> Arc<dyn SigningVault> {
+        self.signing_vault.clone()
+    }
+
+    /// [`VerifyingVault`]
+    pub fn verifying_vault(&self) -> Arc<dyn VerifyingVault> {
+        self.verifying_vault.clone()
+    }
 }
 
 impl IdentitiesCreation {
