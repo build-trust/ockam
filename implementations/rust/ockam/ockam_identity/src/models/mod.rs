@@ -1,4 +1,5 @@
 mod change_history;
+mod conversions;
 mod credential;
 mod credential_and_purpose_key;
 mod encoding_utils;

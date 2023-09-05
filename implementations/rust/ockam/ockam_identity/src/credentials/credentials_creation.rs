@@ -1,13 +1,12 @@
 use crate::models::{
     Attributes, Credential, CredentialAndPurposeKey, CredentialData, CredentialSignature,
-    Ed25519Signature, Identifier, VersionedData,
+    Identifier, VersionedData,
 };
 use crate::utils::{add_seconds, now};
 use crate::{IdentitiesRepository, Identity, Purpose, PurposeKeysCreation};
 
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::{SigningVault, VerifyingVault};
 
@@ -88,9 +87,8 @@ impl CredentialsCreation {
             .signing_vault
             .sign(issuer_purpose_key.key_id(), &versioned_data_hash)
             .await?;
-        let signature: Vec<u8> = signature.into();
-        let signature = Ed25519Signature(signature.try_into().unwrap()); // FIXME
-        let signature = CredentialSignature::Ed25519Signature(signature);
+        let signature =
+            CredentialSignature::try_from_signature(signature, issuer_purpose_key.stype())?;
 
         let credential = Credential {
             data: versioned_data,
