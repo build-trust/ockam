@@ -92,6 +92,26 @@ impl PurposeKeysCreation {
     ) -> Result<PurposeKey> {
         // TODO: Check if such key already exists and rewrite it correctly (also delete from the Vault)
 
+        match options.purpose {
+            Purpose::SecureChannel => match options.stype {
+                SecretType::X25519 => {}
+
+                SecretType::Buffer
+                | SecretType::Aes
+                | SecretType::Ed25519
+                | SecretType::NistP256 => {
+                    return Err(IdentityError::InvalidKeyType.into());
+                }
+            },
+            Purpose::Credentials => match options.stype {
+                SecretType::Ed25519 | SecretType::NistP256 => {}
+
+                SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
+                    return Err(IdentityError::InvalidKeyType.into());
+                }
+            },
+        }
+
         let identifier = options.identifier;
         let identity_change_history = self.identities_reader.get_identity(&identifier).await?;
         let identity = Identity::import_from_change_history(
@@ -198,6 +218,7 @@ impl PurposeKeysCreation {
 
         match existent_key {
             Ok(purpose_key) => Ok(purpose_key),
+            // TODO: Should it be customizable?
             Err(_) => self.create_purpose_key(identifier, purpose).await,
         }
     }
