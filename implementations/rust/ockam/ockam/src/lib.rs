@@ -1,4 +1,5 @@
 //! End-to-end encrypted, mutually authenticated, secure communication.
+
 //!
 //! _[A hands-on guide 👉][e2ee-rust-guide]_.
 //!
