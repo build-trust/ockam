@@ -1,4 +1,4 @@
-use crate::common::{
+use crate::common::message_flow_auth::{
     message_should_not_pass, message_should_not_pass_with_ctx, message_should_pass_with_ctx,
 };
 use ockam_core::{route, AllowAll, Result};
