@@ -8,7 +8,6 @@ use ockam_api::DefaultAddress;
 
 use crate::Result;
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecureChannelListenerConfig {
     #[serde(default = "sec_listener_default_addr")]
@@ -75,7 +74,6 @@ impl Config {
         Ok(c)
     }
 }
-
 
 fn sec_listener_default_addr() -> String {
     DefaultAddress::SECURE_CHANNEL_LISTENER.to_string()

@@ -27,12 +27,12 @@ use crate::nodes::models::portal::CreateInlet;
 use crate::nodes::models::services::{
     DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
     StartAuthenticatorRequest, StartCredentialsService, StartEchoerServiceRequest,
-    StartHopServiceRequest, StartKafkaConsumerRequest,
-    StartKafkaDirectRequest, StartKafkaOutletRequest, StartKafkaProducerRequest,
-    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest
+    StartHopServiceRequest, StartKafkaConsumerRequest, StartKafkaDirectRequest,
+    StartKafkaOutletRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
+    StartServiceRequest, StartUppercaseServiceRequest,
 };
 use crate::nodes::registry::{
-    AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry
+    AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
 };
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
@@ -43,7 +43,6 @@ use crate::{actions, resources};
 use super::NodeManagerWorker;
 
 impl NodeManager {
-
     pub(super) async fn start_credentials_service_impl<'a>(
         &mut self,
         ctx: &Context,
@@ -355,7 +354,6 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-
     pub(super) async fn start_authenticated_service(
         &mut self,
         ctx: &Context,

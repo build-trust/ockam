@@ -175,7 +175,7 @@ impl DefaultAddress {
     pub fn is_valid(name: &str) -> bool {
         matches!(
             name,
-                 Self::AUTHENTICATED_SERVICE
+            Self::AUTHENTICATED_SERVICE
                 | Self::FORWARDING_SERVICE
                 | Self::UPPERCASE_SERVICE
                 | Self::ECHO_SERVICE

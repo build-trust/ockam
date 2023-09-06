@@ -18,7 +18,7 @@ use ockam_api::config::cli::TrustContextConfig;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartHopServiceRequest, StartOktaIdentityProviderRequest
+    StartHopServiceRequest, StartOktaIdentityProviderRequest,
 };
 use ockam_api::nodes::*;
 use ockam_api::DefaultAddress;

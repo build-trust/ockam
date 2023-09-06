@@ -55,7 +55,6 @@ fn hop_default_addr() -> String {
     DefaultAddress::HOP_SERVICE.to_string()
 }
 
-
 fn authenticated_default_addr() -> String {
     DefaultAddress::AUTHENTICATED_SERVICE.to_string()
 }

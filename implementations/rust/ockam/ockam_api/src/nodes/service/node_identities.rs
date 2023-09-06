@@ -25,7 +25,6 @@ impl NodeIdentities {
         self.identities.vault()
     }
 
-
     pub(crate) async fn get_identifier(&self, identity_name: String) -> Result<Identifier> {
         let identity_state = self.cli_state.identities.get(identity_name.as_str())?;
         Ok(identity_state.identifier())
