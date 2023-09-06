@@ -72,7 +72,9 @@ impl CredentialsIssuer {
 
         let mut subject_attributes = self.subject_attributes.clone();
         for (key, value) in entry.attrs().iter() {
-            subject_attributes.map.insert(key.clone(), value.clone());
+            subject_attributes
+                .map
+                .insert(key.clone().into(), value.clone().into());
         }
 
         let credential = self

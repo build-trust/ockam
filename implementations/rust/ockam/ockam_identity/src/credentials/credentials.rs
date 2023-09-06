@@ -73,6 +73,7 @@ mod tests {
     use crate::identities::identities;
     use crate::models::SchemaId;
     use crate::Attributes;
+    use minicbor::bytes::ByteVec;
     use ockam_core::compat::collections::BTreeMap;
     use ockam_core::Result;
     use std::time::Duration;
@@ -86,8 +87,8 @@ mod tests {
         let subject = creation.create_identity().await?;
         let credentials = identities.credentials();
 
-        let mut map: BTreeMap<Vec<u8>, Vec<u8>> = Default::default();
-        map.insert(b"key".to_vec(), b"value".to_vec());
+        let mut map: BTreeMap<ByteVec, ByteVec> = Default::default();
+        map.insert(b"key".to_vec().into(), b"value".to_vec().into());
         let subject_attributes = Attributes {
             schema: SchemaId(1),
             map,
@@ -102,6 +103,8 @@ mod tests {
                 Duration::from_secs(60),
             )
             .await?;
+
+        println!("{}", hex::encode(minicbor::to_vec(&credential)?));
 
         let _res = credentials
             .credentials_verification()

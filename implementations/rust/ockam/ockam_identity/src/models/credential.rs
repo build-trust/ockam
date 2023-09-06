@@ -1,6 +1,7 @@
 use crate::models::{
     ChangeHash, Ed25519Signature, Identifier, P256ECDSASignature, TimestampInSeconds,
 };
+use minicbor::bytes::ByteVec;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 
@@ -59,5 +60,5 @@ pub struct Attributes {
     /// [`SchemaId`] that determines which keys&values to expect in the [`Attributes`]
     #[n(1)] pub schema: SchemaId,
     /// Set of keys&values
-    #[n(2)] pub map: BTreeMap<Vec<u8>, Vec<u8>>, // FIXME: Check how this looks on the wire
+    #[n(2)] pub map: BTreeMap<ByteVec, ByteVec>,
 }
