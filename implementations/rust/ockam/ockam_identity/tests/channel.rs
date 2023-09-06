@@ -8,11 +8,11 @@ use ockam_identity::{
     AuthorityService, DecryptionResponse, EncryptionRequest, EncryptionResponse,
     IdentityAccessControlBuilder, IdentitySecureChannelLocalInfo, Purpose,
     SecureChannelListenerOptions, SecureChannelOptions, SecureChannels, TrustContext,
-    TrustEveryonePolicy, TrustIdentifierPolicy,
+    TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
 };
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use ockam_vault::{
-    SigningVault, SoftwareSecureChannelVault, SoftwareSigningVault, SoftwareVerifyingVault, Vault,
+    SigningVault, SoftwareSecureChannelVault, SoftwareSigningVault, SoftwareVerifyingVault,
 };
 use std::sync::atomic::{AtomicU8, Ordering};
 

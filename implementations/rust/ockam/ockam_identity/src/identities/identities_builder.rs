@@ -1,9 +1,9 @@
 use crate::identities::{Identities, IdentitiesRepository, IdentitiesStorage};
 use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
 use crate::storage::Storage;
+use crate::{Vault, VaultStorage};
 
 use ockam_core::compat::sync::Arc;
-use ockam_vault::{Vault, VaultStorage};
 
 /// Builder for Identities services
 #[derive(Clone)]

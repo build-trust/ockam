@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use ockam_vault::Vault;
+use ockam::identity::Vault;
 use ockam_vault_aws::AwsSigningVault;
 
 use crate::cli_state::traits::StateItemTrait;

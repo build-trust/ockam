@@ -176,11 +176,10 @@ impl Display for Identity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::identities;
-    use crate::Identities;
+    use crate::{identities, Identities, Vault};
     use core::str::FromStr;
     use ockam_core::compat::rand::RngCore;
-    use ockam_vault::{Secret, SecretAttributes, SecretType, SoftwareSigningVault, Vault};
+    use ockam_vault::{Secret, SecretAttributes, SecretType, SoftwareSigningVault};
     use rand::thread_rng;
 
     #[tokio::test]

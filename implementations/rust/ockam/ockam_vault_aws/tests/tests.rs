@@ -1,5 +1,5 @@
 use ockam_core::Result;
-use ockam_vault::{SecretAttributes, SigningVault, Vault};
+use ockam_vault::{SecretAttributes, SigningVault, SoftwareVerifyingVault, VerifyingVault};
 use ockam_vault_aws::AwsSigningVault;
 
 /// These tests need to be executed with the following environment variables
@@ -19,7 +19,7 @@ async fn test_sign_verify() -> Result<()> {
     let signature = signing_vault.sign(&key_id, message.as_slice()).await?;
     let public_key = signing_vault.get_public_key(&key_id).await?;
 
-    let verifier = Vault::create_verifying_vault();
+    let verifier = SoftwareVerifyingVault::new();
     assert!(verifier.verify(&public_key, message, &signature).await?);
 
     signing_vault.delete_key(key_id).await?;

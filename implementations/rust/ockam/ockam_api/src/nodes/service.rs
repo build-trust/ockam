@@ -9,6 +9,7 @@ use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
 use ockam::identity::TrustContext;
+use ockam::identity::Vault;
 use ockam::identity::{
     Credentials, CredentialsServer, CredentialsServerModule, Identities, IdentitiesRepository,
     IdentityAttributesReader, IdentityAttributesWriter,
@@ -27,7 +28,6 @@ use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
-use ockam_vault::Vault;
 
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
