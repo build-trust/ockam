@@ -11,12 +11,14 @@ defmodule Ockam.Healthcheck.Test do
     {:ok, identity} = Ockam.Identity.create()
     {:ok, keypair} = Ockam.SecureChannel.Crypto.generate_dh_keypair()
     {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair.public)
-    {:ok, _api} = Ockam.SecureChannel.create_listener(
-      address: "api",
-      identity: identity,
-      encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
-      trust_policies: []
-    )
+
+    {:ok, _api} =
+      Ockam.SecureChannel.create_listener(
+        address: "api",
+        identity: identity,
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+        trust_policies: []
+      )
 
     {:ok, _pid, _ping} = Ockam.Services.Echo.start_link(address: "healthcheck")
     {:ok, _api} = Ockam.Healthcheck.TestAPIEndpoint.create(address: "endpoint")

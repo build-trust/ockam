@@ -166,11 +166,14 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     {:ok, identity} = Ockam.Identity.create()
     {:ok, keypair} = SecureChannel.Crypto.generate_dh_keypair()
     {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair.public)
+
     {:ok, c} =
       SecureChannel.create_channel(
-          identity: identity,
-          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
-          route: [route_to_listener])
+        identity: identity,
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+        route: [route_to_listener]
+      )
+
     {:ok, c}
   end
 

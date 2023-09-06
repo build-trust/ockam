@@ -178,7 +178,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
 
   def rekey(k) do
     with {:ok, <<new_k::binary-size(32), _::binary>>} <-
-        Crypto.aead_aes_gcm_encrypt(k, @max_nonce, <<>>, <<0::32*8>>) do
+           Crypto.aead_aes_gcm_encrypt(k, @max_nonce, <<>>, <<0::32*8>>) do
       {:ok, new_k}
     end
   end

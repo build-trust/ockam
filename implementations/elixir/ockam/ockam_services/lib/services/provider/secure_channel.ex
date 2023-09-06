@@ -8,7 +8,6 @@ defmodule Ockam.Services.Provider.SecureChannel do
   alias Ockam.Identity
   alias Ockam.SecureChannel.Crypto
 
-
   @services [:secure_channel]
 
   @impl true
@@ -41,13 +40,12 @@ defmodule Ockam.Services.Provider.SecureChannel do
 
     other_args = Keyword.drop(args, [:trust_policies])
 
-
     with {:ok, identity} <- Identity.create(),
          {:ok, keypair} <- Crypto.generate_dh_keypair(),
          {:ok, attestation} <- Identity.attest_purpose_key(identity, keypair.public) do
       Keyword.merge(
         [
-	  identity: identity,
+          identity: identity,
           encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
           address: "secure_channel",
           trust_policies: trust_policies

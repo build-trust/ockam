@@ -8,8 +8,8 @@ defmodule Ockam.SecureChannel.Crypto do
   end
 
   def generate_dh_keypair() do
-      {pub_key, secret_key} = :crypto.generate_key(:eddh, :x25519)
-      {:ok, %{private: secret_key, public: pub_key}}
+    {pub_key, secret_key} = :crypto.generate_key(:eddh, :x25519)
+    {:ok, %{private: secret_key, public: pub_key}}
   end
 
   def dh(peer_public, private) do
@@ -21,9 +21,11 @@ defmodule Ockam.SecureChannel.Crypto do
       {:ok, <<a::binary, b::binary>>}
     end
   end
+
   def aead_aes_gcm_decrypt(k, n, h, ciphertext_and_tag) do
     size = byte_size(ciphertext_and_tag) - 16
     <<ciphertext::binary-size(size), tag::binary-size(16)>> = ciphertext_and_tag
+
     case :crypto.crypto_one_time_aead(:aes_256_gcm, k, <<n::96>>, ciphertext, h, tag, false) do
       :error -> {:error, :aead_aes_gcm_decrypt_error}
       plaintext -> {:ok, plaintext}
@@ -31,8 +33,9 @@ defmodule Ockam.SecureChannel.Crypto do
   end
 
   def hkdf(salt), do: hkdf(salt, <<>>)
+
   def hkdf(salt, ikm) do
     <<k1::binary-size(32), k2::binary-size(32)>> = :hkdf.derive(:sha256, ikm, "", salt, 64)
-    {k1,k2}
+    {k1, k2}
   end
 end

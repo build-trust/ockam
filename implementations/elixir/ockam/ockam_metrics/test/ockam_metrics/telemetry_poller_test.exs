@@ -21,9 +21,11 @@ defmodule Ockam.Metrics.TelemetryPoller.Tests do
     {:ok, listener} =
       SecureChannel.create_listener(
         identity: alice,
-        encryption_options: [static_keypair: alice_keypair, static_key_attestation: alice_attestation]
+        encryption_options: [
+          static_keypair: alice_keypair,
+          static_key_attestation: alice_attestation
+        ]
       )
-
 
     {:ok, bob} = Identity.create()
     {:ok, bob_keypair} = SecureChannel.Crypto.generate_dh_keypair()

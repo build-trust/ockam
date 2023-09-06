@@ -7,9 +7,10 @@ defmodule Ockam.Services.Authorization.Tests do
   alias Ockam.Message
   alias Ockam.Router
 
-  alias Ockam.Services.Echo
   alias Ockam.SecureChannel
   alias Ockam.SecureChannel.Crypto
+
+  alias Ockam.Services.Echo
 
   require Logger
 
@@ -21,7 +22,10 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, channel_listener} =
       SecureChannel.create_listener(
         identity: listener_identity,
-        encryption_options: [static_keypair: listener_keypair,  static_key_attestation: attestation]
+        encryption_options: [
+          static_keypair: listener_keypair,
+          static_key_attestation: attestation
+        ]
       )
 
     on_exit(fn ->
@@ -105,7 +109,10 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, listener} =
       SecureChannel.create_listener(
         identity: listener_identity,
-        encryption_options: [static_keypair: listener_keypair,  static_key_attestation: attestation],
+        encryption_options: [
+          static_keypair: listener_keypair,
+          static_key_attestation: attestation
+        ],
         responder_authorization: [:is_local]
       )
 
@@ -239,7 +246,6 @@ defmodule Ockam.Services.Authorization.Tests do
     )
   end
 
-
   defp create_channel(route, authorization \\ []) do
     {:ok, identity} = Identity.create()
 
@@ -247,10 +253,10 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, attestation} = Identity.attest_purpose_key(identity, keypair.public)
 
     SecureChannel.create_channel(
-        identity: identity,
-        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
-        route: route,
-        authorization: authorization
-      )
+      identity: identity,
+      encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+      route: route,
+      authorization: authorization
+    )
   end
 end

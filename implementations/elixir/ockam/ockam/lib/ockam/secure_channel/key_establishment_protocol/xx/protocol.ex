@@ -45,7 +45,11 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def setup(%{public: _, private: _} = static_keypair, options) do
-    protocol_state = %__MODULE__{pending_handshake: [:message1, :message2, :message3], s: static_keypair}
+    protocol_state = %__MODULE__{
+      pending_handshake: [:message1, :message2, :message3],
+      s: static_keypair
+    }
+
     with {:ok, protocol_state} <- setup_e(options, protocol_state),
          {:ok, protocol_state} <- setup_h(protocol_state),
          {:ok, protocol_state} <- setup_ck(protocol_state),
@@ -100,7 +104,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   defp setup_ck(state) do
-     {:ok, %{state | ck: zero_padded_protocol_name()}}
+    {:ok, %{state | ck: zero_padded_protocol_name()}}
   end
 
   defp setup_prologue(options, state) do
@@ -221,11 +225,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def split(%{xx_key_establishment_state: %{ck: ck, h: h}} = data) do
-    with  {k1, k2} <- Crypto.hkdf(ck) do
+    with {k1, k2} <- Crypto.hkdf(ck) do
       {:ok, {k1, k2, h}, data}
     end
   end
-
-
-
 end

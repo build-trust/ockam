@@ -43,10 +43,14 @@ defmodule Ockam.SecureChannel.Channel do
 
   require Logger
 
-  @type encryption_options :: [{:static_keypair, %{public: binary(), private: binary()}}, {:static_key_attestation, binary()}]
+  @type encryption_options :: [
+          {:static_keypair, %{public: binary(), private: binary()}},
+          {:static_key_attestation, binary()}
+        ]
   @type authorization :: list() | map()
   @type trust_policies :: list()
-  @type secure_channel_opt :: {:identity, binary() | :dynamic}
+  @type secure_channel_opt ::
+          {:identity, binary() | :dynamic}
           | {:key_exchange_timeout, non_neg_integer()}
           | {:encryption_options, encryption_options()}
           | {:address, Ockam.Address.t()}
@@ -86,11 +90,10 @@ defmodule Ockam.SecureChannel.Channel do
     field(:additional_metadata, map())
     field(:channel_state, Handshaking.t() | Established.t())
 
-    field(:authorities,  [Identity.t()])
+    field(:authorities, [Identity.t()])
 
     field(:credentials, [binary()])
   end
-
 
   @handshake_timeout 30_000
 
@@ -309,11 +312,11 @@ defmodule Ockam.SecureChannel.Channel do
   defp noise_payloads(:initiator, id_proof), do: %{message3: id_proof}
   defp noise_payloads(:responder, id_proof), do: %{message2: id_proof}
 
-  #FIXME:  proper errors here and the rest of mandatory "options"
-  #TODO:  shouldn't be options if they are mandatory
+  # TODO:  shouldn't be options if they are mandatory
   defp get_static_keypair(options) do
     Keyword.fetch(options, :static_keypair)
   end
+
   defp get_static_key_attestation(options) do
     Keyword.fetch(options, :static_key_attestation)
   end
@@ -321,7 +324,6 @@ defmodule Ockam.SecureChannel.Channel do
   defp setup_noise_key_exchange(opts, role, identity, credentials) do
     with {:ok, static_keypair} <- get_static_keypair(opts),
          {:ok, attestation} <- get_static_key_attestation(opts) do
-
       proof = %IdentityProof{
         contact: identity,
         attestation: attestation,
@@ -348,7 +350,10 @@ defmodule Ockam.SecureChannel.Channel do
     additional_metadata = Keyword.get(options, :additional_metadata, %{})
     encryption_options = Keyword.get(options, :encryption_options, [])
     key_exchange_timeout = Keyword.get(options, :key_exchange_timeout, @handshake_timeout)
-    noise_key_exchange_options = Keyword.take(encryption_options, [:static_keypair, :static_key_attestation])
+
+    noise_key_exchange_options =
+      Keyword.take(encryption_options, [:static_keypair, :static_key_attestation])
+
     credentials = Keyword.get(options, :credentials, [])
 
     with {:ok, role} <- Keyword.fetch(options, :role),
@@ -412,8 +417,19 @@ defmodule Ockam.SecureChannel.Channel do
     with {:ok, peer_proof_data} <- Map.fetch(payloads, peer_proof_msg),
          {:ok, identity_proof} <- IdentityProof.decode(peer_proof_data),
          {:ok, peer, peer_identity_id} <- Identity.validate_contact_data(identity_proof.contact),
-         {:ok, true} <- Identity.verify_purpose_key_attestation(peer, rs, %Ockam.Identity.PurposeKeyAttestation{attestation: identity_proof.attestation}),
-          :ok <- check_trust(state.trust_policies, state.identity, identity_proof.contact, peer_identity_id),
+         {:ok, true} <-
+           Identity.verify_purpose_key_attestation(
+             peer,
+             rs,
+             %Ockam.Identity.PurposeKeyAttestation{attestation: identity_proof.attestation}
+           ),
+         :ok <-
+           check_trust(
+             state.trust_policies,
+             state.identity,
+             identity_proof.contact,
+             peer_identity_id
+           ),
          :ok <-
            process_credentials(
              identity_proof.credentials,
@@ -450,6 +466,7 @@ defmodule Ockam.SecureChannel.Channel do
     case Identity.verify_credential(peer_identity_id, authorities, cred) do
       {:ok, attribute_set} ->
         AttributeStorage.put_attribute_set(peer_identity_id, attribute_set)
+
       {:error, reason} ->
         {:error, {:rejected_credential, reason}}
     end

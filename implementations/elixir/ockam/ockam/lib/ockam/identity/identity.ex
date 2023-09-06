@@ -1,20 +1,21 @@
 defmodule Ockam.Identity do
   @moduledoc """
+    build and work with Ockam Identities
   """
+
+  alias Ockam.Credential.AttributeSet
+  alias __MODULE__
 
   @type identity_data() :: binary()
   @type identity_id() :: String.t()
 
   defstruct [:identity_id, :data]
-  alias Ockam.Identity
-  alias Ockam.Credential.AttributeSet
 
   @type t() :: %Identity{}
 
   @type proof() :: binary()
 
   @type compare_result() :: :none | :equal | :conflict | :newer | :older
-
 
   @spec create() ::
           {:ok, identity :: t(), identity_id :: binary()} | {:error, reason :: any()}
@@ -39,7 +40,7 @@ defmodule Ockam.Identity do
   def validate_contact_data(contact_data) do
     case Ockly.Native.check_identity(contact_data) do
       {:error, reason} -> {:error, reason}
-      contact_id  -> {:ok, %Identity{identity_id: contact_id, data: contact_data},  contact_id}
+      contact_id -> {:ok, %Identity{identity_id: contact_id, data: contact_data}, contact_id}
     end
   end
 
@@ -62,30 +63,44 @@ defmodule Ockam.Identity do
     end
   end
 
-  @spec verify_purpose_key_attestation(contact :: t(), pubkey :: binary(), attestation :: %Ockam.Identity.PurposeKeyAttestation{}) :: {:ok, boolean()} | {:error, any()}
-  def verify_purpose_key_attestation(%Identity{data: identity_data}, pubkey, %Ockam.Identity.PurposeKeyAttestation{attestation: attestation}) do
-    case Ockly.Native.verify_purpose_key_attestation(identity_data,  pubkey, attestation) do
+  @spec verify_purpose_key_attestation(
+          contact :: t(),
+          pubkey :: binary(),
+          attestation :: Ockam.Identity.PurposeKeyAttestation.t()
+        ) :: {:ok, boolean()} | {:error, any()}
+  def verify_purpose_key_attestation(
+        %Identity{data: identity_data},
+        pubkey,
+        %Ockam.Identity.PurposeKeyAttestation{attestation: attestation}
+      ) do
+    case Ockly.Native.verify_purpose_key_attestation(identity_data, pubkey, attestation) do
       {:error, reason} -> {:error, reason}
       true -> {:ok, true}
     end
   end
 
-
-  def issue_credential(%Identity{data: issuer}, subject, attrs, ttl)  when is_map(attrs) and is_binary(subject) do
+  def issue_credential(%Identity{data: issuer}, subject, attrs, ttl)
+      when is_map(attrs) and is_binary(subject) do
     case Ockly.Native.issue_credential(issuer, subject, attrs, ttl) do
       {:error, reason} -> {:error, reason}
       cred -> {:ok, cred}
     end
   end
 
-  def verify_credential(subject_id, authorities, credential) when is_binary(subject_id) and is_list(authorities) do
+  def verify_credential(subject_id, authorities, credential)
+      when is_binary(subject_id) and is_list(authorities) do
     authorities = Enum.map(authorities, fn a -> a.data end)
-    case  Ockly.Native.verify_credential(subject_id, authorities, credential) do
+
+    case Ockly.Native.verify_credential(subject_id, authorities, credential) do
       {:error, reason} ->
         {:error, reason}
+
       {expiration, verified_attrs} ->
-        attributes = %AttributeSet{attributes: %AttributeSet.Attributes{attributes: verified_attrs},
-                                  expiration: expiration}
+        attributes = %AttributeSet{
+          attributes: %AttributeSet.Attributes{attributes: verified_attrs},
+          expiration: expiration
+        }
+
         {:ok, attributes}
     end
   end
@@ -96,11 +111,10 @@ defmodule Ockam.Identity do
     ## TODO:  implement change history compare!
     {:ok, :equal}
   end
-
 end
 
-  defimpl CBOR.Encoder, for: Ockam.Identity do
-    def encode_into(identity, acc) do
-     <<acc::binary,  (Ockam.Identity.get_data(identity))::binary>>
-    end
+defimpl CBOR.Encoder, for: Ockam.Identity do
+  def encode_into(identity, acc) do
+    <<acc::binary, Ockam.Identity.get_data(identity)::binary>>
   end
+end

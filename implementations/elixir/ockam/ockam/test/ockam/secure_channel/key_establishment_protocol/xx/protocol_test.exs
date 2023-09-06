@@ -41,7 +41,6 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
       |> Enum.map(fn {k, v} -> {k, Base.decode16!(v, case: :lower)} end)
       |> Enum.into(%{})
 
-
     keypairs = [
       :initiator_static,
       :initiator_ephemeral,

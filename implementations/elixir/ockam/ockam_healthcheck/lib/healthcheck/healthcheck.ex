@@ -163,7 +163,6 @@ defmodule Ockam.Healthcheck do
     with {:ok, identity} <- get_healthcheck_identity(),
          {:ok, keypair} <- SecureChannel.Crypto.generate_dh_keypair(),
          {:ok, attestation} <- Ockam.Identity.attest_purpose_key(identity, keypair.public) do
-
       case SecureChannel.create_channel(
              [
                route: api_route,
@@ -278,7 +277,7 @@ defmodule Ockam.Healthcheck do
     with {:ok, identity_data} <- File.read(file),
          {:ok, signing_key} <- File.read(secret),
          {:ok, identity, _identity_id} <- Ockam.Identity.import(identity_data, signing_key) do
-            {:ok, identity}
+      {:ok, identity}
     end
   end
 
@@ -288,7 +287,7 @@ defmodule Ockam.Healthcheck do
         generate_and_cache_identity()
 
       identity ->
-            {:ok, identity}
+        {:ok, identity}
     end
   end
 
