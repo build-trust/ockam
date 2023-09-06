@@ -6,11 +6,4 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 #[cbor(transparent)]
 #[serde(transparent)]
-pub struct TimestampInSeconds(#[n(0)] pub(crate) u64);
-
-impl TimestampInSeconds {
-    /// Create a new [`TimestampInSeconds`]
-    pub fn new(timestamp: u64) -> Self {
-        Self(timestamp)
-    }
-}
+pub struct TimestampInSeconds(#[n(0)] pub u64);

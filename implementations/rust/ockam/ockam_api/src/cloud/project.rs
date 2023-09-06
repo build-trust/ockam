@@ -614,7 +614,7 @@ mod tests {
                 access_route: String::arbitrary(g),
                 users: vec![String::arbitrary(g), String::arbitrary(g)],
                 space_id: String::arbitrary(g),
-                identity: bool::arbitrary(g).then(|| Identifier::new(identifier)),
+                identity: bool::arbitrary(g).then_some(Identifier(identifier)),
                 authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g)),
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g))),

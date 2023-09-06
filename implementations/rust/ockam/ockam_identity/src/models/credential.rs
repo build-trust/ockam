@@ -59,5 +59,5 @@ pub struct Attributes {
     /// [`SchemaId`] that determines which keys&values to expect in the [`Attributes`]
     #[n(1)] pub schema: SchemaId,
     /// Set of keys&values
-    #[n(2)] pub map: BTreeMap<Vec<u8>, Vec<u8>>,
+    #[n(2)] pub map: BTreeMap<Vec<u8>, Vec<u8>>, // FIXME: Check how this looks on the wire
 }

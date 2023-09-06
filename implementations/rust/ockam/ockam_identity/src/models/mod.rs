@@ -1,13 +1,12 @@
 mod change_history;
-mod conversions;
 mod credential;
 mod credential_and_purpose_key;
-mod encoding_utils;
 mod identifiers;
 mod public_keys;
 mod purpose_key_attestation;
 mod signatures;
 mod timestamp;
+mod utils;
 mod versioned_data;
 
 pub use change_history::*;
