@@ -4,31 +4,12 @@ use crate::models::{
 };
 use minicbor::{Decode, Encode};
 use ockam_core::compat::vec::Vec;
-use ockam_core::Result;
 
 /// Identity Change History
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(transparent)]
 pub struct ChangeHistory(#[n(0)] pub Vec<Change>);
-
-impl AsRef<[Change]> for ChangeHistory {
-    fn as_ref(&self) -> &[Change] {
-        self.0.as_ref()
-    }
-}
-
-impl ChangeHistory {
-    /// Export [`ChangeHistory`] to a binary format using CBOR
-    pub fn export(&self) -> Result<Vec<u8>> {
-        Ok(minicbor::to_vec(self)?)
-    }
-
-    /// Import [`ChangeHistory`] from a binary format using CBOR
-    pub fn import(data: &[u8]) -> Result<Self> {
-        Ok(minicbor::decode(data)?)
-    }
-}
 
 /// Individual Identity change which implies replacing the old key
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
