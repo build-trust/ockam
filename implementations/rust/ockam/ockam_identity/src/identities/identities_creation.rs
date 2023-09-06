@@ -10,7 +10,7 @@ use crate::{IdentityHistoryComparison, IdentityOptions};
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
     pub(super) repository: Arc<dyn IdentitiesRepository>,
-    pub(super) signing_vault: Arc<dyn SigningVault>,
+    pub(super) identity_vault: Arc<dyn SigningVault>,
     pub(super) verifying_vault: Arc<dyn VerifyingVault>,
 }
 
@@ -18,12 +18,12 @@ impl IdentitiesCreation {
     /// Create a new identities import module
     pub fn new(
         repository: Arc<dyn IdentitiesRepository>,
-        signing_vault: Arc<dyn SigningVault>,
+        identity_vault: Arc<dyn SigningVault>,
         verifying_vault: Arc<dyn VerifyingVault>,
     ) -> Self {
         Self {
             repository,
-            signing_vault,
+            identity_vault,
             verifying_vault,
         }
     }
@@ -31,7 +31,7 @@ impl IdentitiesCreation {
     /// Return the identities keys management service
     pub fn identities_keys(&self) -> Arc<IdentitiesKeys> {
         Arc::new(IdentitiesKeys::new(
-            self.signing_vault.clone(),
+            self.identity_vault.clone(),
             self.verifying_vault.clone(),
         ))
     }
@@ -74,7 +74,7 @@ impl IdentitiesCreation {
     pub fn identity_builder(&self) -> IdentityBuilder {
         IdentityBuilder::new(Arc::new(Self::new(
             self.repository.clone(),
-            self.signing_vault.clone(),
+            self.identity_vault.clone(),
             self.verifying_vault.clone(),
         )))
     }
@@ -138,7 +138,7 @@ impl IdentitiesCreation {
         key_id: &KeyId,
     ) -> Result<Identity> {
         let identity = self.import(None, identity_change_history).await?;
-        if identity.get_latest_public_key()? != self.signing_vault.get_public_key(key_id).await? {
+        if identity.get_latest_public_key()? != self.identity_vault.get_public_key(key_id).await? {
             return Err(IdentityError::WrongSecretKey.into());
         }
 
@@ -149,8 +149,8 @@ impl IdentitiesCreation {
     }
 
     /// [`SigningVault`]
-    pub fn signing_vault(&self) -> Arc<dyn SigningVault> {
-        self.signing_vault.clone()
+    pub fn identity_vault(&self) -> Arc<dyn SigningVault> {
+        self.identity_vault.clone()
     }
 
     /// [`VerifyingVault`]

@@ -4838,6 +4838,7 @@ dependencies = [
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
+ "ockam_vault_aws",
  "quickcheck",
  "quickcheck_macros",
  "rand 0.8.5",

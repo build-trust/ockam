@@ -136,7 +136,11 @@ impl PurposeKeysCreation {
                 )
             }
             Purpose::Credentials => {
-                let public_key = self.vault.signing_vault.get_public_key(&secret_key).await?;
+                let public_key = self
+                    .vault
+                    .credential_vault
+                    .get_public_key(&secret_key)
+                    .await?;
                 PurposePublicKey::CredentialSigningKey(
                     public_key
                         .try_into()
@@ -167,12 +171,12 @@ impl PurposeKeysCreation {
         // TODO: Optimize
         let public_key = self
             .vault
-            .signing_vault
+            .identity_vault
             .get_public_key(&signing_key)
             .await?;
         let signature = self
             .vault
-            .signing_vault
+            .identity_vault
             .sign(&signing_key, &versioned_data_hash)
             .await?;
         let signature =
@@ -257,7 +261,7 @@ impl PurposeKeysCreation {
             PurposePublicKey::CredentialSigningKey(public_key) => {
                 let key_id = self
                     .vault
-                    .signing_vault
+                    .credential_vault
                     .get_key_id(&public_key.into())
                     .await?;
                 (Purpose::Credentials, key_id)

@@ -89,7 +89,7 @@ impl NodeIdentities {
         let vault = self.get_identities_vault(vault_name).await?;
         Ok(IdentitiesCreation::new(
             self.identities_repository(),
-            vault.signing_vault,
+            vault.identity_vault,
             vault.verifying_vault,
         ))
     }

@@ -13,7 +13,7 @@ use ockam_vault::{SigningVault, VerifyingVault};
 /// Service for managing [`Credential`]s
 pub struct CredentialsCreation {
     purpose_keys_creation: Arc<PurposeKeysCreation>,
-    signing_vault: Arc<dyn SigningVault>,
+    credential_vault: Arc<dyn SigningVault>,
     verifying_vault: Arc<dyn VerifyingVault>,
     identities_repository: Arc<dyn IdentitiesRepository>,
 }
@@ -22,14 +22,14 @@ impl CredentialsCreation {
     ///Constructor
     pub fn new(
         purpose_keys_creation: Arc<PurposeKeysCreation>,
-        signing_vault: Arc<dyn SigningVault>,
+        credential_vault: Arc<dyn SigningVault>,
         verifying_vault: Arc<dyn VerifyingVault>,
         identities_repository: Arc<dyn IdentitiesRepository>,
     ) -> Self {
         Self {
             purpose_keys_creation,
             verifying_vault,
-            signing_vault,
+            credential_vault,
             identities_repository,
         }
     }
@@ -84,7 +84,7 @@ impl CredentialsCreation {
         let versioned_data_hash = self.verifying_vault.sha256(&versioned_data).await?;
 
         let signature = self
-            .signing_vault
+            .credential_vault
             .sign(issuer_purpose_key.key_id(), &versioned_data_hash)
             .await?;
         let signature =

@@ -5,9 +5,9 @@ use ockam::{Node, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let signing_vault = SoftwareSigningVault::create();
+    let identity_vault = SoftwareSigningVault::create();
     // Import the signing secret key to the Vault
-    let secret = signing_vault
+    let secret = identity_vault
         .import_key(
             Secret::new(hex::decode("31FF4E1CD55F17735A633FBAB4B838CF88D1252D164735CB3185A6E315438C2C").unwrap()),
             SecretAttributes::Ed25519,
@@ -16,7 +16,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a default Vault but use the signing vault with our secret in it
     let mut vault = Vault::create();
-    vault.signing_vault = signing_vault;
+    vault.identity_vault = identity_vault;
 
     let mut node = Node::builder().with_vault(vault).build(ctx).await?;
     // Initialize the TCP Transport
