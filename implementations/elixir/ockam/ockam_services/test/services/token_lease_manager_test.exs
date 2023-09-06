@@ -100,7 +100,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
   end
 
   test "create and list leases",
-    %{lm: lm, bob_channel: bob_channel, alice_channel: alice_channel, listener: listener, bob_id: bob_id, alice_id: alice_id} do
+    %{lm: lm, bob_channel: bob_channel, alice_channel: alice_channel, bob_id: bob_id, alice_id: alice_id} do
 
     # Initially no leases
     {:ok, resp} = Client.sync_request(:get, "/", nil, [bob_channel, lm])
@@ -137,7 +137,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
   end
 
   test "lease get",
-    %{lm: lm, bob_channel: bob_channel, alice_channel: alice_channel, listener: listener, bob_id: bob_id, alice_id: alice_id} do
+    %{lm: lm, bob_channel: bob_channel, bob_id: bob_id, alice_channel: alice_channel} do
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, lm])
     assert %{status: 200, body: body} = resp
@@ -155,7 +155,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
   end
 
   test "lease revoke",
-    %{lm: lm, bob_channel: bob_channel, alice_channel: alice_channel, listener: listener, bob_id: bob_id, alice_id: alice_id} do
+    %{lm: lm, bob_channel: bob_channel, alice_channel: alice_channel, bob_id: bob_id} do
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, lm])
     assert %{status: 200, body: body} = resp
@@ -182,7 +182,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
   end
 
   test "lease expiration",
-    %{short_live_lm: short_live_lm, bob_channel: bob_channel, listener: listener, bob_id: bob_id} do
+    %{short_live_lm: short_live_lm, bob_channel: bob_channel, bob_id: bob_id} do
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, short_live_lm])
     assert %{status: 200, body: body} = resp

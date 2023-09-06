@@ -59,8 +59,6 @@ defmodule Ockam.Metrics.MixProject do
       {:telemetry_metrics_prometheus, "~> 1.1.0"},
       # Needed to avoid conflic on ranch version used by cowboy (telemetry_metrics_prometheus dep)
       {:ranch, "~> 2.1.0", override: true},
-      # Needed to create secure channels on test cases
-      {:ockam_vault_software, path: "../ockam_vault_software", only: :test}
     ]
   end
 

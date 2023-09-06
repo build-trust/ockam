@@ -9,7 +9,7 @@ defmodule Test.Services.ProxyTest do
   alias Ockam.Services.Echo, as: EchoService
   alias Ockam.Services.Proxy
 
-  @tcp_port 5000
+  @tcp_port 50001
 
   ## Helper function to count TCP clients
   def tcp_clients() do
