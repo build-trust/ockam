@@ -48,8 +48,7 @@ async fn run_impl(
         let mut rpc = Rpc::background(&ctx, &opts, &node)?;
         let req = Request::delete("/node/tcp/listener")
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-        rpc.request(req).await?;
-        rpc.is_ok()?;
+        rpc.tell(req).await?;
 
         opts.terminal
             .stdout()

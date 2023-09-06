@@ -58,8 +58,7 @@ async fn run_impl(
         .await?;
 
     let req = Request::get(format!("/{}", cmd.token_id));
-
-    let resp_token: Token = orchestrator_client.request_with_response(req).await?;
+    let resp_token: Token = orchestrator_client.ask(req).await?;
 
     let token_template = TextTemplate::from(TOKEN_VIEW);
     let mut expander = token_template.expander();

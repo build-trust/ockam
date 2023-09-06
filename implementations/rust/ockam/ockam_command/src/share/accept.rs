@@ -51,13 +51,14 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
-    let send_req = async {
+    let get_accepted_invitation = async {
         let req = cmd.into();
         debug!(?req);
-        rpc.request(api::share::accept(req, &CloudOpts::route()))
+        let invitation: AcceptedInvitation = rpc
+            .ask(api::share::accept(req, &CloudOpts::route()))
             .await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<AcceptedInvitation>()
+        Ok(invitation)
     };
 
     let output_messages = vec![format!("Accepting share invitation...\n",)];
@@ -66,7 +67,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (accepted, _) = try_join!(send_req, progress_output)?;
+    let (accepted, _) = try_join!(get_accepted_invitation, progress_output)?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
 

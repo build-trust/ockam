@@ -55,8 +55,8 @@ async fn run_impl(
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request(api::space::show(&id, controller_route)).await?;
-    let space = rpc.parse_and_print_response::<Space>()?;
+    let space: Space = rpc.ask(api::space::show(&id, controller_route)).await?;
+    opts.println(&space)?;
     opts.state
         .spaces
         .overwrite(&cmd.name, SpaceConfig::from(&space))?;

@@ -1,7 +1,7 @@
 use core::fmt::Write;
 use ockam_api::nodes::models::services::ServiceList;
 
-use crate::util::output::Output;
+use crate::output::Output;
 use crate::Result;
 
 impl Output for ServiceList {

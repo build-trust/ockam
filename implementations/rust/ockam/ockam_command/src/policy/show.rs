@@ -41,8 +41,7 @@ async fn run_impl(
     let node = extract_address_value(&cmd.at)?;
     let req = Request::get(policy_path(&cmd.resource, &cmd.action));
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
-    rpc.request(req).await?;
-    let pol: Policy = rpc.parse_response_body()?;
-    println!("{}", pol.expression());
+    let policy: Policy = rpc.ask(req).await?;
+    println!("{}", policy.expression());
     Ok(())
 }

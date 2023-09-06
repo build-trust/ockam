@@ -46,10 +46,8 @@ async fn run_impl(
     let node_name = parse_node_name(&at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let req = api::delete_secure_channel_listener(&cmd.address);
-    rpc.request(req).await?;
-    rpc.is_ok()?;
-    let res = rpc.parse_response_body::<DeleteSecureChannelListenerResponse>()?;
-    let addr = res.addr;
+    let response: DeleteSecureChannelListenerResponse = rpc.ask(req).await?;
+    let addr = response.addr;
     opts.terminal
         .stdout()
         .plain(fmt_ok!(

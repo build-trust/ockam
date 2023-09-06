@@ -7,7 +7,7 @@ use std::{
 
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
-use minicbor::{Decode, Decoder, Encode};
+use minicbor::{Decode, Encode};
 use tracing::{debug, error};
 
 use ockam::{
@@ -17,7 +17,7 @@ use ockam::{
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Error, RequestBuilder, Response};
+use ockam_core::api::{Reply, RequestBuilder, Response, Status};
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{
@@ -25,17 +25,14 @@ use ockam_multiaddr::{
     MultiAddr, Protocol,
 };
 
-use crate::util::output::Output;
-use crate::{node::util::start_embedded_node, EncodeFormat};
-use crate::{CommandGlobalOpts, OutputFormat, Result};
+use crate::node::util::start_embedded_node;
+use crate::{CommandGlobalOpts, Result};
 
 pub mod api;
 pub mod duration;
 pub mod exitcode;
 pub mod orchestrator_api;
 pub mod parsers;
-
-pub(crate) mod output;
 
 #[derive(Clone)]
 pub enum RpcMode<'a> {
@@ -85,6 +82,7 @@ impl<'a> RpcBuilder<'a> {
             opts: self.opts,
             node_name: self.node_name,
             to: self.to,
+            timeout: None,
             mode: self.mode,
         }
     }
@@ -97,6 +95,7 @@ pub struct Rpc<'a> {
     pub opts: &'a CommandGlobalOpts,
     node_name: String,
     to: Route,
+    pub timeout: Option<Duration>,
     mode: RpcMode<'a>,
 }
 
@@ -110,6 +109,7 @@ impl<'a> Rpc<'a> {
             opts,
             node_name,
             to: NODEMANAGER_ADDR.into(),
+            timeout: None,
             mode: RpcMode::Embedded,
         })
     }
@@ -126,6 +126,7 @@ impl<'a> Rpc<'a> {
             opts,
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
+            timeout: None,
             mode: RpcMode::Background { tcp: None },
         })
     }
@@ -134,38 +135,71 @@ impl<'a> Rpc<'a> {
         &self.node_name
     }
 
-    pub async fn request<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
-    where
-        T: Encode<()>,
-    {
-        let route = self.route_impl(self.ctx).await?;
-        self.buf = self
-            .ctx
-            .send_and_receive(route.clone(), req.to_vec()?)
-            .await
-            .map_err(|_err| {
-                // Overwrite error to swallow inner cause and hide it from end-user
-                miette!("The request timed out, please make sure the command's arguments are correct or try again")
-            })?;
-
-        if self.is_ok().is_err() {
-            let err: Error = self.parse_response_body()?;
-            let err_msg = err.message().unwrap_or_default().to_string();
-            return Err(miette!(err_msg).into());
-        }
-        Ok(())
+    /// Use a timeout for making requests
+    pub fn set_timeout(&mut self, timeout: Duration) -> &mut Self {
+        self.timeout = Some(timeout);
+        self
     }
 
-    pub async fn request_with_timeout<T>(
-        &mut self,
-        req: RequestBuilder<T>,
-        timeout: Duration,
-    ) -> Result<()>
+    /// Send a request
+    /// This method waits for a response status but does not expect a response body
+    /// If the status is missing or not, we try to parse an error message and return it
+    pub async fn tell<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
+    where
+        T: Encode<()>,
+    {
+        self.send_request(req).await?;
+        let (response, decoder) = Response::parse_response_header(self.buf.as_slice())?;
+        if !response.is_ok() {
+            Err(miette!(Response::parse_err_msg(response, decoder)).into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Send a request
+    /// This method waits for a response status and returns it if available
+    pub async fn tell_and_get_status<T>(&mut self, req: RequestBuilder<T>) -> Result<Option<Status>>
+    where
+        T: Encode<()>,
+    {
+        self.tell(req).await?;
+        self.parse_response_status()
+    }
+
+    /// Send a request and expects a decodable response
+    /// This method parses and returns an error message if the request was not successful
+    pub async fn ask<T, R>(&mut self, req: RequestBuilder<T>) -> Result<R>
+    where
+        T: Encode<()>,
+        R: for<'b> Decode<'b, ()>,
+    {
+        self.send_request(req).await?;
+        self.parse_response_body::<R>()
+    }
+
+    /// Send a request and expects either a decodable response or an API error.
+    /// This method returns an error if the request cannot be sent of if there is any decoding error
+    pub async fn ask_and_get_reply<T, R>(&mut self, req: RequestBuilder<T>) -> Result<Reply<R>>
+    where
+        T: Encode<()>,
+        R: for<'b> Decode<'b, ()>,
+    {
+        self.send_request(req).await?;
+        self.parse_response_reply::<R>()
+    }
+
+    /// Make a request and wait for a response
+    /// This method _does not_ check the success of the request
+    async fn send_request<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
     where
         T: Encode<()>,
     {
         let route = self.route_impl(self.ctx).await?;
-        let options = MessageSendReceiveOptions::new().with_timeout(timeout);
+        let options = self
+            .timeout
+            .map(|t| MessageSendReceiveOptions::new().with_timeout(t))
+            .unwrap_or(MessageSendReceiveOptions::new());
         self.buf = self
             .ctx
             .send_and_receive_extended::<Vec<u8>>(route.clone(), req.to_vec()?, options)
@@ -174,12 +208,6 @@ impl<'a> Rpc<'a> {
                 // Overwrite error to swallow inner cause and hide it from end-user
                 miette!("The request timed out, please make sure the command's arguments are correct or try again")
             })?.body();
-
-        if self.is_ok().is_err() {
-            let err: Error = self.parse_response_body()?;
-            let err_msg = err.message().unwrap_or_default().to_string();
-            return Err(miette!(err_msg).into());
-        }
         Ok(())
     }
 
@@ -215,87 +243,29 @@ impl<'a> Rpc<'a> {
         Ok(route)
     }
 
-    /// Parse the response body and return it.
-    pub fn parse_response_body<T>(&self) -> Result<T>
+    /// Parse the response body and return it
+    /// This function returns an Err with a parsed error message if the response status is not ok
+    fn parse_response_body<T>(&self) -> Result<T>
     where
         T: for<'b> Decode<'b, ()>,
     {
         Response::parse_response_body(self.buf.as_slice()).map_err(|e| miette!(e).into())
     }
 
-    /// Check response's status code is OK.
-    pub fn is_ok(&self) -> Result<()> {
-        let (response, decoder) = Response::parse_response_header(self.buf.as_slice())?;
-        if !response.is_ok() {
-            Err(miette!(Response::parse_err_msg(response, decoder)).into())
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn parse_response_header(&self) -> Result<(Response, Decoder)> {
-        let (response, decoder) = Response::parse_response_header(self.buf.as_slice())
-            .into_diagnostic()
-            .context("Failed to decode response header")?;
-        Ok((response, decoder))
-    }
-
-    /// Parse the response body and print it.
-    pub fn parse_and_print_response<T>(&self) -> Result<T>
+    /// Parse the response body and return it
+    /// This function returns an Err with a parsed error message if the response status is not ok
+    fn parse_response_reply<T>(&self) -> Result<Reply<T>>
     where
-        T: for<'b> Decode<'b, ()> + Output + serde::Serialize,
+        T: for<'b> Decode<'b, ()>,
     {
-        let b: T = self.parse_response_body()?;
-        self.print_response(b)
+        Response::parse_response_reply(self.buf.as_slice()).map_err(|e| miette!(e).into())
     }
 
-    pub fn print_response<T>(&self, b: T) -> Result<T>
-    where
-        T: Output + serde::Serialize,
-    {
-        println_output(b, &self.opts.global_args.output_format)
+    /// Parse a Response and return its status
+    fn parse_response_status(&self) -> Result<Option<Status>> {
+        let (response, _decoder) = Response::parse_response_header(self.buf.as_slice())?;
+        Ok(response.status())
     }
-}
-
-pub fn println_output<T>(b: T, output_format: &OutputFormat) -> Result<T>
-where
-    T: Output + serde::Serialize,
-{
-    let o = get_output(&b, output_format)?;
-    println!("{o}");
-    Ok(b)
-}
-
-fn get_output<T>(b: &T, output_format: &OutputFormat) -> Result<String>
-where
-    T: Output + serde::Serialize,
-{
-    let output = match output_format {
-        OutputFormat::Plain => b
-            .output()
-            .into_diagnostic()
-            .context("Failed to serialize output")?,
-        OutputFormat::Json => serde_json::to_string_pretty(b)
-            .into_diagnostic()
-            .context("Failed to serialize output")?,
-    };
-    Ok(output)
-}
-
-pub fn print_encodable<T>(e: T, encode_format: &EncodeFormat) -> Result<()>
-where
-    T: Encode<()> + Output,
-{
-    let o = match encode_format {
-        EncodeFormat::Plain => e.output().wrap_err("Failed serialize output")?,
-        EncodeFormat::Hex => {
-            let bytes = minicbor::to_vec(e).expect("Unable to encode response");
-            hex::encode(bytes)
-        }
-    };
-
-    print!("{o}");
-    Ok(())
 }
 
 /// A simple wrapper for shutting down the local embedded node (for

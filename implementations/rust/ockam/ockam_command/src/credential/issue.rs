@@ -2,12 +2,13 @@ use ockam_core::compat::collections::HashMap;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::{
-    util::{node_rpc, parsers::identity_identifier_parser, print_encodable},
+    util::{node_rpc, parsers::identity_identifier_parser},
     vault::default_vault_name,
-    CommandGlobalOpts, EncodeFormat, Result,
+    CommandGlobalOpts, Result,
 };
 use clap::Args;
 
+use crate::output::EncodeFormat;
 use miette::{miette, IntoDiagnostic};
 use ockam::identity::CredentialData;
 use ockam::Context;
@@ -91,7 +92,6 @@ async fn run_impl(
         .await
         .into_diagnostic()?;
 
-    print_encodable(credential, &cmd.encode_format)?;
-
+    cmd.encode_format.println_value(&credential)?;
     Ok(())
 }

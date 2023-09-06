@@ -7,8 +7,8 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam_api::cli_state::StateDirTrait;
-use ockam_api::nodes::models;
 
+use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::DefaultAddress;
 use ockam_core::api::Request;
 
@@ -45,12 +45,12 @@ async fn run_impl(
     }
 
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(Request::get(format!(
-        "/node/services/{}",
-        DefaultAddress::KAFKA_DIRECT
-    )))
-    .await?;
-    let services = rpc.parse_response_body::<models::services::ServiceList>()?;
+    let services: ServiceList = rpc
+        .ask(Request::get(format!(
+            "/node/services/{}",
+            DefaultAddress::KAFKA_DIRECT
+        )))
+        .await?;
     if services.list.is_empty() {
         opts.terminal
             .stdout()

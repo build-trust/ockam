@@ -134,16 +134,34 @@ impl Response {
     }
 
     /// Parse the response header and if it is ok
-    /// parse the response body
+    /// parse and decode the response body
     pub fn parse_response_body<T>(bytes: &[u8]) -> Result<T>
+    where
+        T: for<'a> Decode<'a, ()>,
+    {
+        match Self::parse_response_reply(bytes) {
+            Ok(Reply::Successful(t)) => Ok(t),
+            Ok(Reply::Failed(e, _)) => Err(crate::Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                e.message().unwrap_or("no message defined for this error"),
+            )),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Parse the response header and if it is ok
+    /// parse the response body
+    pub fn parse_response_reply<T>(bytes: &[u8]) -> Result<Reply<T>>
     where
         T: for<'a> Decode<'a, ()>,
     {
         let (response, mut decoder) = Self::parse_response_header(bytes)?;
         if response.is_ok() {
+            // if the response is OK, try to decode the body as T
             if response.has_body() {
                 match decoder.decode() {
-                    Ok(t) => Ok(t),
+                    Ok(t) => Ok(Reply::Successful(t)),
                     Err(e) => {
                         #[cfg(all(feature = "alloc", feature = "minicbor/half"))]
                         error!(%e, dec = %minicbor::display(bytes), hex = %hex::encode(bytes), "Failed to decode response");
@@ -154,6 +172,7 @@ impl Response {
                         ))
                     }
                 }
+            // otherwise return a decoding error
             } else {
                 Err(crate::Error::new(
                     Origin::Api,
@@ -161,9 +180,19 @@ impl Response {
                     "expected a message body, got nothing".to_string(),
                 ))
             }
+        // if the status is not ok, try to read the response body as an error
         } else {
-            let msg = Self::parse_err_msg(response, decoder);
-            Err(crate::Error::new(Origin::Api, Kind::Serialization, msg))
+            let error = if matches!(decoder.datatype(), Ok(Type::String)) {
+                decoder
+                    .decode::<String>()
+                    .map(|msg| Error::new_without_path().with_message(msg))
+            } else {
+                decoder.decode::<Error>()
+            };
+            match error {
+                Ok(e) => Ok(Reply::Failed(e, response.status())),
+                Err(e) => Err(crate::Error::new(Origin::Api, Kind::Serialization, e)),
+            }
         }
     }
 
@@ -209,6 +238,34 @@ impl Response {
             None => "No status code found in response".to_string(),
         }
     }
+
+    /// If the response is not successful and the response has a body
+    /// parse the response body as an error
+    pub fn parse_error(response: Response, mut dec: Decoder) -> Result<Error> {
+        match response.status() {
+            Some(status) if response.has_body() => {
+                let error = if matches!(dec.datatype(), Ok(Type::String)) {
+                    dec.decode::<String>()
+                        .map(|msg| Error::new_without_path().with_message(msg))
+                } else {
+                    dec.decode::<Error>()
+                };
+                error.map_err(|e| crate::Error::new(Origin::Api, Kind::Serialization, format!("An error occurred while decoding the response error. Status code: {status} -> {e}")))
+            }
+            Some(status) => Ok(Error::new_without_path().with_message(format!(
+                "An error occurred while processing the request. Status code: {status}"
+            ))),
+            None => Ok(Error::new_without_path().with_message("No status code found in response")),
+        }
+    }
+}
+
+/// The Reply enum separates two possible cases when interpreting a Response
+///  1. there is a successfuly decodable value of type T
+///  2. the request failed and there is an API error (the optional status is also provided)
+pub enum Reply<T> {
+    Successful(T),
+    Failed(Error, Option<Status>),
 }
 
 /// Create an error response because the request path was unknown.

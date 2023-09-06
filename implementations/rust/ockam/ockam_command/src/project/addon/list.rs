@@ -44,8 +44,8 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     let req = Request::get(base_endpoint(&opts.state, &project_name)?)
         .body(CloudRequestWrapper::bare(controller_route));
-    rpc.request(req).await?;
-    rpc.parse_and_print_response::<Vec<Addon>>()?;
+    let addons: Vec<Addon> = rpc.ask(req).await?;
+    opts.println(&addons)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

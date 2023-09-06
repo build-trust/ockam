@@ -3,7 +3,7 @@ use clap::Args;
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models;
+use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_core::api::Request;
 
 use crate::util::{node_rpc, Rpc};
@@ -39,16 +39,16 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node)?;
-    rpc.request(Request::get(format!("/node/tcp/listener/{}", &cmd.address)))
+    let transport_status: TransportStatus = rpc
+        .ask(Request::get(format!("/node/tcp/listener/{}", &cmd.address)))
         .await?;
-    let res = rpc.parse_response_body::<models::transport::TransportStatus>()?;
 
     println!("TCP Listener:");
-    println!("  Type: {}", res.tt);
-    println!("  Mode: {}", res.tm);
-    println!("  Socket address: {}", res.socket_addr);
-    println!("  Worker address: {}", res.processor_address);
-    println!("  Flow Control Id: {}", res.flow_control_id);
+    println!("  Type: {}", transport_status.tt);
+    println!("  Mode: {}", transport_status.tm);
+    println!("  Socket address: {}", transport_status.socket_addr);
+    println!("  Worker address: {}", transport_status.processor_address);
+    println!("  Flow Control Id: {}", transport_status.flow_control_id);
 
     Ok(())
 }

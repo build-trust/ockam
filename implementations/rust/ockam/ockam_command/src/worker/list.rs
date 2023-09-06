@@ -1,6 +1,6 @@
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
@@ -51,11 +51,10 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
-        rpc.request(api::list_workers()).await?;
-
+    let get_workers = async {
+        let workers: WorkerList = rpc.ask(api::list_workers()).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<WorkerList>()
+        Ok(workers)
     };
 
     let output_messages = vec![format!(
@@ -69,7 +68,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (workers, _) = try_join!(send_req, progress_output)?;
+    let (workers, _) = try_join!(get_workers, progress_output)?;
 
     let list = opts.terminal.build_list(
         &workers.list,

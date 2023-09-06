@@ -58,9 +58,7 @@ async fn run_impl(
             .await?;
 
         let req = Request::post("/");
-
-        let resp_token: Token = orchestrator_client.request_with_response(req).await?;
-
+        let resp_token: Token = orchestrator_client.ask(req).await?;
         *is_finished.lock().await = true;
         Ok(resp_token)
     };

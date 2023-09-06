@@ -59,5 +59,5 @@ teardown() {
 
   # Test showing non-existing with no relay
   run_failure "$OCKAM" relay show forwarder_blank --at /node/n2
-  assert_output --partial "NotFound"
+  assert_output --partial "not found"
 }

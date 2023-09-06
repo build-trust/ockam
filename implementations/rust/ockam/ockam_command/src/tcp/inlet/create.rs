@@ -18,8 +18,9 @@ use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::CreateInlet;
 use ockam_api::nodes::models::portal::InletStatus;
-use ockam_core::api::Request;
-use ockam_core::route;
+use ockam_core::api::{Reply, Request, Status};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{route, Error};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -28,6 +29,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::try_join;
+use tracing::log::trace;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -102,7 +104,7 @@ async fn rpc(
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
-    let send_req = async {
+    let create_inlet = async {
         port_is_free_guard(&cmd.from)?;
 
         let project = opts
@@ -155,14 +157,24 @@ async fn rpc(
                 Request::post("/node/inlet").body(payload)
             };
 
-            rpc.request(req).await?;
+            let result: Reply<InletStatus> = rpc.ask_and_get_reply(req).await?;
 
-            match rpc.is_ok() {
-                Ok(_) => {
+            match result {
+                Reply::Successful(inlet_status) => {
                     *is_finished.lock().await = true;
-                    break rpc.parse_response_body::<InletStatus>()?;
+                    break inlet_status;
                 }
-                Err(_) => {
+                Reply::Failed(e, s) => {
+                    if let Some(status) = s {
+                        if status == Status::BadRequest {
+                            Err(Error::new(
+                                Origin::Api,
+                                Kind::Invalid,
+                                e.message().unwrap_or("bad request when creating an inlet"),
+                            ))?
+                        }
+                    };
+                    trace!("the inlet creation returned a non-OK status: {s:?}");
                     if let Some(spinner) = progress_bar.as_ref() {
                         spinner.set_message(format!(
                             "Waiting for outlet {} to be available... Retrying momentarily",
@@ -203,7 +215,7 @@ async fn rpc(
         progress_bar.as_ref(),
     );
 
-    let (inlet, _) = try_join!(send_req, progress_output)?;
+    let (inlet, _) = try_join!(create_inlet, progress_output)?;
 
     let machine_output = inlet.bind_addr.to_string();
 

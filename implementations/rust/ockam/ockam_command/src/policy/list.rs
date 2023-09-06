@@ -1,6 +1,6 @@
 use crate::node::get_node_name;
+use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{node_rpc, parse_node_name, Rpc};
 use crate::{CommandGlobalOpts, Result};
 use clap::Args;
@@ -54,11 +54,10 @@ async fn run_impl(
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
+    let get_policies = async {
         let req = Request::get(format!("/policy/{resource}"));
-
-        rpc.request(req).await?;
-        rpc.parse_response_body::<PolicyList>()
+        let policies: PolicyList = rpc.ask(req).await?;
+        Ok(policies)
     };
 
     let output_messages = vec![format!(
@@ -75,7 +74,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (policies, _) = try_join!(send_req, progress_output)?;
+    let (policies, _) = try_join!(get_policies, progress_output)?;
 
     let list = opts.terminal.build_list(
         policies.expressions(),

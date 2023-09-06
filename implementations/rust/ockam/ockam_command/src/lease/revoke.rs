@@ -53,9 +53,7 @@ async fn run_impl(
         .await?;
 
     let req = Request::delete(format!("/{}", cmd.token_id));
-
-    orchestrator_client.request(req).await?;
-
+    orchestrator_client.tell(req).await?;
     println!("Revoked influxdb token {}.", cmd.token_id);
 
     Ok(())

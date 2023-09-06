@@ -121,9 +121,7 @@ pub async fn create_secure_channel_to_project(
         None,
     );
     let req = Request::post("/node/secure_channel").body(payload);
-    rpc.request(req).await?;
-
-    let sc = rpc.parse_response_body::<CreateSecureChannelResponse>()?;
+    let sc: CreateSecureChannelResponse = rpc.ask(req).await?;
     Ok(sc.multiaddr()?)
 }
 
@@ -146,9 +144,8 @@ pub async fn create_secure_channel_to_authority(
         None,
     );
     let req = Request::post("/node/secure_channel").body(payload);
-    rpc.request(req).await?;
-    let res = rpc.parse_response_body::<CreateSecureChannelResponse>()?;
-    let addr = res.multiaddr()?;
+    let response: CreateSecureChannelResponse = rpc.ask(req).await?;
+    let addr = response.multiaddr()?;
     Ok(addr)
 }
 
@@ -161,8 +158,7 @@ async fn delete_secure_channel<'a>(
 ) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
     let addr = multiaddr_to_addr(sc_addr).ok_or(miette!("Failed to convert MultiAddr to addr"))?;
-    rpc.request(api::delete_secure_channel(&addr)).await?;
-    rpc.is_ok()?;
+    rpc.tell(api::delete_secure_channel(&addr)).await?;
     Ok(())
 }
 
@@ -196,17 +192,15 @@ pub async fn check_project_readiness(
 
             // Handle the project show request result
             // so we can provide better errors in the case orchestrator does not respond timely
-            if rpc
-                .request(api::project::show(&project_id, cloud_route))
-                .await
-                .is_ok()
-            {
-                let p = rpc.parse_response_body::<Project>()?;
+            let result: Result<Project> =
+                rpc.ask(api::project::show(&project_id, cloud_route)).await;
+            result.and_then(|p| {
                 if p.is_ready() {
-                    return Ok(p);
+                    Ok(p)
+                } else {
+                    Err(miette!("Project creation timed out. Please try again.").into())
                 }
-            }
-            Err(miette!("Project creation timed out. Plaese try again."))
+            })
         })
         .await?;
     }
@@ -315,8 +309,7 @@ pub async fn refresh_projects(
     tcp: Option<&TcpTransport>,
 ) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
-    rpc.request(api::project::list(controller_route)).await?;
-    let projects = rpc.parse_response_body::<Vec<Project>>()?;
+    let projects: Vec<Project> = rpc.ask(api::project::list(controller_route)).await?;
     for project in projects {
         opts.state
             .projects

@@ -83,13 +83,12 @@ async fn run_impl(
 
         // Send request
         let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-        rpc.request(api::project::delete(
+        rpc.tell(api::project::delete(
             &space_id,
             &project_id,
             controller_route,
         ))
         .await?;
-        rpc.is_ok()?;
         delete_embedded_node(&opts, rpc.node_name()).await;
 
         opts.state.projects.delete(&cmd.project_name)?;

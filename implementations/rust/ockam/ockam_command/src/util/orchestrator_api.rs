@@ -274,25 +274,21 @@ pub struct OrchestratorApi<'a> {
 }
 
 impl<'a> OrchestratorApi<'a> {
-    pub async fn request_with_response<T, R>(&'a mut self, req: RequestBuilder<T>) -> Result<R>
+    pub async fn ask<T, R>(&'a mut self, req: RequestBuilder<T>) -> Result<R>
     where
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,
     {
-        self.request(req).await?;
-
-        self.rpc.is_ok()?;
-
+        let response = self.rpc.ask(req).await?;
         info!("Response is OK!");
-
-        self.rpc.parse_response_body()
+        Ok(response)
     }
 
-    pub async fn request<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
+    pub async fn tell<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
     where
         T: Encode<()>,
     {
         info!("Initializing request to orchestrator");
-        self.rpc.request(req).await
+        self.rpc.tell(req).await
     }
 }

@@ -1,7 +1,7 @@
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::util::output::Output;
-use crate::util::{node_rpc, println_output};
-use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
+use crate::output::{EncodeFormat, Output};
+use crate::util::node_rpc;
+use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
 use core::fmt::Write;
 use miette::IntoDiagnostic;
@@ -63,14 +63,14 @@ impl ShowCommand {
                 .into_diagnostic()?;
 
             if Some(EncodeFormat::Hex) == cmd.encoding {
-                println_output(identity, &opts.global_args.output_format)?;
+                opts.println(&identity)?;
             } else {
                 let output = LongIdentityResponse::new(identity);
-                println_output(output, &opts.global_args.output_format)?;
+                opts.println(&output)?;
             }
         } else {
             let output = ShortIdentityResponse::new(state.config().identifier().to_string());
-            println_output(output, &opts.global_args.output_format)?;
+            opts.println(&output)?;
         }
         Ok(())
     }

@@ -17,8 +17,8 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::{display_parse_logs, docs, fmt_ok, CommandGlobalOpts};
 use crate::{fmt_log, Result};
@@ -91,7 +91,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     let mut rpc = RpcBuilder::new(&ctx, &opts, &api_node).tcp(&tcp)?.build();
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
+    let get_relay_info = async {
         let req = {
             let body = if cmd.at.matches(0, &[Project::CODE.into()]) {
                 if cmd.authorized.is_some() {
@@ -106,11 +106,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
             Request::post("/node/forwarder").body(body)
         };
 
-        rpc.request(req).await?;
-
+        let relay_info: ForwarderInfo = rpc.ask(req).await?;
         *is_finished.lock().await = true;
-
-        rpc.parse_response_body::<ForwarderInfo>()
+        Ok(relay_info)
     };
 
     let output_messages = vec![
@@ -131,7 +129,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (relay, _) = try_join!(send_req, progress_output)?;
+    let (relay, _) = try_join!(get_relay_info, progress_output)?;
 
     let machine = relay.remote_address_ma().into_diagnostic()?;
     let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
