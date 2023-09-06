@@ -22,6 +22,28 @@ defmodule OcklyTest do
 	assert ttl == System.os_time(:second) + 60
   end
 
+  test "create identity from existing secret" do
+	{_pub, secret} = :crypto.generate_key(:eddsa, :ed25519) 
+	key_id = Ockly.Native.import_signing_secret(secret)
+	{_id, _exported_identity} = Ockly.Native.create_identity(key_id)
+  end
+
+  test "import identity and existing secret" do
+      # An existing exported identity (change history) and its signing key.  It must be possible to import them and use (if memory signing vault is used)
+
+      secret = <<83, 231, 139, 244, 109, 254, 138, 112, 211, 93, 197, 106, 173, 226, 235, 88, 141, 218, 113, 168, 209, 229, 28, 241, 69, 249, 106, 70, 50, 54, 218, 217>>
+      identity = <<129, 162, 1, 88, 59, 162, 1, 1, 2, 88, 53, 164, 2, 130, 1, 129, 88, 32, 83, 241, 75, 224, 25, 93, 231, 146, 168, 52, 2, 192, 228, 60, 198, 200, 216, 60, 101, 169, 165, 128, 75, 221, 124, 29, 3, 224, 11, 89, 124, 70, 3, 244, 4, 26, 100, 248, 141, 178, 5, 26, 119, 196, 144, 178, 2, 130, 1, 129, 88, 64, 236, 140, 158, 157, 188, 146, 79, 243, 149, 182, 13, 3, 100, 174, 45, 5, 37, 208, 240, 3, 205, 7, 29, 61, 74, 44, 28, 166, 51, 161, 201, 36, 211, 72, 21, 1, 200, 238, 124, 183, 24, 26, 236, 66, 106, 172, 219, 61, 169, 171, 103, 167, 2, 40, 11, 183, 202, 162, 217, 237, 91, 244, 59, 1>>
+	identifier = "I31f064878eb4fc0852d55a0fbb7305270b8fa1d7"
+
+       assert identifier == Ockly.Native.check_identity(identity)
+       _key_id = Ockly.Native.import_signing_secret(secret)	
+
+	# Check that we can use it
+       {pub_key, _secret_key} = :crypto.generate_key(:eddh, :x25519)
+       attestation = Ockly.Native.attest_purpose_key(identifier, pub_key)
+       assert Ockly.Native.verify_purpose_key_attestation(identity, pub_key, attestation) == true
+  end
+
   test "junk identity" do
 	assert {:error, :identity_import_error} == Ockly.Native.check_identity("junk")
   end

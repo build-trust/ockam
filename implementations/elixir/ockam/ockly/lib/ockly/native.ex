@@ -1,12 +1,14 @@
 defmodule Ockly.Native do
 
-  use Rustler, otp_app: :ockly, crate: "ockly"
+  use Rustler, otp_app: :ockly, crate: "ockly", load_data: :aws_kms2
 
-  def create_identity(), do: error() 
+  def create_identity(), do: create_identity(nil)
+  def create_identity(_), do: error() 
   def check_identity(_), do: error()
   def attest_purpose_key(_, _), do: error()
   def verify_purpose_key_attestation(_, _, _), do: error()
   def verify_credential(_, _, _), do: error()
+  def import_signing_secret(_), do: error()
 
   def issue_credential(_, _, _, _), do: error()
 
