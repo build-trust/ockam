@@ -18,7 +18,7 @@ struct ChangeDetails {
 
 impl Identity {
     pub(crate) fn compute_change_hash_from_hash(hash: [u8; 32]) -> Result<ChangeHash> {
-        Ok(ChangeHash::new(*array_ref!(hash, 0, CHANGE_HASH_LEN)))
+        Ok(ChangeHash(*array_ref!(hash, 0, CHANGE_HASH_LEN)))
     }
 
     /// Check consistency of changes that are being added

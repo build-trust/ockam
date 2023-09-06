@@ -9,7 +9,7 @@ use crate::IdentityError;
 #[cfg(feature = "std")]
 pub fn now() -> Result<TimestampInSeconds> {
     if let Ok(now) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
-        Ok(TimestampInSeconds::new(now.as_secs()))
+        Ok(TimestampInSeconds(now.as_secs()))
     } else {
         Err(IdentityError::UnknownTimestamp.into())
     }
@@ -23,7 +23,7 @@ pub fn now() -> Result<TimestampInSeconds> {
 
 /// Add a number of seconds to the [`TimestampInSeconds`]
 pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInSeconds {
-    TimestampInSeconds::new(timestamp.saturating_add(seconds))
+    TimestampInSeconds(timestamp.saturating_add(seconds))
 }
 
 /// Convenient builder for the [`Attributes`] struct
