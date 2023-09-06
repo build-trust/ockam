@@ -12,8 +12,8 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{api, node_rpc, parse_node_name, RpcBuilder};
 use crate::CommandGlobalOpts;
 
@@ -54,12 +54,10 @@ async fn run_impl(
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).tcp(&tcp)?.build();
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
-        rpc.request(api::list_services()).await?;
-        let r = rpc.parse_response_body::<ServiceList>()?;
-
+    let get_services = async {
+        let services: ServiceList = rpc.ask(api::list_services()).await?;
         *is_finished.lock().await = true;
-        crate::Result::Ok(r)
+        Ok(services)
     };
 
     let output_messages = vec![format!(
@@ -73,7 +71,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (services, _) = try_join!(send_req, progress_output)?;
+    let (services, _) = try_join!(get_services, progress_output)?;
 
     let plain = opts.terminal.build_list(
         &services.list,

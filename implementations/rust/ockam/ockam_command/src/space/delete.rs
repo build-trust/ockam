@@ -58,9 +58,8 @@ async fn run_impl(
         let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
         let node_name = start_embedded_node(ctx, &opts, None).await?;
         let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-        rpc.request(api::space::delete(&space_id, &CloudOpts::route()))
+        rpc.tell(api::space::delete(&space_id, &CloudOpts::route()))
             .await?;
-        rpc.is_ok()?;
 
         let _ = opts.state.spaces.delete(&cmd.name);
         // TODO: remove projects associated to the space.

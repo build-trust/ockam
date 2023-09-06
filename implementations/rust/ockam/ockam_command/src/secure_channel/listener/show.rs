@@ -48,8 +48,7 @@ async fn run_impl(
 
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let req = api::show_secure_channel_listener(address);
-    rpc.request(req).await?;
-    rpc.is_ok()?;
+    rpc.tell(req).await?;
     opts.terminal
         .stdout()
         .plain(format!("/service/{}", cmd.address.address()))

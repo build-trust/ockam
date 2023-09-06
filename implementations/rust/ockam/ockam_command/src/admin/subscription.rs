@@ -159,14 +159,14 @@ async fn run_impl(
                 None,
             ));
 
-            rpc.request(req).await?;
-            rpc.parse_and_print_response::<Subscription>()?;
+            let response: Subscription = rpc.ask(req).await?;
+            opts.println(&response)?;
         }
         SubscriptionSubcommand::List => {
             let req =
                 Request::get("subscription").body(CloudRequestWrapper::bare(controller_route));
-            rpc.request(req).await?;
-            rpc.parse_and_print_response::<Vec<Subscription>>()?;
+            let response: Vec<Subscription> = rpc.ask(req).await?;
+            opts.println(&response)?;
         }
         SubscriptionSubcommand::Unsubscribe {
             subscription_id,
@@ -183,8 +183,8 @@ async fn run_impl(
             .await?;
             let req = Request::put(format!("subscription/{subscription_id}/unsubscribe"))
                 .body(CloudRequestWrapper::bare(controller_route));
-            rpc.request(req).await?;
-            rpc.parse_and_print_response::<Subscription>()?;
+            let response: Subscription = rpc.ask(req).await?;
+            opts.println(&response)?;
         }
         SubscriptionSubcommand::Update(c) => {
             let SubscriptionUpdate { subcommand: sc } = c;
@@ -208,8 +208,8 @@ async fn run_impl(
                     .await?;
                     let req = Request::put(format!("subscription/{subscription_id}/contact_info"))
                         .body(CloudRequestWrapper::new(json, controller_route, None));
-                    rpc.request(req).await?;
-                    rpc.parse_and_print_response::<Subscription>()?;
+                    let response: Subscription = rpc.ask(req).await?;
+                    opts.println(&response)?;
                 }
                 SubscriptionUpdateSubcommand::Space {
                     subscription_id,
@@ -229,8 +229,8 @@ async fn run_impl(
                         Request::put(format!("subscription/{subscription_id}/space_id")).body(
                             CloudRequestWrapper::new(new_space_id, controller_route, None),
                         );
-                    rpc.request(req).await?;
-                    rpc.parse_and_print_response::<Subscription>()?;
+                    let response: Subscription = rpc.ask(req).await?;
+                    opts.println(&response)?;
                 }
             }
         }

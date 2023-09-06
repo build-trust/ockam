@@ -1,5 +1,5 @@
+use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
@@ -58,23 +58,23 @@ async fn run_impl(
 
         let is_finished: Mutex<bool> = Mutex::new(false);
 
-        let send_req = async {
-            let node_status = if rpc.request(api::query_status()).await.is_ok() {
-                let resp = rpc.parse_response_body::<NodeStatus>()?;
-                if let Ok(node_state) = opts.state.nodes.get(&node_name) {
-                    // Update the persisted configuration data with the pids
-                    // responded by nodes.
-                    if node_state.pid()? != Some(resp.pid) {
-                        node_state
-                            .set_pid(resp.pid)
-                            .context("Failed to update pid for node {node_name}")?;
+        let get_node_status = async {
+            let result: Result<NodeStatus> = rpc.ask(api::query_status()).await;
+            let node_status = match result {
+                Ok(node_status) => {
+                    if let Ok(node_state) = opts.state.nodes.get(&node_name) {
+                        // Update the persisted configuration data with the pids
+                        // responded by nodes.
+                        if node_state.pid()? != Some(node_status.pid) {
+                            node_state
+                                .set_pid(node_status.pid)
+                                .context("Failed to update pid for node {node_name}")?;
+                        }
                     }
+                    node_status
                 }
-                resp
-            } else {
-                NodeStatus::new(node_name.to_string(), "Not running".to_string(), 0, 0)
+                Err(_) => NodeStatus::new(node_name.to_string(), "Not running".to_string(), 0, 0),
             };
-
             *is_finished.lock().await = true;
             Ok(node_status)
         };
@@ -89,7 +89,7 @@ async fn run_impl(
             .terminal
             .progress_output(&output_messages, &is_finished);
 
-        let (node_status, _) = try_join!(send_req, progress_output)?;
+        let (node_status, _) = try_join!(get_node_status, progress_output)?;
 
         nodes.push(NodeListOutput::new(
             node_status.node_name.to_string(),

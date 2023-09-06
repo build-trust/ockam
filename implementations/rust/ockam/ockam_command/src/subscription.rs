@@ -9,8 +9,8 @@ use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 
 use crate::node::util::delete_embedded_node;
+use crate::output::Output;
 use crate::util::api::CloudOpts;
-use crate::util::output::Output;
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
@@ -74,8 +74,8 @@ async fn run_impl(
             .await?;
             let req = Request::get(format!("subscription/{subscription_id}"))
                 .body(CloudRequestWrapper::bare(controller_route));
-            rpc.request(req).await?;
-            rpc.parse_and_print_response::<Subscription>()?;
+            let subscription: Subscription = rpc.ask(req).await?;
+            opts.println(&subscription)?;
         }
     };
     delete_embedded_node(&opts, rpc.node_name()).await;
@@ -118,8 +118,7 @@ pub mod utils {
     ) -> crate::Result<String> {
         let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
         let req = Request::get("subscription").body(CloudRequestWrapper::bare(controller_route));
-        rpc.request(req).await?;
-        let subscriptions = rpc.parse_response_body::<Vec<Subscription>>()?;
+        let subscriptions: Vec<Subscription> = rpc.ask(req).await?;
         let subscription = subscriptions
             .into_iter()
             .find(|s| s.space_id == Some(space_id.into()))

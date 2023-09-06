@@ -7,11 +7,11 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::StateDirTrait;
-use ockam_api::nodes::models;
 
 use ockam_core::api::Request;
 
 use ockam_api::address::extract_address_value;
+use ockam_api::nodes::models::portal::InletList;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -49,11 +49,10 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
-        rpc.request(Request::get("/node/inlet")).await?;
-
+    let get_inlets = async {
+        let inlets: InletList = rpc.ask(Request::get("/node/inlet")).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<models::portal::InletList>()
+        Ok(inlets)
     };
 
     let output_messages = vec![format!(
@@ -67,7 +66,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (inlets, _) = try_join!(send_req, progress_output)?;
+    let (inlets, _) = try_join!(get_inlets, progress_output)?;
 
     let plain = opts.terminal.build_list(
         &inlets.list,

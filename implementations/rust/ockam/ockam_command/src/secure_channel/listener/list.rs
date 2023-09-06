@@ -12,8 +12,8 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{api, parse_node_name};
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
@@ -65,12 +65,11 @@ async fn run_impl(
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
-        rpc.request(api::list_secure_channel_listener()).await?;
-        let res = rpc.parse_response_body::<SecureChannelListenersList>()?;
-
+    let get_listeners = async {
+        let listeners: SecureChannelListenersList =
+            rpc.ask(api::list_secure_channel_listener()).await?;
         *is_finished.lock().await = true;
-        Ok(res)
+        Ok(listeners)
     };
 
     let output_messages = vec![format!(
@@ -84,7 +83,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (secure_channel_listeners, _) = try_join!(send_req, progress_output)?;
+    let (secure_channel_listeners, _) = try_join!(get_listeners, progress_output)?;
 
     let list = opts.terminal.build_list(
         &secure_channel_listeners.list,

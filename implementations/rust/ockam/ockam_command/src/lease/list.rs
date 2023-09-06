@@ -14,8 +14,8 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::{
     docs,
     util::{
@@ -57,7 +57,7 @@ async fn run_impl(
 
         let req = Request::get("/");
 
-        let response: Vec<Token> = orchestrator_client.request_with_response(req).await?;
+        let response: Vec<Token> = orchestrator_client.ask(req).await?;
         *is_finished.lock().await = true;
         Ok(response)
     };

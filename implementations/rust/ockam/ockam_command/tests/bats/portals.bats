@@ -40,7 +40,7 @@ teardown() {
 
   # Test deletion of a previously deleted TCP inlet
   run_failure $OCKAM tcp-inlet delete "test-inlet" --at /node/n2 --yes
-  assert_output --partial "NotFound"
+  assert_output --partial "not found"
 }
 
 @test "portals - tcp outlet CRUD" {
@@ -64,7 +64,7 @@ teardown() {
 
   # Test deletion of a previously deleted TCP outlet
   run_failure $OCKAM tcp-outlet delete "test-outlet" --yes
-  assert_output --partial "NotFound"
+  assert_output --partial "not found"
 }
 
 @test "portals - list inlets on a node" {
@@ -105,7 +105,7 @@ teardown() {
 
   # Test if non-existing TCP inlet returns NotFound
   run_failure $OCKAM tcp-inlet show "non-existing-inlet"
-  assert_output --partial "NotFound"
+  assert_output --partial "not found"
 }
 
 @test "portals - show a tcp outlet" {
@@ -119,7 +119,7 @@ teardown() {
 
   # Test if non-existing TCP outlet returns NotFound
   run_failure $OCKAM tcp-outlet show "non-existing-outlet"
-  assert_output --partial "NotFound"
+  assert_output --partial "not found"
 }
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it" {

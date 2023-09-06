@@ -48,9 +48,8 @@ pub async fn run_impl(
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
         let node = parse_node_name(&node_name)?;
         let mut rpc = Rpc::background(&ctx, &opts, &node)?;
-        rpc.request(Request::delete(format!("/node/outlet/{alias}")))
+        rpc.tell(Request::delete(format!("/node/outlet/{alias}")))
             .await?;
-        rpc.is_ok()?;
 
         opts.terminal
             .stdout()

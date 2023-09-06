@@ -67,8 +67,8 @@ async fn run_impl(
             cmd.identity,
         ),
     );
-    rpc.request(req).await?;
-    match rpc.is_ok() {
+    let result = rpc.tell(req).await;
+    match result {
         Ok(_) => {
             let address = format!("/service/{}", cmd.address.address());
             opts.terminal

@@ -13,8 +13,8 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use crate::node::get_node_name;
+use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{parse_node_name, RpcBuilder};
 use crate::{
     docs,
@@ -98,12 +98,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
 
-    let send_req = async {
-        rpc.request(api::list_secure_channels()).await?;
-        let channel_identifiers = rpc.parse_response_body::<Vec<String>>()?;
-
+    let get_secure_channel_identifiers = async {
+        let secure_channel_identifiers: Vec<String> = rpc.ask(api::list_secure_channels()).await?;
         *is_finished.lock().await = true;
-        Ok(channel_identifiers)
+        Ok(secure_channel_identifiers)
     };
 
     let output_messages = vec!["Retrieving secure channel identifiers...\n".to_string()];
@@ -111,18 +109,17 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (channel_identifiers, _) = try_join!(send_req, progress_output)?;
+    let (channel_identifiers, _) = try_join!(get_secure_channel_identifiers, progress_output)?;
 
     let mut responses = Vec::with_capacity(channel_identifiers.len());
     for channel_addr in &channel_identifiers {
         let is_finished: Mutex<bool> = Mutex::new(false);
         let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
-        let send_req = async {
+        let get_secure_channel_output = async {
             let request: ockam_core::api::RequestBuilder<
                 ockam_api::nodes::models::secure_channel::ShowSecureChannelRequest,
             > = api::show_secure_channel(&Address::from(channel_addr));
-            rpc.request(request).await?;
-            let show_response = rpc.parse_response_body::<ShowSecureChannelResponse>()?;
+            let show_response: ShowSecureChannelResponse = rpc.ask(request).await?;
             let secure_channel_output =
                 cmd.build_output(&node_name, channel_addr, show_response)?;
             *is_finished.lock().await = true;
@@ -138,7 +135,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
             .terminal
             .progress_output(&output_messages, &is_finished);
 
-        let (secure_channel_output, _) = try_join!(send_req, progress_output)?;
+        let (secure_channel_output, _) = try_join!(get_secure_channel_output, progress_output)?;
 
         responses.push(secure_channel_output);
     }

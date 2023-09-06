@@ -18,8 +18,8 @@ use crate::project::addon::configure_okta::AddonConfigureOktaSubcommand;
 use crate::project::addon::disable::AddonDisableSubcommand;
 use crate::project::addon::list::AddonListSubcommand;
 
+use crate::output::Output;
 use crate::util::api::CloudOpts;
-use crate::util::output::Output;
 
 use crate::{CommandGlobalOpts, Result};
 

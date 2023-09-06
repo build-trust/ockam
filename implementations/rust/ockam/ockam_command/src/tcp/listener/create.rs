@@ -4,8 +4,7 @@ use crate::util::{node_rpc, parse_node_name};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
-use ockam_api::nodes::models;
-use ockam_api::nodes::models::transport::CreateTcpListener;
+use ockam_api::nodes::models::transport::{CreateTcpListener, TransportStatus};
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -38,11 +37,11 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(Request::post("/node/tcp/listener").body(CreateTcpListener::new(cmd.address)))
+    let transport_status: TransportStatus = rpc
+        .ask(Request::post("/node/tcp/listener").body(CreateTcpListener::new(cmd.address)))
         .await?;
-    let response = rpc.parse_response_body::<models::transport::TransportStatus>()?;
 
-    let socket = response.socket_addr().into_diagnostic()?;
+    let socket = transport_status.socket_addr().into_diagnostic()?;
     let port = socket.port();
     let mut multiaddr = MultiAddr::default();
     multiaddr

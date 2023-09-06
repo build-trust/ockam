@@ -37,8 +37,7 @@ async fn run_impl(
     let req = Request::delete("/node/services/kafka_producer").body(
         models::services::DeleteServiceRequest::new(cmd.address.clone()),
     );
-    rpc.request(req).await?;
-    rpc.is_ok()?;
+    rpc.tell(req).await?;
 
     opts.terminal
         .stdout()

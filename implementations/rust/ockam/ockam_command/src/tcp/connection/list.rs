@@ -1,16 +1,15 @@
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
-use crate::util::output::Output;
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
+use crate::output::Output;
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
-use ockam_api::nodes::models;
-use ockam_api::nodes::models::transport::TransportStatus;
+use ockam_api::nodes::models::transport::{TransportList, TransportStatus};
 use ockam_core::api::Request;
 use std::fmt::Write;
 use tokio::sync::Mutex;
@@ -50,11 +49,10 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
-        rpc.request(Request::get("/node/tcp/connection")).await?;
-
+    let get_transports = async {
+        let transports: TransportList = rpc.ask(Request::get("/node/tcp/connection")).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<models::transport::TransportList>()
+        Ok(transports)
     };
 
     let output_messages = vec![format!(
@@ -68,7 +66,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (transports, _) = try_join!(send_req, progress_output)?;
+    let (transports, _) = try_join!(get_transports, progress_output)?;
 
     let list = opts.terminal.build_list(
         &transports.list,

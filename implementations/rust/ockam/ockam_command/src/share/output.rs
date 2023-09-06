@@ -1,6 +1,7 @@
 use ockam_api::cloud::share::{ReceivedInvitation, SentInvitation};
 
-use crate::{error::Result, util::output::Output};
+use crate::error::Result;
+use crate::output::Output;
 
 impl Output for ReceivedInvitation {
     fn output(&self) -> Result<String> {

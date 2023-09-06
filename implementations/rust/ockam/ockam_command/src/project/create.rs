@@ -56,13 +56,13 @@ async fn run_impl(
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request(api::project::create(
-        &cmd.project_name,
-        &space_id,
-        &CloudOpts::route(),
-    ))
-    .await?;
-    let project = rpc.parse_response_body::<Project>()?;
+    let project: Project = rpc
+        .ask(api::project::create(
+            &cmd.project_name,
+            &space_id,
+            &CloudOpts::route(),
+        ))
+        .await?;
     let operation_id = project.operation_id.clone().unwrap();
     check_for_completion(ctx, &opts, rpc.node_name(), &operation_id).await?;
     let project = check_project_readiness(ctx, &opts, &node_name, None, project).await?;
@@ -72,7 +72,7 @@ async fn run_impl(
     opts.state
         .trust_contexts
         .overwrite(&project.name, project.clone().try_into()?)?;
-    rpc.print_response(project)?;
+    opts.println(&project)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

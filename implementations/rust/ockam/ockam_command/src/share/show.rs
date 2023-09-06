@@ -45,11 +45,12 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
-    let send_req = async {
-        rpc.request(api::share::show(cmd.invitation_id, &CloudOpts::route()))
+    let get_invitation_with_access = async {
+        let invitation_with_access: InvitationWithAccess = rpc
+            .ask(api::share::show(cmd.invitation_id, &CloudOpts::route()))
             .await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<InvitationWithAccess>()
+        Ok(invitation_with_access)
     };
 
     let output_messages = vec![format!("Showing invitation...\n",)];
@@ -58,7 +59,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (response, _) = try_join!(send_req, progress_output)?;
+    let (response, _) = try_join!(get_invitation_with_access, progress_output)?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
 

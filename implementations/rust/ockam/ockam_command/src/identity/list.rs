@@ -1,6 +1,6 @@
+use crate::output::Output;
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
-use crate::util::output::Output;
 use crate::{docs, CommandGlobalOpts};
 
 use clap::Args;

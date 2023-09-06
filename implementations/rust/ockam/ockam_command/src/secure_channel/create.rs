@@ -112,7 +112,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     let mut rpc = RpcBuilder::new(&ctx, &opts, from).tcp(&tcp)?.build();
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
+    let create_secure_channel = async {
         let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
         let payload = models::secure_channel::CreateSecureChannelRequest::new(
             to,
@@ -123,11 +123,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         );
         let request = Request::post("/node/secure_channel").body(payload);
 
-        rpc.request(request).await?;
-        let resp = rpc.parse_response_body::<CreateSecureChannelResponse>()?;
+        let response: CreateSecureChannelResponse = rpc.ask(request).await?;
         *is_finished.lock().await = true;
-
-        Ok(resp)
+        Ok(response)
     };
 
     let output_messages = vec!["Creating Secure Channel...".to_string()];
@@ -136,7 +134,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (secure_channel, _) = try_join!(send_req, progress_output)?;
+    let (secure_channel, _) = try_join!(create_secure_channel, progress_output)?;
 
     let route = &route![secure_channel.addr.to_string()];
     let multi_addr = route_to_multiaddr(route).ok_or_else(|| {

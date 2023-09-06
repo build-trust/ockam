@@ -39,12 +39,13 @@ async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts) -> miette::Result<
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request(api::project::version(controller_route)).await?;
-    let res = rpc.parse_response_body::<ProjectVersion>()?;
+    let project_version: ProjectVersion = rpc.ask(api::project::version(controller_route)).await?;
     delete_embedded_node(&opts, rpc.node_name()).await;
 
-    let json = serde_json::to_string(&res).into_diagnostic()?;
-    let project_version = res.project_version.unwrap_or("unknown".to_string());
+    let json = serde_json::to_string(&project_version).into_diagnostic()?;
+    let project_version = project_version
+        .project_version
+        .unwrap_or("unknown".to_string());
     let plain = fmt_ok!("The version of the Projects is '{project_version}'");
 
     opts.terminal

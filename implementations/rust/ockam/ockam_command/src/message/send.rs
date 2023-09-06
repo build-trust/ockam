@@ -115,17 +115,16 @@ async fn rpc(
             cmd.message.as_bytes().to_vec()
         };
 
-        rpc.request_with_timeout(req(&to, msg_bytes), cmd.timeout)
+        let response: Vec<u8> = rpc
+            .set_timeout(cmd.timeout)
+            .ask(req(&to, msg_bytes))
             .await?;
-        let res = {
-            let res = rpc.parse_response_body::<Vec<u8>>()?;
-            if cmd.hex {
-                hex::encode(res)
-            } else {
-                String::from_utf8(res)
-                    .into_diagnostic()
-                    .context("Received content is not a valid utf8 string")?
-            }
+        let result = if cmd.hex {
+            hex::encode(response)
+        } else {
+            String::from_utf8(response)
+                .into_diagnostic()
+                .context("Received content is not a valid utf8 string")?
         };
 
         // only delete node in case 'from' is empty and embedded node was started before
@@ -133,7 +132,7 @@ async fn rpc(
             delete_embedded_node(&opts, rpc.node_name()).await;
         }
 
-        opts.terminal.stdout().plain(&res).write_line()?;
+        opts.terminal.stdout().plain(&result).write_line()?;
 
         Ok(())
     }

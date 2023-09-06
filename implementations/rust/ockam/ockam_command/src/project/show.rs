@@ -62,9 +62,9 @@ async fn run_impl(
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request(api::project::show(&id, controller_route))
-        .await?;
-    let project = rpc.parse_and_print_response::<Project>()?;
+    let project: Project = rpc.ask(api::project::show(&id, controller_route)).await?;
+
+    opts.println(&project)?;
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;

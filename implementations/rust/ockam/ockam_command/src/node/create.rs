@@ -204,7 +204,7 @@ pub(crate) async fn background_mode(
         let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
         let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
         spawn_background_node(&opts, cmd.clone()).await?;
-        let is_node_up = is_node_up(&mut rpc, true).await?;
+        let is_node_up = is_node_up(&mut rpc, opts.state.clone(), true).await?;
         *is_finished.lock().await = true;
         Ok(is_node_up)
     };
