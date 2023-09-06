@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.79.0 - 2023-09-06
+
+### Added
+
+- Add `v2` module to `ockam_identity`
+- Add secure channel implementation to new identity design
+
+### Changed
+
+- Start using `PurposeKeys` from the storage
+- Updated dependencies
+
+### Fixed
+
+- Fix flaky stop secure channel test
+- Fix new identity design tests
+
 ## 0.78.0 - 2023-06-26
 
 ### Added

@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.91.0 - 2023-09-06
+
+### Added
+
+- Add flag to control whether a node redirects the logs to a file
+- Add support to create and list tcp-outlets on the desktop app
+- Add cli subcommand to list share invitations
+- Added new cli command to retrieve the project's version
+- Added a direct local kafka for simple deployments and fixed service registry
+
+### Changed
+
+- Foreground nodes always log to stdout
+- Scaffold for ockam_app with support for enroll
+- Formatting
+- Prototype command to check orchestrator nodes versions
+- Load controller address and identifier from env
+- Integrate orchestrator versions within the status command
+- Introduce an app state holding a context
+- Change some response functions
+- Optionally share service when creating the tcp-outlet
+- New sidecar to run inlet/outlet relay portal with one command
+- Simplify tcp-inlet creation
+- Move common code to `api` so we can remove `command` from `app`
+- Updated dependencies
+
+### Fixed
+
+- Foreground nodes will write logs to file on a fresh start
+- Fix compilation errors
+- Read default values for `GlobalArgs` from env variables
+
+### Removed
+
+- Removed api lifetimes to access node manager operations directly
+
 ## 0.90.0 - 2023-06-26
 
 ### Added
