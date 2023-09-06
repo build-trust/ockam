@@ -86,7 +86,7 @@ impl IdentityBuilder {
             Key::Generate(stype) => {
                 let key = self
                     .identities_creation
-                    .signing_vault
+                    .identity_vault
                     .generate_key(stype.into())
                     .await?;
 

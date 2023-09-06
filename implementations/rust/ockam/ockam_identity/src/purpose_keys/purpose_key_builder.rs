@@ -99,7 +99,7 @@ impl PurposeKeyBuilder {
                     Purpose::Credentials => {
                         self.purpose_keys_creation
                             .vault()
-                            .signing_vault
+                            .credential_vault
                             .generate_key(stype.into())
                             .await?
                     }

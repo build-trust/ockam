@@ -16,7 +16,7 @@ pub struct CredentialAndPurposeKeyData {
 
 /// Service for managing [`Credential`]s
 pub struct Credentials {
-    signing_vault: Arc<dyn SigningVault>,
+    credential_vault: Arc<dyn SigningVault>,
     verifying_vault: Arc<dyn VerifyingVault>,
     purpose_keys: Arc<PurposeKeys>,
     identities_repository: Arc<dyn IdentitiesRepository>,
@@ -25,13 +25,13 @@ pub struct Credentials {
 impl Credentials {
     ///Constructor
     pub fn new(
-        signing_vault: Arc<dyn SigningVault>,
+        credential_vault: Arc<dyn SigningVault>,
         verifying_vault: Arc<dyn VerifyingVault>,
         purpose_keys: Arc<PurposeKeys>,
         identities_repository: Arc<dyn IdentitiesRepository>,
     ) -> Self {
         Self {
-            signing_vault,
+            credential_vault,
             verifying_vault,
             purpose_keys,
             identities_repository,
@@ -52,7 +52,7 @@ impl Credentials {
     pub fn credentials_creation(&self) -> Arc<CredentialsCreation> {
         Arc::new(CredentialsCreation::new(
             self.purpose_keys.purpose_keys_creation(),
-            self.signing_vault.clone(),
+            self.credential_vault.clone(),
             self.verifying_vault.clone(),
             self.identities_repository.clone(),
         ))

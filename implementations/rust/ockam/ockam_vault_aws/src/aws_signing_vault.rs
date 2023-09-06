@@ -57,6 +57,16 @@ impl AwsSigningVault {
             keys: Arc::new(RwLock::new(keys)),
         })
     }
+
+    /// Return list of all keys
+    pub fn keys(&self) -> Vec<KeyId> {
+        self.keys
+            .read()
+            .unwrap()
+            .iter()
+            .map(|x| x.key_id.clone())
+            .collect()
+    }
 }
 
 #[async_trait]

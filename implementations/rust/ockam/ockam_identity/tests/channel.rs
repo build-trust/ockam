@@ -938,20 +938,22 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
 
 #[ockam_macros::test]
 async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
-    let alice_signing_vault = SoftwareSigningVault::create();
+    let alice_identity_vault = SoftwareSigningVault::create();
     let alice_sc_vault = SoftwareSecureChannelVault::create();
     let alice_vault = Vault::new(
-        alice_signing_vault.clone(),
-        SoftwareVerifyingVault::create(),
+        alice_identity_vault.clone(),
         alice_sc_vault.clone(),
+        SoftwareSigningVault::create(),
+        SoftwareVerifyingVault::create(),
     );
 
-    let bob_signing_vault = SoftwareSigningVault::create();
+    let bob_identity_vault = SoftwareSigningVault::create();
     let bob_sc_vault = SoftwareSecureChannelVault::create();
     let bob_vault = Vault::new(
-        bob_signing_vault.clone(),
-        SoftwareVerifyingVault::create(),
+        bob_identity_vault.clone(),
         bob_sc_vault.clone(),
+        SoftwareSigningVault::create(),
+        SoftwareVerifyingVault::create(),
     );
 
     let secure_channels_alice = SecureChannels::builder().with_vault(alice_vault).build();
@@ -960,15 +962,15 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
     let identities_creation_alice = secure_channels_alice.identities().identities_creation();
     let identities_creation_bob = secure_channels_bob.identities().identities_creation();
 
-    assert_eq!(alice_signing_vault.number_of_keys().await?, 0);
+    assert_eq!(alice_identity_vault.number_of_keys().await?, 0);
     assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 0);
     assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 0);
-    assert_eq!(bob_signing_vault.number_of_keys().await?, 0);
+    assert_eq!(bob_identity_vault.number_of_keys().await?, 0);
     assert_eq!(bob_sc_vault.number_of_ephemeral_secrets(), 0);
     assert_eq!(bob_sc_vault.number_of_static_secrets().await?, 0);
 
     let alice = identities_creation_alice.create_identity().await?;
-    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
     assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 0);
     assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 0);
 
@@ -978,7 +980,7 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
         .purpose_keys_creation()
         .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
         .await?;
-    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
     assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 0);
     assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 1);
 
@@ -998,7 +1000,7 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
             SecureChannelListenerOptions::new(),
         )
         .await?;
-    assert_eq!(bob_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(bob_identity_vault.number_of_keys().await?, 1);
     assert_eq!(bob_sc_vault.number_of_ephemeral_secrets(), 0);
     assert_eq!(bob_sc_vault.number_of_static_secrets().await?, 1);
 
@@ -1013,22 +1015,22 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
     ctx.sleep(Duration::from_millis(100)).await;
 
     // k1, k2 and purpose key should exist
-    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
     assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 2);
     assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 1);
 
-    assert_eq!(bob_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(bob_identity_vault.number_of_keys().await?, 1);
     assert_eq!(bob_sc_vault.number_of_ephemeral_secrets(), 2);
     assert_eq!(bob_sc_vault.number_of_static_secrets().await?, 1);
 
     ctx.stop().await?;
 
     // when the channel is closed only purpose key should be left
-    assert_eq!(alice_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
     assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 0);
     assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 1);
 
-    assert_eq!(bob_signing_vault.number_of_keys().await?, 1);
+    assert_eq!(bob_identity_vault.number_of_keys().await?, 1);
     assert_eq!(bob_sc_vault.number_of_ephemeral_secrets(), 0);
     assert_eq!(bob_sc_vault.number_of_static_secrets().await?, 1);
 

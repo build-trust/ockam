@@ -47,7 +47,9 @@ impl VaultState {
     pub async fn get(&self) -> Result<Vault> {
         if self.config.aws_kms {
             let mut vault = Vault::create();
-            vault.signing_vault = Arc::new(AwsSigningVault::create().await?);
+            let aws_vault = Arc::new(AwsSigningVault::create().await?);
+            vault.identity_vault = aws_vault.clone();
+            vault.credential_vault = aws_vault;
 
             Ok(vault)
         } else {

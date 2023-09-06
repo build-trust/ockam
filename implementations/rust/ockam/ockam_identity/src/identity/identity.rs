@@ -224,8 +224,9 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
         let identities0 = Identities::builder()
             .with_vault(Vault::new(
                 signing_vault0,
-                Vault::create_verifying_vault(),
                 Vault::create_secure_channel_vault(),
+                Vault::create_credential_vault(),
+                Vault::create_verifying_vault(),
             ))
             .build();
 
@@ -241,15 +242,17 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
         let identities01 = Identities::builder()
             .with_vault(Vault::new(
                 signing_vault01,
-                Vault::create_verifying_vault(),
                 Vault::create_secure_channel_vault(),
+                Vault::create_credential_vault(),
+                Vault::create_verifying_vault(),
             ))
             .build();
         let identities02 = Identities::builder()
             .with_vault(Vault::new(
                 signing_vault02,
-                Vault::create_verifying_vault(),
                 Vault::create_secure_channel_vault(),
+                Vault::create_credential_vault(),
+                Vault::create_verifying_vault(),
             ))
             .build();
 

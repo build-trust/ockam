@@ -63,7 +63,7 @@ impl Identities {
     /// Return the identities keys management service
     pub fn identities_keys(&self) -> Arc<IdentitiesKeys> {
         Arc::new(IdentitiesKeys::new(
-            self.vault.signing_vault.clone(),
+            self.vault.identity_vault.clone(),
             self.vault.verifying_vault.clone(),
         ))
     }
@@ -72,7 +72,7 @@ impl Identities {
     pub fn identities_creation(&self) -> Arc<IdentitiesCreation> {
         Arc::new(IdentitiesCreation::new(
             self.repository(),
-            self.vault.signing_vault.clone(),
+            self.vault.identity_vault.clone(),
             self.vault.verifying_vault.clone(),
         ))
     }
@@ -85,7 +85,7 @@ impl Identities {
     /// Return the identities credentials service
     pub fn credentials(&self) -> Arc<Credentials> {
         Arc::new(Credentials::new(
-            self.vault.signing_vault.clone(),
+            self.vault.credential_vault.clone(),
             self.vault.verifying_vault.clone(),
             self.purpose_keys(),
             self.identities_repository.clone(),
