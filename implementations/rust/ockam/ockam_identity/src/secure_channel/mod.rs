@@ -30,9 +30,10 @@ pub use trust_policy::*;
 #[cfg(test)]
 mod tests {
     use crate::secure_channel::{decryptor::Decryptor, encryptor::Encryptor};
+    use crate::Vault;
     use ockam_core::compat::rand::RngCore;
     use ockam_core::Result;
-    use ockam_vault::{Secret, SecretAttributes, Vault};
+    use ockam_vault::{Secret, SecretAttributes};
     use rand::seq::SliceRandom;
     use rand::thread_rng;
 

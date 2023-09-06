@@ -1,5 +1,5 @@
-use ockam::identity::{AuthorityService, CredentialsIssuerClient, SecureChannelOptions, TrustContext};
-use ockam::vault::{Secret, SecretAttributes, SoftwareSigningVault, Vault};
+use ockam::identity::{AuthorityService, CredentialsIssuerClient, SecureChannelOptions, TrustContext, Vault};
+use ockam::vault::{Secret, SecretAttributes, SoftwareSigningVault};
 use ockam::{route, Context, Result, TcpConnectionOptions};
 use ockam::{Node, TcpTransportExtension};
 

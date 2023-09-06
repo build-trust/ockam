@@ -3,6 +3,7 @@ use std::path::Path;
 use tracing::info;
 
 use ockam::identity::storage::LmdbStorage;
+use ockam::identity::Vault;
 use ockam::identity::{
     CredentialsIssuer, Identifier, Identities, IdentitiesRepository, IdentitiesStorage,
     IdentityAttributesReader, IdentityAttributesWriter, SecureChannelListenerOptions,
@@ -16,7 +17,6 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
-use ockam_vault::Vault;
 
 use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;

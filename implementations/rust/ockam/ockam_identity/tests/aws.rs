@@ -1,8 +1,8 @@
 use ockam_core::Result;
 use ockam_identity::models::SchemaId;
 use ockam_identity::utils::AttributesBuilder;
-use ockam_identity::{Identities, Purpose};
-use ockam_vault::{SecretAttributes, SecretType, SigningVault, Vault};
+use ockam_identity::{Identities, Purpose, Vault};
+use ockam_vault::{SecretAttributes, SecretType, SigningVault};
 use ockam_vault_aws::AwsSigningVault;
 use std::sync::Arc;
 use std::time::Duration;

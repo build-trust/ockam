@@ -1,9 +1,9 @@
 use ockam::compat::sync::Arc;
 use ockam::identity::Identity;
+use ockam::identity::Vault;
 use ockam::identity::{Identifier, IdentitiesRepository};
 use ockam::identity::{Identities, IdentitiesCreation};
 use ockam::Result;
-use ockam_vault::Vault;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::CliState;

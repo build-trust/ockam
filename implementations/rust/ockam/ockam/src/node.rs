@@ -13,9 +13,9 @@ use ockam_core::{
     Address, IncomingAccessControl, Message, OutgoingAccessControl, Processor, Result, Route,
     Routed, Worker,
 };
-use ockam_identity::PurposeKeys;
+use ockam_identity::{PurposeKeys, Vault, VaultStorage};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
-use ockam_vault::{KeyId, Vault, VaultStorage};
+use ockam_vault::KeyId;
 
 use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use crate::stream::Stream;

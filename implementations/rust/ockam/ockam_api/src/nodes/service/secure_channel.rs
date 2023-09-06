@@ -5,6 +5,7 @@ use minicbor::Decoder;
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::TrustEveryonePolicy;
+use ockam::identity::Vault;
 use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
@@ -15,7 +16,6 @@ use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use ockam_vault::Vault;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::StateItemTrait;
