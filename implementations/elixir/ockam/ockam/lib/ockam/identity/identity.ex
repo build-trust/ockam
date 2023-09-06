@@ -25,6 +25,15 @@ defmodule Ockam.Identity do
     end
   end
 
+  @spec import(contact_data :: binary(), secret_signing_key :: binary()) ::
+          {:ok, identity :: t(), identity_id :: binary()} | {:error, any()}
+  def import(contact_data, secret_signing_key) do
+    case Ockly.Native.import_signing_secret(secret_signing_key) do
+      {:error, error} -> {:error, error}
+      _key_id -> validate_contact_data(contact_data)
+    end
+  end
+
   @spec validate_contact_data(contact_data :: binary()) ::
           {:ok, identity :: t(), identity_id :: binary()} | {:error, any()}
   def validate_contact_data(contact_data) do
@@ -85,7 +94,7 @@ defmodule Ockam.Identity do
           {:ok, atom()} | {:error, reason :: any()}
   def compare_identity_change_history(_current_history, _known_history) do
     ## TODO:  implement change history compare!
-    {:ok, :new}
+    {:ok, :equal}
   end
 
 end
