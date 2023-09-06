@@ -40,7 +40,7 @@ either = { version = "1.9.0", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
 kafka-protocol = "0.6.1"
-lru = "0.11.0"
+lru = "0.11.1"
 miette = "5.10.0"
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 nix = "0.26"
