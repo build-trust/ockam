@@ -48,7 +48,7 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
             .identities_creation();
 
         let public_key = identities_creation
-            .signing_vault()
+            .identity_vault()
             .get_public_key(&cmd.key_id)
             .await
             .into_diagnostic()?;
@@ -65,48 +65,4 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
     opts.state.identities.create(&idt_name, idt_config)?;
     println!("Identity attached to vault: {idt_name}");
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use ockam::identity::Identities;
-    use ockam_core::Result;
-    use ockam_vault::{SecretAttributes, SecretType, Vault};
-    use ockam_vault_aws::AwsSigningVault;
-    use std::sync::Arc;
-
-    /// This test needs to be executed with the following environment variables
-    /// AWS_REGION
-    /// AWS_ACCESS_KEY_ID
-    /// AWS_SECRET_ACCESS_KEY
-    /// or credentials in ~/.aws/credentials
-    #[tokio::test]
-    #[ignore]
-    async fn test_create_identity_with_external_key_id() -> Result<()> {
-        let mut vault = Vault::create();
-        vault.signing_vault = Arc::new(AwsSigningVault::create().await?);
-        let identities = Identities::builder().with_vault(vault.clone()).build();
-
-        // create a secret key using the AWS KMS
-        let key_id = vault
-            .signing_vault
-            .generate_key(SecretAttributes::NistP256)
-            .await?;
-
-        let identity = identities
-            .identities_creation()
-            .identity_builder()
-            .with_existing_key(key_id.clone(), SecretType::NistP256)
-            .build()
-            .await?;
-
-        identities
-            .identities_creation()
-            .import(Some(identity.identifier()), &identity.export()?)
-            .await?;
-
-        vault.signing_vault.delete_key(key_id).await?;
-
-        Ok(())
-    }
 }

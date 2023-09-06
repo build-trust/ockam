@@ -12,7 +12,7 @@ use tracing::error;
 
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {
-    signing_vault: Arc<dyn SigningVault>,
+    identity_vault: Arc<dyn SigningVault>,
     verifying_vault: Arc<dyn VerifyingVault>,
 }
 
@@ -36,11 +36,11 @@ impl IdentitiesKeys {
 impl IdentitiesKeys {
     /// Create a new identities keys module
     pub fn new(
-        signing_vault: Arc<dyn SigningVault>,
+        identity_vault: Arc<dyn SigningVault>,
         verifying_vault: Arc<dyn VerifyingVault>,
     ) -> Self {
         Self {
-            signing_vault,
+            identity_vault,
             verifying_vault,
         }
     }
@@ -70,7 +70,7 @@ impl IdentitiesKeys {
             .await?;
 
         if self
-            .signing_vault
+            .identity_vault
             .delete_key(last_secret_key)
             .await
             .is_err()
@@ -87,7 +87,7 @@ impl IdentitiesKeys {
     /// Return the secret key of an identity
     pub async fn get_secret_key(&self, identity: &Identity) -> Result<KeyId> {
         if let Some(last_change) = identity.changes().last() {
-            self.signing_vault
+            self.identity_vault
                 .get_key_id(last_change.primary_public_key())
                 .await
         } else {
@@ -113,7 +113,7 @@ impl IdentitiesKeys {
         }
 
         let secret_key = identity_options.key;
-        let public_key = self.signing_vault.get_public_key(&secret_key).await?;
+        let public_key = self.identity_vault.get_public_key(&secret_key).await?;
         let stype = public_key.stype();
 
         let primary_public_key = public_key.try_into()?;
@@ -137,7 +137,7 @@ impl IdentitiesKeys {
 
         let hash = self.verifying_vault.sha256(&versioned_data).await?;
 
-        let self_signature = self.signing_vault.sign(&secret_key, hash.as_ref()).await?;
+        let self_signature = self.identity_vault.sign(&secret_key, hash.as_ref()).await?;
         let self_signature = ChangeSignature::try_from_signature(self_signature, stype)?;
 
         // If we have previous_key passed we should sign using it
@@ -145,11 +145,11 @@ impl IdentitiesKeys {
         let previous_signature = match previous.map(|x| x.1) {
             Some(previous_key) => {
                 let previous_signature = self
-                    .signing_vault
+                    .identity_vault
                     .sign(&previous_key, hash.as_ref())
                     .await?;
                 // TODO: Optimize
-                let previous_public_key = self.signing_vault.get_public_key(&previous_key).await?;
+                let previous_public_key = self.identity_vault.get_public_key(&previous_key).await?;
                 let previous_signature = ChangeSignature::try_from_signature(
                     previous_signature,
                     previous_public_key.stype(),
@@ -192,7 +192,7 @@ mod test {
         let identities_keys = identities.identities_keys();
 
         let key1 = identities_keys
-            .signing_vault
+            .identity_vault
             .generate_key(SecretAttributes::Ed25519)
             .await?;
 
@@ -231,7 +231,7 @@ mod test {
         assert_eq!(secret1, key1);
 
         let key2 = identities_keys
-            .signing_vault
+            .identity_vault
             .generate_key(SecretAttributes::Ed25519)
             .await?;
 
@@ -280,14 +280,14 @@ mod test {
         // Old key should be deleted
         assert!(identities
             .vault()
-            .signing_vault
+            .identity_vault
             .get_public_key(&secret1)
             .await
             .is_err());
         // New key should exist
         assert!(identities
             .vault()
-            .signing_vault
+            .identity_vault
             .get_public_key(&secret2)
             .await
             .is_ok());

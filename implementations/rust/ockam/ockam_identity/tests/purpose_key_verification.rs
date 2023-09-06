@@ -10,8 +10,8 @@ mod common;
 #[tokio::test]
 async fn test_invalid_signature() -> Result<()> {
     let mut vault = Vault::create();
-    let crazy_signing_vault = Arc::new(CrazySigningVault::new(0.1, vault.signing_vault));
-    vault.signing_vault = crazy_signing_vault.clone();
+    let crazy_signing_vault = Arc::new(CrazySigningVault::new(0.1, vault.identity_vault));
+    vault.identity_vault = crazy_signing_vault.clone();
     vault.verifying_vault = Arc::new(CrazyVerifyingVault {
         verifying_vault: vault.verifying_vault,
     });

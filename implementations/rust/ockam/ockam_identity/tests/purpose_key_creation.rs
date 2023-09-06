@@ -79,7 +79,7 @@ async fn create_custom_type() -> Result<()> {
     let key_id = purpose_key.key_id();
     let stype = identities
         .vault()
-        .signing_vault
+        .credential_vault
         .get_public_key(key_id)
         .await?
         .stype();
