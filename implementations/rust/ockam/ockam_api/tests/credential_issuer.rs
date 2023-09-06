@@ -1,3 +1,4 @@
+use minicbor::bytes::ByteSlice;
 use ockam::identity::utils::now;
 use ockam::identity::{identities, AttributesEntry};
 use ockam::identity::{
@@ -102,18 +103,18 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         )
         .await?;
     assert_eq!(
-        Some(&b"project42".to_vec()),
+        Some(&b"project42".to_vec().into()),
         data.credential_data
             .subject_attributes
             .map
-            .get(b"trust_context_id".as_slice())
+            .get::<ByteSlice>(b"trust_context_id".as_slice().into())
     );
     assert_eq!(
-        Some(&b"value".to_vec()),
+        Some(&b"value".to_vec().into()),
         data.credential_data
             .subject_attributes
             .map
-            .get(b"attr".as_slice())
+            .get::<ByteSlice>(b"attr".as_slice().into())
     );
     ctx.stop().await
 }

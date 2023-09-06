@@ -1,3 +1,4 @@
+use minicbor::bytes::ByteVec;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
@@ -29,7 +30,7 @@ pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInS
 /// Convenient builder for the [`Attributes`] struct
 pub struct AttributesBuilder {
     schema_id: SchemaId,
-    map: BTreeMap<Vec<u8>, Vec<u8>>,
+    map: BTreeMap<ByteVec, ByteVec>,
 }
 
 impl AttributesBuilder {
@@ -43,7 +44,7 @@ impl AttributesBuilder {
 
     /// Add an attributes to the [`Attributes`]
     pub fn with_attribute(mut self, key: impl Into<Vec<u8>>, value: impl Into<Vec<u8>>) -> Self {
-        self.map.insert(key.into(), value.into());
+        self.map.insert(key.into().into(), value.into().into());
 
         self
     }

@@ -4,6 +4,7 @@ use crate::utils::now;
 use crate::{
     CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeysVerification,
 };
+use std::collections::BTreeMap;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
@@ -169,11 +170,17 @@ impl CredentialsVerification {
             )
             .await?;
 
+        let map = credential_data.credential_data.subject_attributes.map;
+        let map: BTreeMap<_, _> = map
+            .into_iter()
+            .map(|(k, v)| (Vec::<u8>::from(k), Vec::<u8>::from(v)))
+            .collect();
+
         self.identities_repository
             .put_attributes(
                 subject,
                 AttributesEntry::new(
-                    credential_data.credential_data.subject_attributes.map,
+                    map,
                     now()?,
                     Some(credential_data.credential_data.expires_at),
                     Some(credential_data.purpose_key_data.subject),
