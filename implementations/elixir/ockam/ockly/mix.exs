@@ -21,10 +21,8 @@ defmodule Ockly.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-	{:rustler, path: "/Users/pablo/src/rustler/rustler_mix"},
+	{:rustler, git: "https://github.com/polvorin/rustler.git", branch: "fix_local_crate", sparse: "rustler_mix"},
 	{:hkdf_erlang, "~> 1.0.0"},
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
 end
