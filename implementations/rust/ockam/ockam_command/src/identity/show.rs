@@ -4,10 +4,9 @@ use crate::util::{node_rpc, println_output};
 use crate::{docs, CommandGlobalOpts, EncodeFormat};
 use clap::Args;
 use miette::IntoDiagnostic;
-use ockam::identity::Identity;
+use ockam::identity::{Identity, Vault};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_node::Context;
-use ockam_vault::Vault;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");

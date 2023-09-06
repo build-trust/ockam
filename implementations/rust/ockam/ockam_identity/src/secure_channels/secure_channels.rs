@@ -2,7 +2,6 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
 use ockam_node::Context;
-use ockam_vault::Vault;
 
 use crate::identities::Identities;
 use crate::models::Identifier;
@@ -11,7 +10,7 @@ use crate::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannelRegistry,
 };
-use crate::{Purpose, SecureChannel, SecureChannelListener, SecureChannelsBuilder};
+use crate::{Purpose, SecureChannel, SecureChannelListener, SecureChannelsBuilder, Vault};
 
 /// Identity implementation
 #[derive(Clone)]

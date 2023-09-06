@@ -3,10 +3,7 @@ use crate::common::crazy_vault::{CrazySigningVault, CrazyVerifyingVault};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_identity::models::ChangeHistory;
-use ockam_identity::Identifier;
-use ockam_identity::Identities;
-use ockam_identity::Identity;
-use ockam_vault::Vault;
+use ockam_identity::{Identifier, Identities, Identity, Vault};
 use rand::{thread_rng, Rng};
 
 mod common;

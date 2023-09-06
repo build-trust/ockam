@@ -2,8 +2,7 @@ use crate::common::crazy_vault::{CrazySigningVault, CrazyVerifyingVault};
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_identity::{identities, Identities, Purpose};
-use ockam_vault::Vault;
+use ockam_identity::{identities, Identities, Purpose, Vault};
 
 mod common;
 

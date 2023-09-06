@@ -65,6 +65,9 @@ pub mod secure_channels;
 /// Storage functions
 pub mod storage;
 
+/// Vault
+pub mod vault;
+
 ///
 /// Exports
 ///
@@ -76,5 +79,6 @@ pub use purpose_key::*;
 pub use purpose_keys::*;
 pub use secure_channel::*;
 pub use secure_channels::*;
+pub use vault::*;
 
 pub use models::{Attributes, Credential, Identifier, TimestampInSeconds};

@@ -1,8 +1,9 @@
 use ockam_core::compat::sync::Arc;
-use ockam_vault::Vault;
 
 use crate::purpose_keys::storage::PurposeKeysRepository;
-use crate::{IdentitiesKeys, IdentitiesReader, PurposeKeysCreation, PurposeKeysVerification};
+use crate::{
+    IdentitiesKeys, IdentitiesReader, PurposeKeysCreation, PurposeKeysVerification, Vault,
+};
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]

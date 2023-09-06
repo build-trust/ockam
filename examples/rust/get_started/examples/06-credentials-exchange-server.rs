@@ -4,9 +4,9 @@ use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::identity::{
-    AuthorityService, CredentialsIssuerClient, SecureChannelListenerOptions, SecureChannelOptions, TrustContext,
+    AuthorityService, CredentialsIssuerClient, SecureChannelListenerOptions, SecureChannelOptions, TrustContext, Vault,
 };
-use ockam::vault::{Secret, SecretAttributes, SoftwareSigningVault, Vault};
+use ockam::vault::{Secret, SecretAttributes, SoftwareSigningVault};
 use ockam::{route, Context, Result, TcpConnectionOptions, TcpListenerOptions};
 use ockam::{Node, TcpTransportExtension};
 

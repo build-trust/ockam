@@ -1,6 +1,6 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
-use ockam_vault::{SecretType, Vault};
+use ockam_vault::SecretType;
 
 use crate::models::{
     Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, PurposeKeyAttestationSignature,
@@ -9,7 +9,7 @@ use crate::models::{
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{
     IdentitiesKeys, IdentitiesReader, Identity, IdentityError, Purpose, PurposeKey,
-    PurposeKeyBuilder, PurposeKeyOptions, PurposeKeysVerification,
+    PurposeKeyBuilder, PurposeKeyOptions, PurposeKeysVerification, Vault,
 };
 
 /// This struct supports all the services related to identities

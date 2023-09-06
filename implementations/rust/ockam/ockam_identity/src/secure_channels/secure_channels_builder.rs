@@ -1,11 +1,10 @@
 use ockam_core::compat::sync::Arc;
-use ockam_vault::{Vault, VaultStorage};
 
 use crate::identities::{Identities, IdentitiesRepository};
 use crate::secure_channel::SecureChannelRegistry;
 use crate::secure_channels::SecureChannels;
 use crate::storage::Storage;
-use crate::IdentitiesBuilder;
+use crate::{IdentitiesBuilder, Vault, VaultStorage};
 
 /// This struct supports all the services related to secure channels
 #[derive(Clone)]

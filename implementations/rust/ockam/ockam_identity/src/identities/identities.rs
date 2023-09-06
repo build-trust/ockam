@@ -2,13 +2,12 @@ use crate::identities::{IdentitiesKeys, IdentitiesRepository};
 use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
 use crate::{
     Credentials, CredentialsServer, CredentialsServerModule, Identifier, IdentitiesBuilder,
-    IdentitiesCreation, IdentitiesReader, IdentitiesStorage, Identity, PurposeKeys,
+    IdentitiesCreation, IdentitiesReader, IdentitiesStorage, Identity, PurposeKeys, Vault,
 };
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::Vault;
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
