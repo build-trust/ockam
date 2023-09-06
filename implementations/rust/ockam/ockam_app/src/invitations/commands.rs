@@ -157,15 +157,16 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                             debug!(node = %i.local_node_name, "Checking TCP inlet status");
                             if let Ok(cmd) = duct::cmd!(
                                 &cli_bin,
+                                "--no-input",
                                 "tcp-inlet",
                                 "show",
-                                "--quiet",
                                 &i.service_name,
                                 "--at",
                                 &i.local_node_name,
                                 "--output",
                                 "json"
                             )
+                            .stderr_to_stdout()
                             .stdout_capture()
                             .run()
                             {
@@ -188,12 +189,14 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                     debug!(node = %i.local_node_name, "Deleting node");
                     let _ = duct::cmd!(
                         &cli_bin,
+                        "--no-input",
                         "node",
                         "delete",
-                        "--quiet",
                         "--yes",
                         &i.local_node_name
                     )
+                    .stderr_to_stdout()
+                    .stdout_capture()
                     .run();
                     match create_inlet(&i).await {
                         Ok(inlet_socket_addr) => {
@@ -236,9 +239,10 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
     } = inlet_data;
     let from = get_free_address()?;
     let from_str = from.to_string();
+    let cli_bin = cli_bin()?;
     if let Some(enrollment_ticket_hex) = enrollment_ticket_hex {
         let _ = duct::cmd!(
-            cli_bin()?,
+            &cli_bin,
             "--no-input",
             "project",
             "enroll",
@@ -246,11 +250,13 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
             &local_node_name,
             &enrollment_ticket_hex,
         )
+        .stderr_to_stdout()
+        .stdout_capture()
         .run();
         debug!(node = %local_node_name, "Node enrolled using enrollment ticket");
     }
     duct::cmd!(
-        cli_bin()?,
+        &cli_bin,
         "--no-input",
         "node",
         "create",
@@ -258,10 +264,12 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
         "--trust-context",
         &local_node_name
     )
+    .stderr_to_stdout()
+    .stdout_capture()
     .run()?;
     debug!(node = %local_node_name, "Node created");
     duct::cmd!(
-        cli_bin()?,
+        &cli_bin,
         "--no-input",
         "tcp-inlet",
         "create",
@@ -274,6 +282,8 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
         "--alias",
         &service_name,
     )
+    .stderr_to_stdout()
+    .stdout_capture()
     .run()?;
     info!(
         from = from_str,
