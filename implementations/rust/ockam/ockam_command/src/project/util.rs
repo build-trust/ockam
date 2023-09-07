@@ -7,7 +7,6 @@ use tokio_retry::Retry;
 use tracing::debug;
 
 use ockam::identity::IdentityIdentifier;
-use ockam::TcpTransport;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
@@ -16,10 +15,9 @@ use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
 use ockam_core::compat::str::FromStr;
 use ockam_multiaddr::{MultiAddr, Protocol};
-use ockam_node::Context;
 
 use crate::util::api::CloudOpts;
-use crate::util::{api, RpcBuilder};
+use crate::util::{api, Rpc};
 use crate::{CommandGlobalOpts, Result};
 
 pub fn clean_projects_multiaddr(
@@ -48,12 +46,10 @@ pub fn clean_projects_multiaddr(
     Ok(new_ma)
 }
 
-pub async fn get_projects_secure_channels_from_config_lookup(
-    ctx: &Context,
+pub async fn get_projects_secure_channels_from_config_lookup<'a>(
     opts: &CommandGlobalOpts,
+    rpc: &mut Rpc<'a>,
     meta: &LookupMeta,
-    api_node: &str,
-    tcp: Option<&TcpTransport>,
     credential_exchange_mode: CredentialExchangeMode,
 ) -> Result<Vec<MultiAddr>> {
     let mut sc = Vec::with_capacity(meta.project.len());
@@ -80,10 +76,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
             (node_route, id)
         };
         let sc_address = create_secure_channel_to_project(
-            ctx,
-            opts,
-            api_node,
-            tcp,
+            rpc,
             &project_access_route,
             &project_identity_id,
             credential_exchange_mode,
@@ -100,19 +93,14 @@ pub async fn get_projects_secure_channels_from_config_lookup(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn create_secure_channel_to_project(
-    ctx: &ockam::Context,
-    opts: &CommandGlobalOpts,
-    api_node: &str,
-    tcp: Option<&TcpTransport>,
+pub async fn create_secure_channel_to_project<'a>(
+    rpc: &mut Rpc<'a>,
     project_access_route: &MultiAddr,
     project_identity: &str,
     credential_exchange_mode: CredentialExchangeMode,
     identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
-    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
-
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
         project_access_route,
         Some(authorized_identifier),
@@ -125,15 +113,12 @@ pub async fn create_secure_channel_to_project(
     Ok(sc.multiaddr()?)
 }
 
-pub async fn create_secure_channel_to_authority(
-    ctx: &ockam::Context,
-    opts: &CommandGlobalOpts,
-    node_name: &str,
+pub async fn create_secure_channel_to_authority<'a>(
+    rpc: &mut Rpc<'a>,
     authority: IdentityIdentifier,
     addr: &MultiAddr,
     identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
-    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
     let allowed = vec![authority];
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
@@ -149,24 +134,15 @@ pub async fn create_secure_channel_to_authority(
     Ok(addr)
 }
 
-async fn delete_secure_channel<'a>(
-    ctx: &ockam::Context,
-    opts: &CommandGlobalOpts,
-    api_node: &str,
-    tcp: Option<&TcpTransport>,
-    sc_addr: &MultiAddr,
-) -> miette::Result<()> {
-    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
+async fn delete_secure_channel<'a>(rpc: &mut Rpc<'a>, sc_addr: &MultiAddr) -> miette::Result<()> {
     let addr = multiaddr_to_addr(sc_addr).ok_or(miette!("Failed to convert MultiAddr to addr"))?;
     rpc.tell(api::delete_secure_channel(&addr)).await?;
     Ok(())
 }
 
-pub async fn check_project_readiness(
-    ctx: &ockam::Context,
+pub async fn check_project_readiness<'a>(
     opts: &CommandGlobalOpts,
-    api_node: &str,
-    tcp: Option<&TcpTransport>,
+    rpc: &Rpc<'a>,
     mut project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
@@ -188,12 +164,13 @@ pub async fn check_project_readiness(
         let cloud_route = &CloudOpts::route();
         let project_id = project.id.clone();
         project = Retry::spawn(retry_strategy.clone(), || async {
-            let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
+            let mut rpc_clone = rpc.clone();
 
             // Handle the project show request result
             // so we can provide better errors in the case orchestrator does not respond timely
-            let result: Result<Project> =
-                rpc.ask(api::project::show(&project_id, cloud_route)).await;
+            let result: Result<Project> = rpc_clone
+                .ask(api::project::show(&project_id, cloud_route))
+                .await;
             result.and_then(|p| {
                 if p.is_ready() {
                     Ok(p)
@@ -235,11 +212,9 @@ pub async fn check_project_readiness(
             .to_string();
 
         Retry::spawn(retry_strategy.clone(), || async {
+            let mut rpc_clone = rpc.clone();
             if let Ok(sc_addr) = create_secure_channel_to_project(
-                ctx,
-                opts,
-                api_node,
-                tcp,
+                &mut rpc_clone,
                 &project_route,
                 &project_identity,
                 CredentialExchangeMode::None,
@@ -248,7 +223,7 @@ pub async fn check_project_readiness(
             .await
             {
                 // Try to delete secure channel, ignore result.
-                let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
+                let _ = delete_secure_channel(&mut rpc_clone, &sc_addr).await;
                 return Ok(());
             }
 
@@ -270,10 +245,9 @@ pub async fn check_project_readiness(
         .ok_or(miette!("Project does not have an authority defined."))?;
 
         Retry::spawn(retry_strategy.clone(), || async {
+            let mut rpc_clone = rpc.clone();
             if let Ok(sc_addr) = create_secure_channel_to_authority(
-                ctx,
-                opts,
-                api_node,
+                &mut rpc_clone,
                 authority.identity_id().clone(),
                 authority.address(),
                 None,
@@ -281,7 +255,7 @@ pub async fn check_project_readiness(
             .await
             {
                 // Try to delete secure channel, ignore result.
-                let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
+                let _ = delete_secure_channel(&mut rpc_clone, &sc_addr).await;
                 return Ok(());
             }
 
@@ -301,14 +275,11 @@ pub async fn check_project_readiness(
     Ok(project)
 }
 
-pub async fn refresh_projects(
-    ctx: &Context,
+pub async fn refresh_projects<'a>(
     opts: &CommandGlobalOpts,
-    api_node: &str,
+    rpc: &mut Rpc<'a>,
     controller_route: &MultiAddr,
-    tcp: Option<&TcpTransport>,
 ) -> miette::Result<()> {
-    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
     let projects: Vec<Project> = rpc.ask(api::project::list(controller_route)).await?;
     for project in projects {
         opts.state

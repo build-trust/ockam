@@ -4,9 +4,9 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cloud::project::ProjectVersion;
 
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::delete_embedded_node;
 use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, RpcBuilder};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/version/long_about.txt");
@@ -35,10 +35,9 @@ async fn rpc(mut ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
 
 async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts) -> miette::Result<()> {
     let controller_route = &CloudOpts::route();
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     // Send request
-    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
     let project_version: ProjectVersion = rpc.ask(api::project::version(controller_route)).await?;
     delete_embedded_node(&opts, rpc.node_name()).await;
 

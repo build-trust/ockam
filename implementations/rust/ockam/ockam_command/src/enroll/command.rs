@@ -19,12 +19,12 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
 use crate::util::api::CloudOpts;
-use crate::util::{api, node_rpc, RpcBuilder};
+use crate::util::{api, node_rpc, Rpc};
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -81,14 +81,14 @@ async fn run_impl(
         .users_info
         .overwrite(&user_info.email, user_info.clone())?;
 
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
-    enroll_with_node(ctx, &opts, &CloudOpts::route(), &node_name, token)
+    enroll_with_node(&mut rpc, &CloudOpts::route(), token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
-    let identifier = retrieve_user_project(ctx, &opts, &node_name).await?;
-    delete_embedded_node(&opts, &node_name).await;
+    let identifier = retrieve_user_project(&opts, &mut rpc).await?;
+    delete_embedded_node(&opts, rpc.node_name()).await;
 
     opts.terminal.write_line(&fmt_ok!(
         "Enrolled {} as one of the Ockam identities of your Orchestrator account {}.",
@@ -100,28 +100,25 @@ async fn run_impl(
     Ok(())
 }
 
-pub async fn retrieve_user_project(
-    ctx: &Context,
+pub async fn retrieve_user_project<'a>(
     opts: &CommandGlobalOpts,
-    node_name: &str,
+    rpc: &mut Rpc<'a>,
 ) -> Result<IdentityIdentifier> {
-    let space = default_space(ctx, opts, node_name)
+    let space = default_space(opts, rpc)
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
     info!("Retrieved the user default space {:?}", space);
 
-    let project = default_project(ctx, opts, node_name, &space)
-        .await
-        .wrap_err(format!(
-            "Unable to retrieve and set a project as default with space {}",
-            space
-                .name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))?;
+    let project = default_project(opts, rpc, &space).await.wrap_err(format!(
+        "Unable to retrieve and set a project as default with space {}",
+        space
+            .name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    ))?;
     info!("Retrieved the user default project {:?}", project);
 
-    let identifier = update_enrolled_identity(&opts.state, node_name)
+    let identifier = update_enrolled_identity(&opts.state, rpc.node_name())
         .await
         .wrap_err(format!(
             "Unable to set the local identity as enrolled with project {}",
@@ -136,14 +133,11 @@ pub async fn retrieve_user_project(
 }
 
 /// Enroll a user with a token, using a specific node to contact the controller
-pub async fn enroll_with_node(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
+pub async fn enroll_with_node<'a>(
+    rpc: &mut Rpc<'a>,
     route: &MultiAddr,
-    node_name: &str,
     token: OidcToken,
 ) -> miette::Result<()> {
-    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let status = rpc
         .tell_and_get_status(api::enroll::auth0(route, token))
         .await?;
@@ -167,12 +161,10 @@ pub async fn enroll_with_node(
     }
 }
 
-async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str) -> Result<Space> {
+async fn default_space<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc<'a>) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
-
-    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let is_finished = Mutex::new(false);
     let get_spaces = async {
         let spaces: Vec<Space> = rpc.ask(api::space::list(&CloudOpts::route())).await?;
@@ -202,7 +194,6 @@ async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str)
 
         let is_finished = Mutex::new(false);
         let name = crate::util::random_name();
-        let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
         let create_space = async {
             let cmd = crate::space::CreateCommand {
                 name: name.to_string(),
@@ -253,10 +244,9 @@ async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str)
     Ok(default_space)
 }
 
-async fn default_project(
-    ctx: &Context,
+async fn default_project<'a>(
     opts: &CommandGlobalOpts,
-    node_name: &str,
+    rpc: &mut Rpc<'a>,
     space: &Space,
 ) -> Result<Project> {
     // Get available project for the given space
@@ -268,7 +258,6 @@ async fn default_project(
             .color(OckamColor::PrimaryResource.color())
     ))?;
 
-    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let is_finished = Mutex::new(false);
     let get_projects = async {
         let projects: Vec<Project> = rpc.ask(api::project::list(&CloudOpts::route())).await?;
@@ -295,7 +284,6 @@ async fn default_project(
 
         let is_finished = Mutex::new(false);
         let name = "default";
-        let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
         let get_project = async {
             let project: Project = rpc
                 .ask(api::project::create(name, &space.id, &CloudOpts::route()))
@@ -320,7 +308,7 @@ async fn default_project(
         ))?;
 
         let operation_id = project.operation_id.clone().unwrap();
-        check_for_completion(ctx, opts, rpc.node_name(), &operation_id).await?;
+        check_for_completion(opts, rpc, &operation_id).await?;
 
         project.to_owned()
     }
@@ -346,7 +334,7 @@ async fn default_project(
         ))?;
         p
     };
-    let project = check_project_readiness(ctx, opts, node_name, None, default_project).await?;
+    let project = check_project_readiness(opts, rpc, default_project).await?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked this project as your default project, on this machine.\n"

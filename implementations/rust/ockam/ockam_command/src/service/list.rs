@@ -4,7 +4,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 use miette::IntoDiagnostic;
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::services::{ServiceList, ServiceStatus};
@@ -14,7 +14,7 @@ use tokio::try_join;
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{api, node_rpc, parse_node_name, RpcBuilder};
+use crate::util::{api, node_rpc, parse_node_name, Rpc};
 use crate::CommandGlobalOpts;
 
 /// List service(s) of a given node
@@ -50,8 +50,7 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
-    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).tcp(&tcp)?.build();
+    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_services = async {

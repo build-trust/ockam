@@ -6,14 +6,14 @@ use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{
     find_available_port, node_rpc, parse_node_name, port_is_free_guard, process_nodes_multiaddr,
-    RpcBuilder,
+    Rpc,
 };
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use ockam::identity::IdentityIdentifier;
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::CreateInlet;
@@ -100,8 +100,7 @@ async fn rpc(
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node = parse_node_name(&node_name)?;
 
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-    let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
     let create_inlet = async {

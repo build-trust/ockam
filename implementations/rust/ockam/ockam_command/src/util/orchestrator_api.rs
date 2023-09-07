@@ -18,6 +18,7 @@ use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 
+use crate::node::util::delete_embedded_node;
 use crate::{
     node::util::{delete_node, start_embedded_node_with_vault_and_identity},
     project::util::{create_secure_channel_to_authority, create_secure_channel_to_project},
@@ -222,6 +223,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             .project_lookup
             .as_ref()
             .ok_or(miette!("Project is required"))?;
+        let mut rpc = RpcBuilder::new(self.ctx, self.opts, node_name).build();
 
         let sc_addr = match endpoint {
             OrchestratorEndpoint::Authenticator => {
@@ -232,9 +234,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 // TODO: When we --project-path is fully deprecated
                 // use the trust context authority here
                 create_secure_channel_to_authority(
-                    self.ctx,
-                    self.opts,
-                    node_name,
+                    &mut rpc,
                     authority.identity_id().clone(),
                     authority.address(),
                     self.identity.clone(),
@@ -252,10 +252,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     .ok_or(miette!("Invalid project node route"))?;
 
                 create_secure_channel_to_project(
-                    self.ctx,
-                    self.opts,
-                    node_name,
-                    None,
+                    &mut rpc,
                     project_route,
                     &project_identity.to_string(),
                     self.credential_exchange_mode,
@@ -264,7 +261,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 .await?
             }
         };
-
+        delete_embedded_node(self.opts, rpc.node_name()).await;
         Ok(sc_addr)
     }
 }

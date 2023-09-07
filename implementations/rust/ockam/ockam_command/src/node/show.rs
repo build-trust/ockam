@@ -1,11 +1,9 @@
 use crate::node::get_node_name;
 use crate::node::util::check_default;
-use crate::util::{api, node_rpc, Rpc, RpcBuilder};
+use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, OutputFormat, Result};
 use clap::Args;
 use colorful::Colorful;
-use miette::IntoDiagnostic;
-use ockam::TcpTransport;
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
@@ -49,8 +47,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_default = check_default(&opts, &node_name);
     print_query_status(&opts, &mut rpc, &node_name, false, is_default).await?;
     Ok(())

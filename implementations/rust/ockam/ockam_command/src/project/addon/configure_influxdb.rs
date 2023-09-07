@@ -174,14 +174,14 @@ async fn run_impl(
     let operation_id = response.operation_id;
 
     // Wait until project is ready again
-    check_for_completion(&ctx, &opts, rpc.node_name(), &operation_id).await?;
+    check_for_completion(&opts, &mut rpc, &operation_id).await?;
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     let mut rpc = rpc.clone();
     let project: Project = rpc
         .ask(api::project::show(&project_id, controller_route))
         .await?;
-    check_project_readiness(&ctx, &opts, rpc.node_name(), None, project).await?;
+    check_project_readiness(&opts, &mut rpc, project).await?;
 
     opts.terminal
         .write_line(&fmt_ok!("InfluxDB addon configured successfully"))?;

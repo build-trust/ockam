@@ -6,14 +6,13 @@ use ockam_api::cloud::operation::Operation;
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 
 use crate::util::api::CloudOpts;
-use crate::util::{api, RpcBuilder};
+use crate::util::{api, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
 
 pub async fn check_for_completion<'a>(
-    ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    api_node: &str,
+    rpc: &Rpc<'a>,
     operation_id: &str,
 ) -> miette::Result<()> {
     let retry_strategy =
@@ -25,11 +24,12 @@ pub async fn check_for_completion<'a>(
     }
     let route = CloudOpts::route();
     let operation = Retry::spawn(retry_strategy.clone(), || async {
-        let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
-
+        let mut rpc_clone = rpc.clone();
         // Handle the operation show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let result: Result<Operation> = rpc.ask(api::operation::show(operation_id, &route)).await;
+        let result: Result<Operation> = rpc_clone
+            .ask(api::operation::show(operation_id, &route))
+            .await;
         result.and_then(|o| {
             if o.is_completed() {
                 Ok(o)
