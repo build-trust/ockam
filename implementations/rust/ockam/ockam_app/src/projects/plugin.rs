@@ -18,7 +18,6 @@ const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(60 * 5);
 
 pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("projects")
-        .invoke_handler(tauri::generate_handler![list_projects])
         .setup(|app, _api| {
             debug!("Initializing the projects plugin");
             app.manage(Arc::new(RwLock::new(State::default())));

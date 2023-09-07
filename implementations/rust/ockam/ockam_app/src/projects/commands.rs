@@ -16,10 +16,7 @@ type SyncState = Arc<RwLock<ProjectState>>;
 // Matches backend default of 14 days
 const DEFAULT_ENROLLMENT_TICKET_EXPIRY: &str = "14d";
 
-// At time of writing, tauri::command requires pub not pub(crate)
-
-#[tauri::command]
-pub async fn create_enrollment_ticket<R: Runtime>(
+pub(crate) async fn create_enrollment_ticket<R: Runtime>(
     project_id: String,
     app: AppHandle<R>,
 ) -> Result<EnrollmentTicket> {
@@ -74,16 +71,7 @@ pub(crate) async fn list_projects_with_admin<R: Runtime>(
         .collect())
 }
 
-#[tauri::command]
-pub async fn list_projects<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Project>> {
-    let state: State<'_, SyncState> = app.state();
-    let reader = state.read().await;
-    debug!(projects = ?reader);
-    Ok((*reader).clone())
-}
-
-#[tauri::command]
-pub async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()> {
+pub(crate) async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()> {
     info!("refreshing projects");
     let state: State<'_, AppState> = app.state();
     if !state.is_enrolled().await.unwrap_or(false) {

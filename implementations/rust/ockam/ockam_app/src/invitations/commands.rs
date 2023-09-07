@@ -123,7 +123,7 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
         )
         .await
         .map_err(|e| e.to_string())?;
-    trace!(?invitations);
+    trace!(?invitations, "Invitations fetched");
     {
         let invitation_state: State<'_, SyncState> = app.state();
         let mut writer = invitation_state.write().await;
@@ -166,10 +166,11 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                                 "--output",
                                 "json"
                             )
-                            .stderr_to_stdout()
+                            .env("OCKAM_LOG", "off")
                             .stdout_capture()
                             .run()
                             {
+                                trace!(output = ?String::from_utf8_lossy(&cmd.stdout), "TCP inlet status");
                                 let inlet: InletStatus = serde_json::from_slice(&cmd.stdout)?;
                                 let inlet_socket_addr = SocketAddr::from_str(&inlet.bind_addr)?;
                                 inlet_is_running = true;
