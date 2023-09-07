@@ -353,7 +353,14 @@ async fn run_foreground_node(
 
     // Create a channel for communicating back to the main thread
     let (tx, mut rx) = tokio::sync::mpsc::channel(2);
-    shutdown::wait(opts.terminal.clone(), cmd.exit_on_eof, false, tx, &mut rx).await?;
+    shutdown::wait(
+        opts.terminal.clone(),
+        cmd.exit_on_eof,
+        opts.global_args.quiet,
+        tx,
+        &mut rx,
+    )
+    .await?;
 
     // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
     if let Ok(state) = opts.state.nodes.get(&node_name) {
