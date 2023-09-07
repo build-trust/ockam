@@ -173,9 +173,7 @@ async fn run_impl(
             space_id,
         } => {
             let subscription_id = utils::subscription_id_from_cmd_args(
-                &ctx,
-                &opts,
-                rpc.node_name(),
+                &mut rpc,
                 controller_route,
                 subscription_id,
                 space_id,
@@ -198,9 +196,7 @@ async fn run_impl(
                         .into_diagnostic()
                         .context(format!("failed to read {:?}", &json))?;
                     let subscription_id = utils::subscription_id_from_cmd_args(
-                        &ctx,
-                        &opts,
-                        rpc.node_name(),
+                        &mut rpc,
                         controller_route,
                         subscription_id,
                         space_id,
@@ -217,9 +213,7 @@ async fn run_impl(
                     new_space_id,
                 } => {
                     let subscription_id = utils::subscription_id_from_cmd_args(
-                        &ctx,
-                        &opts,
-                        rpc.node_name(),
+                        &mut rpc,
                         controller_route,
                         subscription_id,
                         space_id,

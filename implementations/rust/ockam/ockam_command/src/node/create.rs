@@ -34,7 +34,7 @@ use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::terminal::OckamColor;
 use crate::util::api::TrustContextOpts;
-use crate::util::{api, parse_node_name, RpcBuilder};
+use crate::util::{api, parse_node_name, Rpc};
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, identity, shutdown, CommandGlobalOpts, Result};
@@ -201,8 +201,7 @@ pub(crate) async fn background_mode(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-        let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
+        let mut rpc = Rpc::background(&ctx, &opts, node_name)?;
         spawn_background_node(&opts, cmd.clone()).await?;
         let is_node_up = is_node_up(&mut rpc, opts.state.clone(), true).await?;
         *is_finished.lock().await = true;

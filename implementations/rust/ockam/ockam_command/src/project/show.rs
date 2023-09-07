@@ -4,10 +4,10 @@ use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::delete_embedded_node;
 use crate::project::util::refresh_projects;
 use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, RpcBuilder};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -49,19 +49,18 @@ async fn run_impl(
     cmd: ShowCommand,
 ) -> miette::Result<()> {
     let controller_route = &CloudOpts::route();
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
     // Lookup project
     let id = match &opts.state.projects.get(&cmd.name) {
         Ok(state) => state.config().id.clone(),
         Err(_) => {
-            refresh_projects(ctx, &opts, &node_name, &CloudOpts::route(), None).await?;
+            refresh_projects(&opts, &mut rpc, &CloudOpts::route()).await?;
             opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };
 
     // Send request
-    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     let project: Project = rpc.ask(api::project::show(&id, controller_route)).await?;
 
     opts.println(&project)?;

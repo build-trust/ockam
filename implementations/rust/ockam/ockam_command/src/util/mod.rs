@@ -5,8 +5,8 @@ use std::{
     str::FromStr,
 };
 
+use miette::{IntoDiagnostic, miette};
 use miette::Context as _;
-use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
 use tracing::{debug, error};
 
@@ -19,14 +19,15 @@ use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Reply, RequestBuilder, Response, Status};
 use ockam_core::DenyAll;
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{
-    proto::{self, Node},
-    MultiAddr, Protocol,
+    MultiAddr,
+    proto::{self, Node}, Protocol,
 };
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 
-use crate::node::util::start_embedded_node;
 use crate::{CommandGlobalOpts, Result};
+use crate::node::util::{start_embedded_node, start_embedded_node_with_vault_and_identity};
+use crate::util::api::TrustContextOpts;
 
 pub mod api;
 pub mod duration;
@@ -62,16 +63,6 @@ impl<'a> RpcBuilder<'a> {
     pub fn to(mut self, to: &MultiAddr) -> Result<Self> {
         self.to = ockam_api::local_multiaddr_to_route(to)
             .ok_or_else(|| miette!("failed to convert {} to route", to))?;
-        Ok(self)
-    }
-
-    /// When running multiple RPC's from a single command to a background node,
-    /// a single TcpTransport must be shared amongst them, as we can only have one
-    /// TcpTransport per Context.
-    pub fn tcp<T: Into<Option<&'a TcpTransport>>>(mut self, tcp: T) -> Result<Self> {
-        if let Some(tcp) = tcp.into() {
-            self.mode = RpcMode::Background { tcp: Some(tcp) };
-        }
         Ok(self)
     }
 
@@ -114,6 +105,51 @@ impl<'a> Rpc<'a> {
         })
     }
 
+    /// Creates a new RPC to send a request to an embedded node.
+    pub async fn embedded_with_trust_options(
+        ctx: &'a Context,
+        opts: &'a CommandGlobalOpts,
+        trust_context_opts: &TrustContextOpts,
+    ) -> Result<Rpc<'a>> {
+        let node_name = start_embedded_node(ctx, opts, Some(trust_context_opts)).await?;
+        Ok(Rpc {
+            ctx,
+            buf: Vec::new(),
+            opts,
+            node_name,
+            to: NODEMANAGER_ADDR.into(),
+            timeout: None,
+            mode: RpcMode::Embedded,
+        })
+    }
+
+    /// Creates a new RPC to send a request to an embedded node.
+    pub async fn embedded_with_vault_and_identity(
+        ctx: &'a Context,
+        opts: &'a CommandGlobalOpts,
+        identity: String,
+        trust_context_opts: &TrustContextOpts,
+    ) -> Result<Rpc<'a>> {
+        let node_name = start_embedded_node_with_vault_and_identity(
+            ctx,
+            &opts.state,
+            None,
+            Some(identity),
+            Some(trust_context_opts),
+        )
+        .await?;
+
+        Ok(Rpc {
+            ctx,
+            buf: Vec::new(),
+            opts,
+            node_name,
+            to: NODEMANAGER_ADDR.into(),
+            timeout: None,
+            mode: RpcMode::Embedded,
+        })
+    }
+
     /// Creates a new RPC to send a request to a running background node.
     pub fn background(
         ctx: &'a Context,
@@ -133,6 +169,11 @@ impl<'a> Rpc<'a> {
 
     pub fn node_name(&self) -> &str {
         &self.node_name
+    }
+
+    pub fn set_node_name(&mut self, node_name: &str) -> &Self {
+        self.node_name = node_name.to_string();
+        self
     }
 
     /// Use a timeout for making requests
@@ -506,9 +547,9 @@ pub fn random_name() -> String {
 mod tests {
     use ockam_api::address::extract_address_value;
     use ockam_api::cli_state;
+    use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::cli_state::identities::IdentityConfig;
     use ockam_api::cli_state::traits::StateDirTrait;
-    use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
     use super::*;

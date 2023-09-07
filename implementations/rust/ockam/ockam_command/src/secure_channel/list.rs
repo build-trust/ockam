@@ -1,10 +1,10 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 use ockam_api::cli_state::StateDirTrait;
 use std::fmt::Write;
 
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_api::route_to_multiaddr;
 use ockam_core::{route, Address};
@@ -15,7 +15,7 @@ use tokio::try_join;
 use crate::node::get_node_name;
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{parse_node_name, RpcBuilder};
+use crate::util::{parse_node_name, Rpc};
 use crate::{
     docs,
     util::{api, node_rpc},
@@ -83,11 +83,6 @@ impl ListCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
-    // We need this TCPTransport handle to ensure that we are using the same transport across
-    // multiple RPC calls. Creating a RPC instance without explicit transport results in a router
-    // instance being registered for the same transport type multiple times which is not allowed
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&at)?;
 
@@ -96,7 +91,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
     }
 
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
 
     let get_secure_channel_identifiers = async {
         let secure_channel_identifiers: Vec<String> = rpc.ask(api::list_secure_channels()).await?;
@@ -114,7 +109,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
     let mut responses = Vec::with_capacity(channel_identifiers.len());
     for channel_addr in &channel_identifiers {
         let is_finished: Mutex<bool> = Mutex::new(false);
-        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
         let get_secure_channel_output = async {
             let request: ockam_core::api::RequestBuilder<
                 ockam_api::nodes::models::secure_channel::ShowSecureChannelRequest,
