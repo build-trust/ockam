@@ -96,7 +96,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StartCommand)) -> mi
 
 async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StartCommand) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let mut is_hop_service = false;
     let addr = match cmd.create_subcommand {
         StartSubCommand::Hop { addr, .. } => {
@@ -149,7 +149,7 @@ async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StartCommand) -> m
 
 /// Helper function.
 pub(crate) async fn start_service_impl<'a, T>(
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     serv_name: &str,
     req: RequestBuilder<T>,
 ) -> Result<()>
@@ -162,19 +162,19 @@ where
 }
 
 /// Public so `ockam_command::node::create` can use it.
-pub async fn start_hop_service<'a>(rpc: &mut Rpc<'a>, serv_addr: &str) -> Result<()> {
+pub async fn start_hop_service<'a>(rpc: &mut Rpc, serv_addr: &str) -> Result<()> {
     let req = api::start_hop_service(serv_addr);
     start_service_impl(rpc, "Hop", req).await
 }
 
 /// Public so `ockam_command::node::create` can use it.
-pub async fn start_identity_service<'a>(rpc: &mut Rpc<'a>, serv_addr: &str) -> Result<()> {
+pub async fn start_identity_service<'a>(rpc: &mut Rpc, serv_addr: &str) -> Result<()> {
     let req = api::start_identity_service(serv_addr);
     start_service_impl(rpc, "Identity", req).await
 }
 
 /// Public so `ockam_command::node::create` can use it.
-pub async fn start_verifier_service<'a>(rpc: &mut Rpc<'a>, serv_addr: &str) -> Result<()> {
+pub async fn start_verifier_service<'a>(rpc: &mut Rpc, serv_addr: &str) -> Result<()> {
     let req = api::start_verifier_service(serv_addr);
     start_service_impl(rpc, "Verifier", req).await
 }
@@ -182,7 +182,7 @@ pub async fn start_verifier_service<'a>(rpc: &mut Rpc<'a>, serv_addr: &str) -> R
 /// Public so `ockam_command::node::create` can use it.
 #[allow(clippy::too_many_arguments)]
 pub async fn start_authenticator_service<'a>(
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     serv_addr: &str,
     project: &str,
 ) -> Result<()> {

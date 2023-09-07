@@ -1,18 +1,18 @@
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
-
-use ockam_core::api::Request;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
 
 use ockam::identity::IdentityIdentifier;
+use ockam::AsyncTryClone;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
+use ockam_core::api::Request;
 use ockam_core::compat::str::FromStr;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
@@ -48,7 +48,7 @@ pub fn clean_projects_multiaddr(
 
 pub async fn get_projects_secure_channels_from_config_lookup<'a>(
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     meta: &LookupMeta,
     credential_exchange_mode: CredentialExchangeMode,
 ) -> Result<Vec<MultiAddr>> {
@@ -94,7 +94,7 @@ pub async fn get_projects_secure_channels_from_config_lookup<'a>(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_secure_channel_to_project<'a>(
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     project_access_route: &MultiAddr,
     project_identity: &str,
     credential_exchange_mode: CredentialExchangeMode,
@@ -114,7 +114,7 @@ pub async fn create_secure_channel_to_project<'a>(
 }
 
 pub async fn create_secure_channel_to_authority<'a>(
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     authority: IdentityIdentifier,
     addr: &MultiAddr,
     identity: Option<String>,
@@ -134,7 +134,7 @@ pub async fn create_secure_channel_to_authority<'a>(
     Ok(addr)
 }
 
-async fn delete_secure_channel<'a>(rpc: &mut Rpc<'a>, sc_addr: &MultiAddr) -> miette::Result<()> {
+async fn delete_secure_channel<'a>(rpc: &mut Rpc, sc_addr: &MultiAddr) -> miette::Result<()> {
     let addr = multiaddr_to_addr(sc_addr).ok_or(miette!("Failed to convert MultiAddr to addr"))?;
     rpc.tell(api::delete_secure_channel(&addr)).await?;
     Ok(())
@@ -142,7 +142,7 @@ async fn delete_secure_channel<'a>(rpc: &mut Rpc<'a>, sc_addr: &MultiAddr) -> mi
 
 pub async fn check_project_readiness<'a>(
     opts: &CommandGlobalOpts,
-    rpc: &Rpc<'a>,
+    rpc: &Rpc,
     mut project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
@@ -164,7 +164,7 @@ pub async fn check_project_readiness<'a>(
         let cloud_route = &CloudOpts::route();
         let project_id = project.id.clone();
         project = Retry::spawn(retry_strategy.clone(), || async {
-            let mut rpc_clone = rpc.clone();
+            let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;
 
             // Handle the project show request result
             // so we can provide better errors in the case orchestrator does not respond timely
@@ -212,7 +212,7 @@ pub async fn check_project_readiness<'a>(
             .to_string();
 
         Retry::spawn(retry_strategy.clone(), || async {
-            let mut rpc_clone = rpc.clone();
+            let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;
             if let Ok(sc_addr) = create_secure_channel_to_project(
                 &mut rpc_clone,
                 &project_route,
@@ -245,7 +245,7 @@ pub async fn check_project_readiness<'a>(
         .ok_or(miette!("Project does not have an authority defined."))?;
 
         Retry::spawn(retry_strategy.clone(), || async {
-            let mut rpc_clone = rpc.clone();
+            let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;
             if let Ok(sc_addr) = create_secure_channel_to_authority(
                 &mut rpc_clone,
                 authority.identity_id().clone(),
@@ -277,7 +277,7 @@ pub async fn check_project_readiness<'a>(
 
 pub async fn refresh_projects<'a>(
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     controller_route: &MultiAddr,
 ) -> miette::Result<()> {
     let projects: Vec<Project> = rpc.ask(api::project::list(controller_route)).await?;

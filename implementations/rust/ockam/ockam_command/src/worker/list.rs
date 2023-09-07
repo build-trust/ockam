@@ -1,17 +1,19 @@
+use clap::Args;
+use colorful::Colorful;
+use miette::miette;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
+use ockam::Context;
+use ockam_api::address::extract_address_value;
+use ockam_api::cli_state::StateDirTrait;
+use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
+
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::output::Output;
 use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
-use clap::Args;
-use colorful::Colorful;
-use miette::miette;
-use ockam::Context;
-use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::StateDirTrait;
-use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -48,7 +50,7 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_workers = async {

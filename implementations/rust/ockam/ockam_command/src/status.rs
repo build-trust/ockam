@@ -7,8 +7,8 @@ use minicbor::{Decode, Decoder, Encode};
 
 use ockam::{Context, Node, TcpConnectionOptions, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
-use ockam_api::cli_state::NodeState;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::NodeState;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
 use ockam_api::nodes::NodeManager;
 use ockam_core::api::{Request, Response, Status};
@@ -16,10 +16,10 @@ use ockam_core::route;
 use ockam_identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
 use ockam_node::MessageSendReceiveOptions;
 
+use crate::util::api::CloudOpts;
+use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
-use crate::util::{api, node_rpc, Rpc};
-use crate::util::api::CloudOpts;
 
 /// Display information about the system's status
 #[derive(Clone, Debug, Args)]
@@ -57,17 +57,14 @@ async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StatusCommand) -> 
     Ok(())
 }
 
-async fn get_nodes_details(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-) -> Result<Vec<NodeDetails>> {
+async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Vec<NodeDetails>> {
     let mut node_details: Vec<NodeDetails> = vec![];
 
     let node_states = opts.state.nodes.list()?;
     if node_states.is_empty() {
         return Ok(node_details);
     }
-    let mut rpc = Rpc::background(ctx, opts, "default")?;
+    let mut rpc = Rpc::background(ctx, opts, "default").await?;
 
     for node_state in &node_states {
         rpc.set_node_name(node_state.name());
@@ -82,9 +79,7 @@ async fn get_nodes_details(
     Ok(node_details)
 }
 
-async fn get_node_status<'a>(
-    rpc: &mut Rpc<'a>,
-) -> Result<String> {
+async fn get_node_status<'a>(rpc: &mut Rpc) -> Result<String> {
     let node_status_model: Result<NodeStatusModel> = rpc
         .set_timeout(Duration::from_millis(200))
         .ask(api::query_status())

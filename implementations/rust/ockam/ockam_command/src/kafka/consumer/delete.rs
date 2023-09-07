@@ -1,10 +1,12 @@
+use clap::Args;
+use colorful::Colorful;
+
+use ockam_api::nodes::models;
+use ockam_core::api::Request;
+
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::{node_rpc, parse_node_name, Rpc};
 use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
-use clap::Args;
-use colorful::Colorful;
-use ockam_api::nodes::models;
-use ockam_core::api::Request;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -33,7 +35,7 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
 
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let req = Request::delete("/node/services/kafka_consumer").body(
         models::services::DeleteServiceRequest::new(cmd.address.clone()),
     );

@@ -1,12 +1,14 @@
-use crate::node::get_node_name;
-use crate::policy::policy_path;
-use crate::util::{node_rpc, parse_node_name, Rpc};
-use crate::CommandGlobalOpts;
 use clap::Args;
+
 use ockam::Context;
 use ockam_abac::{Action, Expr, Resource};
 use ockam_api::nodes::models::policy::Policy;
 use ockam_core::api::Request;
+
+use crate::node::get_node_name;
+use crate::policy::policy_path;
+use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -45,7 +47,7 @@ async fn run_impl(
     let node_name = parse_node_name(&at)?;
     let bdy = Policy::new(cmd.expression);
     let req = Request::post(policy_path(&cmd.resource, &cmd.action)).body(bdy);
-    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(ctx, &opts, &node_name).await?;
     rpc.tell(req).await?;
     Ok(())
 }

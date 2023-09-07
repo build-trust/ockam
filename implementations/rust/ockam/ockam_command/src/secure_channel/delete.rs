@@ -1,19 +1,20 @@
-use crate::docs;
+use std::str::FromStr;
 
+use clap::Parser;
+use colorful::Colorful;
+use serde_json::json;
+
+use ockam::{route, Context};
+use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
+use ockam_core::{Address, AddressParseError};
+
+use crate::docs;
+use crate::node::get_node_name;
 use crate::util::{is_tty, parse_node_name};
 use crate::{
     util::{api, exitcode, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat,
 };
-use clap::Parser;
-use colorful::Colorful;
-
-use crate::node::get_node_name;
-use ockam::{route, Context};
-use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
-use ockam_core::{Address, AddressParseError};
-use serde_json::json;
-use std::str::FromStr;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -153,7 +154,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> m
         let at = get_node_name(&opts.state, &cmd.at);
         let node_name = parse_node_name(&at)?;
         let address = &cmd.address;
-        let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
         let response: DeleteSecureChannelResponse =
             rpc.ask(api::delete_secure_channel(address)).await?;
         cmd.print_output(&node_name, address, &opts, response);

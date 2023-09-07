@@ -1,20 +1,19 @@
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::terminal::OckamColor;
-
-use crate::util::{node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts};
-
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-use ockam_api::cli_state::StateDirTrait;
-use ockam_api::nodes::models::portal::OutletList;
-
-use ockam_api::address::extract_address_value;
-use ockam_core::api::Request;
-use ockam_node::Context;
 use tokio::sync::Mutex;
 use tokio::try_join;
+
+use ockam_api::address::extract_address_value;
+use ockam_api::cli_state::StateDirTrait;
+use ockam_api::nodes::models::portal::OutletList;
+use ockam_core::api::Request;
+use ockam_node::Context;
+
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::terminal::OckamColor;
+use crate::util::{node_rpc, Rpc};
+use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
@@ -84,6 +83,6 @@ pub async fn send_request(
     to_node: impl Into<Option<String>>,
 ) -> crate::Result<OutletList> {
     let to_node = get_node_name(&opts.state, &to_node.into());
-    let mut rpc = Rpc::background(ctx, opts, &to_node)?;
+    let mut rpc = Rpc::background(ctx, opts, &to_node).await?;
     rpc.ask(Request::get("/node/outlet")).await
 }

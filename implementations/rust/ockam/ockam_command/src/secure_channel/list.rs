@@ -1,16 +1,16 @@
+use std::fmt::Write;
+
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-use ockam_api::cli_state::StateDirTrait;
-use std::fmt::Write;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use ockam::Context;
+use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_api::route_to_multiaddr;
 use ockam_core::{route, Address};
-
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use crate::node::get_node_name;
 use crate::output::Output;
@@ -91,7 +91,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
     }
 
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
 
     let get_secure_channel_identifiers = async {
         let secure_channel_identifiers: Vec<String> = rpc.ask(api::list_secure_channels()).await?;

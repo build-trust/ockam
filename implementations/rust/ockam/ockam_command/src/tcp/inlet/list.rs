@@ -1,19 +1,18 @@
+use clap::Args;
+use colorful::Colorful;
+use miette::{miette, IntoDiagnostic};
+use tokio::sync::Mutex;
+use tokio::try_join;
+
+use ockam_api::address::extract_address_value;
+use ockam_api::cli_state::StateDirTrait;
+use ockam_api::nodes::models::portal::InletList;
+use ockam_core::api::Request;
+
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
-
-use clap::Args;
-use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
-use ockam_api::cli_state::StateDirTrait;
-
-use ockam_core::api::Request;
-
-use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::portal::InletList;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
@@ -46,7 +45,7 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_inlets = async {

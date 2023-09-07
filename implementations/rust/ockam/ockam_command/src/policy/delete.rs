@@ -1,12 +1,14 @@
+use clap::Args;
+use colorful::Colorful;
+
+use ockam::Context;
+use ockam_abac::{Action, Resource};
+use ockam_core::api::Request;
+
 use crate::node::get_node_name;
 use crate::policy::policy_path;
 use crate::util::{node_rpc, parse_node_name, Rpc};
 use crate::{fmt_ok, CommandGlobalOpts};
-use clap::Args;
-use colorful::Colorful;
-use ockam::Context;
-use ockam_abac::{Action, Resource};
-use ockam_core::api::Request;
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -50,7 +52,7 @@ async fn run_impl(
     {
         let policy_path = policy_path(&cmd.resource, &cmd.action);
         let req = Request::delete(&policy_path);
-        let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
+        let mut rpc = Rpc::background(ctx, &opts, &node_name).await?;
         rpc.tell(req).await?;
 
         opts.terminal

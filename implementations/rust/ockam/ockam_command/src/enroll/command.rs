@@ -102,7 +102,7 @@ async fn run_impl(
 
 pub async fn retrieve_user_project<'a>(
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
 ) -> Result<IdentityIdentifier> {
     let space = default_space(opts, rpc)
         .await
@@ -134,7 +134,7 @@ pub async fn retrieve_user_project<'a>(
 
 /// Enroll a user with a token, using a specific node to contact the controller
 pub async fn enroll_with_node<'a>(
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     route: &MultiAddr,
     token: OidcToken,
 ) -> miette::Result<()> {
@@ -161,7 +161,7 @@ pub async fn enroll_with_node<'a>(
     }
 }
 
-async fn default_space<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc<'a>) -> Result<Space> {
+async fn default_space<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
@@ -246,7 +246,7 @@ async fn default_space<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc<'a>) -> Resul
 
 async fn default_project<'a>(
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     space: &Space,
 ) -> Result<Project> {
     // Get available project for the given space

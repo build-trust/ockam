@@ -1,12 +1,13 @@
+use std::net::SocketAddr;
+
 use clap::{command, Args};
 use colorful::Colorful;
+use tokio::{sync::Mutex, try_join};
+
 use ockam::Context;
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_core::api::Request;
-use std::net::SocketAddr;
-
-use tokio::{sync::Mutex, try_join};
 
 use crate::node::get_node_name;
 use crate::util::Rpc;
@@ -53,7 +54,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_outlet").body(payload);
         let node_name = get_node_name(&opts.state, &node_opts.at_node);
-        let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
 
         start_service_impl(&mut rpc, "KafkaOutlet", req).await?;
         *is_finished.lock().await = true;

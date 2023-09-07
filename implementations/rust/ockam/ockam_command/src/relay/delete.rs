@@ -1,13 +1,12 @@
-use crate::node::get_node_name;
-
-use crate::util::{node_rpc, parse_node_name, Rpc};
-
-use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
 use ockam_core::api::Request;
+
+use crate::node::get_node_name;
+use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -48,7 +47,7 @@ pub async fn run_impl(
         let relay_name = cmd.relay_name.clone();
         let at = get_node_name(&opts.state, &cmd.at);
         let node = parse_node_name(&at)?;
-        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node).await?;
         rpc.tell(Request::delete(format!("/node/forwarder/{relay_name}",)))
             .await?;
 

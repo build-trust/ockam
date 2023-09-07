@@ -1,6 +1,9 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::{
@@ -8,8 +11,6 @@ use ockam_api::nodes::models::secure_channel::{
 };
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::output::Output;
@@ -62,7 +63,7 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(ctx, &opts, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_listeners = async {

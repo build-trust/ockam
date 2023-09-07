@@ -63,8 +63,8 @@ async fn run_impl(
         ))
         .await?;
     let operation_id = project.operation_id.clone().unwrap();
-    check_for_completion(&opts, &mut rpc, &operation_id).await?;
-    let project = check_project_readiness(&opts, &mut rpc, project).await?;
+    check_for_completion(&opts, &rpc, &operation_id).await?;
+    let project = check_project_readiness(&opts, &rpc, project).await?;
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;
