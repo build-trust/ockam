@@ -18,6 +18,7 @@ function copy_local_orchestrator_data() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
     cp -a $OCKAM_HOME_BASE $OCKAM_HOME
     export PROJECT_JSON_PATH="$OCKAM_HOME/project.json"
+    export PROJECT_NAME="default"
     cp $OCKAM_HOME/projects/default.json $PROJECT_JSON_PATH
   fi
 }

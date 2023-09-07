@@ -9,7 +9,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models;
+use ockam_api::nodes::models::transport::TransportStatus;
 use serde_json::json;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -43,7 +43,7 @@ impl CreateCommand {
     fn print_output(
         &self,
         opts: &CommandGlobalOpts,
-        response: &models::transport::TransportStatus,
+        response: &TransportStatus,
     ) -> miette::Result<()> {
         // if output format is json, write json to stdout.
         match opts.global_args.output_format {
@@ -91,8 +91,6 @@ async fn run_impl(
     let node_name = extract_address_value(&from)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let request = api::create_tcp_connection(&cmd);
-    rpc.request(request).await?;
-    let response = rpc.parse_response_body::<models::transport::TransportStatus>()?;
-
-    cmd.print_output(&opts, &response)
+    let transport_status: TransportStatus = rpc.ask(request).await?;
+    cmd.print_output(&opts, &transport_status)
 }

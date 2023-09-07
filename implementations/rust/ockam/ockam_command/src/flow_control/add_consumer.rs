@@ -46,7 +46,7 @@ async fn run_impl(
     let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
 
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).tcp(&tcp)?.build();
-    rpc.request(api::add_consumer(cmd.flow_control_id, cmd.address))
+    rpc.tell(api::add_consumer(cmd.flow_control_id, cmd.address))
         .await?;
 
     Ok(())

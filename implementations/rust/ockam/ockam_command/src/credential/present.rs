@@ -41,7 +41,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
-    rpc.request(api::credentials::present_credential(&cmd.to, cmd.oneway))
+    rpc.tell(api::credentials::present_credential(&cmd.to, cmd.oneway))
         .await?;
     Ok(())
 }

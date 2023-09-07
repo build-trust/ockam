@@ -24,6 +24,7 @@ mod markdown;
 mod message;
 pub mod node;
 mod operation;
+mod output;
 mod pager;
 mod policy;
 mod project;
@@ -57,10 +58,11 @@ use crate::run::RunCommand;
 use crate::subscription::SubscriptionCommand;
 pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
 use authenticated::AuthenticatedCommand;
-use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
+use clap::{ArgAction, Args, Parser, Subcommand};
 
 use crate::kafka::direct::KafkaDirectCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
+use crate::output::{Output, OutputFormat};
 use crate::sidecar::SidecarCommand;
 use colorful::Colorful;
 use completion::CompletionCommand;
@@ -214,18 +216,6 @@ impl GlobalArgs {
     }
 }
 
-#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
-pub enum OutputFormat {
-    Plain,
-    Json,
-}
-
-#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
-pub enum EncodeFormat {
-    Plain,
-    Hex,
-}
-
 #[derive(Clone)]
 pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
@@ -254,6 +244,15 @@ impl CommandGlobalOpts {
         clone.global_args = clone.global_args.set_quiet();
         clone.terminal = clone.terminal.set_quiet();
         clone
+    }
+
+    /// Print a value on the console.
+    /// TODO: replace this implementation with a call to the terminal instead
+    pub fn println<T>(&self, t: &T) -> Result<()>
+    where
+        T: Output + serde::Serialize,
+    {
+        self.global_args.output_format.println_value(t)
     }
 }
 

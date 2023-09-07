@@ -44,17 +44,14 @@ pub async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(make_api_request(cmd)?).await?;
-    rpc.is_ok()?;
-
-    let outlet_to_show = rpc.parse_response_body::<OutletStatus>()?;
+    let outlet_status: OutletStatus = rpc.ask(make_api_request(cmd)?).await?;
 
     println!("Outlet:");
-    println!("  Alias: {}", outlet_to_show.alias);
-    let addr = route_to_multiaddr(&route![outlet_to_show.worker_addr.to_string()])
+    println!("  Alias: {}", outlet_status.alias);
+    let addr = route_to_multiaddr(&route![outlet_status.worker_addr.to_string()])
         .ok_or_else(|| miette!("Invalid Outlet Address"))?;
     println!("  From Outlet: {addr}");
-    println!("  To TCP: {}", outlet_to_show.socket_addr);
+    println!("  To TCP: {}", outlet_status.socket_addr);
     Ok(())
 }
 

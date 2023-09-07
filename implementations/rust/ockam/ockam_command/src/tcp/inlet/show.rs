@@ -44,17 +44,15 @@ pub async fn run_impl(
     let node_name = parse_node_name(&node_name)?;
 
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
-    rpc.request(make_api_request(cmd)?).await?;
-    rpc.is_ok()?;
-    let inlet = rpc.parse_response_body::<InletStatus>()?;
+    let inlet_status: InletStatus = rpc.ask(make_api_request(cmd)?).await?;
 
-    let json = serde_json::to_string(&inlet).into_diagnostic()?;
+    let json = serde_json::to_string(&inlet_status).into_diagnostic()?;
     let InletStatus {
         alias,
         bind_addr,
         outlet_route,
         ..
-    } = inlet;
+    } = inlet_status;
     let plain = formatdoc! {r#"
         Inlet:
           Alias: {alias}

@@ -85,20 +85,16 @@ async fn get_node_status(
     node_state: &NodeState,
     tcp: &TcpTransport,
 ) -> Result<String> {
-    let mut node_status: String = "Stopped".to_string();
     let mut rpc = RpcBuilder::new(ctx, opts, node_state.name())
         .tcp(tcp)?
         .build();
-    if rpc
-        .request_with_timeout(api::query_status(), Duration::from_millis(200))
-        .await
-        .is_ok()
-    {
-        let resp = rpc.parse_response_body::<NodeStatusModel>()?;
-        node_status = resp.status;
-    }
-
-    Ok(node_status)
+    let node_status_model: Result<NodeStatusModel> = rpc
+        .set_timeout(Duration::from_millis(200))
+        .ask(api::query_status())
+        .await;
+    Ok(node_status_model
+        .map(|m| m.status)
+        .unwrap_or("Stopped".to_string()))
 }
 
 fn get_identities_details(opts: &CommandGlobalOpts, all: bool) -> Result<Vec<IdentityState>> {

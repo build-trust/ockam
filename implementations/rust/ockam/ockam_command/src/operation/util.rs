@@ -8,6 +8,7 @@ use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
 use crate::CommandGlobalOpts;
+use crate::Result;
 
 pub async fn check_for_completion<'a>(
     ctx: &ockam::Context,
@@ -28,17 +29,14 @@ pub async fn check_for_completion<'a>(
 
         // Handle the operation show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        if rpc
-            .request(api::operation::show(operation_id, &route))
-            .await
-            .is_ok()
-        {
-            let operation = rpc.parse_response_body::<Operation>()?;
-            if operation.is_completed() {
-                return Ok(operation);
+        let result: Result<Operation> = rpc.ask(api::operation::show(operation_id, &route)).await;
+        result.and_then(|o| {
+            if o.is_completed() {
+                Ok(o)
+            } else {
+                Err(miette!("Operation timed out. Please try again.").into())
             }
-        }
-        Err(miette!("Operation timed out. Please try again."))
+        })
     })
     .await?;
 

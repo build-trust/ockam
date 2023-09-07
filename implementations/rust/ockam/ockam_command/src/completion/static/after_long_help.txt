@@ -1,10 +1,46 @@
+The following steps outline how to build the Ockam completion file, where to store it, and what to expect from the process.
+
+#### Build the Completion File
+
+Start by ensuring you have a valid directory available to store the completion files, depending on your operating system and shell:
+
+- For Bash: `/usr/share/bash-completion/completions`
+- For Zsh: `/usr/local/share/zsh/site-functions`
+- For Fish: `~/.config/fish/completions`
+
+If the directory doesn't exist, create it using the following command, replacing `{dir}` with the appropriate path:
+
 ```sh
-# BASH
+mkdir -p {dir}
+```
+
+Generate the completion file by executing the relevant command for your shell. The file name must match the specific name for each shell.
+
+```sh
+# Bash
 $ ockam completion --shell bash > /usr/share/bash-completion/completions/ockam.bash
 
-# ZSH
+# Zsh
 $ ockam completion --shell zsh > /usr/local/share/zsh/site-functions/_ockam
 
-# FISH
+# Fish
 $ ockam completion --shell fish > ~/.config/fish/completions/ockam.fish
 ```
+
+#### Update Completion Cache
+
+After generating the completion file, it may be necessary to update your shell's completion cache to activate the changes:
+
+```sh
+$ compinit
+```
+
+#### Expected Results
+
+Upon successfully completing the steps outlined above:
+
+- The completion file will be generated according to the specified shell format.
+- The file will contain relevant completion definitions for Ockam commands and options.
+- The completion file will be saved in the designated directory for your shell.
+
+Congratulations! You have successfully created and integrated the Ockam completion file into your shell environment. As you type Ockam commands, you'll enjoy the convenience of auto-suggestions and completion.

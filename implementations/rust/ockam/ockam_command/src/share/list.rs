@@ -45,14 +45,15 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
-    let send_req = async {
-        rpc.request(api::share::list(
-            InvitationListKind::All,
-            &CloudOpts::route(),
-        ))
-        .await?;
+    let get_invitations = async {
+        let invitations: InvitationList = rpc
+            .ask(api::share::list(
+                InvitationListKind::All,
+                &CloudOpts::route(),
+            ))
+            .await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<InvitationList>()
+        Ok(invitations)
     };
 
     let output_messages = vec![format!("Listing shares...\n",)];
@@ -61,7 +62,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (shares, _) = try_join!(send_req, progress_output)?;
+    let (shares, _) = try_join!(get_invitations, progress_output)?;
 
     if let Some(sent) = shares.sent.as_ref() {
         let opts = opts.clone();

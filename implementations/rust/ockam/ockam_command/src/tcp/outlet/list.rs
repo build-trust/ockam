@@ -85,6 +85,5 @@ pub async fn send_request(
 ) -> crate::Result<OutletList> {
     let to_node = get_node_name(&opts.state, &to_node.into());
     let mut rpc = Rpc::background(ctx, opts, &to_node)?;
-    rpc.request(Request::get("/node/outlet")).await?;
-    rpc.parse_response_body::<OutletList>()
+    rpc.ask(Request::get("/node/outlet")).await
 }

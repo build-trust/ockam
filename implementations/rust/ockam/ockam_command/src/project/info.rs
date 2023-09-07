@@ -56,11 +56,9 @@ async fn run_impl(
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request(api::project::show(&id, controller_route))
-        .await?;
-    let info: ProjectConfigCompact = rpc.parse_response_body::<Project>()?.into();
-
-    rpc.print_response(&info)?;
+    let project: Project = rpc.ask(api::project::show(&id, controller_route)).await?;
+    let info: ProjectConfigCompact = project.into();
+    opts.println(&info)?;
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

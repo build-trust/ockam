@@ -46,7 +46,6 @@ async fn run_impl(
     let bdy = Policy::new(cmd.expression);
     let req = Request::post(policy_path(&cmd.resource, &cmd.action)).body(bdy);
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
-    rpc.request(req).await?;
-    rpc.is_ok()?;
+    rpc.tell(req).await?;
     Ok(())
 }

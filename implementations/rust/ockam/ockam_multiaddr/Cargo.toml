@@ -1,6 +1,6 @@
 [package]
 name = "ockam_multiaddr"
-version = "0.24.0"
+version = "0.25.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_multiaddr"
@@ -19,10 +19,10 @@ minicbor = { version = "0.19.0", default-features = false, features = ["alloc"],
 once_cell = { version = "1.18.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.188", default-features = false, optional = true }
 tinyvec = { version = "1.5.1", features = ["alloc"] }
-unsigned-varint = "0.7.1"
+unsigned-varint = "0.7.2"
 
 [dependencies.ockam_core]
-version = "0.83.0"
+version = "0.84.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]

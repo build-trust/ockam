@@ -73,17 +73,16 @@ async fn run_impl(
         addon_id
     );
     let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, controller_route, None));
-    rpc.request(req).await?;
-    let res = rpc.parse_response_body::<CreateOperationResponse>()?;
-    let operation_id = res.operation_id;
+    let response: CreateOperationResponse = rpc.ask(req).await?;
+    let operation_id = response.operation_id;
 
     check_for_completion(&ctx, &opts, rpc.node_name(), &operation_id).await?;
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     let mut rpc = rpc.clone();
-    rpc.request(api::project::show(&project_id, controller_route))
+    let project: Project = rpc
+        .ask(api::project::show(&project_id, controller_route))
         .await?;
-    let project: Project = rpc.parse_response_body()?;
     check_project_readiness(&ctx, &opts, rpc.node_name(), None, project).await?;
 
     opts.terminal

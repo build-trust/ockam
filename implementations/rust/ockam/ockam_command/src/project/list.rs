@@ -49,12 +49,10 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
-        rpc.request(api::project::list(&CloudOpts::route())).await?;
-        let r = rpc.parse_response_body::<Vec<Project>>()?;
-
+    let get_projects = async {
+        let projects: Vec<Project> = rpc.ask(api::project::list(&CloudOpts::route())).await?;
         *is_finished.lock().await = true;
-        Ok(r)
+        Ok(projects)
     };
 
     let output_messages = vec![format!("Listing projects...\n",)];
@@ -62,7 +60,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (projects, _) = try_join!(send_req, progress_output)?;
+    let (projects, _) = try_join!(get_projects, progress_output)?;
 
     let plain =
         &opts

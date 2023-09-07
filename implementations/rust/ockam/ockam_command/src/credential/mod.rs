@@ -19,7 +19,7 @@ pub(crate) use show::ShowCommand;
 pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
-use crate::util::output::Output;
+use crate::output::Output;
 use crate::{CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;

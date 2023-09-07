@@ -52,11 +52,10 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
-        rpc.request(Request::get("/node/forwarder")).await?;
-
+    let get_relays = async {
+        let relay_infos: Vec<ForwarderInfo> = rpc.ask(Request::get("/node/forwarder")).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<Vec<ForwarderInfo>>()
+        Ok(relay_infos)
     };
 
     let output_messages = vec![format!(
@@ -70,7 +69,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (relays, _) = try_join!(send_req, progress_output)?;
+    let (relays, _) = try_join!(get_relays, progress_output)?;
     trace!(?relays, "Relays retrieved");
 
     let plain = opts.terminal.build_list(

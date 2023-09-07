@@ -74,14 +74,14 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
-    let send_req = async {
+    let get_sent_invitation = async {
         let req = cmd.into();
         debug!(?req);
-
-        rpc.request(api::share::create(req, &CloudOpts::route()))
+        let invitation: SentInvitation = rpc
+            .ask(api::share::create(req, &CloudOpts::route()))
             .await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<SentInvitation>()
+        Ok(invitation)
     };
 
     let output_messages = vec![format!("Creating invitation...\n",)];
@@ -90,7 +90,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (sent, _) = try_join!(send_req, progress_output)?;
+    let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
 
     debug!(?sent);
 

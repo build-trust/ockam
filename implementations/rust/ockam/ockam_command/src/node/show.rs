@@ -6,7 +6,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam::TcpTransport;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
 use ockam_api::nodes::models::services::ServiceList;
@@ -177,8 +177,8 @@ pub async fn print_query_status(
     wait_until_ready: bool,
     is_default: bool,
 ) -> miette::Result<()> {
-    let cli_state = rpc.opts.state.clone();
-    if !is_node_up(rpc, wait_until_ready).await? {
+    let cli_state = opts.state.clone();
+    if !is_node_up(rpc, cli_state.clone(), wait_until_ready).await? {
         let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state
             .config()
@@ -212,28 +212,24 @@ pub async fn print_query_status(
 
         // Get list of services for the node
         let mut rpc = rpc.clone();
-        rpc.request(api::list_services()).await?;
-        let services = rpc.parse_response_body::<ServiceList>()?;
+        let services: ServiceList = rpc.ask(api::list_services()).await?;
 
         // Get list of TCP listeners for node
         let mut rpc = rpc.clone();
-        rpc.request(api::list_tcp_listeners()).await?;
-        let tcp_listeners = rpc.parse_response_body::<TransportList>()?;
+        let tcp_listeners: TransportList = rpc.ask(api::list_tcp_listeners()).await?;
 
         // Get list of Secure Channel Listeners
         let mut rpc = rpc.clone();
-        rpc.request(api::list_secure_channel_listener()).await?;
-        let secure_channel_listeners = rpc.parse_response_body::<SecureChannelListenersList>()?;
+        let secure_channel_listeners: SecureChannelListenersList =
+            rpc.ask(api::list_secure_channel_listener()).await?;
 
         // Get list of inlets
         let mut rpc = rpc.clone();
-        rpc.request(api::list_inlets()).await?;
-        let inlets = rpc.parse_response_body::<InletList>()?;
+        let inlets: InletList = rpc.ask(api::list_inlets()).await?;
 
         // Get list of outlets
         let mut rpc = rpc.clone();
-        rpc.request(api::list_outlets()).await?;
-        let outlets = rpc.parse_response_body::<OutletList>()?;
+        let outlets: OutletList = rpc.ask(api::list_outlets()).await?;
 
         let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state
@@ -267,7 +263,11 @@ pub async fn print_query_status(
 /// appear to be 'up', retry the test at time intervals up to
 /// a maximum number of retries. A use case for this is to
 /// allow a node time to start up and become ready.
-pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<bool> {
+pub async fn is_node_up(
+    rpc: &mut Rpc<'_>,
+    cli_state: CliState,
+    wait_until_ready: bool,
+) -> Result<bool> {
     let attempts = match wait_until_ready {
         true => IS_NODE_UP_MAX_ATTEMPTS,
         false => 1,
@@ -276,7 +276,7 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
     let retries =
         FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
 
-    let cli_state = rpc.opts.state.clone();
+    let cli_state = cli_state.clone();
     let node_name = rpc.node_name().to_owned();
     let now = std::time::Instant::now();
     for timeout_duration in retries {
@@ -291,12 +291,11 @@ pub async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<boo
         // Test if node is up
         // If node is down, we expect it won't reply and the timeout
         // will trigger the next loop (i.e. no need to sleep here).
-        if rpc
-            .request_with_timeout(api::query_status(), timeout_duration)
-            .await
-            .is_ok()
-            && rpc.is_ok().is_ok()
-        {
+        let result = rpc
+            .set_timeout(timeout_duration)
+            .tell(api::query_status())
+            .await;
+        if result.is_ok() {
             let elapsed = now.elapsed();
             info!(%node_name, ?elapsed, "node is up");
             return Ok(true);

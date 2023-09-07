@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.34.0 - 2023-09-06
+
+### Added
+
+- Added a direct local kafka for simple deployments and fixed service registry
+
+### Changed
+
+- Improve tcp disconnect api
+- Use proper url data type
+- Create a relay to the default project after enrolling and when starting the app
+- Move common code to `api` so we can remove `command` from `app`
+- Updated dependencies
+
+### Fixed
+
+- Fix the cbor annotations for non-borrowed data
+
+### Removed
+
+- Removed api lifetimes to access node manager operations directly
+- Remove the `projects` field from `NodeManager` to load them from the `CliState`
+
 ## 0.33.0 - 2023-06-26
 
 ### Added

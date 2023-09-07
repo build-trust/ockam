@@ -2,17 +2,10 @@
 
 # ===== SETUP
 
-setup_file() {
-  load load/base.bash
-}
-
 setup() {
   load load/base.bash
-  load load/orchestrator.bash
   load_bats_ext
   setup_home_dir
-  skip_if_orchestrator_tests_not_enabled
-  copy_local_orchestrator_data
 }
 
 teardown() {
@@ -21,298 +14,191 @@ teardown() {
 
 # ===== TESTS
 
-@test "portals - create an inlet/outlet pair, a relay in an orchestrator project and move tcp traffic through it" {
-  port="$(random_port)"
+@test "portals - tcp inlet CRUD" {
+  outlet_port="$(random_port)"
+  inlet_port="$(random_port)"
 
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
-  assert_success
-  $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  # Create nodes for inlet/outlet pair
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
 
-  fwd="$(random_str)"
-  $OCKAM relay create "$fwd" --to /node/blue
+  # Create inlet/outlet pair
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$outlet_port" --alias "test-outlet"
+  assert_output --partial "/service/outlet"
 
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
-  assert_success
-  $OCKAM secure-channel create --from /node/green --to "/project/default/service/forward_to_$fwd/service/api" |
-    $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
+  run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$inlet_port --to /node/n1/service/outlet --alias "test-inlet"
+  run_success $OCKAM tcp-inlet create --at /node/n2 --from 6102 --to /node/n1/service/outlet
 
-  run curl --fail --head --max-time 10 "127.0.0.1:$port"
-  assert_success
+  sleep 1
+
+  # Check that inlet is available for deletion and delete it
+  run_success $OCKAM tcp-inlet show test-inlet --at /node/n2 --output json
+  assert_output --partial "\"alias\":\"test-inlet\""
+  assert_output --partial "\"bind_addr\":\"127.0.0.1:$inlet_port\""
+
+  run_success $OCKAM tcp-inlet delete "test-inlet" --at /node/n2 --yes
+
+  # Test deletion of a previously deleted TCP inlet
+  run_failure $OCKAM tcp-inlet delete "test-inlet" --at /node/n2 --yes
+  assert_output --partial "not found"
 }
 
-@test "portals - create an inlet using only default arguments, an outlet, a relay in an orchestrator project and move tcp traffic through it" {
+@test "portals - tcp outlet CRUD" {
   port="$(random_port)"
+  run_success "$OCKAM" node create n1
 
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
-  assert_success
+  only_port="$(random_port)"
+  run_success "$OCKAM" node create n2
 
-  $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
+  assert_output --partial "/service/outlet"
 
-  $OCKAM relay create --to /node/blue
+  run_success $OCKAM tcp-outlet create --at /node/n2 --to $only_port
 
-  addr=$($OCKAM tcp-inlet create)
+  run_success $OCKAM tcp-outlet show test-outlet --at /node/n1
+  assert_output --partial "Alias: test-outlet"
+  assert_output --partial "From Outlet: /service/outlet"
+  assert_output --regexp "To TCP: 127.0.0.1:$port"
 
-  run curl --fail --head --max-time 10 $addr
-  assert_success
+  run_success $OCKAM tcp-outlet delete "test-outlet" --yes
+
+  # Test deletion of a previously deleted TCP outlet
+  run_failure $OCKAM tcp-outlet delete "test-outlet" --yes
+  assert_output --partial "not found"
 }
 
-@test "portals - create an inlet (with implicit secure channel creation), an outlet, a relay in an orchestrator project and move tcp traffic through it" {
+@test "portals - list inlets on a node" {
   port="$(random_port)"
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
 
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
-  assert_success
-  $OCKAM tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias tcp-inlet-2
+  sleep 1
 
-  fwd="$(random_str)"
-  $OCKAM relay create "$fwd" --to /node/blue
-
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
-  assert_success
-  $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
-
-  run curl --fail --head --max-time 10 "127.0.0.1:$port"
-  assert_success
+  run_success $OCKAM tcp-inlet list --at /node/n2
+  assert_output --partial "tcp-inlet-2"
+  assert_output --partial "127.0.0.1:$port"
 }
 
-@test "portals - inlet/outlet example with credential, not provided" {
+@test "portals - list outlets on a node" {
   port="$(random_port)"
-  ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  run_success "$OCKAM" node create n1
 
-  # Setup nodes from a non-enrolled environment
-  setup_home_dir
-  NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
+  assert_output --partial "/service/outlet"
 
-  run "$OCKAM" identity create green
-  assert_success
-  run "$OCKAM" identity create blue
-  assert_success
-  green_identifier=$($OCKAM identity show green)
-  blue_identifier=$($OCKAM identity show blue)
-
-  run "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
-  assert_success
-  run "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
-  assert_success
-
-  # Green isn't enrolled as project member
-  OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
-  assert_success
-
-  OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  assert_success
-
-  fwd="$(random_str)"
-  run "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_success
-  assert_output --partial "forward_to_$fwd"
-
-  run bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
-              | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
-  assert_success
-
-  # Green can't establish secure channel with blue, because it didn't exchange credential with it.
-  run curl --fail --head --max-time 5 "127.0.0.1:$port"
-  assert_failure
+  run_success $OCKAM tcp-outlet list --at /node/n1
+  assert_output --partial "test-outlet"
+  assert_output --partial "/service/outlet"
+  assert_output --partial "127.0.0.1:$port"
 }
 
-@test "portals - inlet (with implicit secure channel creation) / outlet example with credential, not provided" {
+@test "portals - show a tcp inlet" {
   port="$(random_port)"
-  ENROLLED_OCKAM_HOME=$OCKAM_HOME
-  setup_home_dir
-  NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
 
-  run "$OCKAM" identity create green
-  assert_success
-  run "$OCKAM" identity create blue
-  assert_success
-  green_identifier=$($OCKAM identity show green)
-  blue_identifier=$($OCKAM identity show blue)
+  run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias "test-inlet"
+  sleep 1
 
-  run "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
-  assert_success
+  run_success $OCKAM tcp-inlet show "test-inlet" --at /node/n2
 
-  run "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
-  assert_success
-
-  # Green isn't enrolled as project member
-  OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
-  assert_success
-
-  OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  assert_success
-
-  fwd="$(random_str)"
-  run "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_output --partial "forward_to_$fwd"
-  assert_success
-
-  # Green can't establish secure channel with blue, because it isn't a member
-  run "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
-  assert_failure
+  # Test if non-existing TCP inlet returns NotFound
+  run_failure $OCKAM tcp-inlet show "non-existing-inlet"
+  assert_output --partial "not found"
 }
 
-@test "portals - inlet/outlet example with credential" {
+@test "portals - show a tcp outlet" {
   port="$(random_port)"
-  ENROLLED_OCKAM_HOME=$OCKAM_HOME
-  setup_home_dir
-  NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  run_success "$OCKAM" node create n1
 
-  run "$OCKAM" identity create green
-  assert_success
-  run "$OCKAM" identity create blue
-  assert_success
-  green_identifier=$($OCKAM identity show green)
-  blue_identifier=$($OCKAM identity show blue)
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
+  assert_output --partial "/service/outlet"
 
-  run "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
-  assert_success
-  run "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
-  assert_success
+  run_success $OCKAM tcp-outlet show "test-outlet"
 
-  OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
-  assert_success
-  run "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
-  assert_success
-
-  OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  assert_success
-
-  fwd="$(random_str)"
-  run "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_success
-  assert_output --partial "forward_to_$fwd"
-
-  run bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
-              | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
-  assert_success
-
-  run curl --fail --head --max-time 10 "127.0.0.1:$port"
-  assert_success
+  # Test if non-existing TCP outlet returns NotFound
+  run_failure $OCKAM tcp-outlet show "non-existing-outlet"
+  assert_output --partial "not found"
 }
 
-@test "portals - inlet (with implicit secure channel creation) / outlet example with enrollment token" {
+@test "portals - create an inlet/outlet pair and move tcp traffic through it" {
   port="$(random_port)"
-  ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
 
-  green_token=$($OCKAM project ticket --attribute app=app1)
-  blue_token=$($OCKAM project ticket --attribute app=app1)
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
 
-  setup_home_dir
-  NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
-
-  run "$OCKAM" identity create green
-  assert_success
-  run "$OCKAM" identity create blue
-  assert_success
-
-  run "$OCKAM" project enroll $green_token --identity green
-  assert_success
-  run "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
-  assert_success
-  run "$OCKAM" policy create --at green --resource tcp-inlet --expression '(= subject.app "app1")'
-  assert_success
-
-  run "$OCKAM" project enroll $blue_token --identity blue
-  assert_success
-  run "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
-  assert_success
-  run "$OCKAM" policy create --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
-  assert_success
-
-  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  assert_success
-
-  fwd="$(random_str)"
-  run "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_output --partial "forward_to_$fwd"
-  assert_success
-
-  run "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
-  assert_success
-
-  run curl --fail --head --max-time 10 "127.0.0.1:$port"
-  assert_success
+  run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
 
-@test "portals - local inlet and outlet, removing and re-creating the outlet" {
+@test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
   port="$(random_port)"
-  node_port="$(random_port)"
+  run_success "$OCKAM" node create relay
+  run_success "$OCKAM" node create blue
 
-  setup_home_dir
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  run_success "$OCKAM" relay create blue --at /node/relay --to /node/blue
 
-  run "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  assert_success
+  run_success "$OCKAM" node create green
+  run_success bash -c "$OCKAM secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
+    | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
 
-  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  assert_success
+  run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 
-  run "$OCKAM" node create green
-  assert_success
-
-  run "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /node/blue/secure/api/service/outlet
-  assert_success
-
-  run curl --fail --head --max-time 10 "127.0.0.1:$port"
-  assert_success
-
-  run "$OCKAM" node delete blue --yes
-  assert_success
-
-  run curl --fail --head --max-time 2 "127.0.0.1:$port"
-  assert_failure
-
-  run "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  assert_success
-
-  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  assert_success
-
-  run curl --head --retry-connrefused --retry 20 --retry-max-time 20 --max-time 1 "127.0.0.1:$port"
-  assert_success
+  run_success "$OCKAM" secure-channel list --at green
+  assert_output --partial "/service"
 }
 
-@test "portals - local inlet and outlet passing though a relay, removing and re-creating the outlet" {
+@test "portals - fail to create two TCP outlets with the same alias" {
+  n="$(random_str)"
+  run_success "$OCKAM" node create "$n"
+
+  o="$(random_str)"
   port="$(random_port)"
-  node_port="$(random_port)"
+  run_success "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port" --alias "$o"
 
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --tcp-listener-address "127.0.0.1:$node_port"
-  assert_success
+  port="$(random_port)"
+  run_failure "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port" --alias "$o"
+}
 
-  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  assert_success
+@test "portals - fail to create two TCP outlets at the same address" {
+  n="$(random_str)"
+  run_success "$OCKAM" node create "$n"
 
-  run "$OCKAM" relay create --to /node/blue
-  assert_success
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port"
 
-  run "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
-  assert_success
+  run_failure "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port"
+}
 
-  run "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /project/default/service/forward_to_default/secure/api/service/outlet
-  assert_success
+@test "portals - fail to create two TCP inlets with the same alias" {
+  n="$(random_str)"
+  run_success "$OCKAM" node create "$n"
 
-  run curl --fail --head --max-time 10 "127.0.0.1:$port"
-  assert_success
+  o="$(random_str)"
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port" --alias "$o"
 
-  $OCKAM node delete blue --yes
+  i="$(random_str)"
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet" --alias "$i"
 
-  run curl --fail --head --max-time 2 "127.0.0.1:$port"
-  assert_failure
+  port="$(random_port)"
+  run_failure "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet" --alias "$i"
+}
 
-  run "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --tcp-listener-address "127.0.0.1:$node_port"
-  assert_success
+@test "portals - fail to create two TCP inlets at the same address" {
+  n="$(random_str)"
+  run_success "$OCKAM" node create "$n"
 
-  run "$OCKAM" relay create --to /node/blue
-  assert_success
+  o="$(random_str)"
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port" --alias "$o"
 
-  run "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  assert_success
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet"
 
-  run curl --head --retry-connrefused --retry 50 --max-time 1 "127.0.0.1:$port"
-  assert_success
+  run_failure "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet"
 }

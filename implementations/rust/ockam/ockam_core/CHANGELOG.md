@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.84.0 - 2023-09-06
+
+### Added
+
+- Add popup window to tcp-outlet/service creation
+
+### Changed
+
+- Change some response functions
+- Updated dependencies
+
+### Fixed
+
+- Fix the cbor annotations for non-borrowed data
+
+### Removed
+
+- Removed api lifetimes to access node manager operations directly
+
 ## 0.83.0 - 2023-06-26
 
 ### Changed

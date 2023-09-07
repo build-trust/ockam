@@ -55,11 +55,10 @@ async fn run_impl(
     let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let send_req = async {
-        rpc.request(api::list_tcp_listeners()).await?;
-
+    let get_transports = async {
+        let transports: TransportList = rpc.ask(api::list_tcp_listeners()).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<TransportList>()
+        Ok(transports)
     };
 
     let output_messages = vec![format!(
@@ -73,7 +72,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (transports, _) = try_join!(send_req, progress_output)?;
+    let (transports, _) = try_join!(get_transports, progress_output)?;
 
     let list = opts.terminal.build_list(
         &transports.list,

@@ -168,13 +168,9 @@ where
     T: Encode<()>,
 {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp)?.build();
-    rpc.request(req).await?;
-
-    if rpc.is_ok().is_ok() {
-        Ok(())
-    } else {
-        Err(miette!("Failed to start {} service", serv_name).into())
-    }
+    rpc.tell(req)
+        .await
+        .map_err(|_| miette!("Failed to start {} service", serv_name).into())
 }
 
 /// Public so `ockam_command::node::create` can use it.

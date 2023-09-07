@@ -1,9 +1,10 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic, WrapErr};
+use miette::{IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::info;
+use tracing::log::warn;
 
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
@@ -12,7 +13,6 @@ use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::enroll::oidc_service::OidcService;
-use ockam_core::api::Response;
 use ockam_core::api::Status;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
@@ -144,16 +144,26 @@ pub async fn enroll_with_node(
     token: OidcToken,
 ) -> miette::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-    rpc.request(api::enroll::auth0(route, token)).await?;
-    let (res, dec) = rpc.parse_response_header()?;
-    if res.status() == Some(Status::Ok) {
-        info!("Enrolled successfully");
-        Ok(())
-    } else if res.status() == Some(Status::BadRequest) {
-        info!("Already enrolled");
-        Ok(())
-    } else {
-        Err(miette!("{}", Response::parse_err_msg(res, dec)))
+    let status = rpc
+        .tell_and_get_status(api::enroll::auth0(route, token))
+        .await?;
+    match status {
+        Some(Status::Ok) => {
+            info!("Enrolled successfully");
+            Ok(())
+        }
+        Some(Status::BadRequest) => {
+            info!("Already enrolled");
+            Ok(())
+        }
+        Some(s) => {
+            warn!("Unexpected status {s}");
+            Ok(())
+        }
+        None => {
+            warn!("A status was expected in the response to an enrollment request, got none");
+            Ok(())
+        }
     }
 }
 
@@ -164,16 +174,16 @@ async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str)
 
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let is_finished = Mutex::new(false);
-    let send_req = async {
-        rpc.request(api::space::list(&CloudOpts::route())).await?;
+    let get_spaces = async {
+        let spaces: Vec<Space> = rpc.ask(api::space::list(&CloudOpts::route())).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<Vec<Space>>()
+        Ok(spaces)
     };
 
     let message = vec![format!("Checking for any existing spaces...")];
     let progress_output = opts.terminal.progress_output(&message, &is_finished);
 
-    let (mut available_spaces, _) = try_join!(send_req, progress_output)?;
+    let (mut available_spaces, _) = try_join!(get_spaces, progress_output)?;
 
     // If the identity has no spaces, create one
     let default_space = if available_spaces.is_empty() {
@@ -193,15 +203,15 @@ async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str)
         let is_finished = Mutex::new(false);
         let name = crate::util::random_name();
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-        let send_req = async {
+        let create_space = async {
             let cmd = crate::space::CreateCommand {
                 name: name.to_string(),
                 admins: vec![],
             };
 
-            rpc.request(api::space::create(cmd)).await?;
+            let space = rpc.ask(api::space::create(cmd)).await?;
             *is_finished.lock().await = true;
-            rpc.parse_response_body::<Space>()
+            Ok(space)
         };
 
         let message = vec![format!(
@@ -209,7 +219,7 @@ async fn default_space(ctx: &Context, opts: &CommandGlobalOpts, node_name: &str)
             name.to_string().color(OckamColor::PrimaryResource.color())
         )];
         let progress_output = opts.terminal.progress_output(&message, &is_finished);
-        let (space, _) = try_join!(send_req, progress_output)?;
+        let (space, _) = try_join!(create_space, progress_output)?;
         space
     }
     // If it has, return the first one on the list
@@ -260,16 +270,16 @@ async fn default_project(
 
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let is_finished = Mutex::new(false);
-    let send_req = async {
-        rpc.request(api::project::list(&CloudOpts::route())).await?;
+    let get_projects = async {
+        let projects: Vec<Project> = rpc.ask(api::project::list(&CloudOpts::route())).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<Vec<Project>>()
+        Ok(projects)
     };
 
     let message = vec![format!("Checking for any existing projects...")];
     let progress_output = opts.terminal.progress_output(&message, &is_finished);
 
-    let (mut available_projects, _) = try_join!(send_req, progress_output)?;
+    let (mut available_projects, _) = try_join!(get_projects, progress_output)?;
 
     // If the space has no projects, create one
     let default_project = if available_projects.is_empty() {
@@ -286,11 +296,12 @@ async fn default_project(
         let is_finished = Mutex::new(false);
         let name = "default";
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-        let send_req = async {
-            rpc.request(api::project::create(name, &space.id, &CloudOpts::route()))
+        let get_project = async {
+            let project: Project = rpc
+                .ask(api::project::create(name, &space.id, &CloudOpts::route()))
                 .await?;
             *is_finished.lock().await = true;
-            rpc.parse_response_body::<Project>()
+            Ok(project)
         };
 
         let message = vec![format!(
@@ -298,7 +309,7 @@ async fn default_project(
             name.to_string().color(OckamColor::PrimaryResource.color())
         )];
         let progress_output = opts.terminal.progress_output(&message, &is_finished);
-        let (project, _) = try_join!(send_req, progress_output)?;
+        let (project, _) = try_join!(get_project, progress_output)?;
 
         opts.terminal.write_line(&fmt_ok!(
             "Created project {}.",

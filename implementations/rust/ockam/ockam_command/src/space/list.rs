@@ -49,11 +49,10 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
-    let send_req = async {
-        rpc.request(api::space::list(&CloudOpts::route())).await?;
-
+    let get_spaces = async {
+        let spaces: Vec<Space> = rpc.ask(api::space::list(&CloudOpts::route())).await?;
         *is_finished.lock().await = true;
-        rpc.parse_response_body::<Vec<Space>>()
+        Ok(spaces)
     };
 
     let output_messages = vec![format!("Listing Spaces...\n",)];
@@ -62,7 +61,7 @@ async fn run_impl(
         .terminal
         .progress_output(&output_messages, &is_finished);
 
-    let (spaces, _) = try_join!(send_req, progress_output)?;
+    let (spaces, _) = try_join!(get_spaces, progress_output)?;
 
     let plain = opts
         .terminal
