@@ -39,8 +39,7 @@ This will download a precompiled binary and add it to your path.
 If you don’t use Homebrew, you can also install on Linux and MacOS systems using curl.
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf \
-    https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | bash
+curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
 ```
 
 ### End-to-end encrypted and mutually authenticated communication
