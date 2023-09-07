@@ -3,7 +3,7 @@
   import { invoke } from "@tauri-apps/api/tauri";
 
   let service = "";
-  let port = "10000";
+  let address = "localhost:10000";
   let email = "";
   let error_message = "";
 
@@ -11,7 +11,7 @@
     error_message = "";
     await invoke("plugin:shared_service|tcp_outlet_create", {
       service: service,
-      port: port,
+      address: address,
       email: email,
     })
       .then(close)
@@ -47,15 +47,15 @@
   </div>
   <div class="flex items-start">
     <div class="flex-1">
-      <div class="font-bold">Port</div>
-      <p class="text-sm text-gray-500">Choose a port for the service</p>
+      <div class="font-bold">Address</div>
+      <p class="text-sm text-gray-500">Choose an address for the service</p>
     </div>
     <div class="flex-1">
       <input
         type="text"
         class="w-full border-none bg-transparent px-4 text-right text-base focus:outline-none"
-        placeholder={port}
-        bind:value={port}
+        placeholder={address}
+        bind:value={address}
       />
     </div>
   </div>
