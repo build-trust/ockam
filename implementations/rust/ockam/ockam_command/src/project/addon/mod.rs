@@ -9,8 +9,12 @@ use ockam_node::Context;
 
 use crate::operation::util::check_for_operation_completion;
 use crate::output::Output;
-use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
 use crate::project::addon::configure_influxdb::AddonConfigureInfluxdbSubcommand;
+use crate::project::addon::configure_kafka::{
+    AddonConfigureAivenSubcommand, AddonConfigureConfluentSubcommand,
+    AddonConfigureInstaclustrSubcommand, AddonConfigureKafkaSubcommand,
+    AddonConfigureRedpandaSubcommand, AddonConfigureWarpstreamSubcommand,
+};
 use crate::project::addon::configure_okta::AddonConfigureOktaSubcommand;
 use crate::project::addon::disable::AddonDisableSubcommand;
 use crate::project::addon::list::AddonListSubcommand;
@@ -18,8 +22,8 @@ use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::{CommandGlobalOpts, Result};
 
-mod configure_confluent;
 mod configure_influxdb;
+mod configure_kafka;
 mod configure_okta;
 mod disable;
 mod list;
@@ -52,11 +56,17 @@ impl AddonCommand {
     }
 }
 
+/// Configure an addon for a project
 #[derive(Clone, Debug, Subcommand)]
 pub enum ConfigureAddonCommand {
     Okta(AddonConfigureOktaSubcommand),
     Influxdb(AddonConfigureInfluxdbSubcommand),
     Confluent(AddonConfigureConfluentSubcommand),
+    InstaclustrKafka(AddonConfigureInstaclustrSubcommand),
+    AivenKafka(AddonConfigureAivenSubcommand),
+    Redpanda(AddonConfigureRedpandaSubcommand),
+    Warpstream(AddonConfigureWarpstreamSubcommand),
+    Kafka(AddonConfigureKafkaSubcommand),
 }
 
 impl ConfigureAddonCommand {
@@ -65,6 +75,11 @@ impl ConfigureAddonCommand {
             ConfigureAddonCommand::Okta(cmd) => cmd.run(opts),
             ConfigureAddonCommand::Influxdb(cmd) => cmd.run(opts),
             ConfigureAddonCommand::Confluent(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::InstaclustrKafka(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::AivenKafka(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::Redpanda(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::Warpstream(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::Kafka(cmd) => cmd.run(opts),
         }
     }
 }

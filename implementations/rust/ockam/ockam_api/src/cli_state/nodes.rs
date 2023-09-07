@@ -628,7 +628,7 @@ mod tests {
             authority_access_route: None,
             authority_identity: None,
             okta_config: None,
-            confluent_config: None,
+            kafka_config: None,
             version: None,
             running: None,
             operation_id: None,

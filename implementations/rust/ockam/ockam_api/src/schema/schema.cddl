@@ -49,7 +49,7 @@ project = {
     ?9: authority_access_route, ; optional, it can be missing if the authority hasn't started yet
     ?10: authority_identity, ; optional, hex encoded authority identity
     ?11: project_okta_config,
-    ?12: project_confluent_config,
+    ?12: project_kafka_config,
     ?13: project_version,
     ?14: project_running,
     ?15: project_operation_id,
@@ -102,12 +102,12 @@ okta_certificate     = text
 okta_client_id       = text
 okta_tenant_base_url = text
 
-project_confluent_config = {
+project_kafka_config = {
   ?0: 6434816,
-  1: confluent_bootstrap_server
+  1: kafka_bootstrap_server
 }
 
-confluent_bootstrap_server = text
+kafka_bootstrap_server = text
 
 ;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

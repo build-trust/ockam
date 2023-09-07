@@ -1,0 +1,1 @@
+Aiven (Kafka) addon allows you to enable end-to-end encryption with your Kafka Consumers and Kafka Producers.
