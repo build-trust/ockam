@@ -4698,6 +4698,7 @@ dependencies = [
  "ockam_api",
  "ockam_core",
  "ockam_multiaddr",
+ "ockam_transport_tcp",
  "percent-encoding",
  "serde",
  "serde_json",
