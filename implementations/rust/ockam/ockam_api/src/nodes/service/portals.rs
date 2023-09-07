@@ -290,6 +290,13 @@ impl NodeManagerWorker {
                     InletInfo::new(&listen_addr, Some(&worker_addr), &outlet_route),
                 );
                 if !connection_instance.normalized_addr.is_empty() {
+                    debug! {
+                        %alias,
+                        %listen_addr,
+                        %worker_addr,
+                        ping_addr = %connection_instance.transport_route,
+                        "Creating session for TCP inlet"
+                    };
                     let mut session = Session::new(connection_instance.transport_route.clone());
 
                     let ctx = Arc::new(ctx.async_try_clone().await?);

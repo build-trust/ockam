@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::time::Duration;
 
 use minicbor::Decoder;
@@ -17,6 +18,7 @@ use ockam_node::Context;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cli_state::StateItemTrait;
+use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -26,12 +28,11 @@ use crate::nodes::models::secure_channel::{
     ShowSecureChannelListenerResponse, ShowSecureChannelRequest, ShowSecureChannelResponse,
 };
 use crate::nodes::registry::SecureChannelListenerInfo;
-use crate::nodes::service::invalid_multiaddr_error;
 use crate::nodes::service::NodeIdentities;
 use crate::nodes::NodeManager;
 use crate::{multiaddr_to_route, DefaultAddress};
 
-use super::{map_multiaddr_err, NodeManagerWorker};
+use super::NodeManagerWorker;
 
 impl NodeManager {
     pub(crate) async fn create_secure_channel_internal(
@@ -341,7 +342,8 @@ impl NodeManagerWorker {
         };
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
-        let addr = MultiAddr::try_from(addr.as_str()).map_err(map_multiaddr_err)?;
+        let addr = MultiAddr::from_str(&addr)
+            .map_err(|_| ApiError::core(format!("Couldn't convert String to MultiAddr: {addr}")))?;
 
         let connection = Connection::new(ctx, &addr);
         let connection_instance =
@@ -353,7 +355,12 @@ impl NodeManagerWorker {
             &node_manager.tcp_transport,
         )
         .await
-        .ok_or_else(invalid_multiaddr_error)?;
+        .ok_or_else(|| {
+            ApiError::core(format!(
+                "Couldn't convert MultiAddr to route: normalized_addr={}",
+                connection_instance.normalized_addr
+            ))
+        })?;
 
         let sc = node_manager
             .create_secure_channel_impl(

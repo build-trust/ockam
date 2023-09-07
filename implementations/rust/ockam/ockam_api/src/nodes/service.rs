@@ -20,8 +20,7 @@ use ockam::{
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
-use ockam_core::compat::{boxed::Box, string::String, sync::Arc};
-use ockam_core::errcode::{Kind, Origin};
+use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
@@ -71,16 +70,6 @@ pub(crate) type Alias = String;
 #[inline]
 fn random_alias() -> String {
     Address::random_local().without_type().to_owned()
-}
-
-// TODO: Move to multiaddr implementation
-pub(crate) fn invalid_multiaddr_error() -> ockam_core::Error {
-    ockam_core::Error::new(Origin::Core, Kind::Invalid, "Invalid multiaddr")
-}
-
-// TODO: Move to multiaddr implementation
-pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
-    invalid_multiaddr_error()
 }
 
 pub(crate) fn encode_request_result<T: Encode<()>>(

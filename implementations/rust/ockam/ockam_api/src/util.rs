@@ -77,7 +77,13 @@ pub async fn multiaddr_to_route(
                 let options = TcpConnectionOptions::new();
                 flow_control_id = Some(options.flow_control_id().clone());
 
-                let connection = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                let connection = match tcp.connect(socket_addr.to_string(), options).await {
+                    Ok(c) => c,
+                    Err(error) => {
+                        error!(%error, %socket_addr, "Couldn't connect to Ip4 address");
+                        return None;
+                    }
+                };
 
                 number_of_tcp_hops += 1;
                 rb = rb.append(connection.sender_address().clone());
@@ -96,7 +102,13 @@ pub async fn multiaddr_to_route(
                 let options = TcpConnectionOptions::new();
                 flow_control_id = Some(options.flow_control_id().clone());
 
-                let connection = tcp.connect(socket_addr.to_string(), options).await.ok()?;
+                let connection = match tcp.connect(socket_addr.to_string(), options).await {
+                    Ok(c) => c,
+                    Err(error) => {
+                        error!(%error, %socket_addr, "Couldn't connect to Ip6 address");
+                        return None;
+                    }
+                };
 
                 number_of_tcp_hops += 1;
                 rb = rb.append(connection.sender_address().clone());
@@ -115,11 +127,15 @@ pub async fn multiaddr_to_route(
 
                         let options = TcpConnectionOptions::new();
                         flow_control_id = Some(options.flow_control_id().clone());
+                        let peer = format!("{}:{}", &*host, *port);
 
-                        let connection = tcp
-                            .connect(format!("{}:{}", &*host, *port), options)
-                            .await
-                            .ok()?;
+                        let connection = match tcp.connect(&peer, options).await {
+                            Ok(c) => c,
+                            Err(error) => {
+                                error!(%error, %peer, "Couldn't connect to DNS address");
+                                return None;
+                            }
+                        };
 
                         number_of_tcp_hops += 1;
                         rb = rb.append(connection.sender_address().clone());
