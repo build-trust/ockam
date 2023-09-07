@@ -241,7 +241,7 @@ CREATE TABLE okta_config
     attributes      TEXT           -- Comma-separated list of attribute names
 );
 
--- This table stores the data necessary to configure the Confluent addon
+-- This table stores the data necessary to configure the Kafka addons
 CREATE TABLE confluent_config
 (
     project_id       TEXT NOT NULL, -- Project id of the project using the addon

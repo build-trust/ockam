@@ -121,7 +121,8 @@ impl SqlxDatabase {
 
     async fn migrate(&self) -> Result<()> {
         Self::migrate_tables(&self.pool).await?;
-        self.migrate_attributes_node_name().await
+        self.migrate_attributes_node_name().await?;
+        Ok(())
     }
 
     pub(crate) async fn migrate_tables(pool: &SqlitePool) -> Result<()> {

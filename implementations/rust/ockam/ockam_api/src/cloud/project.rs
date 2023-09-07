@@ -14,7 +14,7 @@ use ockam_core::{async_trait, Error, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{tokio, Context};
 
-use crate::cloud::addon::ConfluentConfig;
+use crate::cloud::addon::KafkaConfig;
 use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::operation::{Operation, Operations};
@@ -64,7 +64,7 @@ pub struct Project {
 
     #[cbor(n(12))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub confluent_config: Option<ConfluentConfig>,
+    pub kafka_config: Option<KafkaConfig>,
 
     #[cbor(n(13))]
     pub version: Option<String>,
@@ -641,7 +641,7 @@ mod tests {
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g))),
                 okta_config: bool::arbitrary(g).then(|| OktaConfig::arbitrary(g)),
-                confluent_config: bool::arbitrary(g).then(|| ConfluentConfig::arbitrary(g)),
+                kafka_config: bool::arbitrary(g).then(|| KafkaConfig::arbitrary(g)),
                 version: Some(String::arbitrary(g)),
                 running: bool::arbitrary(g).then(|| bool::arbitrary(g)),
                 operation_id: bool::arbitrary(g).then(|| String::arbitrary(g)),

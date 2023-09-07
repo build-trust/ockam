@@ -28,11 +28,12 @@ pub struct Addon {
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ConfluentConfig {
+pub struct KafkaConfig {
+    #[serde(skip)]
     #[cbor(n(1))] pub bootstrap_server: String,
 }
 
-impl ConfluentConfig {
+impl KafkaConfig {
     pub fn new<S: Into<String>>(bootstrap_server: S) -> Self {
         Self {
             bootstrap_server: bootstrap_server.into(),
@@ -40,23 +41,8 @@ impl ConfluentConfig {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct ConfluentConfigResponse {
-    #[cbor(n(1))] pub bootstrap_server: String,
-}
-
-impl ConfluentConfigResponse {
-    pub fn new<S: ToString>(bootstrap_server: S) -> Self {
-        Self {
-            bootstrap_server: bootstrap_server.to_string(),
-        }
-    }
-}
-
 #[cfg(test)]
-impl quickcheck::Arbitrary for ConfluentConfig {
+impl quickcheck::Arbitrary for KafkaConfig {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         Self {
             bootstrap_server: String::arbitrary(g),
@@ -87,7 +73,7 @@ pub trait Addons {
         &self,
         ctx: &Context,
         project_id: &str,
-        config: ConfluentConfig,
+        config: KafkaConfig,
     ) -> miette::Result<CreateOperationResponse>;
 
     async fn configure_okta_addon(
@@ -129,9 +115,9 @@ impl Addons for ControllerClient {
         &self,
         ctx: &Context,
         project_id: &str,
-        config: ConfluentConfig,
+        config: KafkaConfig,
     ) -> miette::Result<CreateOperationResponse> {
-        trace!(target: TARGET, project_id, "configuring confluent addon");
+        trace!(target: TARGET, project_id, "configuring kafka addon");
         let req = Request::post(format!(
             "/v1/projects/{project_id}/configure_addon/confluent"
         ))

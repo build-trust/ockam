@@ -1,0 +1,3 @@
+Examples of how to configure and use the Apache Kafka addon can be found within the example documentation:
+
+- https://docs.ockam.io/guides/examples/end-to-end-encrypted-kafka

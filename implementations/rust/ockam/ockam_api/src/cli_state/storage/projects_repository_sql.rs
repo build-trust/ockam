@@ -10,7 +10,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
 
-use crate::cloud::addon::ConfluentConfig;
+use crate::cloud::addon::KafkaConfig;
 use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::{OktaConfig, Project, ProjectUserRole};
 use crate::cloud::share::{RoleInShare, ShareScope};
@@ -24,7 +24,7 @@ use super::ProjectsRepository;
 ///  - user_project
 ///  - user_role
 ///  - okta_config
-///  - confluent_config
+///  - kafka_config
 ///
 #[derive(Clone)]
 pub struct ProjectsSqlxDatabase {
@@ -119,11 +119,11 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             query.execute(&mut *transaction).await.void()?;
         }
 
-        // store the confluent configuration if any
-        for confluent_config in &project.confluent_config {
-            let query = query("INSERT OR REPLACE INTO confluent_config VALUES (?, ?)")
+        // store the kafka configuration if any
+        for kafka_config in &project.kafka_config {
+            let query = query("INSERT OR REPLACE INTO kafka_config VALUES (?, ?)")
                 .bind(project.id.to_sql())
-                .bind(confluent_config.bootstrap_server.to_sql());
+                .bind(kafka_config.bootstrap_server.to_sql());
             query.execute(&mut *transaction).await.void()?;
         }
 
@@ -181,14 +181,14 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
                     query4.fetch_optional(&mut *transaction).await.into_core()?;
                 project.okta_config = row.map(|r| r.okta_config()).transpose()?;
 
-                // get the project confluent configuration
+                // get the project kafka configuration
                 let query5 = query_as(
-                    "SELECT project_id, bootstrap_server FROM confluent_config WHERE project_id=$1",
+                    "SELECT project_id, bootstrap_server FROM kafka_config WHERE project_id=$1",
                 )
                 .bind(project.id.to_sql());
-                let row: Option<ConfluentConfigRow> =
+                let row: Option<KafkaConfigRow> =
                     query5.fetch_optional(&mut *transaction).await.into_core()?;
-                project.confluent_config = row.map(|r| r.confluent_config());
+                project.kafka_config = row.map(|r| r.kafka_config());
 
                 Some(project)
             }
@@ -260,8 +260,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         let query4 = query("DELETE FROM okta_config WHERE project_id=?").bind(project_id.to_sql());
         query4.execute(&mut *transaction).await.void()?;
 
-        let query5 =
-            query("DELETE FROM confluent_config WHERE project_id=?").bind(project_id.to_sql());
+        let query5 = query("DELETE FROM kafka_config WHERE project_id=?").bind(project_id.to_sql());
         query5.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()?;
@@ -299,7 +298,7 @@ impl ProjectRow {
         user_emails: Vec<EmailAddress>,
         user_roles: Vec<ProjectUserRole>,
         okta_config: Option<OktaConfig>,
-        confluent_config: Option<ConfluentConfig>,
+        kafka_config: Option<KafkaConfig>,
     ) -> Result<Project> {
         let identifier = self
             .identifier
@@ -321,7 +320,7 @@ impl ProjectRow {
             users: user_emails,
             user_roles,
             okta_config,
-            confluent_config,
+            kafka_config,
         })
     }
 }
@@ -396,17 +395,17 @@ impl OktaConfigRow {
     }
 }
 
-/// Low-level representation of a row in the confluent_config table
+/// Low-level representation of a row in the kafka_config table
 #[derive(sqlx::FromRow)]
-struct ConfluentConfigRow {
+struct KafkaConfigRow {
     #[allow(unused)]
     project_id: String,
     bootstrap_server: String,
 }
 
-impl ConfluentConfigRow {
-    fn confluent_config(&self) -> ConfluentConfig {
-        ConfluentConfig {
+impl KafkaConfigRow {
+    fn kafka_config(&self) -> KafkaConfig {
+        KafkaConfig {
             bootstrap_server: self.bootstrap_server.clone(),
         }
     }
@@ -523,7 +522,7 @@ mod test {
             authority_access_route: Some("authority-route".into()),
             authority_identity: Some("authority-identity".into()),
             okta_config: Some(create_okta_config()),
-            confluent_config: Some(create_confluent_config()),
+            kafka_config: Some(create_kafka_config()),
             version: Some("1.0".into()),
             running: Some(true),
             operation_id: Some("abc".into()),
@@ -549,8 +548,8 @@ mod test {
         }
     }
 
-    fn create_confluent_config() -> ConfluentConfig {
-        ConfluentConfig {
+    fn create_kafka_config() -> KafkaConfig {
+        KafkaConfig {
             bootstrap_server: "bootstrap_server".to_string(),
         }
     }
