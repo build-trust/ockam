@@ -1,3 +1,5 @@
+<a href="https://discord.gg/RAbjRr3kds"><img alt="Discord" src="https://img.shields.io/discord/1074960884490833952?label=Discord&logo=discord&style=flat&logoColor=white"></a>
+
 # Trust for Data-in-Motion
 
 Ockam is a suite of open source programming libraries and command line tools to
