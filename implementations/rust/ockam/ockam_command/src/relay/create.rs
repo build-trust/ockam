@@ -4,17 +4,17 @@ use clap::Args;
 use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
-use ockam::identity::IdentityIdentifier;
-use ockam_multiaddr::proto::Project;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
+use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
+use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::output::Output;
@@ -87,7 +87,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         cmd.relay_name.clone()
     };
 
-    let mut rpc = Rpc::background(&ctx, &opts, &api_node)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &api_node).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relay_info = async {

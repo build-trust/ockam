@@ -1,17 +1,18 @@
-use crate::output::Output;
-use crate::terminal::OckamColor;
-use crate::util::{api, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
 use indoc::formatdoc;
 use miette::Context as _;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
 
-use tokio::sync::Mutex;
-use tokio::try_join;
+use crate::output::Output;
+use crate::terminal::OckamColor;
+use crate::util::{api, node_rpc, Rpc};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -54,7 +55,7 @@ async fn run_impl(
 
     let mut nodes: Vec<NodeListOutput> = Vec::new();
     for node_name in node_names {
-        let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
 
         let is_finished: Mutex<bool> = Mutex::new(false);
 

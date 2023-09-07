@@ -1,3 +1,11 @@
+use clap::Args;
+use colorful::Colorful;
+use miette::IntoDiagnostic;
+use serde_json::json;
+
+use ockam_api::address::extract_address_value;
+use ockam_api::nodes::models::transport::TransportStatus;
+
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::is_tty;
 use crate::{
@@ -5,12 +13,6 @@ use crate::{
     util::{api, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat,
 };
-use clap::Args;
-use colorful::Colorful;
-use miette::IntoDiagnostic;
-use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::transport::TransportStatus;
-use serde_json::json;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -89,7 +91,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let from = get_node_name(&opts.state, &cmd.node_opts.from);
     let node_name = extract_address_value(&from)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let request = api::create_tcp_connection(&cmd);
     let transport_status: TransportStatus = rpc.ask(request).await?;
     cmd.print_output(&opts, &transport_status)

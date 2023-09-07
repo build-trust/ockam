@@ -1,13 +1,15 @@
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::Rpc;
-use crate::util::{node_rpc, parse_node_name};
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
+
 use ockam_api::nodes::models::transport::{CreateTcpListener, TransportStatus};
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
+
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::util::Rpc;
+use crate::util::{node_rpc, parse_node_name};
+use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -36,7 +38,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let transport_status: TransportStatus = rpc
         .ask(Request::post("/node/tcp/listener").body(CreateTcpListener::new(cmd.address)))
         .await?;

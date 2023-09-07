@@ -88,7 +88,7 @@ pub mod utils {
     use super::*;
 
     pub async fn subscription_id_from_cmd_args<'a>(
-        rpc: &mut Rpc<'a>,
+        rpc: &mut Rpc,
         controller_route: &MultiAddr,
         subscription_id: Option<String>,
         space_id: Option<String>,
@@ -103,7 +103,7 @@ pub mod utils {
     }
 
     async fn subscription_id_from_space_id<'a>(
-        rpc: &mut Rpc<'a>,
+        rpc: &mut Rpc,
         controller_route: &MultiAddr,
         space_id: &str,
     ) -> crate::Result<String> {

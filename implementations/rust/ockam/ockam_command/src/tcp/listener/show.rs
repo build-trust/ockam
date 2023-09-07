@@ -1,11 +1,11 @@
 use clap::Args;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_core::api::Request;
 
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
@@ -38,7 +38,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = extract_address_value(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node).await?;
     let transport_status: TransportStatus = rpc
         .ask(Request::get(format!("/node/tcp/listener/{}", &cmd.address)))
         .await?;

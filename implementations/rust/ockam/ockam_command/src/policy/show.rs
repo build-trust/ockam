@@ -1,12 +1,14 @@
-use crate::policy::policy_path;
-use crate::util::{node_rpc, Rpc};
-use crate::CommandGlobalOpts;
 use clap::Args;
+
 use ockam::Context;
 use ockam_abac::{Action, Resource};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::policy::Policy;
 use ockam_core::api::Request;
+
+use crate::policy::policy_path;
+use crate::util::{node_rpc, Rpc};
+use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -40,7 +42,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node = extract_address_value(&cmd.at)?;
     let req = Request::get(policy_path(&cmd.resource, &cmd.action));
-    let mut rpc = Rpc::background(ctx, &opts, &node)?;
+    let mut rpc = Rpc::background(ctx, &opts, &node).await?;
     let policy: Policy = rpc.ask(req).await?;
     println!("{}", policy.expression());
     Ok(())

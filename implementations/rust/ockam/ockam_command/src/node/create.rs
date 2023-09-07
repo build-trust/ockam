@@ -17,7 +17,6 @@ use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::NodeManagerTrustOptions;
-
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
@@ -201,7 +200,7 @@ pub(crate) async fn background_mode(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let mut rpc = Rpc::background(&ctx, &opts, node_name)?;
+        let mut rpc = Rpc::background(&ctx, &opts, node_name).await?;
         spawn_background_node(&opts, cmd.clone()).await?;
         let is_node_up = is_node_up(&mut rpc, opts.state.clone(), true).await?;
         *is_finished.lock().await = true;

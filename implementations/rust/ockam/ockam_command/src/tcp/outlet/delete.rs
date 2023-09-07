@@ -1,14 +1,14 @@
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::tcp::util::alias_parser;
-
-use crate::fmt_ok;
-use crate::util::{node_rpc, parse_node_name, Rpc};
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
 use ockam_core::api::Request;
+
+use crate::fmt_ok;
+use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::tcp::util::alias_parser;
+use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -47,7 +47,7 @@ pub async fn run_impl(
         let alias = cmd.alias.clone();
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
         let node = parse_node_name(&node_name)?;
-        let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node).await?;
         rpc.tell(Request::delete(format!("/node/outlet/{alias}")))
             .await?;
 

@@ -1,9 +1,8 @@
-use crate::node::get_node_name;
-use crate::node::util::check_default;
-use crate::util::{api, node_rpc, Rpc};
-use crate::{docs, CommandGlobalOpts, OutputFormat, Result};
 use clap::Args;
 use colorful::Colorful;
+use tokio_retry::strategy::FixedInterval;
+use tracing::{info, trace, warn};
+
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
@@ -13,8 +12,11 @@ use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
 use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
-use tokio_retry::strategy::FixedInterval;
-use tracing::{info, trace, warn};
+
+use crate::node::get_node_name;
+use crate::node::util::check_default;
+use crate::util::{api, node_rpc, Rpc};
+use crate::{docs, CommandGlobalOpts, OutputFormat, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -47,7 +49,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
     print_query_status(&opts, &mut rpc, &node_name, false, is_default).await?;
     Ok(())
@@ -169,7 +171,7 @@ fn print_node_info(
 
 pub async fn print_query_status(
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc<'_>,
+    rpc: &mut Rpc,
     node_name: &str,
     wait_until_ready: bool,
     is_default: bool,
@@ -208,24 +210,19 @@ pub async fn print_query_status(
         };
 
         // Get list of services for the node
-        let mut rpc = rpc.clone();
         let services: ServiceList = rpc.ask(api::list_services()).await?;
 
         // Get list of TCP listeners for node
-        let mut rpc = rpc.clone();
         let tcp_listeners: TransportList = rpc.ask(api::list_tcp_listeners()).await?;
 
         // Get list of Secure Channel Listeners
-        let mut rpc = rpc.clone();
         let secure_channel_listeners: SecureChannelListenersList =
             rpc.ask(api::list_secure_channel_listener()).await?;
 
         // Get list of inlets
-        let mut rpc = rpc.clone();
         let inlets: InletList = rpc.ask(api::list_inlets()).await?;
 
         // Get list of outlets
-        let mut rpc = rpc.clone();
         let outlets: OutletList = rpc.ask(api::list_outlets()).await?;
 
         let node_state = cli_state.nodes.get(node_name)?;
@@ -261,7 +258,7 @@ pub async fn print_query_status(
 /// a maximum number of retries. A use case for this is to
 /// allow a node time to start up and become ready.
 pub async fn is_node_up(
-    rpc: &mut Rpc<'_>,
+    rpc: &mut Rpc,
     cli_state: CliState,
     wait_until_ready: bool,
 ) -> Result<bool> {

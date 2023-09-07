@@ -1,22 +1,9 @@
-use crate::{
-    error::Error,
-    fmt_log, fmt_ok,
-    terminal::OckamColor,
-    util::{exitcode, node_rpc},
-    CommandGlobalOpts,
-};
-
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
-use ockam_core::api::Request;
 use serde_json::json;
 use tokio::{sync::Mutex, try_join};
 
-use crate::docs;
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::util::api::CloudOpts;
-use crate::util::{clean_nodes_multiaddr, Rpc};
 use ockam::{identity::IdentityIdentifier, route, Context};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models;
@@ -24,7 +11,20 @@ use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelResponse, CredentialExchangeMode,
 };
 use ockam_api::route_to_multiaddr;
+use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
+
+use crate::docs;
+use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::util::api::CloudOpts;
+use crate::util::{clean_nodes_multiaddr, Rpc};
+use crate::{
+    error::Error,
+    fmt_log, fmt_ok,
+    terminal::OckamColor,
+    util::{exitcode, node_rpc},
+    CommandGlobalOpts,
+};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -69,7 +69,7 @@ impl CreateCommand {
     async fn parse_to_route<'a>(
         &self,
         opts: &CommandGlobalOpts,
-        rpc: &mut Rpc<'a>,
+        rpc: &mut Rpc,
     ) -> miette::Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
@@ -98,7 +98,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
     let from = &cmd.parse_from_node();
-    let mut rpc = Rpc::background(&ctx, &opts, from)?;
+    let mut rpc = Rpc::background(&ctx, &opts, from).await?;
     let to = &cmd.parse_to_route(&opts, &mut rpc).await?;
 
     let authorized_identifiers = cmd.authorized.clone();

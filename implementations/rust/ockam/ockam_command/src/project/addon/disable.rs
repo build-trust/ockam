@@ -61,7 +61,7 @@ async fn run_impl(
     let response: CreateOperationResponse = rpc.ask(req).await?;
     let operation_id = response.operation_id;
 
-    check_for_completion(&opts, &mut rpc, &operation_id).await?;
+    check_for_completion(&opts, &rpc, &operation_id).await?;
     opts.terminal
         .write_line(&fmt_ok!("Addon disabled successfully"))?;
     delete_embedded_node(&opts, rpc.node_name()).await;

@@ -1,7 +1,8 @@
+use core::time::Duration;
+
 use clap::Args;
 use miette::{Context as _, IntoDiagnostic};
 
-use core::time::Duration;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
@@ -14,7 +15,6 @@ use crate::node::util::delete_embedded_node;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::duration::duration_parser;
 use crate::util::{clean_nodes_multiaddr, node_rpc, Rpc};
-
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
@@ -72,7 +72,7 @@ async fn rpc(
         // Setup environment depending on whether we are sending the message from an embedded node or a background node
         let mut rpc = if let Some(node) = &cmd.from {
             let api_node = extract_address_value(node)?;
-            Rpc::background(ctx, &opts, &api_node)?
+            Rpc::background(ctx, &opts, &api_node).await?
         } else {
             let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
             Rpc::embedded_with_vault_and_identity(ctx, &opts, identity, &cmd.trust_context_opts)

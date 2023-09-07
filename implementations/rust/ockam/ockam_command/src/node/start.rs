@@ -1,6 +1,6 @@
 use clap::Args;
-
 use colorful::Colorful;
+
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::node::show::print_query_status;
@@ -76,7 +76,7 @@ async fn run_impl(
     )?;
 
     // Print node status
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
     print_query_status(&opts, &mut rpc, &node_name, true, is_default).await?;
 

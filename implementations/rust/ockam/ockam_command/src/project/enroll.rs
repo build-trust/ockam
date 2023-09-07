@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
-use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
@@ -86,7 +87,7 @@ async fn run_impl(
 pub async fn project_enroll<'a>(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     cmd: EnrollCommand,
 ) -> miette::Result<String> {
     let project_as_string: String;
@@ -218,7 +219,7 @@ pub async fn project_enroll<'a>(
 
 async fn authenticate_through_okta<'a>(
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc<'a>,
+    rpc: &mut Rpc,
     p: ProjectConfigCompact,
     secure_channel_addr: MultiAddr,
 ) -> miette::Result<()> {
