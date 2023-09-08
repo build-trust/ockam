@@ -1,6 +1,7 @@
 use minicbor::{Decode, Encode};
-use ockam_core::Result;
 use serde::{Deserialize, Serialize};
+
+use ockam_core::Result;
 
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use crate::error::ApiError;
@@ -91,11 +92,11 @@ impl CreateServiceInvitation {
 }
 
 mod node {
+    use tracing::trace;
+
     use ockam_core::api::{Request, Response};
     use ockam_core::{self};
-    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
-    use tracing::trace;
 
     use crate::cloud::CloudRequestWrapper;
     use crate::nodes::{NodeManager, NodeManagerWorker};
@@ -109,16 +110,12 @@ mod node {
             &self,
             ctx: &Context,
             req: CreateInvitation,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<SentInvitation> {
             Response::parse_response_body(
-                self.create_invitation_response(
-                    ctx,
-                    CloudRequestWrapper::new(req, route, identity_name),
-                )
-                .await?
-                .as_slice(),
+                self.create_invitation_response(ctx, CloudRequestWrapper::new(req, identity_name))
+                    .await?
+                    .as_slice(),
             )
         }
 
@@ -127,19 +124,14 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<CreateInvitation>,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
-
-            let label = "create_invitation";
             trace!(%req_body.scope, target_id = %req_body.target_id, "creating invitation");
-
             let req_builder = Request::post("/v0/invites").body(req_body);
 
             self.request_controller(
                 ctx,
-                label,
                 "create_invitation",
-                &cloud_multiaddr,
+                "create_invitation",
                 API_SERVICE,
                 req_builder,
                 None,
@@ -151,13 +143,12 @@ mod node {
             &self,
             ctx: &Context,
             req: CreateServiceInvitation,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<SentInvitation> {
             Response::parse_response_body(
                 self.create_service_invitation_response(
                     ctx,
-                    CloudRequestWrapper::new(req, route, identity_name),
+                    CloudRequestWrapper::new(req, identity_name),
                 )
                 .await?
                 .as_slice(),
@@ -169,19 +160,14 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<CreateServiceInvitation>,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
-
-            let label = "create_service_invitation";
             trace!(project_id = %req_body.project_id, "creating service invitation");
-
             let req_builder = Request::post("/v0/invites/service").body(req_body);
 
             self.request_controller(
                 ctx,
-                label,
                 "create_service_invitation",
-                &cloud_multiaddr,
+                "create_service_invitation",
                 API_SERVICE,
                 req_builder,
                 None,
@@ -195,12 +181,11 @@ mod node {
             &self,
             ctx: &Context,
             req: CreateInvitation,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<SentInvitation> {
             let node_manager = self.inner().read().await;
             node_manager
-                .create_invitation(ctx, req, route, identity_name)
+                .create_invitation(ctx, req, identity_name)
                 .await
         }
 
@@ -219,12 +204,11 @@ mod node {
             &self,
             ctx: &Context,
             req: CreateServiceInvitation,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<SentInvitation> {
             let node_manager = self.inner().read().await;
             node_manager
-                .create_service_invitation(ctx, req, route, identity_name)
+                .create_service_invitation(ctx, req, identity_name)
                 .await
         }
 

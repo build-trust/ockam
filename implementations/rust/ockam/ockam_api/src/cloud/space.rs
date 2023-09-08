@@ -43,11 +43,10 @@ mod node {
 
     use ockam_core::api::{Request, Response};
     use ockam_core::{self, Result};
-    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
     use crate::cloud::space::{CreateSpace, Space};
-    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
+    use crate::cloud::CloudRequestWrapper;
     use crate::nodes::{NodeManager, NodeManagerWorker};
 
     const TARGET: &str = "ockam_api::cloud::space";
@@ -57,16 +56,12 @@ mod node {
             &self,
             ctx: &Context,
             req: CreateSpace,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<Space> {
             Response::parse_response_body(
-                self.create_space_response(
-                    ctx,
-                    CloudRequestWrapper::new(req, route, identity_name),
-                )
-                .await?
-                .as_slice(),
+                self.create_space_response(ctx, CloudRequestWrapper::new(req, identity_name))
+                    .await?
+                    .as_slice(),
             )
         }
 
@@ -75,19 +70,14 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<CreateSpace>,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
-
-            let label = "create_space";
             trace!(target: TARGET, space = %req_body.name, "creating space");
-
             let req_builder = Request::post("/v0/").body(req_body);
 
             self.request_controller(
                 ctx,
-                label,
                 "create_space",
-                &cloud_multiaddr,
+                "create_space",
                 "spaces",
                 req_builder,
                 None,
@@ -95,69 +85,28 @@ mod node {
             .await
         }
 
-        pub async fn list_spaces(&self, ctx: &Context, route: &MultiAddr) -> Result<Vec<Space>> {
-            Response::parse_response_body(
-                self.list_spaces_response(ctx, CloudRequestWrapper::bare(route))
-                    .await?
-                    .as_slice(),
-            )
+        pub async fn list_spaces(&self, ctx: &Context) -> Result<Vec<Space>> {
+            Response::parse_response_body(self.list_spaces_response(ctx).await?.as_slice())
         }
 
-        pub(crate) async fn list_spaces_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
-        ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "list_spaces";
+        pub(crate) async fn list_spaces_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "listing spaces");
-
             let req_builder = Request::get("/v0/");
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                "spaces",
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "list_spaces", None, "spaces", req_builder, None)
+                .await
         }
 
-        pub async fn get_space(&self, ctx: &Context, route: &MultiAddr, id: &str) -> Result<Space> {
-            Response::parse_response_body(
-                self.get_space_response(ctx, CloudRequestWrapper::bare(route), id)
-                    .await?
-                    .as_slice(),
-            )
+        pub async fn get_space(&self, ctx: &Context, id: &str) -> Result<Space> {
+            Response::parse_response_body(self.get_space_response(ctx, id).await?.as_slice())
         }
 
-        pub(crate) async fn get_space_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "get_space";
+        pub(crate) async fn get_space_response(&self, ctx: &Context, id: &str) -> Result<Vec<u8>> {
             trace!(target: TARGET, space = %id, space = %id, "getting space");
-
             let req_builder = Request::get(format!("/v0/{id}"));
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                "spaces",
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "get_space", None, "spaces", req_builder, None)
+                .await
         }
     }
 
@@ -171,55 +120,31 @@ mod node {
             node_manager.create_space_response(ctx, req_wrapper).await
         }
 
-        pub(crate) async fn list_spaces_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
-        ) -> Result<Vec<u8>> {
+        pub(crate) async fn list_spaces_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             let node_manager = self.inner().read().await;
-            node_manager.list_spaces_response(ctx, req_wrapper).await
+            node_manager.list_spaces_response(ctx).await
         }
 
-        pub(crate) async fn get_space_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
-            id: &str,
-        ) -> Result<Vec<u8>> {
+        pub(crate) async fn get_space_response(&self, ctx: &Context, id: &str) -> Result<Vec<u8>> {
             let node_manager = self.inner().read().await;
-            node_manager.get_space_response(ctx, req_wrapper, id).await
+            node_manager.get_space_response(ctx, id).await
         }
 
-        pub async fn delete_space(&self, ctx: &Context, route: &MultiAddr, id: &str) -> Result<()> {
-            let _ = self
-                .delete_space_response(ctx, CloudRequestWrapper::bare(route), id)
-                .await?;
+        pub async fn delete_space(&self, ctx: &Context, id: &str) -> Result<()> {
+            let _ = self.delete_space_response(ctx, id).await?;
             Ok(())
         }
 
         pub(crate) async fn delete_space_response(
             &self,
             ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
             id: &str,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "delete_space";
             trace!(target: TARGET, space = %id, "deleting space");
-
             let req_builder = Request::delete(format!("/v0/{id}"));
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                "spaces",
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "delete_space", None, "spaces", req_builder, None)
+                .await
         }
     }
 }

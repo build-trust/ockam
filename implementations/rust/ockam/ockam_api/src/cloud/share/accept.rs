@@ -22,7 +22,6 @@ pub struct AcceptedInvitation {
 mod node {
     use ockam_core::api::{Request, Response};
     use ockam_core::{self, Result};
-    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
     use crate::cloud::CloudRequestWrapper;
@@ -37,16 +36,12 @@ mod node {
             &self,
             ctx: &Context,
             req: AcceptInvitation,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<AcceptedInvitation> {
             Response::parse_response_body(
-                self.accept_invitation_response(
-                    ctx,
-                    CloudRequestWrapper::new(req, route, identity_name),
-                )
-                .await?
-                .as_slice(),
+                self.accept_invitation_response(ctx, CloudRequestWrapper::new(req, identity_name))
+                    .await?
+                    .as_slice(),
             )
         }
 
@@ -55,21 +50,10 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<AcceptInvitation>,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-            let req_body = req_wrapper.req;
-            let label = "accept_share";
-            let req_builder = Request::post("/v0/redeem_invite").body(req_body);
+            let req_builder = Request::post("/v0/redeem_invite").body(req_wrapper.req);
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                API_SERVICE,
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "accept_share", None, API_SERVICE, req_builder, None)
+                .await
         }
     }
 
@@ -78,12 +62,11 @@ mod node {
             &self,
             ctx: &Context,
             req: AcceptInvitation,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<AcceptedInvitation> {
             let node_manager = self.inner().read().await;
             node_manager
-                .accept_invitation(ctx, req, route, identity_name)
+                .accept_invitation(ctx, req, identity_name)
                 .await
         }
 

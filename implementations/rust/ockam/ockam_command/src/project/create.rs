@@ -56,11 +56,7 @@ async fn run_impl(
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     let project: Project = rpc
-        .ask(api::project::create(
-            &cmd.project_name,
-            &space_id,
-            &CloudOpts::route(),
-        ))
+        .ask(api::project::create(&cmd.project_name, &space_id))
         .await?;
     let operation_id = project.operation_id.clone().unwrap();
     check_for_completion(&opts, &rpc, &operation_id).await?;

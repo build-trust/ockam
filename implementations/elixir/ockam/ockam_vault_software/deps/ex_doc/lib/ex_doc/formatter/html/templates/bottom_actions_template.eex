@@ -1,0 +1,26 @@
+<div class="bottom-actions">
+  <div class="bottom-actions-item">
+    <%= if refs.prev do %>
+      <a href="<%= refs.prev.path %>" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+          <%= refs.prev.title %>
+        </span>
+      </a>
+    <% end %>
+  </div>
+  <div class="bottom-actions-item">
+    <%= if refs.next do %>
+      <a href="<%= refs.next.path %>" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+          <%= refs.next.title %>
+        </span>
+      </a>
+    <% end %>
+  </div>
+</div>

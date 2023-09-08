@@ -48,20 +48,19 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ShowCommand,
 ) -> miette::Result<()> {
-    let controller_route = &CloudOpts::route();
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
     // Lookup project
     let id = match &opts.state.projects.get(&cmd.name) {
         Ok(state) => state.config().id.clone(),
         Err(_) => {
-            refresh_projects(&opts, &mut rpc, &CloudOpts::route()).await?;
+            refresh_projects(&opts, &mut rpc).await?;
             opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };
 
     // Send request
-    let project: Project = rpc.ask(api::project::show(&id, controller_route)).await?;
+    let project: Project = rpc.ask(api::project::show(&id)).await?;
 
     opts.println(&project)?;
     opts.state

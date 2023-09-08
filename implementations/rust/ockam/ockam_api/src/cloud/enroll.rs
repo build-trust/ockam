@@ -27,7 +27,6 @@ mod node {
     use ockam::identity::Attributes;
     use ockam_core::api::Request;
     use ockam_core::{self, Result};
-    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
     use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
@@ -39,13 +38,8 @@ mod node {
 
     impl NodeManager {
         /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
-        pub async fn enroll_auth0(
-            &self,
-            ctx: &Context,
-            route: &MultiAddr,
-            token: OidcToken,
-        ) -> Result<()> {
-            let request = CloudRequestWrapper::new(AuthenticateOidcToken::new(token), route, None);
+        pub async fn enroll_auth0(&self, ctx: &Context, token: OidcToken) -> Result<()> {
+            let request = CloudRequestWrapper::new(AuthenticateOidcToken::new(token, None), None);
             self.enroll_auth0_response(ctx, request).await?;
             Ok(())
         }
@@ -56,18 +50,19 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<AuthenticateOidcToken>,
         ) -> Result<Vec<u8>> {
-            let route = req_wrapper.multiaddr()?;
+            // This is a temporary way to retrieve the Okta service address
+            // until we can centralize the logic around the Authority node services
+            // and do both a secure channel creation + service selection
+            let authenticator_address = req_wrapper.req.alternative_authenticator_address.clone();
             let req_builder = Request::post("v0/enroll").body(req_wrapper.req);
-            let api_service = "auth0_authenticator";
-
             trace!(target: TARGET, "executing auth0 flow");
 
-            self.request_controller_with_timeout(
+            self.request_node(
                 ctx,
-                api_service,
+                authenticator_address,
+                "auth0_authenticator",
                 None,
-                &route,
-                api_service,
+                "auth0_authenticator",
                 req_builder,
                 None,
                 Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
@@ -94,20 +89,14 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<Attributes> = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-            let req_body: Attributes = req_wrapper.req;
-            let req_body = RequestEnrollmentToken::new(req_body);
-
-            let label = "enrollment_token_generator";
             trace!(target: TARGET, "generating tokens");
-
-            let req_builder = Request::post("v0/").body(req_body);
+            let req_builder =
+                Request::post("v0/").body(RequestEnrollmentToken::new(req_wrapper.req));
 
             self.request_controller(
                 ctx,
-                label,
+                "enrollment_token_generator",
                 "request_enrollment_token",
-                &cloud_multiaddr,
                 "projects",
                 req_builder,
                 None,
@@ -122,18 +111,14 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<EnrollmentToken> = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-            let req_body: EnrollmentToken = req_wrapper.req;
-            let req_builder = Request::post("v0/enroll").body(req_body);
-            let api_service = "enrollment_token_authenticator";
-
+            let req_builder = Request::post("v0/enroll").body(req_wrapper.req);
             trace!(target: TARGET, "authenticating token");
+
             self.request_controller_with_timeout(
                 ctx,
-                api_service,
+                "enrollment_token_authenticator",
                 None,
-                &cloud_multiaddr,
-                api_service,
+                "enrollment_token_authenticator",
                 req_builder,
                 None,
                 Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
@@ -144,6 +129,8 @@ mod node {
 }
 
 pub mod auth0 {
+    use ockam_multiaddr::MultiAddr;
+
     use super::*;
 
     // Req/Res types
@@ -203,15 +190,17 @@ pub mod auth0 {
         #[n(0)] pub tag: TypeTag<1058055>,
         #[n(1)] pub token_type: TokenType,
         #[n(2)] pub access_token: Token,
+        #[n(3)] pub alternative_authenticator_address: Option<MultiAddr>,
     }
 
     impl AuthenticateOidcToken {
-        pub fn new(token: OidcToken) -> Self {
+        pub fn new(token: OidcToken, alternative_authenticator_address: Option<MultiAddr>) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
                 token_type: token.token_type,
                 access_token: token.access_token,
+                alternative_authenticator_address,
             }
         }
     }

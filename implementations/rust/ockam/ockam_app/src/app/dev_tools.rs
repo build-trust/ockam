@@ -12,6 +12,7 @@ pub async fn build_developer_tools_section<'a, R: Runtime, M: Manager<R>>(
     builder: MenuBuilder<'a, R, M>,
 ) -> MenuBuilder<'a, R, M> {
     let app_state: State<AppState> = app_handle.state();
+    let controller_address = app_state.controller_address().await;
 
     builder.item(
         &SubmenuBuilder::new(app_handle, "Developer Tools")
@@ -28,7 +29,7 @@ pub async fn build_developer_tools_section<'a, R: Runtime, M: Manager<R>>(
                     .build(app_handle),
                 &MenuItemBuilder::with_id(
                     DEV_MENU_ID,
-                    format!("Controller Address: {}", app_state.controller_address()),
+                    format!("Controller Address: {}", controller_address),
                 )
                 .build(app_handle),
             ])

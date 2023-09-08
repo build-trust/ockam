@@ -2,16 +2,16 @@
 
 use core::fmt::{self, Display, Formatter};
 
-use minicbor::{Decode, Decoder, Encode};
 use minicbor::data::Type;
 use minicbor::encode::{self, Encoder, Write};
+use minicbor::{Decode, Decoder, Encode};
 use tinyvec::ArrayVec;
 
 #[cfg(feature = "tag")]
 use {
+    crate::TypeTag,
     alloc::collections::btree_map::Entry,
     cddl_cat::{context::BasicContext, flatten::flatten, parse_cddl},
-    crate::TypeTag,
     once_cell::race::OnceBox,
 };
 
@@ -992,7 +992,7 @@ mod merged_cddl_test {
 #[cfg(feature = "tag")]
 mod schema_test {
     use cddl_cat::validate_cbor_bytes;
-    use quickcheck::{Arbitrary, Gen, quickcheck, TestResult};
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
 
     use super::*;
 

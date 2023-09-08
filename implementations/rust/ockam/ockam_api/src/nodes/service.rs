@@ -167,6 +167,11 @@ impl NodeManagerWorker {
         ctx.stop_worker(NODEMANAGER_ADDR).await?;
         Ok(())
     }
+
+    pub async fn controller_address(&self) -> MultiAddr {
+        let node_manager = self.node_manager.read().await;
+        node_manager.controller_address()
+    }
 }
 
 pub struct IdentityOverride {
@@ -733,11 +738,9 @@ impl NodeManagerWorker {
 
             // ==*== Spaces ==*==
             (Post, ["v0", "spaces"]) => self.create_space_response(ctx, dec.decode()?).await?,
-            (Get, ["v0", "spaces"]) => self.list_spaces_response(ctx, dec.decode()?).await?,
-            (Get, ["v0", "spaces", id]) => self.get_space_response(ctx, dec.decode()?, id).await?,
-            (Delete, ["v0", "spaces", id]) => {
-                self.delete_space_response(ctx, dec.decode()?, id).await?
-            }
+            (Get, ["v0", "spaces"]) => self.list_spaces_response(ctx).await?,
+            (Get, ["v0", "spaces", id]) => self.get_space_response(ctx, id).await?,
+            (Delete, ["v0", "spaces", id]) => self.delete_space_response(ctx, id).await?,
 
             // ==*== Projects ==*==
             (Post, ["v1", "spaces", space_id, "projects"]) => {
@@ -745,16 +748,14 @@ impl NodeManagerWorker {
                     .await?
             }
             (Get, ["v0", "projects", "version_info"]) => {
-                self.get_project_version_response(ctx, dec.decode()?)
-                    .await?
+                self.get_project_version_response(ctx).await?
             }
-            (Get, ["v0", "projects"]) => self.list_projects_response(ctx, dec.decode()?).await?,
+            (Get, ["v0", "projects"]) => self.list_projects_response(ctx).await?,
             (Get, ["v0", "projects", project_id]) => {
-                self.get_project_response(ctx, dec.decode()?, project_id)
-                    .await?
+                self.get_project_response(ctx, project_id).await?
             }
             (Delete, ["v0", "projects", space_id, project_id]) => {
-                self.delete_project_response(ctx, dec.decode()?, space_id, project_id)
+                self.delete_project_response(ctx, space_id, project_id)
                     .await?
             }
 
@@ -769,18 +770,18 @@ impl NodeManagerWorker {
 
             // ==*== Subscriptions ==*==
             (Post, ["subscription"]) => self.activate_subscription(ctx, dec).await?,
-            (Get, ["subscription", id]) => self.get_subscription(ctx, dec, id).await?,
-            (Get, ["subscription"]) => self.list_subscriptions(ctx, dec).await?,
+            (Get, ["subscription", id]) => self.get_subscription(ctx, id).await?,
+            (Get, ["subscription"]) => self.list_subscriptions(ctx).await?,
             (Put, ["subscription", id, "contact_info"]) => {
                 self.update_subscription_contact_info(ctx, dec, id).await?
             }
             (Put, ["subscription", id, "space_id"]) => {
                 self.update_subscription_space(ctx, dec, id).await?
             }
-            (Put, ["subscription", id, "unsubscribe"]) => self.unsubscribe(ctx, dec, id).await?,
+            (Put, ["subscription", id, "unsubscribe"]) => self.unsubscribe(ctx, id).await?,
 
             // ==*== Addons ==*==
-            (Get, [project_id, "addons"]) => self.list_addons(ctx, dec, project_id).await?,
+            (Get, [project_id, "addons"]) => self.list_addons(ctx, project_id).await?,
             (Post, ["v1", "projects", project_id, "configure_addon", addon_id]) => {
                 self.configure_addon(ctx, dec, project_id, addon_id).await?
             }
@@ -790,7 +791,7 @@ impl NodeManagerWorker {
 
             // ==*== Operations ==*==
             (Get, ["v1", "operations", operation_id]) => {
-                self.get_operation(ctx, dec, operation_id).await?
+                self.get_operation(ctx, operation_id).await?
             }
 
             // ==*== Messages ==*==
@@ -798,10 +799,7 @@ impl NodeManagerWorker {
 
             // ==*== Shares and Invitations ==*==
             (Get, ["v0", "invitations"]) => self.list_shares_response(ctx, dec.decode()?).await?,
-            (Get, ["v0", "invitations", id]) => {
-                self.show_invitation_response(ctx, id, dec.decode()?)
-                    .await?
-            }
+            (Get, ["v0", "invitations", id]) => self.show_invitation_response(ctx, id).await?,
             (Post, ["v0", "invitations"]) => {
                 self.create_invitation_response(ctx, dec.decode()?).await?
             }

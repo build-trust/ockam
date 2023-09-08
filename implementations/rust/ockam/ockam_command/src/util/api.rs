@@ -9,9 +9,8 @@ use minicbor::Decoder;
 use regex::Regex;
 
 use ockam::identity::Identifier;
-use ockam_api::address::controller_route;
 use ockam_api::cli_state::CliState;
-use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
+use ockam_api::cloud::CloudRequestWrapper;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
@@ -218,11 +217,11 @@ pub mod enroll {
     use super::*;
 
     pub fn auth0(
-        route: &MultiAddr,
         token: OidcToken,
+        alternative_authenticator_address: Option<MultiAddr>,
     ) -> RequestBuilder<CloudRequestWrapper<AuthenticateOidcToken>> {
-        let token = AuthenticateOidcToken::new(token);
-        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token, route, None))
+        let token = AuthenticateOidcToken::new(token, alternative_authenticator_address);
+        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token, None))
     }
 }
 
@@ -236,25 +235,19 @@ pub(crate) mod space {
 
     pub(crate) fn create(cmd: CreateCommand) -> RequestBuilder<CloudRequestWrapper<CreateSpace>> {
         let b = CreateSpace::new(cmd.name, cmd.admins);
-        Request::post("v0/spaces").body(CloudRequestWrapper::new(b, &CloudOpts::route(), None))
+        Request::post("v0/spaces").body(CloudRequestWrapper::new(b, None))
     }
 
-    pub(crate) fn list(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get("v0/spaces").body(CloudRequestWrapper::bare(cloud_route))
+    pub(crate) fn list() -> RequestBuilder<()> {
+        Request::get("v0/spaces")
     }
 
-    pub(crate) fn show(
-        id: &str,
-        cloud_route: &MultiAddr,
-    ) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get(format!("v0/spaces/{id}")).body(CloudRequestWrapper::bare(cloud_route))
+    pub(crate) fn show(id: &str) -> RequestBuilder<()> {
+        Request::get(format!("v0/spaces/{id}"))
     }
 
-    pub(crate) fn delete(
-        id: &str,
-        cloud_route: &MultiAddr,
-    ) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::delete(format!("v0/spaces/{id}")).body(CloudRequestWrapper::bare(cloud_route))
+    pub(crate) fn delete(id: &str) -> RequestBuilder<()> {
+        Request::delete(format!("v0/spaces/{id}"))
     }
 }
 
@@ -267,38 +260,26 @@ pub(crate) mod project {
     pub(crate) fn create(
         project_name: &str,
         space_id: &str,
-        cloud_route: &MultiAddr,
     ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
         let b = CreateProject::new(project_name.to_string(), vec![]);
-        Request::post(format!("v1/spaces/{space_id}/projects")).body(CloudRequestWrapper::new(
-            b,
-            cloud_route,
-            None,
-        ))
+        Request::post(format!("v1/spaces/{space_id}/projects"))
+            .body(CloudRequestWrapper::new(b, None))
     }
 
-    pub(crate) fn list(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get("v0/projects").body(CloudRequestWrapper::bare(cloud_route))
+    pub(crate) fn list() -> RequestBuilder<()> {
+        Request::get("v0/projects")
     }
 
-    pub(crate) fn show(
-        id: &str,
-        cloud_route: &MultiAddr,
-    ) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get(format!("v0/projects/{id}")).body(CloudRequestWrapper::bare(cloud_route))
+    pub(crate) fn show(id: &str) -> RequestBuilder<()> {
+        Request::get(format!("v0/projects/{id}"))
     }
 
-    pub(crate) fn version(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get("v0/projects/version_info").body(CloudRequestWrapper::bare(cloud_route))
+    pub(crate) fn version() -> RequestBuilder<()> {
+        Request::get("v0/projects/version_info")
     }
 
-    pub(crate) fn delete(
-        space_id: &str,
-        project_id: &str,
-        cloud_route: &MultiAddr,
-    ) -> RequestBuilder<BareCloudRequestWrapper> {
+    pub(crate) fn delete(space_id: &str, project_id: &str) -> RequestBuilder<()> {
         Request::delete(format!("v0/projects/{space_id}/{project_id}"))
-            .body(CloudRequestWrapper::bare(cloud_route))
     }
 }
 
@@ -306,11 +287,8 @@ pub(crate) mod project {
 pub(crate) mod operation {
     use super::*;
 
-    pub(crate) fn show(
-        id: &str,
-        cloud_route: &MultiAddr,
-    ) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get(format!("v1/operations/{id}")).body(CloudRequestWrapper::bare(cloud_route))
+    pub(crate) fn show(id: &str) -> RequestBuilder<()> {
+        Request::get(format!("v1/operations/{id}"))
     }
 }
 
@@ -326,55 +304,32 @@ pub(crate) mod share {
 
     pub(crate) fn accept(
         req: AcceptInvitation,
-        cloud_route: &MultiAddr,
     ) -> RequestBuilder<CloudRequestWrapper<AcceptInvitation>> {
-        Request::post("v0/accept_invitation".to_string()).body(CloudRequestWrapper::new(
-            req,
-            cloud_route,
-            None,
-        ))
+        Request::post("v0/accept_invitation".to_string()).body(CloudRequestWrapper::new(req, None))
     }
 
     pub(crate) fn create(
         req: CreateInvitation,
-        cloud_route: &MultiAddr,
     ) -> RequestBuilder<CloudRequestWrapper<CreateInvitation>> {
-        Request::post("v0/invitations".to_string()).body(CloudRequestWrapper::new(
-            req,
-            cloud_route,
-            None,
-        ))
+        Request::post("v0/invitations".to_string()).body(CloudRequestWrapper::new(req, None))
     }
 
     pub(crate) fn create_service_invitation(
         req: CreateServiceInvitation,
-        cloud_route: &MultiAddr,
     ) -> RequestBuilder<CloudRequestWrapper<CreateServiceInvitation>> {
-        Request::post("v0/invitations/service".to_string()).body(CloudRequestWrapper::new(
-            req,
-            cloud_route,
-            None,
-        ))
+        Request::post("v0/invitations/service".to_string())
+            .body(CloudRequestWrapper::new(req, None))
     }
 
     pub(crate) fn list(
         kind: InvitationListKind,
-        cloud_route: &MultiAddr,
     ) -> RequestBuilder<CloudRequestWrapper<ListInvitations>> {
         let req = ListInvitations { kind };
-        Request::get("v0/invitations".to_string()).body(CloudRequestWrapper::new(
-            req,
-            cloud_route,
-            None,
-        ))
+        Request::get("v0/invitations".to_string()).body(CloudRequestWrapper::new(req, None))
     }
 
-    pub(crate) fn show(
-        invitation_id: String,
-        cloud_route: &MultiAddr,
-    ) -> RequestBuilder<BareCloudRequestWrapper> {
+    pub(crate) fn show(invitation_id: String) -> RequestBuilder<()> {
         Request::get(format!("v0/invitations/{invitation_id}"))
-            .body(CloudRequestWrapper::bare(cloud_route))
     }
 }
 
@@ -427,12 +382,6 @@ impl TrustContextOpts {
             credential_name: None,
             use_default_trust_context: true,
         })
-    }
-}
-
-impl CloudOpts {
-    pub fn route() -> MultiAddr {
-        controller_route()
     }
 }
 

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf"
+         unique-identifier="project-<%= config.project %>"
+         version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title><%= config.project %> - <%= config.version %></dc:title>
+    <dc:identifier id="project-<%= config.project %>"><%= uuid %></dc:identifier>
+    <dc:language><%= config.language %></dc:language>
+    <%= for {author, index} <- Enum.with_index(config.authors || [], 1) do %>
+      <dc:creator id="author<%= index %>"><%= author %></dc:creator>
+    <% end %>
+    <meta property="dcterms:modified"><%= datetime %></meta>
+    <%= if config.cover do %>
+      <meta name="cover" content="cover-image"/>
+    <% end %>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav scripted"/>
+    <item id="cover" href="title.xhtml" media-type="application/xhtml+xml" properties="scripted"/>
+    <%= for {_title, extras} <- config.extras do %>
+      <%= for extra <- extras do %>
+        <item id="<%= extra.id %>" href="<%= extra.id %>.xhtml" media-type="application/xhtml+xml" properties="scripted"/>
+      <% end %>
+    <% end %>
+    <%= for filter <- [:modules, :exceptions, :tasks] do %>
+      <%= for node <- nodes[filter] do %>
+        <item id="<%= node.id %>" href="<%= node.id %>.xhtml" media-type="application/xhtml+xml" properties="scripted"/>
+      <% end %>
+    <% end %>
+    <%= for static_file <- static_files do %>
+      <item id="<%= static_file_to_id(static_file) %>" href="<%= static_file %>" media-type="<%= media_type(Path.extname(static_file)) %>"/>
+    <% end %>
+    <%= if config.cover do %>
+      <%= if Path.extname(config.cover) == ".png" do %>
+        <item id="cover-image" href="assets/cover.png" media-type="image/png"/>
+      <% end %>
+      <%= if Path.extname(config.cover) == ".jpg" do %>
+        <item id="cover-image" href="assets/cover.jpg" media-type="image/jpeg"/>
+      <% end %>
+    <% end %>
+  </manifest>
+  <spine>
+    <itemref idref="cover"/>
+    <itemref idref="nav"/>
+    <%= for {_title, extras} <- config.extras do %>
+      <%= for extra <- extras do %>
+        <itemref idref="<%= extra.id %>"/>
+      <% end %>
+    <% end %>
+    <%= for filter <- [:modules, :exceptions, :tasks] do %>
+      <%= for node <- nodes[filter] do %>
+        <itemref idref="<%= node.id %>"/>
+      <% end %>
+    <% end %>
+  </spine>
+</package>

@@ -1,7 +1,7 @@
 use clap::Args;
 
 use ockam::Context;
-
+use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::delete_embedded_node;
@@ -9,7 +9,6 @@ use crate::project::util::refresh_projects;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
-use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 
 #[derive(Clone, Debug, Args)]
 pub struct InfoCommand {
@@ -42,20 +41,19 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: InfoCommand,
 ) -> miette::Result<()> {
-    let controller_route = &CloudOpts::route();
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
     // Lookup project
     let id = match opts.state.projects.get(&cmd.name) {
         Ok(state) => state.config().id.clone(),
         Err(_) => {
-            refresh_projects(&opts, &mut rpc, &CloudOpts::route()).await?;
+            refresh_projects(&opts, &mut rpc).await?;
             opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };
 
     // Send request
-    let project: Project = rpc.ask(api::project::show(&id, controller_route)).await?;
+    let project: Project = rpc.ask(api::project::show(&id)).await?;
     let info: ProjectConfigCompact = project.into();
     opts.println(&info)?;
 

@@ -32,7 +32,6 @@ pub struct InvitationList {
 mod node {
     use ockam_core::api::{Request, Response};
     use ockam_core::{self, Result};
-    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
     use crate::cloud::CloudRequestWrapper;
@@ -47,11 +46,10 @@ mod node {
             &self,
             ctx: &Context,
             req: ListInvitations,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<InvitationList> {
             Response::parse_response_body(
-                self.list_shares_response(ctx, CloudRequestWrapper::new(req, route, identity_name))
+                self.list_shares_response(ctx, CloudRequestWrapper::new(req, identity_name))
                     .await?
                     .as_slice(),
             )
@@ -62,23 +60,12 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<ListInvitations>,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
             debug!(req = ?req_body, "Sending request to list shares");
-
-            let label = "list_shares";
             let req_builder = Request::get("/v0/invites").body(req_body);
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                API_SERVICE,
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "list_shares", None, API_SERVICE, req_builder, None)
+                .await
         }
     }
 
@@ -87,13 +74,10 @@ mod node {
             &self,
             ctx: &Context,
             req: ListInvitations,
-            route: &MultiAddr,
             identity_name: Option<String>,
         ) -> Result<InvitationList> {
             let node_manager = self.inner().read().await;
-            node_manager
-                .list_shares(ctx, req, route, identity_name)
-                .await
+            node_manager.list_shares(ctx, req, identity_name).await
         }
 
         pub(crate) async fn list_shares_response(

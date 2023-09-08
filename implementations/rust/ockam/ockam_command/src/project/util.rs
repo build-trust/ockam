@@ -16,7 +16,6 @@ use ockam_core::api::Request;
 use ockam_core::compat::str::FromStr;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::util::api::CloudOpts;
 use crate::util::{api, Rpc};
 use crate::{CommandGlobalOpts, Result};
 
@@ -161,16 +160,13 @@ pub async fn check_project_readiness<'a>(
 
     // Check if Project and Project Authority info is available
     if !project.is_ready() {
-        let cloud_route = &CloudOpts::route();
         let project_id = project.id.clone();
         project = Retry::spawn(retry_strategy.clone(), || async {
             let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;
 
             // Handle the project show request result
             // so we can provide better errors in the case orchestrator does not respond timely
-            let result: Result<Project> = rpc_clone
-                .ask(api::project::show(&project_id, cloud_route))
-                .await;
+            let result: Result<Project> = rpc_clone.ask(api::project::show(&project_id)).await;
             result.and_then(|p| {
                 if p.is_ready() {
                     Ok(p)
@@ -275,12 +271,8 @@ pub async fn check_project_readiness<'a>(
     Ok(project)
 }
 
-pub async fn refresh_projects<'a>(
-    opts: &CommandGlobalOpts,
-    rpc: &mut Rpc,
-    controller_route: &MultiAddr,
-) -> miette::Result<()> {
-    let projects: Vec<Project> = rpc.ask(api::project::list(controller_route)).await?;
+pub async fn refresh_projects<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc) -> miette::Result<()> {
+    let projects: Vec<Project> = rpc.ask(api::project::list()).await?;
     for project in projects {
         opts.state
             .projects

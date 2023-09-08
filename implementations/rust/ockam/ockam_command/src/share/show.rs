@@ -46,9 +46,8 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
     let get_invitation_with_access = async {
-        let invitation_with_access: InvitationWithAccess = rpc
-            .ask(api::share::show(cmd.invitation_id, &CloudOpts::route()))
-            .await?;
+        let invitation_with_access: InvitationWithAccess =
+            rpc.ask(api::share::show(cmd.invitation_id)).await?;
         *is_finished.lock().await = true;
         Ok(invitation_with_access)
     };

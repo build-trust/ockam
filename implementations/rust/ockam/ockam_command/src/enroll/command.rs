@@ -23,7 +23,6 @@ use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
-use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, Rpc};
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, fmt_para, CommandGlobalOpts, Result};
 
@@ -83,7 +82,7 @@ async fn run_impl(
 
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
-    enroll_with_node(&mut rpc, &CloudOpts::route(), token)
+    enroll_with_node(&mut rpc, token, None)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
@@ -135,11 +134,11 @@ pub async fn retrieve_user_project<'a>(
 /// Enroll a user with a token, using a specific node to contact the controller
 pub async fn enroll_with_node<'a>(
     rpc: &mut Rpc,
-    route: &MultiAddr,
     token: OidcToken,
+    alternative_authenticator_address: Option<MultiAddr>,
 ) -> miette::Result<()> {
     let status = rpc
-        .tell_and_get_status(api::enroll::auth0(route, token))
+        .tell_and_get_status(api::enroll::auth0(token, alternative_authenticator_address))
         .await?;
     match status {
         Some(Status::Ok) => {
@@ -167,7 +166,7 @@ async fn default_space<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc) -> Result<Sp
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
     let is_finished = Mutex::new(false);
     let get_spaces = async {
-        let spaces: Vec<Space> = rpc.ask(api::space::list(&CloudOpts::route())).await?;
+        let spaces: Vec<Space> = rpc.ask(api::space::list()).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };
@@ -260,7 +259,7 @@ async fn default_project<'a>(
 
     let is_finished = Mutex::new(false);
     let get_projects = async {
-        let projects: Vec<Project> = rpc.ask(api::project::list(&CloudOpts::route())).await?;
+        let projects: Vec<Project> = rpc.ask(api::project::list()).await?;
         *is_finished.lock().await = true;
         Ok(projects)
     };
@@ -285,9 +284,7 @@ async fn default_project<'a>(
         let is_finished = Mutex::new(false);
         let name = "default";
         let get_project = async {
-            let project: Project = rpc
-                .ask(api::project::create(name, &space.id, &CloudOpts::route()))
-                .await?;
+            let project: Project = rpc.ask(api::project::create(name, &space.id)).await?;
             *is_finished.lock().await = true;
             Ok(project)
         };

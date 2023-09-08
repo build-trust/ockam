@@ -1,0 +1,8 @@
+<%= for node <- nodes do %>
+  <navPoint id="<%= node.id %>">
+    <navLabel>
+    <text><%= node.id %></text>
+    </navLabel>
+    <content src="<%= node.id %>.xhtml"/>
+  </navPoint>
+<% end %>

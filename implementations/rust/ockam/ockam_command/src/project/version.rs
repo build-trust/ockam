@@ -1,6 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+
 use ockam::Context;
 use ockam_api::cloud::project::ProjectVersion;
 
@@ -34,11 +35,9 @@ async fn rpc(mut ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
 }
 
 async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-    let controller_route = &CloudOpts::route();
-
     // Send request
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
-    let project_version: ProjectVersion = rpc.ask(api::project::version(controller_route)).await?;
+    let project_version: ProjectVersion = rpc.ask(api::project::version()).await?;
     delete_embedded_node(&opts, rpc.node_name()).await;
 
     let json = serde_json::to_string(&project_version).into_diagnostic()?;
