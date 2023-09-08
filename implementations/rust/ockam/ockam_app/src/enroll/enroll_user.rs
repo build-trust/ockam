@@ -34,7 +34,12 @@ pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
     app_state.reset_node_manager().await?;
     app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
     app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
-    shared_service::relay::create_relay(&app_state).await?;
+    shared_service::relay::create_relay(
+        app_state.context(),
+        app_state.state().await,
+        app_state.node_manager_worker().await,
+    )
+    .await;
     Ok(())
 }
 
