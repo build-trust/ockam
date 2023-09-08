@@ -1,15 +1,14 @@
 use clap::Args;
-
-use ockam::identity::credential::Credential;
 use ockam::{Context, TcpTransport};
+use ockam::identity::credential::Credential;
 use ockam_api::clean_multiaddr;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use crate::{CommandGlobalOpts, Result, stop_node};
 use crate::node::NodeOpts;
-use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{stop_node, CommandGlobalOpts, Result};
+use crate::util::api::CloudOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct GetCredentialCommand {
@@ -46,7 +45,6 @@ async fn rpc(
             opts,
             &tcp,
             &meta,
-            &CloudOpts::route(),
             &cmd.node_opts.api_node,
         )
         .await?;

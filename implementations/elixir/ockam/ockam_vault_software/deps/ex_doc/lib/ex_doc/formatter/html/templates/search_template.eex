@@ -1,0 +1,8 @@
+<%= head_template(config, %{title: "Search", type: :search}) %>
+<%= sidebar_template(config, nodes_map) %>
+<div id="search">
+  <h1>Search</h1>
+  <div class="loading"><div></div><div></div><div></div><div></div></div>
+</div>
+<script src="<%= asset_rev config.output, "dist/search_items*.js" %>"></script>
+<%= footer_template(config, nil) %>

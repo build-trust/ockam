@@ -1,0 +1,11 @@
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#<%=enc node.id %>"><%=h node.signature %></a>
+    <%= if deprecated = node.deprecated do %>
+      <span class="deprecated" title="<%= h(deprecated) %>">deprecated</span>
+    <% end %>
+  </div>
+  <%= if doc = node.rendered_doc do %>
+    <div class="summary-synopsis"><%= synopsis(doc) %></div>
+  <% end %>
+</div>

@@ -1,6 +1,4 @@
 use miette::{miette, IntoDiagnostic, WrapErr};
-
-use ockam_api::address::controller_route;
 use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_notification::NotificationExt;
 use tracing::{debug, error, info};
@@ -82,7 +80,7 @@ async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState)
         let node_manager_worker = app_state.node_manager_worker().await;
         let node_manager = node_manager_worker.inner().read().await;
         node_manager
-            .enroll_auth0(&app_state.context(), &controller_route(), token)
+            .enroll_auth0(&app_state.context(), token)
             .await
             .into_diagnostic()?;
     }
@@ -113,7 +111,7 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     // if several spaces are available
     let spaces = {
         let mut spaces = node_manager
-            .list_spaces(&app_state.context(), &controller_route())
+            .list_spaces(&app_state.context())
             .await
             .map_err(|e| miette!(e))?;
         spaces.sort_by(|s1, s2| s1.name.cmp(&s2.name));
@@ -130,7 +128,6 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
                 .create_space(
                     &app_state.context(),
                     CreateSpace::new(space_name, vec![]),
-                    &controller_route(),
                     None,
                 )
                 .await
@@ -160,7 +157,7 @@ async fn retrieve_project<R: Runtime>(
     let node_manager_worker = app_state.node_manager_worker().await;
     let node_manager = node_manager_worker.inner().read().await;
     let projects = node_manager
-        .list_projects(&app_state.context(), &controller_route())
+        .list_projects(&app_state.context())
         .await
         .map_err(|e| miette!(e))?;
     let admin_project = projects
@@ -178,13 +175,12 @@ async fn retrieve_project<R: Runtime>(
                 .show()
                 .unwrap_or_else(|e| error!(?e, "Failed to create push notification"));
             let ctx = &app_state.context();
-            let route = &controller_route();
             let project = node_manager
-                .create_project(ctx, route, space.id.as_str(), PROJECT_NAME, vec![])
+                .create_project(ctx, space.id.as_str(), PROJECT_NAME, vec![])
                 .await
                 .map_err(|e| miette!(e))?;
             node_manager
-                .wait_until_project_is_ready(ctx, route, project)
+                .wait_until_project_is_ready(ctx, project)
                 .await?
         }
     };

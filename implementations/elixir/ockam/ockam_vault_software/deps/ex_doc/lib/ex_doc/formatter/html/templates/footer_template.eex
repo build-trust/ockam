@@ -1,0 +1,51 @@
+      <footer class="footer">
+        <%= if config.package do %>
+
+        <p>
+          Find it on Hex:
+          <a href="https://hex.pm/packages/<%= config.package %>/<%= config.version %>" class="line footer-hex-package">Package</a>
+          <a href="https://preview.hex.pm/preview/<%= config.package %>/<%= config.version %>" class="line">Preview</a>
+
+          <%= source_path = node && Map.get(node, :source_path); if source_path do %>
+            <a href="https://preview.hex.pm/preview/<%= config.package %>/<%= config.version %>/show/<%= source_path %>">(current file)</a>
+          <% end %>
+        </p>
+        <% end %>
+        <p>
+          <span class="line">
+            Built using
+            <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener">ExDoc</a> (v<%= ExDoc.version() %>) for the
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank">Elixir programming language</a>.
+          </span>
+          <span class="line">
+            Designed by
+            <a href="https://twitter.com/dignifiedquire" target="_blank" rel="noopener" title="@dignifiedquire">Friedel Ziegelmayer</a>.
+          </span>
+        </p>
+        <p>
+          <%= if config.api_reference do %>
+            <a href="api-reference.html" title="API reference" class="line footer-button">API Reference</a>
+          <% end %>
+          <button class="line footer-button display-shortcuts-help">
+            Display keyboard shortcuts
+          </button>
+          <button class="line footer-button night-mode-toggle">
+            Toggle night mode
+          </button>
+          <button class="line footer-button display-quick-switch">
+            Go to a HexDocs package
+          </button>
+          <button class="line footer-button tooltips-toggle">
+            <span class="tooltips-option-disable">Disable tooltips</span>
+            <span class="tooltips-option-enable">Enable tooltips</span>
+          </button>
+        </p>
+      </footer>
+    </div>
+  </div>
+</section>
+</div>
+  <%# Extra content specified by the user (e.g. custom Javascript) %>
+  <%= config.before_closing_body_tag.(:html) %>
+  </body>
+</html>

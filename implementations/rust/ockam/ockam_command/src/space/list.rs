@@ -1,11 +1,11 @@
 use clap::Args;
 use miette::IntoDiagnostic;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
 use ockam_api::cloud::space::Space;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use crate::node::util::delete_embedded_node;
 use crate::util::api::{self, CloudOpts};
@@ -50,7 +50,7 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
     let get_spaces = async {
-        let spaces: Vec<Space> = rpc.ask(api::space::list(&CloudOpts::route())).await?;
+        let spaces: Vec<Space> = rpc.ask(api::space::list()).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };

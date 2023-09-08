@@ -11,7 +11,6 @@ use ockam_core::api::Request;
 use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::disable_addon_endpoint;
-use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, Rpc};
 use crate::{fmt_ok, CommandGlobalOpts};
 
@@ -47,7 +46,6 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AddonDisableSubcommand),
 ) -> miette::Result<()> {
-    let controller_route = &CloudOpts::route();
     let AddonDisableSubcommand {
         project_name,
         addon_id,
@@ -57,7 +55,7 @@ async fn run_impl(
     let body = DisableAddon::new(addon_id);
     let endpoint = disable_addon_endpoint(&opts.state, &project_name)?;
 
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, controller_route, None));
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, None));
     let response: CreateOperationResponse = rpc.ask(req).await?;
     let operation_id = response.operation_id;
 

@@ -50,11 +50,9 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
 
-    let controller_route = &CloudOpts::route();
-
     // Send request
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
-    let space: Space = rpc.ask(api::space::show(&id, controller_route)).await?;
+    let space: Space = rpc.ask(api::space::show(&id)).await?;
     opts.println(&space)?;
     opts.state
         .spaces

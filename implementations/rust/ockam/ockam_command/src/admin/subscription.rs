@@ -142,7 +142,6 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let controller_route = &CloudOpts::route();
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Attach {
@@ -153,18 +152,13 @@ async fn run_impl(
                 .into_diagnostic()
                 .context(format!("failed to read {:?}", &json))?;
             let b = ActivateSubscription::existing(space, json);
-            let req = Request::post("subscription").body(CloudRequestWrapper::new(
-                b,
-                controller_route,
-                None,
-            ));
+            let req = Request::post("subscription").body(CloudRequestWrapper::new(b, None));
 
             let response: Subscription = rpc.ask(req).await?;
             opts.println(&response)?;
         }
         SubscriptionSubcommand::List => {
-            let req =
-                Request::get("subscription").body(CloudRequestWrapper::bare(controller_route));
+            let req = Request::get("subscription");
             let response: Vec<Subscription> = rpc.ask(req).await?;
             opts.println(&response)?;
         }
@@ -172,15 +166,10 @@ async fn run_impl(
             subscription_id,
             space_id,
         } => {
-            let subscription_id = utils::subscription_id_from_cmd_args(
-                &mut rpc,
-                controller_route,
-                subscription_id,
-                space_id,
-            )
-            .await?;
-            let req = Request::put(format!("subscription/{subscription_id}/unsubscribe"))
-                .body(CloudRequestWrapper::bare(controller_route));
+            let subscription_id =
+                utils::subscription_id_from_cmd_args(&mut rpc, subscription_id, space_id).await?;
+            let req = Request::put(format!("subscription/{subscription_id}/unsubscribe"));
+
             let response: Subscription = rpc.ask(req).await?;
             opts.println(&response)?;
         }
@@ -195,15 +184,11 @@ async fn run_impl(
                     let json = std::fs::read_to_string(&json)
                         .into_diagnostic()
                         .context(format!("failed to read {:?}", &json))?;
-                    let subscription_id = utils::subscription_id_from_cmd_args(
-                        &mut rpc,
-                        controller_route,
-                        subscription_id,
-                        space_id,
-                    )
-                    .await?;
+                    let subscription_id =
+                        utils::subscription_id_from_cmd_args(&mut rpc, subscription_id, space_id)
+                            .await?;
                     let req = Request::put(format!("subscription/{subscription_id}/contact_info"))
-                        .body(CloudRequestWrapper::new(json, controller_route, None));
+                        .body(CloudRequestWrapper::new(json, None));
                     let response: Subscription = rpc.ask(req).await?;
                     opts.println(&response)?;
                 }
@@ -212,17 +197,11 @@ async fn run_impl(
                     space_id,
                     new_space_id,
                 } => {
-                    let subscription_id = utils::subscription_id_from_cmd_args(
-                        &mut rpc,
-                        controller_route,
-                        subscription_id,
-                        space_id,
-                    )
-                    .await?;
-                    let req =
-                        Request::put(format!("subscription/{subscription_id}/space_id")).body(
-                            CloudRequestWrapper::new(new_space_id, controller_route, None),
-                        );
+                    let subscription_id =
+                        utils::subscription_id_from_cmd_args(&mut rpc, subscription_id, space_id)
+                            .await?;
+                    let req = Request::put(format!("subscription/{subscription_id}/space_id"))
+                        .body(CloudRequestWrapper::new(new_space_id, None));
                     let response: Subscription = rpc.ask(req).await?;
                     opts.println(&response)?;
                 }

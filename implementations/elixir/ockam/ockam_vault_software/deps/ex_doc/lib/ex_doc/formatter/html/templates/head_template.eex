@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="<%= config.language %>">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v<%= ExDoc.version() %>">
+    <meta name="project" content="<%= config.project %> v<%= config.version%>">
+    <%= if config.authors do %>
+      <meta name="author" content="<%= Enum.join(config.authors, ", ") %>">
+    <% end %>
+    <title><%= page.title %> — <%= config.project %> v<%= config.version %></title>
+    <link rel="stylesheet" href="<%= asset_rev config.output, "dist/#{config.proglang}*.css" %>" />
+    <%= if config.canonical do %>
+      <link rel="canonical" href="<%= config.canonical %>" />
+    <% end %>
+    <script src="<%= asset_rev config.output, "dist/sidebar_items*.js" %>"></script>
+    <%= if config.javascript_config_path do %>
+      <script src="<%= config.javascript_config_path %>"></script>
+    <% end %>
+    <script async src="<%= asset_rev config.output, "dist/app*.js" %>"></script>
+    <%# Extra content specified by the user (e.g. custom CSS) %>
+    <%= config.before_closing_head_tag.(:html) %>
+  </head>
+  <body data-type="<%= sidebar_type(page.type) %>">
+    <script>
+      <%# Immediately apply night mode preference to avoid a flash effect %>
+      try {
+        if (localStorage.getItem('night-mode') === 'true') {
+          document.body.classList.add('night-mode');
+        }
+      } catch (error) { }
+    </script>

@@ -1,11 +1,11 @@
 use clap::Args;
 use miette::IntoDiagnostic;
-use ockam::Context;
-use ockam_api::cli_state::StateDirTrait;
-
-use ockam_api::cloud::project::Project;
 use tokio::sync::Mutex;
 use tokio::try_join;
+
+use ockam::Context;
+use ockam_api::cli_state::StateDirTrait;
+use ockam_api::cloud::project::Project;
 
 use crate::node::util::delete_embedded_node;
 use crate::util::api::CloudOpts;
@@ -50,7 +50,7 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_projects = async {
-        let projects: Vec<Project> = rpc.ask(api::project::list(&CloudOpts::route())).await?;
+        let projects: Vec<Project> = rpc.ask(api::project::list()).await?;
         *is_finished.lock().await = true;
         Ok(projects)
     };

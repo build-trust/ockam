@@ -1,23 +1,11 @@
-use crate::error::{ApiError, ParseError};
-use ockam_core::env::{get_env_with_default, FromString};
-use ockam_core::Result;
-use ockam_multiaddr::proto::{Node, Project, Service};
-use ockam_multiaddr::{MultiAddr, Protocol};
 use std::net::{SocketAddr, TcpListener};
 use std::str::FromStr;
 
-pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
-pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
+use ockam_core::Result;
+use ockam_multiaddr::proto::{Node, Project, Service};
+use ockam_multiaddr::{MultiAddr, Protocol};
 
-pub fn controller_route() -> MultiAddr {
-    let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)
-        .unwrap_or_else(|_| panic!("invalid Controller route: {DEFAULT_CONTROLLER_ADDRESS}"));
-
-    let route = get_env_with_default::<MultiAddr>(OCKAM_CONTROLLER_ADDR, default_addr).unwrap();
-    trace!(%route, "Controller route");
-
-    route
-}
+use crate::error::{ApiError, ParseError};
 
 /// Get address value from a string.
 ///

@@ -11,13 +11,13 @@ use ockam::{Context, Node, TcpConnectionOptions, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::NodeState;
+use ockam_api::cloud::controller_multiaddr;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
 use ockam_api::nodes::NodeManager;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::route;
 use ockam_node::MessageSendReceiveOptions;
 
-use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
@@ -106,7 +106,9 @@ async fn get_orchestrator_version(
     opts: &CommandGlobalOpts,
     timeout: Duration,
 ) -> Result<OrchestratorVersionInfo> {
-    let controller_addr = CloudOpts::route();
+    // for new we get the controller address directly until we
+    // access a Controller interface from the NodeManager
+    let controller_addr = controller_multiaddr();
     let controller_tcp_addr = controller_addr.to_socket_addr()?;
     let controller_identifier = NodeManager::load_controller_identifier()?;
     let tcp = TcpTransport::create(&ctx).await?;

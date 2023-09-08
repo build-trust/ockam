@@ -14,7 +14,6 @@ use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::configure_addon_endpoint;
 use crate::project::util::check_project_readiness;
-use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
@@ -58,7 +57,6 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AddonConfigureConfluentSubcommand),
 ) -> miette::Result<()> {
-    let controller_route = &CloudOpts::route();
     let AddonConfigureConfluentSubcommand {
         project_name,
         bootstrap_server,
@@ -72,16 +70,14 @@ async fn run_impl(
         configure_addon_endpoint(&opts.state, &project_name)?,
         addon_id
     );
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, controller_route, None));
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, None));
     let response: CreateOperationResponse = rpc.ask(req).await?;
     let operation_id = response.operation_id;
 
     check_for_completion(&opts, &rpc, &operation_id).await?;
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
-    let project: Project = rpc
-        .ask(api::project::show(&project_id, controller_route))
-        .await?;
+    let project: Project = rpc.ask(api::project::show(&project_id)).await?;
     check_project_readiness(&opts, &rpc, project).await?;
 
     opts.terminal

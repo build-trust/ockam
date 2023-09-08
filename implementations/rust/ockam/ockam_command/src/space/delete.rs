@@ -5,7 +5,6 @@ use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::node::util::delete_embedded_node;
-
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -57,8 +56,7 @@ async fn run_impl(
     {
         let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
         let mut rpc = Rpc::embedded(ctx, &opts).await?;
-        rpc.tell(api::space::delete(&space_id, &CloudOpts::route()))
-            .await?;
+        rpc.tell(api::space::delete(&space_id)).await?;
 
         let _ = opts.state.spaces.delete(&cmd.name);
         // TODO: remove projects associated to the space.

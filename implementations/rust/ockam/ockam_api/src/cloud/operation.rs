@@ -55,15 +55,12 @@ pub enum Status {
 }
 
 mod node {
-    use minicbor::Decoder;
     use tracing::trace;
 
     use ockam_core::api::Request;
     use ockam_core::{self, Result};
-    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
 
-    use crate::cloud::BareCloudRequestWrapper;
     use crate::nodes::{NodeManager, NodeManagerWorker};
 
     const TARGET: &str = "ockam_api::cloud::operation";
@@ -73,15 +70,10 @@ mod node {
         pub(crate) async fn get_operation(
             &self,
             ctx: &Context,
-            dec: &mut Decoder<'_>,
             operation_id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let node_manager = self.inner().read().await;
-            node_manager
-                .get_operation(ctx, &cloud_multiaddr, operation_id)
-                .await
+            node_manager.get_operation(ctx, operation_id).await
         }
     }
 
@@ -89,15 +81,12 @@ mod node {
         pub(crate) async fn get_operation(
             &self,
             ctx: &Context,
-            route: &MultiAddr,
             operation_id: &str,
         ) -> Result<Vec<u8>> {
-            let label = "get_operation";
             trace!(target: TARGET, operation_id, "getting operation");
-
             let req_builder = Request::get(format!("/v1/operations/{operation_id}"));
 
-            self.request_controller(ctx, label, None, route, API_SERVICE, req_builder, None)
+            self.request_controller(ctx, "get_operation", None, API_SERVICE, req_builder, None)
                 .await
         }
     }

@@ -3,15 +3,10 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addon;
-
-use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 
 use crate::node::util::delete_embedded_node;
 use crate::project::addon::base_endpoint;
-
-use crate::util::api::CloudOpts;
-
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
@@ -38,12 +33,10 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AddonListSubcommand),
 ) -> miette::Result<()> {
-    let controller_route = &CloudOpts::route();
     let project_name = cmd.project_name;
 
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
-    let req = Request::get(base_endpoint(&opts.state, &project_name)?)
-        .body(CloudRequestWrapper::bare(controller_route));
+    let req = Request::get(base_endpoint(&opts.state, &project_name)?);
     let addons: Vec<Addon> = rpc.ask(req).await?;
     opts.println(&addons)?;
     delete_embedded_node(&opts, rpc.node_name()).await;

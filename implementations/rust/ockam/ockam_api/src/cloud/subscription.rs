@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
+use crate::nodes::NodeManager;
+
 #[derive(Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
@@ -76,11 +78,11 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
-    use ockam_core::api::Request;
+    use ockam_core::api::{Request, Response};
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
+    use crate::cloud::CloudRequestWrapper;
     use crate::nodes::NodeManagerWorker;
 
     use super::*;
@@ -89,30 +91,12 @@ mod node {
     const API_SERVICE: &str = "subscriptions";
 
     impl NodeManagerWorker {
-        pub(crate) async fn unsubscribe(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "unsubscribe";
+        pub(crate) async fn unsubscribe(&mut self, ctx: &mut Context, id: &str) -> Result<Vec<u8>> {
             trace!(target: TARGET, subscription = %id, "unsubscribing");
-
             let req_builder = Request::put(format!("/v0/{id}/unsubscribe"));
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                API_SERVICE,
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "unsubscribe", None, API_SERVICE, req_builder, None)
+                .await
         }
 
         pub(crate) async fn update_subscription_space(
@@ -122,19 +106,13 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-            let req_body = req_wrapper.req;
-
-            let label = "list_sbuscriptions";
             trace!(target: TARGET, subscription = %id, "updating subscription space");
-
-            let req_builder = Request::put(format!("/v0/{id}/space_id")).body(req_body);
+            let req_builder = Request::put(format!("/v0/{id}/space_id")).body(req_wrapper.req);
 
             self.request_controller(
                 ctx,
-                label,
+                "list_sbuscriptions",
                 None,
-                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
                 None,
@@ -148,42 +126,27 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-            let req_body = req_wrapper.req;
-
-            let label = "update_subscription_contact_info";
             trace!(target: TARGET, subscription = %id, "updating subscription contact info");
-
-            let req_builder = Request::put(format!("/v0/{id}/contact_info")).body(req_body);
+            let req_builder = Request::put(format!("/v0/{id}/contact_info")).body(req_wrapper.req);
 
             self.request_controller(
                 ctx,
-                label,
+                "update_subscription_contact_info",
                 None,
-                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
                 None,
             )
             .await
         }
-        pub(crate) async fn list_subscriptions(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "list_subscriptions";
+        pub(crate) async fn list_subscriptions(&mut self, ctx: &mut Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "listing subscriptions");
-
             let req_builder = Request::get("/v0/");
+
             self.request_controller(
                 ctx,
-                label,
+                "list_subscriptions",
                 None,
-                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
                 None,
@@ -193,22 +156,15 @@ mod node {
         pub(crate) async fn get_subscription(
             &mut self,
             ctx: &mut Context,
-            dec: &mut Decoder<'_>,
             id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "get_subscription";
             trace!(target: TARGET, subscription = %id, "getting subscription");
-
             let req_builder = Request::get(format!("/v0/{id}"));
 
             self.request_controller(
                 ctx,
-                label,
+                "get_subscription",
                 None,
-                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
                 None,
@@ -221,24 +177,44 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<ActivateSubscription> = dec.decode()?;
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
-
-            let label = "activate_subscription";
             trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
-
             let req_builder = Request::post("/v0/activate").body(req_body);
 
             self.request_controller(
                 ctx,
-                label,
+                "activate_subscription",
                 "activate_request",
-                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
                 None,
             )
             .await
+        }
+    }
+
+    impl NodeManager {
+        pub async fn activate_subscription(
+            &mut self,
+            ctx: &Context,
+            space_id: String,
+            subscription_data: String,
+        ) -> Result<Subscription> {
+            let req_body = ActivateSubscription::existing(space_id, subscription_data);
+            trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
+            let req_builder = Request::post("/v0/activate").body(req_body);
+
+            let bytes = self
+                .request_controller(
+                    ctx,
+                    "activate_subscription",
+                    "activate_request",
+                    API_SERVICE,
+                    req_builder,
+                    None,
+                )
+                .await?;
+            Response::parse_response_body(bytes.as_slice())
         }
     }
 }
