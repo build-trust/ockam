@@ -80,7 +80,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
     ///        as the identity must be know at the time of this call.
     pub async fn with_new_embedded_node(&mut self) -> Result<&mut OrchestratorApiBuilder<'a>> {
         // TODO: always use the default vault
-        let node_name = start_embedded_node_with_vault_and_identity(
+        let node_manager = start_embedded_node_with_vault_and_identity(
             self.ctx,
             &self.opts.state,
             None,
@@ -88,7 +88,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             Some(self.trust_context_opts),
         )
         .await?;
-        self.node_name = Some(node_name);
+        self.node_name = Some(node_manager.node_name());
         Ok(self)
     }
 

@@ -2,15 +2,15 @@ use core::fmt::Write;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
+use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::Subscription;
-use ockam_core::api::Request;
 
-use crate::node::util::delete_embedded_node;
+use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::output::Output;
 use crate::util::api::CloudOpts;
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -55,52 +55,42 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
+    let node_manager = start_embedded_node(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
-            subscription_id,
-            space_id,
+            subscription_id: Some(subscription_id),
+            space_id: _,
         } => {
-            let subscription_id =
-                utils::subscription_id_from_cmd_args(&mut rpc, subscription_id, space_id).await?;
-            let req = Request::get(format!("subscription/{subscription_id}"));
-            let subscription: Subscription = rpc.ask(req).await?;
+            let subscription = node_manager
+                .get_subscription(&ctx, subscription_id.clone())
+                .await
+                .into_diagnostic()?
+                .ok_or_else(|| {
+                    miette!(
+                        "no subscription found for subscription id {}",
+                        subscription_id
+                    )
+                })?;
             opts.println(&subscription)?;
         }
-    };
-    delete_embedded_node(&opts, rpc.node_name()).await;
-    Ok(())
-}
-
-pub mod utils {
-    use miette::miette;
-
-    use super::*;
-
-    pub async fn subscription_id_from_cmd_args<'a>(
-        rpc: &mut Rpc,
-        subscription_id: Option<String>,
-        space_id: Option<String>,
-    ) -> crate::Result<String> {
-        match (subscription_id, space_id) {
-            (_, Some(space_id)) => subscription_id_from_space_id(rpc, &space_id).await,
-            (Some(subscription_id), _) => Ok(subscription_id),
-            _ => unreachable!(),
+        SubscriptionSubcommand::Show {
+            subscription_id: None,
+            space_id: Some(space_id),
+        } => {
+            let subscription = node_manager
+                .get_subscription_by_space_id(&ctx, space_id.clone())
+                .await
+                .into_diagnostic()?
+                .ok_or_else(|| miette!("no subscription found for space {}", space_id))?;
+            opts.println(&subscription)?;
         }
-    }
-
-    async fn subscription_id_from_space_id<'a>(
-        rpc: &mut Rpc,
-        space_id: &str,
-    ) -> crate::Result<String> {
-        let req = Request::get("subscription");
-        let subscriptions: Vec<Subscription> = rpc.ask(req).await?;
-        let subscription = subscriptions
-            .into_iter()
-            .find(|s| s.space_id == Some(space_id.into()))
-            .ok_or_else(|| miette!("no subscription found for space {}", space_id))?;
-        Ok(subscription.id)
-    }
+        _ => {
+            opts.terminal
+                .write_line("Please specify either a space id or a subscription id")?;
+        }
+    };
+    delete_embedded_node(&opts, node_manager.node_name().as_str()).await;
+    Ok(())
 }
 
 impl Output for Subscription {
