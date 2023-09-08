@@ -105,6 +105,10 @@ impl NodeManager {
         self.identifier.clone()
     }
 
+    pub fn node_name(&self) -> String {
+        self.node_name.clone()
+    }
+
     pub(super) fn identities(&self) -> Arc<Identities> {
         self.secure_channels.identities()
     }
@@ -767,18 +771,6 @@ impl NodeManagerWorker {
             (Put, ["v0", "enroll", "token"]) => {
                 self.authenticate_enrollment_token(ctx, dec).await?
             }
-
-            // ==*== Subscriptions ==*==
-            (Post, ["subscription"]) => self.activate_subscription(ctx, dec).await?,
-            (Get, ["subscription", id]) => self.get_subscription(ctx, id).await?,
-            (Get, ["subscription"]) => self.list_subscriptions(ctx).await?,
-            (Put, ["subscription", id, "contact_info"]) => {
-                self.update_subscription_contact_info(ctx, dec, id).await?
-            }
-            (Put, ["subscription", id, "space_id"]) => {
-                self.update_subscription_space(ctx, dec, id).await?
-            }
-            (Put, ["subscription", id, "unsubscribe"]) => self.unsubscribe(ctx, id).await?,
 
             // ==*== Addons ==*==
             (Get, [project_id, "addons"]) => self.list_addons(ctx, project_id).await?,

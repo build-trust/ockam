@@ -2,17 +2,13 @@ use std::path::PathBuf;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
-use miette::{Context as _, IntoDiagnostic};
+use miette::{miette, Context as _, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::subscription::{ActivateSubscription, Subscription};
-use ockam_api::cloud::CloudRequestWrapper;
-use ockam_core::api::Request;
 
-use crate::node::util::delete_embedded_node;
-use crate::subscription::utils;
+use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::util::api::CloudOpts;
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const HELP_DETAIL: &str = "";
@@ -142,7 +138,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
+    let node_manager = start_embedded_node(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Attach {
             json,
@@ -151,28 +147,48 @@ async fn run_impl(
             let json = std::fs::read_to_string(&json)
                 .into_diagnostic()
                 .context(format!("failed to read {:?}", &json))?;
-            let b = ActivateSubscription::existing(space, json);
-            let req = Request::post("subscription").body(CloudRequestWrapper::new(b, None));
 
-            let response: Subscription = rpc.ask(req).await?;
+            let response = node_manager
+                .activate_subscription(&ctx, space, json)
+                .await
+                .into_diagnostic()?;
             opts.println(&response)?;
         }
         SubscriptionSubcommand::List => {
-            let req = Request::get("subscription");
-            let response: Vec<Subscription> = rpc.ask(req).await?;
+            let response = node_manager
+                .get_subscriptions(&ctx)
+                .await
+                .into_diagnostic()?;
             opts.println(&response)?;
         }
         SubscriptionSubcommand::Unsubscribe {
             subscription_id,
             space_id,
-        } => {
-            let subscription_id =
-                utils::subscription_id_from_cmd_args(&mut rpc, subscription_id, space_id).await?;
-            let req = Request::put(format!("subscription/{subscription_id}/unsubscribe"));
-
-            let response: Subscription = rpc.ask(req).await?;
-            opts.println(&response)?;
-        }
+        } => match (subscription_id, space_id) {
+            (Some(subscription_id), _) => {
+                let response = node_manager
+                    .unsubscribe(&ctx, subscription_id)
+                    .await
+                    .into_diagnostic()?;
+                opts.println(&response)?;
+            }
+            (None, Some(space_id)) => {
+                let subscription = node_manager
+                    .get_subscription_by_space_id(&ctx, space_id.clone())
+                    .await
+                    .into_diagnostic()?
+                    .ok_or_else(|| miette!("no subscription found for space {}", space_id))?;
+                let response = node_manager
+                    .unsubscribe(&ctx, subscription.id)
+                    .await
+                    .into_diagnostic()?;
+                opts.println(&response)?;
+            }
+            (None, None) => {
+                opts.terminal
+                    .write_line("Please provide a space id or a subscription id")?;
+            }
+        },
         SubscriptionSubcommand::Update(c) => {
             let SubscriptionUpdate { subcommand: sc } = c;
             match sc {
@@ -184,30 +200,68 @@ async fn run_impl(
                     let json = std::fs::read_to_string(&json)
                         .into_diagnostic()
                         .context(format!("failed to read {:?}", &json))?;
-                    let subscription_id =
-                        utils::subscription_id_from_cmd_args(&mut rpc, subscription_id, space_id)
-                            .await?;
-                    let req = Request::put(format!("subscription/{subscription_id}/contact_info"))
-                        .body(CloudRequestWrapper::new(json, None));
-                    let response: Subscription = rpc.ask(req).await?;
-                    opts.println(&response)?;
+                    match (subscription_id, space_id) {
+                        (Some(subscription_id), _) => {
+                            let response = node_manager
+                                .update_subscription_contact_info(&ctx, subscription_id, json)
+                                .await
+                                .into_diagnostic()?;
+                            opts.println(&response)?;
+                        }
+                        (None, Some(space_id)) => {
+                            let subscription = node_manager
+                                .get_subscription_by_space_id(&ctx, space_id.clone())
+                                .await
+                                .into_diagnostic()?
+                                .ok_or_else(|| {
+                                    miette!("no subscription found for space {}", space_id)
+                                })?;
+                            let response = node_manager
+                                .update_subscription_contact_info(&ctx, subscription.id, json)
+                                .await
+                                .into_diagnostic()?;
+                            opts.println(&response)?;
+                        }
+                        (None, None) => {
+                            opts.terminal
+                                .write_line("Please provide a space id or a subscription id")?;
+                        }
+                    }
                 }
                 SubscriptionUpdateSubcommand::Space {
                     subscription_id,
                     space_id,
                     new_space_id,
-                } => {
-                    let subscription_id =
-                        utils::subscription_id_from_cmd_args(&mut rpc, subscription_id, space_id)
-                            .await?;
-                    let req = Request::put(format!("subscription/{subscription_id}/space_id"))
-                        .body(CloudRequestWrapper::new(new_space_id, None));
-                    let response: Subscription = rpc.ask(req).await?;
-                    opts.println(&response)?;
-                }
+                } => match (subscription_id, space_id) {
+                    (Some(subscription_id), _) => {
+                        let response = node_manager
+                            .update_subscription_space(&ctx, subscription_id, new_space_id)
+                            .await
+                            .into_diagnostic()?;
+                        opts.println(&response)?;
+                    }
+                    (None, Some(space_id)) => {
+                        let subscription = node_manager
+                            .get_subscription_by_space_id(&ctx, space_id.clone())
+                            .await
+                            .into_diagnostic()?
+                            .ok_or_else(|| {
+                                miette!("no subscription found for space {}", space_id)
+                            })?;
+                        let response = node_manager
+                            .update_subscription_space(&ctx, subscription.id, new_space_id)
+                            .await
+                            .into_diagnostic()?;
+                        opts.println(&response)?;
+                    }
+                    (None, None) => {
+                        opts.terminal
+                            .write_line("Please provide a space id or a subscription id")?;
+                    }
+                },
             }
         }
     };
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, node_manager.node_name().as_str()).await;
     Ok(())
 }

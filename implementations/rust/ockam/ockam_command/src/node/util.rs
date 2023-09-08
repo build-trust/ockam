@@ -1,21 +1,20 @@
+use std::env::current_exe;
+use std::fs::OpenOptions;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::{Context, TcpListenerOptions, TcpTransport};
-
 use ockam_api::cli_state::{
     add_project_info_to_node_state, init_node_state, CliState, StateDirTrait,
 };
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-
+use ockam_api::nodes::NodeManager;
 use ockam_core::env::get_env_with_default;
-use std::env::current_exe;
-use std::fs::OpenOptions;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
 
 use crate::node::CreateCommand;
 use crate::util::api::TrustContextOpts;
@@ -25,7 +24,7 @@ pub async fn start_embedded_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     trust_opts: Option<&TrustContextOpts>,
-) -> Result<String> {
+) -> Result<NodeManager> {
     start_embedded_node_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts).await
 }
 
@@ -35,7 +34,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     vault: Option<String>,
     identity: Option<String>,
     trust_opts: Option<&TrustContextOpts>,
-) -> Result<String> {
+) -> Result<NodeManager> {
     let cmd = CreateCommand::default();
 
     // This node was initially created as a foreground node
@@ -71,7 +70,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let options = TcpListenerOptions::new();
     let listener = tcp.listen(&bind, options).await?;
 
-    let node_man = NodeManager::create(
+    let node_manager = NodeManager::create(
         ctx,
         NodeManagerGeneralOptions::new(
             cli_state.clone(),
@@ -83,16 +82,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
         NodeManagerTrustOptions::new(trust_context_config),
     )
     .await?;
-
-    let node_manager_worker = NodeManagerWorker::new(node_man);
-
-    ctx.flow_controls()
-        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
-
-    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-        .await?;
-
-    Ok(cmd.node_name.clone())
+    Ok(node_manager)
 }
 
 pub async fn delete_embedded_node(opts: &CommandGlobalOpts, name: &str) {
