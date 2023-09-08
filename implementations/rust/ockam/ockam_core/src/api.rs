@@ -2,16 +2,16 @@
 
 use core::fmt::{self, Display, Formatter};
 
+use minicbor::{Decode, Decoder, Encode};
 use minicbor::data::Type;
 use minicbor::encode::{self, Encoder, Write};
-use minicbor::{Decode, Decoder, Encode};
 use tinyvec::ArrayVec;
 
 #[cfg(feature = "tag")]
 use {
-    crate::TypeTag,
     alloc::collections::btree_map::Entry,
     cddl_cat::{context::BasicContext, flatten::flatten, parse_cddl},
+    crate::TypeTag,
     once_cell::race::OnceBox,
 };
 
@@ -819,15 +819,13 @@ pub fn assert_response_match<'a>(
         None => tracing::error!("no response header definition found"),
     }
     if let Some(struct_name) = struct_name.into() {
-        if let Some(struct_name) = struct_name.into() {
-            match cddl_context.rules.get(struct_name) {
-                Some(request_rules) => {
-                    if let Err(e) = validate_cbor(request_rules, &cbor_value, cddl_context) {
-                        tracing::error!(error = %e, "response body mismatch")
-                    }
+        match cddl_context.rules.get(struct_name) {
+            Some(request_rules) => {
+                if let Err(e) = validate_cbor(request_rules, &cbor_value, cddl_context) {
+                    tracing::error!(error = %e, "response body mismatch")
                 }
-                None => tracing::error!("no response body definition found"),
             }
+            None => tracing::error!("no response body definition found"),
         }
     }
 }
@@ -994,7 +992,7 @@ mod merged_cddl_test {
 #[cfg(feature = "tag")]
 mod schema_test {
     use cddl_cat::validate_cbor_bytes;
-    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+    use quickcheck::{Arbitrary, Gen, quickcheck, TestResult};
 
     use super::*;
 
