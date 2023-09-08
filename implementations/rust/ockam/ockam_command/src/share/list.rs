@@ -46,12 +46,8 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
     let get_invitations = async {
-        let invitations: InvitationList = rpc
-            .ask(api::share::list(
-                InvitationListKind::All,
-                &CloudOpts::route(),
-            ))
-            .await?;
+        let invitations: InvitationList =
+            rpc.ask(api::share::list(InvitationListKind::All)).await?;
         *is_finished.lock().await = true;
         Ok(invitations)
     };

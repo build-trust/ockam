@@ -77,9 +77,7 @@ async fn run_impl(
     let get_sent_invitation = async {
         let req = cmd.into();
         debug!(?req);
-        let invitation: SentInvitation = rpc
-            .ask(api::share::create(req, &CloudOpts::route()))
-            .await?;
+        let invitation: SentInvitation = rpc.ask(api::share::create(req)).await?;
         *is_finished.lock().await = true;
         Ok(invitation)
     };

@@ -11,11 +11,11 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 
 use crate::cloud::addon::ConfluentConfigResponse;
+use crate::cloud::share::ShareScope;
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
 
 use super::share::RoleInShare;
-use super::ProjectUserRole;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
@@ -71,6 +71,16 @@ pub struct Project {
 
     #[cbor(n(16))]
     pub user_roles: Vec<ProjectUserRole>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Decode, Deserialize, Encode, Serialize)]
+#[cbor(map)]
+#[rustfmt::skip]
+pub struct ProjectUserRole {
+    #[n(1)] pub email: String,
+    #[n(2)] pub id: usize,
+    #[n(3)] pub role: RoleInShare,
+    #[n(4)] pub scope: ShareScope,
 }
 
 impl Project {
@@ -269,9 +279,7 @@ mod node {
     use ockam_node::Context;
 
     use crate::cloud::operation::Operation;
-    use crate::cloud::{
-        BareCloudRequestWrapper, CloudRequestWrapper, ORCHESTRATOR_AWAIT_TIMEOUT_MS,
-    };
+    use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
     use crate::nodes::{NodeManager, NodeManagerWorker};
 
     use super::*;
@@ -282,16 +290,12 @@ mod node {
         pub async fn create_project(
             &self,
             ctx: &Context,
-            route: &MultiAddr,
             space_id: &str,
             project_name: &str,
             users: Vec<String>,
         ) -> Result<Project> {
-            let request = CloudRequestWrapper::new(
-                CreateProject::new(project_name.to_string(), users),
-                route,
-                None,
-            );
+            let request =
+                CloudRequestWrapper::new(CreateProject::new(project_name.to_string(), users), None);
             Response::parse_response_body(
                 self.create_project_response(ctx, request, space_id)
                     .await?
@@ -305,18 +309,15 @@ mod node {
             req_wrapper: CloudRequestWrapper<CreateProject>,
             space_id: &str,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
-            let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
             let req_builder =
                 Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
 
             self.request_controller(
                 ctx,
-                label,
                 "create_project",
-                &cloud_multiaddr,
+                "create_project",
                 "projects",
                 req_builder,
                 req_wrapper.identity_name,
@@ -324,56 +325,28 @@ mod node {
             .await
         }
 
-        pub async fn list_projects(
-            &self,
-            ctx: &Context,
-            route: &MultiAddr,
-        ) -> Result<Vec<Project>> {
-            let bytes = self
-                .list_projects_response(ctx, CloudRequestWrapper::bare(route))
-                .await?;
+        pub async fn list_projects(&self, ctx: &Context) -> Result<Vec<Project>> {
+            let bytes = self.list_projects_response(ctx).await?;
             Response::parse_response_body(bytes.as_slice())
         }
 
-        pub(crate) async fn list_projects_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
-        ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-            let label = "list_projects";
+        pub(crate) async fn list_projects_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "listing projects");
             let req_builder = Request::get("/v0");
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                "projects",
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "list_projects", None, "projects", req_builder, None)
+                .await
         }
 
-        pub async fn get_project(
-            &self,
-            ctx: &Context,
-            route: &MultiAddr,
-            project_id: &str,
-        ) -> Result<Project> {
+        pub async fn get_project(&self, ctx: &Context, project_id: &str) -> Result<Project> {
             Response::parse_response_body(
-                self.get_project_response(ctx, CloudRequestWrapper::bare(route), project_id)
-                    .await?
-                    .as_slice(),
+                self.get_project_response(ctx, project_id).await?.as_slice(),
             )
         }
 
         pub async fn wait_until_project_is_ready(
             &self,
             ctx: &Context,
-            route: &MultiAddr,
             project: Project,
         ) -> Result<Project> {
             if project.is_ready() {
@@ -388,7 +361,7 @@ mod node {
             let retry_strategy =
                 FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
             let operation = Retry::spawn(retry_strategy.clone(), || async {
-                if let Ok(res) = self.get_operation(ctx, route, operation_id).await {
+                if let Ok(res) = self.get_operation(ctx, operation_id).await {
                     if let Ok(operation) =
                         Response::parse_response_body::<Operation>(res.as_slice())
                     {
@@ -401,7 +374,7 @@ mod node {
             })
             .await?;
             if operation.is_successful() {
-                self.get_project(ctx, route, &project.id).await
+                self.get_project(ctx, &project.id).await
             } else {
                 Err(ApiError::core("Operation failed. Please try again."))
             }
@@ -410,76 +383,35 @@ mod node {
         pub(crate) async fn get_project_response(
             &self,
             ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
             project_id: &str,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "get_project";
             trace!(target: TARGET, %project_id, "getting project");
             let req_builder = Request::get(format!("/v0/{project_id}"));
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                "projects",
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "get_project", None, "projects", req_builder, None)
+                .await
         }
 
-        pub async fn get_project_version(
-            &self,
-            ctx: &Context,
-            route: &MultiAddr,
-        ) -> Result<ProjectVersion> {
-            Response::parse_response_body(
-                self.get_project_version_response(ctx, CloudRequestWrapper::bare(route))
-                    .await?
-                    .as_slice(),
-            )
+        pub async fn get_project_version(&self, ctx: &Context) -> Result<ProjectVersion> {
+            Response::parse_response_body(self.get_project_version_response(ctx).await?.as_slice())
         }
 
-        pub(crate) async fn get_project_version_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
-        ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "version_info";
+        pub(crate) async fn get_project_version_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "getting project version");
             let req_builder = Request::get("");
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                "version_info",
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "version_info", None, "version_info", req_builder, None)
+                .await
         }
 
         pub async fn delete_project(
             &self,
             ctx: &Context,
-            route: &MultiAddr,
             space_id: &str,
             project_id: &str,
         ) -> Result<()> {
             let _ = self
-                .delete_project_response(
-                    ctx,
-                    CloudRequestWrapper::bare(route),
-                    space_id,
-                    project_id,
-                )
+                .delete_project_response(ctx, space_id, project_id)
                 .await?;
             Ok(())
         }
@@ -487,30 +419,17 @@ mod node {
         pub(crate) async fn delete_project_response(
             &self,
             ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
             space_id: &str,
             project_id: &str,
         ) -> Result<Vec<u8>> {
-            let cloud_multiaddr = req_wrapper.multiaddr()?;
-
-            let label = "delete_project";
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
-
             let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
 
-            self.request_controller(
-                ctx,
-                label,
-                None,
-                &cloud_multiaddr,
-                "projects",
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "delete_project", None, "projects", req_builder, None)
+                .await
         }
     }
-
+`
     impl NodeManagerWorker {
         pub(crate) async fn create_project_response(
             &self,
@@ -524,57 +443,39 @@ mod node {
                 .await
         }
 
-        pub async fn list_projects(
-            &self,
-            ctx: &Context,
-            route: &MultiAddr,
-        ) -> Result<Vec<Project>> {
+        pub async fn list_projects(&self, ctx: &Context) -> Result<Vec<Project>> {
             let node_manager = self.inner().read().await;
-            node_manager.list_projects(ctx, route).await
+            node_manager.list_projects(ctx).await
         }
 
-        pub(crate) async fn list_projects_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
-        ) -> Result<Vec<u8>> {
+        pub(crate) async fn list_projects_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             let node_manager = self.inner().read().await;
-            node_manager.list_projects_response(ctx, req_wrapper).await
+            node_manager.list_projects_response(ctx).await
         }
 
         pub(crate) async fn get_project_response(
             &self,
             ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let node_manager = self.inner().read().await;
-            node_manager
-                .get_project_response(ctx, req_wrapper, project_id)
-                .await
+            node_manager.get_project_response(ctx, project_id).await
         }
 
-        pub(crate) async fn get_project_version_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
-        ) -> Result<Vec<u8>> {
+        pub(crate) async fn get_project_version_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             let node_manager = self.inner().read().await;
-            node_manager
-                .get_project_version_response(ctx, req_wrapper)
-                .await
+            node_manager.get_project_version_response(ctx).await
         }
 
         pub(crate) async fn delete_project_response(
             &self,
             ctx: &Context,
-            req_wrapper: BareCloudRequestWrapper,
             space_id: &str,
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let node_manager = self.inner().read().await;
             node_manager
-                .delete_project_response(ctx, req_wrapper, space_id, project_id)
+                .delete_project_response(ctx, space_id, project_id)
                 .await
         }
     }

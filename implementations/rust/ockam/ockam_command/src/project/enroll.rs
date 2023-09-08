@@ -253,7 +253,7 @@ async fn authenticate_through_okta<'a>(
         addr
     };
 
-    enroll_with_node(rpc, &okta_authenticator_addr, token)
+    enroll_with_node(rpc, token, Some(okta_authenticator_addr))
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")
 }

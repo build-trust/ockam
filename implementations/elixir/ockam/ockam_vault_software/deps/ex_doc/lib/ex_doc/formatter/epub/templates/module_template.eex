@@ -1,0 +1,48 @@
+<%= head_template(config, %{title: module.title}) %>
+    <h1 id="content">
+      <%= H.module_title(module) %>
+    </h1>
+
+    <%= if deprecated = module.deprecated do %>
+      <div class="deprecated">
+        This <%= module.type %> is deprecated. <%= H.h(deprecated) %>.
+      </div>
+    <% end %>
+
+    <%= if doc = module.rendered_doc do %>
+      <section id="moduledoc" class="docstring">
+        <%= doc %>
+      </section>
+    <% end %>
+
+    <%= if Enum.any?(summary, fn {_, v} -> v != [] end) do %>
+      <section id="summary" class="details-list">
+        <h1 class="section-heading">
+          <a class="hover-link" href="#summary">
+            <span class="icon-link" aria-hidden="true"></span>
+            <span class="sr-only">Anchor for this section</span>
+          </a>
+          Summary
+        </h1>
+        <%= for {name, nodes} <- summary, do: H.summary_template(name, nodes) %>
+      </section>
+    <% end %>
+
+    <%= for {name, nodes} <- summary, nodes != [], key = HTML.text_to_id(name) do %>
+      <section id="<%= key %>" class="details-list">
+        <h1 class="section-heading">
+          <a class="hover-link" href="#<%= key %>">
+            <span class="icon-link" aria-hidden="true"></span>
+            <span class="sr-only">Anchor for this section</span>
+          </a>
+          <%= name %>
+        </h1>
+        <div class="<%= key %>-list">
+          <%= for node <- nodes, do: H.detail_template(node, module) %>
+        </div>
+      </section>
+    <% end %>
+    <%# Extra content specified by the user (e.g. custom Javascript) %>
+    <%= config.before_closing_body_tag.(:epub) %>
+  </body>
+</html>

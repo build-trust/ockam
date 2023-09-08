@@ -1,0 +1,60 @@
+ExDoc
+Copyright (c) 2012 Plataformatec
+https://github.com/elixir-lang/ex_doc/
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+==========================================================================
+
+normalize.css
+Copyright (c) Nicolas Gallagher and Jonathan Neal
+https://necolas.github.io/normalize.css/
+
+  Released under the MIT License.
+  https://github.com/necolas/normalize.css/blob/master/LICENSE.md
+
+==========================================================================
+
+webpack
+Copyright (c) 2012, Tobias Koppers
+https://github.com/webpack/webpack
+
+  Released under the MIT License.
+  http://www.opensource.org/licenses/mit-license.php
+
+==========================================================================
+
+lodash
+https://lodash.com/
+Copyright 2012, The Dojo Foundation
+http://dojofoundation.org/
+
+  Available under MIT license
+  https://github.com/lodash/lodash/blob/master/LICENSE
+
+Based on Underscore.js
+Copyright 2009, Jeremy Ashkenas, DocumentCloud and
+Investigative Reporters & Editors
+
+  http://underscorejs.org/LICENSE
+
+==========================================================================
+
+IcoMoon
+https://icomoon.io/
+
+  Released under the GPL version 3 and the Creative Commons Attribution 4.0 licenses.
+  https://www.gnu.org/licenses/gpl.html
+  https://creativecommons.org/licenses/by/4.0/
+
+==========================================================================

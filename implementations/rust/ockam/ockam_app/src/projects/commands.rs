@@ -3,12 +3,12 @@ use std::sync::Arc;
 use tauri::{async_runtime::RwLock, AppHandle, Manager, Runtime, State};
 use tracing::{debug, error, info, trace, warn};
 
-use ockam_api::address::controller_route;
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
+
+use crate::app::AppState;
 
 use super::error::{Error, Result};
 use super::State as ProjectState;
-use crate::app::AppState;
 
 // Store the user's admin projects
 pub type SyncAdminProjectsState = Arc<RwLock<ProjectState>>;
@@ -59,7 +59,7 @@ pub(crate) async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()
 
     let node_manager_worker = state.node_manager_worker().await;
     let projects = node_manager_worker
-        .list_projects(&state.context(), &controller_route())
+        .list_projects(&state.context())
         .await
         .map_err(Error::ListingFailed)?
         .into_iter()

@@ -1,0 +1,27 @@
+<%= head_template(config, %{title: "Table Of Contents"}) %>
+    <h1>Table of contents</h1>
+    <nav epub:type="toc">
+      <ol>
+        <%= for {title, extras} <- config.extras do %>
+          <%= if title do %>
+          <li><span><%= title %></span>
+            <ol>
+          <% end %>
+          <%= for extra <- extras do %>
+            <li><a href="<%= extra.id %>.xhtml"><%= extra.title %></a></li>
+          <% end %>
+          <%= if title do %>
+            </ol>
+          </li>
+          <% end %>
+        <% end %>
+
+        <%= nav_item_template "Modules", nodes.modules %>
+        <%= nav_item_template "Exceptions", nodes.exceptions %>
+        <%= nav_item_template "Mix Tasks", nodes.tasks %>
+      </ol>
+    </nav>
+    <%# Extra content specified by the user (e.g. custom Javascript) %>
+    <%= config.before_closing_body_tag.(:epub) %>
+  </body>
+</html>

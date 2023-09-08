@@ -1,0 +1,9 @@
+<%= head_template(config, %{title: title}) %>
+    <h1 id="content">
+      <%= title_content %>
+    </h1>
+    <%= content %>
+    <%# Extra content specified by the user (e.g. custom Javascript) %>
+    <%= config.before_closing_body_tag.(:epub) %>
+  </body>
+</html>

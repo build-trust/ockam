@@ -1,0 +1,53 @@
+    <%= head_template(config, %{title: module.title, type: module.type}) %>
+    <%= sidebar_template(config, nodes_map) %>
+
+      <h1>
+        <%= module_title(module) %> <small class="app-vsn">(<%= config.project %> v<%= config.version %>)</small>
+        <%= if module.source_url do %>
+          <a href="<%= module.source_url %>" title="View Source" class="view-source" rel="help">
+            <span class="icon-code" aria-hidden="true"></span>
+            <span class="sr-only">View Source</span>
+          </a>
+        <% end %>
+      </h1>
+
+      <%= if deprecated = module.deprecated do %>
+        <div class="deprecated">
+          This <%= module.type %> is deprecated. <%= h(deprecated) %>.
+        </div>
+      <% end %>
+
+      <%= if doc = module.rendered_doc do %>
+        <section id="moduledoc">
+          <%= link_moduledoc_headings(doc) %>
+        </section>
+      <% end %>
+
+      <%= if Enum.any?(summary, fn {_, v} -> v != [] end) do %>
+        <section id="summary" class="details-list">
+          <h1 class="section-heading">
+            <a class="hover-link" href="#summary">
+              <span class="icon-link" aria-hidden="true"></span>
+              <span class="sr-only">Link to this section</span>
+            </a>
+            Summary
+          </h1>
+          <%= for {name, nodes} <- summary, do: summary_template(name, nodes) %>
+        </section>
+      <% end %>
+
+      <%= for {name, nodes} <- summary, nodes != [], key = HTML.text_to_id(name) do %>
+        <section id="<%= key %>" class="details-list">
+          <h1 class="section-heading">
+            <a class="hover-link" href="#<%= key %>">
+              <span class="icon-link" aria-hidden="true"></span>
+              <span class="sr-only">Link to this section</span>
+            </a>
+            <%= name %>
+          </h1>
+          <div class="<%= key %>-list">
+            <%= for node <- nodes, do: detail_template(node, module) %>
+          </div>
+        </section>
+      <% end %>
+    <%= footer_template(config, module) %>

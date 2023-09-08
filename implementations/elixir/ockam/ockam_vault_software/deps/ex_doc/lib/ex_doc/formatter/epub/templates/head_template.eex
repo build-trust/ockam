@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="<%= config.language %>" lang="<%= config.language %>"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+  <head>
+    <meta charset="utf-8" />
+    <title><%= page.title %> - <%= config.project %> v<%= config.version %></title>
+    <meta name="generator" content="ExDoc v<%= ExDoc.version() %>" />
+    <link type="text/css" rel="stylesheet" href="<%= H.asset_rev "#{config.output}/OEBPS", "dist/elixir*.css" %>" />
+    <script src="<%= H.asset_rev "#{config.output}/OEBPS", "dist/app*.js" %>"></script>
+    <%# Extra content specified by the user (e.g. custom CSS) %>
+    <%= config.before_closing_head_tag.(:epub) %>
+  </head>
+  <body>
