@@ -15,7 +15,7 @@
         pname = "tauri-cli";
         # NOTE: Bumping version must always be accompanied by updating the two hashes below
         # https://github.com/tauri-apps/tauri/releases
-        version = "2.0.0-alpha.10";
+        version = "2.0.0-alpha.11";
       in
         # Need to make changes?
         # https://nixos.org/manual/nixpkgs/stable/#compiling-rust-applications-with-cargo
@@ -23,15 +23,15 @@
           inherit pname version;
 
           src = pkgs.fetchFromGitHub {
-            owner = "tauri-apps";
+            owner = "build-trust";
             repo = "tauri";
-            rev = "tauri-v${version}";
-            hash = "sha256-WOxl+hgzKmKXQryD5tH7SJ9YvZb9QA4R+YUYnarnhKA=";
+            rev = "7856354fe16197b270dfa36bc095fec33bec4cff";
+            hash = "sha256-UxWT5k3ZTbydy2iW9LXuSLIfQhSafN39g566J0xWDDs=";
           };
           sourceRoot = "source/tooling/cli";
 
           cargoDepsName = pname;
-          cargoHash = "sha256-MQmEOdQWyRbO+hogGQA2xjB9mezq21FClvscs1oWYLE=";
+          cargoHash = "sha256-4OKYj9rPB998JQTLi/k8ICBgYL/jcxXJT/4MAAR6wzU=";
 
           buildInputs =
             [pkgs.openssl]

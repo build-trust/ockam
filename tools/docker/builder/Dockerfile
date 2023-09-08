@@ -104,7 +104,7 @@ RUN set -xe; \
     cargo install --locked cargo-deny; \
     cargo install --locked cargo-nextest; \
     cargo install --locked cargo-readme; \
-    cargo install --locked tauri-cli --version 2.0.0-alpha.10; \
+    cargo install tauri-cli --git https://github.com/build-trust/tauri.git --branch add-url-scheme; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
     echo "deb http://deb.debian.org/debian bullseye main" >> /etc/apt/sources.list; \

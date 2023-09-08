@@ -88,7 +88,7 @@ runs:
       if: inputs.build_app == 'true'
       run: |
         set -x
-        cargo install --locked tauri-cli --version 2.0.0-alpha.10
+        cargo install tauri-cli --git https://github.com/build-trust/tauri.git --branch add-url-scheme
 
         cd implementations/rust/ockam/ockam_app/
         cargo tauri build --target ${{ inputs.target }}
