@@ -121,6 +121,25 @@ impl NodeManager {
             }
         })
     }
+
+    pub async fn delete_outlet(&mut self, alias: &str) -> Result<Option<OutletInfo>> {
+        info!(%alias, "Handling request to delete outlet portal");
+        if let Some(deleted_outlet) = self.registry.outlets.remove(alias) {
+            debug!(%alias, "Successfully removed outlet from node registry");
+            if let Err(e) = self
+                .tcp_transport
+                .stop_outlet(deleted_outlet.worker_addr.clone())
+                .await
+            {
+                warn!(%alias, %e, "Failed to stop outlet worker");
+            }
+            trace!(%alias, "Successfully stopped outlet");
+            Ok(Some(deleted_outlet))
+        } else {
+            warn!(%alias, "Outlet not found in the node registry");
+            Ok(None)
+        }
+    }
 }
 
 impl NodeManagerWorker {
@@ -451,42 +470,31 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn delete_outlet<'a>(
+    pub(super) async fn delete_outlet(
         &mut self,
         req: &Request,
-        alias: &'a str,
+        alias: &str,
     ) -> Result<ResponseBuilder<OutletStatus>, ResponseBuilder<Error>> {
         let mut node_manager = self.node_manager.write().await;
-
-        info!(%alias, "Handling request to delete outlet portal");
-        if let Some(outlet_to_delete) = node_manager.registry.outlets.remove(alias) {
-            debug!(%alias, "Successfully removed outlet from node registry");
-            match node_manager
-                .tcp_transport
-                .stop_outlet(outlet_to_delete.worker_addr.clone())
-                .await
-            {
-                Ok(_) => {
-                    debug!(%alias, "Successfully stopped outlet");
-                    Ok(Response::ok(req.id()).body(OutletStatus::new(
-                        outlet_to_delete.socket_addr,
-                        outlet_to_delete.worker_addr.clone(),
-                        alias,
-                        None,
-                    )))
+        let req_id = req.id();
+        match node_manager.delete_outlet(alias).await {
+            Ok(res) => match res {
+                Some(outlet_info) => Ok(Response::ok(req_id).body(OutletStatus::new(
+                    outlet_info.socket_addr,
+                    outlet_info.worker_addr.clone(),
+                    alias,
+                    None,
+                ))),
+                None => {
+                    let err_body = Error::new_without_path()
+                        .with_message(format!("Outlet with alias {alias} not found",));
+                    Err(Response::not_found(req_id).body(err_body))
                 }
-                Err(e) => {
-                    error!(%alias, "Failed to remove outlet from node registry");
-                    let err_body = Error::new(req.path())
-                        .with_message(format!("Failed to remove outlet with alias {alias}. {}", e));
-                    Err(Response::internal_error(req.id()).body(err_body))
-                }
+            },
+            Err(e) => {
+                let err_body = Error::new_without_path().with_message(format!("{e:?}"));
+                Err(Response::bad_request(req_id).body(err_body))
             }
-        } else {
-            error!(%alias, "Outlet not found in the node registry");
-            let err_body =
-                Error::new(req.path()).with_message(format!("Outlet with alias {alias} not found"));
-            Err(Response::not_found(req.id()).body(err_body))
         }
     }
 

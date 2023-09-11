@@ -1,7 +1,7 @@
 use miette::{IntoDiagnostic, WrapErr};
 use ockam_api::address::extract_address_value;
 use ockam_transport_tcp::resolve_peer;
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime};
 use tracing::{debug, error, info};
 
 use crate::app::events::system_tray_on_update;
@@ -14,8 +14,8 @@ const DEFAULT_HOST: &str = "localhost";
 
 /// Create a TCP outlet within the default node.
 #[tauri::command]
-pub async fn tcp_outlet_create(
-    app: AppHandle<Wry>,
+pub async fn tcp_outlet_create<R: Runtime>(
+    app: AppHandle<R>,
     service: String,
     address: String,
     email: String,
@@ -30,8 +30,8 @@ pub async fn tcp_outlet_create(
     Ok(())
 }
 
-async fn tcp_outlet_create_impl(
-    app: AppHandle<Wry>,
+async fn tcp_outlet_create_impl<R: Runtime>(
+    app: AppHandle<R>,
     service: String,
     address: String,
     email: Option<String>,
