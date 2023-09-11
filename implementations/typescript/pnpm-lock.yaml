@@ -32,8 +32,8 @@ importers:
   ockam/ockam_app:
     dependencies:
       '@tauri-apps/api':
-        specifier: 2.0.0-alpha.6
-        version: 2.0.0-alpha.6
+        specifier: 2.0.0-alpha.8
+        version: 2.0.0-alpha.8
       '@tauri-apps/plugin-window':
         specifier: 2.0.0-alpha.0
         version: 2.0.0-alpha.0
@@ -1020,8 +1020,8 @@ packages:
     engines: {node: '>= 14.6.0', npm: '>= 6.6.0', yarn: '>= 1.19.1'}
     dev: false
 
-  /@tauri-apps/api@2.0.0-alpha.6:
-    resolution: {integrity: sha512-ZMOc3eu9amwvkC6M69h3hWt4/EsFaAXmtkiw4xd2LN59/lTb4ZQiVfq2QKlRcu1rj3n/Tcr7U30ZopvHwXBGIg==}
+  /@tauri-apps/api@2.0.0-alpha.8:
+    resolution: {integrity: sha512-3hZ+7EzUA11KN+O/Y4KgmjR+ldhXLdNllkw//hv/AaNsktEopCRBuKfVRLzVK3yov+Z+GzgxqFlwgJ1v6g1iKw==}
     engines: {node: '>= 14.6.0', npm: '>= 6.6.0', yarn: '>= 1.19.1'}
     dev: false
 
