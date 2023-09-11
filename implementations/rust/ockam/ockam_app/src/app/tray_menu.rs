@@ -9,6 +9,7 @@ use crate::enroll::{build_enroll_section, build_user_info_section};
 use crate::invitations::{self, build_invitations_section};
 use crate::options::build_options_section;
 use crate::shared_service::build_shared_services_section;
+use crate::shared_service::relay::build_relay_section;
 use crate::{enroll, options, shared_service};
 
 pub async fn build_tray_menu<R: Runtime>(
@@ -17,8 +18,9 @@ pub async fn build_tray_menu<R: Runtime>(
 ) -> Menu<R> {
     let mut builder = MenuBuilder::new(app_handle);
 
+    builder = build_relay_section(app_handle, builder).await;
+    builder = build_enroll_section(app_handle, builder, payload.as_ref()).await;
     builder = build_user_info_section(app_handle, builder).await;
-    builder = build_enroll_section(app_handle, builder, &payload).await;
     builder = build_shared_services_section(app_handle, builder).await;
     builder = build_invitations_section(app_handle, builder).await;
     builder = build_options_section(app_handle, builder).await;

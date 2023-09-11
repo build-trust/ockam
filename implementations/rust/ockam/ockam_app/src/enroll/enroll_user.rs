@@ -34,12 +34,8 @@ pub async fn enroll_user<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     app_state.reset_node_manager().await?;
     app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
     app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
-    shared_service::relay::create_relay(
-        app_state.context(),
-        app_state.state().await,
-        app_state.node_manager_worker().await,
-    )
-    .await;
+    system_tray_on_update(&app);
+    shared_service::relay::create_relay(app);
     Ok(())
 }
 
@@ -62,7 +58,7 @@ async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState)
 
     // retrieve the user information
     let user_info = oidc_service.get_user_info(&token).await?;
-    info!(?user_info, "Email verification succeeded");
+    info!(?user_info, "User info retrieved successfully");
     let cli_state = app_state.state().await;
     cli_state
         .users_info

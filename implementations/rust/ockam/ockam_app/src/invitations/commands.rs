@@ -11,9 +11,10 @@ use ockam_api::cloud::share::{AcceptInvitation, CreateServiceInvitation, Invitat
 use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
 use ockam_api::nodes::models::portal::InletStatus;
 
-use crate::app::{AppState, NODE_NAME, PROJECT_NAME};
+use crate::app::{AppState, PROJECT_NAME};
 use crate::cli::cli_bin;
 use crate::projects::commands::{create_enrollment_ticket, list_projects_with_admin};
+use crate::shared_service::relay::RELAY_NAME;
 
 use super::{events::REFRESHED_INVITATIONS, state::SyncState};
 
@@ -331,8 +332,8 @@ impl InletDataFromInvitation {
                     let project_id = project.id();
                     let local_node_name = format!("ockam_app_{project_id}_{service_name}");
                     let service_route = format!(
-                        "/project/{project_id}/service/forward_to_{}/secure/api/service/{service_name}",
-                        NODE_NAME
+                        "/project/{project_id}/service/{}/secure/api/service/{service_name}",
+                        *RELAY_NAME
                     );
 
                     Ok(Some(Self {
