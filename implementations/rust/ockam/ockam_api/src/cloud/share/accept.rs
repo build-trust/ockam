@@ -52,7 +52,7 @@ mod node {
         ) -> Result<Vec<u8>> {
             let req_builder = Request::post("/v0/redeem_invite").body(req_wrapper.req);
 
-            self.request_controller(ctx, "accept_share", None, API_SERVICE, req_builder, None)
+            self.request_controller(ctx, API_SERVICE, req_builder, None)
                 .await
         }
     }
