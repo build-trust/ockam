@@ -19,8 +19,6 @@ check_no_std:
 	# no_std example project
 	cd examples/rust/example_projects/no_std
 	cargo check --example hello
-check_tag:
-	cargo check --locked --features tag
 check_cargo_update:
 	cargo --version
 	# TODO: uncomment when tauri version is updated
@@ -99,7 +97,7 @@ format:
 
 .PHONY:
 	build_docs build_examples build_packages build_release build_release_% build_% \
-	check check_no_std check_tag check_cargo_update \
+	check check_no_std check_cargo_update \
 	test test_% nextest nextest_%\
 	lint lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy lint_cargo_toml_files lint_cargo_readme lint_cargo_readme_% lint_cargo_toml_files \
 	clean clean_% very_clean format

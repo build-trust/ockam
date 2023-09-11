@@ -25,7 +25,6 @@ std = [
   "tinyvec/std",
   "tracing/std",
 ]
-tag = ["cddl-cat", "once_cell", "ockam_core/tag"]
 vault-storage = ["ockam_vault/storage"]
 
 [dependencies]
@@ -33,7 +32,6 @@ anyhow = "1"
 aws-config = { version = "0.56.1", default-features = false, features = ["rustls"] }
 base64-url = "2.0.0"
 bytes = { version = "1.5.0", default-features = false, features = ["serde"] }
-cddl-cat = { version = "0.6.1", optional = true }
 either = { version = "1.9.0", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
@@ -42,7 +40,6 @@ lru = "0.11.1"
 miette = "5.10.0"
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 nix = { version = "0.27", features = ["signal"] }
-once_cell = { version = "1", optional = true, default-features = false }
 open = "5.0.0"
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
@@ -107,6 +104,7 @@ indexmap = "2.0.1"
 mockall = "0.11"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
+once_cell = { version = "1", default-features = false }
 quickcheck = "1.0.1"
 tokio = { version = "1.31.0", features = ["full"] }
 uuid = "1.4.1"

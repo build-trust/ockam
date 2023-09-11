@@ -1,8 +1,6 @@
 use minicbor::{Decode, Encode};
 
 use ockam_core::env::{get_env_with_default, FromString};
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_multiaddr::MultiAddr;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
@@ -27,20 +25,13 @@ pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CloudRequestWrapper<T> {
-    #[cfg(feature = "tag")]
-    #[n(0)] pub tag: TypeTag<8956240>,
     #[b(1)] pub req: T,
     #[n(3)] pub identity_name: Option<String>,
 }
 
 impl<T> CloudRequestWrapper<T> {
     pub fn new(req: T, identity_name: Option<String>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            req,
-            identity_name,
-        }
+        Self { req, identity_name }
     }
 }
 

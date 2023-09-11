@@ -3,8 +3,6 @@ use crate::nodes::service::ApiTransport;
 use minicbor::{Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_core::{Error, Result};
 use ockam_multiaddr::proto::Worker;
 use ockam_multiaddr::MultiAddr;
@@ -15,8 +13,6 @@ use std::net::SocketAddrV4;
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct TransportStatus {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1581592>,
     /// The type of transport to create
     #[n(1)] pub tt: TransportType,
     /// The mode the transport should operate in
@@ -34,8 +30,6 @@ pub struct TransportStatus {
 impl TransportStatus {
     pub fn new(api_transport: ApiTransport) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             tt: api_transport.tt,
             tm: api_transport.tm,
             socket_addr: api_transport.socket_address.to_string(),
@@ -68,17 +62,11 @@ impl TransportStatus {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct TransportList {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<5212817>,
     #[n(1)] pub list: Vec<TransportStatus>
 }
 
 impl TransportList {
     pub fn new(list: Vec<TransportStatus>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            list,
-        }
+        Self { list }
     }
 }

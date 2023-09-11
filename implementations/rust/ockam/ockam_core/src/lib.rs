@@ -75,22 +75,20 @@ pub mod hex_encoding;
 /// Environmental variables
 pub mod env;
 
-mod cbor_utils;
+mod cbor;
 mod error;
 mod message;
 mod processor;
 mod routing;
-mod type_tag;
 mod uint;
 mod worker;
 
 pub use access_control::*;
-pub use cbor_utils::*;
+pub use cbor::*;
 pub use error::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
-pub use type_tag::*;
 pub use uint::*;
 pub use worker::*;
 

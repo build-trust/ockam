@@ -1,8 +1,6 @@
 use crate::compat::rand::distributions::{Distribution, Standard};
 use crate::compat::rand::Rng;
 use crate::compat::string::{String, ToString};
-#[cfg(feature = "tag")]
-use crate::TypeTag;
 use core::fmt;
 use core::fmt::Formatter;
 use minicbor::{Decode, Encode};
@@ -13,9 +11,6 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct FlowControlId {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)] tag: TypeTag<6020561>,
     #[n(1)] id: String
 }
 
@@ -23,8 +18,6 @@ impl FlowControlId {
     /// Constructor
     fn new(str: &str) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             id: str.to_string(),
         }
     }
@@ -51,10 +44,6 @@ impl Distribution<FlowControlId> for Standard {
 
 impl From<String> for FlowControlId {
     fn from(value: String) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            id: value,
-        }
+        Self { id: value }
     }
 }
