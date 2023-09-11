@@ -27,7 +27,9 @@ use ockam_multiaddr::{
     MultiAddr, Protocol,
 };
 
-use crate::node::util::{start_embedded_node, start_embedded_node_with_vault_and_identity};
+use crate::node::util::{
+    start_node_manager_worker, start_node_manager_worker_with_vault_and_identity,
+};
 use crate::util::api::TrustContextOpts;
 use crate::{CommandGlobalOpts, Result};
 
@@ -58,13 +60,13 @@ pub struct Rpc {
 impl Rpc {
     /// Creates a new RPC to send a request to an embedded node.
     pub async fn embedded(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Rpc> {
-        let node_manager = start_embedded_node(ctx, opts, None).await?;
+        let node_name = start_node_manager_worker(ctx, opts, None).await?;
         let ctx_clone = ctx.async_try_clone().await?;
         Ok(Rpc {
             ctx: ctx_clone,
             buf: Vec::new(),
             opts: opts.clone(),
-            node_name: node_manager.node_name(),
+            node_name,
             to: NODEMANAGER_ADDR.into(),
             timeout: None,
             mode: RpcMode::Embedded,
@@ -77,13 +79,13 @@ impl Rpc {
         opts: &CommandGlobalOpts,
         trust_context_opts: &TrustContextOpts,
     ) -> Result<Rpc> {
-        let node_manager = start_embedded_node(ctx, opts, Some(trust_context_opts)).await?;
+        let node_name = start_node_manager_worker(ctx, opts, Some(trust_context_opts)).await?;
         let ctx_clone = ctx.async_try_clone().await?;
         Ok(Rpc {
             ctx: ctx_clone,
             buf: Vec::new(),
             opts: opts.clone(),
-            node_name: node_manager.node_name(),
+            node_name,
             to: NODEMANAGER_ADDR.into(),
             timeout: None,
             mode: RpcMode::Embedded,
@@ -97,7 +99,7 @@ impl Rpc {
         identity: String,
         trust_context_opts: &TrustContextOpts,
     ) -> Result<Rpc> {
-        let node_manager = start_embedded_node_with_vault_and_identity(
+        let node_name = start_node_manager_worker_with_vault_and_identity(
             ctx,
             &opts.state,
             None,
@@ -111,7 +113,7 @@ impl Rpc {
             ctx: ctx_clone,
             buf: Vec::new(),
             opts: opts.clone(),
-            node_name: node_manager.node_name(),
+            node_name,
             to: NODEMANAGER_ADDR.into(),
             timeout: None,
             mode: RpcMode::Embedded,
