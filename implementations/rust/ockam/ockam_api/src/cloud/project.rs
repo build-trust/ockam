@@ -314,15 +314,8 @@ mod node {
             let req_builder =
                 Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
 
-            self.request_controller(
-                ctx,
-                "create_project",
-                "create_project",
-                "projects",
-                req_builder,
-                req_wrapper.identity_name,
-            )
-            .await
+            self.request_controller(ctx, "projects", req_builder, req_wrapper.identity_name)
+                .await
         }
 
         pub async fn list_projects(&self, ctx: &Context) -> Result<Vec<Project>> {
@@ -334,7 +327,7 @@ mod node {
             trace!(target: TARGET, "listing projects");
             let req_builder = Request::get("/v0");
 
-            self.request_controller(ctx, "list_projects", None, "projects", req_builder, None)
+            self.request_controller(ctx, "projects", req_builder, None)
                 .await
         }
 
@@ -388,7 +381,7 @@ mod node {
             trace!(target: TARGET, %project_id, "getting project");
             let req_builder = Request::get(format!("/v0/{project_id}"));
 
-            self.request_controller(ctx, "get_project", None, "projects", req_builder, None)
+            self.request_controller(ctx, "projects", req_builder, None)
                 .await
         }
 
@@ -400,7 +393,7 @@ mod node {
             trace!(target: TARGET, "getting project version");
             let req_builder = Request::get("");
 
-            self.request_controller(ctx, "version_info", None, "version_info", req_builder, None)
+            self.request_controller(ctx, "version_info", req_builder, None)
                 .await
         }
 
@@ -425,7 +418,7 @@ mod node {
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
             let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
 
-            self.request_controller(ctx, "delete_project", None, "projects", req_builder, None)
+            self.request_controller(ctx, "projects", req_builder, None)
                 .await
         }
     }

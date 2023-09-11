@@ -120,7 +120,7 @@ mod node {
             trace!(target: TARGET, project_id, "listing addons");
             let req_builder = Request::get(format!("/v0/{project_id}/addons"));
 
-            self.request_controller(ctx, "list_addons", None, API_SERVICE, req_builder, None)
+            self.request_controller(ctx, API_SERVICE, req_builder, None)
                 .await
         }
 
@@ -165,7 +165,7 @@ mod node {
             ))
             .body(req_wrapper.req);
 
-            self.request_controller(ctx, "configure_addon", None, API_SERVICE, req_builder, None)
+            self.request_controller(ctx, API_SERVICE, req_builder, None)
                 .await
         }
 
@@ -181,7 +181,7 @@ mod node {
             let req_builder =
                 Request::post(format!("/v1/projects/{project_id}/disable_addon")).body(req_body);
 
-            self.request_controller(ctx, "disable_addon", None, API_SERVICE, req_builder, None)
+            self.request_controller(ctx, API_SERVICE, req_builder, None)
                 .await
         }
     }
