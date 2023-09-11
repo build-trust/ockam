@@ -13,9 +13,6 @@ use crate::{PublicKeyVec, SecretType};
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct PublicKey {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)] tag: TypeTag<8922437>,
     #[b(1)] data: PublicKeyVec,
     #[n(2)] stype: SecretType,
 }
@@ -43,12 +40,7 @@ impl PublicKey {
 impl PublicKey {
     /// Create a new public key.
     pub fn new(data: PublicKeyVec, stype: SecretType) -> Self {
-        PublicKey {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            data,
-            stype,
-        }
+        PublicKey { data, stype }
     }
 }
 

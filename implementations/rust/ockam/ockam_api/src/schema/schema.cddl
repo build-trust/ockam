@@ -39,7 +39,6 @@ space_name = text
 ;;; Projects ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 project = {
-   ?0: 9056532,
     1: project_id,
     2: project_name,
     3: space_name,
@@ -234,10 +233,19 @@ onetime_code = {
 
 ;;; Subscription ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-activate_request = {
-    ?0: 3888657,
-     1: text,       ;; space_id
+subscription = {
+     1: text,       ;; id
+     2: text,       ;; marketplace
+     3: text,       ;; status
+     4: text,       ;; entitlements
+     5: text,       ;; metadata
+     6: text,       ;; contact_info
+    ?7: text,       ;; space_id
+}
+
+activate_subscription = {
+    ?1: text,       ;; space_id
      2: text,       ;; subscription_data
-     3: text,       ;; space_name
-     4: [+ text]    ;; owner_emails
+    ?3: text,       ;; space_name
+    ?4: [+ text]    ;; owner_emails
 }

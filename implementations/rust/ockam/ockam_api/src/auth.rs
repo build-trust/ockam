@@ -115,8 +115,8 @@ impl Client {
     pub async fn list(&mut self) -> ockam_core::Result<Vec<(Identifier, AttributesEntry)>> {
         let label = "list known identities";
         let req = Request::get("/");
-        self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
-        let a: Option<Vec<(IdentityIdentifier, AttributesEntry)>> =
+        self.buf = request(&self.ctx, self.route.clone(), req).await?;
+        let a: Option<Vec<(Identifier, AttributesEntry)>> =
             decode_option(label, "attribute", &self.buf)?;
         Ok(a.unwrap())
     }

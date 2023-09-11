@@ -1,5 +1,3 @@
-#[cfg(feature = "tag")]
-use crate::TypeTag;
 use crate::{
     compat::{collections::VecDeque, string::String, vec::Vec},
     Address, Result, RouteError, TransportType,
@@ -13,9 +11,6 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Route {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)] tag: TypeTag<2409749>,
     #[n(1)] inner: VecDeque<Address>,
 }
 
@@ -277,8 +272,6 @@ impl Display for Route {
 impl From<RouteBuilder<'_>> for Route {
     fn from(RouteBuilder { ref inner, .. }: RouteBuilder) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             inner: inner.clone(),
         }
     }
@@ -485,8 +478,6 @@ impl Drop for RouteBuilder<'_> {
     fn drop(&mut self) {
         if self.write_back.is_some() {
             **self.write_back.as_mut().unwrap() = Route {
-                #[cfg(feature = "tag")]
-                tag: TypeTag,
                 inner: self.inner.clone(),
             };
         }

@@ -1,16 +1,10 @@
 use minicbor::{Decode, Encode};
 use serde::Serialize;
 
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
-
 #[derive(Encode, Decode, Serialize, Debug, Clone)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Space {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)] pub tag: TypeTag<7574645>,
     #[n(1)] pub id: String,
     #[n(2)] pub name: String,
     #[n(3)] pub users: Vec<String>,
@@ -21,20 +15,13 @@ pub struct Space {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSpace {
-    #[cfg(feature = "tag")]
-    #[n(0)] pub tag: TypeTag<2321503>,
     #[n(1)] pub name: String,
     #[n(2)] pub users: Vec<String>,
 }
 
 impl CreateSpace {
     pub fn new(name: String, users: Vec<String>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            name,
-            users,
-        }
+        Self { name, users }
     }
 }
 
@@ -144,80 +131,42 @@ mod node {
 
 #[cfg(test)]
 pub mod tests {
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
 
     use crate::cloud::space::CreateSpace;
+    use crate::schema::tests::validate_with_schema;
 
     use super::*;
 
-    mod schema {
-        use cddl_cat::validate_cbor_bytes;
-        use quickcheck::{quickcheck, TestResult};
-
-        use crate::schema::SCHEMA;
-
-        use super::*;
-
-        #[derive(Debug, Clone)]
-        struct Sp(Space);
-
-        impl Arbitrary for Sp {
-            fn arbitrary(g: &mut Gen) -> Self {
-                Sp(Space {
-                    #[cfg(feature = "tag")]
-                    tag: Default::default(),
-                    id: String::arbitrary(g),
-                    name: String::arbitrary(g),
-                    users: vec![String::arbitrary(g), String::arbitrary(g)],
-                })
-            }
+    quickcheck! {
+        fn space(s: Space) -> TestResult {
+            validate_with_schema("space", s)
         }
 
-        #[derive(Debug, Clone)]
-        struct CSp(CreateSpace);
-
-        impl Arbitrary for CSp {
-            fn arbitrary(g: &mut Gen) -> Self {
-                CSp(CreateSpace {
-                    #[cfg(feature = "tag")]
-                    tag: Default::default(),
-                    name: String::arbitrary(g),
-                    users: vec![String::arbitrary(g), String::arbitrary(g)],
-                })
-            }
+        fn spaces(ss: Vec<Space>) -> TestResult {
+            validate_with_schema("spaces", ss)
         }
 
-        quickcheck! {
-            fn space(o: Sp) -> TestResult {
-                let cbor = minicbor::to_vec(o.0).unwrap();
-                if let Err(e) = validate_cbor_bytes("space", SCHEMA, &cbor) {
-                    return TestResult::error(e.to_string())
-                }
-                TestResult::passed()
+        fn create_space(cs: CreateSpace) -> TestResult {
+            validate_with_schema("create_space", cs)
+        }
+    }
+
+    impl Arbitrary for Space {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Space {
+                id: String::arbitrary(g),
+                name: String::arbitrary(g),
+                users: vec![String::arbitrary(g), String::arbitrary(g)],
             }
+        }
+    }
 
-            fn spaces(o: Vec<Sp>) -> TestResult {
-                let empty: Vec<Space> = vec![];
-                let cbor = minicbor::to_vec(empty).unwrap();
-                if let Err(e) = validate_cbor_bytes("spaces", SCHEMA, &cbor) {
-                    return TestResult::error(e.to_string())
-                }
-                TestResult::passed();
-
-                let o: Vec<Space> = o.into_iter().map(|p| p.0).collect();
-                let cbor = minicbor::to_vec(o).unwrap();
-                if let Err(e) = validate_cbor_bytes("spaces", SCHEMA, &cbor) {
-                    return TestResult::error(e.to_string())
-                }
-                TestResult::passed()
-            }
-
-            fn create_space(o: CSp) -> TestResult {
-                let cbor = minicbor::to_vec(o.0).unwrap();
-                if let Err(e) = validate_cbor_bytes("create_space", SCHEMA, &cbor) {
-                    return TestResult::error(e.to_string())
-                }
-                TestResult::passed()
+    impl Arbitrary for CreateSpace {
+        fn arbitrary(g: &mut Gen) -> Self {
+            CreateSpace {
+                name: String::arbitrary(g),
+                users: vec![String::arbitrary(g), String::arbitrary(g)],
             }
         }
     }

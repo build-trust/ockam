@@ -1,7 +1,5 @@
 use cfg_if::cfg_if;
 
-#[cfg(feature = "tag")]
-use crate::TypeTag;
 cfg_if! {
     if #[cfg(not(feature = "alloc"))] {
         /// Secret Key Vector. The maximum size is 32 bytes.

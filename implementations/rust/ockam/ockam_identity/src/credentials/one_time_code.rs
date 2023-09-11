@@ -16,8 +16,6 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OneTimeCode {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<5112299>,
     #[n(1)] code: ByteArray<32>,
 }
 
@@ -39,11 +37,7 @@ impl OneTimeCode {
 impl From<[u8; 32]> for OneTimeCode {
     /// Create a OneTimeCode from a byte slice
     fn from(code: [u8; 32]) -> Self {
-        OneTimeCode {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            code: code.into(),
-        }
+        OneTimeCode { code: code.into() }
     }
 }
 

@@ -4,15 +4,10 @@ use ockam_core::CowStr;
 use std::collections::HashMap;
 use std::time::Duration;
 
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
-
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AddMember<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<2820828>,
     #[n(1)] member: Identifier,
     #[b(2)] attributes: HashMap<CowStr<'a>, CowStr<'a>>,
 }
@@ -20,8 +15,6 @@ pub struct AddMember<'a> {
 impl<'a> AddMember<'a> {
     pub fn new(member: Identifier) -> Self {
         AddMember {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             member,
             attributes: HashMap::new(),
         }
@@ -48,8 +41,6 @@ impl<'a> AddMember<'a> {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateToken<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<2502742>,
     #[b(1)] attributes: HashMap<CowStr<'a>, CowStr<'a>>,
     #[b(2)] token_duration_secs: Option<u64>
 }
@@ -58,8 +49,6 @@ impl<'a> CreateToken<'a> {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         CreateToken {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             attributes: HashMap::new(),
             token_duration_secs: None,
         }

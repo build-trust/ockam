@@ -1,9 +1,6 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
-
 use crate::nodes::NodeManager;
 
 #[derive(Encode, Decode, Debug)]
@@ -11,8 +8,6 @@ use crate::nodes::NodeManager;
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ActivateSubscription {
-    #[cfg(feature = "tag")]
-    #[n(0)] pub tag: TypeTag<3888657>,
     #[n(1)] pub space_id: Option<String>,
     #[n(2)] pub subscription_data: String,
     #[n(3)] pub space_name: Option<String>,
@@ -23,8 +18,6 @@ impl ActivateSubscription {
     /// Activates a subscription for an existing space
     pub fn existing<S: Into<String>>(space_id: S, subscription_data: S) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             space_id: Some(space_id.into()),
             subscription_data: subscription_data.into(),
             space_name: None,
@@ -40,8 +33,6 @@ impl ActivateSubscription {
         subscription_data: S,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             space_id: None,
             subscription_data: subscription_data.into(),
             space_name: Some(space_name.into()),
@@ -54,10 +45,6 @@ impl ActivateSubscription {
 #[cfg_attr(test, derive(Clone))]
 #[cbor(map)]
 pub struct Subscription {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)]
-    pub tag: TypeTag<3783606>,
     #[n(1)]
     pub id: String,
     #[n(2)]
@@ -82,74 +69,6 @@ mod node {
 
     const TARGET: &str = "ockam_api::cloud::subscription";
     const API_SERVICE: &str = "subscriptions";
-
-    impl NodeManagerWorker {
-        pub(crate) async fn unsubscribe(&mut self, ctx: &mut Context, id: &str) -> Result<Vec<u8>> {
-            trace!(target: TARGET, subscription = %id, "unsubscribing");
-            let req_builder = Request::put(format!("/v0/{id}/unsubscribe"));
-
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
-        }
-
-        pub(crate) async fn update_subscription_space(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            trace!(target: TARGET, subscription = %id, "updating subscription space");
-            let req_builder = Request::put(format!("/v0/{id}/space_id")).body(req_wrapper.req);
-
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
-        }
-        pub(crate) async fn update_subscription_contact_info(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            trace!(target: TARGET, subscription = %id, "updating subscription contact info");
-            let req_builder = Request::put(format!("/v0/{id}/contact_info")).body(req_wrapper.req);
-
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
-        }
-        pub(crate) async fn list_subscriptions(&mut self, ctx: &mut Context) -> Result<Vec<u8>> {
-            trace!(target: TARGET, "listing subscriptions");
-            let req_builder = Request::get("/v0/");
-
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
-        }
-        pub(crate) async fn get_subscription(
-            &mut self,
-            ctx: &mut Context,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            trace!(target: TARGET, subscription = %id, "getting subscription");
-            let req_builder = Request::get(format!("/v0/{id}"));
-
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
-        }
-        pub(crate) async fn activate_subscription(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<ActivateSubscription> = dec.decode()?;
-            let req_body = req_wrapper.req;
-            trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
-            let req_builder = Request::post("/v0/activate").body(req_body);
-
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
-        }
-    }
 
     impl NodeManager {
         pub async fn activate_subscription(
@@ -246,6 +165,49 @@ mod node {
                 .into_iter()
                 .find(|s| s.space_id == Some(space_id.clone()));
             Ok(subscription)
+        }
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+
+    use crate::schema::tests::validate_with_schema;
+
+    use super::*;
+
+    quickcheck! {
+        fn subcription(s: Subscription) -> TestResult {
+            validate_with_schema("subscription", s)
+        }
+
+        fn activate_subcription(s: ActivateSubscription) -> TestResult {
+            validate_with_schema("activate_subscription", s)
+        }
+    }
+
+    impl Arbitrary for Subscription {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Subscription {
+                id: String::arbitrary(g),
+                marketplace: String::arbitrary(g),
+                status: String::arbitrary(g),
+                entitlements: String::arbitrary(g),
+                metadata: String::arbitrary(g),
+                contact_info: String::arbitrary(g),
+                space_id: bool::arbitrary(g).then(|| String::arbitrary(g)),
+            }
+        }
+    }
+
+    impl Arbitrary for ActivateSubscription {
+        fn arbitrary(g: &mut Gen) -> Self {
+            ActivateSubscription::create(
+                String::arbitrary(g),
+                &[String::arbitrary(g), String::arbitrary(g)],
+                String::arbitrary(g),
+            )
         }
     }
 }

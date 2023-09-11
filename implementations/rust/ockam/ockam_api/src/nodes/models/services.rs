@@ -1,19 +1,14 @@
 use minicbor::{Decode, Encode};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::Address;
+use ockam_multiaddr::MultiAddr;
 
 use serde::Serialize;
-
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
-use ockam_multiaddr::MultiAddr;
 
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartServiceRequest<T> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<3470984>,
     #[n(1)] addr: String,
     #[n(2)] req: T,
 }
@@ -21,8 +16,6 @@ pub struct StartServiceRequest<T> {
 impl<T> StartServiceRequest<T> {
     pub fn new<S: Into<String>>(req: T, addr: S) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.into(),
             req,
         }
@@ -41,18 +34,12 @@ impl<T> StartServiceRequest<T> {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteServiceRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<9359178>,
     #[n(1)] addr: String,
 }
 
 impl DeleteServiceRequest {
     pub fn new<S: Into<String>>(addr: S) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr: addr.into(),
-        }
+        Self { addr: addr.into() }
     }
 
     pub fn address(&self) -> Address {
@@ -189,18 +176,12 @@ impl StartKafkaDirectRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartIdentityServiceRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<6129106>,
     #[n(1)] pub addr: String,
 }
 
 impl StartIdentityServiceRequest {
     pub fn new(addr: impl Into<String>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr: addr.into(),
-        }
+        Self { addr: addr.into() }
     }
 }
 
@@ -209,18 +190,12 @@ impl StartIdentityServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartAuthenticatedServiceRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<5179596>,
     #[n(1)] pub addr: String,
 }
 
 impl StartAuthenticatedServiceRequest {
     pub fn new(addr: impl Into<String>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr: addr.into(),
-        }
+        Self { addr: addr.into() }
     }
 }
 
@@ -229,18 +204,12 @@ impl StartAuthenticatedServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartUppercaseServiceRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<8177400>,
     #[n(1)] pub addr: String,
 }
 
 impl StartUppercaseServiceRequest {
     pub fn new(addr: impl Into<String>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr: addr.into(),
-        }
+        Self { addr: addr.into() }
     }
 }
 
@@ -249,18 +218,12 @@ impl StartUppercaseServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartEchoerServiceRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<7636656>,
     #[n(1)] pub addr: String,
 }
 
 impl StartEchoerServiceRequest {
     pub fn new(addr: impl Into<String>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr: addr.into(),
-        }
+        Self { addr: addr.into() }
     }
 }
 
@@ -269,18 +232,12 @@ impl StartEchoerServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartHopServiceRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<7361428>,
     #[n(1)] pub addr: String,
 }
 
 impl StartHopServiceRequest {
     pub fn new(addr: impl Into<String>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr: addr.into(),
-        }
+        Self { addr: addr.into() }
     }
 }
 
@@ -288,8 +245,6 @@ impl StartHopServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartAuthenticatorRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<2749734>,
     #[n(1)] addr: String,
     #[n(3)] proj: Vec<u8>,
     // FIXME: test id old format still matches with this
@@ -298,8 +253,6 @@ pub struct StartAuthenticatorRequest {
 impl StartAuthenticatorRequest {
     pub fn new(addr: impl Into<String>, proj: impl Into<Vec<u8>>) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.into(),
             proj: proj.into(),
         }
@@ -318,18 +271,12 @@ impl StartAuthenticatorRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartVerifierService {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<9580740>,
     #[n(1)] addr: String,
 }
 
 impl StartVerifierService {
     pub fn new(addr: impl Into<String>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr: addr.into(),
-        }
+        Self { addr: addr.into() }
     }
 
     pub fn address(&self) -> &str {
@@ -341,8 +288,6 @@ impl StartVerifierService {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartCredentialsService {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<6467937>,
     #[n(1)] public_identity: String,
     #[n(2)] addr: String,
     #[n(3)] oneway: bool,
@@ -351,8 +296,6 @@ pub struct StartCredentialsService {
 impl StartCredentialsService {
     pub fn new(public_identity: impl Into<String>, addr: impl Into<String>, oneway: bool) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             public_identity: public_identity.into(),
             addr: addr.into(),
             oneway,
@@ -377,8 +320,6 @@ impl StartCredentialsService {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartOktaIdentityProviderRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<2291842>,
     #[n(1)] addr: String,
     #[n(2)] tenant_base_url: String,
     #[n(3)] certificate: String,
@@ -395,8 +336,6 @@ impl StartOktaIdentityProviderRequest {
         proj: impl Into<Vec<u8>>,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.into(),
             tenant_base_url: tenant_base_url.into(),
             certificate: certificate.into(),
@@ -426,9 +365,6 @@ impl StartOktaIdentityProviderRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ServiceStatus {
-    #[cfg(feature = "tag")]
-    #[serde(skip_serializing)]
-    #[n(0)] tag: TypeTag<8542064>,
     #[n(2)] pub addr: String,
     #[n(3)] pub service_type: String,
 }
@@ -436,8 +372,6 @@ pub struct ServiceStatus {
 impl ServiceStatus {
     pub fn new(addr: impl Into<String>, service_type: impl Into<String>) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.into(),
             service_type: service_type.into(),
         }
@@ -449,18 +383,11 @@ impl ServiceStatus {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ServiceList {
-    #[cfg(feature = "tag")]
-    #[serde(skip_serializing)]
-    #[n(0)] tag: TypeTag<9587601>,
     #[n(1)] pub list: Vec<ServiceStatus>
 }
 
 impl ServiceList {
     pub fn new(list: Vec<ServiceStatus>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            list,
-        }
+        Self { list }
     }
 }

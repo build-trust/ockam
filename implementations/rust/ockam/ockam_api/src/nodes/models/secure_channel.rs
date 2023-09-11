@@ -5,8 +5,6 @@ use serde::Serialize;
 
 use ockam::identity::Identifier;
 use ockam_core::flow_control::FlowControlId;
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_core::{route, Address, Result};
 use ockam_multiaddr::MultiAddr;
 
@@ -28,8 +26,6 @@ pub enum CredentialExchangeMode {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<6300395>,
     #[n(1)] pub addr: String,
     #[n(2)] pub authorized_identifiers: Option<Vec<String>>,
     #[n(3)] pub credential_exchange_mode: CredentialExchangeMode,
@@ -47,8 +43,6 @@ impl CreateSecureChannelRequest {
         credential_name: Option<String>,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.to_string(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
@@ -65,8 +59,6 @@ impl CreateSecureChannelRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelResponse {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<6056513>,
     #[n(1)] pub addr: Address,
     #[n(2)] pub flow_control_id: FlowControlId,
 }
@@ -74,8 +66,6 @@ pub struct CreateSecureChannelResponse {
 impl CreateSecureChannelResponse {
     pub fn new(addr: &Address, flow_control_id: &FlowControlId) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.to_string().into(),
             flow_control_id: flow_control_id.clone(),
         }
@@ -96,8 +86,6 @@ impl CreateSecureChannelResponse {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelListenerRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<8112242>,
     #[n(1)] pub addr: String,
     #[n(2)] pub authorized_identifiers: Option<Vec<String>>,
     #[n(3)] pub vault: Option<String>,
@@ -112,8 +100,6 @@ impl CreateSecureChannelListenerRequest {
         identity: Option<String>,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.to_string(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
@@ -128,16 +114,12 @@ impl CreateSecureChannelListenerRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelListenerRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<8293631>,
     #[n(1)] pub addr: String,
 }
 
 impl DeleteSecureChannelListenerRequest {
     pub fn new(addr: &Address) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.to_string(),
         }
     }
@@ -148,18 +130,12 @@ impl DeleteSecureChannelListenerRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelListenerResponse {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<8642885>,
     #[n(1)] pub addr: Address,
 }
 
 impl DeleteSecureChannelListenerResponse {
     pub fn new(addr: Address) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            addr,
-        }
+        Self { addr }
     }
 }
 
@@ -168,16 +144,12 @@ impl DeleteSecureChannelListenerResponse {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelListenerRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<3538219>,
     #[n(1)] pub addr: String,
 }
 
 impl ShowSecureChannelListenerRequest {
     pub fn new(addr: &Address) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: addr.to_string(),
         }
     }
@@ -188,8 +160,6 @@ impl ShowSecureChannelListenerRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelListenerResponse {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<9365445>,
     #[n(1)] pub addr: Address,
     #[n(2)] pub flow_control_id: FlowControlId,
 }
@@ -197,8 +167,6 @@ pub struct ShowSecureChannelListenerResponse {
 impl ShowSecureChannelListenerResponse {
     pub(crate) fn new(info: &SecureChannelListenerInfo) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addr: info.listener().address().to_string().into(),
             flow_control_id: info.listener().flow_control_id().clone(),
         }
@@ -209,16 +177,12 @@ impl ShowSecureChannelListenerResponse {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<8472592>,
     #[n(1)] pub channel: String,
 }
 
 impl DeleteSecureChannelRequest {
     pub fn new(channel: &Address) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             channel: channel.to_string(),
         }
     }
@@ -228,16 +192,12 @@ impl DeleteSecureChannelRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelResponse {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<6953395>,
     #[n(1)] pub channel: Option<String>,
 }
 
 impl DeleteSecureChannelResponse {
     pub fn new(channel: Option<Address>) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             channel: channel.map(|ch| ch.to_string()),
         }
     }
@@ -247,16 +207,12 @@ impl DeleteSecureChannelResponse {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelRequest {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<3277982>,
     #[n(1)] pub channel: String,
 }
 
 impl ShowSecureChannelRequest {
     pub fn new(channel: &Address) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             channel: channel.to_string(),
         }
     }
@@ -266,9 +222,6 @@ impl ShowSecureChannelRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelResponse {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)] tag: TypeTag<4566220>,
     #[n(1)] pub channel: Option<String>,
     #[n(2)] pub route: Option<String>,
     #[n(3)] pub authorized_identifiers: Option<Vec<String>>,
@@ -278,8 +231,6 @@ pub struct ShowSecureChannelResponse {
 impl ShowSecureChannelResponse {
     pub fn new(info: Option<&SecureChannelInfo>) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             channel: info.map(|info| info.sc().encryptor_address().to_string()),
             route: info.map(|info| info.route().to_string()),
             authorized_identifiers: info
@@ -297,17 +248,11 @@ impl ShowSecureChannelResponse {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct SecureChannelListenersList {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<5141124>,
     #[n(1)] pub list: Vec<ShowSecureChannelListenerResponse>,
 }
 
 impl SecureChannelListenersList {
     pub fn new(list: Vec<ShowSecureChannelListenerResponse>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            list,
-        }
+        Self { list }
     }
 }

@@ -10,9 +10,6 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::{async_trait, Address};
-
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_node::Context;
 
 mod metadata_interceptor;
@@ -82,8 +79,6 @@ impl KafkaMessageInterceptor for InletInterceptorImpl {
 #[cbor(map)]
 ///Wraps the content within every record batch
 struct MessageWrapper {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1652221>,
     #[n(1)] consumer_decryptor_address: Address,
     #[n(2)] content: Vec<u8>
 }

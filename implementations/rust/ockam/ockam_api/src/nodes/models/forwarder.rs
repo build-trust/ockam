@@ -4,8 +4,6 @@ use ockam::identity::Identifier;
 use ockam::remote::RemoteForwarderInfo;
 use ockam::route;
 use ockam_core::flow_control::FlowControlId;
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
@@ -16,8 +14,6 @@ use crate::route_to_multiaddr;
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateForwarder {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<3386455>,
     /// Address to create forwarder at.
     #[n(1)] address: MultiAddr,
     /// Forwarder alias.
@@ -33,8 +29,6 @@ pub struct CreateForwarder {
 impl CreateForwarder {
     pub fn at_project(address: MultiAddr, alias: Option<String>) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: Default::default(),
             address,
             alias,
             at_rust_node: false,
@@ -49,8 +43,6 @@ impl CreateForwarder {
         auth: Option<Identifier>,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: Default::default(),
             address,
             alias,
             at_rust_node,
@@ -80,9 +72,6 @@ impl CreateForwarder {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ForwarderInfo {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)] tag: TypeTag<2757430>,
     #[n(1)] forwarding_route: String,
     #[n(2)] remote_address: String,
     #[n(3)] worker_address: String,
@@ -116,8 +105,6 @@ impl ForwarderInfo {
 impl From<RemoteForwarderInfo> for ForwarderInfo {
     fn from(inner: RemoteForwarderInfo) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: Default::default(),
             forwarding_route: inner.forwarding_route().to_string(),
             remote_address: inner.remote_address().into(),
             worker_address: inner.worker_address().to_string(),

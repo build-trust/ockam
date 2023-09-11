@@ -70,12 +70,6 @@ jobs:
     steps:
       - run: 'echo "Rust - check_no_std - Ignored"'
 
-  check_tag:
-    name: Rust - check_tag
-    runs-on: ubuntu-20.04
-    steps:
-      - run: 'echo "Rust - check_tag - Ignored"'
-
   check_cargo_update:
     name: Rust - check_cargo_update
     runs-on: ubuntu-20.04
