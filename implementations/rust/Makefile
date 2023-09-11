@@ -2,7 +2,7 @@ build_docs:
 	cargo doc --locked --no-deps
 build_examples:
 	cargo --locked build --examples
-build_packages:
+build:
 	cargo build --locked
 build_release:
 	cargo --locked build --release

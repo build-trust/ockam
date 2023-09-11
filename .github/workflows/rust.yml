@@ -94,11 +94,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_projects:
-          - docs
-          - packages
-          - examples
-          - nightly
+        include:
+          - build_projects: packages
+            make_name: 'build'
+          - build_projects: docs
+            make_name: 'build_docs'
+          - build_projects: examples
+            make_name: 'build_examples'
+          - build_projects: nightly
+            make_name: 'build'
 
     defaults:
       run:
@@ -117,7 +121,7 @@ jobs:
           key: "${{ github.job }}-${{ matrix.build_projects }}"
 
       - name: Run build ${{ matrix.build_projects }}
-        run:  make -f implementations/rust/Makefile build${{ matrix.build_projects == 'nightly' && '_packages' || format('_{0}', matrix.build_projects) }}
+        run:  make -f implementations/rust/Makefile ${{ matrix.make_name }}
 
   test:
     name: Rust - test${{ matrix.test_projects != 'stable' && format('_{0}', matrix.test_projects) || '' }}
@@ -129,7 +133,7 @@ jobs:
       CLOUD_ADDRESS: ockam_cloud:4000
     defaults:
       run:
-        shell: nix develop ./tools/nix#rust${{matrix.test_projects == 'nightly' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
+        shell: nix develop ./tools/nix#rust${{ matrix.test_projects == 'nightly' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
     strategy:
       fail-fast: false
       matrix:
