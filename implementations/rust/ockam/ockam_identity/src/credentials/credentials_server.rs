@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use minicbor::Decoder;
 
 use ockam_core::api::{Request, Response, Status};
+use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, Error, Result, Route};

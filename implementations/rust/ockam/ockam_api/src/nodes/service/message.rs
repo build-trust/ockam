@@ -3,8 +3,6 @@ use std::str::FromStr;
 use minicbor::{Decode, Encode};
 
 use ockam_core::Result;
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
@@ -14,8 +12,6 @@ use crate::error::ApiError;
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct SendMessage {
-    #[cfg(feature = "tag")]
-    #[n(0)] pub tag: TypeTag<8400702>,
     #[n(1)] pub route: String,
     #[n(2)] pub message: Vec<u8>,
 }
@@ -23,8 +19,6 @@ pub struct SendMessage {
 impl SendMessage {
     pub fn new(route: &MultiAddr, message: Vec<u8>) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             route: route.to_string(),
             message,
         }

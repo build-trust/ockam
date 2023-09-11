@@ -1,17 +1,9 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
-
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
 #[cbor(map)]
 pub struct Operation {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[cbor(n(0))]
-    pub tag: TypeTag<2432199>,
-
     #[cbor(n(1))]
     pub id: String,
 
@@ -36,11 +28,6 @@ impl Operation {
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone)]
 #[cbor(map)]
 pub struct CreateOperationResponse {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[cbor(n(0))]
-    pub tag: TypeTag<9056534>,
-
     #[cbor(n(1))]
     pub operation_id: String,
 }

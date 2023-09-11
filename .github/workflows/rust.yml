@@ -158,8 +158,6 @@ jobs:
             nix_toolchain: 'rust'
           - check_projects: no_std
             nix_toolchain: 'rust_nightly'
-          - check_projects: tag
-            nix_toolchain: 'rust'
           - check_projects: nightly
             nix_toolchain: 'rust_nightly'
 

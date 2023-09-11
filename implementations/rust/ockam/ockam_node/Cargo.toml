@@ -65,12 +65,9 @@ metrics = []
 # message flows within Ockam apps.
 debugger = ["ockam_core/debugger"]
 
-tag = ["cddl-cat", "once_cell", "ockam_core/tag"]
-
 storage = ["std", "serde_json"]
 
 [dependencies]
-cddl-cat = { version = "0.6.1", optional = true }
 cfg-if = "1.0.0"
 fs2 = { version = "0.4.3", optional = true }
 futures = { version = "0.3.28", default-features = false }
@@ -90,5 +87,7 @@ tracing-error = { version = "0.2", optional = true }
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
 
 [dev-dependencies]
+cddl-cat = { version = "0.6.1" }
 hex = { version = "0.4", default-features = false }
+once_cell = { version = "1", default-features = false }
 tempfile = { version = "3.8.0" }

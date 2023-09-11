@@ -1,17 +1,10 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
-
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[cbor(map)]
 pub struct Addon {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)]
-    pub tag: TypeTag<1530077>,
     #[n(1)]
     pub id: String,
     #[n(2)]
@@ -24,18 +17,12 @@ pub struct Addon {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ConfluentConfig {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[cbor(n(0))] pub tag: TypeTag<1697996>,
-
     #[cbor(n(1))] pub bootstrap_server: String,
 }
 
 impl ConfluentConfig {
     pub fn new<S: Into<String>>(bootstrap_server: S) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             bootstrap_server: bootstrap_server.into(),
         }
     }
@@ -45,18 +32,12 @@ impl ConfluentConfig {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ConfluentConfigResponse {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[cbor(n(0))] pub tag: TypeTag<6434816>,
-
     #[cbor(n(1))] pub bootstrap_server: String,
 }
 
 impl ConfluentConfigResponse {
     pub fn new<S: ToString>(bootstrap_server: S) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             bootstrap_server: bootstrap_server.to_string(),
         }
     }
@@ -66,8 +47,6 @@ impl ConfluentConfigResponse {
 impl quickcheck::Arbitrary for ConfluentConfigResponse {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: Default::default(),
             bootstrap_server: String::arbitrary(g),
         }
     }
@@ -77,18 +56,12 @@ impl quickcheck::Arbitrary for ConfluentConfigResponse {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DisableAddon {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[cbor(n(0))] pub tag: TypeTag<8677807>,
-
     #[cbor(n(1))] pub addon_id: String,
 }
 
 impl DisableAddon {
     pub fn new<S: Into<String>>(addon_id: S) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             addon_id: addon_id.into(),
         }
     }

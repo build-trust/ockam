@@ -9,8 +9,6 @@ use kafka_protocol::records::{
     Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions,
 };
 use minicbor::encode::Encoder;
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_node::Context;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind};
@@ -186,8 +184,6 @@ impl InletInterceptorImpl {
                             //TODO: to target multiple consumers we could duplicate
                             // the content with a dedicated encryption for each consumer
                             let wrapper = MessageWrapper {
-                                #[cfg(feature = "tag")]
-                                tag: TypeTag,
                                 consumer_decryptor_address: encrypted_content
                                     .consumer_decryptor_address,
                                 content: encrypted_content.content,

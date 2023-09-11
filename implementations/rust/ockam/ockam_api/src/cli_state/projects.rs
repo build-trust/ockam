@@ -32,8 +32,6 @@ pub type ProjectConfig = Project;
 impl From<ProjectLookup> for Project {
     fn from(lookup: ProjectLookup) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: Default::default(),
             id: lookup.id,
             name: lookup.name,
             space_name: "".to_string(),

@@ -300,10 +300,6 @@ struct NodeDetails {
 #[cfg_attr(test, derive(Clone))]
 #[cbor(map)]
 struct OrchestratorVersionInfo {
-    #[cfg(feature = "tag")]
-    #[n(0)]
-    #[serde(skip)]
-    tag: TypeTag<3783607>,
     #[n(1)]
     controller_version: String,
     #[n(2)]

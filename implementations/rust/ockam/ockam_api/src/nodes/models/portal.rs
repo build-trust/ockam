@@ -7,8 +7,6 @@ use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::route;
 use ockam_core::compat::borrow::Cow;
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
 use ockam_core::{Address, CowStr, Route};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
@@ -21,8 +19,6 @@ use crate::route_to_multiaddr;
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInlet<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1407961>,
     /// The address the portal should listen at.
     #[n(1)] listen_addr: String,
     /// The peer address.
@@ -53,8 +49,6 @@ impl<'a> CreateInlet<'a> {
         suffix_route: Route,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             listen_addr: listen,
             outlet_addr: to,
             alias: None,
@@ -73,8 +67,6 @@ impl<'a> CreateInlet<'a> {
         auth: Option<Identifier>,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             listen_addr: listen,
             outlet_addr: to,
             alias: None,
@@ -127,8 +119,6 @@ impl<'a> CreateInlet<'a> {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateOutlet {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<5351558>,
     /// The address the portal should connect or bind to
     #[n(1)] pub socket_addr: SocketAddr,
     /// The address the portal should connect or bind to
@@ -148,8 +138,6 @@ impl CreateOutlet {
         reachable_from_default_secure_channel: bool,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             socket_addr,
             worker_addr,
             alias: alias.into(),
@@ -163,9 +151,6 @@ impl CreateOutlet {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletStatus {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)] tag: TypeTag<9302588>,
     #[n(1)] pub bind_addr: String,
     #[n(2)] pub worker_addr: String,
     #[n(3)] pub alias: String,
@@ -177,8 +162,6 @@ pub struct InletStatus {
 impl InletStatus {
     pub fn bad_request(reason: &'static str) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             bind_addr: "".into(),
             worker_addr: "".into(),
             alias: "".into(),
@@ -195,8 +178,6 @@ impl InletStatus {
         outlet_route: impl Into<String>,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             bind_addr: bind_addr.into(),
             worker_addr: worker_addr.into(),
             alias: alias.into(),
@@ -211,9 +192,6 @@ impl InletStatus {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OutletStatus {
-    #[cfg(feature = "tag")]
-    #[serde(skip)]
-    #[n(0)] tag: TypeTag<4012569>,
     #[n(1)] pub socket_addr: SocketAddr,
     #[n(2)] pub worker_addr: Address,
     #[n(3)] pub alias: String,
@@ -224,8 +202,6 @@ pub struct OutletStatus {
 impl OutletStatus {
     pub fn bad_request(reason: &'static str) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             socket_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 80),
             worker_addr: "".into(),
             alias: "".into(),
@@ -240,8 +216,6 @@ impl OutletStatus {
         payload: impl Into<Option<String>>,
     ) -> Self {
         Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
             socket_addr,
             worker_addr,
             alias: alias.into(),
@@ -268,18 +242,12 @@ impl OutletStatus {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletList {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<8401504>,
     #[n(1)] pub list: Vec<InletStatus>
 }
 
 impl InletList {
     pub fn new(list: Vec<InletStatus>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            list,
-        }
+        Self { list }
     }
 }
 
@@ -288,17 +256,11 @@ impl InletList {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OutletList {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<8708916>,
     #[n(1)] pub list: Vec<OutletStatus>
 }
 
 impl OutletList {
     pub fn new(list: Vec<OutletStatus>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            list,
-        }
+        Self { list }
     }
 }

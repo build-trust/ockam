@@ -63,12 +63,9 @@ error-traces = [
 # message flows within Ockam apps.
 debugger = []
 
-tag = ["cddl-cat", "serde_cbor"]
-
 [dependencies]
 async-trait = "0.1.73"
 backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
-cddl-cat = { version = "0.6.1", optional = true }
 cfg-if = "1.0"
 core2 = { version = "0.4.0", default-features = false, optional = true }
 futures-util = { version = "0.3.17", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
@@ -82,7 +79,6 @@ rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false }
-serde_cbor = { version = "0.11.2", optional = true }
 spin = { version = "0.9.8", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
 subtle = { version = "2", default-features = false }
 tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
@@ -91,5 +87,7 @@ tracing-error = { version = "0.2", default-features = false, optional = true }
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
+cddl-cat = { version = "0.6.1" }
 quickcheck = "1.0.1"
+serde_cbor = { version = "0.11.2" }
 tokio = { version = "1.31.0", features = ["full"] }

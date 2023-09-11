@@ -3,9 +3,6 @@ use std::borrow::Cow;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "tag")]
-use ockam_core::TypeTag;
-
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 #[cbor(transparent)]
@@ -175,8 +172,6 @@ pub mod auth0 {
     #[rustfmt::skip]
     #[cbor(map)]
     pub struct AuthenticateOidcToken {
-        #[cfg(feature = "tag")]
-        #[n(0)] pub tag: TypeTag<1058055>,
         #[n(1)] pub token_type: TokenType,
         #[n(2)] pub access_token: Token,
         #[n(3)] pub alternative_authenticator_address: Option<MultiAddr>,
@@ -185,8 +180,6 @@ pub mod auth0 {
     impl AuthenticateOidcToken {
         pub fn new(token: OidcToken, alternative_authenticator_address: Option<MultiAddr>) -> Self {
             Self {
-                #[cfg(feature = "tag")]
-                tag: TypeTag,
                 token_type: token.token_type,
                 access_token: token.access_token,
                 alternative_authenticator_address,
@@ -219,18 +212,12 @@ pub mod enrollment_token {
     #[rustfmt::skip]
     #[cbor(map)]
     pub struct RequestEnrollmentToken {
-        #[cfg(feature = "tag")]
-        #[n(0)] pub tag: TypeTag<8560526>,
         #[b(1)] pub attributes: Attributes,
     }
 
     impl RequestEnrollmentToken {
         pub fn new(attributes: Attributes) -> Self {
-            Self {
-                #[cfg(feature = "tag")]
-                tag: TypeTag,
-                attributes,
-            }
+            Self { attributes }
         }
     }
 
@@ -239,19 +226,12 @@ pub mod enrollment_token {
     #[rustfmt::skip]
     #[cbor(map)]
     pub struct EnrollmentToken {
-        #[cfg(feature = "tag")]
-        #[serde(skip)]
-        #[n(0)] pub tag: TypeTag<8932763>,
         #[n(1)] pub token: Token,
     }
 
     impl EnrollmentToken {
         pub fn new(token: Token) -> Self {
-            Self {
-                #[cfg(feature = "tag")]
-                tag: TypeTag,
-                token,
-            }
+            Self { token }
         }
     }
 
@@ -260,18 +240,12 @@ pub mod enrollment_token {
     #[rustfmt::skip]
     #[cbor(map)]
     pub struct AuthenticateEnrollmentToken {
-        #[cfg(feature = "tag")]
-        #[n(0)] pub tag: TypeTag<9463780>,
         #[n(1)] pub token: Token,
     }
 
     impl AuthenticateEnrollmentToken {
         pub fn new(token: EnrollmentToken) -> Self {
-            Self {
-                #[cfg(feature = "tag")]
-                tag: TypeTag,
-                token: token.token,
-            }
+            Self { token: token.token }
         }
     }
 }
