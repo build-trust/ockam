@@ -128,15 +128,8 @@ mod node {
             trace!(%req_body.scope, target_id = %req_body.target_id, "creating invitation");
             let req_builder = Request::post("/v0/invites").body(req_body);
 
-            self.request_controller(
-                ctx,
-                "create_invitation",
-                "create_invitation",
-                API_SERVICE,
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, API_SERVICE, req_builder, None)
+                .await
         }
 
         pub async fn create_service_invitation(
@@ -164,15 +157,8 @@ mod node {
             trace!(project_id = %req_body.project_id, "creating service invitation");
             let req_builder = Request::post("/v0/invites/service").body(req_body);
 
-            self.request_controller(
-                ctx,
-                "create_service_invitation",
-                "create_service_invitation",
-                API_SERVICE,
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, API_SERVICE, req_builder, None)
+                .await
         }
     }
 

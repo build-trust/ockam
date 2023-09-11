@@ -74,15 +74,8 @@ mod node {
             trace!(target: TARGET, space = %req_body.name, "creating space");
             let req_builder = Request::post("/v0/").body(req_body);
 
-            self.request_controller(
-                ctx,
-                "create_space",
-                "create_space",
-                "spaces",
-                req_builder,
-                None,
-            )
-            .await
+            self.request_controller(ctx, "spaces", req_builder, None)
+                .await
         }
 
         pub async fn list_spaces(&self, ctx: &Context) -> Result<Vec<Space>> {
@@ -93,7 +86,7 @@ mod node {
             trace!(target: TARGET, "listing spaces");
             let req_builder = Request::get("/v0/");
 
-            self.request_controller(ctx, "list_spaces", None, "spaces", req_builder, None)
+            self.request_controller(ctx, "spaces", req_builder, None)
                 .await
         }
 
@@ -105,7 +98,7 @@ mod node {
             trace!(target: TARGET, space = %id, space = %id, "getting space");
             let req_builder = Request::get(format!("/v0/{id}"));
 
-            self.request_controller(ctx, "get_space", None, "spaces", req_builder, None)
+            self.request_controller(ctx, "spaces", req_builder, None)
                 .await
         }
     }
@@ -143,7 +136,7 @@ mod node {
             trace!(target: TARGET, space = %id, "deleting space");
             let req_builder = Request::delete(format!("/v0/{id}"));
 
-            self.request_controller(ctx, "delete_space", None, "spaces", req_builder, None)
+            self.request_controller(ctx, "spaces", req_builder, None)
                 .await
         }
     }

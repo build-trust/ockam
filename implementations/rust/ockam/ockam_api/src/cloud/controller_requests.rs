@@ -80,12 +80,9 @@ mod node {
             self.controller_identity_id.clone()
         }
 
-        #[allow(clippy::too_many_arguments)]
         pub async fn request_controller<T>(
             &self,
             ctx: &Context,
-            label: &str,
-            schema: impl Into<Option<&str>>,
             api_service: &str,
             req: RequestBuilder<T>,
             ident: Option<String>,
@@ -95,8 +92,6 @@ mod node {
         {
             self.request_controller_with_timeout(
                 ctx,
-                label,
-                schema,
                 api_service,
                 req,
                 ident,
@@ -105,12 +100,9 @@ mod node {
             .await
         }
 
-        #[allow(clippy::too_many_arguments)]
         pub(crate) async fn request_controller_with_timeout<T>(
             &self,
             ctx: &Context,
-            label: &str,
-            schema: impl Into<Option<&str>>,
             api_service: &str,
             req: RequestBuilder<T>,
             ident: Option<String>,
@@ -119,18 +111,15 @@ mod node {
         where
             T: Encode<()>,
         {
-            self.request_node(ctx, None, label, schema, api_service, req, ident, timeout)
+            self.request_node(ctx, None, api_service, req, ident, timeout)
                 .await
         }
 
         /// Send a request to a node referenced via its multiaddr
-        #[allow(clippy::too_many_arguments)]
         pub(crate) async fn request_node<T>(
             &self,
             ctx: &Context,
             destination: Option<MultiAddr>,
-            label: &str,
-            schema: impl Into<Option<&str>>,
             api_service: &str,
             req: RequestBuilder<T>,
             ident: Option<String>,
@@ -162,7 +151,7 @@ mod node {
 
             let route = route![sc.clone(), api_service];
             let options = MessageSendReceiveOptions::new().with_timeout(timeout);
-            let res = request_with_options(ctx, label, schema, route, req, options).await;
+            let res = request_with_options(ctx, route, req, options).await;
             secure_channels
                 .stop_secure_channel(ctx, sc.encryptor_address())
                 .await?;
@@ -177,12 +166,9 @@ mod node {
     }
 
     impl NodeManagerWorker {
-        #[allow(clippy::too_many_arguments)]
         pub(crate) async fn request_controller<T>(
             &self,
             ctx: &Context,
-            label: &str,
-            schema: impl Into<Option<&str>>,
             api_service: &str,
             req: RequestBuilder<T>,
             ident: Option<String>,
@@ -192,8 +178,6 @@ mod node {
         {
             self.request_controller_with_timeout(
                 ctx,
-                label,
-                schema,
                 api_service,
                 req,
                 ident,
@@ -202,12 +186,9 @@ mod node {
             .await
         }
 
-        #[allow(clippy::too_many_arguments)]
         pub(crate) async fn request_controller_with_timeout<T>(
             &self,
             ctx: &Context,
-            label: &str,
-            schema: impl Into<Option<&str>>,
             api_service: &str,
             req: RequestBuilder<T>,
             ident: Option<String>,
@@ -218,15 +199,7 @@ mod node {
         {
             let node_manager = self.inner().read().await;
             node_manager
-                .request_controller_with_timeout(
-                    ctx,
-                    label,
-                    schema,
-                    api_service,
-                    req,
-                    ident,
-                    timeout,
-                )
+                .request_controller_with_timeout(ctx, api_service, req, ident, timeout)
                 .await
         }
     }
