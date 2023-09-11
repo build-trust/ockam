@@ -262,14 +262,11 @@ pub fn process_tray_menu_event<R: Runtime>(
     app: &AppHandle<R>,
     event: &MenuEvent,
 ) -> tauri::Result<()> {
-    match event.id.as_ref() {
-        id => {
-            if id.starts_with("invitation-") {
-                dispatch_click_event(app, id)
-            } else {
-                Ok(())
-            }
-        }
+    let id = event.id.as_ref();
+    if id.starts_with("invitation-") {
+        dispatch_click_event(app, id)
+    } else {
+        Ok(())
     }
 }
 

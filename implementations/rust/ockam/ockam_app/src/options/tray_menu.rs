@@ -1,16 +1,10 @@
-use tauri::menu::{IconMenuItemBuilder, MenuBuilder, MenuItemBuilder, NativeIcon};
+use tauri::menu::{IconMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, NativeIcon};
 use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::error;
 
 use crate::app::AppState;
 use crate::options::reset;
 
-#[cfg(debug_assertions)]
-pub const DEV_MENU_ID: &str = "developer";
-#[cfg(debug_assertions)]
-pub const REFRESH_MENU_ID: &str = "refresh";
-#[cfg(debug_assertions)]
-pub const OPEN_DEV_TOOLS_ID: &str = "open_dev_tools";
 pub const RESET_MENU_ID: &str = "reset";
 pub const QUIT_MENU_ID: &str = "quit";
 pub const ERROR_MENU_ID: &str = "error";
@@ -47,9 +41,20 @@ pub(crate) async fn build_options_section<'a, R: Runtime, M: Manager<R>>(
     builder
 }
 
+pub fn process_tray_menu_event<R: Runtime>(
+    app: &AppHandle<R>,
+    event: &MenuEvent,
+) -> tauri::Result<()> {
+    match event.id.as_ref() {
+        RESET_MENU_ID => on_reset(app),
+        QUIT_MENU_ID => on_quit(),
+        _ => Ok(()),
+    }
+}
+
 /// Event listener for the "Reset" menu item
 /// Reset the persistent state
-pub fn on_reset<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+fn on_reset<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         reset(&app)
@@ -61,6 +66,6 @@ pub fn on_reset<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
 /// Event listener for the "Quit" menu item
 /// Quit the application when the user wants to
-pub fn on_quit() -> tauri::Result<()> {
+fn on_quit() -> tauri::Result<()> {
     std::process::exit(0);
 }

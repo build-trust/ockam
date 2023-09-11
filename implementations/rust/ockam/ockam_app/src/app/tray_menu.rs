@@ -32,18 +32,12 @@ pub async fn build_tray_menu<R: Runtime>(
 
 /// This is the function dispatching events for the SystemTray Menu
 pub fn process_system_tray_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
-    if let Err(e) = match event.id.as_ref() {
-        enroll::ENROLL_MENU_ID => enroll::on_enroll(app),
-        #[cfg(debug_assertions)]
-        options::REFRESH_MENU_ID => dev_tools::on_refresh(app),
-        #[cfg(debug_assertions)]
-        options::OPEN_DEV_TOOLS_ID => dev_tools::toggle_dev_tools(app),
-        options::RESET_MENU_ID => options::on_reset(app),
-        options::QUIT_MENU_ID => options::on_quit(),
-        _ => Ok(()),
-    } {
-        error!("{:?}", e);
-    }
+    let _ = enroll::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
     let _ = shared_service::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
     let _ = invitations::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
+    let _ = options::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
+    #[cfg(debug_assertions)]
+    {
+        let _ = dev_tools::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
+    }
 }

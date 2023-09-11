@@ -1,7 +1,10 @@
 use crate::app::AppState;
-use crate::options::{DEV_MENU_ID, OPEN_DEV_TOOLS_ID, REFRESH_MENU_ID};
-use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Manager, Runtime, State};
+
+const DEV_MENU_ID: &str = "developer";
+const REFRESH_MENU_ID: &str = "refresh";
+const OPEN_DEV_TOOLS_ID: &str = "open_dev_tools";
 
 pub async fn build_developer_tools_section<'a, R: Runtime, M: Manager<R>>(
     app_handle: &AppHandle<R>,
@@ -28,7 +31,18 @@ pub async fn build_developer_tools_section<'a, R: Runtime, M: Manager<R>>(
     )
 }
 
-pub fn on_refresh<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+pub fn process_tray_menu_event<R: Runtime>(
+    app: &AppHandle<R>,
+    event: &MenuEvent,
+) -> tauri::Result<()> {
+    match event.id.as_ref() {
+        REFRESH_MENU_ID => on_refresh(app),
+        OPEN_DEV_TOOLS_ID => toggle_dev_tools(app),
+        _ => Ok(()),
+    }
+}
+
+fn on_refresh<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
     app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
     use crate::app::events::system_tray_on_update;
@@ -36,7 +50,7 @@ pub fn on_refresh<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
-pub(crate) fn toggle_dev_tools<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+fn toggle_dev_tools<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let state: State<AppState> = app.state();
     state.set_browser_dev_tools(!state.browser_dev_tools());
     Ok(())
