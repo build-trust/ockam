@@ -13,22 +13,50 @@ use ockam_api::cli_state::{
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::NodeManager;
+use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_core::env::get_env_with_default;
 
 use crate::node::CreateCommand;
 use crate::util::api::TrustContextOpts;
 use crate::{CommandGlobalOpts, Result};
 
-pub async fn start_embedded_node(
+pub async fn start_node_manager_worker(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    trust_opts: Option<&TrustContextOpts>,
+) -> Result<String> {
+    start_node_manager_worker_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts)
+        .await
+}
+
+pub async fn start_node_manager(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<NodeManager> {
-    start_embedded_node_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts).await
+    start_node_manager_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts).await
 }
 
-pub async fn start_embedded_node_with_vault_and_identity(
+pub async fn start_node_manager_worker_with_vault_and_identity(
+    ctx: &Context,
+    cli_state: &CliState,
+    vault: Option<String>,
+    identity: Option<String>,
+    trust_opts: Option<&TrustContextOpts>,
+) -> Result<String> {
+    let node_manager =
+        start_node_manager_with_vault_and_identity(ctx, cli_state, vault, identity, trust_opts)
+            .await?;
+    let node_name = node_manager.node_name();
+    let node_manager_worker = NodeManagerWorker::new(node_manager);
+    let _ = ctx
+        .start_worker(NODEMANAGER_ADDR, node_manager_worker.clone())
+        .await
+        .into_diagnostic();
+    Ok(node_name)
+}
+
+pub async fn start_node_manager_with_vault_and_identity(
     ctx: &Context,
     cli_state: &CliState,
     vault: Option<String>,
@@ -82,6 +110,8 @@ pub async fn start_embedded_node_with_vault_and_identity(
         NodeManagerTrustOptions::new(trust_context_config),
     )
     .await?;
+    ctx.flow_controls()
+        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
     Ok(node_manager)
 }
 
