@@ -1,4 +1,5 @@
-use crate::app::NODE_NAME;
+use crate::app::events::system_tray_on_update;
+use crate::app::{AppState, NODE_NAME};
 use crate::Result;
 use miette::IntoDiagnostic;
 use ockam::Context;
@@ -6,31 +7,46 @@ use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_api::nodes::NodeManagerWorker;
 use ockam_multiaddr::MultiAddr;
+use once_cell::sync::Lazy;
 use std::str::FromStr;
 use std::sync::Arc;
+use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, info, trace, warn};
 
-/// Try to create a relay until it succeeds
-/// Once it's created, a `Medic` worker will monitor it and recreate it whenever it's unresponsive
-pub async fn create_relay(
+pub static RELAY_NAME: Lazy<String> = Lazy::new(|| format!("forward_to_{NODE_NAME}"));
+
+pub fn create_relay<R: Runtime>(app: &AppHandle<R>) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let app_state: State<AppState> = app.state::<AppState>();
+        let context = app_state.context();
+        let cli_state = app_state.state().await;
+        let node_manager_worker = app_state.node_manager_worker().await;
+        create_relay_loop(context, cli_state, node_manager_worker).await;
+        system_tray_on_update(&app);
+    });
+}
+
+/// Try to create a relay until it succeeds.
+pub async fn create_relay_loop(
     context: Arc<Context>,
     cli_state: CliState,
     node_manager_worker: NodeManagerWorker,
 ) {
-    tauri::async_runtime::spawn(async move {
-        loop {
-            if create_relay_impl(&context, &cli_state, &node_manager_worker)
-                .await
-                .is_ok()
-            {
-                break;
+    loop {
+        match create_relay_impl(&context, &cli_state, &node_manager_worker).await {
+            Ok(_) => break,
+            Err(e) => {
+                warn!(%e, "Failed to create relay, retrying...");
             }
-            tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
         }
-    });
+        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+    }
 }
 
 /// Create a relay at the default project if doesn't exist yet
+///
+/// Once it's created, a `Medic` worker will monitor it and recreate it whenever it's unresponsive
 async fn create_relay_impl(
     context: &Context,
     cli_state: &CliState,
@@ -43,12 +59,7 @@ async fn create_relay_impl(
     }
     match cli_state.projects.default() {
         Ok(project) => {
-            let relays = node_manager_worker.get_forwarders().await;
-            if let Some(relay) = relays
-                .iter()
-                .find(|r| r.remote_address() == format!("forward_to_{NODE_NAME}"))
-                .cloned()
-            {
+            if let Some(relay) = get_relay(node_manager_worker).await {
                 debug!(project = %project.name(), "Relay already exists");
                 Ok(Some(relay.clone()))
             } else {
@@ -72,4 +83,12 @@ async fn create_relay_impl(
             Ok(None)
         }
     }
+}
+
+pub(crate) async fn get_relay(node_manager_worker: &NodeManagerWorker) -> Option<ForwarderInfo> {
+    node_manager_worker
+        .get_forwarders()
+        .await
+        .into_iter()
+        .find(|r| r.remote_address() == *RELAY_NAME)
 }

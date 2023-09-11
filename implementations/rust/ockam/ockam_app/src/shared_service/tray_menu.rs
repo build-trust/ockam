@@ -1,5 +1,7 @@
-use tauri::menu::{MenuBuilder, MenuEvent, MenuItemBuilder, Submenu, SubmenuBuilder};
-use tauri::{AppHandle, Manager, Runtime, State};
+use tauri::menu::{
+    IconMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, Submenu, SubmenuBuilder,
+};
+use tauri::{AppHandle, Icon, Manager, Runtime, State};
 use tauri_plugin_positioner::{Position, WindowExt};
 
 use ockam_api::nodes::models::portal::OutletStatus;
@@ -7,10 +9,9 @@ use ockam_api::nodes::models::portal::OutletStatus;
 use crate::app::AppState;
 use crate::shared_service::tcp_outlet::tcp_outlet_delete;
 
-const SHARED_SERVICE_HEADER_MENU_ID: &str = "shared_service_header";
-const SHARED_SERVICE_CREATE_MENU_ID: &str = "shared_service_create";
-const SHARED_SERVICE_DELETE_MENU_ID_PREFIX: &str = "shared_service_delete_";
-const SHARED_SERVICE_WINDOW_ID: &str = "shared_service_creation";
+const SHARED_SERVICE_CREATE_MENU_ID: &str = "shared-service_create";
+const SHARED_SERVICE_DELETE_MENU_ID_PREFIX: &str = "shared-service_delete_";
+const SHARED_SERVICE_WINDOW_ID: &str = "shared-service_creation";
 
 pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>(
     app_handle: &AppHandle<R>,
@@ -22,18 +23,28 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
     };
 
     let builder = builder.items(&[
-        &MenuItemBuilder::with_id(SHARED_SERVICE_HEADER_MENU_ID, "Shared")
+        &IconMenuItemBuilder::with_id(SHARED_SERVICE_CREATE_MENU_ID, "Create service")
+            .icon(Icon::File("icons/plus-circle.png".into()))
+            .accelerator("cmd+n")
+            .build(app_handle),
+        &MenuItemBuilder::new("Your services")
             .enabled(false)
             .build(app_handle),
-        &MenuItemBuilder::with_id(SHARED_SERVICE_CREATE_MENU_ID, "Create...").build(app_handle),
     ]);
 
-    app_state
-        .tcp_outlet_list()
-        .await
-        .iter()
-        .map(|outlet| shared_service_submenu(app_handle, outlet))
-        .fold(builder, |builder, submenu| builder.item(&submenu))
+    let outlets = app_state.tcp_outlet_list().await;
+    if outlets.is_empty() {
+        builder.item(
+            &MenuItemBuilder::new("When you create a service it will appear here")
+                .enabled(false)
+                .build(app_handle),
+        )
+    } else {
+        outlets
+            .iter()
+            .map(|outlet| shared_service_submenu(app_handle, outlet))
+            .fold(builder, |builder, submenu| builder.item(&submenu))
+    }
 }
 
 fn shared_service_submenu<R: Runtime>(
@@ -49,18 +60,19 @@ fn shared_service_submenu<R: Runtime>(
     // and reached via crate::app::tray_menu::fallback_for_id
     SubmenuBuilder::new(app_handle, outlet_info)
         .items(&[
-            &MenuItemBuilder::new("Share")
-                .id(format!("invitation-create-for-{}", outlet.socket_addr))
+            &MenuItemBuilder::new(format!("Serving at: {}", outlet.socket_addr))
+                .enabled(false)
                 .build(app_handle),
-            &MenuItemBuilder::new("Delete")
+            &IconMenuItemBuilder::new("Share")
+                .id(format!("invitation-create-for-{}", outlet.socket_addr))
+                .icon(Icon::File("icons/share-fill.png".into()))
+                .build(app_handle),
+            &IconMenuItemBuilder::new("Delete")
                 .id(format!(
                     "{SHARED_SERVICE_DELETE_MENU_ID_PREFIX}{}",
                     outlet.alias
                 ))
-                .build(app_handle),
-            &MenuItemBuilder::new(format!("TCP Address: {}", outlet.socket_addr))
-                .id("outlet-tcp-address")
-                .enabled(false)
+                .icon(Icon::File("icons/trash3.png".into()))
                 .build(app_handle),
         ])
         .build()

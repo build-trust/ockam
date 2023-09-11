@@ -1,13 +1,14 @@
-use tauri::menu::{IconMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, NativeIcon};
-use tauri::{AppHandle, Manager, Runtime, State};
+use tauri::menu::{IconMenuItemBuilder, MenuBuilder, MenuEvent, NativeIcon};
+use tauri::{AppHandle, Icon, Manager, Runtime, State};
 use tracing::error;
 
 use crate::app::AppState;
 use crate::options::reset;
 
-pub const RESET_MENU_ID: &str = "reset";
-pub const QUIT_MENU_ID: &str = "quit";
-pub const ERROR_MENU_ID: &str = "error";
+const DOCS_MENU_ID: &str = "options_docs";
+const RESET_MENU_ID: &str = "options_reset";
+const QUIT_MENU_ID: &str = "options_quit";
+const ERROR_MENU_ID: &str = "options_error";
 
 pub(crate) async fn build_options_section<'a, R: Runtime, M: Manager<R>>(
     app_handle: &AppHandle<R>,
@@ -16,10 +17,16 @@ pub(crate) async fn build_options_section<'a, R: Runtime, M: Manager<R>>(
     let app_state: State<AppState> = app_handle.state();
 
     builder = builder.items(&[
-        &MenuItemBuilder::with_id(RESET_MENU_ID, "Reset")
+        &IconMenuItemBuilder::with_id(DOCS_MENU_ID, "Documentation")
+            .icon(Icon::File("icons/file-earmark-text.png".into()))
+            .accelerator("cmd+/")
+            .build(app_handle),
+        &IconMenuItemBuilder::with_id(RESET_MENU_ID, "Reset")
+            .icon(Icon::File("icons/arrow-repeat.png".into()))
             .accelerator("cmd+r")
             .build(app_handle),
-        &MenuItemBuilder::with_id(QUIT_MENU_ID, "Quit Ockam")
+        &IconMenuItemBuilder::with_id(QUIT_MENU_ID, "Quit Ockam")
+            .icon(Icon::File("icons/power.png".into()))
             .accelerator("cmd+q")
             .build(app_handle),
     ]);
@@ -46,10 +53,19 @@ pub fn process_tray_menu_event<R: Runtime>(
     event: &MenuEvent,
 ) -> tauri::Result<()> {
     match event.id.as_ref() {
+        DOCS_MENU_ID => on_docs(),
         RESET_MENU_ID => on_reset(app),
         QUIT_MENU_ID => on_quit(),
         _ => Ok(()),
     }
+}
+
+/// Event listener for the "Documentation" menu item
+/// Open the documentation in the browser
+fn on_docs() -> tauri::Result<()> {
+    let _ = open::that("https://docs.ockam.io/")
+        .map_err(|e| error!(%e, "Failed to open the documentation in the browser"));
+    Ok(())
 }
 
 /// Event listener for the "Reset" menu item

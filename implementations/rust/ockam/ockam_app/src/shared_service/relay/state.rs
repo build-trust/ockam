@@ -10,5 +10,7 @@ pub(crate) async fn load_model_state(
 ) {
     let node_manager_worker = node_manager_worker.clone();
     let cli_state = cli_state.clone();
-    super::create_relay(context, cli_state, node_manager_worker).await;
+    tauri::async_runtime::spawn(async move {
+        super::create_relay_loop(context, cli_state, node_manager_worker).await;
+    });
 }
