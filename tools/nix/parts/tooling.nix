@@ -15,6 +15,7 @@ _: {
         gradle_7
         graphviz
         jq
+        which
       ];
 
       BATS_LIB = "${config.packages.bats}/share/bats";

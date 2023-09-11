@@ -6,13 +6,13 @@ clean: typescript_clean rust_clean elixir_clean
 very_clean: typescript_very_clean rust_very_clean elixir_very_clean
 
 elixir_%:
-	$(MAKE) -C implementations/elixir $(@:elixir_%=%)
+	@cd implementations/elixir && $(MAKE) $(@:elixir_%=%)
 
 rust_%:
 	$(MAKE) -C implementations/rust $(@:rust_%=%)
 
 typescript_%:
-	$(MAKE) -C implementations/typescript $(@:typescript_%=%)
+	@cd implementations/typescript && $(MAKE) $(@:typescript_%=%)
 
 .PHONY: \
 	build build_release test lint clean very_clean \
