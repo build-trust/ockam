@@ -7,7 +7,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::cloud::subscription::Subscription;
 
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::output::Output;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -55,7 +55,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let node_manager = start_embedded_node(&ctx, &opts, None).await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
             subscription_id: Some(subscription_id),

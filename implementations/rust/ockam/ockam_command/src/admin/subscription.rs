@@ -6,7 +6,7 @@ use miette::{miette, Context as _, IntoDiagnostic};
 
 use ockam::Context;
 
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -138,7 +138,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let node_manager = start_embedded_node(&ctx, &opts, None).await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Attach {
             json,

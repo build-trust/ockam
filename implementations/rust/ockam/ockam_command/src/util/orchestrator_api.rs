@@ -19,9 +19,9 @@ use ockam_core::route;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 
-use crate::node::util::delete_embedded_node;
+use crate::node::util::{delete_embedded_node, start_node_manager_with_vault_and_identity};
 use crate::{
-    node::util::{delete_node, start_embedded_node_with_vault_and_identity},
+    node::util::delete_node,
     project::util::{create_secure_channel_to_authority, create_secure_channel_to_project},
     util::Rpc,
     CommandGlobalOpts, Result,
@@ -80,7 +80,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
     ///        as the identity must be know at the time of this call.
     pub async fn with_new_embedded_node(&mut self) -> Result<&mut OrchestratorApiBuilder<'a>> {
         // TODO: always use the default vault
-        let node_manager = start_embedded_node_with_vault_and_identity(
+        let node_manager = start_node_manager_with_vault_and_identity(
             self.ctx,
             &self.opts.state,
             None,
