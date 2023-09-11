@@ -32,26 +32,18 @@ pub async fn build_tray_menu<R: Runtime>(
 
 /// This is the function dispatching events for the SystemTray Menu
 pub fn process_system_tray_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
-    let result = match event.id.as_ref() {
+    if let Err(e) = match event.id.as_ref() {
         enroll::ENROLL_MENU_ID => enroll::on_enroll(app),
-        shared_service::SHARED_SERVICE_CREATE_MENU_ID => shared_service::on_create(app),
         #[cfg(debug_assertions)]
         options::REFRESH_MENU_ID => dev_tools::on_refresh(app),
         #[cfg(debug_assertions)]
         options::OPEN_DEV_TOOLS_ID => dev_tools::toggle_dev_tools(app),
         options::RESET_MENU_ID => options::on_reset(app),
         options::QUIT_MENU_ID => options::on_quit(),
-        id => fallback_for_id(app, id),
-    };
-    if let Err(e) = result {
-        error!("{:?}", e)
+        _ => Ok(()),
+    } {
+        error!("{:?}", e);
     }
-}
-
-fn fallback_for_id<R: Runtime>(app: &AppHandle<R>, s: &str) -> tauri::Result<()> {
-    if s.starts_with("invitation-") {
-        invitations::dispatch_click_event(app, s)
-    } else {
-        Ok(())
-    }
+    let _ = shared_service::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
+    let _ = invitations::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
 }

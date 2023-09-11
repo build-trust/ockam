@@ -1,6 +1,6 @@
 use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
 use std::net::SocketAddr;
-use tauri::menu::{MenuBuilder, MenuItemBuilder, Submenu, SubmenuBuilder};
+use tauri::menu::{MenuBuilder, MenuEvent, MenuItemBuilder, Submenu, SubmenuBuilder};
 use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_positioner::{Position, WindowExt};
 use tracing::{debug, trace, warn};
@@ -258,7 +258,22 @@ fn accepted_invite_menu<R: Runtime>(
         .expect("cannot build accepted invitation submenu")
 }
 
-pub(crate) fn dispatch_click_event<R: Runtime>(app: &AppHandle<R>, id: &str) -> tauri::Result<()> {
+pub fn process_tray_menu_event<R: Runtime>(
+    app: &AppHandle<R>,
+    event: &MenuEvent,
+) -> tauri::Result<()> {
+    match event.id.as_ref() {
+        id => {
+            if id.starts_with("invitation-") {
+                dispatch_click_event(app, id)
+            } else {
+                Ok(())
+            }
+        }
+    }
+}
+
+fn dispatch_click_event<R: Runtime>(app: &AppHandle<R>, id: &str) -> tauri::Result<()> {
     let segments = id
         .splitn(4, '-')
         .skip_while(|segment| segment == &"invitation")
