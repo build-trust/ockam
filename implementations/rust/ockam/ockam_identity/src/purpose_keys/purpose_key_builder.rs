@@ -1,10 +1,12 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{KeyId, SecretType};
+use ockam_vault::{KeyId, PublicKey, SecretType};
 
 use crate::models::TimestampInSeconds;
 use crate::utils::now;
-use crate::{Identifier, Purpose, PurposeKey, PurposeKeyOptions, PurposeKeysCreation};
+use crate::{
+    Identifier, Purpose, PurposeKey, PurposeKeyKey, PurposeKeyOptions, PurposeKeysCreation,
+};
 
 /// Default TTL for an Identity key
 pub const DEFAULT_PURPOSE_KEY_TTL: TimestampInSeconds = TimestampInSeconds(5 * 365 * 24 * 60 * 60); // Five years
@@ -12,6 +14,7 @@ pub const DEFAULT_PURPOSE_KEY_TTL: TimestampInSeconds = TimestampInSeconds(5 * 3
 enum Key {
     Generate(SecretType),
     Existing { key_id: KeyId, stype: SecretType },
+    OnlyPublic(PublicKey),
 }
 
 enum Ttl {
@@ -65,6 +68,14 @@ impl PurposeKeyBuilder {
         self
     }
 
+    /// Only public key is available, which is enough to attest it
+    /// However, the calling side is then responsible for possession and proper use of the
+    /// corresponding secret key
+    pub fn with_public_key(mut self, public_key: PublicKey) -> Self {
+        self.key = Key::OnlyPublic(public_key);
+        self
+    }
+
     /// Set created_at and expires_at timestamps
     pub fn with_timestamps(
         mut self,
@@ -86,28 +97,36 @@ impl PurposeKeyBuilder {
 
     /// Create the corresponding [`PurposeKeyOptions`] object
     pub async fn build_options(self) -> Result<PurposeKeyOptions> {
-        let (key_id, stype) = match self.key {
+        let (key, stype) = match self.key {
             Key::Generate(stype) => {
-                let key_id = match &self.purpose {
+                let key = match &self.purpose {
                     Purpose::SecureChannel => {
-                        self.purpose_keys_creation
+                        let key_id = self
+                            .purpose_keys_creation
                             .vault()
                             .secure_channel_vault
                             .generate_static_secret(stype.into())
-                            .await?
+                            .await?;
+                        PurposeKeyKey::Secret(key_id)
                     }
                     Purpose::Credentials => {
-                        self.purpose_keys_creation
+                        let key_id = self
+                            .purpose_keys_creation
                             .vault()
                             .credential_vault
                             .generate_key(stype.into())
-                            .await?
+                            .await?;
+                        PurposeKeyKey::Secret(key_id)
                     }
                 };
 
-                (key_id, stype)
+                (key, stype)
             }
-            Key::Existing { key_id, stype } => (key_id, stype),
+            Key::Existing { key_id, stype } => (PurposeKeyKey::Secret(key_id), stype),
+            Key::OnlyPublic(public_key) => {
+                let stype = public_key.stype();
+                (PurposeKeyKey::Public(public_key), stype)
+            }
         };
 
         let (created_at, expires_at) = match self.ttl {
@@ -126,7 +145,7 @@ impl PurposeKeyBuilder {
         let options = PurposeKeyOptions::new(
             self.identifier,
             self.purpose,
-            key_id,
+            key,
             stype,
             created_at,
             expires_at,

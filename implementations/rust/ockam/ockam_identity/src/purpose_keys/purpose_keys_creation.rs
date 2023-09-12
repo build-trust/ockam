@@ -9,7 +9,7 @@ use crate::models::{
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{
     IdentitiesKeys, IdentitiesReader, Identity, IdentityError, Purpose, PurposeKey,
-    PurposeKeyBuilder, PurposeKeyOptions, PurposeKeysVerification, Vault,
+    PurposeKeyBuilder, PurposeKeyKey, PurposeKeyOptions, PurposeKeysVerification, Vault,
 };
 
 /// This struct supports all the services related to identities
@@ -92,43 +92,75 @@ impl PurposeKeysCreation {
     ) -> Result<PurposeKey> {
         // TODO: Check if such key already exists and rewrite it correctly (also delete from the Vault)
 
-        match options.purpose {
-            Purpose::SecureChannel => match options.stype {
-                SecretType::X25519 => {}
+        let mut attestation_options = options.clone();
 
-                SecretType::Buffer
-                | SecretType::Aes
-                | SecretType::Ed25519
-                | SecretType::NistP256 => {
-                    return Err(IdentityError::InvalidKeyType.into());
+        let (secret_key, public_key) = match options.key {
+            PurposeKeyKey::Secret(key_id) => match options.purpose {
+                Purpose::SecureChannel => {
+                    let public_key = self
+                        .vault
+                        .secure_channel_vault
+                        .get_public_key(&key_id)
+                        .await?;
+                    (key_id, public_key)
+                }
+                Purpose::Credentials => {
+                    let public_key = self.vault.credential_vault.get_public_key(&key_id).await?;
+                    (key_id, public_key)
                 }
             },
-            Purpose::Credentials => match options.stype {
-                SecretType::Ed25519 | SecretType::NistP256 => {}
+            PurposeKeyKey::Public(_) => {
+                return Err(IdentityError::ExpectedSecretKeyInsteadOfPublic.into());
+            }
+        };
 
-                SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
-                    return Err(IdentityError::InvalidKeyType.into());
-                }
-            },
-        }
+        attestation_options.key = PurposeKeyKey::Public(public_key.clone());
 
-        let identifier = options.identifier;
-        let identity_change_history = self.identities_reader.get_identity(&identifier).await?;
-        let identity = Identity::import_from_change_history(
-            Some(&identifier),
-            identity_change_history,
-            self.vault.verifying_vault.clone(),
-        )
-        .await?;
+        let (attestation, attestation_data) = self.attest_purpose_key(attestation_options).await?;
 
-        let secret_key = options.key;
-        let public_key = match &options.purpose {
+        let identifier = options.identifier.clone();
+
+        self.repository
+            .set_purpose_key(&identifier, options.purpose, &attestation)
+            .await?;
+
+        let purpose_key = PurposeKey::new(
+            identifier,
+            secret_key,
+            public_key,
+            options.purpose,
+            attestation_data,
+            attestation,
+        );
+
+        Ok(purpose_key)
+    }
+
+    /// Attest a PurposeKey given its public key
+    pub async fn attest_purpose_key(
+        &self,
+        options: PurposeKeyOptions,
+    ) -> Result<(PurposeKeyAttestation, PurposeKeyAttestationData)> {
+        let public_key = match options.key {
+            PurposeKeyKey::Secret { .. } => {
+                return Err(IdentityError::ExpectedPublicKeyInsteadOfSecret.into())
+            }
+            PurposeKeyKey::Public(public_key) => public_key,
+        };
+
+        let public_key = match options.purpose {
             Purpose::SecureChannel => {
-                let public_key = self
-                    .vault
-                    .secure_channel_vault
-                    .get_public_key(&secret_key)
-                    .await?;
+                match options.stype {
+                    SecretType::X25519 => {}
+
+                    SecretType::Buffer
+                    | SecretType::Aes
+                    | SecretType::Ed25519
+                    | SecretType::NistP256 => {
+                        return Err(IdentityError::InvalidKeyType.into());
+                    }
+                }
+
                 PurposePublicKey::SecureChannelStaticKey(
                     public_key
                         .try_into()
@@ -136,11 +168,14 @@ impl PurposeKeysCreation {
                 )
             }
             Purpose::Credentials => {
-                let public_key = self
-                    .vault
-                    .credential_vault
-                    .get_public_key(&secret_key)
-                    .await?;
+                match options.stype {
+                    SecretType::Ed25519 | SecretType::NistP256 => {}
+
+                    SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
+                        return Err(IdentityError::InvalidKeyType.into());
+                    }
+                }
+
                 PurposePublicKey::CredentialSigningKey(
                     public_key
                         .try_into()
@@ -149,8 +184,17 @@ impl PurposeKeysCreation {
             }
         };
 
+        let identifier = options.identifier.clone();
+        let identity_change_history = self.identities_reader.get_identity(&identifier).await?;
+        let identity = Identity::import_from_change_history(
+            Some(&identifier),
+            identity_change_history,
+            self.vault.verifying_vault.clone(),
+        )
+        .await?;
+
         let purpose_key_attestation_data = PurposeKeyAttestationData {
-            subject: identity.identifier().clone(),
+            subject: identifier,
             subject_latest_change_hash: identity.latest_change_hash()?.clone(),
             public_key,
             created_at: options.created_at,
@@ -187,20 +231,7 @@ impl PurposeKeysCreation {
             signature,
         };
 
-        self.repository
-            .set_purpose_key(&identifier, options.purpose, &attestation)
-            .await?;
-
-        let purpose_key = PurposeKey::new(
-            identifier,
-            secret_key,
-            SecretType::Ed25519,
-            options.purpose,
-            purpose_key_attestation_data,
-            attestation,
-        );
-
-        Ok(purpose_key)
+        Ok((attestation, purpose_key_attestation_data))
     }
 
     /// Will try to get own Purpose Key from the repository, if that doesn't succeed - new one
@@ -249,29 +280,27 @@ impl PurposeKeysCreation {
             .verify_purpose_key_attestation(None, attestation)
             .await?;
 
-        let (purpose, key_id) = match purpose_key_data.public_key.clone() {
+        let (purpose, key_id, public_key) = match purpose_key_data.public_key.clone() {
             PurposePublicKey::SecureChannelStaticKey(public_key) => {
+                let public_key = public_key.into();
                 let key_id = self
                     .vault
                     .secure_channel_vault
-                    .get_key_id(&public_key.into())
+                    .get_key_id(&public_key)
                     .await?;
-                (Purpose::SecureChannel, key_id)
+                (Purpose::SecureChannel, key_id, public_key)
             }
             PurposePublicKey::CredentialSigningKey(public_key) => {
-                let key_id = self
-                    .vault
-                    .credential_vault
-                    .get_key_id(&public_key.into())
-                    .await?;
-                (Purpose::Credentials, key_id)
+                let public_key = public_key.into();
+                let key_id = self.vault.credential_vault.get_key_id(&public_key).await?;
+                (Purpose::Credentials, key_id, public_key)
             }
         };
 
         let purpose_key = PurposeKey::new(
             purpose_key_data.subject.clone(),
             key_id,
-            SecretType::Ed25519,
+            public_key,
             purpose,
             purpose_key_data,
             attestation.clone(),
