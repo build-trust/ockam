@@ -69,7 +69,7 @@ async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> c
 
     let node_manager_worker = app_state.node_manager_worker().await;
     let res = node_manager_worker
-        .accept_invitation(&app_state.context(), AcceptInvitation { id }, None)
+        .accept_invitation(&app_state.context(), AcceptInvitation { id })
         .await?;
 
     // Update the invitation status to Accepted
@@ -137,7 +137,7 @@ async fn send_invitation<R: Runtime>(
     let state: State<'_, AppState> = app.state();
     let node_manager_worker = state.node_manager_worker().await;
     let res = node_manager_worker
-        .create_service_invitation(&state.context(), invite_args, None)
+        .create_service_invitation(&state.context(), invite_args)
         .await
         .map_err(|e| e.to_string());
     debug!(?res, "invitation sent");
@@ -159,7 +159,6 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
                 ListInvitations {
                     kind: InvitationListKind::All,
                 },
-                None,
             )
             .await
             .map_err(|e| e.to_string())?;

@@ -167,7 +167,7 @@ async fn run_impl(
         configure_addon_endpoint(&opts.state, &project_name)?,
         add_on_id
     );
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, None));
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body));
 
     let response: CreateOperationResponse = rpc.ask(req).await?;
     let operation_id = response.operation_id;

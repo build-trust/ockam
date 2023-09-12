@@ -125,11 +125,7 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
         None => {
             let space_name = cli_state::random_name();
             node_manager
-                .create_space(
-                    &app_state.context(),
-                    CreateSpace::new(space_name, vec![]),
-                    None,
-                )
+                .create_space(&app_state.context(), CreateSpace::new(space_name, vec![]))
                 .await
                 .map_err(|e| miette!(e))?
         }
