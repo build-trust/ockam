@@ -43,7 +43,7 @@ ockam_transport_udp = { path = "../../../implementations/rust/ockam/ockam_transp
 ockam_transport_uds = { path = "../../../implementations/rust/ockam/ockam_transport_uds" }
 ockam_transport_websocket = { path = "../../../implementations/rust/ockam/ockam_transport_websocket", optional = true }
 ockam_vault = { path = "../../../implementations/rust/ockam/ockam_vault" }
-r3bl_ansi_color = "0.6.2"
+r3bl_ansi_color = "0.6.7"
 serde = { version = "1", default_features = false, features = ["derive"] }
 serde_bare = "0.5.0"
 serde_json = { version = "1.0", default_features = false }
