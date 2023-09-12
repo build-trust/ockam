@@ -6,7 +6,7 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, AllowAll, Result, Route};
 use ockam_identity::models::Identifier;
 use ockam_identity::{
-    secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    secure_channels, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
 };
 use ockam_node::{Context, MessageReceiveOptions};
 
@@ -118,11 +118,6 @@ pub async fn create_secure_channel_listener(
 
     let identity = identities_creation.create_identity().await?;
     let identifier = identity.identifier().clone();
-    let _key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(&identifier, Purpose::SecureChannel)
-        .await?;
     let options = SecureChannelListenerOptions::new().as_consumer(flow_control_id);
     let listener = secure_channels
         .create_secure_channel_listener(ctx, &identifier, "listener", options)
@@ -154,11 +149,6 @@ pub async fn create_secure_channel(
 
     let identity = identities_creation.create_identity().await?;
     let identifier = identity.identifier().clone();
-    let _key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(&identifier, Purpose::SecureChannel)
-        .await?;
     let address = secure_channels
         .create_secure_channel(
             ctx,

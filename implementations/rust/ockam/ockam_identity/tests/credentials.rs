@@ -8,7 +8,7 @@ use ockam_identity::models::SchemaId;
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
-    AuthorityService, CredentialAccessControl, CredentialsMemoryRetriever, Purpose,
+    AuthorityService, CredentialAccessControl, CredentialsMemoryRetriever,
     SecureChannelListenerOptions, SecureChannelOptions, TrustContext, TrustIdentifierPolicy,
 };
 use ockam_node::{Context, WorkerBuilder};
@@ -23,25 +23,8 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let credentials_service = identities.credentials_server();
 
     let authority = identities_creation.create_identity().await?;
-    let _authority_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(authority.identifier(), Purpose::Credentials)
-        .await?;
-
     let server = identities_creation.create_identity().await?;
-    let _server_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(server.identifier(), Purpose::SecureChannel)
-        .await?;
-
     let client = identities_creation.create_identity().await?;
-    let _client_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(client.identifier(), Purpose::SecureChannel)
-        .await?;
 
     let listener = secure_channels
         .create_secure_channel_listener(
@@ -120,25 +103,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let credentials_service = identities.credentials_server();
 
     let authority = identities_creation.create_identity().await?;
-    let _authority_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(authority.identifier(), Purpose::Credentials)
-        .await?;
-
     let client1 = identities_creation.create_identity().await?;
-    let _client1_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(client1.identifier(), Purpose::SecureChannel)
-        .await?;
-
     let client2 = identities_creation.create_identity().await?;
-    let _client2_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(client2.identifier(), Purpose::SecureChannel)
-        .await?;
 
     let credential = credentials
         .issue_credential(
@@ -246,25 +212,8 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let credentials_service = identities.credentials_server();
 
     let authority = identities_creation.create_identity().await?;
-    let _authority_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(authority.identifier(), Purpose::Credentials)
-        .await?;
-
     let server = identities_creation.create_identity().await?;
-    let _server_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(server.identifier(), Purpose::SecureChannel)
-        .await?;
-
     let client = identities_creation.create_identity().await?;
-    let _client_key = secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(client.identifier(), Purpose::SecureChannel)
-        .await?;
 
     let options = SecureChannelListenerOptions::new();
     let listener = secure_channels

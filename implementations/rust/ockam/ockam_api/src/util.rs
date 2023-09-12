@@ -347,7 +347,7 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 pub mod test_utils {
     use ockam::identity::storage::InMemoryStorage;
     use ockam::identity::utils::AttributesBuilder;
-    use ockam::identity::{Identifier, Identity, Purpose, MAX_CREDENTIAL_VALIDITY};
+    use ockam::identity::{Identifier, Identity, MAX_CREDENTIAL_VALIDITY};
     use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
@@ -473,19 +473,6 @@ pub mod test_utils {
             .import(Some(identity.identifier()), &exported_identity)
             .await?;
 
-        // It's easier to just recreate new Purpose keys instead of importing old ones
-        secure_channels
-            .identities()
-            .purpose_keys()
-            .create_purpose_key(identity.identifier(), Purpose::SecureChannel)
-            .await?;
-
-        secure_channels
-            .identities()
-            .purpose_keys()
-            .create_purpose_key(identity.identifier(), Purpose::Credentials)
-            .await?;
-
         context
             .start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .await?;
@@ -506,18 +493,6 @@ pub mod test_utils {
             .create_identity()
             .await
             .unwrap();
-
-        secure_channels
-            .identities()
-            .purpose_keys()
-            .create_purpose_key(identity.identifier(), Purpose::Credentials)
-            .await?;
-
-        secure_channels
-            .identities()
-            .purpose_keys()
-            .create_purpose_key(identity.identifier(), Purpose::SecureChannel)
-            .await?;
 
         Ok(identity)
     }
