@@ -42,7 +42,7 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
                 let mut interval = tokio::time::interval(DEFAULT_POLL_INTERVAL);
                 loop {
                     interval.tick().await;
-                    trace!("refreshing projects via background poll");
+                    trace!("Refreshing projects via background poll");
                     handle.trigger_global(REFRESH_PROJECTS, None);
                 }
             });
