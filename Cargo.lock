@@ -5703,9 +5703,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_ansi_color"
-version = "0.6.2"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "311e6d4e061a94640ecbb685aada944003ccea4253b26ebe6c8926377aa238ab"
+checksum = "c2e19b6a61264eccac13a5ecc5c1768d580b0e57d14163f707811f9dceb11eee"
 dependencies = [
  "is-terminal",
  "is_ci",
