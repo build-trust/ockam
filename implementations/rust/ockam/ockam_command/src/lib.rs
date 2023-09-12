@@ -4,6 +4,8 @@
 //!
 //! For more information please visit the [command guide](https://docs.ockam.io/reference/command)
 
+extern crate core;
+
 mod admin;
 mod authenticated;
 mod authority;
