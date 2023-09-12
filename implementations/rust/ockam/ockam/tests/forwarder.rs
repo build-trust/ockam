@@ -1,6 +1,4 @@
-use ockam::identity::{
-    secure_channels, Purpose, SecureChannelListenerOptions, SecureChannelOptions,
-};
+use ockam::identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::workers::Echoer;
 use ockam::{ForwardingService, ForwardingServiceOptions};
@@ -172,11 +170,6 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let identities_creation = secure_channels.identities().identities_creation();
     let cloud_identity = identities_creation.create_identity().await?;
     secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(cloud_identity.identifier(), Purpose::SecureChannel)
-        .await?;
-    secure_channels
         .create_secure_channel_listener(
             ctx,
             cloud_identity.identifier(),
@@ -206,11 +199,6 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
     let server_identity = identities_creation.create_identity().await?;
-    secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(server_identity.identifier(), Purpose::SecureChannel)
-        .await?;
     let cloud_server_channel = secure_channels
         .create_secure_channel(
             ctx,
@@ -241,11 +229,6 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
     let client_identity = identities_creation.create_identity().await?;
-    secure_channels
-        .identities()
-        .purpose_keys()
-        .create_purpose_key(client_identity.identifier(), Purpose::SecureChannel)
-        .await?;
     let cloud_client_channel = secure_channels
         .create_secure_channel(
             ctx,
