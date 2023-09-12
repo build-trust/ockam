@@ -1,4 +1,3 @@
-pub mod authority_node;
 pub mod config;
 pub(crate) mod connection;
 pub mod models;

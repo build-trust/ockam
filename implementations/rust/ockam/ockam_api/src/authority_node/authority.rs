@@ -19,10 +19,10 @@ use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 
 use crate::authenticator::direct::EnrollmentTokenAuthenticator;
+use crate::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
+use crate::authority_node::Configuration;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::echoer::Echoer;
-use crate::nodes::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
-use crate::nodes::authority_node::Configuration;
 use crate::{actions, DefaultAddress};
 
 /// This struct represents an Authority, which is an

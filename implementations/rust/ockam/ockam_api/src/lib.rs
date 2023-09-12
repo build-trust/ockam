@@ -144,6 +144,8 @@ pub mod rpc_proxy_service;
 pub mod trust_context;
 pub mod uppercase;
 
+pub mod authority_node;
+
 mod schema;
 mod session;
 mod util;

@@ -1,4 +1,4 @@
-use crate::nodes::authority_node::{Authority, Configuration};
+use crate::authority_node::{Authority, Configuration};
 use ockam_core::Result;
 use ockam_node::Context;
 use tracing::info;
