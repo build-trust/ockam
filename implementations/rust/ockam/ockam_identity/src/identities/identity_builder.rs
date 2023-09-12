@@ -84,10 +84,11 @@ impl IdentityBuilder {
     pub async fn build_options(self) -> Result<IdentityOptions> {
         let (key, stype) = match self.key {
             Key::Generate(stype) => {
+                let attributes = stype.try_into()?;
                 let key = self
                     .identities_creation
                     .identity_vault
-                    .generate_key(stype.into())
+                    .generate_key(attributes)
                     .await?;
 
                 (key, stype)
