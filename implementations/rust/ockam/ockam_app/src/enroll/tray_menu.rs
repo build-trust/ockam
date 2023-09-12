@@ -46,7 +46,9 @@ pub(crate) async fn build_enroll_section<'a, R: Runtime, M: Manager<R>>(
                 .build(app_handle),
             &IconMenuItemBuilder::new("Enroll")
                 .id(ENROLL_MENU_ID)
-                .icon(Icon::File("icons/box-arrow-in-right.png".into()))
+                .icon(Icon::Raw(
+                    include_bytes!("../../icons/box-arrow-in-right.png").to_vec(),
+                ))
                 .accelerator("cmd+e")
                 .build(app_handle),
         ])

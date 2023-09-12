@@ -18,15 +18,19 @@ pub(crate) async fn build_options_section<'a, R: Runtime, M: Manager<R>>(
 
     builder = builder.items(&[
         &IconMenuItemBuilder::with_id(DOCS_MENU_ID, "Documentation")
-            .icon(Icon::File("icons/file-earmark-text.png".into()))
+            .icon(Icon::Raw(
+                include_bytes!("../../icons/file-earmark-text.png").to_vec(),
+            ))
             .accelerator("cmd+/")
             .build(app_handle),
         &IconMenuItemBuilder::with_id(RESET_MENU_ID, "Reset")
-            .icon(Icon::File("icons/arrow-repeat.png".into()))
+            .icon(Icon::Raw(
+                include_bytes!("../../icons/arrow-repeat.png").to_vec(),
+            ))
             .accelerator("cmd+r")
             .build(app_handle),
         &IconMenuItemBuilder::with_id(QUIT_MENU_ID, "Quit Ockam")
-            .icon(Icon::File("icons/power.png".into()))
+            .icon(Icon::Raw(include_bytes!("../../icons/power.png").to_vec()))
             .accelerator("cmd+q")
             .build(app_handle),
     ]);
