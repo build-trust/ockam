@@ -1,5 +1,4 @@
-use crate::app::events::system_tray_on_update;
-use crate::app::{AppState, NODE_NAME};
+use crate::app::NODE_NAME;
 use crate::Result;
 use miette::IntoDiagnostic;
 use ockam::Context;
@@ -10,25 +9,12 @@ use ockam_multiaddr::MultiAddr;
 use once_cell::sync::Lazy;
 use std::str::FromStr;
 use std::sync::Arc;
-use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, info, trace, warn};
 
 pub static RELAY_NAME: Lazy<String> = Lazy::new(|| format!("forward_to_{NODE_NAME}"));
 
-pub fn create_relay<R: Runtime>(app: &AppHandle<R>) {
-    let app = app.clone();
-    tauri::async_runtime::spawn(async move {
-        let app_state: State<AppState> = app.state::<AppState>();
-        let context = app_state.context();
-        let cli_state = app_state.state().await;
-        let node_manager_worker = app_state.node_manager_worker().await;
-        create_relay_loop(context, cli_state, node_manager_worker).await;
-        system_tray_on_update(&app);
-    });
-}
-
 /// Try to create a relay until it succeeds.
-pub async fn create_relay_loop(
+pub async fn create_relay(
     context: Arc<Context>,
     cli_state: CliState,
     node_manager_worker: NodeManagerWorker,

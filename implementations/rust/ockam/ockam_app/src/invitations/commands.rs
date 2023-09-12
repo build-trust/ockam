@@ -13,10 +13,10 @@ use ockam_api::nodes::models::portal::InletStatus;
 
 use crate::app::{AppState, PROJECT_NAME};
 use crate::cli::cli_bin;
-use crate::projects::commands::{create_enrollment_ticket, list_projects_with_admin};
+use crate::projects::commands::{create_enrollment_ticket, SyncAdminProjectsState};
 use crate::shared_service::relay::RELAY_NAME;
 
-use super::{events::REFRESHED_INVITATIONS, state::SyncState};
+use super::{events::REFRESHED_INVITATIONS, state::SyncInvitationsState};
 
 pub async fn accept_invitation<R: Runtime>(id: String, app: AppHandle<R>) -> Result<(), String> {
     accept_invitation_impl(id, &app)
@@ -53,8 +53,8 @@ pub async fn create_service_invitation<R: Runtime>(
         ?outlet_socket_addr,
         "creating service invitation"
     );
-
-    let projects = list_projects_with_admin(app.clone()).await?;
+    let state: State<'_, SyncAdminProjectsState> = app.state();
+    let projects = state.read().await;
     let project_id = projects
         .iter()
         .find(|p| p.name == *PROJECT_NAME)
@@ -176,6 +176,7 @@ async fn refresh_inlets<R: Runtime>(
                                 "json"
                             )
                             .env("OCKAM_LOG", "off")
+                            .stderr_null()
                             .stdout_capture()
                             .run()
                             {
@@ -205,7 +206,7 @@ async fn refresh_inlets<R: Runtime>(
                         "--yes",
                         &i.local_node_name
                     )
-                    .stderr_to_stdout()
+                    .stderr_null()
                     .stdout_capture()
                     .run();
                     match create_inlet(&i).await {
@@ -264,7 +265,7 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
             &local_node_name,
             &enrollment_ticket_hex,
         )
-        .stderr_to_stdout()
+        .stderr_null()
         .stdout_capture()
         .run();
         debug!(node = %local_node_name, "Node enrolled using enrollment ticket");
@@ -278,7 +279,7 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
         "--trust-context",
         &local_node_name
     )
-    .stderr_to_stdout()
+    .stderr_null()
     .stdout_capture()
     .run()?;
     debug!(node = %local_node_name, "Node created");
@@ -296,7 +297,7 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
         "--alias",
         &service_name,
     )
-    .stderr_to_stdout()
+    .stderr_null()
     .stdout_capture()
     .run()?;
     info!(

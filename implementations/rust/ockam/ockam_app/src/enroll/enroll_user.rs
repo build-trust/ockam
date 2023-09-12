@@ -27,15 +27,26 @@ pub async fn enroll_user<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     enroll_with_token(app, &app_state)
         .await
         .unwrap_or_else(|e| error!(?e, "Failed to enroll user"));
-    system_tray_on_update(app);
     // Reset the node manager to include the project's setup, needed to create the relay.
     // This is necessary because the project data is used in the worker initialization,
     // which can't be rerun manually once the worker is started.
     app_state.reset_node_manager().await?;
+    system_tray_on_update(app);
+
+    // Refresh the projects and invitations now that the node has access to the project
     app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
     app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
-    system_tray_on_update(&app);
-    shared_service::relay::create_relay(app);
+
+    // Create the relay
+    shared_service::relay::create_relay(
+        app_state.context(),
+        app_state.state().await,
+        app_state.node_manager_worker().await,
+    )
+    .await;
+    system_tray_on_update(app);
+
+    info!("User enrolled successfully");
     Ok(())
 }
 
@@ -76,7 +87,7 @@ async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState)
     system_tray_on_update_with_enroll_status(app, "Retrieving space...")?;
     let space = retrieve_space(app_state).await?;
     system_tray_on_update_with_enroll_status(app, "Retrieving project...")?;
-    let _ = retrieve_project(app, app_state, &space).await?;
+    retrieve_project(app, app_state, &space).await?;
     let identifier = update_enrolled_identity(&cli_state, NODE_NAME)
         .await
         .into_diagnostic()?;
@@ -139,25 +150,23 @@ async fn retrieve_project<R: Runtime>(
     space: &Space,
 ) -> Result<Project> {
     info!("retrieving the user project");
-    let node_manager_worker = app_state.node_manager_worker().await;
-    let node_manager = node_manager_worker.inner().read().await;
-    let projects = {
-        node_manager
-            .list_projects(&app_state.context(), &controller_route())
-            .await
-            .map_err(|e| miette!(e))?
-    };
-
     let email = app_state
         .user_email()
         .await
         .wrap_err("User info is not valid")?;
 
-    let project = match projects
+    let node_manager_worker = app_state.node_manager_worker().await;
+    let node_manager = node_manager_worker.inner().read().await;
+    let projects = node_manager
+        .list_projects(&app_state.context(), &controller_route())
+        .await
+        .map_err(|e| miette!(e))?;
+    let admin_project = projects
         .iter()
         .filter(|p| p.has_admin_with_email(&email))
-        .find(|p| p.name == *PROJECT_NAME)
-    {
+        .find(|p| p.name == *PROJECT_NAME);
+
+    let project = match admin_project {
         Some(project) => project.clone(),
         None => {
             app.notification()

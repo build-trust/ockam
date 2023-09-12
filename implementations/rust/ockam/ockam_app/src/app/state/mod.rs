@@ -8,7 +8,7 @@ use std::sync::Arc;
 use miette::IntoDiagnostic;
 use ockam_multiaddr::MultiAddr;
 use tauri::async_runtime::{block_on, spawn, RwLock};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub(crate) use crate::app::state::model::ModelState;
 pub(crate) use crate::app::state::repository::{LmdbModelStateRepository, ModelStateRepository};
@@ -99,8 +99,10 @@ impl AppState {
         self.reset_node_manager().await?;
 
         // recreate the model state repository since the cli state has changed
-        let mut writer = self.model_state.write().await;
-        *writer = ModelState::default();
+        {
+            let mut writer = self.model_state.write().await;
+            *writer = ModelState::default();
+        }
         let identity_path = self
             .state()
             .await
@@ -108,8 +110,10 @@ impl AppState {
             .identities_repository_path()
             .unwrap();
         let new_state_repository = LmdbModelStateRepository::new(identity_path).await?;
-        let mut model_state_repository = self.model_state_repository.write().await;
-        *model_state_repository = Arc::new(new_state_repository);
+        {
+            let mut writer = self.model_state_repository.write().await;
+            *writer = Arc::new(new_state_repository);
+        }
 
         Ok(())
     }
@@ -170,7 +174,10 @@ impl AppState {
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
-        self.state().await.is_enrolled().map_err(|e| e.into())
+        self.state().await.is_enrolled().map_err(|e| {
+            warn!(%e, "Failed to check if user is enrolled");
+            e.into()
+        })
     }
 
     /// Return the list of currently running outlets
