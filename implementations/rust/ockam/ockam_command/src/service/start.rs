@@ -5,7 +5,7 @@ use minicbor::Encode;
 
 use ockam::Context;
 use ockam_api::DefaultAddress;
-use ockam_core::api::RequestBuilder;
+use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
@@ -127,7 +127,7 @@ async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StartCommand) -> m
 pub(crate) async fn start_service_impl<'a, T>(
     rpc: &mut Rpc,
     serv_name: &str,
-    req: RequestBuilder<T>,
+    req: Request<T>,
 ) -> Result<()>
 where
     T: Encode<()>,

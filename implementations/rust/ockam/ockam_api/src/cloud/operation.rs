@@ -71,10 +71,9 @@ mod node {
             operation_id: &str,
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, operation_id, "getting operation");
-            let req_builder = Request::get(format!("/v1/operations/{operation_id}"));
+            let req = Request::get(format!("/v1/operations/{operation_id}"));
 
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
+            self.request_controller(ctx, API_SERVICE, req, None).await
         }
     }
 }

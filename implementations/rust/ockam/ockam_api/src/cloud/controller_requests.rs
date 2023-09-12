@@ -41,7 +41,7 @@ mod node {
     use minicbor::Encode;
 
     use ockam::identity::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
-    use ockam_core::api::RequestBuilder;
+    use ockam_core::api::Request;
     use ockam_core::compat::str::FromStr;
     use ockam_core::env::get_env;
     use ockam_core::{self, route, Result};
@@ -75,7 +75,7 @@ mod node {
             &self,
             ctx: &Context,
             api_service: &str,
-            req: RequestBuilder<T>,
+            req: Request<T>,
             ident: Option<String>,
         ) -> Result<Vec<u8>>
         where
@@ -95,7 +95,7 @@ mod node {
             &self,
             ctx: &Context,
             api_service: &str,
-            req: RequestBuilder<T>,
+            req: Request<T>,
             ident: Option<String>,
             timeout: Duration,
         ) -> Result<Vec<u8>>
@@ -112,7 +112,7 @@ mod node {
             ctx: &Context,
             destination: Option<MultiAddr>,
             api_service: &str,
-            req: RequestBuilder<T>,
+            req: Request<T>,
             ident: Option<String>,
             timeout: Duration,
         ) -> Result<Vec<u8>>
@@ -161,7 +161,7 @@ mod node {
             &self,
             ctx: &Context,
             api_service: &str,
-            req: RequestBuilder<T>,
+            req: Request<T>,
             ident: Option<String>,
         ) -> Result<Vec<u8>>
         where
@@ -181,7 +181,7 @@ mod node {
             &self,
             ctx: &Context,
             api_service: &str,
-            req: RequestBuilder<T>,
+            req: Request<T>,
             ident: Option<String>,
             timeout: Duration,
         ) -> Result<Vec<u8>>

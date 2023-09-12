@@ -34,7 +34,7 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
-    use ockam_core::api::{Request, Response, Status};
+    use ockam_core::api::{RequestHeader, Response};
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
@@ -49,7 +49,7 @@ mod node {
         pub(crate) async fn send_message(
             &mut self,
             ctx: &mut Context,
-            req: &Request,
+            req: &RequestHeader,
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_body: super::SendMessage = dec.decode()?;
@@ -68,12 +68,10 @@ mod node {
 
             let res = ctx.send_and_receive::<Vec<u8>>(route, msg).await;
             match res {
-                Ok(r) => Ok(Response::builder(req.id(), Status::Ok).body(r).to_vec()?),
+                Ok(r) => Ok(Response::ok(req).body(r).to_vec()?),
                 Err(err) => {
                     error!(target: TARGET, ?err, "Failed to send message");
-                    Ok(Response::builder(req.id(), Status::InternalServerError)
-                        .body(err.to_string())
-                        .to_vec()?)
+                    Ok(Response::internal_error(req, &err.to_string()).to_vec()?)
                 }
             }
         }

@@ -59,10 +59,9 @@ mod node {
         ) -> Result<Vec<u8>> {
             let req_body = req_wrapper.req;
             trace!(target: TARGET, space = %req_body.name, "creating space");
-            let req_builder = Request::post("/v0/").body(req_body);
+            let req = Request::post("/v0/").body(req_body);
 
-            self.request_controller(ctx, "spaces", req_builder, None)
-                .await
+            self.request_controller(ctx, "spaces", req, None).await
         }
 
         pub async fn list_spaces(&self, ctx: &Context) -> Result<Vec<Space>> {
@@ -71,10 +70,9 @@ mod node {
 
         pub(crate) async fn list_spaces_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "listing spaces");
-            let req_builder = Request::get("/v0/");
+            let req = Request::get("/v0/");
 
-            self.request_controller(ctx, "spaces", req_builder, None)
-                .await
+            self.request_controller(ctx, "spaces", req, None).await
         }
 
         pub async fn get_space(&self, ctx: &Context, id: &str) -> Result<Space> {
@@ -83,10 +81,9 @@ mod node {
 
         pub(crate) async fn get_space_response(&self, ctx: &Context, id: &str) -> Result<Vec<u8>> {
             trace!(target: TARGET, space = %id, space = %id, "getting space");
-            let req_builder = Request::get(format!("/v0/{id}"));
+            let req = Request::get(format!("/v0/{id}"));
 
-            self.request_controller(ctx, "spaces", req_builder, None)
-                .await
+            self.request_controller(ctx, "spaces", req, None).await
         }
     }
 
@@ -121,10 +118,9 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, space = %id, "deleting space");
-            let req_builder = Request::delete(format!("/v0/{id}"));
+            let req = Request::delete(format!("/v0/{id}"));
 
-            self.request_controller(ctx, "spaces", req_builder, None)
-                .await
+            self.request_controller(ctx, "spaces", req, None).await
         }
     }
 }

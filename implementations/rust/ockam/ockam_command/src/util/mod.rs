@@ -18,7 +18,7 @@ use ockam::{
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Reply, RequestBuilder, Response, Status};
+use ockam_core::api::{Reply, Request, Response, Status};
 use ockam_core::AsyncTryClone;
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
@@ -163,14 +163,14 @@ impl Rpc {
     /// Send a request
     /// This method waits for a response status but does not expect a response body
     /// If the status is missing or not, we try to parse an error message and return it
-    pub async fn tell<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
+    pub async fn tell<T>(&mut self, req: Request<T>) -> Result<()>
     where
         T: Encode<()>,
     {
         self.send_request(req).await?;
         let (response, decoder) = Response::parse_response_header(self.buf.as_slice())?;
         if !response.is_ok() {
-            Err(miette!(Response::parse_err_msg(response, decoder)).into())
+            Err(miette!(response.parse_err_msg(decoder)).into())
         } else {
             Ok(())
         }
@@ -178,7 +178,7 @@ impl Rpc {
 
     /// Send a request
     /// This method waits for a response status and returns it if available
-    pub async fn tell_and_get_status<T>(&mut self, req: RequestBuilder<T>) -> Result<Option<Status>>
+    pub async fn tell_and_get_status<T>(&mut self, req: Request<T>) -> Result<Option<Status>>
     where
         T: Encode<()>,
     {
@@ -188,7 +188,7 @@ impl Rpc {
 
     /// Send a request and expects a decodable response
     /// This method parses and returns an error message if the request was not successful
-    pub async fn ask<T, R>(&mut self, req: RequestBuilder<T>) -> Result<R>
+    pub async fn ask<T, R>(&mut self, req: Request<T>) -> Result<R>
     where
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,
@@ -199,7 +199,7 @@ impl Rpc {
 
     /// Send a request and expects either a decodable response or an API error.
     /// This method returns an error if the request cannot be sent of if there is any decoding error
-    pub async fn ask_and_get_reply<T, R>(&mut self, req: RequestBuilder<T>) -> Result<Reply<R>>
+    pub async fn ask_and_get_reply<T, R>(&mut self, req: Request<T>) -> Result<Reply<R>>
     where
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,
@@ -210,7 +210,7 @@ impl Rpc {
 
     /// Make a request and wait for a response
     /// This method _does not_ check the success of the request
-    async fn send_request<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
+    async fn send_request<T>(&mut self, req: Request<T>) -> Result<()>
     where
         T: Encode<()>,
     {

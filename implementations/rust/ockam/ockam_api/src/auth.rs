@@ -4,8 +4,8 @@ use minicbor::Decoder;
 use tracing::trace;
 
 use ockam::identity::{AttributesEntry, IdentityAttributesReader, Identifier};
-use ockam_core::api::{decode_option, Error};
-use ockam_core::api::{Method, Request, Response};
+use ockam_core::api::{decode_option, Request, Response};
+use ockam_core::api::{Method, RequestHeader};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_node::api::request;
@@ -40,7 +40,7 @@ impl Server {
 
     async fn on_request(&mut self, data: &[u8]) -> Result<Vec<u8>> {
         let mut dec = Decoder::new(data);
-        let req: Request = dec.decode()?;
+        let req: RequestHeader = dec.decode()?;
 
         trace! {
             target: "ockam_api::auth::server",
@@ -53,22 +53,18 @@ impl Server {
 
         let res = match req.method() {
             Some(Method::Get) => match req.path_segments::<2>().as_slice() {
-                [""] => Response::ok(req.id())
-                    .body(self.store.list().await?)
-                    .to_vec()?,
+                [""] => Response::ok(&req).body(self.store.list().await?).to_vec()?,
                 [id] => {
                     let identifier = Identifier::try_from(id.to_string())?;
                     if let Some(a) = self.store.get_attributes(&identifier).await? {
-                        Response::ok(req.id()).body(a).to_vec()?
+                        Response::ok(&req).body(a).to_vec()?
                     } else {
-                        let err_body = Error::new(req.path())
-                            .with_message(format!("identity {} not found", id));
-                        Response::not_found(req.id()).body(err_body).to_vec()?
+                        Response::not_found(&req, &format!("identity {} not found", id)).to_vec()?
                     }
                 }
-                _ => ockam_core::api::unknown_path(&req).to_vec()?,
+                _ => Response::unknown_path(&req).to_vec()?,
             },
-            _ => ockam_core::api::invalid_method(&req).to_vec()?,
+            _ => Response::invalid_method(&req).to_vec()?,
         };
 
         Ok(res)

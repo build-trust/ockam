@@ -5,7 +5,7 @@ use minicbor::Decoder;
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::Result;
-use ockam_core::api::{Error, Request, Response, ResponseBuilder};
+use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -19,10 +19,10 @@ use super::NodeManagerWorker;
 impl NodeManagerWorker {
     pub(super) async fn get_credential(
         &mut self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<Either<ResponseBuilder<Error>, ResponseBuilder<CredentialAndPurposeKey>>> {
+    ) -> Result<Either<Response<Error>, Response<CredentialAndPurposeKey>>> {
         let node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 
@@ -42,25 +42,23 @@ impl NodeManagerWorker {
             .credential(ctx, &identifier)
             .await
         {
-            Ok(c) => Ok(Either::Right(Response::ok(req.id()).body(c))),
-            Err(e) => {
-                let err = Error::new(req.path())
-                    .with_message(format!(
-                        "Error retrieving credentai from authority for {}",
-                        identifier
-                    ))
-                    .with_cause(Error::new(req.path()).with_message(e.to_string()));
-                Ok(Either::Left(Response::internal_error(req.id()).body(err)))
-            }
+            Ok(c) => Ok(Either::Right(Response::ok(req).body(c))),
+            Err(e) => Ok(Either::Left(Response::internal_error(
+                req,
+                &format!(
+                    "Error retrieving credential from authority for {}: {}",
+                    identifier, e,
+                ),
+            ))),
         }
     }
 
     pub(super) async fn present_credential(
         &self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
+    ) -> Result<Response, Response<Error>> {
         let node_manager = self.node_manager.write().await;
         let request: PresentCredentialRequest = dec.decode()?;
 
@@ -103,7 +101,7 @@ impl NodeManagerWorker {
                 .await?;
         }
 
-        let response = Response::ok(req.id());
+        let response = Response::ok(req);
         Ok(response)
     }
 }

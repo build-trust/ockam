@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use minicbor::Decoder;
 
 use ockam::Result;
-use ockam_core::api::{Error, Request, Response, ResponseBuilder};
+use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::Address;
 use ockam_node::Context;
 use ockam_transport_tcp::{
@@ -71,10 +71,7 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn get_tcp_connections(
-        &self,
-        req: &Request,
-    ) -> ResponseBuilder<TransportList> {
+    pub(super) async fn get_tcp_connections(&self, req: &RequestHeader) -> Response<TransportList> {
         let tcp_transport = &self.node_manager.read().await.tcp_transport;
         let map = |info: &TcpSenderInfo| {
             TransportStatus::new(ApiTransport {
@@ -87,7 +84,7 @@ impl NodeManagerWorker {
             })
         };
 
-        Response::ok(req.id()).body(TransportList::new(
+        Response::ok(req).body(TransportList::new(
             tcp_transport
                 .registry()
                 .get_all_sender_workers()
@@ -99,16 +96,16 @@ impl NodeManagerWorker {
 
     pub(super) async fn get_tcp_connection(
         &self,
-        req: &Request,
+        req: &RequestHeader,
         address: String,
-    ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
+    ) -> Result<Response<TransportStatus>, Response<Error>> {
         let tcp_transport = &self.node_manager.read().await.tcp_transport;
         let sender = match Self::find_connection(tcp_transport, address.to_string()) {
             None => {
-                let error = Error::new(req.path()).with_message(format!(
-                    "Connection {address} was not found in the registry."
+                return Err(Response::not_found(
+                    req,
+                    &format!("Connection {address} was not found in the registry."),
                 ));
-                return Err(Response::not_found(req.id()).body(error));
             }
             Some(sender) => sender,
         };
@@ -122,10 +119,10 @@ impl NodeManagerWorker {
             flow_control_id: sender.flow_control_id().clone(),
         });
 
-        Ok(Response::ok(req.id()).body(status))
+        Ok(Response::ok(req).body(status))
     }
 
-    pub(super) async fn get_tcp_listeners(&self, req: &Request) -> ResponseBuilder<TransportList> {
+    pub(super) async fn get_tcp_listeners(&self, req: &RequestHeader) -> Response<TransportList> {
         let tcp_transport = &self.node_manager.read().await.tcp_transport;
 
         let map = |info: &TcpListenerInfo| {
@@ -139,7 +136,7 @@ impl NodeManagerWorker {
             })
         };
 
-        Response::ok(req.id()).body(TransportList::new(
+        Response::ok(req).body(TransportList::new(
             tcp_transport
                 .registry()
                 .get_all_listeners()
@@ -151,16 +148,17 @@ impl NodeManagerWorker {
 
     pub(super) async fn get_tcp_listener(
         &self,
-        req: &Request,
+        req: &RequestHeader,
         address: String,
-    ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
+    ) -> Result<Response<TransportStatus>, Response<Error>> {
         let tcp_transport = &self.node_manager.read().await.tcp_transport;
 
         let listener = match Self::find_listener(tcp_transport, address.to_string()) {
             None => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Listener {address} was not found in the registry."));
-                return Err(Response::bad_request(req.id()).body(err_body));
+                return Err(Response::bad_request(
+                    req,
+                    &format!("Listener {address} was not found in the registry."),
+                ));
             }
             Some(listener) => listener,
         };
@@ -174,15 +172,15 @@ impl NodeManagerWorker {
             flow_control_id: listener.flow_control_id().clone(),
         });
 
-        Ok(Response::ok(req.id()).body(status))
+        Ok(Response::ok(req).body(status))
     }
 
     pub(super) async fn create_tcp_connection<'a>(
         &self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
+    ) -> Result<Response<TransportStatus>, Response<Error>> {
         let node_manager = self.node_manager.read().await;
         let CreateTcpConnection { addr, .. } = dec.decode()?;
 
@@ -215,14 +213,14 @@ impl NodeManagerWorker {
                     processor_address: connection.receiver_address().to_string(),
                     flow_control_id: connection.flow_control_id().clone(),
                 };
-                Response::ok(req.id()).body(TransportStatus::new(api_transport))
+                Response::ok(req).body(TransportStatus::new(api_transport))
             }
             Err(msg) => {
                 error!("{}", msg.to_string());
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to connect to {}.", addr))
-                    .with_cause(Error::new(req.path()).with_message(msg.to_string()));
-                return Err(Response::bad_request(req.id()).body(err_body));
+                return Err(Response::bad_request(
+                    req,
+                    &format!("Unable to connect to {}: {}", addr, msg),
+                ));
             }
         };
 
@@ -231,9 +229,9 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_tcp_listener<'a>(
         &self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<TransportStatus>, ResponseBuilder<Error>> {
+    ) -> Result<Response<TransportStatus>, Response<Error>> {
         let node_manager = self.node_manager.read().await;
         let CreateTcpListener { addr, .. } = dec.decode()?;
 
@@ -254,14 +252,14 @@ impl NodeManagerWorker {
                     processor_address: listener.processor_address().to_string(),
                     flow_control_id: listener.flow_control_id().clone(),
                 };
-                Response::ok(req.id()).body(TransportStatus::new(api_transport))
+                Response::ok(req).body(TransportStatus::new(api_transport))
             }
             Err(msg) => {
                 error!("{}", msg.to_string());
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to listen on {}.", addr))
-                    .with_cause(Error::new(req.path()).with_message(msg.to_string()));
-                return Err(Response::bad_request(req.id()).body(err_body));
+                return Err(Response::bad_request(
+                    req,
+                    &format!("Unable to listen on {}: {}", addr, msg),
+                ));
             }
         };
 
@@ -270,9 +268,9 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_tcp_connection(
         &self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
+    ) -> Result<Response<()>, Response<Error>> {
         let node_manager = self.node_manager.read().await;
         let body: DeleteTransport = dec.decode()?;
 
@@ -289,10 +287,10 @@ impl NodeManagerWorker {
                     .map(|x| x.address().clone())
                 {
                     None => {
-                        let err_body = Error::new(req.path()).with_message(format!(
-                            "Connection {socket_address} was not found in the registry."
+                        return Err(Response::bad_request(
+                            req,
+                            &format!("Connection {socket_address} was not found in the registry."),
                         ));
-                        return Err(Response::bad_request(req.id()).body(err_body));
                     }
                     Some(addr) => addr,
                 }
@@ -305,21 +303,19 @@ impl NodeManagerWorker {
             .disconnect(sender_address.clone())
             .await
         {
-            Ok(_) => Ok(Response::ok(req.id())),
-            Err(err) => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to disconnect from {}.", sender_address))
-                    .with_cause(Error::new(req.path()).with_message(err.to_string()));
-                Err(Response::bad_request(req.id()).body(err_body))
-            }
+            Ok(_) => Ok(Response::ok(req)),
+            Err(err) => Err(Response::bad_request(
+                req,
+                &format!("Unable to disconnect from {}: {}", sender_address, err),
+            )),
         }
     }
 
     pub(super) async fn delete_tcp_listener(
         &self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
+    ) -> Result<Response<()>, Response<Error>> {
         let node_manager = self.node_manager.read().await;
         let body: DeleteTransport = dec.decode()?;
 
@@ -336,10 +332,10 @@ impl NodeManagerWorker {
                     .map(|x| x.address().clone())
                 {
                     None => {
-                        let err_body = Error::new(req.path()).with_message(format!(
-                            "Listener {socket_address} was not found in the registry."
+                        return Err(Response::bad_request(
+                            req,
+                            &format!("Listener {socket_address} was not found in the registry."),
                         ));
-                        return Err(Response::bad_request(req.id()).body(err_body));
                     }
                     Some(addr) => addr,
                 }
@@ -352,13 +348,11 @@ impl NodeManagerWorker {
             .stop_listener(&listener_address)
             .await
         {
-            Ok(_) => Ok(Response::ok(req.id())),
-            Err(err) => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Unable to stop listener {}.", listener_address))
-                    .with_cause(Error::new(req.path()).with_message(err.to_string()));
-                Err(Response::bad_request(req.id()).body(err_body))
-            }
+            Ok(_) => Ok(Response::ok(req)),
+            Err(err) => Err(Response::bad_request(
+                req,
+                &format!("Unable to stop listener {}: {}", listener_address, err),
+            )),
         }
     }
 }

@@ -6,8 +6,7 @@ use ockam::identity::TRUST_CONTEXT_ID;
 use ockam::identity::{
     AttributesEntry, Identifier, IdentityAttributesWriter, IdentitySecureChannelLocalInfo,
 };
-use ockam_core::api;
-use ockam_core::api::{Method, Request, Response};
+use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
 use ockam_node::Context;
@@ -34,8 +33,8 @@ impl Worker for Server {
             c.send(m.return_route(), r).await
         } else {
             let mut dec = Decoder::new(m.as_body());
-            let req: Request = dec.decode()?;
-            let res = api::forbidden(&req, "secure channel required").to_vec()?;
+            let req: RequestHeader = dec.decode()?;
+            let res = Response::forbidden(&req, "secure channel required").to_vec()?;
             c.send(m.return_route(), res).await
         }
     }
@@ -62,7 +61,7 @@ impl Server {
 
     async fn on_request(&mut self, from: &Identifier, data: &[u8]) -> Result<Vec<u8>> {
         let mut dec = Decoder::new(data);
-        let req: Request = dec.decode()?;
+        let req: RequestHeader = dec.decode()?;
 
         trace! {
             target: "ockam_api::okta::server",
@@ -104,14 +103,14 @@ impl Server {
                             None,
                         );
                         self.attributes_writer.put_attributes(from, entry).await?;
-                        Response::ok(req.id()).to_vec()?
+                        Response::ok(&req).to_vec()?
                     } else {
-                        api::forbidden(&req, "Forbidden").to_vec()?
+                        Response::forbidden(&req, "Forbidden").to_vec()?
                     }
                 }
-                _ => api::unknown_path(&req).to_vec()?,
+                _ => Response::unknown_path(&req).to_vec()?,
             },
-            _ => api::invalid_method(&req).to_vec()?,
+            _ => Response::invalid_method(&req).to_vec()?,
         };
         Ok(res)
     }
