@@ -12,7 +12,6 @@ _: {
         commitlint
         curl
         git
-        gradle_7
         graphviz
         jq
         which

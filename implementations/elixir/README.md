@@ -10,25 +10,25 @@ This folder contains the Elixir implementation of Ockam.
 1. Lint
 
 ```
-../../gradlew lint
+cd implementations/elixir && make lint
 ```
 
 2. Build
 
 ```
-../../gradlew build
+cd implementations/elixir && make build
 ```
 
 3. Test
 
 ```
-../../gradlew test
+cd implementations/elixir && make test
 ```
 
 4. Clean
 
 ```
-../../gradlew clean
+cd implementations/elixir && make clean
 ```
 
 ## ockam_vault_software NIFs

@@ -3,7 +3,7 @@ FROM ghcr.io/build-trust/ockam-builder@sha256:5ab42598e35509cad3ea9c1e1bd0ed135e
 COPY . /work
 RUN set -xe; \
     cd implementations/elixir; \
-    ../../gradlew build; \
+    make build; \
     cd ockam/ockam_healthcheck; \
     MIX_ENV=prod mix release;
 
