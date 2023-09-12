@@ -124,29 +124,37 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
         )
         .await
         .map_err(|e| e.to_string())?;
-    trace!(?invitations, "Invitations fetched");
+    debug!("Invitations fetched");
+    trace!(?invitations);
     {
-        let invitation_state: State<'_, SyncState> = app.state();
+        let invitation_state: State<'_, SyncInvitationsState> = app.state();
         let mut writer = invitation_state.write().await;
-        writer.replace_by(invitations);
+        writer.replace_by(invitations.clone());
     }
-    refresh_inlets(&app).await.map_err(|e| e.to_string())?;
+    refresh_inlets(&app, invitations.accepted.as_ref())
+        .await
+        .map_err(|e| e.to_string())?;
     app.trigger_global(REFRESHED_INVITATIONS, None);
     Ok(())
 }
 
-async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
+async fn refresh_inlets<R: Runtime>(
+    app: &AppHandle<R>,
+    accepted_invitations: Option<&Vec<InvitationWithAccess>>,
+) -> crate::Result<()> {
     debug!("Refreshing inlets");
-    let invitations_state: State<'_, SyncState> = app.state();
-    let mut writer = invitations_state.write().await;
-    if writer.accepted.invitations.is_empty() {
-        return Ok(());
-    }
+    let accepted_invitations = match accepted_invitations {
+        Some(accepted_invitations) => accepted_invitations,
+        None => {
+            debug!("No accepted invitations, skipping inlets refresh");
+            return Ok(());
+        }
+    };
     let app_state: State<'_, AppState> = app.state();
     let cli_state = app_state.state().await;
     let cli_bin = cli_bin()?;
     let mut inlets_socket_addrs = vec![];
-    for invitation in &writer.accepted.invitations {
+    for invitation in accepted_invitations {
         match InletDataFromInvitation::new(&cli_state, invitation) {
             Ok(i) => match i {
                 Some(i) => {
@@ -219,11 +227,15 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
             }
         }
     }
-    for (invitation_id, inlet_socket_addr) in inlets_socket_addrs {
-        writer
-            .accepted
-            .inlets
-            .insert(invitation_id, inlet_socket_addr);
+    {
+        let invitations_state: State<'_, SyncInvitationsState> = app.state();
+        let mut writer = invitations_state.write().await;
+        for (invitation_id, inlet_socket_addr) in inlets_socket_addrs {
+            writer
+                .accepted
+                .inlets
+                .insert(invitation_id, inlet_socket_addr);
+        }
     }
     info!("Inlets refreshed");
     Ok(())
