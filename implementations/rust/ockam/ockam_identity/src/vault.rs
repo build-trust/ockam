@@ -72,6 +72,7 @@ impl Vault {
 
 impl Vault {
     /// Create Software Vaults with [`PersistentStorage`] with a given path
+    #[cfg(feature = "std")]
     pub async fn create_with_persistent_storage_path(
         path: &std::path::Path,
     ) -> ockam_core::Result<Vault> {

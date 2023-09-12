@@ -4,9 +4,10 @@ use crate::utils::now;
 use crate::{
     CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeysVerification,
 };
-use std::collections::BTreeMap;
 
+use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::VerifyingVault;
 
