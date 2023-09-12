@@ -6,6 +6,7 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::{Subscription, Subscriptions};
+use ockam_api::nodes::NodeManager;
 
 use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::output::Output;
@@ -58,39 +59,53 @@ async fn run_impl(
     let node_manager = start_node_manager(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
-            subscription_id: Some(subscription_id),
-            space_id: _,
+            subscription_id,
+            space_id,
         } => {
-            let subscription = node_manager
-                .get_subscription(&ctx, subscription_id.clone())
+            match get_subscription_by_id_or_space_id(&node_manager, &ctx, subscription_id, space_id)
+                .await?
+            {
+                Some(subscription) => opts.terminal.write_line(&subscription.output()?)?,
+                None => opts
+                    .terminal
+                    .write_line("Please specify either a space id or a subscription id")?,
+            }
+        }
+    };
+    delete_embedded_node(&opts, node_manager.node_name().as_str()).await;
+    Ok(())
+}
+
+pub(crate) async fn get_subscription_by_id_or_space_id(
+    node_manager: &NodeManager,
+    ctx: &Context,
+    subscription_id: Option<String>,
+    space_id: Option<String>,
+) -> Result<Option<Subscription>> {
+    match (subscription_id, space_id) {
+        (Some(subscription_id), _) => Ok(Some(
+            node_manager
+                .get_subscription(ctx, subscription_id.clone())
                 .await
+                .and_then(|s| s.found())
                 .into_diagnostic()?
                 .ok_or_else(|| {
                     miette!(
                         "no subscription found for subscription id {}",
                         subscription_id
                     )
-                })?;
-            opts.println(&subscription)?;
-        }
-        SubscriptionSubcommand::Show {
-            subscription_id: None,
-            space_id: Some(space_id),
-        } => {
-            let subscription = node_manager
-                .get_subscription_by_space_id(&ctx, space_id.clone())
+                })?,
+        )),
+        (None, Some(space_id)) => Ok(Some(
+            node_manager
+                .get_subscription_by_space_id(ctx, space_id.clone())
                 .await
+                .and_then(|s| s.found())
                 .into_diagnostic()?
-                .ok_or_else(|| miette!("no subscription found for space {}", space_id))?;
-            opts.println(&subscription)?;
-        }
-        _ => {
-            opts.terminal
-                .write_line("Please specify either a space id or a subscription id")?;
-        }
-    };
-    delete_embedded_node(&opts, node_manager.node_name().as_str()).await;
-    Ok(())
+                .ok_or_else(|| miette!("no subscription found for space {}", space_id))?,
+        )),
+        _ => Ok(None),
+    }
 }
 
 impl Output for Subscription {

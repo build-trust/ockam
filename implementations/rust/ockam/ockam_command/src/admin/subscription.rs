@@ -2,12 +2,14 @@ use std::path::PathBuf;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
-use miette::{miette, Context as _, IntoDiagnostic};
+use miette::{Context as _, IntoDiagnostic};
 
+use crate::node::util::{delete_embedded_node, start_node_manager};
 use ockam::Context;
 use ockam_api::cloud::subscription::Subscriptions;
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::output::Output;
+use crate::subscription::get_subscription_by_id_or_space_id;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -153,43 +155,34 @@ async fn run_impl(
                 .activate_subscription(&ctx, space, json)
                 .await
                 .into_diagnostic()?;
-            opts.println(&response)?;
+            opts.terminal.write_line(&response.output()?)?
         }
         SubscriptionSubcommand::List => {
             let response = node_manager
                 .get_subscriptions(&ctx)
                 .await
                 .into_diagnostic()?;
-            opts.println(&response)?;
+            opts.terminal.write_line(&response.output()?)?
         }
         SubscriptionSubcommand::Unsubscribe {
             subscription_id,
             space_id,
-        } => match (subscription_id, space_id) {
-            (Some(subscription_id), _) => {
-                let response = node_manager
-                    .unsubscribe(&ctx, subscription_id)
-                    .await
-                    .into_diagnostic()?;
-                opts.println(&response)?;
+        } => {
+            match get_subscription_by_id_or_space_id(&node_manager, &ctx, subscription_id, space_id)
+                .await?
+            {
+                Some(subscription) => {
+                    let response = node_manager
+                        .unsubscribe(&ctx, subscription.id)
+                        .await
+                        .into_diagnostic()?;
+                    opts.terminal.write_line(&response.output()?)?
+                }
+                None => opts
+                    .terminal
+                    .write_line("Please specify either a space id or a subscription id")?,
             }
-            (None, Some(space_id)) => {
-                let subscription = node_manager
-                    .get_subscription_by_space_id(&ctx, space_id.clone())
-                    .await
-                    .into_diagnostic()?
-                    .ok_or_else(|| miette!("no subscription found for space {}", space_id))?;
-                let response = node_manager
-                    .unsubscribe(&ctx, subscription.id)
-                    .await
-                    .into_diagnostic()?;
-                opts.println(&response)?;
-            }
-            (None, None) => {
-                opts.terminal
-                    .write_line("Please provide a space id or a subscription id")?;
-            }
-        },
+        }
         SubscriptionSubcommand::Update(c) => {
             let SubscriptionUpdate { subcommand: sc } = c;
             match sc {
@@ -201,65 +194,51 @@ async fn run_impl(
                     let json = std::fs::read_to_string(&json)
                         .into_diagnostic()
                         .context(format!("failed to read {:?}", &json))?;
-                    match (subscription_id, space_id) {
-                        (Some(subscription_id), _) => {
-                            let response = node_manager
-                                .update_subscription_contact_info(&ctx, subscription_id, json)
-                                .await
-                                .into_diagnostic()?;
-                            opts.println(&response)?;
-                        }
-                        (None, Some(space_id)) => {
-                            let subscription = node_manager
-                                .get_subscription_by_space_id(&ctx, space_id.clone())
-                                .await
-                                .into_diagnostic()?
-                                .ok_or_else(|| {
-                                    miette!("no subscription found for space {}", space_id)
-                                })?;
+                    match get_subscription_by_id_or_space_id(
+                        &node_manager,
+                        &ctx,
+                        subscription_id,
+                        space_id,
+                    )
+                    .await?
+                    {
+                        Some(subscription) => {
                             let response = node_manager
                                 .update_subscription_contact_info(&ctx, subscription.id, json)
                                 .await
                                 .into_diagnostic()?;
-                            opts.println(&response)?;
+                            opts.terminal.write_line(&response.output()?)?
                         }
-                        (None, None) => {
-                            opts.terminal
-                                .write_line("Please provide a space id or a subscription id")?;
-                        }
+                        None => opts
+                            .terminal
+                            .write_line("Please specify either a space id or a subscription id")?,
                     }
                 }
                 SubscriptionUpdateSubcommand::Space {
                     subscription_id,
                     space_id,
                     new_space_id,
-                } => match (subscription_id, space_id) {
-                    (Some(subscription_id), _) => {
-                        let response = node_manager
-                            .update_subscription_space(&ctx, subscription_id, new_space_id)
-                            .await
-                            .into_diagnostic()?;
-                        opts.println(&response)?;
+                } => {
+                    match get_subscription_by_id_or_space_id(
+                        &node_manager,
+                        &ctx,
+                        subscription_id,
+                        space_id,
+                    )
+                    .await?
+                    {
+                        Some(subscription) => {
+                            let response = node_manager
+                                .update_subscription_space(&ctx, subscription.id, new_space_id)
+                                .await
+                                .into_diagnostic()?;
+                            opts.terminal.write_line(&response.output()?)?
+                        }
+                        None => opts
+                            .terminal
+                            .write_line("Please specify either a space id or a subscription id")?,
                     }
-                    (None, Some(space_id)) => {
-                        let subscription = node_manager
-                            .get_subscription_by_space_id(&ctx, space_id.clone())
-                            .await
-                            .into_diagnostic()?
-                            .ok_or_else(|| {
-                                miette!("no subscription found for space {}", space_id)
-                            })?;
-                        let response = node_manager
-                            .update_subscription_space(&ctx, subscription.id, new_space_id)
-                            .await
-                            .into_diagnostic()?;
-                        opts.println(&response)?;
-                    }
-                    (None, None) => {
-                        opts.terminal
-                            .write_line("Please provide a space id or a subscription id")?;
-                    }
-                },
+                }
             }
         }
     };
