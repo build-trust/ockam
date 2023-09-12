@@ -5,7 +5,7 @@ use clap::{Args, Subcommand};
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::subscription::Subscription;
+use ockam_api::cloud::subscription::{Subscription, Subscriptions};
 
 use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::output::Output;

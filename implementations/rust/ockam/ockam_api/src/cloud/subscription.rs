@@ -1,7 +1,13 @@
 use minicbor::{Decode, Encode};
+use ockam_core::api::{Request, Response};
+use ockam_core::{self, async_trait, Result};
+use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::nodes::NodeManager;
+
+const TARGET: &str = "ockam_api::cloud::subscription";
+const API_SERVICE: &str = "subscriptions";
 
 #[derive(Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone))]
@@ -61,111 +67,138 @@ pub struct Subscription {
     pub space_id: Option<String>,
 }
 
-mod node {
-    use super::*;
-    use ockam_core::api::{Request, Response};
-    use ockam_core::{self, Result};
-    use ockam_node::Context;
+#[async_trait]
+pub trait Subscriptions {
+    async fn activate_subscription(
+        &self,
+        ctx: &Context,
+        space_id: String,
+        subscription_data: String,
+    ) -> Result<Subscription>;
 
-    const TARGET: &str = "ockam_api::cloud::subscription";
-    const API_SERVICE: &str = "subscriptions";
+    async fn unsubscribe(&self, ctx: &Context, subscription_id: String) -> Result<Subscription>;
 
-    impl NodeManager {
-        pub async fn activate_subscription(
-            &self,
-            ctx: &Context,
-            space_id: String,
-            subscription_data: String,
-        ) -> Result<Subscription> {
-            let req_body = ActivateSubscription::existing(space_id, subscription_data);
-            trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
-            let req_builder = Request::post("/v0/activate").body(req_body);
+    async fn update_subscription_contact_info(
+        &self,
+        ctx: &Context,
+        subscription_id: String,
+        contact_info: String,
+    ) -> Result<Subscription>;
 
-            let bytes = self
-                .request_controller(ctx, API_SERVICE, req_builder, None)
-                .await?;
-            Response::parse_response_body(bytes.as_slice())
-        }
+    async fn update_subscription_space(
+        &self,
+        ctx: &Context,
+        subscription_id: String,
+        new_space_id: String,
+    ) -> Result<Subscription>;
 
-        pub async fn unsubscribe(
-            &self,
-            ctx: &Context,
-            subscription_id: String,
-        ) -> Result<Subscription> {
-            trace!(target: TARGET, subscription = %subscription_id, "unsubscribing");
-            let req_builder = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
-            let bytes = self
-                .request_controller(ctx, API_SERVICE, req_builder, None)
-                .await?;
-            Response::parse_response_body(bytes.as_slice())
-        }
+    async fn get_subscriptions(&self, ctx: &Context) -> Result<Vec<Subscription>>;
 
-        pub async fn update_subscription_contact_info(
-            &self,
-            ctx: &Context,
-            subscription_id: String,
-            contact_info: String,
-        ) -> Result<Subscription> {
-            trace!(target: TARGET, subscription = %subscription_id, "updating subscription contact info");
-            let req_builder =
-                Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
+    async fn get_subscription(
+        &self,
+        ctx: &Context,
+        subscription_id: String,
+    ) -> Result<Option<Subscription>>;
 
-            let bytes = self
-                .request_controller(ctx, API_SERVICE, req_builder, None)
-                .await?;
-            Response::parse_response_body(bytes.as_slice())
-        }
+    async fn get_subscription_by_space_id(
+        &self,
+        ctx: &Context,
+        space_id: String,
+    ) -> Result<Option<Subscription>>;
+}
 
-        pub async fn update_subscription_space(
-            &self,
-            ctx: &Context,
-            subscription_id: String,
-            new_space_id: String,
-        ) -> Result<Subscription> {
-            trace!(target: TARGET, subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
-            let req_builder =
-                Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
+#[async_trait]
+impl Subscriptions for NodeManager {
+    async fn activate_subscription(
+        &self,
+        ctx: &Context,
+        space_id: String,
+        subscription_data: String,
+    ) -> Result<Subscription> {
+        let req_body = ActivateSubscription::existing(space_id, subscription_data);
+        trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
+        let req_builder = Request::post("/v0/activate").body(req_body);
 
-            let bytes = self
-                .request_controller(ctx, API_SERVICE, req_builder, None)
-                .await?;
-            Response::parse_response_body(bytes.as_slice())
-        }
+        let bytes = self
+            .request_controller(ctx, API_SERVICE, req_builder, None)
+            .await?;
+        Response::parse_response_body(bytes.as_slice())
+    }
 
-        pub async fn get_subscriptions(&self, ctx: &Context) -> Result<Vec<Subscription>> {
-            trace!(target: TARGET, "listing subscriptions");
-            let req_builder = Request::get("/v0/");
+    async fn unsubscribe(&self, ctx: &Context, subscription_id: String) -> Result<Subscription> {
+        trace!(target: TARGET, subscription = %subscription_id, "unsubscribing");
+        let req_builder = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
+        let bytes = self
+            .request_controller(ctx, API_SERVICE, req_builder, None)
+            .await?;
+        Response::parse_response_body(bytes.as_slice())
+    }
 
-            let bytes = self
-                .request_controller(ctx, API_SERVICE, req_builder, None)
-                .await?;
-            Response::parse_response_body(bytes.as_slice())
-        }
+    async fn update_subscription_contact_info(
+        &self,
+        ctx: &Context,
+        subscription_id: String,
+        contact_info: String,
+    ) -> Result<Subscription> {
+        trace!(target: TARGET, subscription = %subscription_id, "updating subscription contact info");
+        let req_builder =
+            Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
 
-        pub async fn get_subscription(
-            &self,
-            ctx: &Context,
-            subscription_id: String,
-        ) -> Result<Option<Subscription>> {
-            trace!(target: TARGET, subscription = %subscription_id, "getting subscription");
-            let req_builder = Request::get(format!("/v0/{subscription_id}"));
-            let bytes = self
-                .request_controller(ctx, API_SERVICE, req_builder, None)
-                .await?;
-            Response::parse_response_body(bytes.as_slice())
-        }
+        let bytes = self
+            .request_controller(ctx, API_SERVICE, req_builder, None)
+            .await?;
+        Response::parse_response_body(bytes.as_slice())
+    }
 
-        pub async fn get_subscription_by_space_id(
-            &self,
-            ctx: &Context,
-            space_id: String,
-        ) -> Result<Option<Subscription>> {
-            let subscriptions: Vec<Subscription> = self.get_subscriptions(ctx).await?;
-            let subscription = subscriptions
-                .into_iter()
-                .find(|s| s.space_id == Some(space_id.clone()));
-            Ok(subscription)
-        }
+    async fn update_subscription_space(
+        &self,
+        ctx: &Context,
+        subscription_id: String,
+        new_space_id: String,
+    ) -> Result<Subscription> {
+        trace!(target: TARGET, subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
+        let req_builder =
+            Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
+
+        let bytes = self
+            .request_controller(ctx, API_SERVICE, req_builder, None)
+            .await?;
+        Response::parse_response_body(bytes.as_slice())
+    }
+
+    async fn get_subscriptions(&self, ctx: &Context) -> Result<Vec<Subscription>> {
+        trace!(target: TARGET, "listing subscriptions");
+        let req_builder = Request::get("/v0/");
+
+        let bytes = self
+            .request_controller(ctx, API_SERVICE, req_builder, None)
+            .await?;
+        Response::parse_response_body(bytes.as_slice())
+    }
+
+    async fn get_subscription(
+        &self,
+        ctx: &Context,
+        subscription_id: String,
+    ) -> Result<Option<Subscription>> {
+        trace!(target: TARGET, subscription = %subscription_id, "getting subscription");
+        let req_builder = Request::get(format!("/v0/{subscription_id}"));
+        let bytes = self
+            .request_controller(ctx, API_SERVICE, req_builder, None)
+            .await?;
+        Response::parse_response_body(bytes.as_slice())
+    }
+
+    async fn get_subscription_by_space_id(
+        &self,
+        ctx: &Context,
+        space_id: String,
+    ) -> Result<Option<Subscription>> {
+        let subscriptions: Vec<Subscription> = self.get_subscriptions(ctx).await?;
+        let subscription = subscriptions
+            .into_iter()
+            .find(|s| s.space_id == Some(space_id.clone()));
+        Ok(subscription)
     }
 }
 

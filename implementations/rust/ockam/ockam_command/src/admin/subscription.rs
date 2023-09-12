@@ -5,6 +5,7 @@ use clap::{Args, Subcommand};
 use miette::{miette, Context as _, IntoDiagnostic};
 
 use ockam::Context;
+use ockam_api::cloud::subscription::Subscriptions;
 
 use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::util::api::CloudOpts;
