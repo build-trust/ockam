@@ -13,10 +13,8 @@ on:
       - "**.toml"
       - "**/Cargo.lock"
       - "implementations/rust/ockam/ockam_command/tests/**"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+      - "**/Makefile"
+      - "tools/nix/**"
   push:
     paths:
       - ".github/workflows/rust.yml"
@@ -25,10 +23,8 @@ on:
       - "**.toml"
       - "**/Cargo.lock"
       - "implementations/rust/ockam/ockam_command/tests/**"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+      - "**/Makefile"
+      - "tools/nix/**"
     branches:
       - develop
   schedule:

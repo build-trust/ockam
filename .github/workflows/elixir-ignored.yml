@@ -16,10 +16,8 @@ on:
       - "**.rs"
       - "**.toml"
       - "**/Cargo.lock"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+      - "**/Makefile"
+      - "tools/nix/**"
 
 jobs:
   lint:

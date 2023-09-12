@@ -78,6 +78,14 @@ lint_cargo_readme_%:
 		exit 1;	\
 	fi
 
+update_readmes:
+	@set -e; \
+	for dir in implementations/rust/ockam/*; do \
+		if [ -d "$$dir" ]; then	\
+			cargo readme --project-root $$dir --template ../README.tpl -o README.md; \
+		fi \
+	done
+
 clean:
 	cargo clean
 clean_%:
@@ -95,3 +103,4 @@ format:
 	test test_% nextest nextest_%\
 	lint lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy lint_cargo_toml_files lint_cargo_readme lint_cargo_readme_% lint_cargo_toml_files \
 	clean clean_% very_clean format
+	update_readmes

@@ -9,6 +9,3 @@
 # ELixir builds
 **/_build
 **/deps
-
-# Gradle builds
-**/build
