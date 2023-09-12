@@ -8,7 +8,7 @@ use crate::{
 };
 use clap::Args;
 
-use crate::output::EncodeFormat;
+use crate::output::{CredentialAndPurposeKeyDisplay, EncodeFormat};
 use miette::{miette, IntoDiagnostic};
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::Identifier;
@@ -95,6 +95,8 @@ async fn run_impl(
         .await
         .into_diagnostic()?;
 
-    cmd.encode_format.println_value(&credential)?;
+    cmd.encode_format
+        .println_value(&CredentialAndPurposeKeyDisplay(credential))?;
+
     Ok(())
 }

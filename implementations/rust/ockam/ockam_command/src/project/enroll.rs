@@ -22,7 +22,7 @@ use ockam_node::RpcClient;
 use crate::enroll::{enroll_with_node, OidcServiceExt};
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::delete_embedded_node;
-use crate::output::Output;
+use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::{node_rpc, Rpc};
@@ -219,7 +219,7 @@ pub async fn project_enroll<'a>(
     opts.terminal
         .clone()
         .stdout()
-        .plain(credential.output()?)
+        .plain(CredentialAndPurposeKeyDisplay(credential))
         .write_line()?;
     Ok(project.name)
 }
