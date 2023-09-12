@@ -24,7 +24,9 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
 
     let builder = builder.items(&[
         &IconMenuItemBuilder::with_id(SHARED_SERVICE_CREATE_MENU_ID, "Create service")
-            .icon(Icon::File("icons/plus-circle.png".into()))
+            .icon(Icon::Raw(
+                include_bytes!("../../icons/plus-circle.png").to_vec(),
+            ))
             .accelerator("cmd+n")
             .build(app_handle),
         &MenuItemBuilder::new("Your services")
@@ -65,14 +67,16 @@ fn shared_service_submenu<R: Runtime>(
                 .build(app_handle),
             &IconMenuItemBuilder::new("Share")
                 .id(format!("invitation-create-for-{}", outlet.socket_addr))
-                .icon(Icon::File("icons/share-fill.png".into()))
+                .icon(Icon::Raw(
+                    include_bytes!("../../icons/share-fill.png").to_vec(),
+                ))
                 .build(app_handle),
             &IconMenuItemBuilder::new("Delete")
                 .id(format!(
                     "{SHARED_SERVICE_DELETE_MENU_ID_PREFIX}{}",
                     outlet.alias
                 ))
-                .icon(Icon::File("icons/trash3.png".into()))
+                .icon(Icon::Raw(include_bytes!("../../icons/trash3.png").to_vec()))
                 .build(app_handle),
         ])
         .build()
