@@ -62,6 +62,10 @@ pub enum IdentityError {
     InvalidHex,
     /// Secret Key doesn't correspond to the Identity
     WrongSecretKey,
+    /// Expected Secret Key, got Public Key
+    ExpectedSecretKeyInsteadOfPublic,
+    /// Expected Public Key, got Secret Key
+    ExpectedPublicKeyInsteadOfSecret,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}
