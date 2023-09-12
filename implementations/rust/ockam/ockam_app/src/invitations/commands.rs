@@ -311,23 +311,31 @@ impl InletDataFromInvitation {
         match &invitation.service_access_details {
             Some(d) => {
                 let service_name = extract_address_value(&d.shared_node_route)?;
+                let mut enrollment_ticket = d.enrollment_ticket()?;
+                // The enrollment ticket contains the project data.
+                // We need to replace the project name on the enrollment ticket with the project id,
+                // so that, when using the enrollment ticket, there are no conflicts with the default project.
+                // The node created when setting up the TCP inlet is meant to only serve that TCP inlet and
+                // only has to resolve the `/project/{id}` project to create the needed secure-channel.
+                if let Some(project) = enrollment_ticket.project.as_mut() {
+                    project.name = project.id.clone();
+                }
                 let enrollment_ticket_hex = if invitation.invitation.is_expired()? {
                     None
                 } else {
-                    Some(d.enrollment_ticket.clone())
+                    Some(enrollment_ticket.hex_encoded()?)
                 };
-                let enrollment_ticket = d.enrollment_ticket()?;
-                if let Some(project) = enrollment_ticket.project() {
-                    let mut project = Project::from(project.clone());
 
-                    // Rename project so that the local user can receive multiple invitations from different
-                    // projects called "default" while keeping access to its own "default" project.
-                    // Te node created here is meant to only serve the tcp-inlet and only has to resolve
-                    // the `/project/{id}` project to create the needed secure-channel.
-                    project.name = project.id.clone();
+                if let Some(project) = enrollment_ticket.project {
+                    // At this point, the project name will be the project id.
                     let project = cli_state
                         .projects
-                        .overwrite(project.name.clone(), project)?;
+                        .overwrite(project.name.clone(), Project::from(project.clone()))?;
+                    assert_eq!(
+                        project.name(),
+                        project.id(),
+                        "Project name should be the project id"
+                    );
 
                     let project_id = project.id();
                     let local_node_name = format!("ockam_app_{project_id}_{service_name}");
