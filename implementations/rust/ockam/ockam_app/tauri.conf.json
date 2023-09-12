@@ -12,7 +12,7 @@
     "distDir": "../../../typescript/ockam/ockam_app/build"
   },
   "package": {
-    "productName": "Ockam App"
+    "productName": "Ockam"
   },
   "tauri": {
     "security": {
@@ -32,7 +32,7 @@
         "icons/icon.ico"
       ],
       "resources": [],
-      "shortDescription": "Ockam App",
+      "shortDescription": "Ockam Desktop Application",
       "longDescription": "End-to-end encryption and mutual authentication for distributed applications.",
       "targets": [
         "deb",

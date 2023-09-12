@@ -82,6 +82,8 @@ runs:
           cargo build --bin ockam --target ${{ inputs.target }} --release
         fi
 
+        cp target/${{ inputs.target }}/release/ockam target/${{ inputs.target }}/release/ockam_command
+
     - shell: bash
       if: inputs.build_app == 'true'
       run: |
