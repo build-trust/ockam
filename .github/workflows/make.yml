@@ -46,6 +46,6 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/nix_installer
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
       - uses: ./.github/actions/elixir_cache
       - run: make
