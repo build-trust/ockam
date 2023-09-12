@@ -12,7 +12,7 @@ use ockam::identity::{
 };
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
-use ockam_core::api::{Error, Request, Response, ResponseBuilder};
+use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -276,9 +276,9 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-    pub(super) async fn list_secure_channels(&self, req: &Request) -> ResponseBuilder<Vec<String>> {
+    pub(super) async fn list_secure_channels(&self, req: &RequestHeader) -> Response<Vec<String>> {
         let registry = &self.node_manager.read().await.registry.secure_channels;
-        Response::ok(req.id()).body(
+        Response::ok(req).body(
             registry
                 .list()
                 .iter()
@@ -289,15 +289,15 @@ impl NodeManagerWorker {
 
     pub(super) async fn list_secure_channel_listener(
         &self,
-        req: &Request,
-    ) -> ResponseBuilder<SecureChannelListenersList> {
+        req: &RequestHeader,
+    ) -> Response<SecureChannelListenersList> {
         let registry = &self
             .node_manager
             .read()
             .await
             .registry
             .secure_channel_listeners;
-        Response::ok(req.id()).body(SecureChannelListenersList::new(
+        Response::ok(req).body(SecureChannelListenersList::new(
             registry
                 .values()
                 .map(ShowSecureChannelListenerResponse::new)
@@ -307,10 +307,10 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_secure_channel(
         &mut self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<CreateSecureChannelResponse>, ResponseBuilder<Error>> {
+    ) -> Result<Response<CreateSecureChannelResponse>, Response<Error>> {
         let CreateSecureChannelRequest {
             addr,
             authorized_identifiers,
@@ -369,7 +369,7 @@ impl NodeManagerWorker {
             )
             .await?;
 
-        let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(
+        let response = Response::ok(req).body(CreateSecureChannelResponse::new(
             sc.encryptor_address(),
             sc.flow_control_id(),
         ));
@@ -379,10 +379,10 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_secure_channel(
         &mut self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<DeleteSecureChannelResponse>, ResponseBuilder<Error>> {
+    ) -> Result<Response<DeleteSecureChannelResponse>, Response<Error>> {
         let body: DeleteSecureChannelRequest = dec.decode()?;
         let addr = Address::from(body.channel);
         info!(%addr, "Handling request to delete secure channel");
@@ -397,14 +397,14 @@ impl NodeManagerWorker {
                 None
             }
         };
-        Ok(Response::ok(req.id()).body(DeleteSecureChannelResponse::new(res)))
+        Ok(Response::ok(req).body(DeleteSecureChannelResponse::new(res)))
     }
 
     pub(super) async fn show_secure_channel(
         &mut self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<ShowSecureChannelResponse>, ResponseBuilder<Error>> {
+    ) -> Result<Response<ShowSecureChannelResponse>, Response<Error>> {
         let node_manager = self.node_manager.read().await;
         let body: ShowSecureChannelRequest = dec.decode()?;
 
@@ -417,15 +417,15 @@ impl NodeManagerWorker {
             .secure_channels
             .get_by_addr(&sc_address);
 
-        Ok(Response::ok(req.id()).body(ShowSecureChannelResponse::new(info)))
+        Ok(Response::ok(req).body(ShowSecureChannelResponse::new(info)))
     }
 
     pub(super) async fn create_secure_channel_listener(
         &mut self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
-    ) -> Result<ResponseBuilder<()>, ResponseBuilder<Error>> {
+    ) -> Result<Response<()>, Response<Error>> {
         let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelListenerRequest {
             addr,
@@ -449,16 +449,17 @@ impl NodeManagerWorker {
 
         let addr = Address::from(addr);
         if !addr.is_local() {
-            let err_body =
-                Error::new(req.path()).with_message(format!("Invalid address: {}", addr));
-            return Err(Response::bad_request(req.id()).body(err_body));
+            return Err(Response::bad_request(
+                req,
+                &format!("Invalid address: {}", addr),
+            ));
         }
 
         node_manager
             .create_secure_channel_listener_impl(addr, authorized_identifiers, vault, identity, ctx)
             .await?;
 
-        let response = Response::ok(req.id());
+        let response = Response::ok(req);
 
         Ok(response)
     }
@@ -466,14 +467,13 @@ impl NodeManagerWorker {
     pub(super) async fn delete_secure_channel_listener(
         &mut self,
         ctx: &Context,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let body: DeleteSecureChannelListenerRequest = dec.decode()?;
         let addr = Address::from(body.addr);
         info!(%addr, "Handling request to delete secure channel listener");
         let mut node_manager = self.node_manager.write().await;
-        let id = req.id();
         Ok(
             match node_manager
                 .delete_secure_channel_listener_impl(ctx, &addr)
@@ -481,15 +481,17 @@ impl NodeManagerWorker {
             {
                 Some(_) => {
                     trace!(%addr, "Removed secure channel listener");
-                    Response::ok(id)
+                    Response::ok(req)
                         .body(DeleteSecureChannelListenerResponse::new(addr))
                         .to_vec()?
                 }
                 None => {
                     trace!(%addr, "No such secure channel listener to delete");
-                    let err_body = Error::new(req.path())
-                        .with_message(format!("Secure Channel Listener, {}, not found.", addr));
-                    Response::not_found(id).body(err_body).to_vec()?
+                    Response::not_found(
+                        req,
+                        &format!("Secure Channel Listener, {}, not found.", addr),
+                    )
+                    .to_vec()?
                 }
             },
         )
@@ -497,7 +499,7 @@ impl NodeManagerWorker {
 
     pub(super) async fn show_secure_channel_listener<'a>(
         &mut self,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let node_manager = self.node_manager.read().await;
@@ -508,14 +510,14 @@ impl NodeManagerWorker {
         debug!(%address, "On show secure channel listener");
 
         match node_manager.registry.secure_channel_listeners.get(&address) {
-            Some(info) => Ok(Response::ok(req.id())
+            Some(info) => Ok(Response::ok(req)
                 .body(ShowSecureChannelListenerResponse::new(info))
                 .to_vec()?),
-            None => {
-                let err_body = Error::new(req.path())
-                    .with_message(format!("Secure Channel Listener, {}, not found.", address));
-                Ok(Response::not_found(req.id()).body(err_body).to_vec()?)
-            }
+            None => Ok(Response::not_found(
+                req,
+                &format!("Secure Channel Listener, {}, not found.", address),
+            )
+            .to_vec()?),
         }
     }
 }

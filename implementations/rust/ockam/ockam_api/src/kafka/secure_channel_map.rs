@@ -12,7 +12,7 @@ use ockam::identity::{
     SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID_UTF8,
 };
 use ockam_abac::AbacAccessControl;
-use ockam_core::api::{Request, Response, Status};
+use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -108,7 +108,7 @@ impl NodeManagerForwarderCreator {
             .await?;
 
         let mut decoder = Decoder::new(&buffer);
-        let response: Response = decoder.decode()?;
+        let response: ResponseHeader = decoder.decode()?;
 
         let status = response.status().unwrap_or(Status::InternalServerError);
         if status != Status::Ok {
@@ -254,7 +254,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
             .await?;
 
         let mut decoder = Decoder::new(&buffer);
-        let response: Response = decoder.decode()?;
+        let response: ResponseHeader = decoder.decode()?;
 
         let status = response.status().unwrap_or(Status::InternalServerError);
         if status != Status::Ok {
@@ -290,7 +290,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
             .await?;
 
         let mut decoder = Decoder::new(&buffer);
-        let response: Response = decoder.decode()?;
+        let response: ResponseHeader = decoder.decode()?;
 
         let status = response.status().unwrap_or(Status::InternalServerError);
         if status != Status::Ok {

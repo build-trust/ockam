@@ -2,13 +2,13 @@ use crate::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
 use crate::utils::AttributesBuilder;
 use crate::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
-use ockam_core::api::{Method, Request, Response};
+use ockam_core::api::{Method, Request, RequestHeader, Response};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{api, Result, Route, Routed, Worker};
+use ockam_core::{Result, Route, Routed, Worker};
 use ockam_node::{Context, RpcClient};
 
 use core::time::Duration;
@@ -101,7 +101,7 @@ impl Worker for CredentialsIssuer {
         if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
             let from = i.their_identity_id();
             let mut dec = Decoder::new(m.as_body());
-            let req: Request = dec.decode()?;
+            let req: RequestHeader = dec.decode()?;
             trace! {
                 target: "ockam_identity::credentials::credential_issuer",
                 from   = %from,
@@ -114,16 +114,18 @@ impl Worker for CredentialsIssuer {
             let res = match (req.method(), req.path()) {
                 (Some(Method::Post), "/") | (Some(Method::Post), "/credential") => {
                     match self.issue_credential(&from).await {
-                        Ok(Some(crd)) => Response::ok(req.id()).body(crd).to_vec()?,
+                        Ok(Some(crd)) => Response::ok(&req).body(crd).to_vec()?,
                         Ok(None) => {
                             // Again, this has already been checked by the access control, so if we
                             // reach this point there is an error actually.
-                            api::forbidden(&req, "unauthorized member").to_vec()?
+                            Response::forbidden(&req, "unauthorized member").to_vec()?
                         }
-                        Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
+                        Err(error) => {
+                            Response::internal_error(&req, &error.to_string()).to_vec()?
+                        }
                     }
                 }
-                _ => api::unknown_path(&req).to_vec()?,
+                _ => Response::unknown_path(&req).to_vec()?,
             };
             c.send(m.return_route(), res).await
         } else {
@@ -139,8 +141,8 @@ pub async fn secure_channel_required(c: &mut Context, m: Routed<Vec<u8>>) -> Res
     // it means there is a bug.  Also, if it' already checked, we should receive the Peer'
     // identity, not an Option to the peer' identity.
     let mut dec = Decoder::new(m.as_body());
-    let req: Request = dec.decode()?;
-    let res = api::forbidden(&req, "secure channel required").to_vec()?;
+    let req: RequestHeader = dec.decode()?;
+    let res = Response::forbidden(&req, "secure channel required").to_vec()?;
     c.send(m.return_route(), res).await
 }
 

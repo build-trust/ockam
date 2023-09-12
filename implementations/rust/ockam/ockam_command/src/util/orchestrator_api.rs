@@ -14,7 +14,7 @@ use ockam_api::{
     config::lookup::ProjectLookup, nodes::models::secure_channel::CredentialExchangeMode,
     DefaultAddress,
 };
-use ockam_core::api::RequestBuilder;
+use ockam_core::api::Request;
 use ockam_core::route;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
@@ -270,7 +270,7 @@ pub struct OrchestratorApi {
 }
 
 impl OrchestratorApi {
-    pub async fn ask<T, R>(&mut self, req: RequestBuilder<T>) -> Result<R>
+    pub async fn ask<T, R>(&mut self, req: Request<T>) -> Result<R>
     where
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,
@@ -280,7 +280,7 @@ impl OrchestratorApi {
         Ok(response)
     }
 
-    pub async fn tell<T>(&mut self, req: RequestBuilder<T>) -> Result<()>
+    pub async fn tell<T>(&mut self, req: Request<T>) -> Result<()>
     where
         T: Encode<()>,
     {

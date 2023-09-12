@@ -117,20 +117,16 @@ impl Subscriptions for NodeManager {
     ) -> Result<Subscription> {
         let req_body = ActivateSubscription::existing(space_id, subscription_data);
         trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
-        let req_builder = Request::post("/v0/activate").body(req_body);
+        let req = Request::post("/v0/activate").body(req_body);
 
-        let bytes = self
-            .request_controller(ctx, API_SERVICE, req_builder, None)
-            .await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
     async fn unsubscribe(&self, ctx: &Context, subscription_id: String) -> Result<Subscription> {
         trace!(target: TARGET, subscription = %subscription_id, "unsubscribing");
-        let req_builder = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
-        let bytes = self
-            .request_controller(ctx, API_SERVICE, req_builder, None)
-            .await?;
+        let req = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
+        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
@@ -141,12 +137,9 @@ impl Subscriptions for NodeManager {
         contact_info: String,
     ) -> Result<Subscription> {
         trace!(target: TARGET, subscription = %subscription_id, "updating subscription contact info");
-        let req_builder =
-            Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
+        let req = Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
 
-        let bytes = self
-            .request_controller(ctx, API_SERVICE, req_builder, None)
-            .await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
@@ -157,22 +150,17 @@ impl Subscriptions for NodeManager {
         new_space_id: String,
     ) -> Result<Subscription> {
         trace!(target: TARGET, subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
-        let req_builder =
-            Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
+        let req = Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
 
-        let bytes = self
-            .request_controller(ctx, API_SERVICE, req_builder, None)
-            .await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
     async fn get_subscriptions(&self, ctx: &Context) -> Result<Vec<Subscription>> {
         trace!(target: TARGET, "listing subscriptions");
-        let req_builder = Request::get("/v0/");
+        let req = Request::get("/v0/");
 
-        let bytes = self
-            .request_controller(ctx, API_SERVICE, req_builder, None)
-            .await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
@@ -182,10 +170,8 @@ impl Subscriptions for NodeManager {
         subscription_id: String,
     ) -> Result<Option<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "getting subscription");
-        let req_builder = Request::get(format!("/v0/{subscription_id}"));
-        let bytes = self
-            .request_controller(ctx, API_SERVICE, req_builder, None)
-            .await?;
+        let req = Request::get(format!("/v0/{subscription_id}"));
+        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 

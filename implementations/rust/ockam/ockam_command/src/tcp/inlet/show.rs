@@ -5,7 +5,7 @@ use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::nodes::models::portal::InletStatus;
-use ockam_core::api::{Request, RequestBuilder};
+use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
@@ -72,7 +72,7 @@ pub async fn run_impl(
 }
 
 /// Construct a request to show a tcp inlet
-fn make_api_request(cmd: ShowCommand) -> Result<RequestBuilder> {
+fn make_api_request(cmd: ShowCommand) -> Result<Request> {
     let alias = cmd.alias;
     let request = Request::get(format!("/node/inlet/{alias}"));
     Ok(request)
