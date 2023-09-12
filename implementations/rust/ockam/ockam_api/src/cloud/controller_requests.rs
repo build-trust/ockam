@@ -26,12 +26,11 @@ pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
 #[cbor(map)]
 pub struct CloudRequestWrapper<T> {
     #[b(1)] pub req: T,
-    #[n(3)] pub identity_name: Option<String>,
 }
 
 impl<T> CloudRequestWrapper<T> {
-    pub fn new(req: T, identity_name: Option<String>) -> Self {
-        Self { req, identity_name }
+    pub fn new(req: T) -> Self {
+        Self { req }
     }
 }
 
@@ -76,7 +75,6 @@ mod node {
             ctx: &Context,
             api_service: &str,
             req: Request<T>,
-            ident: Option<String>,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
@@ -85,7 +83,6 @@ mod node {
                 ctx,
                 api_service,
                 req,
-                ident,
                 Duration::from_secs(DEFAULT_TIMEOUT),
             )
             .await
@@ -96,13 +93,12 @@ mod node {
             ctx: &Context,
             api_service: &str,
             req: Request<T>,
-            ident: Option<String>,
             timeout: Duration,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
         {
-            self.request_node(ctx, None, api_service, req, ident, timeout)
+            self.request_node(ctx, None, api_service, req, timeout)
                 .await
         }
 
@@ -113,14 +109,12 @@ mod node {
             destination: Option<MultiAddr>,
             api_service: &str,
             req: Request<T>,
-            ident: Option<String>,
             timeout: Duration,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
         {
-            let identity_name = ident.clone();
-            let identifier = self.get_identifier(identity_name.clone()).await?;
+            let identifier = self.get_identifier(None).await?;
 
             let secure_channels = self.secure_channels.clone();
             let cloud_multiaddr = destination.unwrap_or(self.controller_address());
@@ -162,7 +156,6 @@ mod node {
             ctx: &Context,
             api_service: &str,
             req: Request<T>,
-            ident: Option<String>,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
@@ -171,7 +164,6 @@ mod node {
                 ctx,
                 api_service,
                 req,
-                ident,
                 Duration::from_secs(DEFAULT_TIMEOUT),
             )
             .await
@@ -182,7 +174,6 @@ mod node {
             ctx: &Context,
             api_service: &str,
             req: Request<T>,
-            ident: Option<String>,
             timeout: Duration,
         ) -> Result<Vec<u8>>
         where
@@ -190,7 +181,7 @@ mod node {
         {
             let node_manager = self.inner().read().await;
             node_manager
-                .request_controller_with_timeout(ctx, api_service, req, ident, timeout)
+                .request_controller_with_timeout(ctx, api_service, req, timeout)
                 .await
         }
     }

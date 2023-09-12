@@ -119,14 +119,14 @@ impl Subscriptions for NodeManager {
         trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
         let req = Request::post("/v0/activate").body(req_body);
 
-        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
     async fn unsubscribe(&self, ctx: &Context, subscription_id: String) -> Result<Subscription> {
         trace!(target: TARGET, subscription = %subscription_id, "unsubscribing");
         let req = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
-        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
@@ -139,7 +139,7 @@ impl Subscriptions for NodeManager {
         trace!(target: TARGET, subscription = %subscription_id, "updating subscription contact info");
         let req = Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
 
-        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
@@ -152,7 +152,7 @@ impl Subscriptions for NodeManager {
         trace!(target: TARGET, subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
         let req = Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
 
-        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
@@ -160,7 +160,7 @@ impl Subscriptions for NodeManager {
         trace!(target: TARGET, "listing subscriptions");
         let req = Request::get("/v0/");
 
-        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 
@@ -171,7 +171,7 @@ impl Subscriptions for NodeManager {
     ) -> Result<Option<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "getting subscription");
         let req = Request::get(format!("/v0/{subscription_id}"));
-        let bytes = self.request_controller(ctx, API_SERVICE, req, None).await?;
+        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
         Response::parse_response_body(bytes.as_slice())
     }
 

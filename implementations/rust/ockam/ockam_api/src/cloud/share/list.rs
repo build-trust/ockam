@@ -46,10 +46,9 @@ mod node {
             &self,
             ctx: &Context,
             req: ListInvitations,
-            identity_name: Option<String>,
         ) -> Result<InvitationList> {
             Response::parse_response_body(
-                self.list_shares_response(ctx, CloudRequestWrapper::new(req, identity_name))
+                self.list_shares_response(ctx, CloudRequestWrapper::new(req))
                     .await?
                     .as_slice(),
             )
@@ -64,7 +63,7 @@ mod node {
             debug!(req = ?req_body, "Sending request to list shares");
             let req = Request::get("/v0/invites").body(req_body);
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
     }
 
@@ -73,10 +72,9 @@ mod node {
             &self,
             ctx: &Context,
             req: ListInvitations,
-            identity_name: Option<String>,
         ) -> Result<InvitationList> {
             let node_manager = self.inner().read().await;
-            node_manager.list_shares(ctx, req, identity_name).await
+            node_manager.list_shares(ctx, req).await
         }
 
         pub(crate) async fn list_shares_response(

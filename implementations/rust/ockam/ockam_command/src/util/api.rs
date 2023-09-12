@@ -219,7 +219,7 @@ pub mod enroll {
         alternative_authenticator_address: Option<MultiAddr>,
     ) -> Request<CloudRequestWrapper<AuthenticateOidcToken>> {
         let token = AuthenticateOidcToken::new(token, alternative_authenticator_address);
-        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token, None))
+        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token))
     }
 }
 
@@ -233,7 +233,7 @@ pub(crate) mod space {
 
     pub(crate) fn create(cmd: CreateCommand) -> Request<CloudRequestWrapper<CreateSpace>> {
         let b = CreateSpace::new(cmd.name, cmd.admins);
-        Request::post("v0/spaces").body(CloudRequestWrapper::new(b, None))
+        Request::post("v0/spaces").body(CloudRequestWrapper::new(b))
     }
 
     pub(crate) fn list() -> Request<()> {
@@ -260,8 +260,7 @@ pub(crate) mod project {
         space_id: &str,
     ) -> Request<CloudRequestWrapper<CreateProject>> {
         let b = CreateProject::new(project_name.to_string(), vec![]);
-        Request::post(format!("v1/spaces/{space_id}/projects"))
-            .body(CloudRequestWrapper::new(b, None))
+        Request::post(format!("v1/spaces/{space_id}/projects")).body(CloudRequestWrapper::new(b))
     }
 
     pub(crate) fn list() -> Request<()> {
@@ -301,23 +300,22 @@ pub(crate) mod share {
     use super::*;
 
     pub(crate) fn accept(req: AcceptInvitation) -> Request<CloudRequestWrapper<AcceptInvitation>> {
-        Request::post("v0/accept_invitation".to_string()).body(CloudRequestWrapper::new(req, None))
+        Request::post("v0/accept_invitation".to_string()).body(CloudRequestWrapper::new(req))
     }
 
     pub(crate) fn create(req: CreateInvitation) -> Request<CloudRequestWrapper<CreateInvitation>> {
-        Request::post("v0/invitations".to_string()).body(CloudRequestWrapper::new(req, None))
+        Request::post("v0/invitations".to_string()).body(CloudRequestWrapper::new(req))
     }
 
     pub(crate) fn create_service_invitation(
         req: CreateServiceInvitation,
     ) -> Request<CloudRequestWrapper<CreateServiceInvitation>> {
-        Request::post("v0/invitations/service".to_string())
-            .body(CloudRequestWrapper::new(req, None))
+        Request::post("v0/invitations/service".to_string()).body(CloudRequestWrapper::new(req))
     }
 
     pub(crate) fn list(kind: InvitationListKind) -> Request<CloudRequestWrapper<ListInvitations>> {
         let req = ListInvitations { kind };
-        Request::get("v0/invitations".to_string()).body(CloudRequestWrapper::new(req, None))
+        Request::get("v0/invitations".to_string()).body(CloudRequestWrapper::new(req))
     }
 
     pub(crate) fn show(invitation_id: String) -> Request<()> {

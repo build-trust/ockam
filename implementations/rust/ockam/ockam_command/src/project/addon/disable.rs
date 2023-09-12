@@ -55,7 +55,7 @@ async fn run_impl(
     let body = DisableAddon::new(addon_id);
     let endpoint = disable_addon_endpoint(&opts.state, &project_name)?;
 
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body, None));
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body));
     let response: CreateOperationResponse = rpc.ask(req).await?;
     let operation_id = response.operation_id;
 

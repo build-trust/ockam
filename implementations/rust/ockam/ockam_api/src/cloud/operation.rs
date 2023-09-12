@@ -73,7 +73,7 @@ mod node {
             trace!(target: TARGET, operation_id, "getting operation");
             let req = Request::get(format!("/v1/operations/{operation_id}"));
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
     }
 }

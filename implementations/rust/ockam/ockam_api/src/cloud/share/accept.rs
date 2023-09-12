@@ -36,10 +36,9 @@ mod node {
             &self,
             ctx: &Context,
             req: AcceptInvitation,
-            identity_name: Option<String>,
         ) -> Result<AcceptedInvitation> {
             Response::parse_response_body(
-                self.accept_invitation_response(ctx, CloudRequestWrapper::new(req, identity_name))
+                self.accept_invitation_response(ctx, CloudRequestWrapper::new(req))
                     .await?
                     .as_slice(),
             )
@@ -52,7 +51,7 @@ mod node {
         ) -> Result<Vec<u8>> {
             let req = Request::post("/v0/redeem_invite").body(req_wrapper.req);
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
     }
 
@@ -61,12 +60,9 @@ mod node {
             &self,
             ctx: &Context,
             req: AcceptInvitation,
-            identity_name: Option<String>,
         ) -> Result<AcceptedInvitation> {
             let node_manager = self.inner().read().await;
-            node_manager
-                .accept_invitation(ctx, req, identity_name)
-                .await
+            node_manager.accept_invitation(ctx, req).await
         }
 
         pub(crate) async fn accept_invitation_response(
