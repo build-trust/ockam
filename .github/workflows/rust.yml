@@ -81,7 +81,7 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/nix_installer
 
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
         with:
           key: "${{ github.job }}-${{ matrix.lint_projects }}"
 
@@ -116,7 +116,7 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/nix_installer
 
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
         with:
           key: "${{ github.job }}-${{ matrix.build_projects }}"
 
@@ -148,7 +148,7 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/nix_installer
 
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
         with:
           key: "${{ github.job }}-${{ matrix.test_projects }}"
 
@@ -182,7 +182,7 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/nix_installer
 
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
         with:
           key: "${{ github.job }}-${{ matrix.check_projects }}"
 
@@ -216,7 +216,7 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           path: ockam_bats
 
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
         with:
           workspaces: "ockam_cli -> target"
 
@@ -308,7 +308,7 @@ jobs:
           ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
           path: ockam_library
 
-      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
+      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
         with:
           workspaces: "ockam_examples -> target"
 
