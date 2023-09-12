@@ -4722,7 +4722,6 @@ dependencies = [
  "nix 0.27.1",
  "ockam",
  "ockam_abac",
- "ockam_api",
  "ockam_core",
  "ockam_macros",
  "ockam_multiaddr",
