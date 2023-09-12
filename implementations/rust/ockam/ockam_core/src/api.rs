@@ -1,10 +1,12 @@
 #![allow(missing_docs)]
 
 use core::fmt::{self, Display, Formatter};
+use hashbrown::HashMap;
 
 use minicbor::data::Type;
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Decoder, Encode};
+use serde::{Serialize, Serializer};
 use tinyvec::ArrayVec;
 
 use crate::alloc::string::ToString;
@@ -106,6 +108,53 @@ impl ResponseHeader {
 pub enum Reply<T> {
     Successful(T),
     Failed(Error, Option<Status>),
+}
+
+impl<T: Serialize> Serialize for Reply<T> {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Reply::Successful(t) => t.serialize(serializer),
+            Reply::Failed(e, Some(s)) => {
+                let mut map = HashMap::new();
+                map.insert("error", e.to_string());
+                map.insert("status", s.to_string());
+                serializer.collect_map(map)
+            }
+            Reply::Failed(e, None) => serializer.serialize_str(&e.to_string()),
+        }
+    }
+}
+
+impl<T> Reply<T> {
+    /// Return the value T as a success.
+    /// Any failure indicated by a non-OK status is interpreted as an error
+    pub fn success(self) -> Result<T> {
+        match self {
+            Reply::Successful(t) => Ok(t),
+            Reply::Failed(e, _) => Err(crate::Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                e.message().unwrap_or("no message defined for this error"),
+            )),
+        }
+    }
+
+    /// Return the value T as an option if it has been found .
+    /// Any failure indicated by a non-OK or not-NotFound status is interpreted as an error
+    pub fn found(self) -> Result<Option<T>> {
+        match self {
+            Reply::Successful(t) => Ok(Some(t)),
+            Reply::Failed(_, Some(Status::NotFound)) => Ok(None),
+            Reply::Failed(e, _) => Err(crate::Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                e.message().unwrap_or("no message defined for this error"),
+            )),
+        }
+    }
 }
 
 /// A request/response identifier.
@@ -302,6 +351,21 @@ impl Error {
 
     pub fn message(&self) -> Option<&str> {
         self.message.as_deref()
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let fields: Vec<String> = vec![
+            self.message.clone().map(|m| format!("message: {m}")),
+            self.path.clone().map(|p| format!("path: {p}")),
+            self.method.map(|m| format!("method: {m}")),
+            self.cause.clone().map(|c| c.to_string()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        write!(f, "{}", fields.join(", "))
     }
 }
 
@@ -576,15 +640,7 @@ impl Response {
     where
         T: for<'a> Decode<'a, ()>,
     {
-        match Self::parse_response_reply(bytes) {
-            Ok(Reply::Successful(t)) => Ok(t),
-            Ok(Reply::Failed(e, _)) => Err(crate::Error::new(
-                Origin::Api,
-                Kind::Invalid,
-                e.message().unwrap_or("no message defined for this error"),
-            )),
-            Err(e) => Err(e),
-        }
+        Self::parse_response_reply(bytes).and_then(|r| r.success())
     }
 
     /// Parse the response header and if it is ok

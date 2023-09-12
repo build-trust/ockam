@@ -23,6 +23,7 @@ use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelResponse, ShowSecureChannelResponse,
 };
 use ockam_api::route_to_multiaddr;
+use ockam_core::api::Reply;
 use ockam_core::{route, Route};
 
 use crate::terminal::OckamColor;
@@ -689,5 +690,25 @@ impl fmt::Display for IdentityDisplay {
 impl Output for IdentityDisplay {
     fn output(&self) -> Result<String> {
         Ok(format!("{}", self))
+    }
+}
+
+impl<T: Output> Output for Reply<T> {
+    fn output(&self) -> Result<String> {
+        match self {
+            Reply::Successful(t) => t.output(),
+            Reply::Failed(e, status) => {
+                let mut output = String::new();
+                if let Some(m) = e.message() {
+                    writeln!(output, "Failed request: {m}")?;
+                } else {
+                    writeln!(output, "Failed request")?;
+                };
+                if let Some(status) = status {
+                    writeln!(output, "status: {status}")?;
+                }
+                Ok(output)
+            }
+        }
     }
 }

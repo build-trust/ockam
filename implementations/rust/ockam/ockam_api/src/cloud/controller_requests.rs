@@ -37,10 +37,10 @@ impl<T> CloudRequestWrapper<T> {
 mod node {
     use std::time::Duration;
 
-    use minicbor::Encode;
+    use minicbor::{Decode, Encode};
 
     use ockam::identity::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
-    use ockam_core::api::Request;
+    use ockam_core::api::{Reply, Request, Response};
     use ockam_core::compat::str::FromStr;
     use ockam_core::env::get_env;
     use ockam_core::{self, route, Result};
@@ -86,6 +86,27 @@ mod node {
                 Duration::from_secs(DEFAULT_TIMEOUT),
             )
             .await
+        }
+
+        pub async fn ask_controller<T, R>(
+            &self,
+            ctx: &Context,
+            api_service: &str,
+            req: Request<T>,
+        ) -> Result<Reply<R>>
+        where
+            T: Encode<()>,
+            R: for<'a> Decode<'a, ()>,
+        {
+            let bytes = self
+                .request_controller_with_timeout(
+                    ctx,
+                    api_service,
+                    req,
+                    Duration::from_secs(DEFAULT_TIMEOUT),
+                )
+                .await?;
+            Response::parse_response_reply::<R>(&bytes)
         }
 
         pub(crate) async fn request_controller_with_timeout<T>(

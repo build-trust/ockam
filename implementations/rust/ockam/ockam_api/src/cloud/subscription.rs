@@ -1,5 +1,5 @@
 use minicbor::{Decode, Encode};
-use ockam_core::api::{Request, Response};
+use ockam_core::api::{Error, Reply, Request, Status};
 use ockam_core::{self, async_trait, Result};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -74,37 +74,41 @@ pub trait Subscriptions {
         ctx: &Context,
         space_id: String,
         subscription_data: String,
-    ) -> Result<Subscription>;
+    ) -> Result<Reply<Subscription>>;
 
-    async fn unsubscribe(&self, ctx: &Context, subscription_id: String) -> Result<Subscription>;
+    async fn unsubscribe(
+        &self,
+        ctx: &Context,
+        subscription_id: String,
+    ) -> Result<Reply<Subscription>>;
 
     async fn update_subscription_contact_info(
         &self,
         ctx: &Context,
         subscription_id: String,
         contact_info: String,
-    ) -> Result<Subscription>;
+    ) -> Result<Reply<Subscription>>;
 
     async fn update_subscription_space(
         &self,
         ctx: &Context,
         subscription_id: String,
         new_space_id: String,
-    ) -> Result<Subscription>;
+    ) -> Result<Reply<Subscription>>;
 
-    async fn get_subscriptions(&self, ctx: &Context) -> Result<Vec<Subscription>>;
+    async fn get_subscriptions(&self, ctx: &Context) -> Result<Reply<Vec<Subscription>>>;
 
     async fn get_subscription(
         &self,
         ctx: &Context,
         subscription_id: String,
-    ) -> Result<Option<Subscription>>;
+    ) -> Result<Reply<Subscription>>;
 
     async fn get_subscription_by_space_id(
         &self,
         ctx: &Context,
         space_id: String,
-    ) -> Result<Option<Subscription>>;
+    ) -> Result<Reply<Subscription>>;
 }
 
 #[async_trait]
@@ -114,20 +118,21 @@ impl Subscriptions for NodeManager {
         ctx: &Context,
         space_id: String,
         subscription_data: String,
-    ) -> Result<Subscription> {
+    ) -> Result<Reply<Subscription>> {
         let req_body = ActivateSubscription::existing(space_id, subscription_data);
         trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
         let req = Request::post("/v0/activate").body(req_body);
-
-        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
-        Response::parse_response_body(bytes.as_slice())
+        self.ask_controller(ctx, API_SERVICE, req).await
     }
 
-    async fn unsubscribe(&self, ctx: &Context, subscription_id: String) -> Result<Subscription> {
+    async fn unsubscribe(
+        &self,
+        ctx: &Context,
+        subscription_id: String,
+    ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "unsubscribing");
         let req = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
-        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
-        Response::parse_response_body(bytes.as_slice())
+        self.ask_controller(ctx, API_SERVICE, req).await
     }
 
     async fn update_subscription_contact_info(
@@ -135,12 +140,10 @@ impl Subscriptions for NodeManager {
         ctx: &Context,
         subscription_id: String,
         contact_info: String,
-    ) -> Result<Subscription> {
+    ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "updating subscription contact info");
         let req = Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
-
-        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
-        Response::parse_response_body(bytes.as_slice())
+        self.ask_controller(ctx, API_SERVICE, req).await
     }
 
     async fn update_subscription_space(
@@ -148,43 +151,44 @@ impl Subscriptions for NodeManager {
         ctx: &Context,
         subscription_id: String,
         new_space_id: String,
-    ) -> Result<Subscription> {
+    ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
         let req = Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
-
-        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
-        Response::parse_response_body(bytes.as_slice())
+        self.ask_controller(ctx, API_SERVICE, req).await
     }
 
-    async fn get_subscriptions(&self, ctx: &Context) -> Result<Vec<Subscription>> {
+    async fn get_subscriptions(&self, ctx: &Context) -> Result<Reply<Vec<Subscription>>> {
         trace!(target: TARGET, "listing subscriptions");
         let req = Request::get("/v0/");
-
-        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
-        Response::parse_response_body(bytes.as_slice())
+        self.ask_controller(ctx, API_SERVICE, req).await
     }
 
     async fn get_subscription(
         &self,
         ctx: &Context,
         subscription_id: String,
-    ) -> Result<Option<Subscription>> {
+    ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "getting subscription");
         let req = Request::get(format!("/v0/{subscription_id}"));
-        let bytes = self.request_controller(ctx, API_SERVICE, req).await?;
-        Response::parse_response_body(bytes.as_slice())
+        self.ask_controller(ctx, API_SERVICE, req).await
     }
 
     async fn get_subscription_by_space_id(
         &self,
         ctx: &Context,
         space_id: String,
-    ) -> Result<Option<Subscription>> {
-        let subscriptions: Vec<Subscription> = self.get_subscriptions(ctx).await?;
+    ) -> Result<Reply<Subscription>> {
+        let subscriptions: Vec<Subscription> = self.get_subscriptions(ctx).await?.success()?;
         let subscription = subscriptions
             .into_iter()
             .find(|s| s.space_id == Some(space_id.clone()));
-        Ok(subscription)
+        match subscription {
+            Some(subscription) => Ok(Reply::Successful(subscription)),
+            None => Ok(Reply::Failed(
+                Error::new_without_path(),
+                Some(Status::NotFound),
+            )),
+        }
     }
 }
 
