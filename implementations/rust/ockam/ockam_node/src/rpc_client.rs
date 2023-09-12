@@ -1,7 +1,7 @@
 use crate::{Context, MessageSendReceiveOptions};
 use core::time::Duration;
 use minicbor::{Decode, Decoder, Encode};
-use ockam_core::api::{RequestBuilder, Response, Status};
+use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::{fmt, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, DenyAll, Error, Result, Route};
@@ -47,7 +47,7 @@ impl RpcClient {
     }
 
     /// Encode request header and body (if any) and send the package to the server.
-    pub async fn request<T, R>(&self, req: &RequestBuilder<T>) -> Result<R>
+    pub async fn request<T, R>(&self, req: &Request<T>) -> Result<R>
     where
         T: Encode<()>,
         R: for<'a> Decode<'a, ()>,
@@ -61,7 +61,7 @@ impl RpcClient {
             .await?
             .body();
         let mut d = Decoder::new(&vec);
-        let resp: Response = d.decode()?;
+        let resp: ResponseHeader = d.decode()?;
         if resp.status() == Some(Status::Ok) {
             Ok(d.decode()?)
         } else {
@@ -70,7 +70,7 @@ impl RpcClient {
     }
 
     /// Encode request header and body (if any) and send the package to the server.
-    pub async fn request_no_resp_body<T>(&self, req: &RequestBuilder<T>) -> Result<()>
+    pub async fn request_no_resp_body<T>(&self, req: &Request<T>) -> Result<()>
     where
         T: Encode<()>,
     {
@@ -82,7 +82,7 @@ impl RpcClient {
             .await?
             .body();
         let mut d = Decoder::new(&vec);
-        let resp: Response = d.decode()?;
+        let resp: ResponseHeader = d.decode()?;
         if resp.status() == Some(Status::Ok) {
             Ok(())
         } else {
@@ -92,7 +92,7 @@ impl RpcClient {
 }
 
 /// Decode, log and map response error to ockam_core error.
-fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> Error {
+fn error(label: &str, res: &ResponseHeader, dec: &mut Decoder<'_>) -> Error {
     if res.has_body() {
         let err = match dec.decode::<ockam_core::api::Error>() {
             Ok(e) => e,

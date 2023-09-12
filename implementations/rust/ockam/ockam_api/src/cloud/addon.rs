@@ -91,10 +91,9 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, project_id, "listing addons");
-            let req_builder = Request::get(format!("/v0/{project_id}/addons"));
+            let req = Request::get(format!("/v0/{project_id}/addons"));
 
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
+            self.request_controller(ctx, API_SERVICE, req, None).await
         }
 
         pub(crate) async fn configure_addon(
@@ -133,13 +132,12 @@ mod node {
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, project_id, addon_id, "configuring addon");
             let req_wrapper: CloudRequestWrapper<T> = dec.decode()?;
-            let req_builder = Request::post(format!(
+            let req = Request::post(format!(
                 "/v1/projects/{project_id}/configure_addon/{addon_id}"
             ))
             .body(req_wrapper.req);
 
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
+            self.request_controller(ctx, API_SERVICE, req, None).await
         }
 
         pub(crate) async fn disable_addon(
@@ -151,11 +149,10 @@ mod node {
             trace!(target: TARGET, project_id, "disabling addon");
             let req_wrapper: CloudRequestWrapper<DisableAddon> = dec.decode()?;
             let req_body = req_wrapper.req;
-            let req_builder =
+            let req =
                 Request::post(format!("/v1/projects/{project_id}/disable_addon")).body(req_body);
 
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
+            self.request_controller(ctx, API_SERVICE, req, None).await
         }
     }
 }

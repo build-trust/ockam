@@ -62,10 +62,9 @@ mod node {
         ) -> Result<Vec<u8>> {
             let req_body = req_wrapper.req;
             debug!(req = ?req_body, "Sending request to list shares");
-            let req_builder = Request::get("/v0/invites").body(req_body);
+            let req = Request::get("/v0/invites").body(req_body);
 
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
+            self.request_controller(ctx, API_SERVICE, req, None).await
         }
     }
 

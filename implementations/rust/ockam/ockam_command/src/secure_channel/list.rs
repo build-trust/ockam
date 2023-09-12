@@ -110,7 +110,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
     for channel_addr in &channel_identifiers {
         let is_finished: Mutex<bool> = Mutex::new(false);
         let get_secure_channel_output = async {
-            let request: ockam_core::api::RequestBuilder<
+            let request: ockam_core::api::Request<
                 ockam_api::nodes::models::secure_channel::ShowSecureChannelRequest,
             > = api::show_secure_channel(&Address::from(channel_addr));
             let show_response: ShowSecureChannelResponse = rpc.ask(request).await?;

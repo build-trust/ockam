@@ -24,7 +24,7 @@ use ockam_api::{
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
-use ockam_core::api::{RequestBuilder, Response, Status};
+use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::{route, LOCAL};
 
 use crate::node::util::spawn_node;
@@ -416,7 +416,7 @@ async fn start_services(ctx: &Context, cfg: &Config) -> miette::Result<()> {
     Ok(())
 }
 
-async fn send_req_to_node_manager<T>(ctx: &Context, req: RequestBuilder<T>) -> Result<()>
+async fn send_req_to_node_manager<T>(ctx: &Context, req: Request<T>) -> Result<()>
 where
     T: Encode<()>,
 {
@@ -424,7 +424,7 @@ where
         .send_and_receive(NODEMANAGER_ADDR, req.to_vec()?)
         .await?;
     let mut dec = Decoder::new(&buf);
-    let hdr = dec.decode::<Response>()?;
+    let hdr = dec.decode::<ResponseHeader>()?;
     if hdr.status() != Some(Status::Ok) {
         return Err(miette!("Request failed with status: {:?}", hdr.status()).into());
     }

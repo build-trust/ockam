@@ -6,7 +6,7 @@ use ockam::compat::sync::Mutex;
 use ockam::identity::Identifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::Result;
-use ockam_core::api::{Error, Request, Response, ResponseBuilder};
+use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio::time::timeout;
@@ -25,18 +25,17 @@ impl NodeManagerWorker {
     pub(super) async fn create_forwarder_response(
         &self,
         ctx: &Context,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let req_body: CreateForwarder = dec.decode()?;
         match self.create_forwarder(ctx, req_body).await {
-            Ok(body) => Ok(Response::ok(req.id()).body(body).to_vec()?),
-            Err(err) => {
-                let err = Error::new(req.path())
-                    .with_message("Failed to create forwarder")
-                    .with_cause(Error::new(req.path()).with_message(err.to_string()));
-                Ok(Response::internal_error(req.id()).body(err).to_vec()?)
-            }
+            Ok(body) => Ok(Response::ok(req).body(body).to_vec()?),
+            Err(err) => Ok(Response::internal_error(
+                req,
+                &format!("Failed to create forwarder: {}", err),
+            )
+            .to_vec()?),
         }
     }
 
@@ -126,9 +125,9 @@ impl NodeManagerWorker {
     pub(super) async fn delete_forwarder(
         &mut self,
         ctx: &mut Context,
-        req: &Request,
+        req: &RequestHeader,
         remote_address: &str,
-    ) -> Result<ResponseBuilder<Option<ForwarderInfo>>, ResponseBuilder<Error>> {
+    ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
         let mut node_manager = self.node_manager.write().await;
 
         debug!(%remote_address , "Handling DeleteForwarder request");
@@ -142,47 +141,42 @@ impl NodeManagerWorker {
             {
                 Ok(_) => {
                     debug!(%remote_address, "Successfully stopped forwarder");
-                    Ok(Response::ok(req.id())
+                    Ok(Response::ok(req)
                         .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
                 }
                 Err(err) => {
                     error!(%remote_address, ?err, "Failed to delete forwarder from node registry");
-                    let err_body = Error::new(req.path())
-                        .with_message(format!("Failed to delete forwarder at {}.", remote_address))
-                        .with_cause(Error::new(req.path()).with_message(err.to_string()));
-                    Err(Response::internal_error(req.id()).body(err_body))
+                    Err(Response::internal_error(
+                        req,
+                        &format!("Failed to delete forwarder at {}: {}", remote_address, err),
+                    ))
                 }
             }
         } else {
             error!(%remote_address, "Forwarder not found in the node registry");
-            let err_body = Error::new(req.path()).with_message(format!(
-                "Forwarder with address {} not found.",
-                remote_address
-            ));
-            Err(Response::not_found(req.id()).body(err_body))
+            Err(Response::not_found(
+                req,
+                &format!("Forwarder with address {} not found.", remote_address),
+            ))
         }
     }
 
     pub(super) async fn show_forwarder(
         &mut self,
-        req: &Request,
+        req: &RequestHeader,
         remote_address: &str,
-    ) -> Result<ResponseBuilder<Option<ForwarderInfo>>, ResponseBuilder<Error>> {
+    ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
         debug!("Handling ShowForwarder request");
         let node_manager = self.node_manager.read().await;
         if let Some(forwarder_to_show) = node_manager.registry.forwarders.get(remote_address) {
             debug!(%remote_address, "Forwarder not found in node registry");
-            Ok(
-                Response::ok(req.id())
-                    .body(Some(ForwarderInfo::from(forwarder_to_show.to_owned()))),
-            )
+            Ok(Response::ok(req).body(Some(ForwarderInfo::from(forwarder_to_show.to_owned()))))
         } else {
             error!(%remote_address, "Forwarder not found in the node registry");
-            let err_body = Error::new(req.path()).with_message(format!(
-                "Forwarder with address {} not found.",
-                remote_address
-            ));
-            Err(Response::not_found(req.id()).body(err_body))
+            Err(Response::not_found(
+                req,
+                &format!("Forwarder with address {} not found.", remote_address),
+            ))
         }
     }
 
@@ -198,10 +192,10 @@ impl NodeManagerWorker {
 
     pub(super) async fn get_forwarders_response(
         &self,
-        req: &Request,
-    ) -> ResponseBuilder<Vec<ForwarderInfo>> {
+        req: &RequestHeader,
+    ) -> Response<Vec<ForwarderInfo>> {
         debug!("Handling ListForwarders request");
-        Response::ok(req.id()).body(self.get_forwarders().await)
+        Response::ok(req).body(self.get_forwarders().await)
     }
 }
 

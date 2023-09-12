@@ -3,7 +3,7 @@ use minicbor::Decoder;
 use ockam_core::compat::net::IpAddr;
 
 use ockam::compat::tokio::sync::Mutex;
-use ockam_core::api::{Request, Response, Status};
+use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
@@ -130,7 +130,7 @@ impl KafkaInletController {
             .await?;
 
         let mut decoder = Decoder::new(&buffer);
-        let response: Response = decoder.decode()?;
+        let response: ResponseHeader = decoder.decode()?;
 
         let status = response.status().unwrap_or(Status::InternalServerError);
         if status != Status::Ok {

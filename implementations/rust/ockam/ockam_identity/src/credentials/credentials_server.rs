@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use minicbor::Decoder;
 
-use ockam_core::api::{Request, Response, Status};
+use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -72,7 +72,7 @@ impl CredentialsServer for CredentialsServerModule {
             IdentitySecureChannelLocalInfo::find_info_from_list(&local_info)?.their_identity_id();
 
         let mut dec = Decoder::new(&buf);
-        let res: Response = dec.decode()?;
+        let res: ResponseHeader = dec.decode()?;
         match res.status() {
             Some(Status::Ok) => {}
             Some(s) => {
@@ -114,7 +114,7 @@ impl CredentialsServer for CredentialsServerModule {
         )
         .await?;
 
-        let res: Response = minicbor::decode(&buf)?;
+        let res: ResponseHeader = minicbor::decode(&buf)?;
         match res.status() {
             Some(Status::Ok) => Ok(()),
             _ => Err(Error::new(

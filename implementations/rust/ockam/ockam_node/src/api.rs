@@ -4,7 +4,7 @@ use core::fmt::Display;
 
 use minicbor::Encode;
 
-use ockam_core::api::RequestBuilder;
+use ockam_core::api::Request;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{LocalInfo, Result, Route};
 
@@ -14,7 +14,7 @@ use crate::{Context, MessageSendReceiveOptions};
 pub async fn request<T>(
     ctx: &Context,
     route: impl Into<Route> + Display,
-    req: RequestBuilder<T>,
+    req: Request<T>,
 ) -> Result<Vec<u8>>
 where
     T: Encode<()>,
@@ -26,7 +26,7 @@ where
 pub async fn request_with_options<T>(
     ctx: &Context,
     route: impl Into<Route> + Display,
-    req: RequestBuilder<T>,
+    req: Request<T>,
     options: MessageSendReceiveOptions,
 ) -> Result<Vec<u8>>
 where
@@ -53,7 +53,7 @@ where
 pub async fn request_with_local_info<T>(
     ctx: &Context,
     route: impl Into<Route> + Display,
-    req: RequestBuilder<T>,
+    req: Request<T>,
 ) -> Result<(Vec<u8>, Vec<LocalInfo>)>
 where
     T: Encode<()>,

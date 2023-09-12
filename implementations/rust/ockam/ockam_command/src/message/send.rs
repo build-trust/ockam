@@ -7,7 +7,7 @@ use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::service::message::SendMessage;
-use ockam_core::api::{Request, RequestBuilder};
+use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
@@ -124,6 +124,6 @@ async fn rpc(
     go(&mut ctx, opts, cmd).await
 }
 
-pub(crate) fn req(to: &MultiAddr, message: Vec<u8>) -> RequestBuilder<SendMessage> {
+pub(crate) fn req(to: &MultiAddr, message: Vec<u8>) -> Request<SendMessage> {
     Request::post("v0/message").body(SendMessage::new(to, message))
 }

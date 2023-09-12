@@ -20,7 +20,7 @@ use ockam::{
 };
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
-use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
+use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
@@ -73,7 +73,7 @@ fn random_alias() -> String {
 }
 
 pub(crate) fn encode_request_result<T: Encode<()>>(
-    res: std::result::Result<ResponseBuilder<T>, ResponseBuilder<ockam_core::api::Error>>,
+    res: std::result::Result<Response<T>, Response<ockam_core::api::Error>>,
 ) -> Result<Vec<u8>> {
     let v = match res {
         Ok(r) => r.to_vec()?,
@@ -514,7 +514,7 @@ impl NodeManagerWorker {
     async fn handle_request(
         &mut self,
         ctx: &mut Context,
-        req: &Request,
+        req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         debug! {
@@ -539,7 +539,7 @@ impl NodeManagerWorker {
             // TODO: create, delete, destroy remote nodes
             (Get, ["node"]) => {
                 let node_name = &self.node_manager.read().await.node_name;
-                Response::ok(req.id())
+                Response::ok(req)
                     .body(NodeStatus::new(
                         node_name,
                         "Running",
@@ -577,7 +577,7 @@ impl NodeManagerWorker {
             (Post, ["node", "credentials", "actions", "get"]) => self
                 .get_credential(req, dec, ctx)
                 .await?
-                .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
+                .either(Response::to_vec, Response::to_vec)?,
             (Post, ["node", "credentials", "actions", "present"]) => {
                 encode_request_result(self.present_credential(req, dec, ctx).await)?
             }
@@ -707,9 +707,7 @@ impl NodeManagerWorker {
                     .iter()
                     .for_each(|addr| list.push(WorkerStatus::new(addr.address())));
 
-                Response::ok(req.id())
-                    .body(WorkerList::new(list))
-                    .to_vec()?
+                Response::ok(req).body(WorkerList::new(list)).to_vec()?
             }
             (Post, ["policy", resource, action]) => encode_request_result(
                 self.node_manager
@@ -731,7 +729,7 @@ impl NodeManagerWorker {
                 .await
                 .get_policy(req, resource, action)
                 .await?
-                .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
+                .either(Response::to_vec, Response::to_vec)?,
             (Delete, ["policy", resource, action]) => encode_request_result(
                 self.node_manager
                     .read()
@@ -806,9 +804,8 @@ impl NodeManagerWorker {
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
-                let err_body =
-                    Error::new(path).with_message(format!("Invalid endpoint: {} {}", method, path));
-                Response::bad_request(req.id()).body(err_body).to_vec()?
+                Response::bad_request(req, &format!("Invalid endpoint: {} {}", method, path))
+                    .to_vec()?
             }
         };
         Ok(r)
@@ -853,7 +850,7 @@ impl Worker for NodeManagerWorker {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
         let mut dec = Decoder::new(msg.as_body());
-        let req: Request = match dec.decode() {
+        let req: RequestHeader = match dec.decode() {
             Ok(r) => r,
             Err(e) => {
                 error!("Failed to decode request: {:?}", e);
@@ -873,10 +870,7 @@ impl Worker for NodeManagerWorker {
                     cause  = ?err.source(),
                     "failed to handle request"
                 }
-                let err = Error::new(req.path())
-                    .with_message(format!("failed to handle request: {err} {req:?}"));
-                Response::builder(req.id(), Status::InternalServerError)
-                    .body(err)
+                Response::internal_error(&req, &format!("failed to handle request: {err} {req:?}"))
                     .to_vec()?
             }
         };

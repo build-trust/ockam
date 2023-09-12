@@ -50,10 +50,9 @@ mod node {
             ctx: &Context,
             req_wrapper: CloudRequestWrapper<AcceptInvitation>,
         ) -> Result<Vec<u8>> {
-            let req_builder = Request::post("/v0/redeem_invite").body(req_wrapper.req);
+            let req = Request::post("/v0/redeem_invite").body(req_wrapper.req);
 
-            self.request_controller(ctx, API_SERVICE, req_builder, None)
-                .await
+            self.request_controller(ctx, API_SERVICE, req, None).await
         }
     }
 

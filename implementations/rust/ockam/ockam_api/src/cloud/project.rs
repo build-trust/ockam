@@ -280,10 +280,9 @@ mod node {
         ) -> Result<Vec<u8>> {
             let req_body = req_wrapper.req;
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
-            let req_builder =
-                Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
+            let req = Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
 
-            self.request_controller(ctx, "projects", req_builder, req_wrapper.identity_name)
+            self.request_controller(ctx, "projects", req, req_wrapper.identity_name)
                 .await
         }
 
@@ -294,10 +293,9 @@ mod node {
 
         pub(crate) async fn list_projects_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "listing projects");
-            let req_builder = Request::get("/v0");
+            let req = Request::get("/v0");
 
-            self.request_controller(ctx, "projects", req_builder, None)
-                .await
+            self.request_controller(ctx, "projects", req, None).await
         }
 
         pub async fn get_project(&self, ctx: &Context, project_id: &str) -> Result<Project> {
@@ -348,10 +346,9 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, %project_id, "getting project");
-            let req_builder = Request::get(format!("/v0/{project_id}"));
+            let req = Request::get(format!("/v0/{project_id}"));
 
-            self.request_controller(ctx, "projects", req_builder, None)
-                .await
+            self.request_controller(ctx, "projects", req, None).await
         }
 
         pub async fn get_project_version(&self, ctx: &Context) -> Result<ProjectVersion> {
@@ -360,9 +357,9 @@ mod node {
 
         pub(crate) async fn get_project_version_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "getting project version");
-            let req_builder = Request::get("");
+            let req = Request::get("");
 
-            self.request_controller(ctx, "version_info", req_builder, None)
+            self.request_controller(ctx, "version_info", req, None)
                 .await
         }
 
@@ -385,10 +382,9 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
-            let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
+            let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
 
-            self.request_controller(ctx, "projects", req_builder, None)
-                .await
+            self.request_controller(ctx, "projects", req, None).await
         }
     }
 `
