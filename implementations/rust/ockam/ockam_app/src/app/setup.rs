@@ -1,13 +1,16 @@
 use crate::app::events::{SystemTrayOnUpdatePayload, SYSTEM_TRAY_ON_UPDATE};
-use crate::app::{build_tray_menu, process_system_tray_menu_event};
+use crate::app::{build_tray_menu, process_system_tray_menu_event, AppState};
 use std::error::Error;
 use std::mem::forget;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tauri::async_runtime::spawn;
 use tauri::menu::Menu;
 use tauri::tray::TrayIconBuilder;
-use tauri::{App, Manager, Runtime};
+use tauri::{App, Manager, Runtime, State};
 use tracing::{debug, error, info};
+
+const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(5);
 
 /// Create the initial version of the system tray menu and the event listeners to update it.
 pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
@@ -62,6 +65,20 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
             });
         });
     }
+
+    // Update the tray menu frequently once the user is enrolled.
+    let handle = app.handle().clone();
+    spawn(async move {
+        let mut interval = tokio::time::interval(DEFAULT_POLL_INTERVAL);
+        loop {
+            interval.tick().await;
+            let app_state: State<AppState> = handle.state::<AppState>();
+            if app_state.is_enrolled().await.unwrap_or(false) {
+                debug!("Refreshing tray menu via background poll");
+                handle.trigger_global(SYSTEM_TRAY_ON_UPDATE, None);
+            }
+        }
+    });
 
     info!("App setup complete");
     Ok(())

@@ -106,7 +106,7 @@ async fn send_invitation<R: Runtime>(
 }
 
 pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    debug!("refreshing invitations");
+    debug!("Refreshing invitations");
     let state: State<'_, AppState> = app.state();
     if !state.is_enrolled().await.unwrap_or(false) {
         debug!("not enrolled, skipping invitations refresh");
