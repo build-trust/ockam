@@ -110,10 +110,9 @@ mod node {
             &self,
             ctx: &Context,
             req: CreateInvitation,
-            identity_name: Option<String>,
         ) -> Result<SentInvitation> {
             Response::parse_response_body(
-                self.create_invitation_response(ctx, CloudRequestWrapper::new(req, identity_name))
+                self.create_invitation_response(ctx, CloudRequestWrapper::new(req))
                     .await?
                     .as_slice(),
             )
@@ -128,22 +127,18 @@ mod node {
             trace!(%req_body.scope, target_id = %req_body.target_id, "creating invitation");
             let req = Request::post("/v0/invites").body(req_body);
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
 
         pub async fn create_service_invitation(
             &self,
             ctx: &Context,
             req: CreateServiceInvitation,
-            identity_name: Option<String>,
         ) -> Result<SentInvitation> {
             Response::parse_response_body(
-                self.create_service_invitation_response(
-                    ctx,
-                    CloudRequestWrapper::new(req, identity_name),
-                )
-                .await?
-                .as_slice(),
+                self.create_service_invitation_response(ctx, CloudRequestWrapper::new(req))
+                    .await?
+                    .as_slice(),
             )
         }
 
@@ -156,7 +151,7 @@ mod node {
             trace!(project_id = %req_body.project_id, "creating service invitation");
             let req = Request::post("/v0/invites/service").body(req_body);
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
     }
 
@@ -165,12 +160,9 @@ mod node {
             &self,
             ctx: &Context,
             req: CreateInvitation,
-            identity_name: Option<String>,
         ) -> Result<SentInvitation> {
             let node_manager = self.inner().read().await;
-            node_manager
-                .create_invitation(ctx, req, identity_name)
-                .await
+            node_manager.create_invitation(ctx, req).await
         }
 
         pub(crate) async fn create_invitation_response(
@@ -188,12 +180,9 @@ mod node {
             &self,
             ctx: &Context,
             req: CreateServiceInvitation,
-            identity_name: Option<String>,
         ) -> Result<SentInvitation> {
             let node_manager = self.inner().read().await;
-            node_manager
-                .create_service_invitation(ctx, req, identity_name)
-                .await
+            node_manager.create_service_invitation(ctx, req).await
         }
 
         pub(crate) async fn create_service_invitation_response(

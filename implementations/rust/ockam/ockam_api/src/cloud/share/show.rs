@@ -32,7 +32,7 @@ mod node {
             trace!(?invitation_id, "showing invitation");
             let req = Request::get(format!("/v0/invites/{invitation_id}"));
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
     }
 

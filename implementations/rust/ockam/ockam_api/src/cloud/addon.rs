@@ -93,7 +93,7 @@ mod node {
             trace!(target: TARGET, project_id, "listing addons");
             let req = Request::get(format!("/v0/{project_id}/addons"));
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
 
         pub(crate) async fn configure_addon(
@@ -137,7 +137,7 @@ mod node {
             ))
             .body(req_wrapper.req);
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
 
         pub(crate) async fn disable_addon(
@@ -152,7 +152,7 @@ mod node {
             let req =
                 Request::post(format!("/v1/projects/{project_id}/disable_addon")).body(req_body);
 
-            self.request_controller(ctx, API_SERVICE, req, None).await
+            self.request_controller(ctx, API_SERVICE, req).await
         }
     }
 }

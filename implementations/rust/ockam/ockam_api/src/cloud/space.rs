@@ -39,14 +39,9 @@ mod node {
     const TARGET: &str = "ockam_api::cloud::space";
 
     impl NodeManager {
-        pub async fn create_space(
-            &self,
-            ctx: &Context,
-            req: CreateSpace,
-            identity_name: Option<String>,
-        ) -> Result<Space> {
+        pub async fn create_space(&self, ctx: &Context, req: CreateSpace) -> Result<Space> {
             Response::parse_response_body(
-                self.create_space_response(ctx, CloudRequestWrapper::new(req, identity_name))
+                self.create_space_response(ctx, CloudRequestWrapper::new(req))
                     .await?
                     .as_slice(),
             )
@@ -61,7 +56,7 @@ mod node {
             trace!(target: TARGET, space = %req_body.name, "creating space");
             let req = Request::post("/v0/").body(req_body);
 
-            self.request_controller(ctx, "spaces", req, None).await
+            self.request_controller(ctx, "spaces", req).await
         }
 
         pub async fn list_spaces(&self, ctx: &Context) -> Result<Vec<Space>> {
@@ -72,7 +67,7 @@ mod node {
             trace!(target: TARGET, "listing spaces");
             let req = Request::get("/v0/");
 
-            self.request_controller(ctx, "spaces", req, None).await
+            self.request_controller(ctx, "spaces", req).await
         }
 
         pub async fn get_space(&self, ctx: &Context, id: &str) -> Result<Space> {
@@ -83,7 +78,7 @@ mod node {
             trace!(target: TARGET, space = %id, space = %id, "getting space");
             let req = Request::get(format!("/v0/{id}"));
 
-            self.request_controller(ctx, "spaces", req, None).await
+            self.request_controller(ctx, "spaces", req).await
         }
     }
 
@@ -120,7 +115,7 @@ mod node {
             trace!(target: TARGET, space = %id, "deleting space");
             let req = Request::delete(format!("/v0/{id}"));
 
-            self.request_controller(ctx, "spaces", req, None).await
+            self.request_controller(ctx, "spaces", req).await
         }
     }
 }
