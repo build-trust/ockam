@@ -99,13 +99,14 @@ impl PurposeKeyBuilder {
     pub async fn build_options(self) -> Result<PurposeKeyOptions> {
         let (key, stype) = match self.key {
             Key::Generate(stype) => {
+                let attributes = stype.try_into()?;
                 let key = match &self.purpose {
                     Purpose::SecureChannel => {
                         let key_id = self
                             .purpose_keys_creation
                             .vault()
                             .secure_channel_vault
-                            .generate_static_secret(stype.into())
+                            .generate_static_secret(attributes)
                             .await?;
                         PurposeKeyKey::Secret(key_id)
                     }
@@ -114,7 +115,7 @@ impl PurposeKeyBuilder {
                             .purpose_keys_creation
                             .vault()
                             .credential_vault
-                            .generate_key(stype.into())
+                            .generate_key(attributes)
                             .await?;
                         PurposeKeyKey::Secret(key_id)
                     }

@@ -2,6 +2,7 @@ use crate::constants::{AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32};
 use crate::constants::{
     ED25519_SECRET_LENGTH_U32, NIST_P256_SECRET_LENGTH_U32, X25519_SECRET_LENGTH_U32,
 };
+use crate::VaultError;
 use core::fmt;
 use core::fmt::{Display, Formatter};
 use minicbor::{Decode, Encode};
@@ -43,14 +44,15 @@ impl From<SecretAttributes> for SecretType {
     }
 }
 
-impl From<SecretType> for SecretAttributes {
-    fn from(value: SecretType) -> Self {
+impl TryFrom<SecretType> for SecretAttributes {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: SecretType) -> Result<Self, Self::Error> {
         match value {
-            SecretType::Buffer => panic!(), // FIXME
-            SecretType::Aes => panic!(),    // FIXME
-            SecretType::X25519 => SecretAttributes::X25519,
-            SecretType::Ed25519 => SecretAttributes::Ed25519,
-            SecretType::NistP256 => SecretAttributes::NistP256,
+            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            SecretType::X25519 => Ok(SecretAttributes::X25519),
+            SecretType::Ed25519 => Ok(SecretAttributes::Ed25519),
+            SecretType::NistP256 => Ok(SecretAttributes::NistP256),
         }
     }
 }
