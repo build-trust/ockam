@@ -31,6 +31,12 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
                         .map_err(|e| error!(%e, "Failed to refresh projects"))
                 });
             });
+
+            let handle = app.clone();
+            app.listen_global(REFRESHED_PROJECTS, move |_event| {
+                system_tray_on_update(&handle);
+            });
+
             let handle = app.clone();
             spawn(async move {
                 let mut interval = tokio::time::interval(DEFAULT_POLL_INTERVAL);
@@ -40,10 +46,7 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
                     handle.trigger_global(REFRESH_PROJECTS, None);
                 }
             });
-            let handle = app.clone();
-            app.listen_global(REFRESHED_PROJECTS, move |_event| {
-                system_tray_on_update(&handle);
-            });
+
             info!("Projects plugin initialized");
             Ok(())
         })

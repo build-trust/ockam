@@ -296,24 +296,25 @@ impl CliState {
     /// At the moment this check only verifies that there is a default project.
     /// This project should be the project that is created at the end of the enrollment procedure
     pub fn is_enrolled(&self) -> Result<bool> {
-        let identity_state = self.identities.get_or_default(None)?;
+        let identity_state = self.identities.default()?;
         if !identity_state.is_enrolled() {
             return Ok(false);
         }
 
         let default_space_exists = self.spaces.default().is_ok();
         if !default_space_exists {
-            return Err(
-                "There should be a default space set for the current user. Please re-enroll".into(),
-            );
+            let message =
+                "There should be a default space set for the current user. Please re-enroll";
+            error!("{}", message);
+            return Err(message.into());
         }
 
         let default_project_exists = self.projects.default().is_ok();
         if !default_project_exists {
-            return Err(
-                "There should be a default project set for the current user. Please re-enroll"
-                    .into(),
-            );
+            let message =
+                "There should be a default project set for the current user. Please re-enroll";
+            error!("{}", message);
+            return Err(message.into());
         }
 
         Ok(true)

@@ -45,16 +45,20 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
             let handle = handle.clone();
             spawn(async move {
                 debug!("Building system tray menu");
-                let tray = handle.tray().unwrap();
+                let tray = handle.tray().expect("Couldn't get tray menu handler");
                 let menu = build_tray_menu(&handle, payload).await;
 
-                let old_menu = menu_holder.lock().unwrap().replace(menu.clone());
-                tray.set_menu(Some(menu.clone()))
-                    .expect("Couldn't update menu");
+                let old_menu = menu_holder
+                    .lock()
+                    .expect("Couldn't get menu lock")
+                    .replace(menu.clone());
 
                 // HACK: leak the previous menu to avoid a crash on macOS
                 // TODO: remove me once tauri 2.0 stable is out
                 forget(old_menu);
+
+                tray.set_menu(Some(menu.clone()))
+                    .expect("Couldn't update menu");
             });
         });
     }

@@ -198,7 +198,7 @@ impl Runner {
                 .into_diagnostic()?;
 
             let ticket = EnrollmentTicket::new(token, project, trust_context);
-            let ticket_serialized = hex::encode(serde_json::to_vec(&ticket).into_diagnostic()?);
+            let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
             self.opts
                 .terminal
                 .clone()

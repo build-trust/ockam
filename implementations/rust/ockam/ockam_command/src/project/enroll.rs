@@ -94,11 +94,12 @@ pub async fn project_enroll<'a>(
 
     // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
     let proj: ProjectConfigCompact = if let Some(ticket) = &cmd.enroll_ticket {
-        let proj = ticket
-            .project()
-            .expect("Enrollment ticket is invalid. Ticket does not contain a project.");
-
-        proj.clone().try_into()?
+        ticket
+            .project
+            .as_ref()
+            .expect("Enrollment ticket is invalid. Ticket does not contain a project.")
+            .clone()
+            .try_into()?
     } else {
         // OKTA AUTHENTICATION FLOW | PREVIOUSLY ENROLLED FLOW
         // currently okta auth does not use an enrollment token
@@ -185,7 +186,7 @@ pub async fn project_enroll<'a>(
                 .into_diagnostic()?,
         );
         client
-            .present_token(tkn.one_time_code())
+            .present_token(&tkn.one_time_code)
             .await
             .into_diagnostic()?
     } else if cmd.okta {

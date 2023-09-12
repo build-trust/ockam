@@ -32,6 +32,11 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             });
 
             let handle = app.clone();
+            app.listen_global(REFRESHED_INVITATIONS, move |_event| {
+                system_tray_on_update(&handle);
+            });
+
+            let handle = app.clone();
             spawn(async move {
                 let mut interval = tokio::time::interval(DEFAULT_POLL_INTERVAL);
                 loop {
@@ -41,10 +46,6 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
                 }
             });
 
-            let handle = app.clone();
-            app.listen_global(REFRESHED_INVITATIONS, move |_event| {
-                system_tray_on_update(&handle);
-            });
             info!("Invitations plugin initialized");
             Ok(())
         })

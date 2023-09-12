@@ -7,7 +7,7 @@ use tracing::{debug, trace, warn};
 
 use ockam_api::cloud::share::{InvitationWithAccess, ReceivedInvitation, SentInvitation};
 
-use super::state::SyncState;
+use super::state::SyncInvitationsState;
 use crate::app::AppState;
 use crate::invitations::state::AcceptedInvitations;
 
@@ -38,7 +38,7 @@ pub(crate) async fn build_invitations_section<'a, R: Runtime, M: Manager<R>>(
         return builder;
     };
 
-    let state: State<'_, SyncState> = app_handle.state();
+    let state: State<'_, SyncInvitationsState> = app_handle.state();
     let reader = state.read().await;
     builder = builder.item(&add_received_menu(app_handle, &reader.received));
 
@@ -115,6 +115,8 @@ fn add_received_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
     received: &[ReceivedInvitation],
 ) -> Submenu<R> {
+    debug!(count = received.len(), "Received invitations");
+
     let header_text = if received.is_empty() {
         "No Received Invitations"
     } else {
@@ -182,6 +184,8 @@ fn add_accepted_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
     accepted: &AcceptedInvitations,
 ) -> Submenu<R> {
+    debug!(count = accepted.invitations.len(), "Accepted invitations");
+
     let header_text = if accepted.invitations.is_empty() {
         "No Accepted Invitations"
     } else {
