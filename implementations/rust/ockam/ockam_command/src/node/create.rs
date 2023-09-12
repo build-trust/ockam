@@ -14,7 +14,6 @@ use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state};
-use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::NodeManagerTrustOptions;
 use ockam_api::{
@@ -36,7 +35,7 @@ use crate::util::api::TrustContextOpts;
 use crate::util::{api, parse_node_name, Rpc};
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
-use crate::{docs, identity, shutdown, CommandGlobalOpts, Result};
+use crate::{docs, shutdown, CommandGlobalOpts, Result};
 use crate::{fmt_log, fmt_ok};
 
 use super::show::is_node_up;
@@ -250,12 +249,6 @@ async fn run_foreground_node(
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
     let node_name = parse_node_name(&cmd.node_name)?;
-
-    // TODO: remove this special case once the Orchestrator has migrated to the
-    //  new ockam authority create command
-    if node_name == "authority" && cmd.launch_config.is_some() {
-        return start_authority_node(ctx, (opts, cmd)).await;
-    };
 
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
@@ -480,59 +473,5 @@ pub async fn spawn_background_node(
         cmd.logging_to_file(),
     )?;
 
-    Ok(())
-}
-
-async fn start_authority_node(
-    ctx: Context,
-    opts: (CommandGlobalOpts, CreateCommand),
-) -> miette::Result<()> {
-    let (opts, cmd) = opts;
-    let launch_config = cmd
-        .launch_config
-        .clone()
-        .expect("launch config is required for an authority node");
-    if let Some(services) = launch_config.startup_services {
-        let authenticator_config = services.authenticator.ok_or(crate::Error::new(
-            exitcode::CONFIG,
-            miette!("The authenticator service must be specified for an authority node"),
-        ))?;
-        let secure_channel_config = services.secure_channel_listener.ok_or(crate::Error::new(
-            exitcode::CONFIG,
-            miette!("The secure channel listener service must be specified for an authority node"),
-        ))?;
-
-        // retrieve the authority identity if it has been created before
-        // otherwise create a new one
-        let identifier = match opts.state.identities.default() {
-            Ok(state) => state.config().identifier(),
-            Err(_) => {
-                let cmd = identity::CreateCommand::new("authority".into(), None);
-                cmd.create_identity(opts.clone()).await?
-            }
-        };
-
-        let trusted_identities = load_pre_trusted_identities(&cmd)
-            .map(|ts| ts.unwrap_or(PreTrustedIdentities::Fixed(Default::default())))
-            .map_err(|e| crate::Error::new(exitcode::CONFIG, miette!("{}", e)))?;
-
-        let configuration = authority_node::Configuration {
-            identifier,
-            storage_path: opts.state.identities.identities_repository_path()?,
-            vault_path: opts.state.vaults.default()?.vault_file_path().clone(),
-            project_identifier: authenticator_config.project.clone(),
-            trust_context_identifier: authenticator_config.project,
-            tcp_listener_address: cmd.tcp_listener_address,
-            secure_channel_listener_name: Some(secure_channel_config.address),
-            authenticator_name: Some(authenticator_config.address),
-            trusted_identities,
-            no_direct_authentication: true,
-            no_token_enrollment: true,
-            okta: None,
-        };
-        authority_node::start_node(&ctx, &configuration)
-            .await
-            .into_diagnostic()?;
-    }
     Ok(())
 }
