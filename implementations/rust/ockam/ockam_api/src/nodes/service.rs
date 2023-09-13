@@ -31,6 +31,7 @@ use ockam_node::compat::asynchronous::RwLock;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use crate::cloud::secure_client::SecureClient;
 use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
@@ -89,7 +90,6 @@ pub struct NodeManager {
     node_name: String,
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
-    pub(crate) controller_identity_id: Identifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
     identifier: Identifier,
@@ -146,16 +146,39 @@ impl NodeManager {
     }
 }
 
+impl NodeManager {
+    pub async fn make_controller_client(&self) -> Result<SecureClient> {
+        Ok(SecureClient::controller(
+            &self.tcp_transport,
+            self.secure_channels.clone(),
+            self.get_identifier(None).await?,
+        )
+            .await?)
+    }
+
+    pub async fn make_authority_client(&self) -> Result<SecureClient> {
+        Ok(SecureClient::controller(
+            &self.tcp_transport,
+            self.secure_channels.clone(),
+            self.get_identifier(None).await?,
+        )
+            .await?)
+    }
+}
+
 #[derive(Clone)]
 pub struct NodeManagerWorker {
     node_manager: Arc<RwLock<NodeManager>>,
+    pub(crate) controller_client: SecureClient,
 }
 
 impl NodeManagerWorker {
-    pub fn new(node_manager: NodeManager) -> Self {
-        NodeManagerWorker {
+    pub async fn new(node_manager: NodeManager) -> Result<Self> {
+        let controller_client = node_manager.make_controller_client().await?;
+        Ok(NodeManagerWorker {
             node_manager: Arc::new(RwLock::new(node_manager)),
-        }
+            controller_client,
+        })
     }
 
     pub fn inner(&self) -> &Arc<RwLock<NodeManager>> {
@@ -170,11 +193,6 @@ impl NodeManagerWorker {
         }
         ctx.stop_worker(NODEMANAGER_ADDR).await?;
         Ok(())
-    }
-
-    pub async fn controller_address(&self) -> MultiAddr {
-        let node_manager = self.node_manager.read().await;
-        node_manager.controller_address()
     }
 }
 
@@ -347,7 +365,6 @@ impl NodeManager {
             node_name: general_options.node_name,
             api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
             tcp_transport: transport_options.tcp_transport,
-            controller_identity_id: Self::load_controller_identifier()?,
             skip_defaults: general_options.skip_defaults,
             enable_credential_checks: trust_options.trust_context_config.is_some()
                 && trust_options

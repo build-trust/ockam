@@ -1,10 +1,11 @@
 use minicbor::{Decode, Encode};
+use serde::{Deserialize, Serialize};
+
 use ockam_core::api::{Error, Reply, Request, Status};
 use ockam_core::{self, async_trait, Result};
 use ockam_node::Context;
-use serde::{Deserialize, Serialize};
 
-use crate::nodes::NodeManager;
+use crate::cloud::secure_client::SecureClient;
 
 const TARGET: &str = "ockam_api::cloud::subscription";
 const API_SERVICE: &str = "subscriptions";
@@ -112,7 +113,7 @@ pub trait Subscriptions {
 }
 
 #[async_trait]
-impl Subscriptions for NodeManager {
+impl Subscriptions for SecureClient {
     async fn activate_subscription(
         &self,
         ctx: &Context,

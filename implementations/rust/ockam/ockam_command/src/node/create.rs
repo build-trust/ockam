@@ -318,7 +318,7 @@ async fn run_foreground_node(
     )
     .await
     .into_diagnostic()?;
-    let node_manager_worker = NodeManagerWorker::new(node_man);
+    let node_manager_worker = NodeManagerWorker::new(node_man).await.into_diagnostic()?;
 
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
