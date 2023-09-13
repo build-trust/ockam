@@ -10,7 +10,6 @@ use tokio::try_join;
 use tracing::info;
 use tracing::log::warn;
 
-use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{random_name, update_enrolled_identity, SpaceConfig};
@@ -19,7 +18,7 @@ use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_core::api::Status;
-use ockam_multiaddr::MultiAddr;
+use ockam_identity::Identifier;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;
@@ -113,7 +112,7 @@ async fn run_impl(
 
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
 
-    enroll_with_node(&mut rpc, token, None)
+    enroll_with_node(&mut rpc, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
@@ -163,13 +162,12 @@ pub async fn retrieve_user_project<'a>(
 }
 
 /// Enroll a user with a token, using a specific node to contact the controller
-pub async fn enroll_with_node<'a>(
+pub async fn enroll_with_node(
     rpc: &mut Rpc,
     token: OidcToken,
-    alternative_authenticator_address: Option<MultiAddr>,
 ) -> miette::Result<()> {
     let status = rpc
-        .tell_and_get_status(api::enroll::auth0(token, alternative_authenticator_address))
+        .tell_and_get_status(api::enroll::auth0(token))
         .await?;
     match status {
         Some(Status::Ok) => {
@@ -191,7 +189,7 @@ pub async fn enroll_with_node<'a>(
     }
 }
 
-async fn default_space<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc) -> Result<Space> {
+async fn default_space(opts: &CommandGlobalOpts, rpc: &mut Rpc) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
@@ -274,7 +272,7 @@ async fn default_space<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc) -> Result<Sp
     Ok(default_space)
 }
 
-async fn default_project<'a>(
+async fn default_project(
     opts: &CommandGlobalOpts,
     rpc: &mut Rpc,
     space: &Space,

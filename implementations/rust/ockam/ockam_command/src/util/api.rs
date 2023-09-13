@@ -216,9 +216,8 @@ pub mod enroll {
 
     pub fn auth0(
         token: OidcToken,
-        alternative_authenticator_address: Option<MultiAddr>,
     ) -> Request<CloudRequestWrapper<AuthenticateOidcToken>> {
-        let token = AuthenticateOidcToken::new(token, alternative_authenticator_address);
+        let token = AuthenticateOidcToken::new(token);
         Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token))
     }
 }

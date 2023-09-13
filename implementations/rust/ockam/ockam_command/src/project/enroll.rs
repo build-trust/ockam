@@ -8,6 +8,7 @@ use ockam::identity::CredentialsIssuerClient;
 use ockam::Context;
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptorClient;
 use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
+use ockam_api::cloud::enroll::auth0::OidcToken;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::enroll::oidc_service::OidcService;
@@ -196,7 +197,16 @@ pub async fn project_enroll<'a>(
             .await
             .into_diagnostic()?
     } else if cmd.okta {
-        authenticate_through_okta(opts, rpc, proj, secure_channel_addr.clone()).await?
+        // Get auth0 token
+        let okta_config: OktaAuth0 = proj
+            .okta_config
+            .ok_or(miette!("Okta addon not configured"))?
+            .into();
+
+        let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
+        let token = auth0.get_token_interactively(opts).await?;
+
+        authenticate_through_okta(rpc, token, secure_channel_addr.clone()).await?
     }
 
     let credential_issuer_route = {
@@ -225,18 +235,10 @@ pub async fn project_enroll<'a>(
 }
 
 async fn authenticate_through_okta<'a>(
-    opts: &CommandGlobalOpts,
     rpc: &mut Rpc,
-    p: ProjectConfigCompact,
+    token: OidcToken,
     secure_channel_addr: MultiAddr,
 ) -> miette::Result<()> {
-    // Get auth0 token
-    let okta_config: OktaAuth0 = p
-        .okta_config
-        .ok_or(miette!("Okta addon not configured"))?
-        .into();
-    let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
-    let token = auth0.get_token_interactively(opts).await?;
 
     // Return address to the "okta_authenticator" worker on the authority node through the secure channel
     let okta_authenticator_addr = {

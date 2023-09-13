@@ -17,6 +17,7 @@ use ockam_api::cli_state::{
     add_project_info_to_node_state, init_node_state, CliState, StateDirTrait, StateItemTrait,
 };
 use ockam_api::cloud::enroll::auth0::UserInfo;
+use ockam_api::cloud::secure_client::SecureClient;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
@@ -263,8 +264,8 @@ impl AppState {
             .store(value, std::sync::atomic::Ordering::Relaxed);
     }
 
-    pub async fn controller_address(&self) -> MultiAddr {
-        self.node_manager_worker().await.controller_address().await
+    pub fn controller_address(&self) -> MultiAddr {
+        SecureClient::controller_multiaddr()
     }
 }
 
@@ -317,7 +318,7 @@ pub(crate) async fn make_node_manager_worker(
     .await
     .into_diagnostic()?;
 
-    let node_manager_worker = NodeManagerWorker::new(node_manager);
+    let node_manager_worker = NodeManagerWorker::new(node_manager).await.into_diagnostic()?;
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
     let _ = ctx

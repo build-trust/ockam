@@ -142,6 +142,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
     let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller_client = node_manager.make_controller_client().await.into_diagnostic()?;
     match cmd.subcommand {
         SubscriptionSubcommand::Attach {
             json,
@@ -151,14 +152,14 @@ async fn run_impl(
                 .into_diagnostic()
                 .context(format!("failed to read {:?}", &json))?;
 
-            let response = node_manager
+            let response = controller_client
                 .activate_subscription(&ctx, space, json)
                 .await
                 .into_diagnostic()?;
             opts.terminal.write_line(&response.output()?)?
         }
         SubscriptionSubcommand::List => {
-            let response = node_manager
+            let response = controller_client
                 .get_subscriptions(&ctx)
                 .await
                 .into_diagnostic()?;
@@ -168,11 +169,11 @@ async fn run_impl(
             subscription_id,
             space_id,
         } => {
-            match get_subscription_by_id_or_space_id(&node_manager, &ctx, subscription_id, space_id)
+            match get_subscription_by_id_or_space_id(&controller_client, &ctx, subscription_id, space_id)
                 .await?
             {
                 Some(subscription) => {
-                    let response = node_manager
+                    let response = controller_client
                         .unsubscribe(&ctx, subscription.id)
                         .await
                         .into_diagnostic()?;
@@ -195,7 +196,7 @@ async fn run_impl(
                         .into_diagnostic()
                         .context(format!("failed to read {:?}", &json))?;
                     match get_subscription_by_id_or_space_id(
-                        &node_manager,
+                        &controller_client,
                         &ctx,
                         subscription_id,
                         space_id,
@@ -203,7 +204,7 @@ async fn run_impl(
                     .await?
                     {
                         Some(subscription) => {
-                            let response = node_manager
+                            let response = controller_client
                                 .update_subscription_contact_info(&ctx, subscription.id, json)
                                 .await
                                 .into_diagnostic()?;
@@ -220,7 +221,7 @@ async fn run_impl(
                     new_space_id,
                 } => {
                     match get_subscription_by_id_or_space_id(
-                        &node_manager,
+                        &controller_client,
                         &ctx,
                         subscription_id,
                         space_id,
@@ -228,7 +229,7 @@ async fn run_impl(
                     .await?
                     {
                         Some(subscription) => {
-                            let response = node_manager
+                            let response = controller_client
                                 .update_subscription_space(&ctx, subscription.id, new_space_id)
                                 .await
                                 .into_diagnostic()?;

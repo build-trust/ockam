@@ -1,14 +1,22 @@
 use minicbor::{Decode, Encode};
+use std::str::FromStr;
+use std::sync::Arc;
 
-use ockam_core::env::{get_env_with_default, FromString};
+use ockam_core::env::{get_env, get_env_with_default, FromString};
+use ockam_core::{Result, Route};
+use ockam_identity::{Identifier, SecureChannels};
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::TcpTransport;
+
+use crate::cloud::secure_client::SecureClient;
+use crate::error::ApiError;
+use crate::multiaddr_to_route;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
 
 /// If it's present, its contents will be used and will have priority over the contents
 /// from ./static/controller.id.
-///
 /// How to use: when running a command that spawns a background node or use an embedded node
 /// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} ockam ...`
 pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
@@ -34,182 +42,49 @@ impl<T> CloudRequestWrapper<T> {
     }
 }
 
-mod node {
-    use std::time::Duration;
+impl SecureClient {
+    pub async fn controller(
+        tcp_transport: &TcpTransport,
+        secure_channels: Arc<SecureChannels>,
+        caller_identifier: Identifier,
+    ) -> Result<SecureClient> {
+        let controller_route = Self::controller_route(&tcp_transport).await?;
+        let controller_identifier = Self::load_controller_identifier()?;
 
-    use minicbor::{Decode, Encode};
+        Ok(SecureClient::new(
+            secure_channels,
+            controller_route,
+            controller_identifier,
+            caller_identifier,
+        ))
+    }
 
-    use ockam::identity::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
-    use ockam_core::api::{Reply, Request, Response};
-    use ockam_core::compat::str::FromStr;
-    use ockam_core::env::get_env;
-    use ockam_core::{self, route, Result};
-    use ockam_multiaddr::MultiAddr;
-    use ockam_node::api::request_with_options;
-    use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
-
-    use crate::cloud::controller_requests::OCKAM_CONTROLLER_IDENTITY_ID;
-    use crate::error::ApiError;
-    use crate::nodes::{NodeManager, NodeManagerWorker};
-
-    impl NodeManager {
-        /// Load controller identity id from file.
-        ///
-        /// If the env var `OCKAM_CONTROLLER_IDENTITY_ID` is set, that will be used to
-        /// load the identifier instead of the file.
-        pub fn load_controller_identifier() -> Result<Identifier> {
-            if let Ok(Some(idt)) = get_env::<Identifier>(OCKAM_CONTROLLER_IDENTITY_ID) {
-                trace!(idt = %idt, "Read controller identifier from env");
-                return Ok(idt);
-            }
-            Identifier::from_str(include_str!("../../static/controller.id"))
+    /// Load controller identity id from file.
+    /// If the env var `OCKAM_CONTROLLER_IDENTITY_ID` is set, that will be used to
+    /// load the identifier instead of the file.
+    pub fn load_controller_identifier() -> Result<Identifier> {
+        if let Ok(Some(idt)) = get_env::<Identifier>(OCKAM_CONTROLLER_IDENTITY_ID) {
+            trace!(idt = %idt, "Read controller identifier from env");
+            return Ok(idt);
         }
+        Identifier::from_str(include_str!("../../static/controller.id"))
+    }
 
-        /// Return controller identity's identifier.
-        pub fn controller_identifier(&self) -> Identifier {
-            self.controller_identity_id.clone()
-        }
+    pub fn controller_multiaddr() -> MultiAddr {
+        let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)
+            .unwrap_or_else(|_| panic!("invalid Controller address: {DEFAULT_CONTROLLER_ADDRESS}"));
+        get_env_with_default::<MultiAddr>(OCKAM_CONTROLLER_ADDR, default_addr).unwrap()
+    }
 
-        pub async fn request_controller<T>(
-            &self,
-            ctx: &Context,
-            api_service: &str,
-            req: Request<T>,
-        ) -> Result<Vec<u8>>
-        where
-            T: Encode<()>,
-        {
-            self.request_controller_with_timeout(
-                ctx,
-                api_service,
-                req,
-                Duration::from_secs(DEFAULT_TIMEOUT),
-            )
+    async fn controller_route(tcp_transport: &TcpTransport) -> Result<Route> {
+        let controller_multiaddr = Self::controller_multiaddr();
+        Ok(multiaddr_to_route(&controller_multiaddr, &tcp_transport)
             .await
-        }
-
-        pub async fn ask_controller<T, R>(
-            &self,
-            ctx: &Context,
-            api_service: &str,
-            req: Request<T>,
-        ) -> Result<Reply<R>>
-        where
-            T: Encode<()>,
-            R: for<'a> Decode<'a, ()>,
-        {
-            let bytes = self
-                .request_controller_with_timeout(
-                    ctx,
-                    api_service,
-                    req,
-                    Duration::from_secs(DEFAULT_TIMEOUT),
-                )
-                .await?;
-            Response::parse_response_reply::<R>(&bytes)
-        }
-
-        pub(crate) async fn request_controller_with_timeout<T>(
-            &self,
-            ctx: &Context,
-            api_service: &str,
-            req: Request<T>,
-            timeout: Duration,
-        ) -> Result<Vec<u8>>
-        where
-            T: Encode<()>,
-        {
-            self.request_node(ctx, None, api_service, req, timeout)
-                .await
-        }
-
-        /// Send a request to a node referenced via its multiaddr
-        pub(crate) async fn request_node<T>(
-            &self,
-            ctx: &Context,
-            destination: Option<MultiAddr>,
-            api_service: &str,
-            req: Request<T>,
-            timeout: Duration,
-        ) -> Result<Vec<u8>>
-        where
-            T: Encode<()>,
-        {
-            let identifier = self.get_identifier(None).await?;
-
-            let secure_channels = self.secure_channels.clone();
-            let cloud_multiaddr = destination.unwrap_or(self.controller_address());
-            let sc = {
-                let cloud_route = crate::multiaddr_to_route(&cloud_multiaddr, &self.tcp_transport)
-                    .await
-                    .ok_or_else(|| {
-                        ApiError::core(format!(
-                    "Couldn't convert MultiAddr to route: cloud_multiaddr={cloud_multiaddr}"
+            .ok_or_else(|| {
+                ApiError::core(format!(
+                    "Couldn't convert MultiAddr to route: controller_multiaddr={controller_multiaddr}"
                 ))
-                    })?;
-
-                let options = SecureChannelOptions::new()
-                    .with_trust_policy(TrustIdentifierPolicy::new(self.controller_identifier()));
-                secure_channels
-                    .create_secure_channel(ctx, &identifier, cloud_route.route, options)
-                    .await?
-            };
-
-            let route = route![sc.clone(), api_service];
-            let options = MessageSendReceiveOptions::new().with_timeout(timeout);
-            let res = request_with_options(ctx, route, req, options).await;
-            secure_channels
-                .stop_secure_channel(ctx, sc.encryptor_address())
-                .await?;
-            res
-        }
-
-        pub fn controller_address(&self) -> MultiAddr {
-            let address = super::controller_multiaddr();
-            trace!(%address, "Controller address");
-            address
-        }
+            })?.route)
     }
 
-    impl NodeManagerWorker {
-        pub(crate) async fn request_controller<T>(
-            &self,
-            ctx: &Context,
-            api_service: &str,
-            req: Request<T>,
-        ) -> Result<Vec<u8>>
-        where
-            T: Encode<()>,
-        {
-            self.request_controller_with_timeout(
-                ctx,
-                api_service,
-                req,
-                Duration::from_secs(DEFAULT_TIMEOUT),
-            )
-            .await
-        }
-
-        pub(crate) async fn request_controller_with_timeout<T>(
-            &self,
-            ctx: &Context,
-            api_service: &str,
-            req: Request<T>,
-            timeout: Duration,
-        ) -> Result<Vec<u8>>
-        where
-            T: Encode<()>,
-        {
-            let node_manager = self.inner().read().await;
-            node_manager
-                .request_controller_with_timeout(ctx, api_service, req, timeout)
-                .await
-        }
-    }
-}
-
-pub fn controller_multiaddr() -> MultiAddr {
-    let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)
-        .unwrap_or_else(|_| panic!("invalid Controller address: {DEFAULT_CONTROLLER_ADDRESS}"));
-    get_env_with_default::<MultiAddr>(OCKAM_CONTROLLER_ADDR, default_addr).unwrap()
 }
