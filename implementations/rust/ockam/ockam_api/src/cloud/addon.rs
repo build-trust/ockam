@@ -92,7 +92,7 @@ mod node {
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, project_id, "listing addons");
             let req = Request::get(format!("/v0/{project_id}/addons"));
-            self.controller_client.request_controller(ctx, API_SERVICE, req).await
+            self.controller_client.request(ctx, API_SERVICE, req).await
         }
 
         pub(crate) async fn configure_addon(
@@ -136,7 +136,7 @@ mod node {
             ))
             .body(req_wrapper.req);
 
-            self.controller_client.request_controller(ctx, API_SERVICE, req).await
+            self.controller_client.request(ctx, API_SERVICE, req).await
         }
 
         pub(crate) async fn disable_addon(
@@ -151,7 +151,7 @@ mod node {
             let req =
                 Request::post(format!("/v1/projects/{project_id}/disable_addon")).body(req_body);
 
-            self.controller_client.request_controller(ctx, API_SERVICE, req).await
+            self.controller_client.request(ctx, API_SERVICE, req).await
         }
     }
 }
